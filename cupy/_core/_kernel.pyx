@@ -874,6 +874,17 @@ cdef class ElementwiseKernel:
         return kern
 
 
+cdef str fix_cast_expr(src_type, dst_type, expr):
+    src_kind = get_dtype(src_type).kind
+    dst_kind = get_dtype(dst_type).kind
+    if src_kind == dst_kind:
+        return expr
+    if src_kind == 'b':
+        return f'({expr}) ? 1 : 0'
+    if src_kind == 'c':
+        return f'({expr}).real()'
+    return expr
+
 cdef function.Function _get_ufunc_kernel(
         tuple in_types, tuple out_types, routine, tuple arginfos, params,
         name, preamble, loop_prep):
@@ -893,13 +904,31 @@ cdef function.Function _get_ufunc_kernel(
                     ' ? 1 : 0' if arginfo.dtype == bool_ and x != bool_ else ''
                 ))
 
+    out_op = []
     for i, x in enumerate(out_types):
         arginfo = arginfos[i + len(in_types)]
-        types.append(('out%d_type' % i, arginfo.dtype))
-        op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
+        types.append(('out%d_type' % i, x))
+        if arginfo.dtype == x:
+            op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
+        else:
+            op.append(
+                'out{0}_type out{0}({1});'
+                .format(
+                    i,
+                    fix_cast_expr(arginfo.dtype, x, f'_raw_out{i}[_ind.get()]')
+                ))
+            out_op.append(
+                '_raw_out{0}[_ind.get()] = {1};'.format(
+                    i,
+                    fix_cast_expr(x, arginfo.dtype, f'out{i}')
+                )
+            )
+
     type_map = _TypeMap(tuple(types))
 
     op.append(routine)
+    op.append(';')
+    op.extend(out_op)
     operation = '\n'.join(op)
 
     return _get_simple_elementwise_kernel(
