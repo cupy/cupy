@@ -620,7 +620,7 @@ cdef _mean_core = create_reduction_func(
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
 cdef _mean_core_empty = create_reduction_func(
-    'cupy_mean',
+    'cupy_mean_empty',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
