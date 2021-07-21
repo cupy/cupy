@@ -881,13 +881,17 @@ cdef function.Function _get_ufunc_kernel(
 
     types = []
     op = []
+    bool_ = numpy.bool_
     for i, x in enumerate(in_types):
         types.append(('in%d_type' % i, x))
         arginfo = arginfos[i]
         if arginfo.is_ndarray():
             op.append(
-                'const in{0}_type in{0}(_raw_in{0}[_ind.get()]);'
-                .format(i))
+                'const in{0}_type in{0}(_raw_in{0}[_ind.get()]{1});'
+                .format(
+                    i,
+                    ' ? 1 : 0' if arginfo.dtype == bool_ and x != bool_ else ''
+                ))
 
     for i, x in enumerate(out_types):
         arginfo = arginfos[i + len(in_types)]
