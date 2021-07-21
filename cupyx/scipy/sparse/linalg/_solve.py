@@ -80,7 +80,8 @@ def lsqr(A, b):
     return ret
 
 
-def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
+def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
+         maxiter=None):
     """Iterative solver for least-squares problems.
 
     lsmr solves the system of linear equations ``Ax = b``. If the system
@@ -96,6 +97,8 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(m,)`` or ``(m, 1)``.
+        x0 (cupy.ndarray): Starting guess for the solution. If None zeros are
+            used.
         damp (float): Damping factor for regularized least-squares.
             `lsmr` solves the regularized least-squares problem
             ::
@@ -117,7 +120,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
     Returns:
         tuple:
             - `x` (ndarray): Least-square solution returned.
-            - `istop` (int): istop gives the reason for stopping
+            - `istop` (int): istop gives the reason for stopping::
 
                     0 means x=0 is a solution.
 
@@ -164,7 +167,18 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         maxiter = minDim * 5
 
     u = b.copy()
-    beta = cublas.nrm2(b)
+    normb = cublas.nrm2(b)
+    beta = normb.copy()
+    normb = normb.get().item()
+    if x0 is None:
+        x = cupy.zeros((n,), dtype=A.dtype)
+    else:
+        if not (x0.shape == (n,) or x0.shape == (n, 1)):
+            raise ValueError('x0 has incompatible dimensions')
+        x = x0.astype(A.dtype).ravel()
+        u -= matvec(x)
+        beta = cublas.nrm2(u)
+
     beta_cpu = beta.get().item()
 
     v = cupy.zeros(n)
@@ -173,7 +187,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
 
     if beta_cpu > 0:
         u /= beta
-        v = A.rmatvec(u)
+        v = rmatvec(u)
         alpha = cublas.nrm2(v)
         alpha_cpu = alpha.get().item()
 
@@ -192,7 +206,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
 
     h = v.copy()
     hbar = cupy.zeros(n)
-    x = cupy.zeros(n)
+    # x = cupy.zeros(n)
 
     # Initialize variables for estimation of ||r||.
 
@@ -214,7 +228,6 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
     normx = 0
 
     # Items for use in stopping rules.
-    normb = beta_cpu
     istop = 0
     ctol = 0
     if conlim > 0:
