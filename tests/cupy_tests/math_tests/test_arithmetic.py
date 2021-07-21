@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import numpy
 import pytest
@@ -217,8 +218,8 @@ class ArithmeticBinaryBase:
 
         func = getattr(xp, self.name)
         with numpy.errstate(divide='ignore'):
-            with numpy.warnings.catch_warnings():
-                numpy.warnings.filterwarnings('ignore')
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore')
                 if self.use_dtype:
                     y = func(arg1, arg2, dtype=self.dtype)
                 else:
@@ -318,6 +319,37 @@ class TestArithmeticBinary2(ArithmeticBinaryBase):
 
     def test_binary(self):
         self.check_binary()
+
+
+class TestUfunc:
+
+    @pytest.mark.parametrize('casting', [
+        'no',
+        'equiv',
+        'safe',
+        'same_kind',
+    ])
+    @testing.for_all_dtypes_combination(
+        names=['in0_type', 'in1_type', 'out_type'])
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_casting(self, xp, in0_type, in1_type, out_type, casting):
+        a = testing.shaped_arange((2, 3), xp, in0_type)
+        b = testing.shaped_arange((2, 3), xp, in1_type)
+        c = xp.zeros((2, 3), out_type)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            return xp.add(a, b, out=c, casting='unsafe')
+
+    @testing.for_all_dtypes_combination(
+        names=['in0_type', 'in1_type', 'out_type'])
+    @testing.numpy_cupy_allclose()
+    def test_casting_unsafe(self, xp, in0_type, in1_type, out_type):
+        a = testing.shaped_arange((2, 3), xp, in0_type)
+        b = testing.shaped_arange((2, 3), xp, in1_type)
+        c = xp.zeros((2, 3), out_type)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            return xp.add(a, b, out=c, casting='unsafe')
 
 
 class TestArithmeticModf:
