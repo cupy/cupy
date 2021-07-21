@@ -1331,6 +1331,7 @@ class TestSplu(unittest.TestCase):
 class TestLsmr(unittest.TestCase):
 
     density = 0.01
+
     def _make_matrix(self, xp):
         shape = (self.m, self.n)
         a = testing.shaped_random(shape, xp, scale=1)
@@ -1353,17 +1354,17 @@ class TestLsmr(unittest.TestCase):
     def test_sparse(self, xp, sp):
         if runtime.is_hip and self.format == 'csc':
             pytest.xfail('may be buggy')  # trans=True
-        if (self.damp==0 and self.x0 is 'ones' and self.n is not 20):
+        if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             raise unittest.SkipTest
         a = self._make_matrix(xp)
         a = sp.coo_matrix(a).asformat(self.format)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_lsmr(xp, sp, a)
-    
+
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
     def test_dense(self, xp, sp):
-        if (self.damp==0 and self.x0 is 'ones' and self.n is not 20):
+        if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             raise unittest.SkipTest
         a = self._make_matrix(xp)
         if self.use_linear_operator:
