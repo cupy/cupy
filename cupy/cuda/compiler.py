@@ -151,7 +151,7 @@ def _get_arch_for_options(arch=None, jitify=False):
     # needed to ensure backwards compatibility with nvrtc
     if arch is None:
         arch = _get_arch()
-    if not runtime.is_hip and _cuda_hip_version >= 11010 and not jitify:
+    if _cuda_hip_version >= 11010 and not jitify:
         return f'-arch=sm_{arch}'
     return f'-arch=compute_{arch}'
 
@@ -258,8 +258,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions)
+
+        options += (_get_arch_for_options(arch=arch, jitify=jitify),)
+
         try:
-            if not runtime.is_hip and _cuda_hip_version >= 11010 and jitify:
+            if _cuda_hip_version >= 11010 and jitify:
                 # Convert the virtual arch to a real arch
                 options = [f'-arch=sm_{arch}' if opt.startswith('-arch=')
                            else opt for opt in options]
@@ -272,8 +275,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 e.dump(sys.stderr)
             raise
         return ptx, mapping
-
-    options += (_get_arch_for_options(arch=arch, jitify=jitify),)
 
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
@@ -483,7 +484,8 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
-    env = (arch, options, _get_nvrtc_version(), backend)
+    env_options = options + (_get_arch_for_options(arch, jitify),)
+    env = (arch, env_options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
