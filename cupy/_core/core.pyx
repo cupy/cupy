@@ -2094,7 +2094,7 @@ cpdef function.Module compile_with_cache(
 
 cdef str _id = 'out0 = in0'
 
-cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
+cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
