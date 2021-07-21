@@ -7,9 +7,9 @@ from libc.stdint cimport intptr_t, uintmax_t
 
 cdef class PointerAttributes:
     cdef:
-        public int device
-        public intptr_t devicePointer
-        public intptr_t hostPointer
+        readonly int device
+        readonly intptr_t devicePointer
+        readonly intptr_t hostPointer
         readonly int type
 
 cdef extern from *:
