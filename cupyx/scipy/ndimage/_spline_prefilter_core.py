@@ -209,7 +209,7 @@ __device__ T* row(
 _batch_spline1d_strided_template = """
 extern "C" __global__
 __launch_bounds__({block_size})
-void cupyx_spline_filter(T* __restrict__ y, const idx_t* __restrict__ info) {{
+void {kernel_name}(T* __restrict__ y, const idx_t* __restrict__ info) {{
     const idx_t n_signals = info[0], n_samples = info[1],
         * __restrict__ shape = info+2;
     idx_t y_elem_stride = 1;
@@ -248,8 +248,10 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
     code += _get_spline1d_code(mode, poles, n_boundary)
 
     # generate code handling batch operation of the 1d filter
-    code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis,
-                                                    block_size=block_size)
+    mode_str = mode.replace('-', '_')  # cannot have '-' in kernel name
     kernel_name = (f'cupyx_scipy_ndimage_spline_filter_{ndim}d_ord{order}_'
-                   f'axis{axis}_{mode}')
+                   f'axis{axis}_{mode_str}')
+    code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis,
+                                                    block_size=block_size,
+                                                    kernel_name=kernel_name)
     return cupy.RawKernel(code, kernel_name)
