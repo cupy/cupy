@@ -5,7 +5,7 @@ The N-dimensional array (:class:`ndarray <cupy.ndarray>`)
 It provides an intuitive interface for a fixed-size multidimensional array which resides
 in a CUDA device.
 
-For the basic concept of ``ndarray``\s, please refer to the `NumPy documentation <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_.
+For the basic concept of ``ndarray``\s, please refer to the `NumPy documentation <https://numpy.org/doc/stable/reference/arrays.ndarray.html>`_.
 
 
 .. TODO(kmaehashi): use currentmodule:: cupy

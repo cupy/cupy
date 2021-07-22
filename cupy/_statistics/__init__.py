@@ -1,2 +1,2 @@
 # Functions from the following NumPy document
-# https://docs.scipy.org/doc/numpy/reference/routines.statistics.html
+# https://numpy.org/doc/stable/reference/routines.statistics.html
