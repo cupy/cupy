@@ -151,8 +151,8 @@ else:
         ],
         'libraries': [
             'cublas',
-            'cuda',
-            'cudart',
+            #'cuda',
+            'cudart',  # for profiler
             'cufft',
             'curand',
             'cusparse',
@@ -252,7 +252,7 @@ if not use_hip:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': [
-            'cudart',
+            'cudart',  # cannot remove
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
@@ -270,8 +270,8 @@ if not use_hip:
             'nvrtc.h',
         ],
         'libraries': [
-            'cuda',
-            'cudart',
+            #'cuda',
+            'cudart',  # cannot remove
             'nvrtc',
         ],
         'check_method': build.check_jitify_version,
@@ -289,7 +289,7 @@ if not use_hip:
         'include': [
         ],
         'libraries': [
-            'cudart',
+            'cudart',  # cannot remove
             'curand',
         ],
     })
@@ -384,7 +384,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/sort.h',
             ],
             'libraries': [
-                'cudart',
+                #'cudart',
             ],
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
@@ -930,6 +930,7 @@ def cythonize(extensions, arg_options):
     # Enable cudapython.
     # TODO: should be False for CUDA 11.3 or earlier / HIP
     # TODO: add `cudapython` to `setup_requires` only when this flag is set
+    # TODO: remove `cuda` and `cudart` from 'libraries' in MODULES
     compile_time_env['USE_CUDA_PYTHON'] = True
 
     compile_time_env['CUPY_CUFFT_STATIC'] = False
