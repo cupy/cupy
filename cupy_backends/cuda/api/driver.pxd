@@ -2,85 +2,32 @@ from libc.stdint cimport intptr_t
 
 
 ###############################################################################
-# Types
+# Types and Enums
 ###############################################################################
 
-cdef extern from *:
-    ctypedef int Device 'CUdevice'
-    ctypedef int Result 'CUresult'
-
-    ctypedef void* Context 'CUcontext'
-    ctypedef void* Deviceptr 'CUdeviceptr'
-    ctypedef void* Event 'cudaEvent_t'
-    ctypedef void* Function 'CUfunction'
-    ctypedef void* Module 'CUmodule'
-    ctypedef void* Stream 'cudaStream_t'
-    ctypedef void* LinkState 'CUlinkState'
-    ctypedef void* TexRef 'CUtexref_st*'
-
-    ctypedef int CUjit_option 'CUjit_option'
-    ctypedef int CUjitInputType 'CUjitInputType'
-    ctypedef int CUfunction_attribute 'CUfunction_attribute'
-
-    ctypedef size_t(*CUoccupancyB2DSize)(int)
-
-    # For Texture Reference
-    ctypedef void* Array 'CUarray_st*'  # = cupy.cuda.runtime.Array
-    ctypedef int Array_format 'CUarray_format'
-    ctypedef struct Array_desc 'CUDA_ARRAY_DESCRIPTOR':
-        Array_format Format
-        size_t Height
-        unsigned int NumChannels
-        size_t Width
-    ctypedef int Address_mode 'CUaddress_mode'
-    ctypedef int Filter_mode 'CUfilter_mode'
-
-
-cpdef enum:
-    CU_JIT_INPUT_CUBIN = 0
-    CU_JIT_INPUT_PTX = 1
-    CU_JIT_INPUT_FATBINARY = 2
-    CU_JIT_INPUT_OBJECT = 3
-    CU_JIT_INPUT_LIBRARY = 4
-
-    CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK = 0
-    CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES = 1
-    CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES = 2
-    CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES = 3
-    CU_FUNC_ATTRIBUTE_NUM_REGS = 4
-    CU_FUNC_ATTRIBUTE_PTX_VERSION = 5
-    CU_FUNC_ATTRIBUTE_BINARY_VERSION = 6
-    CU_FUNC_ATTRIBUTE_CACHE_MODE_CA = 7
-    CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES = 8
-    CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT = 9
-
-    CUDA_ERROR_INVALID_VALUE = 1
-
-    # CUarray_format
-    CU_AD_FORMAT_UNSIGNED_INT8 = 0x01
-    CU_AD_FORMAT_UNSIGNED_INT16 = 0x02
-    CU_AD_FORMAT_UNSIGNED_INT32 = 0x03
-    CU_AD_FORMAT_SIGNED_INT8 = 0x08
-    CU_AD_FORMAT_SIGNED_INT16 = 0x09
-    CU_AD_FORMAT_SIGNED_INT32 = 0x0a
-    CU_AD_FORMAT_HALF = 0x10
-    CU_AD_FORMAT_FLOAT = 0x20
-
-    # CUaddress_mode
-    CU_TR_ADDRESS_MODE_WRAP = 0
-    CU_TR_ADDRESS_MODE_CLAMP = 1
-    CU_TR_ADDRESS_MODE_MIRROR = 2
-    CU_TR_ADDRESS_MODE_BORDER = 3
-
-    # CUfilter_mode
-    CU_TR_FILTER_MODE_POINT = 0
-    CU_TR_FILTER_MODE_LINEAR = 1
-
-    CU_TRSA_OVERRIDE_FORMAT = 0x01
-
-    CU_TRSF_READ_AS_INTEGER = 0x01
-    CU_TRSF_NORMALIZED_COORDINATES = 0x02
-    CU_TRSF_SRGB = 0x10
+IF USE_CUDA_PYTHON:
+    from cudapython.ccuda cimport *
+    # Aliases for compatibillity with existing CuPy codebase.
+    # Keep in sync with names defined in `driver_legacy_typedef.pxi`.
+    # TODO(kmaehashi): Remove these aliases.
+    ctypedef CUdevice Device
+    ctypedef CUresult Result
+    ctypedef CUcontext Context
+    ctypedef CUdeviceptr Deviceptr
+    ctypedef CUevent Event
+    ctypedef CUfunction Function
+    ctypedef CUmodule Module
+    ctypedef CUstream Stream
+    ctypedef CUlinkState LinkState
+    ctypedef CUtexref TexRef
+    ctypedef CUarray* Array
+    ctypedef CUarray_format Array_format
+    ctypedef CUDA_ARRAY_DESCRIPTOR Array_desc
+    ctypedef CUaddress_mode Address_mode
+    ctypedef CUfilter_mode Filter_mode
+ELSE:
+    include "driver_legacy_typedef.pxi"
+    include "driver_legacy_enum.pxi"
 
 
 ###############################################################################

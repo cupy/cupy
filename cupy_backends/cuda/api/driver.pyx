@@ -15,88 +15,84 @@ cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
+
 ###############################################################################
 # Extern
 ###############################################################################
 
+IF USE_CUDA_PYTHON:
+    from cudapython.ccuda cimport *
+ELSE:
+    include 'driver_legacy_extern.pxi'
+
 cdef extern from '../../cupy_backend.h' nogil:
-    # Error handling
-    int cuGetErrorName(Result error, const char** pStr)
-    int cuGetErrorString(Result error, const char** pStr)
-
-    # Primary context management
-    int cuDevicePrimaryCtxRelease(Device dev)
-
-    # Context management
-    int cuCtxGetCurrent(Context* pctx)
-    int cuCtxSetCurrent(Context ctx)
-    int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
-    int cuCtxDestroy(Context ctx)
-
-    # Module load and kernel execution
-    int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
-                     void** optionValues, LinkState* stateOut)
-    int cuLinkAddData(LinkState state, CUjitInputType type, void* data,
-                      size_t size, const char* name, unsigned int  numOptions,
-                      CUjit_option* options, void** optionValues)
-    int cuLinkAddFile(LinkState state, CUjitInputType type, const char* path,
-                      unsigned int numOptions, CUjit_option* options, void**
-                      optionValues)
-    int cuLinkComplete(LinkState state, void** cubinOut, size_t* sizeOut)
-    int cuLinkDestroy(LinkState state)
-    int cuModuleLoad(Module* module, char* fname)
-    int cuModuleLoadData(Module* module, void* image)
-    int cuModuleUnload(Module hmod)
-    int cuModuleGetFunction(Function* hfunc, Module hmod,
-                            char* name)
-    int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
-                          char* name)
-    int cuModuleGetTexRef(TexRef* pTexRef, Module hmod, const char* name)
-    int cuLaunchKernel(
-        Function f, unsigned int gridDimX, unsigned int gridDimY,
-        unsigned int gridDimZ, unsigned int blockDimX,
-        unsigned int blockDimY, unsigned int blockDimZ,
-        unsigned int sharedMemBytes, Stream hStream,
-        void** kernelParams, void** extra)
-
-    int cuLaunchCooperativeKernel(
-        Function f, unsigned int gridDimX, unsigned int gridDimY,
-        unsigned int gridDimZ, unsigned int blockDimX,
-        unsigned int blockDimY, unsigned int blockDimZ,
-        unsigned int sharedMemBytes, Stream hStream,
-        void** kernelParams)
-
-    # Kernel attributes
-    int cuFuncGetAttribute(int *pi, CUfunction_attribute attrib,
-                           Function hfunc)
-
-    int cuFuncSetAttribute(Function hfunc, CUfunction_attribute attrib,
-                           int value)
-
-    # Texture reference
-    int cuTexRefSetAddress(size_t* ByteOffset, TexRef hTexRef, Deviceptr dptr,
-                           size_t bytes)
-    int cuTexRefSetAddress2D(TexRef hTexRef, const Array_desc* desc,
-                             Deviceptr dptr, size_t Pitch)
-    int cuTexRefSetAddressMode(TexRef hTexRef, int dim, Address_mode am)
-    int cuTexRefSetArray(TexRef hTexRef, Array hArray, unsigned int Flags)
-    int cuTexRefSetBorderColor(TexRef hTexRef, float* pBorderColor)
-    int cuTexRefSetFilterMode(TexRef hTexRef, Filter_mode fm)
-    int cuTexRefSetFlags(TexRef hTexRef, unsigned int Flags)
-    int cuTexRefSetFormat(TexRef hTexRef, Array_format fmt,
-                          int NumPackedComponents)
-    int cuTexRefSetMaxAnisotropy(TexRef hTexRef, unsigned int maxAniso)
-
-    # Occupancy
-    int cuOccupancyMaxActiveBlocksPerMultiprocessor(
-        int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize)
-    int cuOccupancyMaxPotentialBlockSize(
-        int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize
-        block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
-
     # Build-time version
-    int CUDA_VERSION
     int HIP_VERSION
+
+
+###############################################################################
+# Constants
+###############################################################################
+
+def _export_enum():
+    # Provide access to constants from Python.
+    # Keep in sync with enums defined in `driver_legacy_enum.pxi`.
+    import sys
+    mod = sys.modules[__name__]
+    for k, v in [
+        # CUjitInputType
+        ('CU_JIT_INPUT_CUBIN', 0),
+        ('CU_JIT_INPUT_PTX', 1),
+        ('CU_JIT_INPUT_FATBINARY', 2),
+        ('CU_JIT_INPUT_OBJECT', 3),
+        ('CU_JIT_INPUT_LIBRARY', 4),
+
+        # CUfunction_attribute
+        ('CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK', 0),
+        ('CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES', 1),
+        ('CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES', 2),
+        ('CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES', 3),
+        ('CU_FUNC_ATTRIBUTE_NUM_REGS', 4),
+        ('CU_FUNC_ATTRIBUTE_PTX_VERSION', 5),
+        ('CU_FUNC_ATTRIBUTE_BINARY_VERSION', 6),
+        ('CU_FUNC_ATTRIBUTE_CACHE_MODE_CA', 7),
+        ('CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES', 8),
+        ('CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT', 9),
+
+        # CUresult
+        ('CUDA_ERROR_INVALID_VALUE', 1),
+
+        # CUarray_format
+        ('CU_AD_FORMAT_UNSIGNED_INT8', 0x01),
+        ('CU_AD_FORMAT_UNSIGNED_INT16', 0x02),
+        ('CU_AD_FORMAT_UNSIGNED_INT32', 0x03),
+        ('CU_AD_FORMAT_SIGNED_INT8', 0x08),
+        ('CU_AD_FORMAT_SIGNED_INT16', 0x09),
+        ('CU_AD_FORMAT_SIGNED_INT32', 0x0a),
+        ('CU_AD_FORMAT_HALF', 0x10),
+        ('CU_AD_FORMAT_FLOAT', 0x20),
+
+        # CUaddress_mode
+        ('CU_TR_ADDRESS_MODE_WRAP', 0),
+        ('CU_TR_ADDRESS_MODE_CLAMP', 1),
+        ('CU_TR_ADDRESS_MODE_MIRROR', 2),
+        ('CU_TR_ADDRESS_MODE_BORDER', 3),
+
+        # CUfilter_mode
+        ('CU_TR_FILTER_MODE_POINT', 0),
+        ('CU_TR_FILTER_MODE_LINEAR', 1),
+
+        # Constants
+        ('CU_TRSA_OVERRIDE_FORMAT', 0x01),
+
+        ('CU_TRSF_READ_AS_INTEGER', 0x01),
+        ('CU_TRSF_NORMALIZED_COORDINATES', 0x02),
+        ('CU_TRSF_SRGB', 0x10),
+    ]:
+        setattr(mod, k, v)
+
+IF USE_CUDA_PYTHON:
+    _export_enum()
 
 
 ###############################################################################
