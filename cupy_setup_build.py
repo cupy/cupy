@@ -926,6 +926,12 @@ def cythonize(extensions, arg_options):
     if compile_time_env is None:
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
+
+    # Enable cudapython.
+    # TODO: should be False for CUDA 11.3 or earlier / HIP
+    # TODO: add `cudapython` to `setup_requires` only when this flag is set
+    compile_time_env['USE_CUDA_PYTHON'] = True
+
     compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
     if arg_options['no_cuda']:  # on RTD
