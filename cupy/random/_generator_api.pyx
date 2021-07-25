@@ -37,6 +37,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void geometric(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
+    void hypergeometric(
+       int generator, intptr_t state, intptr_t out, ssize_t size,
+       intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -310,6 +313,72 @@ class Generator:
         p_arr = _array_data(p)
         p_ptr = p_arr.data.ptr
         _launch_dist(self.bit_generator, geometric, y, (p_ptr,))
+        return y
+
+    def hypergeometric(self, ngood, nbad, nsample, size=None):
+        """hypergeometric"""
+        cdef ndarray y
+        cdef ndarray ngood_arr
+        cdef ndarray nbad_arr
+        cdef ndarray nsample_arr
+
+        if not isinstance(ngood, ndarray):
+            if type(ngood) in (float, int):
+                ngood_a = ndarray((), numpy.float64)
+                ngood_a.fill(ngood)
+                ngood = ngood_a
+            else:
+                raise TypeError('p is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            # Check if size is broadcastable to shape
+            # but size determines the output
+            ngood = ngood.astype('d', copy=False)
+
+        if not isinstance(nbad, ndarray):
+            if type(nbad) in (float, int):
+                nbad_a = ndarray((), numpy.float64)
+                nbad_a.fill(nbad)
+                nbad = nbad_a
+            else:
+                raise TypeError('nbad is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            # Check if size is broadcastable to shape
+            # but size determines the output
+            nbad = nbad.astype('d', copy=False)
+
+        if not isinstance(nsample, ndarray):
+            if type(nsample) in (float, int):
+                nsample_a = ndarray((), numpy.float64)
+                nsample_a.fill(nsample)
+                nsample = nsample_a
+            else:
+                raise TypeError('nsample is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            # Check if size is broadcastable to shape
+            # but size determines the output
+            nsample = nsample.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        if size is None:
+            size = cupy.broadcast(ngood, nbad, nsample).shape
+
+        y = ndarray(size if size is not None else (), numpy.int64)
+
+        ngood = cupy.broadcast_to(ngood, y.shape)
+        nbad = cupy.broadcast_to(nbad, y.shape)
+        nsample = cupy.broadcast_to(nsample, y.shape)
+        ngood_arr = _array_data(ngood)
+        nbad_arr = _array_data(nbad)
+        nsample_arr = _array_data(nsample)
+        ngood_ptr = ngood_arr.data.ptr
+        nbad_ptr = nbad_arr.data.ptr
+        nsample_ptr = nsample_arr.data.ptr
+
+        _launch_dist(self.bit_generator, hypergeometric, y, (ngood_ptr, nbad_ptr, nsample_ptr))
         return y
 
     def standard_exponential(
