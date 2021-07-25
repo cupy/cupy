@@ -38,8 +38,8 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
     void hypergeometric(
-       int generator, intptr_t state, intptr_t out, ssize_t size,
-       intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
+        int generator, intptr_t state, intptr_t out, ssize_t size,
+        intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -318,8 +318,8 @@ class Generator:
     def hypergeometric(self, ngood, nbad, nsample, size=None):
         """Hypergeometric distribution.
 
-        Returns an array of samples drawn from the hypergeometric distribution. Its
-        probability mass function is defined as
+        Returns an array of samples drawn from the hypergeometric distribution.
+        Its probability mass function is defined as
 
         .. math::
             f(x) = \\frac{\\binom{m}{n}\\binom{N-m}{n-x}}{\\binom{N}{n}}.
@@ -329,8 +329,8 @@ class Generator:
                 distribution :math:`n`.
             nbad (int or array_like of ints): Parameter of the hypergeometric
                 distribution :math:`m`.
-            nsample (int or array_like of ints): Parameter of the hypergeometric
-                distribution :math:`N`.
+            nsample (int or array_like of ints): Parameter of the
+                hypergeometric distribution :math:`N`.
             size (int or tuple of ints): The shape of the array. If ``None``, a
                 zero-dimensional array is generated.
 
@@ -401,7 +401,8 @@ class Generator:
         nbad_ptr = nbad_arr.data.ptr
         nsample_ptr = nsample_arr.data.ptr
 
-        _launch_dist(self.bit_generator, hypergeometric, y, (ngood_ptr, nbad_ptr, nsample_ptr))
+        _launch_dist(self.bit_generator, hypergeometric, y,
+                     (ngood_ptr, nbad_ptr, nsample_ptr))
         return y
 
     def standard_exponential(
