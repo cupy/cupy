@@ -1355,12 +1355,356 @@ cusolverStatus_t cusolverDnZgebrd(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- syevj ---------- */
+typedef void* syevjInfo_t;
+
+#if HIP_VERSION >= 402
+static rocblas_evect convert_rocblas_evect(cusolverEigMode_t mode) {
+    switch(mode) {
+        // as of ROCm 4.2.0 rocblas_evect_tridiagonal is not supported
+        case 0 /* CUSOLVER_EIG_MODE_NOVECTOR */: return rocblas_evect_none;
+        case 1 /* CUSOLVER_EIG_MODE_VECTOR */  : return rocblas_evect_original;
+        default: throw std::runtime_error("unrecognized mode");
+    }
+}
+#endif
+
+cusolverStatus_t cusolverDnCreateSyevjInfo(syevjInfo_t *info) {
+    // TODO(leofang): set info to NULL? We don't use it anyway...
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDestroySyevjInfo(syevjInfo_t info) {
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSsyevj_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const float *A,
+                                             int lda,
+                                             const float *W,
+                                             int *lwork,
+                                             syevjInfo_t params) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDsyevj_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const double *A,
+                                             int lda,
+                                             const double *W,
+                                             int *lwork,
+                                             syevjInfo_t params) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCheevj_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const cuComplex *A,
+                                             int lda,
+                                             const float *W,
+                                             int *lwork,
+                                             syevjInfo_t params) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZheevj_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const cuDoubleComplex *A,
+                                             int lda,
+                                             const double *W,
+                                             int *lwork,
+                                             syevjInfo_t params) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSsyevj(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *W,
+                                  float *work,
+                                  int lwork,
+                                  int *info,
+                                  syevjInfo_t params) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_ssyev(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                           n, A, lda, W,
+                           // since we can't pass in another array through the API, and work is unused,
+                           // we use it to store the temporary E array, to be discarded after calculation
+                           work,
+                           info);
+    #endif
+}
+
+cusolverStatus_t cusolverDnDsyevj(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *W,
+                                  double *work,
+                                  int lwork,
+                                  int *info,
+                                  syevjInfo_t params) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_dsyev(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                           n, A, lda, W,
+                           // since we can't pass in another array through the API, and work is unused,
+                           // we use it to store the temporary E array, to be discarded after calculation
+                           work,
+                           info);
+    #endif
+}
+
+cusolverStatus_t cusolverDnCheevj(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  float *W,
+                                  cuComplex *work,
+                                  int lwork,
+                                  int *info,
+                                  syevjInfo_t params) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_cheev(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                           n, reinterpret_cast<rocblas_float_complex*>(A), lda, W,
+                           // since we can't pass in another array through the API, and work is unused,
+                           // we use it to store the temporary E array, to be discarded after calculation
+                           reinterpret_cast<float*>(work),
+                           info);
+    #endif
+}
+
+cusolverStatus_t cusolverDnZheevj(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  double *W,
+                                  cuDoubleComplex *work,
+                                  int lwork,
+                                  int *info,
+                                  syevjInfo_t params) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_zheev(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                           n, reinterpret_cast<rocblas_double_complex*>(A), lda, W,
+                           // since we can't pass in another array through the API, and work is unused,
+                           // we use it to store the temporary E array, to be discarded after calculation
+                           reinterpret_cast<double*>(work),
+                           info);
+    #endif
+}
+
+/* ---------- batched syevj ---------- */
+cusolverStatus_t cusolverDnSsyevjBatched_bufferSize(cusolverDnHandle_t handle,
+                                                    cusolverEigMode_t jobz,
+                                                    cublasFillMode_t uplo,
+                                                    int n,
+                                                    const float *A,
+                                                    int lda,
+                                                    const float *W,
+                                                    int *lwork,
+                                                    syevjInfo_t params,
+                                                    int batchSize) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = batchSize * n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDsyevjBatched_bufferSize(cusolverDnHandle_t handle,
+                                                    cusolverEigMode_t jobz,
+                                                    cublasFillMode_t uplo,
+                                                    int n,
+                                                    const double *A,
+                                                    int lda,
+                                                    const double *W,
+                                                    int *lwork,
+                                                    syevjInfo_t params,
+                                                    int batchSize) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = batchSize * n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCheevjBatched_bufferSize(cusolverDnHandle_t handle,
+                                                    cusolverEigMode_t jobz,
+                                                    cublasFillMode_t uplo,
+                                                    int n,
+                                                    const cuComplex *A,
+                                                    int lda,
+                                                    const float *W,
+                                                    int *lwork,
+                                                    syevjInfo_t params,
+                                                    int batchSize) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = batchSize * n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZheevjBatched_bufferSize(cusolverDnHandle_t handle,
+                                                    cusolverEigMode_t jobz,
+                                                    cublasFillMode_t uplo,
+                                                    int n,
+                                                    const cuDoubleComplex *A,
+                                                    int lda,
+                                                    const double *W,
+                                                    int *lwork,
+                                                    syevjInfo_t params,
+                                                    int batchSize) {
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the tridiagonal matrix T associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = batchSize * n;  // note: counts, not bytes!
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSsyevjBatched(cusolverDnHandle_t handle,
+                                         cusolverEigMode_t jobz,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         float *A,
+                                         int lda,
+                                         float *W,
+                                         float *work,
+                                         int lwork,
+                                         int *info,
+                                         syevjInfo_t params,
+                                         int batchSize) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_ssyev_batched(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                                   n, reinterpret_cast<float* const*>(A), lda, W, n,
+                                   // since we can't pass in another array through the API, and work is unused,
+                                   // we use it to store the temporary E array, to be discarded after calculation
+                                   work, n,
+                                   info, batchSize);
+    #endif
+}
+
+cusolverStatus_t cusolverDnDsyevjBatched(cusolverDnHandle_t handle,
+                                         cusolverEigMode_t jobz,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         double *A,
+                                         int lda,
+                                         double *W,
+                                         double *work,
+                                         int lwork,
+                                         int *info,
+                                         syevjInfo_t params,
+                                         int batchSize) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_dsyev_batched(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                                   n, reinterpret_cast<double* const*>(A), lda, W, n,
+                                   // since we can't pass in another array through the API, and work is unused,
+                                   // we use it to store the temporary E array, to be discarded after calculation
+                                   work, n,
+                                   info, batchSize);
+    #endif
+}
+
+cusolverStatus_t cusolverDnCheevjBatched(cusolverDnHandle_t handle,
+                                         cusolverEigMode_t jobz,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         cuComplex *A,
+                                         int lda,
+                                         float *W,
+                                         cuComplex *work,
+                                         int lwork,
+                                         int *info,
+                                         syevjInfo_t params,
+                                         int batchSize) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_cheev_batched(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                                   n, reinterpret_cast<rocblas_float_complex* const*>(A), lda, W, n,
+                                   // since we can't pass in another array through the API, and work is unused,
+                                   // we use it to store the temporary E array, to be discarded after calculation
+                                   reinterpret_cast<float*>(work), n,
+                                   info, batchSize);
+    #endif
+}
+
+cusolverStatus_t cusolverDnZheevjBatched(cusolverDnHandle_t handle,
+                                         cusolverEigMode_t jobz,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         cuDoubleComplex *A,
+                                         int lda,
+                                         double *W,
+                                         cuDoubleComplex *work,
+                                         int lwork,
+                                         int *info,
+                                         syevjInfo_t params,
+                                         int batchSize) {
+    #if HIP_VERSION < 402
+    return rocblas_status_not_implemented;
+    #else
+    return rocsolver_zheev_batched(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                                   n, reinterpret_cast<rocblas_double_complex* const*>(A), lda, W, n,
+                                   // since we can't pass in another array through the API, and work is unused,
+                                   // we use it to store the temporary E array, to be discarded after calculation
+                                   reinterpret_cast<double*>(work), n,
+                                   info, batchSize);
+    #endif
+}
+
+
 /* all of the stubs below are unsupported functions; the supported ones are moved to above */
 
 typedef enum{} cusolverEigType_t;
 typedef void* cusolverSpHandle_t;
 typedef void* cusparseMatDescr_t;
-typedef void* syevjInfo_t;
 
 cusolverStatus_t cusolverSpGetStream(...) {
     return rocblas_status_not_implemented;
@@ -1640,14 +1984,6 @@ cusolverStatus_t cusolverDnZheevd(...) {
     return rocblas_status_not_implemented;
 }
 
-cusolverStatus_t cusolverDnCreateSyevjInfo(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDestroySyevjInfo(...) {
-    return rocblas_status_not_implemented;
-}
-
 cusolverStatus_t cusolverDnXsyevjSetTolerance(...) {
     return rocblas_status_not_implemented;
 }
@@ -1665,70 +2001,6 @@ cusolverStatus_t cusolverDnXsyevjGetResidual(...) {
 }
 
 cusolverStatus_t cusolverDnXsyevjGetSweeps(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnSsyevj_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDsyevj_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCheevj_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZheevj_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnSsyevj(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDsyevj(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCheevj(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZheevj(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnSsyevjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDsyevjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCheevjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZheevjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnSsyevjBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDsyevjBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCheevjBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZheevjBatched(...) {
     return rocblas_status_not_implemented;
 }
 
