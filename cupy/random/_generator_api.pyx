@@ -316,7 +316,30 @@ class Generator:
         return y
 
     def hypergeometric(self, ngood, nbad, nsample, size=None):
-        """hypergeometric"""
+        """Hypergeometric distribution.
+
+        Returns an array of samples drawn from the hypergeometric distribution. Its
+        probability mass function is defined as
+
+        .. math::
+            f(x) = \\frac{\\binom{m}{n}\\binom{N-m}{n-x}}{\\binom{N}{n}}.
+
+        Args:
+            ngood (int or array_like of ints): Parameter of the hypergeometric
+                distribution :math:`n`.
+            nbad (int or array_like of ints): Parameter of the hypergeometric
+                distribution :math:`m`.
+            nsample (int or array_like of ints): Parameter of the hypergeometric
+                distribution :math:`N`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the hypergeometric distribution.
+
+        .. seealso::
+            :func:`numpy.random.Generator.hypergeometric`
+        """
         cdef ndarray y
         cdef ndarray ngood_arr
         cdef ndarray nbad_arr
