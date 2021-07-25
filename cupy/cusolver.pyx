@@ -532,10 +532,8 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     syevj(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
-    if not runtime._is_hip_environment:
-        # TODO(leofang): maybe we can check info?
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            syevj, dev_info)
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevj, dev_info)
 
     _cusolver.destroySyevjInfo(params)
 
@@ -596,16 +594,15 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
     params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
-        handle, jobz, uplo, m, vp.data.ptr, lda, w.data.ptr, params, batch_size)
+        handle, jobz, uplo, m, vp.data.ptr, lda,
+        w.data.ptr, params, batch_size)
     work = _cupy.empty(work_size, dtype)
     syevjBatched(
         handle, jobz, uplo, m, vp.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
-    if not runtime._is_hip_environment:
-        # TODO(leofang): maybe we can check info?
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            syevjBatched, dev_info)
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevjBatched, dev_info)
 
     _cusolver.destroySyevjInfo(params)
 
