@@ -886,13 +886,21 @@ cdef str fix_cast_expr(src_type, dst_type, str expr):
     return expr
 
 cdef function.Function _get_ufunc_kernel(
-        tuple in_types, tuple out_types, routine, tuple arginfos, params,
+        tuple in_types, tuple out_types, routine, tuple arginfos,
+        bint has_where, params,
         name, preamble, loop_prep):
     cdef _ArgInfo arginfo
+
+    offset_where = len(in_types)
+    offset_out = offset_where
+    if has_where:
+        offset_out += 1
 
     types = []
     op = []
     bool_ = numpy.bool_
+    if has_where:
+        op.append('if(!_raw__where[_ind.get()]) continue;')
     for i, x in enumerate(in_types):
         types.append(('in%d_type' % i, x))
         arginfo = arginfos[i]
@@ -906,7 +914,7 @@ cdef function.Function _get_ufunc_kernel(
 
     out_op = []
     for i, x in enumerate(out_types):
-        arginfo = arginfos[i + len(in_types)]
+        arginfo = arginfos[i + offset_out]
         types.append(('out%d_type' % i, x))
         if arginfo.dtype == x:
             op.append(
@@ -999,6 +1007,7 @@ cdef class ufunc:
         readonly object _loop_prep
         readonly object _default_casting
         readonly tuple _params
+        readonly tuple _params_with_where
         readonly dict _routine_cache
         readonly dict _kernel_memo
         readonly object __doc__
@@ -1028,8 +1037,12 @@ cdef class ufunc:
         _out_params = tuple(
             ParameterInfo('T out%d' % i, False)
             for i in range(nout))
-        self._params = _in_params + _out_params + (
+        _other_params = (
             ParameterInfo('CIndexer _ind', False),)
+        self._params = _in_params + _out_params + _other_params
+        self._params_with_where = (
+            _in_params + (ParameterInfo('T _where', False),)
+            + _out_params + _other_params)
         self._routine_cache = {}
         self._kernel_memo = {}
 
@@ -1075,6 +1088,8 @@ cdef class ufunc:
         cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
+        where = kwargs.pop('_where', None)
+        cdef bint has_where = where is not None
         dtype = kwargs.pop('dtype', None)
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
@@ -1105,10 +1120,15 @@ cdef class ufunc:
 
             in_args = arg_list
             out_args = _preprocess_args(dev_id, (out,), False)
+        if has_where:
+            where_args = _preprocess_args(dev_id, (where,), False)
+        else:
+            where_args = []
 
         # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, out_args)
-        broad_values = in_args + out_args
+        _copy_in_args_if_needed(where_args, out_args)
+        broad_values = in_args + where_args + out_args
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
@@ -1129,13 +1149,16 @@ cdef class ufunc:
             inout_args.append(
                 x if isinstance(x, ndarray) else
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
+        if has_where:
+            x = broad_values[self.nin]
+            inout_args.append(x)  # TODO: scalar, assert bool
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos)
+        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
@@ -1152,15 +1175,16 @@ cdef class ufunc:
         return '{}__{}'.format(self.name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, _Op op, tuple arginfos):
+            self, int dev_id, _Op op, tuple arginfos, bint has_where):
         cdef function.Function kern
-        key = (dev_id, op, arginfos)
+        key = (dev_id, op, arginfos, has_where)
         kern = self._kernel_memo.get(key, None)
         if kern is None:
             name = self._get_name_with_type(arginfos)
+            params = self._params_with_where if has_where else self._params
             kern = _get_ufunc_kernel(
-                op.in_types, op.out_types, op.routine, arginfos,
-                self._params, name, self._preamble, self._loop_prep)
+                op.in_types, op.out_types, op.routine, arginfos, has_where,
+                params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
 
