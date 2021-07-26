@@ -63,7 +63,7 @@ def copyto(dst, src, casting='same_kind', where=None):
                     src = src.copy()
                 _core.elementwise_copy(src, dst)
     else:
-        _core.elementwise_copy_where(src, where, dst)
+        _core.elementwise_copy(src, dst, _where=where)
 
 
 def _can_memcpy(dst, src):

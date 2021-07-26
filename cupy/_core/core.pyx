@@ -14,7 +14,6 @@ from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core._ufuncs import elementwise_copy_where
 from cupy._core import flags
 from cupy._core import syncdetect
 from cupy import cuda
