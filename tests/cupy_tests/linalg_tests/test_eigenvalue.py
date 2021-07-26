@@ -15,17 +15,34 @@ from cupy import testing
 class TestEigenvalue(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
     def test_eigh(self, xp, dtype):
         a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
         w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
-
-        # Order of eigen values is not defined.
-        # They must be sorted to compare them.
-        inds = xp.argsort(w)
-        w = w[inds]
-        v = v[inds]
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so they should be directly comparable
         return w, v
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
+    def test_eigh_batched(self, xp, dtype):
+        a = xp.array([[[1, 0, 3], [0, 5, 0], [7, 0, 9]],
+                      [[3, 0, 3], [0, 7, 0], [7, 0, 11]]], dtype)
+        w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
+
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so w's should be directly comparable. However, both cuSOLVER
+        # and rocSOLVER pick a different convention for constructing
+        # eigenvectors, so v's are not directly comparible and we verify
+        # them through the eigen equation A*v=w*v.
+        A = xp.triu(a) if self.UPLO == 'U' else xp.tril(a)
+        A = A + A.swapaxes(-2, -1)
+        for i in range(a.shape[0]):
+            testing.assert_allclose(
+                (A[i] - xp.diag(a[i].diagonal())).dot(v[i]),
+                w[i]*v[i],
+                rtol=1e-5, atol=1e-5)
+        return w
 
     def test_eigh_float16(self):
         # NumPy's eigh deos not support float16
@@ -42,39 +59,79 @@ class TestEigenvalue(unittest.TestCase):
         testing.assert_allclose(v, nv, rtol=1e-3, atol=1e-4)
 
     @testing.for_dtypes('FD')
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
     def test_eigh_complex(self, xp, dtype):
-        if runtime.is_hip:
-            # As of ROCm 4.2.0 rocSOLVER seems to require a Hermitian input
-            a = xp.array([[1, 2j, 3], [-2j, 5, 6j], [3, -6j, 9]], dtype)
-        else:
-            a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
         w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
 
-        # Order of eigen values is not defined.
-        # They must be sorted to compare them.
-        inds = xp.argsort(w)
-        w = w[inds]
-        v = v[inds]
-
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so w's should be directly comparable. However,
         # rocSOLVER seems to pick a different convention in eigenvectors,
-        # so the results are not directly comparible
+        # so v's are not directly comparible
         if runtime.is_hip:
+            A = xp.triu(a) if self.UPLO == 'U' else xp.tril(a)
+            A = A + A.swapaxes(-2, -1).conj() - xp.diag(a.diagonal())
             testing.assert_allclose(
-                a.dot(v), w*v, rtol=1e-5, atol=1e-5)
+                A.dot(v), w*v, rtol=1e-5, atol=1e-5)
             return w
         else:
             return w, v
-        return w, v
+
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
+    def test_eigh_complex_batched(self, xp, dtype):
+        a = xp.array([[[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]],
+                      [[0, 2j, 3], [4j, 4, 6j], [7, 8j, 8]]], dtype)
+        w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
+
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so w's should be directly comparable. However, both cuSOLVER
+        # and rocSOLVER pick a different convention for constructing
+        # eigenvectors, so v's are not directly comparible and we verify
+        # them through the eigen equation A*v=w*v.
+        A = xp.triu(a) if self.UPLO == 'U' else xp.tril(a)
+        A = A + A.swapaxes(-2, -1).conj()
+        for i in range(a.shape[0]):
+            testing.assert_allclose(
+                (A[i] - xp.diag(a[i].diagonal())).dot(v[i]),
+                w[i]*v[i],
+                rtol=1e-5, atol=1e-5)
+        return w
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_eigvalsh(self, xp, dtype):
         a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], dtype)
         w = xp.linalg.eigvalsh(a, UPLO=self.UPLO)
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so they should be directly comparable
+        return w
 
-        # Order of eigen values is not defined.
-        # They must be sorted to compare them.
-        inds = xp.argsort(w)
-        w = w[inds]
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvalsh_batched(self, xp, dtype):
+        a = xp.array([[[1, 0, 3], [0, 5, 0], [7, 0, 9]],
+                      [[3, 0, 3], [0, 7, 0], [7, 0, 11]]], dtype)
+        w = xp.linalg.eigvalsh(a, UPLO=self.UPLO)
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so they should be directly comparable
+        return w
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvalsh_complex(self, xp, dtype):
+        a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
+        w = xp.linalg.eigvalsh(a, UPLO=self.UPLO)
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so they should be directly comparable
+        return w
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
+    def test_eigvalsh_complex_batched(self, xp, dtype):
+        a = xp.array([[[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]],
+                      [[0, 2j, 3], [4j, 4, 6j], [7, 8j, 8]]], dtype)
+        w = xp.linalg.eigvalsh(a, UPLO=self.UPLO)
+        # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
+        # so they should be directly comparable
         return w
