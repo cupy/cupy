@@ -1570,9 +1570,7 @@ cdef class MemoryAsyncPool:
     cdef:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
-        bint _memoryAsyncHasStat
-
-
+        readonly bint memoryAsyncHasStat
 
     def __init__(self, pool_handles='current'):
         _util.experimental('cupy.cuda.MemoryAsyncPool')
@@ -1580,7 +1578,7 @@ cdef class MemoryAsyncPool:
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
         self._pools = []
-        self._memoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
+        self.memoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
@@ -1642,7 +1640,7 @@ cdef class MemoryAsyncPool:
         # to prevent CuPy from drawing too much memory from the pool; we cannot
         # do anything if other applications oversubscribe the pool.
         cdef size_t curr_total=-1, curr_free=0, total_limit=0
-        if self._memoryAsyncHasStat:
+        if self.memoryAsyncHasStat:
             curr_total = self.total_bytes()
             curr_free = curr_total - self.used_bytes()
             if curr_free < rounded_size:  # need to increase pool size
@@ -1711,7 +1709,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes used by the pool.
         """
-        if not self._memoryAsyncHasStat:
+        if not self.memoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
@@ -1732,7 +1730,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes acquired by the pool.
         """
-        if not self._memoryAsyncHasStat:
+        if not self.memoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
