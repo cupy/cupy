@@ -1,14 +1,4 @@
 pull_request_rules:
-  - name: Auto merge
-    conditions:
-      - "#changes-requested-reviews-by=0"
-      - label=st:test-and-merge
-      - status-success=Jenkins
-      - status-success=pretest  # github workflows
-    actions:
-      merge:
-        method: merge
-        strict: false  # strict mode and manually-triggered CIs do not get along
   - name: Notify conflict
     conditions:
       - conflict
