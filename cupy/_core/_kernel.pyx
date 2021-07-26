@@ -874,7 +874,7 @@ cdef class ElementwiseKernel:
         return kern
 
 
-cdef str fix_cast_expr(src_type, dst_type, expr):
+cdef str fix_cast_expr(src_type, dst_type, str expr):
     src_kind = get_dtype(src_type).kind
     dst_kind = get_dtype(dst_type).kind
     if src_kind == dst_kind:
