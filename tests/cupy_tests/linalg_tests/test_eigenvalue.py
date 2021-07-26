@@ -1,9 +1,10 @@
 import unittest
 
 import numpy
-import pytest  # noqa
+import pytest
 
 import cupy
+from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy import testing
 
@@ -12,6 +13,9 @@ from cupy import testing
     'UPLO': ['U', 'L'],
 }))
 @testing.gpu
+@pytest.mark.skipif(
+    runtime.is_hip and driver.get_build_version() < 402,
+    reason='eigensolver not added until ROCm 4.2.0')
 class TestEigenvalue(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)

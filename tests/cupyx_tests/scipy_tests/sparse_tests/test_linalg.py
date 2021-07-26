@@ -903,7 +903,6 @@ def _eigen_vec_transform(block_vec, xp):
 
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
-@pytest.mark.xfail(runtime.is_hip, reason='syevd not working')
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG(unittest.TestCase):
 
@@ -1200,9 +1199,15 @@ class TestLOBPCG(unittest.TestCase):
     'Y_dtype': [cupy.float32, cupy.float64],
     'sparse_format': ['coo', 'csr', 'csc']
 }))
-@pytest.mark.xfail(runtime.is_hip, reason='either spMM or syevd not working')
 # test class for testing against diagonal matrices overall various data types
 class TestLOBPCGForDiagInput(unittest.TestCase):
+
+    def setUp(self):
+        if runtime.is_hip:
+            if (((self.A_sparsity is True) or (self.B_sparsity is True)
+                    or (self.preconditioner_sparsity is True))
+                    and self.sparse_format == 'csc'):
+                pytest.xfail('spMM not working')
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
