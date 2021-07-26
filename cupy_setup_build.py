@@ -678,6 +678,9 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
     if use_hip:
         settings['define_macros'].append(('CUPY_USE_HIP', '1'))
+        # introduced since ROCm 4.2.0
+        settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
+        # deprecated since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
     available_modules = []
