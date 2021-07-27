@@ -287,7 +287,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the geometric distribution.
 
         .. seealso::
-            :func:`numpy.random.Generator.geometric`
+            :meth:`numpy.random.Generator.geometric`
         """
         cdef ndarray y
         cdef ndarray p_arr
@@ -338,7 +338,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the hypergeometric distribution.
 
         .. seealso::
-            :func:`numpy.random.Generator.hypergeometric`
+            :meth:`numpy.random.Generator.hypergeometric`
         """
         cdef ndarray y
         cdef ndarray ngood_arr
@@ -351,11 +351,9 @@ class Generator:
                 ngood_a.fill(ngood)
                 ngood = ngood_a
             else:
-                raise TypeError('p is required to be a cupy.ndarray'
+                raise TypeError('ngood is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            # Check if size is broadcastable to shape
-            # but size determines the output
             ngood = ngood.astype('d', copy=False)
 
         if not isinstance(nbad, ndarray):
@@ -367,8 +365,6 @@ class Generator:
                 raise TypeError('nbad is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            # Check if size is broadcastable to shape
-            # but size determines the output
             nbad = nbad.astype('d', copy=False)
 
         if not isinstance(nsample, ndarray):
@@ -380,8 +376,6 @@ class Generator:
                 raise TypeError('nsample is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            # Check if size is broadcastable to shape
-            # but size determines the output
             nsample = nsample.astype('d', copy=False)
 
         if size is not None and not isinstance(size, tuple):
@@ -389,7 +383,7 @@ class Generator:
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
 
-        y = ndarray(size if size is not None else (), numpy.int64)
+        y = ndarray(size, numpy.int64)
 
         ngood = cupy.broadcast_to(ngood, y.shape)
         nbad = cupy.broadcast_to(nbad, y.shape)

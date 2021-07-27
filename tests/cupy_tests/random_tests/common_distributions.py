@@ -301,6 +301,7 @@ class Geometric:
 
 
 hypergeometric_params = [
+    {'ngood': 5, 'nbad': 5, 'nsample': 5},
     {'ngood': 10.0, 'nbad': 10.0, 'nsample': 10.0},
     {'ngood': 100.0, 'nbad': 2.0, 'nsample': 10.0},
     {'ngood': [0, 5, 8], 'nbad': [5, 0, 3], 'nsample': [2, 1, 8]},
