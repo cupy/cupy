@@ -1163,7 +1163,10 @@ cdef class ufunc:
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
-    cdef str _get_name_with_type(self, tuple arginfos):
+    cdef str _get_name_with_type(self, tuple arginfos, bint has_where):
+        cdef str name = self.name
+        if has_where:
+            name += '_where'
         cdef _ArgInfo arginfo
         inout_type_words = []
         for arginfo in arginfos:
@@ -1172,7 +1175,7 @@ cdef class ufunc:
                 inout_type_words.append(dtype)
             elif arginfo.is_scalar():
                 inout_type_words.append(dtype.rstrip('0123456789'))
-        return '{}__{}'.format(self.name, '_'.join(inout_type_words))
+        return '{}__{}'.format(name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
             self, int dev_id, _Op op, tuple arginfos, bint has_where):
@@ -1180,7 +1183,7 @@ cdef class ufunc:
         key = (dev_id, op, arginfos, has_where)
         kern = self._kernel_memo.get(key, None)
         if kern is None:
-            name = self._get_name_with_type(arginfos)
+            name = self._get_name_with_type(arginfos, has_where)
             params = self._params_with_where if has_where else self._params
             kern = _get_ufunc_kernel(
                 op.in_types, op.out_types, op.routine, arginfos, has_where,
