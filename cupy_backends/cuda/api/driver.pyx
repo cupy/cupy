@@ -21,7 +21,8 @@ from libcpp cimport vector
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    from cudapython.ccuda cimport *
+    # external functions cimported via `driver.pxd`
+    pass
 ELSE:
     include 'driver_legacy_extern.pxi'
 
