@@ -120,6 +120,7 @@ def _get_nvrtc_version():
 _tegra_archs = ('53', '62', '72')
 
 
+@_util.memoize()
 def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
     if major < 10 or (major == 10 and minor == 0):
@@ -162,7 +163,7 @@ def _get_arch_for_options_for_nvrtc(arch=None, jitify=False):
     if (_cuda_hip_version >= 11010
             and arch < _get_max_compute_capability()
             and not jitify):
-        return f'-arch=sm_{arch}', 'nvrtc'
+        return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
 
 
@@ -392,10 +393,9 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
-        if _cuda_hip_version >= 11010:
-            options += ('-arch=sm_{}'.format(arch),)
-        else:
-            options += ('-arch=compute_{}'.format(arch),)
+        # For the preprocess it is enough to use PTX method
+        # we don't need to explicitly obtain a CUBIN file.
+        options += ('-arch=compute_{}'.format(arch),)
         prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
