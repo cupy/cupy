@@ -916,22 +916,13 @@ cdef function.Function _get_ufunc_kernel(
     for i, x in enumerate(out_types):
         arginfo = arginfos[i + offset_out]
         types.append(('out%d_type' % i, x))
-        if arginfo.dtype == x:
-            op.append(
-                'out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
-        else:
-            op.append(
-                'out{0}_type out{0}({1});'
-                .format(
-                    i,
-                    fix_cast_expr(arginfo.dtype, x, f'_raw_out{i}[_ind.get()]')
-                ))
-            out_op.append(
-                '_raw_out{0}[_ind.get()] = {1};'.format(
-                    i,
-                    fix_cast_expr(x, arginfo.dtype, f'out{i}')
-                )
+        op.append('out{0}_type out{0};'.format(i))
+        out_op.append(
+            '_raw_out{0}[_ind.get()] = {1};'.format(
+                i,
+                fix_cast_expr(x, arginfo.dtype, f'out{i}')
             )
+        )
 
     type_map = _TypeMap(tuple(types))
 
