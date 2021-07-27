@@ -265,8 +265,9 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         else:
             headers = include_names = ()
 
-        arch_opt, method = _get_arch_for_options_for_nvrtc(arch, jitify)
-        options += (arch_opt,)
+        if not runtime.is_hip:
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch, jitify)
+            options += (arch_opt,)
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
