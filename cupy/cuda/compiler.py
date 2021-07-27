@@ -160,9 +160,7 @@ def _get_arch_for_options_for_nvrtc(arch=None, jitify=False):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
-    if (_cuda_hip_version >= 11010
-            and arch < _get_max_compute_capability()
-            and not jitify):
+    if _cuda_hip_version >= 11010 and arch < _get_max_compute_capability():
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
 
@@ -274,19 +272,14 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                              name_expressions=name_expressions, method=method)
 
         try:
-            if _cuda_hip_version >= 11010 and jitify:
-                # Convert the virtual arch to a real arch
-                options = [f'-arch=sm_{arch}' if opt.startswith('-arch=')
-                           else opt for opt in options]
-                options = tuple(options)
-            ptx, mapping = prog.compile(options, log_stream)
+            compiled_obj, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
             if dump:
                 e.dump(sys.stderr)
             raise
-        return ptx, mapping
+        return compiled_obj, mapping
 
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
