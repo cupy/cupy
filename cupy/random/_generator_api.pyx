@@ -234,8 +234,36 @@ class Generator:
             :meth:`numpy.random.Generator.beta`
         """
         cdef ndarray y
-        y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, beta, y, (a, b))
+        cdef a_arr, b_arr
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                    ' or a scalar')
+        if not isinstance(b, ndarray):
+            if type(b) in (float, int):
+                b = cupy.asarray(b, numpy.float64)
+            else:
+                raise TypeError('b is required to be a cupy.ndarray'
+                                    ' or a scalar')
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = cupy.broadcast(a, b).shape
+
+        y = ndarray(size, numpy.float64)
+
+        a = cupy.broadcast_to(a, y.shape)
+        b = cupy.broadcast_to(b, y.shape)
+        a_arr = _array_data(a)
+        b_arr = _array_data(b)
+        a_ptr = a_arr.data.ptr
+        b_ptr = a_arr.data.ptr
+
+        _launch_dist(self.bit_generator, beta, y, (a_ptr, b_ptr))
         # we cast the array to a python object because
         # cython cant call astype with the default values for
         # omitted args.
