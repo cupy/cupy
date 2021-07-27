@@ -151,7 +151,7 @@ def _get_arch():
         return min(arch, nvrtc_max_compute_capability)
 
 
-def _get_arch_for_options_for_nvrtc(arch=None, jitify=False):
+def _get_arch_for_options_for_nvrtc(arch=None):
     # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
     # version than the one included in the used CUDA version, as
     # documented in:
@@ -266,7 +266,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
             headers = include_names = ()
 
         if not runtime.is_hip:
-            arch_opt, method = _get_arch_for_options_for_nvrtc(arch, jitify)
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
             options += (arch_opt,)
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
@@ -490,7 +490,7 @@ def _compile_with_cache_cuda(
         raise ValueError('jitify only works with NVRTC')
 
     env = ((arch, options, _get_nvrtc_version(), backend)
-           + _get_arch_for_options_for_nvrtc(arch, jitify))
+           + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
