@@ -192,7 +192,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
         return s
 
 
-def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
+cpdef _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     if not check_availability('gesvdjBatched'):
         raise RuntimeError('gesvdj is not available.')
 
@@ -218,7 +218,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
     a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
-    if _runtime.is_hip:
+    if runtime._is_hip_environment:
         # rocsolver_<t>gesvd_batched has a different signature...
         ap = _linalg._mat_ptrs(a)
     else:
@@ -248,7 +248,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
-    if _runtime.is_hip:
+    if runtime._is_hip_environment:
         v = v.swapaxes(-1, -2).conj()
     if not full_matrices:
         u = u[..., :mn]
