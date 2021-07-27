@@ -9,6 +9,18 @@ from cupy.cuda import runtime
 from cupy import testing
 
 
+def _get_hermitian(xp, a, UPLO):
+    assert UPLO in 'UL'
+    A = xp.triu(a) if UPLO == 'U' else xp.tril(a)
+    A = A + A.swapaxes(-2, -1).conj()
+    n = a.shape[-1]
+    # Note: there is no "cupy.s_()", but we're just constructing slice objects
+    # here, so it's fine to call "numpy.s_()".
+    diag = numpy.s_[..., xp.arange(n), xp.arange(n)]
+    A[diag] -= a[diag]
+    return A
+
+
 @testing.parameterize(*testing.product({
     'UPLO': ['U', 'L'],
 }))
@@ -39,13 +51,10 @@ class TestEigenvalue(unittest.TestCase):
         # and rocSOLVER pick a different convention for constructing
         # eigenvectors, so v's are not directly comparible and we verify
         # them through the eigen equation A*v=w*v.
-        A = xp.triu(a) if self.UPLO == 'U' else xp.tril(a)
-        A = A + A.swapaxes(-2, -1)
+        A = _get_hermitian(xp, a, self.UPLO)
         for i in range(a.shape[0]):
             testing.assert_allclose(
-                (A[i] - xp.diag(a[i].diagonal())).dot(v[i]),
-                w[i]*v[i],
-                rtol=1e-5, atol=1e-5)
+                A[i].dot(v[i]), w[i]*v[i], rtol=1e-5, atol=1e-5)
         return w
 
     def test_eigh_float16(self):
@@ -73,8 +82,7 @@ class TestEigenvalue(unittest.TestCase):
         # rocSOLVER seems to pick a different convention in eigenvectors,
         # so v's are not directly comparible
         if runtime.is_hip:
-            A = xp.triu(a) if self.UPLO == 'U' else xp.tril(a)
-            A = A + A.swapaxes(-2, -1).conj() - xp.diag(a.diagonal())
+            A = _get_hermitian(xp, a, self.UPLO)
             testing.assert_allclose(
                 A.dot(v), w*v, rtol=1e-5, atol=1e-5)
             return w
@@ -93,13 +101,10 @@ class TestEigenvalue(unittest.TestCase):
         # and rocSOLVER pick a different convention for constructing
         # eigenvectors, so v's are not directly comparible and we verify
         # them through the eigen equation A*v=w*v.
-        A = xp.triu(a) if self.UPLO == 'U' else xp.tril(a)
-        A = A + A.swapaxes(-2, -1).conj()
+        A = _get_hermitian(xp, a, self.UPLO)
         for i in range(a.shape[0]):
             testing.assert_allclose(
-                (A[i] - xp.diag(a[i].diagonal())).dot(v[i]),
-                w[i]*v[i],
-                rtol=1e-5, atol=1e-5)
+                A[i].dot(v[i]), w[i]*v[i], rtol=1e-5, atol=1e-5)
         return w
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
