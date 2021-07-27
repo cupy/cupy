@@ -254,9 +254,9 @@ class TestOrderFilter(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('scipy<1.7.0')
 class TestMedFilt(unittest.TestCase):
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
-    @testing.for_all_dtypes()
     def test_medfilt(self, xp, scp, dtype):
         volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
@@ -272,9 +272,9 @@ class TestMedFilt(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('scipy<1.7.0')
 class TestMedFilt2d(unittest.TestCase):
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
-    @testing.for_all_dtypes()
     def test_medfilt2d(self, xp, scp, dtype):
         input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
