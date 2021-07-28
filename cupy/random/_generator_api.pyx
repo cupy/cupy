@@ -241,13 +241,13 @@ class Generator:
                 a = cupy.asarray(a, numpy.float64)
             else:
                 raise TypeError('a is required to be a cupy.ndarray'
-                                    ' or a scalar')
+                                ' or a scalar')
         if not isinstance(b, ndarray):
             if type(b) in (float, int):
                 b = cupy.asarray(b, numpy.float64)
             else:
                 raise TypeError('b is required to be a cupy.ndarray'
-                                    ' or a scalar')
+                                ' or a scalar')
 
         if size is not None and not isinstance(size, tuple):
             size = (size, )
