@@ -46,6 +46,7 @@ MODULES = []
 
 cuda_files = [
     'cupy_backends.cuda.api.driver',
+    'cupy_backends.cuda.api.driver_legacy_enum',
     'cupy_backends.cuda.api.runtime',
     'cupy_backends.cuda.api.runtime_legacy_enum',
     'cupy_backends.cuda.libs.cublas',

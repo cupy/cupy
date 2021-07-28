@@ -27,7 +27,7 @@ IF USE_CUDA_PYTHON:
     ctypedef CUfilter_mode Filter_mode
 ELSE:
     include "driver_legacy_typedef.pxi"
-    include "driver_legacy_enum.pxi"
+    include "driver_legacy_enum.pxd"
 
 
 ###############################################################################
