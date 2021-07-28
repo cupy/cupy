@@ -16,6 +16,8 @@ if [[ "${MARKER}" != "" ]]; then
 fi
 
 python3 -m pip install --user pytest-timeout
+python3 -m pip install --user Cython
+python3 -m pip install --user cudapython.tar.gz
 python3 -m pip install --user -v ".[test]"
 
 pushd tests
