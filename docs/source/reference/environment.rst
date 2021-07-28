@@ -143,8 +143,10 @@ These environment variables are used during installation (building CuPy from sou
 
 .. envvar:: CUPY_NVCC_GENERATE_CODE
 
-  Build CuPy for a particular CUDA architecture.
-  For example, ``CUPY_NVCC_GENERATE_CODE="arch=compute_60,code=sm_60"``.
+  Build CuPy for a particular CUDA architecture. For example::
+
+    CUPY_NVCC_GENERATE_CODE="arch=compute_60,code=sm_60"
+
   For specifying multiple archs, concatenate the ``arch=...`` strings with semicolons (``;``).
   If ``current`` is specified, then it will automatically detect the currently installed GPU architectures in build time.
   When this is not set, the default is to support all architectures.
