@@ -6,7 +6,7 @@ _piecewise_krnl = _core.ElementwiseKernel(
     'bool cond, T value',
     'T y',
     'if (cond) y = value',
-    'piecewise_kernel'
+    'cupy_piecewise_kernel'
 )
 
 

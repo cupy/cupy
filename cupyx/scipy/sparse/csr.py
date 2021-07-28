@@ -699,7 +699,7 @@ def cupy_multiply_by_dense():
         OUT_DATA = (O)(SP_DATA[i_sp] * DN_DATA[n_dn + (DN_N * m_dn)]);
         OUT_INDICES = n_out;
         ''',
-        'cupy_multiply_by_dense',
+        'cupyx_scipy_sparse_csr_multiply_by_dense',
         preamble=_GET_ROW_ID_
     )
 
@@ -788,7 +788,7 @@ def cupy_multiply_by_csr_step1():
             C_INDICES = n_c;
         }
         ''',
-        'cupy_multiply_by_csr_step1',
+        'cupyx_scipy_sparse_csr_multiply_by_csr_step1',
         preamble=_GET_ROW_ID_ + _FIND_INDEX_HOLDING_COL_IN_ROW_
     )
 
@@ -805,7 +805,7 @@ def cupy_multiply_by_csr_step2():
             D_INDICES[j] = C_INDICES;
         }
         ''',
-        'cupy_multiply_by_csr_step2'
+        'cupyx_scipy_sparse_csr_multiply_by_csr_step2'
     )
 
 
@@ -921,7 +921,7 @@ def binopt_csr(a, b, op_name):
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_binopt_csr_step1(op_name, preamble=''):
-    name = 'cupy_binopt_csr' + op_name + 'step1'
+    name = 'cupyx_scipy_sparse_csr_binopt_' + op_name + 'step1'
     return cupy.ElementwiseKernel(
         '''
         int32 M, int32 N,
@@ -1073,7 +1073,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_binopt_csr_step2(op_name):
-    name = 'cupy_binopt_csr' + op_name + 'step2'
+    name = 'cupyx_scipy_sparse_csr_binopt' + op_name + 'step2'
     return cupy.ElementwiseKernel(
         '''
         raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
@@ -1123,7 +1123,7 @@ def cupy_csr2dense():
             OUT[row + M * col] += DATA;
         }
         ''',
-        'cupy_csr2dense',
+        'cupyx_scipy_sparse_csr2dense',
         preamble=_GET_ROW_ID_
     )
 
@@ -1161,7 +1161,7 @@ def cupy_dense2csr_step1():
             INFO[i + 1] = 1;
         }
         ''',
-        'cupy_dense2csr_step1')
+        'cupyx_scipy_sparse_dense2csr_step1')
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -1178,7 +1178,7 @@ def cupy_dense2csr_step2():
             DATA[idx] = A;
         }
         ''',
-        'cupy_dense2csr_step2')
+        'cupyx_scipy_sparse_dense2csr_step2')
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -1201,6 +1201,6 @@ def _cupy_csr_diagonal():
             y = static_cast<T>(0);
         }
         ''',
-        '_cupy_csr_diagonal',
+        'cupyx_scipy_sparse_csr_diagonal',
         preamble=_FIND_INDEX_HOLDING_COL_IN_ROW_
     )

@@ -258,7 +258,7 @@ _hip_preamble = r'''
 
 _searchsorted_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool side_is_right, '
-    'bool assume_increassing',
+    'bool assume_increasing',
     'int64 y',
     '''
     #ifdef __HIP_DEVICE_COMPILE__
@@ -267,10 +267,10 @@ _searchsorted_kernel = _core.ElementwiseKernel(
 
     // Array is assumed to be monotonically
     // increasing unless a check is requested with the
-    // `assume_increassing = False` parameter.
+    // `assume_increasing = False` parameter.
     // `digitize` allows increasing and decreasing arrays.
     bool inc = true;
-    if (!assume_increassing && n_bins >= 2) {
+    if (!assume_increasing && n_bins >= 2) {
         // In the case all the bins are nan the array is considered
         // to be decreasing in numpy
         inc = (bins[0] <= bins[n_bins-1])
@@ -336,7 +336,7 @@ _searchsorted_kernel = _core.ElementwiseKernel(
         }
     }
     no_thread_divergence( y = right , false )
-    ''', preamble=_preamble+_hip_preamble)
+    ''', name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):

@@ -72,7 +72,7 @@ _putmask_kernel = _core.ElementwiseKernel(
     '''
     if (mask) out = (T) values[i % len_vals];
     ''',
-    'putmask_kernel'
+    'cupy_putmask_kernel'
 )
 
 

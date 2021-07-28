@@ -202,7 +202,7 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
         ptr_U[get_index(row, col, K, N, C_CONTIGUOUS)] = u_val;
     }
     ''',
-    'cupy_split_lu', preamble=_device_get_index
+    'cupyx_scipy_linalg_split_lu', preamble=_device_get_index
 )
 
 
@@ -246,7 +246,7 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
         row1 += row_inc;
     }
     ''',
-    'cupy_laswp', preamble=_device_get_index
+    'cupyx_scipy_linalg_laswp', preamble=_device_get_index
 )
 
 

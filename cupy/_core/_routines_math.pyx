@@ -520,7 +520,7 @@ def _inclusive_batch_scan_kernel(
     """
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
-    name = 'inclusive_batch_scan_kernel'
+    name = 'cupy_inclusive_batch_scan_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
     extern "C" __global__ void ${name}(
@@ -605,7 +605,7 @@ def _inclusive_batch_scan_kernel(
 
 @_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
-    name = 'add_scan_blocked_sum_kernel'
+    name = 'cupy_add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
