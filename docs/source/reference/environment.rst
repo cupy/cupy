@@ -23,28 +23,28 @@ Here are the environment variables CuPy uses.
 
   Default: ``0``
 
-  If set to 1, CUDA source file will be saved along with compiled binary in the cache directory for debug purpose.
+  If set to ``1``, CUDA source file will be saved along with compiled binary in the cache directory for debug purpose.
   Note: the source file will not be saved if the compiled binary is already stored in the cache.
 
 .. envvar:: CUPY_CACHE_IN_MEMORY
 
   Default: ``0``
 
-  If set to 1, ``CUPY_CACHE_DIR`` and ``CUPY_CACHE_SAVE_CUDA_SOURCE`` will be ignored, and the cache is in memory.
+  If set to ``1``, :envvar:`CUPY_CACHE_DIR` and :envvar:`CUPY_CACHE_SAVE_CUDA_SOURCE` will be ignored, and the cache is in memory.
   This environment variable allows reducing disk I/O, but is ignoed when ``nvcc`` is set to be the compiler backend.
 
 .. envvar:: CUPY_DUMP_CUDA_SOURCE_ON_ERROR
 
   Default: ``0``
 
-  If set to 1, when CUDA kernel compilation fails,
+  If set to ``1``, when CUDA kernel compilation fails,
   CuPy dumps CUDA kernel code to standard error.
 
 .. envvar:: CUPY_CUDA_COMPILE_WITH_DEBUG
 
   Default: ``0``
 
-  If set to 1, CUDA kernel will be compiled with debug information (``--device-debug`` and ``--generate-line-info``).
+  If set to ``1``, CUDA kernel will be compiled with debug information (``--device-debug`` and ``--generate-line-info``).
 
 .. envvar:: CUPY_GPU_MEMORY_LIMIT
 
@@ -62,7 +62,7 @@ Here are the environment variables CuPy uses.
 
   Default: ``0``
   
-  If set to 1, the following syntax is enabled:
+  If set to ``1``, the following syntax is enabled::
 
     ``cupy_ndarray[:] = numpy_ndarray``
 
@@ -77,14 +77,14 @@ Here are the environment variables CuPy uses.
 
   Default: ``0``
 
-  If set to 1, it allows CUDA libraries to use Tensor Cores TF32 compute for 32-bit floating point compute.
+  If set to ``1``, it allows CUDA libraries to use Tensor Cores TF32 compute for 32-bit floating point compute.
 
 .. envvar:: CUPY_CUDA_ARRAY_INTERFACE_SYNC
 
   Default: ``1``
 
   This controls CuPy's behavior as a Consumer.
-  If set to 0, a stream synchronization will *not* be performed when a device array provided by an external library that implements the CUDA Array Interface is being consumed by CuPy.
+  If set to ``0``, a stream synchronization will *not* be performed when a device array provided by an external library that implements the CUDA Array Interface is being consumed by CuPy.
   For more detail, see the `Synchronization`_ requirement in the CUDA Array Interface v3 documentation.
 
 .. envvar:: CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION
@@ -92,7 +92,7 @@ Here are the environment variables CuPy uses.
   Default: ``3``
 
   This controls CuPy's behavior as a Producer.
-  If set to 2, the CuPy stream on which the data is being operated will not be exported and thus the Consumer (another library) will not perform any stream synchronization.
+  If set to ``2``, the CuPy stream on which the data is being operated will not be exported and thus the Consumer (another library) will not perform any stream synchronization.
   For more detail, see the `Synchronization`_ requirement in the CUDA Array Interface v3 documentation.
 
 .. envvar:: NVCC
@@ -106,15 +106,15 @@ Here are the environment variables CuPy uses.
 
   Default: ``0``
 
-  If set to 1, CuPy will use the CUDA per-thread default stream, effectively causing each host thread to automatically execute in its own stream, unless the CUDA default (``null``) stream or a user-created stream is specified.
-  If set to 0 (default), the CUDA default (``null``) stream is used, unless the per-thread default stream (``ptds``) or a user-created stream is specified.
+  If set to ``1``, CuPy will use the CUDA per-thread default stream, effectively causing each host thread to automatically execute in its own stream, unless the CUDA default (``null``) stream or a user-created stream is specified.
+  If set to ``0`` (default), the CUDA default (``null``) stream is used, unless the per-thread default stream (``ptds``) or a user-created stream is specified.
 
 CUDA Toolkit Environment Variables
   In addition to the environment variables listed above, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit Documentation`_ will also be honored.
 
 .. note::
 
-  When ``CUPY_ACCELERATORS`` or ``NVCC`` environment variables are set, g++-6 or later is required as the runtime host compiler.
+  When :envvar:`CUPY_ACCELERATORS` or :envvar:`NVCC` environment variables are set, g++-6 or later is required as the runtime host compiler.
   Please refer to :ref:`install_cupy_from_source` for the details on how to install g++.
 
 .. _CUDA Toolkit Documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars
@@ -127,17 +127,9 @@ For installation
 
 These environment variables are used during installation (building CuPy from source).
 
-.. envvar:: CUDA_PATH
-
-  See the description above.
-
 .. envvar:: CUTENSOR_PATH
 
   Path to the cuTENSOR root directory that contains ``lib`` and ``include`` directories. (experimental)
-
-.. envvar:: NVCC
-
-  Define the compiler to use when compiling CUDA files.
 
 .. envvar:: CUPY_INSTALL_USE_HIP
 
@@ -166,3 +158,5 @@ These environment variables are used during installation (building CuPy from sou
   Default: ``2``
 
   To enable or disable nvcc parallel compilation, sets the number of threads used to compile files using nvcc.
+
+Additionally, the environment variables :envvar:`CUDA_PATH` and :envvar:`NVCC` are also respected at build time.
