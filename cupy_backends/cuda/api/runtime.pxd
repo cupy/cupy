@@ -19,7 +19,7 @@ cdef class PointerAttributes:
 IF USE_CUDA_PYTHON:
     from cudapython.ccudart cimport *
     # Aliases for compatibillity with existing CuPy codebase.
-    # Keep in sync with names defined in `runtime_legacy_capi.pxi`.
+    # Keep in sync with names defined in `_runtime_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.
     ctypedef cudaError_t Error
     ctypedef cudaDataType_t DataType
@@ -69,8 +69,8 @@ IF USE_CUDA_PYTHON:
     ctypedef cudaDeviceProp DeviceProp
 
 ELSE:
-    include "runtime_legacy_typedef.pxi"
-    include "runtime_legacy_enum.pxd"
+    include "_runtime_typedef.pxi"
+    include "_runtime_enum.pxd"
 
 
 # For backward compatibility, keep APIs not prefixed with "cuda".

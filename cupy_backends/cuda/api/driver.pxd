@@ -8,7 +8,7 @@ from libc.stdint cimport intptr_t
 IF USE_CUDA_PYTHON:
     from cudapython.ccuda cimport *
     # Aliases for compatibillity with existing CuPy codebase.
-    # Keep in sync with names defined in `driver_legacy_typedef.pxi`.
+    # Keep in sync with names defined in `_driver_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.
     ctypedef CUdevice Device
     ctypedef CUresult Result
@@ -26,8 +26,8 @@ IF USE_CUDA_PYTHON:
     ctypedef CUaddress_mode Address_mode
     ctypedef CUfilter_mode Filter_mode
 ELSE:
-    include "driver_legacy_typedef.pxi"
-    include "driver_legacy_enum.pxd"
+    include "_driver_typedef.pxi"
+    include "_driver_enum.pxd"
 
 
 ###############################################################################

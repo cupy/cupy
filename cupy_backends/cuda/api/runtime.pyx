@@ -64,7 +64,7 @@ IF USE_CUDA_PYTHON:
     # external functions cimported via `runtime.pxd`
     pass
 ELSE:
-    include 'runtime_legacy_extern.pxi'
+    include '_runtime_extern.pxi'
 
 cdef extern from '../../cupy_backend_runtime.h' nogil:
     bint hip_environment
@@ -85,7 +85,7 @@ deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
 IF USE_CUDA_PYTHON:
     # Provide access to constants from Python.
-    from cupy_backends.cuda.api.runtime_legacy_enum import *
+    from cupy_backends.cuda.api._runtime_enum import *
 
 
 ###############################################################################
