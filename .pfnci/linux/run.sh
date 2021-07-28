@@ -103,7 +103,7 @@ main() {
       ;;
 
     test )
-      gsutil -m cp gs://tmp-pfn-private-ci/cupy-ci/cudapython-0+untagged.4.g7518b43.tar.gz "${repo_root}/cudapython.tar.gz"
+      gsutil -m cp gs://tmp-pfn-private-ci/cupy-ci/cudapython.tar.gz "${repo_root}/cudapython.tar.gz"
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
