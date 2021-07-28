@@ -20,7 +20,7 @@ IF USE_CUDA_PYTHON:
     ctypedef CUstream Stream
     ctypedef CUlinkState LinkState
     ctypedef CUtexref TexRef
-    ctypedef CUarray* Array
+    ctypedef CUarray_st* Array
     ctypedef CUarray_format Array_format
     ctypedef CUDA_ARRAY_DESCRIPTOR Array_desc
     ctypedef CUaddress_mode Address_mode
