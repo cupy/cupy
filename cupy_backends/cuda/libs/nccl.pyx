@@ -26,22 +26,22 @@ cdef extern from '../../cupy_nccl.h':
     ctypedef enum ncclDataType_t:
         pass
 
-    const char* ncclGetErrorString(ncclResult_t result)
-    ncclResult_t ncclGetVersion(int* version)
+    const char* ncclGetErrorString(ncclResult_t result) nogil
+    ncclResult_t ncclGetVersion(int* version) nogil
     ncclResult_t ncclCommGetAsyncError(ncclComm_t comm,
                                        ncclResult_t *asyncError) nogil
-    ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId)
+    ncclResult_t ncclGetUniqueId(ncclUniqueId* uniqueId) nogil
     ncclResult_t ncclCommInitRank(ncclComm_t* comm, int ndev,
-                                  ncclUniqueId commId, int rank)
+                                  ncclUniqueId commId, int rank) nogil
     ncclResult_t ncclCommInitAll(ncclComm_t* comm, int ndev,
                                  const int* devlist)
     ncclResult_t ncclGroupStart() nogil
     ncclResult_t ncclGroupEnd() nogil
-    void ncclCommDestroy(ncclComm_t comm)
-    void ncclCommAbort(ncclComm_t comm)
-    ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device)
-    ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank)
-    ncclResult_t ncclCommCount(const ncclComm_t comm, int* count)
+    void ncclCommDestroy(ncclComm_t comm) nogil
+    void ncclCommAbort(ncclComm_t comm) nogil
+    ncclResult_t ncclCommCuDevice(const ncclComm_t comm, int* device) nogil
+    ncclResult_t ncclCommUserRank(const ncclComm_t comm, int* rank) nogil
+    ncclResult_t ncclCommCount(const ncclComm_t comm, int* count) nogil
     ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff,
                                 size_t count,
                                 ncclDataType_t datatype, ncclRedOp_t op,
@@ -110,7 +110,9 @@ class NcclError(RuntimeError):
 
     def __init__(self, int status):
         self.status = status
-        cdef msg = ncclGetErrorString(<ncclResult_t>status)
+        cdef const char* msg
+        with nogil:
+            msg = ncclGetErrorString(<ncclResult_t>status)
         if NCCL_VERSION_CODE < 2000:
             s = ERROR1[status]
         else:
@@ -139,14 +141,16 @@ def get_version():
     2.3.4, which does not support ``ncclGetVersion`` API.
     """
     cdef int version
-    status = ncclGetVersion(&version)
+    with nogil:
+        status = ncclGetVersion(&version)
     check_status(status)
     return version
 
 
 def get_unique_id():
     cdef ncclUniqueId uniqueId
-    status = ncclGetUniqueId(&uniqueId)
+    with nogil:
+        status = ncclGetUniqueId(&uniqueId)
     check_status(status)
     ret = tuple([<char>uniqueId.internal[i]
                  for i in range(NCCL_UNIQUE_ID_BYTES)])
@@ -275,7 +279,8 @@ cdef class NcclCommunicator:
         assert len(commId) == NCCL_UNIQUE_ID_BYTES
         for i in range(NCCL_UNIQUE_ID_BYTES):
             _uniqueId.internal[i] = commId[i]
-        status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
+        with nogil:
+            status = ncclCommInitRank(&self._comm, ndev, _uniqueId, rank)
         check_status(status)
 
     def __dealloc__(self):
@@ -361,7 +366,8 @@ cdef class NcclCommunicator:
 
     cpdef destroy(self):
         if self._comm:
-            ncclCommDestroy(self._comm)
+            with nogil:
+                ncclCommDestroy(self._comm)
             self._comm = <ncclComm_t>0
 
     cpdef abort(self):
@@ -369,24 +375,28 @@ cdef class NcclCommunicator:
             raise RuntimeError('ncclCommAbort is not available'
                                ' in this version')
         if self._comm:
-            ncclCommAbort(self._comm)
+            with nogil:
+                ncclCommAbort(self._comm)
             self._comm = <ncclComm_t>0
 
     def device_id(self):
         cdef int device_id
-        status = ncclCommCuDevice(self._comm, &device_id)
+        with nogil:
+            status = ncclCommCuDevice(self._comm, &device_id)
         check_status(status)
         return device_id
 
     def rank_id(self):
         cdef int rank_id
-        status = ncclCommUserRank(self._comm, &rank_id)
+        with nogil:
+            status = ncclCommUserRank(self._comm, &rank_id)
         check_status(status)
         return rank_id
 
     def size(self):
         cdef int ranks
-        status = ncclCommCount(self._comm, &ranks)
+        with nogil:
+            status = ncclCommCount(self._comm, &ranks)
         check_status(status)
         return ranks
 
