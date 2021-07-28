@@ -47,6 +47,7 @@ MODULES = []
 cuda_files = [
     'cupy_backends.cuda.api.driver',
     'cupy_backends.cuda.api.runtime',
+    'cupy_backends.cuda.api.runtime_legacy_enum',
     'cupy_backends.cuda.libs.cublas',
     'cupy_backends.cuda.libs.curand',
     'cupy_backends.cuda.libs.cusparse',
@@ -384,7 +385,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/sort.h',
             ],
             'libraries': [
-                #'cudart',
+                'cudart',  # cannot remove
             ],
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,

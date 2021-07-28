@@ -83,17 +83,9 @@ errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
 deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
 deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
-
-def _export_enum():
-    # Provide access to constants from Python.
-    # Keep in sync with enums defined in `runtime_legacy_enum.pxi`.
-
-    # TODO(kmaehashi): IMPLEMENT...
-    pass
-
-
 IF USE_CUDA_PYTHON:
-    _export_enum()
+    # Provide access to constants from Python.
+    from cupy_backends.cuda.api.runtime_legacy_enum import *
 
 
 ###############################################################################

@@ -70,7 +70,7 @@ IF USE_CUDA_PYTHON:
 
 ELSE:
     include "runtime_legacy_typedef.pxi"
-    include "runtime_legacy_enum.pxi"
+    include "runtime_legacy_enum.pxd"
 
 
 # For backward compatibility, keep APIs not prefixed with "cuda".
