@@ -103,7 +103,7 @@ Here are the environment variables that CuPy uses at runtime.
   Default: ``nvcc``
 
   Define the compiler to use when compiling CUDA source.
-  Note that most CuPy kernels are built with NVRTC; this environment variable is only effective for :class:`~cupy.RawKernels`/:class:`~cupy.RawModules` with ``nvcc`` backend or when using ``cub`` as the accelerator.
+  Note that most CuPy kernels are built with NVRTC; this environment variable is only effective for :class:`~cupy.RawKernel`/:class:`~cupy.RawModule` with the ``nvcc`` backend or when using ``cub`` as the accelerator.
 
 .. envvar:: CUPY_CUDA_PER_THREAD_DEFAULT_STREAM
 
