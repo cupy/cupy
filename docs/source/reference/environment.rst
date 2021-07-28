@@ -64,7 +64,7 @@ Here are the environment variables CuPy uses.
   
   If set to ``1``, the following syntax is enabled::
 
-    ``cupy_ndarray[:] = numpy_ndarray``
+    cupy_ndarray[:] = numpy_ndarray
 
 .. envvar:: CUPY_ACCELERATORS
 
