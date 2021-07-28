@@ -9,7 +9,7 @@ _packbits_kernel = _core.ElementwiseKernel(
         int bit = k < myarray_size && myarray[k] != 0;
         packed |= bit << (7 - j);
     }''',
-    'packbits_kernel'
+    'cupy_packbits_kernel'
 )
 
 
@@ -45,7 +45,7 @@ def packbits(myarray):
 _unpackbits_kernel = _core.ElementwiseKernel(
     'raw uint8 myarray', 'T unpacked',
     'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
-    'unpackbits_kernel'
+    'cupy_unpackbits_kernel'
 )
 
 
