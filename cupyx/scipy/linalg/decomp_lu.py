@@ -129,7 +129,7 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
     getrf(cusolver_handle, m, n, a.data.ptr, m, workspace.data.ptr,
           ipiv.data.ptr, dev_info.data.ptr)
 
-    if dev_info[0] < 0 and not runtime.is_hip:
+    if not runtime.is_hip and dev_info[0] < 0:
         # rocSOLVER does not inform us this info
         raise ValueError('illegal value in %d-th argument of '
                          'internal getrf (lu_factor)' % -dev_info[0])
