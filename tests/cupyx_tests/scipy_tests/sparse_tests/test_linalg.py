@@ -1360,7 +1360,7 @@ class TestLsmr(unittest.TestCase):
         a = sp.coo_matrix(a).asformat(self.format)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
-        return self._test_lsmr(xp, sp, a)
+        return self._test_lsmr(xp, sp, a)[0]
 
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
     def test_dense(self, xp, sp):
@@ -1369,7 +1369,7 @@ class TestLsmr(unittest.TestCase):
         a = self._make_matrix(xp)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
-        return self._test_lsmr(xp, sp, a)
+        return self._test_lsmr(xp, sp, a)[0]
 
     def test_invalid(self):
         if not (self.x0 is None and self.use_linear_operator is False):
