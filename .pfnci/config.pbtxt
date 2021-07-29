@@ -48,7 +48,7 @@ configs {
       gpu: 2
     }
     time_limit: {
-      seconds: 14400
+      seconds: 21600
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda114"
