@@ -261,7 +261,7 @@ class Generator:
         a_arr = _array_data(a)
         b_arr = _array_data(b)
         a_ptr = a_arr.data.ptr
-        b_ptr = a_arr.data.ptr
+        b_ptr = b_arr.data.ptr
 
         _launch_dist(self.bit_generator, beta, y, (a_ptr, b_ptr))
         # we cast the array to a python object because
