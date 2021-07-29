@@ -343,8 +343,8 @@ cdef _broadcast_core(list arrays, shape_t& shape):
             raise ValueError(
                 'operands could not be broadcast together with shapes {}'
                 .format(
-                    ', '.join([str(x.shape) if isinstance(x, ndarray)
-                               else '()' for x in arrays])))
+                    ' '.join([str(x.shape) if isinstance(x, ndarray)
+                              else '()' for x in arrays])))
         shape.push_back(s)
 
     for i in index:
@@ -479,15 +479,16 @@ cpdef tuple _broadcast_shapes(shapes):
             Resulting shape of broadcasting shapes together.
     """
     out_ndim = max([len(shape) for shape in shapes])
-    shapes = [(1,) * (out_ndim - len(shape)) + shape for shape in shapes]
+    padded_shapes = [
+        (1,) * (out_ndim - len(shape)) + shape for shape in shapes]
 
     result_shape = []
-    for dims in zip(*shapes):
+    for dims in zip(*padded_shapes):
         dims = [dim for dim in dims if dim != 1]
         out_dim = 1 if len(dims) == 0 else dims[0]
         if any([dim != out_dim for dim in dims]):
             raise ValueError(
-                'Operands could not be broadcast together with shapes' +
+                'operands could not be broadcast together with shapes' +
                 ' '.join([str(shape) for shape in shapes]))
         result_shape.append(out_dim)
 
