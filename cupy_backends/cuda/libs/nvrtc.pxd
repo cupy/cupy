@@ -5,10 +5,16 @@ from libc.stdint cimport intptr_t
 # Types
 ###############################################################################
 
-cdef extern from *:
-    ctypedef int Result 'nvrtcResult'
-
-    ctypedef void* Program 'nvrtcProgram'
+IF USE_CUDA_PYTHON:
+    from cudapython.cnvrtc cimport *
+    # Aliases for compatibillity with existing CuPy codebase.
+    # TODO(kmaehashi): Remove these aliases.
+    ctypedef nvrtcResult Result
+    ctypedef nvrtcProgram Program
+ELSE:
+    cdef extern from *:
+        ctypedef int Result 'nvrtcResult'
+        ctypedef void* Program 'nvrtcProgram'
 
 
 cpdef check_status(int status)
