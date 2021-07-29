@@ -7,9 +7,10 @@ from libc.stdint cimport intptr_t, uintmax_t
 
 cdef class PointerAttributes:
     cdef:
-        public int device
-        public intptr_t devicePointer
-        public intptr_t hostPointer
+        readonly int device
+        readonly intptr_t devicePointer
+        readonly intptr_t hostPointer
+        readonly int type
 
 
 ###############################################################################
@@ -99,6 +100,11 @@ cpdef enum:
     eventDisableTiming = 2
     eventInterprocess = 4
 
+    # cudaMemoryType
+    memoryTypeUnregistered = 0
+    memoryTypeHost = 1
+    memoryTypeDevice = 2
+    memoryTypeManaged = 3
 
 ###############################################################################
 # Constants

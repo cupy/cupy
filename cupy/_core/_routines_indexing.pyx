@@ -478,7 +478,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
         }
     """).substitute(block_size=block_size, warp_size=warp_size)
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'nonzero_kernel_incomplete_scan',
+                                  'cupy_nonzero_kernel_incomplete_scan',
                                   loop_prep=loop_prep)
 
 
@@ -491,7 +491,7 @@ _nonzero_kernel = ElementwiseKernel(
             dst[ind] = _ind.get()[j];
         }
     }''',
-    'nonzero_kernel',
+    'cupy_nonzero_kernel',
     reduce_dims=False)
 
 

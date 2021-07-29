@@ -94,8 +94,8 @@ class vectorize(object):
             # we unroll all headers for HIP and so thrust::tuple et al are all
             # defined regardless if CUPY_JIT_MODE is defined or not
             kern = _core.ElementwiseKernel(
-                in_params, out_params, body, preamble=result.code,
-                options=('-DCUPY_JIT_MODE',))
+                in_params, out_params, body, 'cupy_vectorize',
+                preamble=result.code, options=('-DCUPY_JIT_MODE',))
             self._kernel_cache[itypes] = kern
 
         return kern(*args)

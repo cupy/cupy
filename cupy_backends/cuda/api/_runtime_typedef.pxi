@@ -107,10 +107,21 @@ cdef extern from *:
     ctypedef void* MemPool 'cudaMemPool_t'
     ctypedef int MemPoolAttr 'cudaMemPoolAttr'
 
-    ctypedef struct _PointerAttributes 'cudaPointerAttributes':
-        int device
-        void* devicePointer
-        void* hostPointer
+    IF CUDA_VERSION > 0:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            int type
+            int device
+            void* devicePointer
+            void* hostPointer
+    ELIF HIP_VERSION > 0:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            int memoryType
+            int device
+            void* devicePointer
+            void* hostPointer
+    ELSE:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            pass  # for RTD
 
     IF CUDA_VERSION >= 11000:
         # We can't use IF in the middle of structs declaration
