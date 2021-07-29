@@ -65,7 +65,7 @@ _available_cuda_version = {
 }
 
 _available_hip_version = {
-    # Below are APIs supported by CUDA but not yet by HIP. We need them here
+    # For APIs supported by CUDA but not yet by HIP, we still need them here
     # so that our test suite can cover both platforms.
     'gesvdj': (_numpy.inf, None),
     'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
