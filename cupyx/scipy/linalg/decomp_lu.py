@@ -6,6 +6,7 @@ import cupy
 from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import device
+from cupy.cuda import runtime
 from cupy.linalg import _util
 
 
@@ -128,7 +129,8 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
     getrf(cusolver_handle, m, n, a.data.ptr, m, workspace.data.ptr,
           ipiv.data.ptr, dev_info.data.ptr)
 
-    if dev_info[0] < 0:
+    if not runtime.is_hip and dev_info[0] < 0:
+        # rocSOLVER does not inform us this info
         raise ValueError('illegal value in %d-th argument of '
                          'internal getrf (lu_factor)' % -dev_info[0])
     elif dev_info[0] > 0:
@@ -340,7 +342,8 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
           m, n, lu.data.ptr, m, ipiv.data.ptr, b.data.ptr,
           m, dev_info.data.ptr)
 
-    if dev_info[0] < 0:
+    if not runtime.is_hip and dev_info[0] < 0:
+        # rocSOLVER does not inform us this info
         raise ValueError('illegal value in %d-th argument of '
                          'internal getrs (lu_solve)' % -dev_info[0])
 
