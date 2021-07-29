@@ -50,10 +50,7 @@ cdef ndarray _ndarray_real_getter(ndarray self):
 
 
 cdef ndarray _ndarray_real_setter(ndarray self, value):
-    if self.dtype.kind == 'c':
-        _real_setter(value, self)
-    else:
-        elementwise_copy(value, self)
+    elementwise_copy(value, _ndarray_real_getter(self))
 
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
@@ -79,7 +76,7 @@ cdef ndarray _ndarray_imag_getter(ndarray self):
 
 cdef ndarray _ndarray_imag_setter(ndarray self, value):
     if self.dtype.kind == 'c':
-        _imag_setter(value, self)
+        elementwise_copy(value, _ndarray_imag_getter(self))
     else:
         raise TypeError('cupy.ndarray does not have imaginary part to set')
 
@@ -905,49 +902,6 @@ _angle = create_ufunc(
     ''')
 
 
-_real = create_ufunc(
-    'cupy_real',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = in0.real()'),
-     ('D->d', 'out0 = in0.real()')),
-    'out0 = in0',
-    doc='''Returns the real part of the elements of the array.
-
-    .. seealso:: :func:`numpy.real`
-
-    ''')
-
-_real_setter = create_ufunc(
-    'cupy_real_setter',
-    ('f->F', 'd->D'),
-    'out0.real(in0)',
-    doc='''Sets the real part of the elements of the array.
-    ''')
-
-
-_imag = create_ufunc(
-    'cupy_imag',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = in0.imag()'),
-     ('D->d', 'out0 = in0.imag()')),
-    'out0 = 0',
-    doc='''Returns the imaginary part of the elements of the array.
-
-    .. seealso:: :func:`numpy.imag`
-
-    ''')
-
-
-_imag_setter = create_ufunc(
-    'cupy_imag_setter',
-    ('f->F', 'd->D'),
-    'out0.imag(in0)',
-    doc='''Sets the imaginary part of the elements of the array.
-    ''')
-
-
 def _negative_boolean_error():
     raise TypeError(
         'The cupy boolean negative, the `-` operator, is not supported, '
@@ -1124,8 +1078,6 @@ _clip = create_ufunc(
 add = _add
 conjugate = _conjugate
 angle = _angle
-real = _real
-imag = _imag
 negative = _negative
 multiply = _multiply
 divide = _divide

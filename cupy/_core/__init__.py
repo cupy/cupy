@@ -48,11 +48,9 @@ from cupy._core._routines_math import angle  # NOQA
 from cupy._core._routines_math import conjugate  # NOQA
 from cupy._core._routines_math import divide  # NOQA
 from cupy._core._routines_math import floor_divide  # NOQA
-from cupy._core._routines_math import imag  # NOQA
 from cupy._core._routines_math import multiply  # NOQA
 from cupy._core._routines_math import negative  # NOQA
 from cupy._core._routines_math import power  # NOQA
-from cupy._core._routines_math import real  # NOQA
 from cupy._core._routines_math import remainder  # NOQA
 from cupy._core._routines_math import sqrt  # NOQA
 from cupy._core._routines_math import subtract  # NOQA
