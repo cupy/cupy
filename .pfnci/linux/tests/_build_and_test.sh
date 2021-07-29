@@ -21,7 +21,8 @@ python3 -m pip install --user cudapython.tar.gz
 python3 -m pip install --user -v ".[all,test]"
 
 pushd tests
-python3 -c 'import cupy; cupy.show_config()'
+# TODO(kmaehashi): workaround cudapython bug
+python3 -c 'import cupy; cupy.arange(1); cupy.show_config()'
 python3 -m pytest "${pytest_opts[@]}" .
 popd
 
