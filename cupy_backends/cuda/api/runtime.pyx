@@ -20,7 +20,8 @@ from cupy_backends.cuda.api cimport driver
 cdef class PointerAttributes:
 
     def __init__(self, int device, intptr_t devicePointer,
-                 intptr_t hostPointer):
+                 intptr_t hostPointer, int type=-1):
+        self.type = type
         self.device = device
         self.devicePointer = devicePointer
         self.hostPointer = hostPointer
@@ -68,10 +69,21 @@ cdef extern from *:
 cdef extern from '../../cupy_backend_runtime.h' nogil:
 
     # Types
-    ctypedef struct _PointerAttributes 'cudaPointerAttributes':
-        int device
-        void* devicePointer
-        void* hostPointer
+    IF CUDA_VERSION > 0:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            int type
+            int device
+            void* devicePointer
+            void* hostPointer
+    ELIF HIP_VERSION > 0:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            int memoryType
+            int device
+            void* devicePointer
+            void* hostPointer
+    ELSE:
+        ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            pass  # for RTD
 
     # Error handling
     const char* cudaGetErrorName(Error error)
@@ -795,10 +807,20 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
-    return PointerAttributes(
-        attrs.device,
-        <intptr_t>attrs.devicePointer,
-        <intptr_t>attrs.hostPointer)
+    IF CUDA_VERSION > 0:
+        return PointerAttributes(
+            attrs.device,
+            <intptr_t>attrs.devicePointer,
+            <intptr_t>attrs.hostPointer,
+            attrs.type)
+    ELIF HIP_VERSION > 0:
+        return PointerAttributes(
+            attrs.device,
+            <intptr_t>attrs.devicePointer,
+            <intptr_t>attrs.hostPointer,
+            attrs.memoryType)
+    ELSE:  # for RTD
+        return None
 
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
