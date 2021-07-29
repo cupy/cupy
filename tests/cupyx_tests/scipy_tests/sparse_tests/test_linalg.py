@@ -1320,6 +1320,81 @@ class TestSplu(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'damp': [0.0, 1.0, 2.0],
+    'format': ['coo', 'csr', 'csc'],
+    'm': [30, 40, 50],
+    'n': [20, 30],
+    'x0': [None, 'ones'],
+    'use_linear_operator': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestLsmr(unittest.TestCase):
+
+    density = 0.01
+
+    def _make_matrix(self, xp):
+        shape = (self.m, self.n)
+        a = testing.shaped_random(shape, xp, scale=1)
+        mask = testing.shaped_random(shape, xp, scale=1)
+        a[mask > self.density] = 0
+        return a
+
+    def _make_normalized_vector(self, xp):
+        b = testing.shaped_random((self.m,), xp, scale=1)
+        return b / xp.linalg.norm(b)
+
+    def _test_lsmr(self, xp, sp, a):
+        b = self._make_normalized_vector(xp)
+        x0 = None
+        if self.x0 == 'ones':
+            x0 = xp.ones((self.n,))
+        return sp.linalg.lsmr(a, b, x0=x0, damp=self.damp)
+
+    @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
+    def test_sparse(self, xp, sp):
+        if runtime.is_hip and self.format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+        if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
+            raise unittest.SkipTest
+        a = self._make_matrix(xp)
+        a = sp.coo_matrix(a).asformat(self.format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_lsmr(xp, sp, a)[0]
+
+    @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
+    def test_dense(self, xp, sp):
+        if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
+            raise unittest.SkipTest
+        a = self._make_matrix(xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_lsmr(xp, sp, a)[0]
+
+    def test_invalid(self):
+        if not (self.x0 is None and self.use_linear_operator is False):
+            raise unittest.SkipTest
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a = self._make_matrix(xp)
+            b = self._make_normalized_vector(xp)
+            ng_a = xp.ones((self.m, ))
+            with pytest.raises(ValueError):
+                sp.linalg.lsmr(ng_a, b)
+            ng_a = xp.ones((self.m, self.n, 1))
+            with pytest.raises(ValueError):
+                sp.linalg.lsmr(ng_a, b)
+            ng_b = xp.ones((self.m + 1,))
+            with pytest.raises(ValueError):
+                sp.linalg.lsmr(a, ng_b)
+            ng_b = xp.ones((self.m, 2))
+            with pytest.raises(ValueError):
+                sp.linalg.lsmr(a, ng_b)
+            ng_x0 = xp.ones((self.n + 1,))
+            with pytest.raises(ValueError):
+                sp.linalg.lsmr(a, b, x0=ng_x0)
+
+
+@testing.parameterize(*testing.product({
     'x0': [None, 'ones'],
     'M': [None, 'jacobi'],
     'atol': [None, 'select-by-dtype'],

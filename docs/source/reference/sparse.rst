@@ -137,6 +137,7 @@ Iterative methods for least-squares problems:
    :toctree: generated/
 
    lsqr
+   lsmr
 
 
 Matrix factorizations
