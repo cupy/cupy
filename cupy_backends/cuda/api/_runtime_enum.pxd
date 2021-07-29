@@ -1,5 +1,3 @@
-# Keep in sync with constants exported in `runtime.pyx`.
-
 cpdef enum:
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2

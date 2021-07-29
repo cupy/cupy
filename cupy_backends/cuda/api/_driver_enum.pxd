@@ -1,5 +1,3 @@
-# Keep in sync with constants exported in `driver.pyx`.
-
 cpdef enum:
     # CUjitInputType
     CU_JIT_INPUT_CUBIN = 0
