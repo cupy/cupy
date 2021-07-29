@@ -560,6 +560,9 @@ class TestDistributionsPoisson(unittest.TestCase):
 
 @testing.gpu
 class TestDistributionsPoissonInvalid(unittest.TestCase):
+
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
     def test_none_lam_generator(self):
         with self.assertRaises(TypeError):
             cupy.random.default_rng(0).poisson(None)
@@ -677,6 +680,8 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 @testing.gpu
 class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
 
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
     def test_none_shape_generator(self):
         with self.assertRaises(TypeError):
             cupy.random.default_rng(0).standard_gamma(None)
