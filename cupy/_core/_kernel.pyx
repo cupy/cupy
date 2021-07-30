@@ -882,7 +882,10 @@ cdef str fix_cast_expr(src_type, dst_type, str expr):
     if src_kind == 'b':
         return f'({expr}) ? 1 : 0'
     if src_kind == 'c':
-        return f'({expr}).real()'
+        if dst_kind == 'b':
+            return f'({expr}) != {_scalar.get_typename(src_type)}()'
+        else:  # dst_kind in 'iuf' (int, uint, float)
+            return f'({expr}).real()'
     return expr
 
 
