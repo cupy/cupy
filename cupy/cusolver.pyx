@@ -866,7 +866,7 @@ cpdef _qr_batched(a, mode):
     cdef int m, n, k, batch_size, buffersize
 
     # support float32, float64, complex64, and complex128
-    dtype, out_dtype = _util.linalg_common_type(a)
+    dtype, out_dtype = _cupy.linalg._util.linalg_common_type(a)
     if mode == 'raw':
         # compatibility with numpy.linalg.qr
         out_dtype = _numpy.promote_types(out_dtype, 'd')
@@ -935,7 +935,7 @@ cpdef _qr_batched(a, mode):
 
     if mode == 'r':
         r = x[..., :mn].swapaxes(-2, -1)
-        return _util._triu(r).astype(out_dtype, copy=False)
+        return _cupy.linalg._util._triu(r).astype(out_dtype, copy=False)
 
     if mode == 'raw':
         return (x.astype(out_dtype, copy=False),
@@ -983,4 +983,4 @@ cpdef _qr_batched(a, mode):
     q = q[..., :mc].swapaxes(-2, -1)
     r = x[..., :mc].swapaxes(-2, -1)
     return (q.astype(out_dtype, copy=False),
-            _util._triu(r).astype(out_dtype, copy=False))
+            _cupy.linalg._util._triu(r).astype(out_dtype, copy=False))

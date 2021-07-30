@@ -7,7 +7,7 @@ from cupy_backends.cuda.libs import cusolver
 from cupy._core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
-from cupy.cusolver import _gesvdj_batched, _gesvd_batched
+from cupy.cusolver import _gesvdj_batched, _gesvd_batched, _qr_batched
 from cupy.linalg import _util
 
 
@@ -247,7 +247,7 @@ def qr(a, mode='reduced'):
         else:
             raise ValueError('Unrecognized mode \'{}\''.format(mode))
     if a.ndim > 2:
-        return _gr_batched(a, mode)
+        return _qr_batched(a, mode)
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _util.linalg_common_type(a)
