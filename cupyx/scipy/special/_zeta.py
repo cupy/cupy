@@ -112,7 +112,7 @@ double __device__ zeta(double x, double q)
 
 
 zeta = _core.create_ufunc(
-    'cupyx_scipy_zeta', ('ff->f', 'dd->d'),
+    'cupyx_scipy_special_zeta', ('ff->f', 'dd->d'),
     'out0 = zeta(in0, in1)',
     preamble=zeta_definition,
     doc="""Hurwitz zeta function.

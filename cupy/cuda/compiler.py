@@ -268,6 +268,8 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         if not runtime.is_hip:
             arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
             options += (arch_opt,)
+        else:
+            method = 'ptx'
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)

@@ -1,12 +1,14 @@
 import numpy
 
 import cupy
+from cupy import cublas
 from cupy import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse.linalg import _interface
 
 import warnings
 try:
@@ -76,6 +78,313 @@ def lsqr(A, b):
     x = x.astype(numpy.float64)
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
+
+
+def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
+         maxiter=None):
+    """Iterative solver for least-squares problems.
+
+    lsmr solves the system of linear equations ``Ax = b``. If the system
+    is inconsistent, it solves the least-squares problem ``min ||b - Ax||_2``.
+    A is a rectangular matrix of dimension m-by-n, where all cases are
+    allowed: m = n, m > n, or m < n. B is a vector of length m.
+    The matrix A may be dense or sparse (usually sparse).
+
+    Args:
+        A (ndarray, spmatrix or LinearOperator): The real or complex
+            matrix of the linear system. ``A`` must be
+            :class:`cupy.ndarray`, :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
+        b (cupy.ndarray): Right hand side of the linear system with shape
+            ``(m,)`` or ``(m, 1)``.
+        x0 (cupy.ndarray): Starting guess for the solution. If None zeros are
+            used.
+        damp (float): Damping factor for regularized least-squares.
+            `lsmr` solves the regularized least-squares problem
+            ::
+
+                min ||(b) - (  A   )x||
+                    ||(0)   (damp*I) ||_2
+
+            where damp is a scalar. If damp is None or 0, the system
+            is solved without regularization.
+        atol, btol (float):
+            Stopping tolerances. `lsmr` continues iterations until a
+            certain backward error estimate is smaller than some quantity
+            depending on atol and btol.
+        conlim (float): `lsmr` terminates if an estimate of ``cond(A)`` i.e.
+            condition number of matrix exceeds `conlim`. If `conlim` is None,
+            the default value is 1e+8.
+        maxiter (int): Maximum number of iterations.
+
+    Returns:
+        tuple:
+            - `x` (ndarray): Least-square solution returned.
+            - `istop` (int): istop gives the reason for stopping::
+
+                    0 means x=0 is a solution.
+
+                    1 means x is an approximate solution to A*x = B,
+                    according to atol and btol.
+
+                    2 means x approximately solves the least-squares problem
+                    according to atol.
+
+                    3 means COND(A) seems to be greater than CONLIM.
+
+                    4 is the same as 1 with atol = btol = eps (machine
+                    precision)
+
+                    5 is the same as 2 with atol = eps.
+
+                    6 is the same as 3 with CONLIM = 1/eps.
+
+                    7 means ITN reached maxiter before the other stopping
+                    conditions were satisfied.
+
+            - `itn` (int): Number of iterations used.
+            - `normr` (float): ``norm(b-Ax)``
+            - `normar` (float): ``norm(A^T (b - Ax))``
+            - `norma` (float): ``norm(A)``
+            - `conda` (float): Condition number of A.
+            - `normx` (float): ``norm(x)``
+
+    .. seealso:: :func:`scipy.sparse.linalg.lsmr`
+
+    References:
+        D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for
+        sparse least-squares problems", SIAM J. Sci. Comput.,
+        vol. 33, pp. 2950-2971, 2011.
+    """
+    A = _interface.aslinearoperator(A)
+    b = b.squeeze()
+    matvec = A.matvec
+    rmatvec = A.rmatvec
+    m, n = A.shape
+    minDim = min([m, n])
+
+    if maxiter is None:
+        maxiter = minDim * 5
+
+    u = b.copy()
+    normb = cublas.nrm2(b)
+    beta = normb.copy()
+    normb = normb.get().item()
+    if x0 is None:
+        x = cupy.zeros((n,), dtype=A.dtype)
+    else:
+        if not (x0.shape == (n,) or x0.shape == (n, 1)):
+            raise ValueError('x0 has incompatible dimensions')
+        x = x0.astype(A.dtype).ravel()
+        u -= matvec(x)
+        beta = cublas.nrm2(u)
+
+    beta_cpu = beta.get().item()
+
+    v = cupy.zeros(n)
+    alpha = cupy.zeros((), dtype=beta.dtype)
+    alpha_cpu = 0
+
+    if beta_cpu > 0:
+        u /= beta
+        v = rmatvec(u)
+        alpha = cublas.nrm2(v)
+        alpha_cpu = alpha.get().item()
+
+    if alpha_cpu > 0:
+        v /= alpha
+
+    # Initialize variables for 1st iteration.
+
+    itn = 0
+    zetabar = alpha_cpu * beta_cpu
+    alphabar = alpha_cpu
+    rho = 1
+    rhobar = 1
+    cbar = 1
+    sbar = 0
+
+    h = v.copy()
+    hbar = cupy.zeros(n)
+    # x = cupy.zeros(n)
+
+    # Initialize variables for estimation of ||r||.
+
+    betadd = beta_cpu
+    betad = 0
+    rhodold = 1
+    tautildeold = 0
+    thetatilde = 0
+    zeta = 0
+    d = 0
+
+    # Initialize variables for estimation of ||A|| and cond(A)
+
+    normA2 = alpha_cpu * alpha_cpu
+    maxrbar = 0
+    minrbar = 1e+100
+    normA = alpha_cpu
+    condA = 1
+    normx = 0
+
+    # Items for use in stopping rules.
+    istop = 0
+    ctol = 0
+    if conlim > 0:
+        ctol = 1 / conlim
+    normr = beta_cpu
+
+    # Golub-Kahan process terminates when either alpha or beta is zero.
+    # Reverse the order here from the original matlab code because
+    # there was an error on return when arnorm==0
+    normar = alpha_cpu * beta_cpu
+    if normar == 0:
+        return x, istop, itn, normr, normar, normA, condA, normx
+
+    # Main iteration loop.
+    while itn < maxiter:
+        itn = itn + 1
+
+        # Perform the next step of the bidiagonalization to obtain the
+        # next  beta, u, alpha, v.  These satisfy the relations
+        #         beta*u  =  a*v   -  alpha*u,
+        #        alpha*v  =  A'*u  -  beta*v.
+
+        u *= -alpha
+        u += matvec(v)
+        beta = cublas.nrm2(u)  # norm(u)
+        beta_cpu = beta.get().item()
+
+        if beta_cpu > 0:
+            u /= beta
+            v *= -beta
+            v += rmatvec(u)
+            alpha = cublas.nrm2(v)  # norm(v)
+            alpha_cpu = alpha.get().item()
+            if alpha_cpu > 0:
+                v /= alpha
+
+        # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
+
+        # Construct rotation Qhat_{k,2k+1}.
+
+        chat, shat, alphahat = _symOrtho(alphabar, damp)
+
+        # Use a plane rotation (Q_i) to turn B_i to R_i
+
+        rhoold = rho
+        c, s, rho = _symOrtho(alphahat, beta_cpu)
+        thetanew = s * alpha_cpu
+        alphabar = c * alpha_cpu
+
+        # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
+
+        rhobarold = rhobar
+        zetaold = zeta
+        thetabar = sbar * rho
+        rhotemp = cbar * rho
+        cbar, sbar, rhobar = _symOrtho(cbar * rho, thetanew)
+        zeta = cbar * zetabar
+        zetabar = - sbar * zetabar
+
+        # Update h, h_hat, x.
+
+        # hbar = h - (thetabar * rho / (rhoold * rhobarold)) * hbar
+        hbar *= -(thetabar * rho / (rhoold * rhobarold))
+        hbar += h
+        x += (zeta / (rho * rhobar)) * hbar
+        # h = v - (thetanew / rho) * h
+        h *= -(thetanew / rho)
+        h += v
+
+        # Estimate of ||r||.
+
+        # Apply rotation Qhat_{k,2k+1}.
+        betaacute = chat * betadd
+        betacheck = -shat * betadd
+
+        # Apply rotation Q_{k,k+1}.
+        betahat = c * betaacute
+        betadd = -s * betaacute
+
+        # Apply rotation Qtilde_{k-1}.
+        # betad = betad_{k-1} here.
+
+        thetatildeold = thetatilde
+        ctildeold, stildeold, rhotildeold = _symOrtho(rhodold, thetabar)
+        thetatilde = stildeold * rhobar
+        rhodold = ctildeold * rhobar
+        betad = - stildeold * betad + ctildeold * betahat
+
+        # betad   = betad_k here.
+        # rhodold = rhod_k  here.
+
+        tautildeold = (zetaold - thetatildeold * tautildeold) / rhotildeold
+        taud = (zeta - thetatilde * tautildeold) / rhodold
+        d = d + betacheck * betacheck
+        normr = numpy.sqrt(d + (betad - taud)**2 + betadd * betadd)
+
+        # Estimate ||A||.
+        normA2 = normA2 + beta_cpu * beta_cpu
+        normA = numpy.sqrt(normA2)
+        normA2 = normA2 + alpha_cpu * alpha_cpu
+
+        # Estimate cond(A).
+        maxrbar = max(maxrbar, rhobarold)
+        if itn > 1:
+            minrbar = min(minrbar, rhobarold)
+        condA = max(maxrbar, rhotemp) / min(minrbar, rhotemp)
+
+        # Test for convergence.
+
+        # Compute norms for convergence testing.
+        normar = abs(zetabar)
+        normx = cublas.nrm2(x)
+        normx = normx.get().item()
+
+        # Now use these norms to estimate certain other quantities,
+        # some of which will be small near a solution.
+
+        test1 = normr / normb
+        if (normA * normr) != 0:
+            test2 = normar / (normA * normr)
+        else:
+            test2 = numpy.infty
+        test3 = 1 / condA
+        t1 = test1 / (1 + normA*normx/normb)
+        rtol = btol + atol*normA*normx/normb
+
+        # The following tests guard against extremely small values of
+        # atol, btol or ctol.  (The user may have set any or all of
+        # the parameters atol, btol, conlim  to 0.)
+        # The effect is equivalent to the normAl tests using
+        # atol = eps,  btol = eps,  conlim = 1/eps.
+
+        if itn >= maxiter:
+            istop = 7
+        if 1 + test3 <= 1:
+            istop = 6
+        if 1 + test2 <= 1:
+            istop = 5
+        if 1 + t1 <= 1:
+            istop = 4
+
+        # Allow for tolerances set by the user.
+
+        if test3 <= ctol:
+            istop = 3
+        if test2 <= atol:
+            istop = 2
+        if test1 <= rtol:
+            istop = 1
+
+        if istop > 0:
+            break
+
+    # The return type of SciPy is always float64. Therefore, x must be casted.
+    x = x.astype(numpy.float64)
+
+    return x, istop, itn, normr, normar, normA, condA, normx
 
 
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
@@ -406,3 +715,27 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
         permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
         relax=relax, panel_size=panel_size, options=options)
     return SuperLU(a_inv)
+
+
+def _symOrtho(a, b):
+    """
+    A stable implementation of Givens rotation according to
+    S.-C. Choi, "Iterative Methods for Singular Linear Equations
+      and Least-Squares Problems", Dissertation,
+      http://www.stanford.edu/group/SOL/dissertations/sou-cheng-choi-thesis.pdf
+    """
+    if b == 0:
+        return numpy.sign(a), 0, abs(a)
+    elif a == 0:
+        return 0, numpy.sign(b), abs(b)
+    elif abs(b) > abs(a):
+        tau = a / b
+        s = numpy.sign(b) / numpy.sqrt(1+tau*tau)
+        c = s * tau
+        r = b / s
+    else:
+        tau = b / a
+        c = numpy.sign(a) / numpy.sqrt(1+tau*tau)
+        s = c * tau
+        r = a / c
+    return c, s, r

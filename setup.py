@@ -36,6 +36,7 @@ requirements = {
     ],
     'all': [
         'scipy>=1.4,<1.10',  # see #4773
+        'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
 
