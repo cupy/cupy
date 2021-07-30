@@ -18,7 +18,7 @@
 #endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#if !defined(CUPY_USE_HIP)
 /*
  * loop-based batched gesvd (only used on CUDA)
  */
@@ -89,7 +89,7 @@ template<> struct geqrf_func<cuDoubleComplex> { geqrf<cuDoubleComplex> ptr = cus
 template<typename T>
 int geqrf_loop(
         intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
-        T* tau_ptr, T* w_ptr,
+        intptr_t tau_ptr, intptr_t w_ptr,
         int buffersize, intptr_t info_ptr,
         int batch_size) {
     /*
@@ -114,10 +114,57 @@ int geqrf_loop(
                       m, n, A, lda, Tau, Work, buffersize, devInfo);
         if (status != 0) break;
         A += m * n;
-        // Tau += k;
+        Tau += k;
         devInfo += 1;
     }
 }
-#endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#endif // #if !defined(CUPY_USE_HIP)
 
+
+/*
+ * loop-based batched orgqr (used on both CUDA & HIP)
+ */
+template<typename T>
+using orgqr = cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, T*, int, const T*, T*, int, int*);
+
+template<typename T> struct orgqr_func { orgqr<T> ptr; };
+template<> struct orgqr_func<float> { orgqr<float> ptr = cusolverDnSorgqr; };
+template<> struct orgqr_func<double> { orgqr<double> ptr = cusolverDnDorgqr; };
+template<> struct orgqr_func<cuComplex> { orgqr<cuComplex> ptr = cusolverDnCungqr; };
+template<> struct orgqr_func<cuDoubleComplex> { orgqr<cuDoubleComplex> ptr = cusolverDnZungqr; };
+
+template<typename T>
+int orgqr_loop(
+        intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
+        intptr_t tau_ptr, intptr_t w_ptr,
+        int buffersize, intptr_t info_ptr,
+        int batch_size) {
+    /*
+     * Assumptions:
+     * 1. the stream is set prior to calling this function
+     * 2. the workspace is reused in the loop
+     */
+
+    cusolverStatus_t status;
+    int mn = (m<n?m:n);
+    T* A = reinterpret_cast<T*>(a_ptr);
+    const T* Tau = reinterpret_cast<const T*>(tau_ptr);
+    T* Work = reinterpret_cast<T*>(w_ptr);
+    int* devInfo = reinterpret_cast<int*>(info_ptr);
+
+    // we can't use "if constexpr" to do a compile-time branch selection as it's C++17 only,
+    // so we use custom traits instead
+    orgqr<T> func = orgqr_func<T>().ptr;
+
+    for (int i=0; i<batch_size; i++) {
+        status = func(reinterpret_cast<cusolverDnHandle_t>(handle),
+                      m, n, k, A, lda, Tau, Work, buffersize, devInfo);
+        if (status != 0) break;
+        A += m * n;
+        Tau += k;
+        devInfo += 1;
+    }
+
+    return status;
+}
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H

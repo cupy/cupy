@@ -239,16 +239,15 @@ def qr(a, mode='reduced'):
 
     .. seealso:: :func:`numpy.linalg.qr`
     """
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
-
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):
             msg = 'The deprecated mode \'{}\' is not supported'.format(mode)
             raise ValueError(msg)
         else:
             raise ValueError('Unrecognized mode \'{}\''.format(mode))
+    if a.ndim > 2:
+        return _gr_batched(a, mode)
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _util.linalg_common_type(a)
