@@ -885,6 +885,7 @@ cdef str fix_cast_expr(src_type, dst_type, str expr):
         return f'({expr}).real()'
     return expr
 
+
 cdef function.Function _get_ufunc_kernel(
         tuple in_types, tuple out_types, routine, tuple arginfos,
         bint has_where, params,
