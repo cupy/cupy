@@ -22,3 +22,4 @@ cpdef enum:
     NCCL_FLOAT = 7
     NCCL_FLOAT64 = 8
     NCCL_DOUBLE = 8
+    NCCL_BFLOAT16 = 9
