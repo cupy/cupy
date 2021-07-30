@@ -57,7 +57,7 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
         intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
         intptr_t tau_ptr, intptr_t w_ptr,
         int buffersize, intptr_t info_ptr,
-        int batch_size)
+        int batch_size, int reduced, int origin_n)
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
@@ -65,7 +65,7 @@ ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
 ctypedef int(*geqrf_ptr)(intptr_t, int, int, intptr_t, int, intptr_t,
                          intptr_t, int, intptr_t, int) nogil
 ctypedef int(*orgqr_ptr)(intptr_t, int, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int, int, int) nogil
 
 
 _available_cuda_version = {
@@ -944,10 +944,11 @@ cpdef _qr_batched(a, mode):
     if mode == 'complete' and m > n:
         mc = m
         q = _cupy.empty((batch_size, m, m), dtype)
-    else:  # mode == 'reduced'
+    else:
         mc = mn
         q = _cupy.empty((batch_size, n, m), dtype)
-    q[..., :n] = x
+    q[..., :n, :] = x
+    x_ptr = q.data.ptr
 
     # compute working space of orgqr and solve Q
     cdef orgqr_ptr orgqr
@@ -966,21 +967,21 @@ cpdef _qr_batched(a, mode):
 
     # this wrapper also sets the stream for us
     buffersize = orgqr_bufferSize(
-        handle, m, mc, mn, q.data.ptr, m, tau_ptr)
+        handle, m, mc, mn, x_ptr, m, tau_ptr)
     workspace = memory.alloc(buffersize * a.dtype.itemsize)
     w_ptr = workspace.ptr
-    x_ptr = q.data.ptr
+    cdef int is_reduced = (mode == 'reduced')
 
     with nogil:
         status = orgqr(
             handle, m, mc, mn, x_ptr, m, tau_ptr, w_ptr,
-            buffersize, info_ptr, batch_size)
+            buffersize, info_ptr, batch_size, is_reduced, n)
     if status != 0:
         raise _cusolver.CUSOLVERError(status)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         'orgqr', dev_info)
 
-    q = q[..., :mc].swapaxes(-2, -1)
+    q = q[..., :mc, :].swapaxes(-2, -1)
     r = x[..., :mc].swapaxes(-2, -1)
     return (q.astype(out_dtype, copy=False),
             _cupy.linalg._util._triu(r).astype(out_dtype, copy=False))

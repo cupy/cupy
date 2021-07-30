@@ -138,7 +138,7 @@ int orgqr_loop(
         intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
         intptr_t tau_ptr, intptr_t w_ptr,
         int buffersize, intptr_t info_ptr,
-        int batch_size) {
+        int batch_size, int reduced, int origin_n) {
     /*
      * Assumptions:
      * 1. the stream is set prior to calling this function
@@ -146,7 +146,7 @@ int orgqr_loop(
      */
 
     cusolverStatus_t status;
-    int mn = (m<n?m:n);
+    int qm = (!reduced && (m > origin_n)) ? m : origin_n;
     T* A = reinterpret_cast<T*>(a_ptr);
     const T* Tau = reinterpret_cast<const T*>(tau_ptr);
     T* Work = reinterpret_cast<T*>(w_ptr);
@@ -160,8 +160,8 @@ int orgqr_loop(
         status = func(reinterpret_cast<cusolverDnHandle_t>(handle),
                       m, n, k, A, lda, Tau, Work, buffersize, devInfo);
         if (status != 0) break;
-        A += m * n;
-        Tau += k;
+        A += m * qm;
+        Tau += k;  // k = min(m, n)
         devInfo += 1;
     }
 

@@ -101,11 +101,29 @@ class TestCholeskyInvalid(unittest.TestCase):
 class TestQRDecomposition(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
-    def check_mode(self, array, mode, dtype):
+    def check_mode(self, array, mode, dtype, batched=False):
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
-        result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
+
+        if ((not batched)
+                or (numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0')):
+            result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
+            self._check_result(result_cpu, result_gpu)
+        else:
+            # We still want to test it to gain confidence...
+            # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
+            # NumPy 1.22 is out, and clean up this helper function
+            for i in range(prod(array.shape[:-2])):
+                res_cpu = numpy.linalg.qr(a_cpu[i], mode=mode)
+                if isinstance(result_gpu, tuple):
+                    res_gpu = (result_gpu[0][i], result_gpu[1][i])
+                    self._check_result(res_cpu, res_gpu)
+                else:
+                    res_gpu = result_gpu[i]
+                    self._check_result(res_cpu, res_gpu)
+
+    def _check_result(self, result_cpu, result_gpu):
         if isinstance(result_cpu, tuple):
             for b_cpu, b_gpu in zip(result_cpu, result_gpu):
                 assert b_cpu.dtype == b_gpu.dtype
@@ -121,10 +139,32 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
+    @testing.fix_random()
+    @_condition.repeat(3, 10)
+    def test_mode_rank3(self):
+        self.check_mode(numpy.random.randn(3, 2, 4),
+                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(4, 3, 3),
+                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(2, 5, 4),
+                        mode=self.mode, batched=True)
+
     @testing.with_requires('numpy>=1.16')
     def test_empty_array(self):
         self.check_mode(numpy.empty((0, 3)), mode=self.mode)
         self.check_mode(numpy.empty((3, 0)), mode=self.mode)
+
+    @testing.with_requires('numpy>=1.22')
+    def test_empty_array_rank3(self):
+        self.check_mode(numpy.empty((0, 3, 2)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0, 2)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 2, 0)), mode=self.mode)
+        self.check_mode(numpy.empty((0, 3, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 3, 0)), mode=self.mode)
+        self.check_mode(numpy.empty((0, 2, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((2, 0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((2, 3, 0)), mode=self.mode)
 
 
 @testing.parameterize(*testing.product({
