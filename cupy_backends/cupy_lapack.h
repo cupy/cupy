@@ -18,6 +18,7 @@
 #endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 
+#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 /*
  * loop-based batched gesvd (only used on CUDA)
  */
@@ -72,5 +73,51 @@ int gesvd_loop(
     return status;
 }
 
+
+/*
+ * loop-based batched geqrf (only used on CUDA)
+ */
+template<typename T>
+using geqrf = cusolverStatus_t (*)(cusolverDnHandle_t, int, int, T*, int, T*, T*, int, int*);
+
+template<typename T> struct geqrf_func { geqrf<T> ptr; };
+template<> struct geqrf_func<float> { geqrf<float> ptr = cusolverDnSgeqrf; };
+template<> struct geqrf_func<double> { geqrf<double> ptr = cusolverDnDgeqrf; };
+template<> struct geqrf_func<cuComplex> { geqrf<cuComplex> ptr = cusolverDnCgeqrf; };
+template<> struct geqrf_func<cuDoubleComplex> { geqrf<cuDoubleComplex> ptr = cusolverDnZgeqrf; };
+
+template<typename T>
+int geqrf_loop(
+        intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
+        T* tau_ptr, T* w_ptr,
+        int buffersize, intptr_t info_ptr,
+        int batch_size) {
+    /*
+     * Assumptions:
+     * 1. the stream is set prior to calling this function
+     * 2. the workspace is reused in the loop
+     */
+
+    cusolverStatus_t status;
+    int k = (m<n?m:n);
+    T* A = reinterpret_cast<T*>(a_ptr);
+    T* Tau = reinterpret_cast<T*>(tau_ptr);
+    T* Work = reinterpret_cast<T*>(w_ptr);
+    int* devInfo = reinterpret_cast<int*>(info_ptr);
+
+    // we can't use "if constexpr" to do a compile-time branch selection as it's C++17 only,
+    // so we use custom traits instead
+    geqrf<T> func = geqrf_func<T>().ptr;
+
+    for (int i=0; i<batch_size; i++) {
+        status = func(reinterpret_cast<cusolverDnHandle_t>(handle),
+                      m, n, A, lda, Tau, Work, buffersize, devInfo);
+        if (status != 0) break;
+        A += m * n;
+        // Tau += k;
+        devInfo += 1;
+    }
+}
+#endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
