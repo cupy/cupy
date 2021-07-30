@@ -182,11 +182,13 @@ cdef class DLPackMemory(memory.BaseMemory):
         self.dltensor = dltensor
         self.dlm_tensor = dlm_tensor
         self.ptr = <intptr_t>dlm_tensor.dl_tensor.data
-        if dlm_tensor.dl_tensor.device.device_type != kDLCUDAManaged:
-            self.device_id = dlm_tensor.dl_tensor.device.device_id
-        else:
+        if dlm_tensor.dl_tensor.device.device_type == kDLCUDAManaged:
+            # look up the actual physical device as the id from
+            # dl_tensor could be 0
             attrs = runtime.pointerGetAttributes(self.ptr)
             self.device_id = attrs.device
+        else:
+            self.device_id = dlm_tensor.dl_tensor.device.device_id
 
         cdef int n = 0, s = 0
         cdef int ndim = dlm_tensor.dl_tensor.ndim
