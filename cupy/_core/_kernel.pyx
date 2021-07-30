@@ -891,6 +891,7 @@ cdef function.Function _get_ufunc_kernel(
         bint has_where, params,
         name, preamble, loop_prep):
     cdef _ArgInfo arginfo
+    cdef str str_type, str_var
 
     offset_where = len(in_types)
     offset_out = offset_where
@@ -899,31 +900,31 @@ cdef function.Function _get_ufunc_kernel(
 
     types = []
     op = []
-    bool_ = numpy.bool_
     if has_where:
         op.append('if(!_raw__where[_ind.get()]) continue;')
     for i, x in enumerate(in_types):
-        types.append(('in%d_type' % i, x))
+        str_var = 'in%d' % i
+        str_type = str_var + '_type'
+        types.append((str_type, x))
         arginfo = arginfos[i]
         if arginfo.is_ndarray():
-            op.append(
-                'const in{0}_type in{0}(_raw_in{0}[_ind.get()]{1});'
-                .format(
-                    i,
-                    ' ? 1 : 0' if arginfo.dtype == bool_ and x != bool_ else ''
-                ))
+            op.append('const {} {}({});'.format(
+                str_type,
+                str_var,
+                fix_cast_expr(arginfo.dtype, x, f'_raw_{str_var}[_ind.get()]')
+            ))
 
     out_op = []
     for i, x in enumerate(out_types):
+        str_var = 'out%d' % i
+        str_type = str_var + '_type'
+        types.append((str_type, x))
         arginfo = arginfos[i + offset_out]
-        types.append(('out%d_type' % i, x))
-        op.append('out{0}_type out{0};'.format(i))
-        out_op.append(
-            '_raw_out{0}[_ind.get()] = {1};'.format(
-                i,
-                fix_cast_expr(x, arginfo.dtype, f'out{i}')
-            )
-        )
+        op.append(f'{str_type} {str_var};')
+        out_op.append('{} = {};'.format(
+            f'_raw_{str_var}[_ind.get()]',
+            fix_cast_expr(x, arginfo.dtype, str_var)
+        ))
 
     type_map = _TypeMap(tuple(types))
 
