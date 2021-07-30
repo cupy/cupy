@@ -904,7 +904,11 @@ cdef function.Function _get_ufunc_kernel(
     types = []
     op = []
     if has_where:
-        op.append('if(!_raw__where[_ind.get()]) continue;')
+        arginfo = arginfos[offset_where]
+        if arginfo.is_ndarray():
+            op.append('if(!_raw__where[_ind.get()]) continue;')
+        else:
+            op.append('if(!_where) continue;')
     for i, x in enumerate(in_types):
         str_var = 'in%d' % i
         str_type = str_var + '_type'
@@ -1118,6 +1122,19 @@ cdef class ufunc:
             out_args = _preprocess_args(dev_id, (out,), False)
         if has_where:
             where_args = _preprocess_args(dev_id, (where,), False)
+            x = where_args[0]
+            if isinstance(x, ndarray):
+                # NumPy seems using casting=safe here
+                if x.dtype != bool:
+                    raise TypeError(
+                        f'Cannot cast array data from {x.dtype!r} to '
+                        f'{get_dtype(bool)!r} according to the rule \'safe\'')
+            else:
+                # NumPy does not seem raising TypeError.
+                # CuPy does not have to support `where=object()` etc. and
+                # `_preprocess_args` rejects it anyway.
+                where_args[0] = _scalar.CScalar.from_numpy_scalar_with_dtype(
+                    x, numpy.bool_)
         else:
             where_args = []
 
@@ -1147,7 +1164,7 @@ cdef class ufunc:
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         if has_where:
             x = broad_values[self.nin]
-            inout_args.append(x)  # TODO: scalar, assert bool
+            inout_args.append(x)
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray._indexer_init(shape)
