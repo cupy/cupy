@@ -306,3 +306,35 @@ class Geometric:
             self.skipTest('Statistical checks only for scalar `p`')
         self.check_ks(0.05)(
             p=self.p, size=2000)
+
+
+hypergeometric_params = [
+    {'ngood': 5, 'nbad': 5, 'nsample': 5},
+    {'ngood': 10.0, 'nbad': 10.0, 'nsample': 10.0},
+    {'ngood': 100.0, 'nbad': 2.0, 'nsample': 10.0},
+    {'ngood': [0, 5, 8], 'nbad': [5, 0, 3], 'nsample': [2, 1, 8]},
+    {'ngood': [1, 4, 2, 7, 6], 'nbad': 5.0, 'nsample': [2, 7, 4, 6, 5]},
+]
+
+
+class Hypergeometric:
+
+    target_method = 'hypergeometric'
+
+    def test_hypergeometric(self):
+        ngood = self.ngood
+        nbad = self.nbad
+        nsample = self.nsample
+        if (isinstance(self.ngood, list) or isinstance(self.nbad, list)
+                or isinstance(self.nsample, list)):
+            ngood = cupy.array(self.ngood)
+            nbad = cupy.array(self.nbad)
+            nsample = cupy.array(self.nsample)
+        self.generate(ngood, nbad, nsample)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_hypergeometric_ks(self):
+        if (isinstance(self.ngood, list) or isinstance(self.nbad, list)
+                or isinstance(self.nsample, list)):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(self.ngood, self.nbad, self.nsample, size=2000)

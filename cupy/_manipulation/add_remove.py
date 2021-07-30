@@ -46,7 +46,7 @@ def append(arr, values, axis=None):
 _resize_kernel = _core.ElementwiseKernel(
     'raw T x, int64 size', 'T y',
     'y = x[i % size]',
-    'resize',
+    'cupy_resize',
 )
 
 

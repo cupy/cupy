@@ -58,7 +58,7 @@ class coo_matrix(sparse_data._data_matrix):
           diff_out = 0;
         }
         diff = diff_out;
-        ''', 'sum_duplicates_diff')
+        ''', 'cupyx_scipy_sparse_coo_sum_duplicates_diff')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
@@ -421,7 +421,7 @@ class coo_matrix(sparse_data._data_matrix):
                     row[index] = src_row;
                     col[index] = src_col;
                     ''',
-                    'sum_duplicates_assign'
+                    'cupyx_scipy_sparse_coo_sum_duplicates_assign'
                 )(src_data, src_row, src_col, index, data, row, col)
             elif self.data.dtype.kind == 'c':
                 cupy.ElementwiseKernel(
@@ -434,7 +434,7 @@ class coo_matrix(sparse_data._data_matrix):
                     row[index] = src_row;
                     col[index] = src_col;
                     ''',
-                    'sum_duplicates_assign_complex'
+                    'cupyx_scipy_sparse_coo_sum_duplicates_assign_complex'
                 )(src_data.real, src_data.imag, src_row, src_col, index,
                   data.real, data.imag, row, col)
 

@@ -239,7 +239,22 @@ cudaError_t cudaMemPrefetchAsync(...) {
 
 cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
-    return hipPointerGetAttributes(attributes, ptr);
+    cudaError_t status = hipPointerGetAttributes(attributes, ptr);
+    if (status == cudaSuccess) {
+        switch (attributes->memoryType) {
+            case 0 /* hipMemoryTypeHost */:
+                attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
+                return status;
+            case 1 /* hipMemoryTypeDevice */:
+                attributes->memoryType = (hipMemoryType)2; /* cudaMemoryTypeDevice */
+                return status;
+            default:
+                /* we don't care the rest of possibilities */
+                return status;
+        }
+    } else {
+        return status;
+    }
 }
 
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {

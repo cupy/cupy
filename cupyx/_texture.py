@@ -17,7 +17,7 @@ _affine_transform_2d_array_kernel = _core.ElementwiseKernel(
     float y = dot(pixel, make_float3(m[3],  m[4],  m[5])) + .5f;
     transformed_image = tex2D<T>(texObj, y, x);
     ''',
-    'affine_transformation_2d_array',
+    'cupyx_texture_affine_transformation_2d_array',
     preamble='''
     inline __host__ __device__ float dot(float3 a, float3 b)
     {
@@ -41,7 +41,7 @@ _affine_transform_3d_array_kernel = _core.ElementwiseKernel(
     float z = dot(voxel, make_float4(m[8],  m[9],  m[10], m[11])) + .5f;
     transformed_volume = tex3D<T>(texObj, z, y, x);
     ''',
-    'affine_transformation_3d_array',
+    'cupyx_texture_affine_transformation_3d_array',
     preamble='''
     inline __host__ __device__ float dot(float4 a, float4 b)
     {
