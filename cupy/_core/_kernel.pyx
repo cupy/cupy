@@ -1,4 +1,5 @@
 import string
+import warnings
 
 import numpy
 
@@ -571,6 +572,13 @@ cdef bint _can_cast(d1, d2, casting):
     return _numpy_can_cast(d1, d2, casting=casting)
 
 
+cdef void _complex_warning(dtype_from, dtype_to):
+    if dtype_from.kind == 'c' and dtype_to.kind not in 'bc':
+        warnings.warn(
+            'Casting complex values to real discards the imaginary part',
+            numpy.ComplexWarning)
+
+
 cdef list _get_out_args(list out_args, tuple out_types,
                         const shape_t& out_shape, casting):
     cdef ndarray arr
@@ -584,15 +592,16 @@ cdef list _get_out_args(list out_args, tuple out_types,
         arr = a
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
-        out_type = out_types[i]
+        out_type = get_dtype(out_types[i])
         if not _can_cast(out_type, arr.dtype, casting):
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
-                      get_dtype(out_type).char,
+                      out_type.char,
                       arr.dtype.char,
                       casting)
             raise TypeError(msg)
+        _complex_warning(out_type, arr.dtype)
     return out_args
 
 
@@ -1120,6 +1129,8 @@ cdef class ufunc:
 
             in_args = arg_list
             out_args = _preprocess_args(dev_id, (out,), False)
+        # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
+        # broadcast).
         if has_where:
             where_args = _preprocess_args(dev_id, (where,), False)
             x = where_args[0]

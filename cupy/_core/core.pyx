@@ -493,15 +493,13 @@ cdef class ndarray:
         else:
             newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
-        # TODO(kataoka): move warning to ufunc
-        if self.dtype.kind == 'c' and newarray.dtype.kind not in 'bc':
-            warnings.warn(
-                'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
-
         if self.size == 0:
             # skip copy
-            pass
+            if self.dtype.kind == 'c' and newarray.dtype.kind not in 'bc':
+                warnings.warn(
+                    'Casting complex values to real discards the imaginary '
+                    'part',
+                    numpy.ComplexWarning)
         else:
             elementwise_copy(self, newarray)
         return newarray

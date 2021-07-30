@@ -345,9 +345,12 @@ class TestUfunc:
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         c = xp.zeros((2, 3), out_type)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
-            return xp.add(a, b, out=c, casting='unsafe')
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter('always')
+            ret = xp.add(a, b, out=c, casting='unsafe')
+        ws = [w.category for w in ws]
+        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
+        return ret, xp.array(len(ws))
 
     @pytest.mark.xfail(strict=False)
     @pytest.mark.parametrize('casting', [
@@ -364,15 +367,19 @@ class TestUfunc:
         b = testing.shaped_arange((2, 3), xp, in1_type)
         return xp.add(a, b, dtype=dtype, casting=casting)
 
+    @pytest.mark.xfail(strict=False)
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'])
     @testing.numpy_cupy_allclose()
     def test_casting_dtype_unsafe(self, xp, in0_type, in1_type, dtype):
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
-            return xp.add(a, b, dtype=dtype, casting='unsafe')
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter('always')
+            ret = xp.add(a, b, dtype=dtype, casting='unsafe')
+        ws = [w.category for w in ws]
+        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
+        return ret, xp.array(len(ws))
 
 
 class TestArithmeticModf:
