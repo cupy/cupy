@@ -17,12 +17,11 @@ from libcpp cimport vector
 
 
 ###############################################################################
-# Extern
+# Extern and Constants
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    # external functions cimported via `driver.pxd`
-    pass
+    from cudapython.ccuda cimport *
 ELSE:
     include '_driver_extern.pxi'
 
@@ -30,14 +29,8 @@ cdef extern from '../../cupy_backend.h' nogil:
     # Build-time version
     int HIP_VERSION
 
-
-###############################################################################
-# Constants
-###############################################################################
-
-IF USE_CUDA_PYTHON:
-    # Provide access to constants from Python.
-    from cupy_backends.cuda.api._driver_enum import *
+# Provide access to constants from Python.
+from cupy_backends.cuda.api._driver_enum import *
 
 
 ###############################################################################

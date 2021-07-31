@@ -27,7 +27,7 @@ IF USE_CUDA_PYTHON:
     ctypedef CUfilter_mode Filter_mode
 ELSE:
     include "_driver_typedef.pxi"
-    include "_driver_enum.pxd"
+    from cupy_backends.cuda.api._driver_enum cimport *
 
 
 ###############################################################################

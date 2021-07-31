@@ -71,7 +71,7 @@ IF USE_CUDA_PYTHON:
 
 ELSE:
     include "_runtime_typedef.pxi"
-    include "_runtime_enum.pxd"
+    from cupy_backends.cuda.api._runtime_enum cimport *
 
 
 # For backward compatibility, keep APIs not prefixed with "cuda".

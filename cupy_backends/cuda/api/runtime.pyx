@@ -62,8 +62,7 @@ cdef class _ThreadLocal:
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    # external functions cimported via `runtime.pxd`
-    pass
+    from cudapython.ccudart cimport *
 ELSE:
     include '_runtime_extern.pxi'
 
@@ -84,9 +83,18 @@ errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
 deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
 deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
-IF USE_CUDA_PYTHON:
-    # Provide access to constants from Python.
-    from cupy_backends.cuda.api._runtime_enum import *
+# Provide access to constants from Python.
+# TODO(kmaehashi): Deprecate aliases above so that we can just do:
+# from cupy_backends.cuda.api._runtime_enum import *
+def _export_enum():
+    import sys
+    import cupy_backends.cuda.api._runtime_enum as _runtime_enum
+    this = sys.modules[__name__]
+    for key in dir(_runtime_enum):
+        if not key.startswith('_'):
+            setattr(this, key, getattr(_runtime_enum, key))
+
+_export_enum()
 
 
 ###############################################################################
