@@ -882,7 +882,7 @@ cpdef _geqrf_orgqr_batched(a, mode):
         # rocsolver_<t>geqrf_batched has a different signature...
         ap = _linalg._mat_ptrs(x)
     else:
-        ap = a
+        ap = x
     x_ptr = ap.data.ptr
 
     cdef intptr_t handle = _device.get_cusolver_handle()
