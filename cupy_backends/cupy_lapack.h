@@ -117,6 +117,67 @@ int geqrf_loop(
         Tau += k;
         devInfo += 1;
     }
+    return status;
+}
+
+#else
+
+template<typename T>
+int gesvd_loop(
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
+        intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
+        intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        int batch_size) {
+    // we need a dummy stub for HIP as it's not used
+    return 0;
+}
+
+
+/*
+ * batched geqrf (only used on HIP)
+ */
+template<typename T>
+using geqrf = cusolverStatus_t (*)(cusolverDnHandle_t, int, int, T* const[], int, T*, long int, int);
+
+template<typename T> struct geqrf_func { geqrf<T> ptr; };
+template<> struct geqrf_func<float> { geqrf<float> ptr = rocsolver_sgeqrf_batched; };
+template<> struct geqrf_func<double> { geqrf<double> ptr = rocsolver_dgeqrf_batched; };
+// we need the correct func pointer here, so can't cast!
+template<> struct geqrf_func<rocblas_float_complex> { geqrf<rocblas_float_complex> ptr = rocsolver_cgeqrf_batched; };
+template<> struct geqrf_func<rocblas_double_complex> { geqrf<rocblas_double_complex> ptr = rocsolver_zgeqrf_batched; };
+
+template<typename T>
+int geqrf_loop(
+        intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
+        intptr_t tau_ptr, intptr_t w_ptr,
+        int buffersize, intptr_t info_ptr,
+        int batch_size) {
+    /*
+     * Assumptions:
+     * 1. the stream is set prior to calling this function
+     * 2. ignore w_ptr, buffersize, and info_ptr as rocSOLVER does not need them
+     */
+
+    cusolverStatus_t status;
+
+    // we can't use "if constexpr" to do a compile-time branch selection as it's C++17 only,
+    // so we use custom traits instead
+    typedef typename std::conditional<
+        std::is_floating_point<T>::value,
+        T,
+        typename std::conditional<std::is_same<T, cuComplex>::value,
+                                  rocblas_float_complex,
+                                  rocblas_double_complex>::type
+        >::type data_type;
+    geqrf<data_type> func = geqrf_func<data_type>().ptr;
+    data_type* const* A = reinterpret_cast<data_type* const*>(a_ptr);
+    data_type* Tau = reinterpret_cast<data_type*>(tau_ptr);
+    int k = (m<n)?m:n;
+
+    // use rocSOLVER's batched geqrf
+    status = func((cusolverDnHandle_t)handle, m, n, A, lda, Tau, k, batch_size);
+
+    return status;
 }
 #endif // #if !defined(CUPY_USE_HIP)
 

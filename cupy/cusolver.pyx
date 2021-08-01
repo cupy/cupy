@@ -878,7 +878,12 @@ cpdef _geqrf_orgqr_batched(a, mode):
     mn = min(m, n)
 
     x = a.swapaxes(-2, -1).astype(dtype, order='C', copy=True)
-    x_ptr = x.data.ptr
+    if runtime._is_hip_environment:
+        # rocsolver_<t>geqrf_batched has a different signature...
+        ap = _linalg._mat_ptrs(x)
+    else:
+        ap = a
+    x_ptr = ap.data.ptr
 
     cdef intptr_t handle = _device.get_cusolver_handle()
     dev_info = _ndarray_init((batch_size,), _numpy.int32)
