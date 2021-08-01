@@ -263,9 +263,9 @@ def qr(a, mode='reduced'):
         a (cupy.ndarray): The input matrix.
         mode (str): The mode of decomposition. Currently 'reduced',
             'complete', 'r', and 'raw' modes are supported. The default mode
-            is 'reduced', in which matrix ``A = (M, N)`` is decomposed into
-            ``Q``, ``R`` with dimensions ``(M, K)``, ``(K, N)``, where
-            ``K = min(M, N)``.
+            is 'reduced', in which matrix ``A = (..., M, N)`` is decomposed
+            into ``Q``, ``R`` with dimensions ``(..., M, K)``, ``(..., K, N)``,
+            where ``K = min(M, N)``.
 
     Returns:
         cupy.ndarray, or tuple of ndarray:
@@ -291,6 +291,7 @@ def qr(a, mode='reduced'):
             msg = 'Unrecognized mode \'{}\''.format(mode)
         raise ValueError(msg)
     if a.ndim > 2:
+        cupy._util.experimental('cupy.linalg.qr')
         return _qr_batched(a, mode)
 
     # support float32, float64, complex64, and complex128
