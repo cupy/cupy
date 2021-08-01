@@ -10,7 +10,6 @@ from cupy.linalg import _util
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
 from cupyx.scipy.sparse.linalg._iterative import _make_system
-from cupy import prof
 
 import warnings
 try:
@@ -745,6 +744,35 @@ def _symOrtho(a, b):
 
 def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
            M=None, callback=None, check=False):
+    """Uses MINimum RESidual iteration to solve  ``Ax = b``.
+
+    Args:
+        A (ndarray, spmatrix or LinearOperator): The real or complex matrix of
+            the linear system with shape ``(n, n)``.
+        b (cupy.ndarray): Right hand side of the linear system with shape
+            ``(n,)`` or ``(n, 1)``.
+        x0 (cupy.ndarray): Starting guess for the solution.
+        shift (int or float): If shift != 0 then the method solves
+            ``(A - shift*I)x = b``
+        tol (float): Tolerance for convergence.
+        maxiter (int): Maximum number of iterations.
+        M (ndarray, spmatrix or LinearOperator): Preconditioner for ``A``.
+            The preconditioner should approximate the inverse of ``A``.
+            ``M`` must be :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
+        callback (function): User-specified function to call after each
+            iteration. It is called as ``callback(xk)``, where ``xk`` is the
+            current solution vector.
+
+    Returns:
+        tuple:
+            It returns ``x`` (cupy.ndarray) and ``info`` (int) where ``x`` is
+            the converged solution and ``info`` provides convergence
+            information.
+
+    ..seealso:: :func:`scipy.sparse.linalg.minres`
+    """
     A, M, x, b = _make_system(A, M, x0, b)
 
     matvec = A.matvec
@@ -876,7 +904,6 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         ynorm = cupy.linalg.norm(x)
         epsa = Anorm * eps
         epsx = Anorm * ynorm * eps
-        epsr = Anorm * ynorm * tol
         diag = gbar
 
         if diag == 0:
