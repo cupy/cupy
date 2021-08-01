@@ -861,7 +861,10 @@ def csrlsvqr(A, b, tol=0, reorder=1):
     return x
 
 
-cpdef _qr_batched(a, mode):
+cpdef _geqrf_orgqr_batched(a, mode):
+    '''Internal helper for batched QR solver. The input array ``a''
+    is of shape (batch_size, m, n)
+    '''
     cdef intptr_t x_ptr, tau_ptr, w_ptr, info_ptr
     cdef int m, n, k, batch_size, buffersize
 
@@ -873,21 +876,6 @@ cpdef _qr_batched(a, mode):
 
     batch_size, m, n = a.shape
     mn = min(m, n)
-    if batch_size == 0 or mn == 0:
-        if mode == 'reduced':
-            return (_cupy.empty((batch_size, m, 0), out_dtype),
-                    _cupy.empty((batch_size, 0, n), out_dtype))
-        elif mode == 'complete':
-            q = _cupy.eye(m)
-            q = _cupy.stack([q for i in range(batch_size)])
-            return (q, _cupy.empty((batch_size, m, n), out_dtype))
-        elif mode == 'r':
-            return _cupy.empty((batch_size, 0, n), out_dtype)
-        elif mode == 'raw':
-            return (_cupy.empty((batch_size, n, m), out_dtype),
-                    _cupy.empty((batch_size, 0,), out_dtype))
-        else:
-            raise ValueError
 
     x = a.swapaxes(-2, -1).astype(dtype, order='C', copy=True)
     x_ptr = x.data.ptr

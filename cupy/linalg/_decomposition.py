@@ -7,7 +7,8 @@ from cupy_backends.cuda.libs import cusolver
 from cupy._core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
-from cupy.cusolver import _gesvdj_batched, _gesvd_batched, _qr_batched
+from cupy.cusolver import _gesvdj_batched, _gesvd_batched
+from cupy.cusolver import _geqrf_orgqr_batched
 from cupy.linalg import _util
 
 
@@ -210,6 +211,48 @@ def cholesky(a):
     return x.astype(out_dtype, copy=False)
 
 
+def _qr_batched(a, mode):
+    batch_shape = a.shape[:-2]
+    batch_size = internal.prod(batch_shape)
+    m, n = a.shape[-2:]
+
+    # first handle any 0-size inputs
+    if batch_size == 0 or m == 0 or n == 0:
+        # support float32, float64, complex64, and complex128
+        dtype, out_dtype = _util.linalg_common_type(a)
+        if mode == 'raw':
+            # compatibility with numpy.linalg.qr
+            out_dtype = numpy.promote_types(out_dtype, 'd')
+
+        if mode == 'reduced':
+            return (cupy.empty(batch_shape + (m, 0), out_dtype),
+                    cupy.empty(batch_shape + (0, n), out_dtype))
+        elif mode == 'complete':
+            if batch_size == 0:
+                q = cupy.empty(batch_shape + (m, m), out_dtype)
+            else:
+                q = cupy.eye(m)
+                q = cupy.stack([q for i in range(batch_size)])
+            return (q, cupy.empty(batch_shape + (m, n), out_dtype))
+        elif mode == 'r':
+            return cupy.empty(batch_shape + (0, n), out_dtype)
+        elif mode == 'raw':
+            return (cupy.empty(batch_shape + (n, m), out_dtype),
+                    cupy.empty(batch_shape + (0,), out_dtype))
+
+    # ...then delegate real computation to cuSOLVER/rocSOLVER
+    a = a.reshape(-1, *(a.shape[-2:]))
+    out = _geqrf_orgqr_batched(a, mode)
+
+    if mode == 'r':
+        return out.reshape(batch_shape + out.shape[-2:])
+    q, r = out
+    q = q.reshape(batch_shape + q.shape[-2:])
+    idx = -1 if mode == 'raw' else -2
+    r.reshape(batch_shape + r.shape[idx:])
+    return (q, r)
+
+
 def qr(a, mode='reduced'):
     """QR decomposition.
 
@@ -240,12 +283,13 @@ def qr(a, mode='reduced'):
     .. seealso:: :func:`numpy.linalg.qr`
     """
     _util._assert_cupy_array(a)
+
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):
             msg = 'The deprecated mode \'{}\' is not supported'.format(mode)
-            raise ValueError(msg)
         else:
-            raise ValueError('Unrecognized mode \'{}\''.format(mode))
+            msg = 'Unrecognized mode \'{}\''.format(mode)
+        raise ValueError(msg)
     if a.ndim > 2:
         return _qr_batched(a, mode)
 
@@ -392,6 +436,7 @@ def _svd_batched(a, full_matrices, compute_uv):
         # copy (via possible type casting) is done in _gesvd_batched
         # note: _gesvd_batched returns V, not V^H
         out = _gesvd_batched(a, dtype.char, full_matrices, compute_uv, False)
+
     if compute_uv:
         u, s, v = out
         u = u.astype(uv_dtype, copy=False)
