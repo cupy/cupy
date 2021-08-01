@@ -114,13 +114,21 @@ class TestQRDecomposition(unittest.TestCase):
             # We still want to test it to gain confidence...
             # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
             # NumPy 1.22 is out, and clean up this helper function
-            for i in range(prod(array.shape[:-2])):
+            batch_shape = a_cpu.shape[:-2]
+            batch_size = prod(batch_shape)
+            a_cpu = a_cpu.reshape(batch_size, *a_cpu.shape[-2:])
+            for i in range(batch_size):
                 res_cpu = numpy.linalg.qr(a_cpu[i], mode=mode)
                 if isinstance(result_gpu, tuple):
-                    res_gpu = (result_gpu[0][i], result_gpu[1][i])
+                    q_gpu, r_gpu = result_gpu
+                    q_gpu = q_gpu.reshape(batch_size, *q_gpu.shape[-2:])
+                    idx = -1 if mode == 'raw' else -2
+                    r_gpu = r_gpu.reshape(batch_size, *r_gpu.shape[idx:])
+                    res_gpu = (q_gpu[i], r_gpu[i])
                     self._check_result(res_cpu, res_gpu)
-                else:
-                    res_gpu = result_gpu[i]
+                else:  # mode == 'r'
+                    res_gpu = result_gpu.reshape(
+                        batch_size, *result_gpu.shape[-2:])[i]
                     self._check_result(res_cpu, res_gpu)
 
     def _check_result(self, result_cpu, result_gpu):
@@ -147,6 +155,16 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(4, 3, 3),
                         mode=self.mode, batched=True)
         self.check_mode(numpy.random.randn(2, 5, 4),
+                        mode=self.mode, batched=True)
+
+    @testing.fix_random()
+    @_condition.repeat(3, 10)
+    def test_mode_rank4(self):
+        self.check_mode(numpy.random.randn(2, 3, 2, 4),
+                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(2, 4, 3, 3),
+                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(2, 2, 5, 4),
                         mode=self.mode, batched=True)
 
     @testing.with_requires('numpy>=1.16')
