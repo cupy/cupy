@@ -57,7 +57,7 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
         intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
         intptr_t tau_ptr, intptr_t w_ptr,
         int buffersize, intptr_t info_ptr,
-        int batch_size, int reduced, int origin_n)
+        int batch_size, int origin_n)
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
@@ -65,7 +65,7 @@ ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
 ctypedef int(*geqrf_ptr)(intptr_t, int, int, intptr_t, int, intptr_t,
                          intptr_t, int, intptr_t, int) nogil
 ctypedef int(*orgqr_ptr)(intptr_t, int, int, int, intptr_t, int, intptr_t,
-                         intptr_t, int, intptr_t, int, int, int) nogil
+                         intptr_t, int, intptr_t, int, int) nogil
 
 
 _available_cuda_version = {
@@ -866,7 +866,7 @@ cpdef _geqrf_orgqr_batched(a, mode):
     is of shape (batch_size, m, n)
     '''
     cdef intptr_t x_ptr, tau_ptr, w_ptr, info_ptr
-    cdef int m, n, k, batch_size, buffersize
+    cdef int m, n, k, batch_size, buffersize, orig_n
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _cupy.linalg._util.linalg_common_type(a)
@@ -917,7 +917,6 @@ cpdef _geqrf_orgqr_batched(a, mode):
                        w_ptr, buffersize, info_ptr, batch_size)
     if status != 0:
         raise _cusolver.CUSOLVERError(status)
-
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         'geqrf', dev_info)
 
@@ -931,9 +930,11 @@ cpdef _geqrf_orgqr_batched(a, mode):
 
     if mode == 'complete' and m > n:
         mc = m
+        orig_n = m
         q = _cupy.empty((batch_size, m, m), dtype)
     else:
         mc = mn
+        orig_n = n
         q = _cupy.empty((batch_size, n, m), dtype)
     q[..., :n, :] = x
     x_ptr = q.data.ptr
@@ -958,12 +959,11 @@ cpdef _geqrf_orgqr_batched(a, mode):
         handle, m, mc, mn, x_ptr, m, tau_ptr)
     workspace = memory.alloc(buffersize * a.dtype.itemsize)
     w_ptr = workspace.ptr
-    cdef int is_reduced = (mode == 'reduced')
 
     with nogil:
         status = orgqr(
             handle, m, mc, mn, x_ptr, m, tau_ptr, w_ptr,
-            buffersize, info_ptr, batch_size, is_reduced, n)
+            buffersize, info_ptr, batch_size, orig_n)
     if status != 0:
         raise _cusolver.CUSOLVERError(status)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
