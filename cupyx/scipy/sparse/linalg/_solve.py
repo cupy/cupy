@@ -744,7 +744,7 @@ def _symOrtho(a, b):
 
 
 def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
-           M=None, callback=None, show=False, check=False):
+           M=None, callback=None, check=False):
     A, M, x, b = _make_system(A, M, x0, b)
 
     matvec = A.matvec
@@ -775,17 +775,17 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
     if beta1 < 0:
         raise ValueError('indefinite preconditioner')
     elif beta1 == 0:
-        return (x, 0)
+        return x, 0
 
     beta1 = cupy.sqrt(beta1)
     beta1 = beta1.get().item()
-    if check:
 
-        # # see if A is symmetric
+    if check:
+        # see if A is symmetric
         if not _check_symmetric(A, Ax, x, eps):
             raise ValueError('non-symmetric matrix')
 
-        # # see if M is symmetric
+        # see if M is symmetric
         if not _check_symmetric(M, y, r1, eps):
             raise ValueError('non-symmetric preconditioner')
 
@@ -807,139 +807,136 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
     r2 = r1.copy()
 
     while itn < maxiter:
-        with cupy.prof.time_range('an iteration', color_id=0):
-            itn += 1
-            with cupy.prof.time_range('', color_id=0):
-                s = 1.0 / beta
-                v = s * y
 
-                y = matvec(v)
-                y -= shift * v
+        itn += 1
+        s = 1.0 / beta
+        v = s * y
 
-                if itn >= 2:
-                    y -= (beta / oldb) * r1
+        y = matvec(v)
+        y -= shift * v
 
-                alpha = cupy.inner(v, y)
-                y -= (alpha / beta) * r2
-                r1 = r2.copy()
-                r2 = y.copy()
-                y = psolve(r2)
-                oldb = beta
-                beta = cupy.inner(r2, y)
-                if beta < 0:
-                    raise ValueError('non-symmetric matrix')
-                beta = cupy.sqrt(beta)
-                tnorm2 += alpha ** 2 + oldb ** 2 + beta ** 2
+        if itn >= 2:
+            y -= (beta / oldb) * r1
 
-                if itn == 1:
-                    if beta / beta1 <= 10 * eps:
-                        istop = -1
+        alpha = cupy.inner(v, y)
+        y -= (alpha / beta) * r2
+        r1 = r2.copy()
+        r2 = y.copy()
+        y = psolve(r2)
+        oldb = beta
+        beta = cupy.inner(r2, y)
+        if beta < 0:
+            raise ValueError('non-symmetric matrix')
+        beta = cupy.sqrt(beta)
+        tnorm2 += alpha ** 2 + oldb ** 2 + beta ** 2
 
-            # Apply previous rotation Qk-1 to get
-            #   [deltak epslnk+1] = [cs  sn][dbark    0   ]
-            #   [gbar k dbar k+1]   [sn -cs][alfak betak+1].
-            with cupy.prof.time_range('apply rotation', color_id=0):
-                oldeps = epsln
-                delta = cs * dbar + sn * alpha  # delta1 = 0         deltak
-                gbar = sn * dbar - cs * alpha  # gbar 1 = alfa1     gbar k
-                epsln = sn * beta  # epsln2 = 0         epslnk+1
-                dbar = - cs * beta  # dbar 2 = beta2     dbar k+1
-                root = numpy.linalg.norm([gbar, dbar])
-                Arnorm = phibar * root
+        if itn == 1:
+            if beta / beta1 <= 10 * eps:
+                istop = -1
 
-            # Compute the next plane rotation Qk
-            with cupy.prof.time_range('next plane rotation', color_id=0):
+        # Apply previous rotation Qk-1 to get
+        #   [deltak epslnk+1] = [cs  sn][dbark    0   ]
+        #   [gbar k dbar k+1]   [sn -cs][alfak betak+1].
 
-                gamma = numpy.linalg.norm([gbar, beta])  # gammak
-                gamma = max(gamma, eps)
-                cs = gbar / gamma  # ck
-                sn = beta / gamma  # sk
-                phi = cs * phibar  # phik
-                phibar = sn * phibar  # phibark+1
+        oldeps = epsln
+        delta = cs * dbar + sn * alpha  # delta1 = 0         deltak
+        gbar = sn * dbar - cs * alpha  # gbar 1 = alfa1     gbar k
+        epsln = sn * beta  # epsln2 = 0         epslnk+1
+        dbar = - cs * beta  # dbar 2 = beta2     dbar k+1
+        root = numpy.linalg.norm([gbar, dbar])
 
-            # Update  x.
-            with cupy.prof.time_range('update x', color_id=0):
-                denom = 1.0 / gamma
-                w1 = w2.copy()
-                w2 = w.copy()
-                w = (v - oldeps * w1 - delta * w2) * denom
-                x += phi * w
+        # Compute the next plane rotation Qk
 
-            # Go round again.
-            with cupy.prof.time_range('round again', color_id=0):
-                gmax = max(gmax, gamma)
-                gmin = min(gmin, gamma)
-                z = rhs1 / gamma
-                rhs1 = rhs2 - delta * z
-                rhs2 = - epsln * z
+        gamma = numpy.linalg.norm([gbar, beta])  # gammak
+        gamma = max(gamma, eps)
+        cs = gbar / gamma  # ck
+        sn = beta / gamma  # sk
+        phi = cs * phibar  # phik
+        phibar = sn * phibar  # phibark+1
 
-            # Estimate various norms and test for convergence.
-            with cupy.prof.time_range('test convergence', color_id=0):
-                Anorm = cupy.sqrt(tnorm2)
-                ynorm = cupy.linalg.norm(x)
-                epsa = Anorm * eps
-                epsx = Anorm * ynorm * eps
-                epsr = Anorm * ynorm * tol
-                diag = gbar
+        # Update  x.
 
-                if diag == 0:
-                    diag = epsa
+        denom = 1.0 / gamma
+        w1 = w2.copy()
+        w2 = w.copy()
+        w = (v - oldeps * w1 - delta * w2) * denom
+        x += phi * w
 
-                qrnorm = phibar
-                rnorm = qrnorm
-                if ynorm == 0 or Anorm == 0:
-                    test1 = numpy.inf
-                else:
-                    test1 = rnorm / (Anorm * ynorm)  # ||r||  / (||A|| ||x||)
-                if Anorm == 0:
-                    test2 = numpy.inf
-                else:
-                    test2 = root / Anorm  # ||Ar|| / (||A|| ||r||)
+        # Go round again.
 
-            # Estimate  cond(A).
-            # In this version we look at the diagonals of  R  in the
-            # factorization of the lower Hessenberg matrix,  Q * H = R,
-            # where H is the tridiagonal matrix from Lanczos with one
-            # extra row, beta(k+1) e_k^T.
+        gmax = max(gmax, gamma)
+        gmin = min(gmin, gamma)
+        z = rhs1 / gamma
+        rhs1 = rhs2 - delta * z
+        rhs2 = - epsln * z
 
-            Acond = gmax / gmin
+        # Estimate various norms and test for convergence.
 
-            # See if any of the stopping criteria are satisfied.
-            # In rare cases, istop is already -1 from above (Abar = const*I).
+        Anorm = cupy.sqrt(tnorm2)
+        ynorm = cupy.linalg.norm(x)
+        epsa = Anorm * eps
+        epsx = Anorm * ynorm * eps
+        epsr = Anorm * ynorm * tol
+        diag = gbar
 
-            if istop == 0:
-                t1 = 1 + test1  # These tests work if tol < eps
-                t2 = 1 + test2
-                if t2 <= 1:
-                    istop = 2
-                if t1 <= 1:
-                    istop = 1
+        if diag == 0:
+            diag = epsa
 
-                if itn >= maxiter:
-                    istop = 6
-                if Acond >= 0.1 / eps:
-                    istop = 4
-                if epsx >= beta1:
-                    istop = 3
-                # if rnorm <= epsx   : istop = 2
-                # if rnorm <= epsr   : istop = 1
-                if test2 <= tol:
-                    istop = 2
-                if test1 <= tol:
-                    istop = 1
+        qrnorm = phibar
+        rnorm = qrnorm
+        if ynorm == 0 or Anorm == 0:
+            test1 = numpy.inf
+        else:
+            test1 = rnorm / (Anorm * ynorm)  # ||r||  / (||A|| ||x||)
+        if Anorm == 0:
+            test2 = numpy.inf
+        else:
+            test2 = root / Anorm  # ||Ar|| / (||A|| ||r||)
 
-            if callback is not None:
-                callback(x)
+        # Estimate  cond(A).
+        # In this version we look at the diagonals of  R  in the
+        # factorization of the lower Hessenberg matrix,  Q * H = R,
+        # where H is the tridiagonal matrix from Lanczos with one
+        # extra row, beta(k+1) e_k^T.
 
-            if istop != 0:
-                break
+        Acond = gmax / gmin
+
+        # See if any of the stopping criteria are satisfied.
+        # In rare cases, istop is already -1 from above (Abar = const*I).
+
+        if istop == 0:
+            t1 = 1 + test1  # These tests work if tol < eps
+            t2 = 1 + test2
+            if t2 <= 1:
+                istop = 2
+            if t1 <= 1:
+                istop = 1
+
+            if itn >= maxiter:
+                istop = 6
+            if Acond >= 0.1 / eps:
+                istop = 4
+            if epsx >= beta1:
+                istop = 3
+            # if rnorm <= epsx   : istop = 2
+            # if rnorm <= epsr   : istop = 1
+            if test2 <= tol:
+                istop = 2
+            if test1 <= tol:
+                istop = 1
+
+        if callback is not None:
+            callback(x)
+
+        if istop != 0:
+            break
 
     if istop == 6:
         info = maxiter
     else:
         info = 0
 
-    return (x, info)
+    return x, info
 
 
 def _check_symmetric(op1, op2, vec, eps):
