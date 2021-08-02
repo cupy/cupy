@@ -163,6 +163,13 @@ class TestArrayCopyAndView:
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return astype_without_warning(a, dst_dtype, order=order)
 
+    @testing.for_orders(['C', 'F', 'A', 'K', None])
+    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.numpy_cupy_array_equal()
+    def test_astype_empty(self, xp, src_dtype, dst_dtype, order):
+        a = testing.shaped_arange((2, 0, 4), xp, src_dtype)
+        return astype_without_warning(a, dst_dtype, order=order)
+
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
     def test_astype_type(self, src_dtype, dst_dtype, order):
