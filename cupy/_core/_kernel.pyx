@@ -1,4 +1,5 @@
 import string
+import warnings
 
 import numpy
 
@@ -571,6 +572,13 @@ cdef bint _can_cast(d1, d2, casting):
     return _numpy_can_cast(d1, d2, casting=casting)
 
 
+cdef void _complex_warning(dtype_from, dtype_to):
+    if dtype_from.kind == 'c' and dtype_to.kind not in 'bc':
+        warnings.warn(
+            'Casting complex values to real discards the imaginary part',
+            numpy.ComplexWarning)
+
+
 cdef list _get_out_args(list out_args, tuple out_types,
                         const shape_t& out_shape, casting):
     cdef ndarray arr
@@ -584,15 +592,16 @@ cdef list _get_out_args(list out_args, tuple out_types,
         arr = a
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
-        out_type = out_types[i]
+        out_type = get_dtype(out_types[i])
         if not _can_cast(out_type, arr.dtype, casting):
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
                   'the casting rule "{}"'.format(
-                      get_dtype(out_type).char,
+                      out_type.char,
                       arr.dtype.char,
                       casting)
             raise TypeError(msg)
+        _complex_warning(out_type, arr.dtype)
     return out_args
 
 
@@ -874,32 +883,70 @@ cdef class ElementwiseKernel:
         return kern
 
 
+cdef str fix_cast_expr(src_type, dst_type, str expr):
+    src_kind = get_dtype(src_type).kind
+    dst_kind = get_dtype(dst_type).kind
+    if src_kind == dst_kind:
+        return expr
+    if src_kind == 'b':
+        return f'({expr}) ? 1 : 0'
+    if src_kind == 'c':
+        if dst_kind == 'b':
+            return f'({expr}) != {_scalar.get_typename(src_type)}()'
+        else:  # dst_kind in 'iuf' (int, uint, float)
+            return f'({expr}).real()'
+    return expr
+
+
 cdef function.Function _get_ufunc_kernel(
-        tuple in_types, tuple out_types, routine, tuple arginfos, params,
+        tuple in_types, tuple out_types, routine, tuple arginfos,
+        bint has_where, params,
         name, preamble, loop_prep):
     cdef _ArgInfo arginfo
+    cdef str str_type, str_var
+
+    offset_where = len(in_types)
+    offset_out = offset_where
+    if has_where:
+        offset_out += 1
 
     types = []
     op = []
-    bool_ = numpy.bool_
+    if has_where:
+        arginfo = arginfos[offset_where]
+        if arginfo.is_ndarray():
+            op.append('if(!_raw__where[_ind.get()]) continue;')
+        else:
+            op.append('if(!_where) continue;')
     for i, x in enumerate(in_types):
-        types.append(('in%d_type' % i, x))
+        str_var = 'in%d' % i
+        str_type = str_var + '_type'
+        types.append((str_type, x))
         arginfo = arginfos[i]
         if arginfo.is_ndarray():
-            op.append(
-                'const in{0}_type in{0}(_raw_in{0}[_ind.get()]{1});'
-                .format(
-                    i,
-                    ' ? 1 : 0' if arginfo.dtype == bool_ and x != bool_ else ''
-                ))
+            op.append('const {} {}({});'.format(
+                str_type,
+                str_var,
+                fix_cast_expr(arginfo.dtype, x, f'_raw_{str_var}[_ind.get()]')
+            ))
 
+    out_op = []
     for i, x in enumerate(out_types):
-        arginfo = arginfos[i + len(in_types)]
-        types.append(('out%d_type' % i, arginfo.dtype))
-        op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
+        str_var = 'out%d' % i
+        str_type = str_var + '_type'
+        types.append((str_type, x))
+        arginfo = arginfos[i + offset_out]
+        op.append(f'{str_type} {str_var};')
+        out_op.append('{} = {};'.format(
+            f'_raw_{str_var}[_ind.get()]',
+            fix_cast_expr(x, arginfo.dtype, str_var)
+        ))
+
     type_map = _TypeMap(tuple(types))
 
     op.append(routine)
+    op.append(';')
+    op.extend(out_op)
     operation = '\n'.join(op)
 
     return _get_simple_elementwise_kernel(
@@ -969,6 +1016,7 @@ cdef class ufunc:
         readonly object _loop_prep
         readonly object _default_casting
         readonly tuple _params
+        readonly tuple _params_with_where
         readonly dict _routine_cache
         readonly dict _kernel_memo
         readonly object __doc__
@@ -998,8 +1046,12 @@ cdef class ufunc:
         _out_params = tuple(
             ParameterInfo('T out%d' % i, False)
             for i in range(nout))
-        self._params = _in_params + _out_params + (
+        _other_params = (
             ParameterInfo('CIndexer _ind', False),)
+        self._params = _in_params + _out_params + _other_params
+        self._params_with_where = (
+            _in_params + (ParameterInfo('T _where', False),)
+            + _out_params + _other_params)
         self._routine_cache = {}
         self._kernel_memo = {}
 
@@ -1045,6 +1097,8 @@ cdef class ufunc:
         cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
+        where = kwargs.pop('_where', None)
+        cdef bint has_where = where is not None
         dtype = kwargs.pop('dtype', None)
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
@@ -1075,10 +1129,30 @@ cdef class ufunc:
 
             in_args = arg_list
             out_args = _preprocess_args(dev_id, (out,), False)
+        # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
+        # broadcast).
+        if has_where:
+            where_args = _preprocess_args(dev_id, (where,), False)
+            x = where_args[0]
+            if isinstance(x, ndarray):
+                # NumPy seems using casting=safe here
+                if x.dtype != bool:
+                    raise TypeError(
+                        f'Cannot cast array data from {x.dtype!r} to '
+                        f'{get_dtype(bool)!r} according to the rule \'safe\'')
+            else:
+                # NumPy does not seem raising TypeError.
+                # CuPy does not have to support `where=object()` etc. and
+                # `_preprocess_args` rejects it anyway.
+                where_args[0] = _scalar.CScalar.from_numpy_scalar_with_dtype(
+                    x, numpy.bool_)
+        else:
+            where_args = []
 
         # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, out_args)
-        broad_values = in_args + out_args
+        _copy_in_args_if_needed(where_args, out_args)
+        broad_values = in_args + where_args + out_args
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
@@ -1099,18 +1173,24 @@ cdef class ufunc:
             inout_args.append(
                 x if isinstance(x, ndarray) else
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
+        if has_where:
+            x = broad_values[self.nin]
+            inout_args.append(x)
         inout_args.extend(out_args)
         shape = _reduce_dims(inout_args, self._params, shape)
         indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos)
+        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
-    cdef str _get_name_with_type(self, tuple arginfos):
+    cdef str _get_name_with_type(self, tuple arginfos, bint has_where):
+        cdef str name = self.name
+        if has_where:
+            name += '_where'
         cdef _ArgInfo arginfo
         inout_type_words = []
         for arginfo in arginfos:
@@ -1119,18 +1199,19 @@ cdef class ufunc:
                 inout_type_words.append(dtype)
             elif arginfo.is_scalar():
                 inout_type_words.append(dtype.rstrip('0123456789'))
-        return '{}__{}'.format(self.name, '_'.join(inout_type_words))
+        return '{}__{}'.format(name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, _Op op, tuple arginfos):
+            self, int dev_id, _Op op, tuple arginfos, bint has_where):
         cdef function.Function kern
-        key = (dev_id, op, arginfos)
+        key = (dev_id, op, arginfos, has_where)
         kern = self._kernel_memo.get(key, None)
         if kern is None:
-            name = self._get_name_with_type(arginfos)
+            name = self._get_name_with_type(arginfos, has_where)
+            params = self._params_with_where if has_where else self._params
             kern = _get_ufunc_kernel(
-                op.in_types, op.out_types, op.routine, arginfos,
-                self._params, name, self._preamble, self._loop_prep)
+                op.in_types, op.out_types, op.routine, arginfos, has_where,
+                params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
 
