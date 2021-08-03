@@ -101,13 +101,88 @@ class NCCLCommunicator:
         self._check_contiguous(array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(array)
-        self._comm.send(array.data.ptr, count, dtype, peer, stream)
+        self._send(array, peer, dtype, count, stream)
+
+    def _send(self, array, peer, dtype, count, stream=None):
+        self._comm.send(array.data.ptr, dtype, count, peer, stream)
 
     def recv(self, out_array, peer, stream=None):
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(out_array)
+        self._recv(out_array, peer, dtype, count, stream)
+
+    def _recv(self, out_array, peer, dtype, count, stream=None):
         self._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
 
     # TODO(ecastill) implement nccl missing calls combining the above ones
     # AlltoAll, AllGather, and similar MPI calls that can be easily implemented
+    def send_recv(self, in_array, out_array, peer, stream=None):
+        self._check_contiguous(in_array)
+        self._check_contiguous(out_array)
+        stream = self._get_stream(stream)
+        idtype, icount = self._get_nccl_dtype_and_count(in_array)
+        odtype, ocount = self._get_nccl_dtype_and_count(out_array)
+        nccl.ncclGroupStart()
+        self._send(in_array, peer, idtype, icount, stream)
+        self._recv(out_array, peer, odtype, ocount, stream)
+        nccl.ncclGroupEnd()
+
+    def scatter(self, in_array, out_array, root=0, stream=None):
+        if in_array.shape[0] != self._n_devices:
+            raise RuntimeError(
+                f'scatter requires in_array to have {self._n_devices}'
+                f'elements in its first dimension, found {in_array.shape}')
+        self._check_contiguous(in_array)
+        self._check_contiguous(out_array)
+        stream = self._get_stream(stream)
+        nccl.ncclGroupStart()
+        if root == self.rank:
+            for i in range(self._n_devices):
+                array = in_array[i]
+                idtype, icount = self._get_nccl_dtype_and_count(out_array)
+                self._send(array, i, idtype, icount, stream)
+        dtype, count = self._get_nccl_dtype_and_count(out_array)
+        self._recv(out_array, root, dtype, count, stream)
+        nccl.ncclGroupEnd()
+
+    def gather(self, in_array, out_array, root=0, stream=None):
+        # TODO(ecastill) out_array needs to have comm size in shape[0]
+        if out_array.shape[0] != self._n_devices:
+            raise RuntimeError(
+                f'gather requires out_array to have {self._n_devices}'
+                f'elements in its first dimension, found {out_array.shape}')
+        self._check_contiguous(in_array)
+        self._check_contiguous(out_array)
+        stream = self._get_stream(stream)
+        nccl.ncclGroupStart()
+        if root == self.rank:
+            for i in range(self._n_devices):
+                array = out_array[i]
+                odtype, ocount = self._get_nccl_dtype_and_count(out_array)
+                self._recv(array, i, odtype, ocount, stream)
+        dtype, count = self._get_nccl_dtype_and_count(in_array)
+        self._send(in_array, root, dtype, count, stream)
+        nccl.ncclGroupEnd()
+
+    def all_to_all(self, in_array, out_array, stream=None):
+        # TODO(ecastill) out_array needs to have comm size in shape[0]
+        if out_array.shape[0] != self._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires in_array to have {self._n_devices}'
+                f'elements in its first dimension, found {in_array.shape}')
+        if out_array.shape[0] != self._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires out_array to have {self._n_devices}'
+                f'elements in its first dimension, found {out_array.shape}')
+        self._check_contiguous(in_array)
+        self._check_contiguous(out_array)
+        stream = self._get_stream(stream)
+        idtype, icount = self._get_nccl_dtype_and_count(in_array[0])
+        odtype, ocount = self._get_nccl_dtype_and_count(out_array[0])
+        # TODO check out dtypes are the same as in dtypes
+        nccl.ncclGroupStart()
+        for i in range(self._n_devices):
+            self._send(in_array[i], i, idtype, icount, stream)
+            self._recv(out_array[i], i, odtype, ocount, stream)
+        nccl.ncclGroupEnd()
