@@ -738,7 +738,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupyx.sciyp.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
