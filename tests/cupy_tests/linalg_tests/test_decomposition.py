@@ -7,6 +7,8 @@ import cupy
 from cupy._core.internal import prod
 from cupy import cusolver
 from cupy import testing
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupy.testing import _condition
 import cupyx
 
@@ -102,6 +104,10 @@ class TestQRDecomposition(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def check_mode(self, array, mode, dtype, batched=False):
+        if runtime.is_hip and driver.get_build_version() < 307:
+            if dtype in (numpy.complex64, numpy.complex128):
+                pytest.skip('ungqr unsupported')
+
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
