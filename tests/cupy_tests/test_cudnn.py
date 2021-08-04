@@ -185,10 +185,10 @@ class TestConvolutionForward:
             self.err = ValueError
         elif ndim > 2 and self.dilate > 1:
             self.err = libcudnn.CuDNNError
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
         yield
-        cudnn.set_max_workspace_size(self._workspace_size)
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def call(self):
         cudnn.convolution_forward(
@@ -267,10 +267,10 @@ class TestConvolutionBackwardFilter:
               self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
             self.err = RuntimeError
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
         yield
-        cudnn.set_max_workspace_size(self._workspace_size)
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def call(self):
         cudnn.convolution_backward_filter(
@@ -354,10 +354,10 @@ class TestConvolutionBackwardData:
               self.dilate > 1 and self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
             self.err = RuntimeError
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
         yield
-        cudnn.set_max_workspace_size(self._workspace_size)
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def call(self):
         cudnn.convolution_backward_data(
@@ -422,10 +422,10 @@ class TestConvolutionNoAvailableAlgorithm:
         self.gx = cupy.empty(x_shape, dtype=self.dtype)
         self.gW = cupy.empty(W_shape, dtype=self.dtype)
         self.gy = cupy.ones(y_shape, dtype=self.dtype)
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(0)
         yield
-        cudnn.set_max_workspace_size(self._workspace_size)
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def test_backward_filter(self):
         if not (self.layout == libcudnn.CUDNN_TENSOR_NHWC and

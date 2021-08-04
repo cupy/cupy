@@ -227,11 +227,12 @@ class TestGesv:
         self.a = cupy.array(a)
         self.b = cupy.array(b)
         if self.compute_type is not None:
-            self.old_compute_type = _linalg.get_compute_type(self.dtype)
+            old_compute_type = _linalg.get_compute_type(self.dtype)
             _linalg.set_compute_type(self.dtype, self.compute_type)
-        yield
-        if self.compute_type is not None:
-            _linalg.set_compute_type(self.dtype, self.old_compute_type)
+            yield
+            _linalg.set_compute_type(self.dtype, old_compute_type)
+        else:
+            yield
 
     def test_gesv(self):
         x = cusolver.gesv(self.a, self.b)
@@ -257,11 +258,12 @@ class TestGels:
         if not cusolver.check_availability('gels'):
             pytest.skip('gels is not available')
         if self.compute_type is not None:
-            self.old_compute_type = _linalg.get_compute_type(self.dtype)
+            old_compute_type = _linalg.get_compute_type(self.dtype)
             _linalg.set_compute_type(self.dtype, self.compute_type)
-        yield
-        if self.compute_type is not None:
-            _linalg.set_compute_type(self.dtype, self.old_compute_type)
+            yield
+            _linalg.set_compute_type(self.dtype, old_compute_type)
+        else:
+            yield
 
     def test_gels(self):
         b_shape = [self.shape[0]]

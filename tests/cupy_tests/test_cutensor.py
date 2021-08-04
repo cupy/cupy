@@ -301,10 +301,10 @@ class TestCuTensorContraction:
         self.c = self.make_matrix((m, n), self.c_dtype)
         self.c_ref = self.alpha * cupy.matmul(self.a, self.b)
         self.c_ref += self.beta * self.c
-        self.old_compute_type = cupy._core.get_compute_type(self.c_dtype)
+        old_compute_type = cupy._core.get_compute_type(self.c_dtype)
         cupy._core.set_compute_type(self.c_dtype, self.compute_type)
         yield
-        cupy._core.set_compute_type(self.c_dtype, self.old_compute_type)
+        cupy._core.set_compute_type(self.c_dtype, old_compute_type)
 
     def test_contraction(self):
         desc_a = cutensor.create_tensor_descriptor(self.a)
