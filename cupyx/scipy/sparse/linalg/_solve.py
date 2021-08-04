@@ -771,7 +771,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
             the converged solution and ``info`` provides convergence
             information.
 
-    ..seealso:: :func:`scipy.sparse.linalg.minres`
+    .. seealso:: :func:`scipy.sparse.linalg.minres`
     """
     A, M, x, b = _make_system(A, M, x0, b)
 
