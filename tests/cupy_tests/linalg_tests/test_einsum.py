@@ -503,30 +503,31 @@ class TestEinSumTernaryOperation:
 })))
 class TestEinSumLarge:
 
-    @pytest.fixture(autouse=True)
-    def operands(self):
-        chars = 'abcdefghij'
-        sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
-        size_dict = {}
-        for size, char in zip(sizes, chars):
-            size_dict[char] = size
+    chars = 'abcdefghij'
+    sizes = (2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3)
+    size_dict = {}
+    for size, char in zip(sizes, chars):
+        size_dict[char] = size
 
-        # Builds views based off initial operands
-        string = self.subscript
-        operands = [string]
-        terms = string.split('->')[0].split(',')
-        for term in terms:
-            dims = [size_dict[x] for x in term]
-            operands.append(numpy.random.rand(*dims))
-
-        self.operands = operands
+    @pytest.fixture()
+    def shapes(self):
+        size_dict = self.size_dict
+        terms = self.subscript.split('->')[0].split(',')
+        return tuple([
+            tuple([size_dict[x] for x in term])
+            for term in terms
+        ])
 
     @testing.numpy_cupy_allclose(contiguous_check=False)
-    def test_einsum(self, xp):
+    def test_einsum(self, xp, shapes):
+        arrays = [
+            testing.shaped_random(shape, xp, float, scale=1)
+            for shape in shapes
+        ]
         # TODO(kataoka): support memory efficient cupy.einsum
         with warnings.catch_warnings(record=True) as ws:
             # I hope there's no problem with np.einsum for these cases...
-            out = xp.einsum(*self.operands, optimize=self.opt)
+            out = xp.einsum(self.subscript, *arrays, optimize=self.opt)
             if xp is not numpy and \
                     isinstance(self.opt, tuple):  # with memory limit
                 for w in ws:
