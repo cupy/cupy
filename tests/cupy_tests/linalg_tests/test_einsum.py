@@ -25,7 +25,7 @@ def _rand1_shape(shape, prob):
     return tuple(new_shape)
 
 
-def augument_einsum_testcases(*params):
+def augment_einsum_testcases(*params):
     """Modify shapes in einsum tests
 
     Shape parameter should be starts with 'shape_'.
@@ -280,7 +280,7 @@ class TestListArgEinSumError:
                 xp.einsum(xp.arange(6).reshape(2, 3), [Ellipsis, 0, 1, 2])
 
 
-@testing.parameterize(*augument_einsum_testcases(
+@testing.parameterize(*augment_einsum_testcases(
     {'shape_a': (2, 3), 'subscripts': 'ij'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': '...'},  # do nothing
     {'shape_a': (2, 3), 'subscripts': 'ji'},  # transpose
@@ -357,7 +357,7 @@ class TestEinSumUnaryOperationWithScalar:
         return xp.asarray(xp.einsum('', 2.0, dtype=dtype))
 
 
-@testing.parameterize(*augument_einsum_testcases(
+@testing.parameterize(*augment_einsum_testcases(
     # dot vecvec
     {'shape_a': (3,), 'shape_b': (3,),
      'subscripts': 'i,i'},
@@ -436,7 +436,7 @@ class TestEinSumBinaryOperationWithScalar:
         return xp.asarray(xp.einsum('i,->', a, 4))
 
 
-@testing.parameterize(*augument_einsum_testcases(
+@testing.parameterize(*augment_einsum_testcases(
     {'shape_a': (2, 3), 'shape_b': (3, 4), 'shape_c': (4, 5),
      'subscripts': 'ij,jk,kl'},
     {'shape_a': (2, 4), 'shape_b': (2, 3), 'shape_c': (2,),
