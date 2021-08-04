@@ -1,6 +1,5 @@
 import functools
 import itertools
-import unittest
 
 import numpy
 import pytest
@@ -40,7 +39,7 @@ def _check_shares_memory(xp, sp, x, y):
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
-class TestSetitemIndexing(unittest.TestCase):
+class TestSetitemIndexing:
 
     def _run(self, maj, min=None, data=5):
 
@@ -318,7 +317,7 @@ class TestSetitemIndexing(unittest.TestCase):
             self._run(maj, min, data)
 
 
-class IndexingTestBase(unittest.TestCase):
+class IndexingTestBase:
 
     def _make_matrix(self, sp, dtype):
         shape = self.n_rows, self.n_cols
@@ -440,6 +439,7 @@ def skip_HIP_0_size_matrix():
 @testing.gpu
 class TestArrayIndexing(IndexingTestBase):
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         indices = self.indices
         if not isinstance(indices, tuple):

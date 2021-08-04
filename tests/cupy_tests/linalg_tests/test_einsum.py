@@ -1,4 +1,3 @@
-import unittest
 import warnings
 
 import numpy
@@ -58,7 +57,7 @@ def augument_einsum_testcases(*params):
                 yield param_new
 
 
-class TestEinSumError(unittest.TestCase):
+class TestEinSumError:
 
     def test_irregular_ellipsis1(self):
         for xp in (numpy, cupy):
@@ -232,7 +231,7 @@ class TestEinSumError(unittest.TestCase):
                 xp.einsum('i-', xp.array([0, 0]))
 
 
-class TestListArgEinSumError(unittest.TestCase):
+class TestListArgEinSumError:
 
     @testing.with_requires('numpy>=1.19')
     def test_invalid_sub1(self):
@@ -314,7 +313,7 @@ class TestListArgEinSumError(unittest.TestCase):
     {'shape_a': (), 'subscripts': ''},  # do nothing
     {'shape_a': (), 'subscripts': '->'},  # do nothing
 ))
-class TestEinSumUnaryOperation(unittest.TestCase):
+class TestEinSumUnaryOperation:
 
     @testing.for_all_dtypes(no_bool=False)
     @testing.numpy_cupy_allclose(contiguous_check=False)
@@ -346,7 +345,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, dtype=dtype_out)
 
 
-class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
+class TestEinSumUnaryOperationWithScalar:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_scalar_int(self, xp, dtype):
@@ -409,7 +408,7 @@ class TestEinSumUnaryOperationWithScalar(unittest.TestCase):
     {'shape_a': (1, 1, 1, 2, 3, 2), 'shape_b': (2, 3, 2, 2),
      'subscripts': '...lmn,lmno->...o'},
 ))
-class TestEinSumBinaryOperation(unittest.TestCase):
+class TestEinSumBinaryOperation:
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b'],
         no_bool=False,
@@ -421,7 +420,7 @@ class TestEinSumBinaryOperation(unittest.TestCase):
         return xp.einsum(self.subscripts, a, b)
 
 
-class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
+class TestEinSumBinaryOperationWithScalar:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_scalar_1(self, xp, dtype):
@@ -455,7 +454,7 @@ class TestEinSumBinaryOperationWithScalar(unittest.TestCase):
     {'shape_a': (3, 3, 4), 'shape_b': (3, 4), 'shape_c': (2, 3, 4),
      'subscripts': 'a...,...,c...->ac...'},
 ))
-class TestEinSumTernaryOperation(unittest.TestCase):
+class TestEinSumTernaryOperation:
     @testing.for_all_dtypes_combination(
         ['dtype_a', 'dtype_b', 'dtype_c'],
         no_bool=False,
@@ -502,9 +501,10 @@ class TestEinSumTernaryOperation(unittest.TestCase):
     'a,ac,ab,ad,cd,bd,bc->',
 ], 'opt': ['greedy', 'optimal'],
 })))
-class TestEinSumLarge(unittest.TestCase):
+class TestEinSumLarge:
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def operands(self):
         chars = 'abcdefghij'
         sizes = numpy.array([2, 3, 4, 5, 4, 3, 2, 6, 5, 4, 3])
         size_dict = {}

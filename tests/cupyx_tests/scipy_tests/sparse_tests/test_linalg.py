@@ -80,7 +80,7 @@ class TestLsqr(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-class TestMatrixNorm(unittest.TestCase):
+class TestMatrixNorm:
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  accept_error=(ValueError,
@@ -108,7 +108,7 @@ class TestMatrixNorm(unittest.TestCase):
 )
 @testing.with_requires('scipy')
 @testing.gpu
-class TestVectorNorm(unittest.TestCase):
+class TestVectorNorm:
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  accept_error=(ValueError,))
@@ -648,7 +648,7 @@ def skip_HIP_spMM_error(outer=()):
 }))
 @testing.gpu
 @testing.with_requires('scipy>=1.4')
-class TestLinearOperator(unittest.TestCase):
+class TestLinearOperator:
 
     # modified from scipy
     # class that defines parametrized custom cases
@@ -853,7 +853,7 @@ class TestSpsolveTriangular:
 }))
 @testing.with_requires('scipy')
 @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
-class TestCsrlsvqr(unittest.TestCase):
+class TestCsrlsvqr:
 
     n = 8
     density = 0.75
@@ -905,7 +905,7 @@ def _eigen_vec_transform(block_vec, xp):
 @testing.gpu
 @pytest.mark.xfail(runtime.is_hip, reason='syevd not working')
 # tests adapted from scipy's tests of lobpcg
-class TestLOBPCG(unittest.TestCase):
+class TestLOBPCG:
 
     def _generate_input_for_elastic_rod(self, n, xp):
         """Build the matrices for the generalized eigenvalue problem of the
@@ -1202,7 +1202,7 @@ class TestLOBPCG(unittest.TestCase):
 }))
 @pytest.mark.xfail(runtime.is_hip, reason='either spMM or syevd not working')
 # test class for testing against diagonal matrices overall various data types
-class TestLOBPCGForDiagInput(unittest.TestCase):
+class TestLOBPCGForDiagInput:
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1262,7 +1262,7 @@ class TestLOBPCGForDiagInput(unittest.TestCase):
 @pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
                     reason='no working implementation')
 @testing.gpu
-class TestSplu(unittest.TestCase):
+class TestSplu:
 
     n = 10
     density = 0.5
@@ -1328,7 +1328,7 @@ class TestSplu(unittest.TestCase):
     'use_linear_operator': [False, True],
 }))
 @testing.with_requires('scipy')
-class TestLsmr(unittest.TestCase):
+class TestLsmr:
 
     density = 0.01
 

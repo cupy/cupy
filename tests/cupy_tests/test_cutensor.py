@@ -1,6 +1,5 @@
-import unittest
-
 import numpy
+import pytest
 
 import cupy
 from cupy._core import _routines_linalg as _linalg
@@ -20,9 +19,10 @@ if ct.available:
     {'dtype': numpy.complex64, 'tol': 1e-6},
     {'dtype': numpy.complex128, 'tol': 1e-12},
 )
-@unittest.skipUnless(ct.available, 'cuTensor is unavailable')
-class TestCuTensor(unittest.TestCase):
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestCuTensor:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.a = testing.shaped_random(
             (20, 40, 30), cupy, self.dtype, seed=0)
@@ -124,7 +124,7 @@ class TestCuTensor(unittest.TestCase):
     def test_contraction(self):
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and self.dtype == numpy.float16:
-            self.skipTest('Not supported.')
+            pytest.skip('Not supported.')
 
         desc_a = cutensor.create_tensor_descriptor(self.a)
         desc_b = cutensor.create_tensor_descriptor(self.b)
@@ -146,7 +146,7 @@ class TestCuTensor(unittest.TestCase):
 
     def test_reduction(self):
         if self.dtype == numpy.float16:
-            self.skipTest('Not supported.')
+            pytest.skip('Not supported.')
 
         c = testing.shaped_random((30,), cupy, self.dtype, seed=2)
         c_orig = c.copy()
@@ -168,9 +168,10 @@ class TestCuTensor(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(ct.available, 'cuTensor is unavailable')
-class TestCuTensorDescriptor(unittest.TestCase):
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestCuTensorDescriptor:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.a = testing.shaped_random(
             (20, 40, 30), cupy, numpy.float32, seed=0)
@@ -254,8 +255,8 @@ class TestCuTensorDescriptor(unittest.TestCase):
     'alpha': [1.0],
     'beta': [0.0, 1.0],
 }))
-@unittest.skipUnless(ct.available, 'cuTensor is unavailable')
-class TestCuTensorContraction(unittest.TestCase):
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestCuTensorContraction:
     _tol = {'e': 1e-3, 'f': 1e-6, 'd': 1e-12}
 
     def make_random_array(self, shape, dtype):
@@ -272,10 +273,11 @@ class TestCuTensorContraction(unittest.TestCase):
             a = a + 1j * self.make_random_array(shape, r_dtype)
         return a
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and 'e' in self.dtype_combo:
-            self.skipTest("Not supported")
+            pytest.skip("Not supported")
         dtype_chars = list(self.dtype_combo)
         self.a_dtype = numpy.dtype(dtype_chars[0])
         self.b_dtype = numpy.dtype(dtype_chars[1])
@@ -301,8 +303,7 @@ class TestCuTensorContraction(unittest.TestCase):
         self.c_ref += self.beta * self.c
         self.old_compute_type = cupy._core.get_compute_type(self.c_dtype)
         cupy._core.set_compute_type(self.c_dtype, self.compute_type)
-
-    def tearDown(self):
+        yield
         cupy._core.set_compute_type(self.c_dtype, self.old_compute_type)
 
     def test_contraction(self):

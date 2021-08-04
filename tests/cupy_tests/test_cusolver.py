@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -24,8 +22,9 @@ import cupyx
     'overwrite_a': [True, False],
 }))
 @_attr.gpu
-class TestGesvdj(unittest.TestCase):
+class TestGesvdj:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusolver.check_availability('gesvdj'):
             pytest.skip('gesvdj is not available')
@@ -83,8 +82,9 @@ class TestGesvdj(unittest.TestCase):
     'shape': [(5, 4), (1, 4, 3), (4, 3, 2)],
 }))
 @_attr.gpu
-class TestGesvda(unittest.TestCase):
+class TestGesvda:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusolver.check_availability('gesvda'):
             pytest.skip('gesvda is not available')
@@ -137,8 +137,9 @@ class TestGesvda(unittest.TestCase):
     'UPLO': ['L', 'U'],
 }))
 @_attr.gpu
-class TestSyevj(unittest.TestCase):
+class TestSyevj:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusolver.check_availability('syevj'):
             pytest.skip('syevj is not available')
@@ -191,7 +192,7 @@ class TestSyevj(unittest.TestCase):
                      _linalg.COMPUTE_TYPE_FP32],
 }))
 @_attr.gpu
-class TestGesv(unittest.TestCase):
+class TestGesv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_random_matrix(self, shape, xp):
@@ -209,6 +210,7 @@ class TestGesv(unittest.TestCase):
         a = numpy.einsum('...ik,...k,...kj->...ij', u, s, vh)
         return cupy.array(a)
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusolver.check_availability('gesv'):
             pytest.skip('gesv is not available')
@@ -227,8 +229,7 @@ class TestGesv(unittest.TestCase):
         if self.compute_type is not None:
             self.old_compute_type = _linalg.get_compute_type(self.dtype)
             _linalg.set_compute_type(self.dtype, self.compute_type)
-
-    def tearDown(self):
+        yield
         if self.compute_type is not None:
             _linalg.set_compute_type(self.dtype, self.old_compute_type)
 
@@ -248,17 +249,17 @@ class TestGesv(unittest.TestCase):
                      _linalg.COMPUTE_TYPE_FP32],
 }))
 @_attr.gpu
-class TestGels(unittest.TestCase):
+class TestGels:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusolver.check_availability('gels'):
             pytest.skip('gels is not available')
         if self.compute_type is not None:
             self.old_compute_type = _linalg.get_compute_type(self.dtype)
             _linalg.set_compute_type(self.dtype, self.compute_type)
-
-    def tearDown(self):
+        yield
         if self.compute_type is not None:
             _linalg.set_compute_type(self.dtype, self.old_compute_type)
 
@@ -280,12 +281,13 @@ class TestGels(unittest.TestCase):
     'b_contiguous': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestCsrlsvqr(unittest.TestCase):
+class TestCsrlsvqr:
 
     n = 8
     density = 0.75
     _test_tol = {'f': 1e-5, 'd': 1e-12}
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusolver.check_availability('csrlsvqr'):
             pytest.skip('csrlsvqr is not available')
