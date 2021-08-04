@@ -30,7 +30,7 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         ssize_t size, intptr_t stream, int64_t mx, int64_t mask)
     void beta(
         int generator, intptr_t state, intptr_t out,
-        ssize_t size, intptr_t stream, double a, double b)
+        ssize_t size, intptr_t stream, intptr_t a, intptr_t b)
     void exponential(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
