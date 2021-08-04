@@ -908,7 +908,6 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         ynorm = ynorm.get().item()
         epsa = Anorm * eps
         epsx = Anorm * ynorm * eps
-        epsr = Anorm * ynorm * tol
         diag = gbar
 
         if diag == 0:
@@ -950,6 +949,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
                 istop = 4
             if epsx >= beta1:
                 istop = 3
+            # epsr = Anorm * ynorm * tol
             # if rnorm <= epsx   : istop = 2
             # if rnorm <= epsr   : istop = 1
             if test2 <= tol:
