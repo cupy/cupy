@@ -832,7 +832,7 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
     sn = 0
     w = cupy.zeros(n, dtype=xtype)
     w2 = cupy.zeros(n, dtype=xtype)
-    r2 = r1.copy()
+    r2 = r1
 
     while itn < maxiter:
 
@@ -847,15 +847,18 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
             y -= (beta / oldb) * r1
 
         alpha = cupy.inner(v, y)
+        alpha = alpha.get().item()
         y -= (alpha / beta) * r2
-        r1 = r2.copy()
-        r2 = y.copy()
+        r1 = r2
+        r2 = y
         y = psolve(r2)
         oldb = beta
         beta = cupy.inner(r2, y)
+        beta = cupy.sqrt(beta)
+        beta = beta.get().item()
         if beta < 0:
             raise ValueError('non-symmetric matrix')
-        beta = cupy.sqrt(beta)
+
         tnorm2 += alpha ** 2 + oldb ** 2 + beta ** 2
 
         if itn == 1:
@@ -885,8 +888,8 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         # Update  x.
 
         denom = 1.0 / gamma
-        w1 = w2.copy()
-        w2 = w.copy()
+        w1 = w2
+        w2 = w
         w = (v - oldeps * w1 - delta * w2) * denom
         x += phi * w
 
@@ -900,10 +903,12 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
 
         # Estimate various norms and test for convergence.
 
-        Anorm = cupy.sqrt(tnorm2)
+        Anorm = numpy.sqrt(tnorm2)
         ynorm = cupy.linalg.norm(x)
+        ynorm = ynorm.get().item()
         epsa = Anorm * eps
         epsx = Anorm * ynorm * eps
+        epsr = Anorm * ynorm * tol
         diag = gbar
 
         if diag == 0:
