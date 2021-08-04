@@ -75,7 +75,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
             int device
             void* devicePointer
             void* hostPointer
-    ELIF (0 < HIP_VERSION) or (CUDA_VERSION < 10000):
+    ELIF (0 < HIP_VERSION) or (0 < CUDA_VERSION < 10000):
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
             int memoryType
             int device
@@ -813,7 +813,7 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
             <intptr_t>attrs.devicePointer,
             <intptr_t>attrs.hostPointer,
             attrs.type)
-    ELIF (0 < HIP_VERSION) or (CUDA_VERSION < 10000):
+    ELIF (0 < HIP_VERSION) or (0 < CUDA_VERSION < 10000):
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
