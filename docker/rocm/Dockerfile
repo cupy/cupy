@@ -2,6 +2,7 @@ FROM rocm/rocm-terminal:4.0.1
 LABEL maintainer="CuPy Team"
 
 USER root
+RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
     python3-dev \
