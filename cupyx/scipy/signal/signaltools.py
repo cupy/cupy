@@ -187,11 +187,11 @@ def choose_conv_method(in1, in2, mode='full'):
     Args:
         in1 (cupy.ndarray): first input.
         in2 (cupy.ndarray): second input.
-        mode (str, optional): ``valid``, ``same``, ``full``.
+        mode (str, optional): ``'valid'``, ``'same'``, ``'full'``.
 
     Returns:
         str: A string indicating which convolution method is fastest,
-        either ``direct`` or ``fft1``.
+        either ``'direct'`` or ``'fft'``.
 
     .. warning::
         This function currently doesn't support measure option,
