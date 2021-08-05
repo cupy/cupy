@@ -854,8 +854,8 @@ def minres(A, b, x0=None, shift=0.0, tol=1e-5, maxiter=None,
         y = psolve(r2)
         oldb = beta
         beta = cupy.inner(r2, y)
-        beta = cupy.sqrt(beta)
         beta = beta.get().item()
+        beta = numpy.sqrt(beta)
         if beta < 0:
             raise ValueError('non-symmetric matrix')
 
