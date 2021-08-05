@@ -33,6 +33,10 @@ ignore_cython_versions = [
 use_hip = build.use_hip
 
 
+# Enable CUDA Python
+use_cuda_python = (os.environ.get('CUPY_USE_CUDA_PYTHON', '0') != '0')
+
+
 # The value of the key 'file' is a list that contains extension names
 # or tuples of an extension name and a list of other souces files
 # required to build the extension such as .cpp files and .cu files.
@@ -151,10 +155,11 @@ else:
             'cusparse.h',
             'nvrtc.h',
         ],
-        'libraries': [
+        # TODO(kmaehashi): Split profiler module to remove dependency to
+        # cudart when using CUDA Python.
+        'libraries':
+            (['cudart'] if use_cuda_python else ['cuda', 'cudart']) + [
             'cublas',
-            #'cuda',
-            'cudart',  # for profiler
             'cufft',
             'curand',
             'cusparse',
@@ -254,7 +259,8 @@ if not use_hip:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': [
-            'cudart',  # cannot remove
+            # Dependency from CUB header files
+            'cudart',
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
@@ -272,8 +278,9 @@ if not use_hip:
             'nvrtc.h',
         ],
         'libraries': [
-            #'cuda',
-            'cudart',  # cannot remove
+            # Dependency from Jitify header files
+            'cuda',
+            'cudart',
             'nvrtc',
         ],
         'check_method': build.check_jitify_version,
@@ -291,7 +298,8 @@ if not use_hip:
         'include': [
         ],
         'libraries': [
-            'cudart',  # cannot remove
+            # Dependency from cuRAND header files
+            'cudart',
             'curand',
         ],
     })
@@ -386,7 +394,8 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/sort.h',
             ],
             'libraries': [
-                'cudart',  # cannot remove
+                # Dependency from Thrust header files
+                'cudart',
             ],
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
@@ -930,10 +939,10 @@ def cythonize(extensions, arg_options):
         cythonize_options['compile_time_env'] = compile_time_env
 
     # Enable cudapython.
-    # TODO: should be False for CUDA 11.3 or earlier / HIP
     # TODO: add `cudapython` to `setup_requires` only when this flag is set
-    # TODO: remove `cuda` and `cudart` from 'libraries' in MODULES
-    compile_time_env['USE_CUDA_PYTHON'] = True
+    compile_time_env['USE_CUDA_PYTHON'] = use_cuda_python
+    if use_cuda_python:
+        print('Using CUDA Python')
 
     compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
