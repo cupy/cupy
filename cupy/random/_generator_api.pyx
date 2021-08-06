@@ -40,6 +40,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void hypergeometric(
         int generator, intptr_t state, intptr_t out, ssize_t size,
         intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
+    void logseries(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t arg1)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -425,6 +428,33 @@ class Generator:
 
         _launch_dist(self.bit_generator, hypergeometric, y,
                      (ngood_ptr, nbad_ptr, nsample_ptr))
+        return y
+
+    def logseries(self, p, size=None):
+        """logseries distribution"""
+        cdef ndarray y
+        cdef ndarray p_arr
+
+        if not isinstance(p, ndarray):
+            if type(p) in (float, int):
+                p = cupy.asarray
+            else:
+                raise TypeError('p is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            p = p.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = p.shape
+
+        y = ndarray(size, numpy.int64)
+
+        p = cupy.broadcast_to(p, y.shape)
+        p_arr = _array_data(p)
+        p_ptr = p_arr.data.ptr
+        _launch_dist(self.bit_generator, logseries, y, (p_ptr,))
         return y
 
     def standard_exponential(
