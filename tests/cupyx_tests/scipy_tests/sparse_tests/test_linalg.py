@@ -1352,8 +1352,9 @@ class TestLsmr(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
     def test_sparse(self, xp, sp):
-        if runtime.is_hip and self.format == 'csc':
+        if runtime.is_hip and self.format in ('csr', 'csc'):
             pytest.xfail('may be buggy')  # trans=True
+
         if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             raise unittest.SkipTest
         a = self._make_matrix(xp)
