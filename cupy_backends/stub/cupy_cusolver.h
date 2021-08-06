@@ -193,19 +193,53 @@ cusolverStatus_t cusolverDnZgeqrf_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnSgeqrf(...) {
+// The function signatures are explicitly spelled out because we need to
+// fetch the function pointers.
+cusolverStatus_t cusolverDnSgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *TAU,
+                                  float *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnDgeqrf(...) {
+cusolverStatus_t cusolverDnDgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *TAU,
+                                  double *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnCgeqrf(...) {
+cusolverStatus_t cusolverDnCgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  cuComplex *TAU,
+                                  cuComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZgeqrf(...) {
+cusolverStatus_t cusolverDnZgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  cuDoubleComplex *TAU,
+                                  cuDoubleComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
@@ -225,19 +259,57 @@ cusolverStatus_t cusolverDnZungqr_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnSorgqr(...) {
+// The function signatures are explicitly spelled out because we need to
+// fetch the function pointers.
+cusolverStatus_t cusolverDnSorgqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  float *A,
+                                  int lda,
+                                  const float *tau,
+                                  float *work,
+                                  int lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnDorgqr(...) {
+cusolverStatus_t cusolverDnDorgqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  double *A,
+                                  int lda,
+                                  const double *tau,
+                                  double *work,
+                                  int lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnCungqr(...) {
+cusolverStatus_t cusolverDnCungqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  cuComplex *A,
+                                  int lda,
+                                  const cuComplex *tau,
+                                  cuComplex *work,
+                                  int lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZungqr(...) {
+cusolverStatus_t cusolverDnZungqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  const cuDoubleComplex *tau,
+                                  cuDoubleComplex *work,
+                                  int lwork,
+                                  int *devInfo) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
