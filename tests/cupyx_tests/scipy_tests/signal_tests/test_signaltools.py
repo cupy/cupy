@@ -1,8 +1,7 @@
 import unittest
 
-import pytest
-
 import numpy as np
+import pytest
 
 import cupy
 from cupy.cuda import runtime
@@ -90,6 +89,61 @@ class TestFFTConvolve(unittest.TestCase):
     def test_correlate_fft(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
         return self._filter('correlate', dtype, xp, scp, method='fft')
+
+
+def tupleid(shape):
+    return ''.join(str(s) for s in shape)
+
+
+@testing.with_requires('scipy')
+class TestFFTConvolveFastShape:
+    @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
+    @pytest.mark.parametrize(('shape1', 'shape2'), [
+        ((1,), (7,)),
+        ((3,), (1,)),
+        ((5, 4), (3, 1)),
+        ((1, 1), (2, 4)),
+        ((), ()),
+        ((5, 1, 1), (1, 4, 1)),
+    ], ids=tupleid)
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_fftconvolve1(self, xp, scp, dtype, shape1, shape2, mode):
+        in1 = testing.shaped_random(shape1, xp, dtype)
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.fftconvolve(in1, in2, mode=mode)
+
+    # SciPy says "For 'valid' mode, one must be at least as large as the
+    # other in every dimension". So 'valid' is excluded from the testcases,
+    # while SciPy fails to reject them.
+    @pytest.mark.parametrize('mode', ['full', 'same'])
+    @pytest.mark.parametrize(('shape1', 'shape2'), [
+        ((5, 1), (1, 4)),
+        ((5, 1, 1), (1, 4, 1)),
+    ], ids=tupleid)
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_fftconvolve1_incomparable_shape(
+            self, xp, scp, dtype, shape1, shape2, mode):
+        in1 = testing.shaped_random(shape1, xp, dtype)
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.fftconvolve(in1, in2, mode=mode)
+
+    @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
+    @pytest.mark.parametrize(('shape1', 'shape2', 'axes'), [
+        ((1, 4), (2, 4), (0,)),
+        # ((3, 3), (3, 3), ()), => ValueError. Only reduced axes can be empty.
+        ((2, 5, 5), (2, 1, 3), (1, 2)),
+        ((2, 5, 5), (2, 1, 1), (1, 2)),
+        ((1, 5, 5), (2, 1, 3), (1, 2)),  # broadcast
+    ], ids=tupleid)
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_fftconvolve1_axes(
+            self, xp, scp, dtype, shape1, shape2, axes, mode):
+        in1 = testing.shaped_random(shape1, xp, dtype)
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.fftconvolve(in1, in2, mode=mode, axes=axes)
 
 
 @testing.parameterize(*testing.product({
