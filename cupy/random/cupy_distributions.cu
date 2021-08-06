@@ -616,7 +616,7 @@ void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, i
 }
 
 void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
-    kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
 }
 

@@ -431,13 +431,33 @@ class Generator:
         return y
 
     def logseries(self, p, size=None):
-        """logseries distribution"""
+        """Log series distribution.
+
+        Returns an array of samples drawn from the log series distribution.
+            Its probability mass function is defined as
+
+        .. math::
+           f(x) = \\frac{-p^x}{x\\ln(1-p)}.
+
+        Args:
+            p (float or cupy.ndarray of floats): Parameter of the log series
+                distribution. Must be in the range (0, 1).
+            size (int or tuple of ints, optional): The shape of the output
+                array. If `None`(default), a single value is returned if ``p``
+                is scalar. Otherwise, ``p.size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the log series distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.logseries`
+    """
         cdef ndarray y
         cdef ndarray p_arr
 
         if not isinstance(p, ndarray):
             if type(p) in (float, int):
-                p = cupy.asarray
+                p = cupy.asarray(p, numpy.float64)
             else:
                 raise TypeError('p is required to be a cupy.ndarray'
                                 ' or a scalar')
