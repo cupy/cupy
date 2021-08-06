@@ -151,3 +151,19 @@ _triu_kernel = _core.ElementwiseKernel(
 def _triu(x, k=0):
     _triu_kernel(k, x)
     return x
+
+
+def batch_identity(batch_shape, n, dtype):
+    shape = batch_shape + (n, n)
+    idx = cupy.arange(n)
+    x = cupy.zeros(shape, dtype)
+    x[..., idx, idx] = 1
+    return x
+
+
+def batch_identity_like(x):
+    n = x.shape[-1]
+    idx = cupy.arange(n)
+    x = cupy.zeros_like(x)
+    x[..., idx, idx] = 1
+    return x

@@ -23,9 +23,5 @@ def invh(a):
     # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
     _util._assert_rank2(a)
 
-    n = a.shape[-1]
-    identity_matrix = cupy.eye(n, dtype=a.dtype)
-    b = cupy.empty(a.shape, a.dtype)
-    b[...] = identity_matrix
-
+    b = _util.batch_identity_like(a)
     return lapack.posv(a, b)
