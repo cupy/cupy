@@ -35,13 +35,13 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaIpcGetMemHandle(IpcMemHandle*, void* devPtr)
     int cudaIpcOpenEventHandle(driver.Event* event, IpcEventHandle handle)
     int cudaIpcOpenMemHandle(void** devPtr, IpcMemHandle handle,
-                                unsigned int  flags)
+                             unsigned int  flags)
 
     # Memory management
     int cudaMalloc(void** devPtr, size_t size)
     int cudaMallocManaged(void** devPtr, size_t size, unsigned int flags)
     int cudaMalloc3DArray(Array* array, const ChannelFormatDesc* desc,
-                            Extent extent, unsigned int flags)
+                          Extent extent, unsigned int flags)
     int cudaMallocArray(Array* array, const ChannelFormatDesc* desc,
                         size_t width, size_t height, unsigned int flags)
     int cudaMallocAsync(void**, size_t, driver.Stream)
@@ -54,43 +54,43 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaFreeAsync(void*, driver.Stream)
     int cudaMemGetInfo(size_t* free, size_t* total)
     int cudaMemcpy(void* dst, const void* src, size_t count,
-                    MemoryKind kind)
+                   MemoryKind kind)
     int cudaMemcpyAsync(void* dst, const void* src, size_t count,
                         MemoryKind kind, driver.Stream stream)
     int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
-                        int srcDevice, size_t count)
+                       int srcDevice, size_t count)
     int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
                             int srcDevice, size_t count,
                             driver.Stream stream)
     int cudaMemcpy2DFromArray(void* dst, size_t dpitch, Array src,
-                                size_t wOffset, size_t hOffset, size_t width,
-                                size_t height, MemoryKind kind)
+                              size_t wOffset, size_t hOffset, size_t width,
+                              size_t height, MemoryKind kind)
     int cudaMemcpy2DFromArrayAsync(void* dst, size_t dpitch, Array src,
-                                    size_t wOffset, size_t hOffset,
-                                    size_t width, size_t height,
-                                    MemoryKind kind, driver.Stream stream)
+                                   size_t wOffset, size_t hOffset,
+                                   size_t width, size_t height,
+                                   MemoryKind kind, driver.Stream stream)
     int cudaMemcpy2DToArray(Array dst, size_t wOffset, size_t hOffset,
                             const void* src, size_t spitch, size_t width,
                             size_t height, MemoryKind kind)
     int cudaMemcpy2DToArrayAsync(Array dst, size_t wOffset, size_t hOffset,
-                                    const void* src, size_t spitch, size_t width,
-                                    size_t height, MemoryKind kind,
-                                    driver.Stream stream)
+                                 const void* src, size_t spitch, size_t width,
+                                 size_t height, MemoryKind kind,
+                                 driver.Stream stream)
     int cudaMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch,
-                        size_t width, size_t height, MemoryKind kind)
+                     size_t width, size_t height, MemoryKind kind)
     int cudaMemcpy2DAsync(void* dst, size_t dpitch, const void* src,
-                            size_t spitch, size_t width, size_t height,
-                            MemoryKind kind, driver.Stream stream)
+                          size_t spitch, size_t width, size_t height,
+                          MemoryKind kind, driver.Stream stream)
     int cudaMemcpy3D(Memcpy3DParms* Memcpy3DParmsPtr)
     int cudaMemcpy3DAsync(Memcpy3DParms* Memcpy3DParmsPtr,
-                            driver.Stream stream)
+                          driver.Stream stream)
     int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream)
     int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
-                                driver.Stream stream)
+                             driver.Stream stream)
     int cudaMemAdvise(const void *devPtr, size_t count,
-                        MemoryAdvise advice, int device)
+                      MemoryAdvise advice, int device)
     int cudaDeviceGetDefaultMemPool(MemPool*, int)
     int cudaDeviceGetMemPool(MemPool*, int)
     int cudaDeviceSetMemPool(int, MemPool)
@@ -98,7 +98,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaMemPoolGetAttribute(MemPool, MemPoolAttr, void*)
     int cudaMemPoolSetAttribute(MemPool, MemPoolAttr, void*)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
-                                    const void* ptr)
+                                 const void* ptr)
     Extent make_cudaExtent(size_t w, size_t h, size_t d)
     Pos make_cudaPos(size_t x, size_t y, size_t z)
     PitchedPtr make_cudaPitchedPtr(void* d, size_t p, size_t xsz, size_t ysz)
@@ -106,11 +106,11 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     # Stream and Event
     int cudaStreamCreate(driver.Stream* pStream)
     int cudaStreamCreateWithFlags(driver.Stream* pStream,
-                                    unsigned int flags)
+                                  unsigned int flags)
     int cudaStreamDestroy(driver.Stream stream)
     int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
-                                void* userData, unsigned int flags)
+                              void* userData, unsigned int flags)
     int cudaLaunchHostFunc(driver.Stream stream, HostFn fn, void* userData)
     int cudaStreamQuery(driver.Stream stream)
     int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
@@ -119,7 +119,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags)
     int cudaEventDestroy(driver.Event event)
     int cudaEventElapsedTime(float* ms, driver.Event start,
-                                driver.Event end)
+                             driver.Event end)
     int cudaEventQuery(driver.Event event)
     int cudaEventRecord(driver.Event event, driver.Stream stream)
     int cudaEventSynchronize(driver.Event event)

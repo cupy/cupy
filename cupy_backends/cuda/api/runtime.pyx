@@ -83,6 +83,7 @@ errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
 deviceAttributeComputeCapabilityMajor = cudaDevAttrComputeCapabilityMajor
 deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 
+
 # Provide access to constants from Python.
 # TODO(kmaehashi): Deprecate aliases above so that we can just do:
 # from cupy_backends.cuda.api._runtime_enum import *
@@ -93,6 +94,7 @@ def _export_enum():
     for key in dir(_runtime_enum):
         if not key.startswith('_'):
             setattr(this, key, getattr(_runtime_enum, key))
+
 
 _export_enum()
 
