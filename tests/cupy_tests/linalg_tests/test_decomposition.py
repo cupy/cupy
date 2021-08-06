@@ -6,9 +6,10 @@ import pytest
 import cupy
 from cupy._core.internal import prod
 from cupy import cusolver
-from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
+from cupy.linalg import _util
+from cupy import testing
 from cupy.testing import _condition
 import cupyx
 
@@ -239,37 +240,16 @@ class TestSVD(unittest.TestCase):
         cupy.testing.assert_allclose(a_gpu, a_gpu_usv, rtol=1e-4, atol=1e-4)
 
         # assert unitary
-        if len(shape) == 2:
-            cupy.testing.assert_allclose(
-                cupy.matmul(u_gpu.T.conj(), u_gpu),
-                numpy.eye(u_gpu.shape[1]),
-                atol=1e-4)
-            cupy.testing.assert_allclose(
-                cupy.matmul(vh_gpu, vh_gpu.T.conj()),
-                numpy.eye(vh_gpu.shape[0]),
-                atol=1e-4)
-        else:
-            batch = prod(shape[:-2])
-            u_len = u_gpu.shape[-1]
-            vh_len = vh_gpu.shape[-2]
-
-            if batch == 0:
-                id_u_cpu = numpy.empty(shape[:-2] + (u_len, u_len))
-                id_vh_cpu = numpy.empty(shape[:-2] + (vh_len, vh_len))
-            else:
-                id_u_cpu = [numpy.eye(u_len) for _ in range(batch)]
-                id_u_cpu = numpy.stack(id_u_cpu, axis=0).reshape(
-                    *(shape[:-2]), u_len, u_len)
-                id_vh_cpu = [numpy.eye(vh_len) for _ in range(batch)]
-                id_vh_cpu = numpy.stack(id_vh_cpu, axis=0).reshape(
-                    *(shape[:-2]), vh_len, vh_len)
-
-            cupy.testing.assert_allclose(
-                cupy.matmul(u_gpu.swapaxes(-1, -2).conj(), u_gpu),
-                id_u_cpu, atol=1e-4)
-            cupy.testing.assert_allclose(
-                cupy.matmul(vh_gpu, vh_gpu.swapaxes(-1, -2).conj()),
-                id_vh_cpu, atol=1e-4)
+        u_len = u_gpu.shape[-1]
+        vh_len = vh_gpu.shape[-2]
+        cupy.testing.assert_allclose(
+            cupy.matmul(u_gpu.swapaxes(-1, -2).conj(), u_gpu),
+            _util.batch_identity(shape[:-2], u_len, dtype),
+            atol=1e-4)
+        cupy.testing.assert_allclose(
+            cupy.matmul(vh_gpu, vh_gpu.swapaxes(-1, -2).conj()),
+            _util.batch_identity(shape[:-2], vh_len, dtype),
+            atol=1e-4)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
