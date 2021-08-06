@@ -558,9 +558,9 @@ void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intp
     generator_dispatcher(generator, launcher, state, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
 }
 
-void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
+void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
     kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, a, b);
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(a), reinterpret_cast<int64_t*>(b));
 }
 
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {

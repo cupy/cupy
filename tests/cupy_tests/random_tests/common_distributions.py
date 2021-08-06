@@ -130,7 +130,10 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
 beta_params = [
     {'a': 1.0, 'b': 3.0},
     {'a': 3.0, 'b': 3.0},
-    {'a': 3.0, 'b': 1.0}]
+    {'a': 3.0, 'b': 1.0},
+    {'a': [1.0, 3.0, 5.0, 6.0, 9.0], 'b':7.0},
+    {'a': 5.0, 'b': [1.0, 5.0, 8.0, 1.0, 3.0]},
+    {'a': [8.0, 6.0, 2.0, 4.0, 7.0], 'b':[3.0, 1.0, 2.0, 8.0, 1.0]}]
 
 
 class Beta:
@@ -138,13 +141,18 @@ class Beta:
     target_method = 'beta'
 
     def test_beta(self):
-        self.generate(a=self.a, b=self.b, size=(3, 2))
+        a = self.a
+        b = self.b
+        if (isinstance(self.a, list) or isinstance(self.b, list)):
+            a = cupy.array(self.a)
+            b = cupy.array(self.b)
+        self.generate(a, b, size=(3, 5))
 
-    @testing.for_dtypes('fd')
     @_condition.repeat_with_success_at_least(10, 3)
-    def test_beta_ks(self, dtype):
-        self.check_ks(0.05)(
-            a=self.a, b=self.b, size=2000, dtype=dtype)
+    def test_beta_ks(self):
+        if (isinstance(self.a, list) or isinstance(self.b, list)):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(a=self.a, b=self.b, size=2000)
 
 
 class StandardExponential:
