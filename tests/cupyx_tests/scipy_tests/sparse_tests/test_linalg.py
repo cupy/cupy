@@ -1352,8 +1352,9 @@ class TestLsmr:
 
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
     def test_sparse(self, xp, sp):
-        if runtime.is_hip and self.format == 'csc':
+        if runtime.is_hip and self.format in ('csr', 'csc'):
             pytest.xfail('may be buggy')  # trans=True
+
         if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             raise unittest.SkipTest
         a = self._make_matrix(xp)
@@ -1539,3 +1540,105 @@ class TestCgs:
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.cgs(ng_a, b, atol=self.atol)
+
+
+@testing.parameterize(*testing.product({
+    'format': ['coo', 'csr', 'csc'],
+    'm': [30, 40],
+    'x0': [None, 'ones'],
+    'M': [None, 'jacobi'],
+    'shift': [0, 1],
+    'use_linear_operator': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestMinres(unittest.TestCase):
+
+    density = 0.01
+
+    def _make_matrix(self, xp):
+        shape = (self.m, self.m)
+        a = testing.shaped_random(shape, xp, scale=1)
+        mask = testing.shaped_random(shape, xp, scale=1)
+        a[mask > self.density] = 0
+        M = None
+        if self.M == 'jacobi':
+            M = xp.diag(1.0 / xp.diag(a))
+        return a, M
+
+    def _make_normalized_vector(self, xp):
+        b = testing.shaped_random((self.m,), xp, scale=1)
+        return b / xp.linalg.norm(b)
+
+    def _test_minres(self, xp, sp, a, M):
+        b = self._make_normalized_vector(xp)
+        x0 = None
+        if self.x0 == 'ones':
+            x0 = xp.ones((self.m,))
+        return sp.linalg.minres(a, b, x0=x0, M=M)[0]
+
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_sparse(self, xp, sp):
+        if runtime.is_hip and self.format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+        a, M = self._make_matrix(xp)
+        a = sp.coo_matrix(a).asformat(self.format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        if M is not None:
+            M = sp.coo_matrix(M).asformat(self.format)
+            if self.use_linear_operator:
+                M = sp.linalg.aslinearoperator(M)
+        return self._test_minres(xp, sp, a, M)
+
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_dense(self, xp, sp):
+        a, M = self._make_matrix(xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+            if M is not None:
+                M = sp.linalg.aslinearoperator(M)
+        return self._test_minres(xp, sp, a, M)
+
+    def test_invalid(self):
+        if not (self.x0 is None and self.M is None
+                and self.use_linear_operator is False):
+            raise unittest.SkipTest
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a, M = self._make_matrix(xp)
+            b = self._make_normalized_vector(xp)
+            ng_a = xp.ones((self.m, ))
+            with pytest.raises(ValueError):
+                sp.linalg.minres(ng_a, b)
+            ng_a = xp.ones((self.m, self.m + 1))
+            with pytest.raises(ValueError):
+                sp.linalg.minres(ng_a, b)
+            ng_a = xp.ones((self.m, self.m, 1), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.minres(ng_a, b)
+            ng_b = xp.ones((self.m + 1,))
+            with pytest.raises(ValueError):
+                sp.linalg.minres(a, ng_b)
+            ng_b = xp.ones((self.m, 2))
+            with pytest.raises(ValueError):
+                sp.linalg.minres(a, ng_b)
+            ng_x0 = xp.ones((self.m + 1,))
+            with pytest.raises(ValueError):
+                sp.linalg.minres(a, b, x0=ng_x0)
+            ng_M = xp.diag(xp.ones((self.m + 1,)))
+            with pytest.raises(ValueError):
+                sp.linalg.minres(a, b, M=ng_M)
+
+    def test_callback(self):
+        if not (self.x0 is None and self.M is None and
+                self.use_linear_operator is False):
+            raise unittest.SkipTest
+        xp, sp = cupy, sparse
+        a, M = self._make_matrix(xp)
+        b = self._make_normalized_vector(xp)
+        is_called = False
+
+        def callback(x):
+            nonlocal is_called
+            is_called = True
+        sp.linalg.minres(a, b, callback=callback)
+        assert is_called
