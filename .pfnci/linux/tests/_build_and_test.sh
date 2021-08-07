@@ -6,7 +6,7 @@ MARKER="${1:-}"
 
 pytest_opts=(
     -rfEX
-    --timeout 300
+    --timeout 500
     --maxfail 500
     --showlocals
 )

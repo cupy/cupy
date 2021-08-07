@@ -139,9 +139,10 @@ def _tril(x, k=0):
     return x
 
 
+# support a batch of matrices
 _triu_kernel = _core.ElementwiseKernel(
     'int64 k', 'S x',
-    'x = (_ind.get()[1] - _ind.get()[0] >= k) ? x : 0',
+    'x = (_ind.get()[_ind.ndim - 1] - _ind.get()[_ind.ndim - 2] >= k) ? x : 0',
     'cupy_triu_kernel',
     reduce_dims=False
 )
