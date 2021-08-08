@@ -112,6 +112,13 @@ Here are the environment variables that CuPy uses at runtime.
   If set to ``1``, CuPy will use the CUDA per-thread default stream, effectively causing each host thread to automatically execute in its own stream, unless the CUDA default (``null``) stream or a user-created stream is specified.
   If set to ``0`` (default), the CUDA default (``null``) stream is used, unless the per-thread default stream (``ptds``) or a user-created stream is specified.
 
+.. envvar:: CUPY_COMPILE_WITH_PTX
+
+  Default: ``0``
+
+  If set to ``1``, CuPy will compile kernels using PTX instead of SSAS (CUBIN), PTX results in faster compilation time at the expenses of non-compatibility with drivers older than the toolkit.
+  If set to ``0`` (default), SASS (CUBIN) compilation mode is used for kernels.
+
 CUDA Toolkit Environment Variables
   In addition to the environment variables listed above, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit Documentation`_ will also be honored.
 
