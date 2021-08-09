@@ -57,6 +57,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void poisson(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
+    void power(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
 
 
 cdef ndarray _array_data(ndarray x):
@@ -522,6 +525,28 @@ class Generator:
         lam_ptr = lam_arr.data.ptr
         _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
         return y
+
+    def power(self, a, size=None):
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            a = a.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = a.shape
+
+        x = self.standard_exponential(size)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Standard normal distribution.
