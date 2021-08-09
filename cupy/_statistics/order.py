@@ -257,7 +257,7 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
                 ret = a[offset_top] - diff * (1 - weight_above);
             }
             ''',
-            'percentile_weightnening'
+            'cupy_percentile_weightnening'
         )(indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
         ret = cupy.rollaxis(ret, -1)  # Roll q dimension back to first axis
 

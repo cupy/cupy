@@ -881,7 +881,7 @@ beta_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_beta(&internal_state, a, b);
     ''',
-    'beta_kernel',
+    'cupy_beta_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -894,7 +894,7 @@ binomial_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_binomial(&internal_state, n, p);
     ''',
-    'binomial_kernel',
+    'cupy_binomial_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -909,7 +909,7 @@ standard_t_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_standard_t(&internal_state, df);
     ''',
-    'standard_t_kernel',
+    'cupy_standard_t_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -924,7 +924,7 @@ chisquare_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_chisquare(&internal_state, df);
     ''',
-    'chisquare_kernel',
+    'cupy_chisquare_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -939,7 +939,7 @@ f_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_f(&internal_state, dfnum, dfden);
     ''',
-    'f_kernel',
+    'cupy_f_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -952,7 +952,7 @@ geometric_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_geometric(&internal_state, p);
     ''',
-    'geometric_kernel',
+    'cupy_geometric_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -966,7 +966,7 @@ hypergeometric_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_hypergeometric(&internal_state, good, bad, sample);
     ''',
-    'hypergeometric_kernel',
+    'cupy_hypergeometric_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -979,7 +979,7 @@ logseries_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_logseries(&internal_state, p);
     ''',
-    'logseries_kernel',
+    'cupy_logseries_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -996,7 +996,7 @@ noncentral_chisquare_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_noncentral_chisquare(&internal_state, df, nonc);
     ''',
-    'noncentral_chisquare_kernel',
+    'cupy_noncentral_chisquare_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -1013,7 +1013,7 @@ noncentral_f_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_noncentral_f(&internal_state, dfnum, dfden, nonc);
     ''',
-    'noncentral_f_kernel',
+    'cupy_noncentral_f_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -1028,7 +1028,7 @@ poisson_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_poisson(&internal_state, lam);
     ''',
-    'poisson_kernel',
+    'cupy_poisson_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -1042,7 +1042,7 @@ standard_gamma_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_standard_gamma(&internal_state, shape);
     ''',
-    'standard_gamma_kernel',
+    'cupy_standard_gamma_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -1055,7 +1055,7 @@ vonmises_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_vonmises(&internal_state, mu, kappa);
     ''',
-    'vonmises_kernel',
+    'cupy_vonmises_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -1068,7 +1068,7 @@ zipf_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     y = rk_zipf(&internal_state, a);
     ''',
-    'zipf_kernel',
+    'cupy_zipf_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )
@@ -1081,7 +1081,7 @@ open_uniform_kernel = _core.ElementwiseKernel(
     rk_seed(seed + i, &internal_state);
     open_uniform(&internal_state, &y);
     ''',
-    'open_uniform_kernel',
+    'cupy_open_uniform_kernel',
     preamble=''.join(definitions),
     loop_prep='rk_state internal_state;'
 )

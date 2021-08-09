@@ -35,7 +35,8 @@ _histogram_kernel = _core.ElementwiseKernel(
         }
     }
     atomicAdd(&y[low], U(1));
-    ''')
+    ''',
+    'cupy_histogram_kernel')
 
 
 _weighted_histogram_kernel = _core.ElementwiseKernel(
@@ -57,7 +58,8 @@ _weighted_histogram_kernel = _core.ElementwiseKernel(
         }
     }
     atomicAdd(&y[low], (Y)weights[i]);
-    ''')
+    ''',
+    'cupy_weighted_histogram_kernel')
 
 
 def _ravel_and_check_weights(a, weights):
@@ -499,13 +501,13 @@ def histogram2d(x, y, bins=10, range=None, weights=None, density=None):
 _bincount_kernel = _core.ElementwiseKernel(
     'S x', 'raw U bin',
     'atomicAdd(&bin[x], U(1))',
-    'bincount_kernel')
+    'cupy_bincount_kernel')
 
 
 _bincount_with_weight_kernel = _core.ElementwiseKernel(
     'S x, T w', 'raw U bin',
     'atomicAdd(&bin[x], w)',
-    'bincount_with_weight_kernel')
+    'cupy_bincount_with_weight_kernel')
 
 
 def bincount(x, weights=None, minlength=None):

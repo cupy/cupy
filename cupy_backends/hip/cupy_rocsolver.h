@@ -978,7 +978,7 @@ cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(
     // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
     // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
     // to store it
-    *lwork = batchSize * (m<n?m:n) * sizeof(float);
+    *lwork = batchSize * (m<n?m:n);  // note: counts, not bytes!
     return rocblas_status_success;
 }
 
@@ -1000,7 +1000,7 @@ cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(
     // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
     // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
     // to store it
-    *lwork = batchSize * (m<n?m:n) * sizeof(double);
+    *lwork = batchSize * (m<n?m:n);  // note: counts, not bytes!
     return rocblas_status_success;
 }
 
@@ -1022,7 +1022,7 @@ cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(
     // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
     // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
     // to store it
-    *lwork = batchSize * (m<n?m:n) * sizeof(float);
+    *lwork = batchSize * (m<n?m:n);  // note: counts, not bytes!
     return rocblas_status_success;
 }
 
@@ -1044,7 +1044,7 @@ cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
     // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
     // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
     // to store it
-    *lwork = batchSize * (m<n?m:n) * sizeof(double);
+    *lwork = batchSize * (m<n?m:n);  // note: counts, not bytes!
     return rocblas_status_success;
 }
 

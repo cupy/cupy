@@ -194,7 +194,7 @@ def hadamard(n, dtype=int):
 _hadamard_kernel = _core.ElementwiseKernel(
     'T in', 'T out',
     'out = (__popc(_ind.get()[0] & _ind.get()[1]) & 1) ? -1 : 1;',
-    'hadamard', reduce_dims=False)
+    'cupyx_scipy_linalg_hadamard', reduce_dims=False)
 
 
 def leslie(f, s):

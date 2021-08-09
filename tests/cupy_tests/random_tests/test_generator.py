@@ -276,21 +276,13 @@ class TestGeometric(
     pass
 
 
-@testing.parameterize(
-    {'ngood': 1, 'nbad': 1, 'nsample': 1},
-    {'ngood': 1, 'nbad': 1, 'nsample': 2},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.hypergeometric_params)
 @testing.fix_random()
-class TestHypergeometric(RandomGeneratorTestCase):
-
-    target_method = 'hypergeometric'
-
-    def test_hypergeometric(self):
-        self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
-                      size=(3, 2))
-
-    # TODO(kataoka): add distribution test
+class TestHypergeometric(
+    common_distributions.Hypergeometric,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu

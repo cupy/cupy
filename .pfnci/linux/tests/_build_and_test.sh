@@ -6,7 +6,7 @@ MARKER="${1:-}"
 
 pytest_opts=(
     -rfEX
-    --timeout 300
+    --timeout 500
     --maxfail 500
     --showlocals
 )
@@ -16,7 +16,7 @@ if [[ "${MARKER}" != "" ]]; then
 fi
 
 python3 -m pip install --user pytest-timeout
-python3 -m pip install --user -v ".[test]"
+python3 -m pip install --user -v ".[all,test]"
 
 pushd tests
 python3 -c 'import cupy; cupy.show_config()'

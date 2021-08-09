@@ -7,9 +7,11 @@ from cupyx.scipy.sparse.linalg._solve import spsolve  # NOQA
 from cupyx.scipy.sparse.linalg._solve import spsolve_triangular  # NOQA
 from cupyx.scipy.sparse.linalg._solve import factorized  # NOQA
 from cupyx.scipy.sparse.linalg._solve import lsqr  # NOQA
+from cupyx.scipy.sparse.linalg._solve import lsmr  # NOQA
 from cupyx.scipy.sparse.linalg._solve import splu  # NOQA
 from cupyx.scipy.sparse.linalg._solve import spilu  # NOQA
 from cupyx.scipy.sparse.linalg._solve import SuperLU  # NOQA
+from cupyx.scipy.sparse.linalg._solve import minres  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import eigsh  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import svds  # NOQA
 from cupyx.scipy.sparse.linalg._iterative import cg  # NOQA
