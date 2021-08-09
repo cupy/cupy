@@ -280,6 +280,15 @@ class TestHypergeometric(
     pass
 
 
+@testing.parameterize(*common_distributions.power_params)
+@testing.fix_random()
+class TestPower(
+    common_distributions.Power,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,

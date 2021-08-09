@@ -527,6 +527,26 @@ class Generator:
         return y
 
     def power(self, a, size=None):
+        """Power distribution.
+
+        Returns an array of samples drawn from the power distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = ax^{a-1}.
+
+        Args:
+            a (float or array_like of floats): Parameter of the power
+                distribution :math:`a`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the power distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.power`
+        """
 
         if not isinstance(a, ndarray):
             if type(a) in (float, int):
