@@ -451,7 +451,7 @@ class Generator:
 
         .. seealso::
             :meth:`numpy.random.Generator.logseries`
-    """
+        """
         cdef ndarray y
         cdef ndarray p_arr
 
