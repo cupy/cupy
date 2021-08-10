@@ -1,4 +1,3 @@
-import cupy
 from cupy.linalg import _util
 from cupyx import lapack
 
