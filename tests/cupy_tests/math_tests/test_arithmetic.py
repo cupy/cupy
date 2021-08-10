@@ -323,16 +323,14 @@ class TestArithmeticBinary2(ArithmeticBinaryBase):
 
 class UfuncTestBase:
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_casting_out(self, in0_type, in1_type, out_type, casting, xp):
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         c = xp.zeros((2, 3), out_type)
         if casting != 'unsafe':
-            try:
-                return xp.add(a, b, out=c, casting=casting)
-            except TypeError:
-                return xp.array(True)
+            # may raise TypeError
+            return xp.add(a, b, out=c, casting=casting)
 
         with warnings.catch_warnings(record=True) as ws:
             warnings.simplefilter('always')
@@ -341,15 +339,13 @@ class UfuncTestBase:
         assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
         return ret, xp.array(len(ws))
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_casting_dtype(self, in0_type, in1_type, dtype, casting, xp):
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         if casting != 'unsafe':
-            try:
-                return xp.add(a, b, dtype=dtype, casting=casting)
-            except TypeError:
-                return xp.array(True)
+            # may raise TypeError
+            return xp.add(a, b, dtype=dtype, casting=casting)
 
         with warnings.catch_warnings(record=True) as ws:
             warnings.simplefilter('always')
