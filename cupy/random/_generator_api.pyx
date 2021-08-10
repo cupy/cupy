@@ -444,7 +444,7 @@ class Generator:
                 distribution. Must be in the range (0, 1).
             size (int or tuple of ints, optional): The shape of the output
                 array. If ``None`` (default), a single value is returned if
-                 ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
+                ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
 
         Returns:
             cupy.ndarray: Samples drawn from the log series distribution.
