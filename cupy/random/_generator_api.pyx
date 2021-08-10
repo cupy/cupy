@@ -434,7 +434,7 @@ class Generator:
         """Log series distribution.
 
         Returns an array of samples drawn from the log series distribution.
-            Its probability mass function is defined as
+        Its probability mass function is defined as
 
         .. math::
            f(x) = \\frac{-p^x}{x\\ln(1-p)}.
@@ -443,8 +443,8 @@ class Generator:
             p (float or cupy.ndarray of floats): Parameter of the log series
                 distribution. Must be in the range (0, 1).
             size (int or tuple of ints, optional): The shape of the output
-                array. If `None`(default), a single value is returned if ``p``
-                is scalar. Otherwise, ``p.size`` samples are drawn.
+                array. If ``None`` (default), a single value is returned if
+                 ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
 
         Returns:
             cupy.ndarray: Samples drawn from the log series distribution.
