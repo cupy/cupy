@@ -321,7 +321,37 @@ class TestArithmeticBinary2(ArithmeticBinaryBase):
         self.check_binary()
 
 
-class TestUfunc:
+class UfuncTestBase:
+
+    def check_casting_out(self, xp, in0_type, in1_type, out_type, casting):
+        a = testing.shaped_arange((2, 3), xp, in0_type)
+        b = testing.shaped_arange((2, 3), xp, in1_type)
+        c = xp.zeros((2, 3), out_type)
+        if casting != 'unsafe':
+            return xp.add(a, b, out=c, casting=casting)
+
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter('always')
+            ret = xp.add(a, b, out=c, casting=casting)
+        ws = [w.category for w in ws]
+        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
+        return ret, xp.array(len(ws))
+
+    def check_casting_dtype(self, xp, in0_type, in1_type, dtype, casting):
+        a = testing.shaped_arange((2, 3), xp, in0_type)
+        b = testing.shaped_arange((2, 3), xp, in1_type)
+        if casting != 'unsafe':
+            return xp.add(a, b, dtype=dtype, casting=casting)
+
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter('always')
+            ret = xp.add(a, b, dtype=dtype, casting='unsafe')
+        ws = [w.category for w in ws]
+        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
+        return ret, xp.array(len(ws))
+
+
+class TestUfunc(UfuncTestBase):
 
     @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.skip('flaky xfail')),
@@ -333,24 +363,15 @@ class TestUfunc:
         names=['in0_type', 'in1_type', 'out_type'], full=False)
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_casting_out(self, xp, in0_type, in1_type, out_type, casting):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        c = xp.zeros((2, 3), out_type)
-        return xp.add(a, b, out=c, casting=casting)
+        return self.check_casting_out(
+            xp, in0_type, in1_type, out_type, casting)
 
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'out_type'], full=False)
     @testing.numpy_cupy_allclose()
     def test_casting_out_unsafe(self, xp, in0_type, in1_type, out_type):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        c = xp.zeros((2, 3), out_type)
-        with warnings.catch_warnings(record=True) as ws:
-            warnings.simplefilter('always')
-            ret = xp.add(a, b, out=c, casting='unsafe')
-        ws = [w.category for w in ws]
-        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
-        return ret, xp.array(len(ws))
+        return self.check_casting_out(
+            xp, in0_type, in1_type, out_type, 'unsafe')
 
     @pytest.mark.skip('flaky xfail')
     @pytest.mark.parametrize('casting', [
@@ -363,27 +384,20 @@ class TestUfunc:
         names=['in0_type', 'in1_type', 'dtype'], full=False)
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_casting_dtype(self, xp, in0_type, in1_type, dtype, casting):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        return xp.add(a, b, dtype=dtype, casting=casting)
+        return self.check_casting_dtype(
+            xp, in0_type, in1_type, dtype, casting)
 
     @pytest.mark.skip('flaky xfail')
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'], full=False)
     @testing.numpy_cupy_allclose()
     def test_casting_dtype_unsafe(self, xp, in0_type, in1_type, dtype):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        with warnings.catch_warnings(record=True) as ws:
-            warnings.simplefilter('always')
-            ret = xp.add(a, b, dtype=dtype, casting='unsafe')
-        ws = [w.category for w in ws]
-        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
-        return ret, xp.array(len(ws))
+        return self.check_casting_dtype(
+            xp, in0_type, in1_type, dtype, 'unsafe')
 
 
 @testing.slow
-class TestUfuncSlow:
+class TestUfuncSlow(UfuncTestBase):
 
     @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.xfail()),
@@ -395,24 +409,15 @@ class TestUfuncSlow:
         names=['in0_type', 'in1_type', 'out_type'], full=True)
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_casting_out(self, xp, in0_type, in1_type, out_type, casting):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        c = xp.zeros((2, 3), out_type)
-        return xp.add(a, b, out=c, casting=casting)
+        return self.check_casting_out(
+            xp, in0_type, in1_type, out_type, casting)
 
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'out_type'], full=True)
     @testing.numpy_cupy_allclose()
     def test_casting_out_unsafe(self, xp, in0_type, in1_type, out_type):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        c = xp.zeros((2, 3), out_type)
-        with warnings.catch_warnings(record=True) as ws:
-            warnings.simplefilter('always')
-            ret = xp.add(a, b, out=c, casting='unsafe')
-        ws = [w.category for w in ws]
-        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
-        return ret, xp.array(len(ws))
+        return self.check_casting_out(
+            xp, in0_type, in1_type, out_type, 'unsafe')
 
     @pytest.mark.xfail()
     @pytest.mark.parametrize('casting', [
@@ -425,23 +430,16 @@ class TestUfuncSlow:
         names=['in0_type', 'in1_type', 'dtype'], full=True)
     @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_casting_dtype(self, xp, in0_type, in1_type, dtype, casting):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        return xp.add(a, b, dtype=dtype, casting=casting)
+        return self.check_casting_dtype(
+            xp, in0_type, in1_type, dtype, casting)
 
     @pytest.mark.xfail()
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'], full=True)
     @testing.numpy_cupy_allclose()
     def test_casting_dtype_unsafe(self, xp, in0_type, in1_type, dtype):
-        a = testing.shaped_arange((2, 3), xp, in0_type)
-        b = testing.shaped_arange((2, 3), xp, in1_type)
-        with warnings.catch_warnings(record=True) as ws:
-            warnings.simplefilter('always')
-            ret = xp.add(a, b, dtype=dtype, casting='unsafe')
-        ws = [w.category for w in ws]
-        assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
-        return ret, xp.array(len(ws))
+        return self.check_casting_dtype(
+            xp, in0_type, in1_type, dtype, 'unsafe')
 
 
 class TestArithmeticModf:
