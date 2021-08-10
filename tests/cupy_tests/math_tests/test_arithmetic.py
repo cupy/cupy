@@ -323,7 +323,8 @@ class TestArithmeticBinary2(ArithmeticBinaryBase):
 
 class UfuncTestBase:
 
-    def check_casting_out(self, xp, in0_type, in1_type, out_type, casting):
+    @testing.numpy_cupy_allclose()
+    def check_casting_out(self, in0_type, in1_type, out_type, casting, xp):
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         c = xp.zeros((2, 3), out_type)
@@ -340,7 +341,8 @@ class UfuncTestBase:
         assert all([w == numpy.ComplexWarning for w in ws]), str(ws)
         return ret, xp.array(len(ws))
 
-    def check_casting_dtype(self, xp, in0_type, in1_type, dtype, casting):
+    @testing.numpy_cupy_allclose()
+    def check_casting_dtype(self, in0_type, in1_type, dtype, casting, xp):
         a = testing.shaped_arange((2, 3), xp, in0_type)
         b = testing.shaped_arange((2, 3), xp, in1_type)
         if casting != 'unsafe':
@@ -368,10 +370,8 @@ class TestUfunc(UfuncTestBase):
     ])
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'out_type'], full=False)
-    @testing.numpy_cupy_allclose()
-    def test_casting_out(self, xp, in0_type, in1_type, out_type, casting):
-        return self.check_casting_out(
-            xp, in0_type, in1_type, out_type, casting)
+    def test_casting_out(self, in0_type, in1_type, out_type, casting):
+        self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.skip('flaky xfail')
     @pytest.mark.parametrize('casting', [
@@ -383,10 +383,8 @@ class TestUfunc(UfuncTestBase):
     ])
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'], full=False)
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
-    def test_casting_dtype(self, xp, in0_type, in1_type, dtype, casting):
-        return self.check_casting_dtype(
-            xp, in0_type, in1_type, dtype, casting)
+    def test_casting_dtype(self, in0_type, in1_type, dtype, casting):
+        self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
 
 @testing.slow
@@ -401,10 +399,8 @@ class TestUfuncSlow(UfuncTestBase):
     ])
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'out_type'], full=True)
-    @testing.numpy_cupy_allclose()
-    def test_casting_out(self, xp, in0_type, in1_type, out_type, casting):
-        return self.check_casting_out(
-            xp, in0_type, in1_type, out_type, casting)
+    def test_casting_out(self, in0_type, in1_type, out_type, casting):
+        self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.xfail()
     @pytest.mark.parametrize('casting', [
@@ -416,10 +412,8 @@ class TestUfuncSlow(UfuncTestBase):
     ])
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'], full=True)
-    @testing.numpy_cupy_allclose()
-    def test_casting_dtype(self, xp, in0_type, in1_type, dtype, casting):
-        return self.check_casting_dtype(
-            xp, in0_type, in1_type, dtype, casting)
+    def test_casting_dtype(self, in0_type, in1_type, dtype, casting):
+        self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
 
 class TestArithmeticModf:
