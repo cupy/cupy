@@ -489,13 +489,6 @@ struct standard_gamma_functor {
     }
 };
 
-struct power_functor {
-    template<typename... Args>
-    __device__ double operator () (Args&&... args) {
-        return rk_standard_exponential(args...);
-    }
-};
-
 // The following templates are used to unwrap arrays into an elementwise
 // approach, the array is `_array_data` in `cupy/random/_generator_api.pyx`.
 // When a pointer is present in the variadic Args, it will be replaced by
@@ -588,11 +581,6 @@ void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, i
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
     kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(lam));
-}
-
-void power(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<power_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
 }
 
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
