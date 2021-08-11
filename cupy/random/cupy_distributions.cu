@@ -317,6 +317,36 @@ __device__ int64_t rk_hypergeometric(rk_state *state, double good, double bad, d
     }
 }
 
+__device__ int64_t rk_logseries(rk_state *state, double p)
+{
+    double q, r, U, V;
+    int64_t result;
+
+    r = log(1.0 - p);
+
+    while (1) {
+        V = state->rk_double();
+        if (V >= p) {
+            return 1;
+        }
+        U = state->rk_double();
+        q = 1.0 - exp(r*U);
+        if (V <= q*q) {
+            result = floor(1 + log(V)/log(q));
+            if (result < 1) {
+                continue;
+            }
+            else {
+                return result;
+            }
+        }
+        if (V >= q) {
+            return 1;
+        }
+        return 2;
+    }
+}
+
 __device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
     int64_t X;
     double prod, U, enlam;
@@ -467,6 +497,13 @@ struct hypergeometric_functor {
     }
 };
 
+struct logseries_functor {
+    template<typename... Args>
+    __device__ int64_t operator () (Args&&... args) {
+        return rk_logseries(args...);
+    }
+};
+
 struct standard_normal_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
@@ -576,6 +613,11 @@ void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr
 void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
     kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(ngood), reinterpret_cast<int64_t*>(nbad), reinterpret_cast<int64_t*>(nsample));
+}
+
+void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
 }
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
