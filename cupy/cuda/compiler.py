@@ -160,10 +160,8 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
-    use_ptx = _get_bool_env_variable(
-        'CUPY_COMPILE_WITH_PTX', False)
     if (
-        not use_ptx and _cuda_hip_version >= 11010
+        not _use_ptx and _cuda_hip_version >= 11010
         and arch < _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
@@ -217,6 +215,7 @@ def _get_bool_env_variable(name, default):
         return False
 
 
+_use_ptx = _get_bool_env_variable('CUPY_COMPILE_WITH_PTX', False)
 _jitify_header_source_map_populated = False
 
 
