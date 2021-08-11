@@ -364,3 +364,28 @@ class Power:
             self.skipTest('Statistical checks only for scalar `a`')
         self.check_ks(0.05)(
             a=self.a, size=2000)
+
+
+logseries_params = [
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 0.9},
+    {'p': [0.8, 0.7]},
+]
+
+
+class Logseries:
+
+    target_method = 'logseries'
+
+    def test_logseries(self):
+        p = self.p
+        if not isinstance(self.p, float):
+            p = cupy.array(self.p)
+        self.generate(p=p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_geometric_ks(self):
+        if not isinstance(self.p, float):
+            self.skipTest('Statistical checks only for scalar `p`')
+        self.check_ks(0.05)(p=self.p, size=2000)

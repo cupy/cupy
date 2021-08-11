@@ -383,21 +383,13 @@ class TestLogNormal(RandomGeneratorTestCase):
             *self.args, size=self.size, dtype=dtype)
 
 
-@testing.parameterize(
-    {'p': 0.5},
-    {'p': 0.1},
-    {'p': 0.9},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.logseries_params)
 @testing.fix_random()
-class TestLogseries(RandomGeneratorTestCase):
-
-    target_method = 'logseries'
-
-    def test_logseries(self):
-        self.generate(p=self.p, size=(3, 2))
-
-    # TODO(kataoka): add distribution test
+class TestLogseries(
+    common_distributions.Logseries,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu
