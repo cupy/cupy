@@ -118,7 +118,7 @@ Here are the environment variables that CuPy uses at runtime.
 
   By default, CuPy directly compiles kernels into SASS (CUBIN) to support `CUDA Enhanced Compatibility <https://docs.nvidia.com/deploy/cuda-compatibility/>`_
   If set to ``1``, CuPy instead compiles kernels into PTX and lets CUDA Driver assemble SASS from PTX.
-  This option is only effective for CUDA 11.1 or later; CuPy always compiles into PTX on earlier CUDA versions. Also, this option only applies when NVRTC is selected as the compilation backend.
+  This option is only effective for CUDA 11.1 or later; CuPy always compiles into PTX on earlier CUDA versions. Also, this option only applies when NVRTC is selected as the compilation backend. NVCC backend always compiles into SASS (CUBIN).
 
 CUDA Toolkit Environment Variables
   In addition to the environment variables listed above, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit Documentation`_ will also be honored.
