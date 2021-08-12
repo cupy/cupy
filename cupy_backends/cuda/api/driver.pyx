@@ -20,7 +20,7 @@ from libcpp cimport vector
 # Extern and Constants
 ###############################################################################
 
-IF USE_CUDA_PYTHON:
+IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccuda cimport *
 ELSE:
     include '_driver_extern.pxi'

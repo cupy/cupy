@@ -5,7 +5,7 @@ from libc.stdint cimport intptr_t
 # Types and Enums
 ###############################################################################
 
-IF USE_CUDA_PYTHON:
+IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccuda cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_driver_typedef.pxi`.

@@ -17,7 +17,7 @@ cdef class PointerAttributes:
 # Types and Enums
 ###############################################################################
 
-IF USE_CUDA_PYTHON:
+IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccudart cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_runtime_typedef.pxi`.

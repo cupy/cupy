@@ -21,7 +21,7 @@ from cupy_backends.cuda.api cimport runtime
 # Extern
 ###############################################################################
 
-IF USE_CUDA_PYTHON:
+IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
 ELSE:
     cdef extern from '../../cupy_rtc.h' nogil:

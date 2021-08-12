@@ -5,7 +5,7 @@ from libc.stdint cimport intptr_t
 # Types
 ###############################################################################
 
-IF USE_CUDA_PYTHON:
+IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # TODO(kmaehashi): Remove these aliases.
