@@ -6,7 +6,7 @@ from libc.stdint cimport intptr_t
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    from cudapython.cnvrtc cimport *
+    from cuda.cnvrtc cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # TODO(kmaehashi): Remove these aliases.
     ctypedef nvrtcResult Result

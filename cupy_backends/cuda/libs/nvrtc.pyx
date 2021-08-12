@@ -22,7 +22,7 @@ from cupy_backends.cuda.api cimport runtime
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    from cudapython.cnvrtc cimport *
+    from cuda.cnvrtc cimport *
 ELSE:
     cdef extern from '../../cupy_rtc.h' nogil:
         const char *nvrtcGetErrorString(Result result)

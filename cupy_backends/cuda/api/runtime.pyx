@@ -62,7 +62,7 @@ cdef class _ThreadLocal:
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    from cudapython.ccudart cimport *
+    from cuda.ccudart cimport *
 ELSE:
     include '_runtime_extern.pxi'
 

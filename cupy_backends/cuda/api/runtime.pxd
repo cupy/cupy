@@ -18,7 +18,7 @@ cdef class PointerAttributes:
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    from cudapython.ccudart cimport *
+    from cuda.ccudart cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_runtime_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.

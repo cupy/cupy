@@ -21,7 +21,7 @@ from libcpp cimport vector
 ###############################################################################
 
 IF USE_CUDA_PYTHON:
-    from cudapython.ccuda cimport *
+    from cuda.ccuda cimport *
 ELSE:
     include '_driver_extern.pxi'
 

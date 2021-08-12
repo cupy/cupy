@@ -938,8 +938,8 @@ def cythonize(extensions, arg_options):
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
 
-    # Enable cudapython.
-    # TODO: add `cudapython` to `setup_requires` only when this flag is set
+    # Enable CUDA Python.
+    # TODO: add `cuda` to `setup_requires` only when this flag is set
     compile_time_env['USE_CUDA_PYTHON'] = use_cuda_python
     if use_cuda_python:
         print('Using CUDA Python')
