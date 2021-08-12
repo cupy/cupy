@@ -277,8 +277,8 @@ class Generator:
                 a zero-dimensional array is generated.
             dtype: Data type specifier. Only :class:`numpy.float32` and
                 :class:`numpy.float64` types are allowed.
-            method (str): Method to sample, Currently onlu 'inv', sample from
-                the default inverse CDF is supported.
+            method (str): Method to sample. Currently only ``'inv'``, sampling
+                from the default inverse CDF, is supported.
             out (cupy.ndarray, optional): If specified, values will be written
                 to this array
         Returns:
@@ -319,7 +319,7 @@ class Generator:
             lam (array_like of floats): Parameter of the poisson distribution
                 :math:`\\lambda`.
             size (int or tuple of ints): The shape of the array. If ``None``,
-            this function generate an array whose shape is `lam.shape`.
+                this function generate an array whose shape is ``lam.shape``.
 
         Returns:
             cupy.ndarray: Samples drawn from the poisson distribution.
