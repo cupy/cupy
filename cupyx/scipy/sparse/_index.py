@@ -25,7 +25,7 @@ _bool_scalar_types = (bool, numpy.bool_)
 _compress_getitem_kern = _core.ElementwiseKernel(
     'T d, S ind, int32 minor', 'raw T answer',
     'if (ind == minor) atomicAdd(&answer[0], d);',
-    'compress_getitem')
+    'cupyx_scipy_sparse_compress_getitem')
 
 
 _compress_getitem_complex_kern = _core.ElementwiseKernel(
@@ -37,7 +37,7 @@ _compress_getitem_complex_kern = _core.ElementwiseKernel(
     atomicAdd(&answer_imag[0], imag);
     }
     ''',
-    'compress_getitem_complex')
+    'cupyx_scipy_sparse_compress_getitem_complex')
 
 
 def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
@@ -107,7 +107,7 @@ _csr_row_index_ker = _core.ElementwiseKernel(
 
     Bj = Aj[starting_input_offset + output_offset];
     Bx = Ax[starting_input_offset + output_offset];
-''', 'csr_row_index_ker')
+''', 'cupyx_scipy_sparse_csr_row_index_ker')
 
 
 def _csr_row_index(Ax, Aj, Ap, rows):
@@ -258,7 +258,7 @@ _insert_many_populate_arrays = _core.ElementwiseKernel(
 
             output_n++;
         }
-    ''', 'csr_copy_existing_indices_kern', no_return=True)
+    ''', 'cupyx_scipy_sparse_csr_copy_existing_indices_kern', no_return=True)
 
 
 # Create a filter mask based on the lowest value of order
@@ -281,7 +281,9 @@ _unique_mask_kern = _core.ElementwiseKernel(
         else
             mask[i+1] = false;
     }
-    """, no_return=True
+    """,
+    'cupyx_scipy_sparse_unique_mask_kern',
+    no_return=True
 )
 
 
@@ -328,7 +330,7 @@ _csr_sample_values_kern = _core.ElementwiseKernel(
         }
     }
     Bx[i] = val_found ? x : not_found_val;
-''', 'csr_sample_values_kern')
+''', 'cupyx_scipy_sparse_csr_sample_values_kern')
 
 
 class IndexMixin(object):
