@@ -82,6 +82,10 @@ cpdef get_build_version():
         return 0
 
 
+cpdef bint _is_cuda_python():
+    return CUPY_USE_CUDA_PYTHON
+
+
 ###############################################################################
 # Primary context management
 ###############################################################################
