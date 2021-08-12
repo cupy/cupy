@@ -16,9 +16,7 @@ if [[ "${MARKER}" != "" ]]; then
 fi
 
 python3 -m pip install --user pytest-timeout
-python3 -m pip install --user Cython  # used by cudapython
-python3 -m pip install --user cudapython.tar.gz
-CUPY_USE_CUDA_PYTHON=1 python3 -m pip install --user -v ".[all,test]"
+python3 -m pip install --user -v ".[all,test]"
 
 pushd tests
 python3 -c 'import cupy; cupy.show_config()'
