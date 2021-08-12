@@ -1,6 +1,5 @@
-FROM rocm/dev-ubuntu-20.04:4.2
+FROM rocm/dev-ubuntu-20.04:4.3
 
-RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl && \
