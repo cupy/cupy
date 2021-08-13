@@ -904,8 +904,8 @@ def _eigen_vec_transform(block_vec, xp):
 
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
-@pytest.mark.xfail(runtime.is_hip and driver.get_build_version() < 402,
-                   reason='syevj not available')
+@pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
+                    reason='syevj not available')
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG(unittest.TestCase):
 
@@ -1208,7 +1208,7 @@ class TestLOBPCGForDiagInput(unittest.TestCase):
     def setUp(self):
         if runtime.is_hip:
             if driver.get_build_version() < 402:
-                pytest.xfail('syevj not available')
+                pytest.skip('syevj not available')
             if (((self.A_sparsity is True) or (self.B_sparsity is True)
                     or (self.preconditioner_sparsity is True))
                     and self.sparse_format == 'csc'):
