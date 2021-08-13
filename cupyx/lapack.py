@@ -282,7 +282,7 @@ def posv(a, b):
     """
 
     _cupy.linalg._util._assert_cupy_array(a, b)
-    _cupy.linalg._util._assert_nd_squareness(a)
+    _cupy.linalg._util._assert_stacked_square(a)
 
     if a.ndim > 2:
         return _batched_posv(a, b)

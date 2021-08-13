@@ -42,7 +42,7 @@ def connected_components(csgraph, directed=True, connection='weak',
 
     if not cupyx.scipy.sparse.isspmatrix_csr(csgraph):
         csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
-    _util._assert_nd_squareness(csgraph)
+    _util._assert_stacked_square(csgraph)
     m = csgraph.shape[0]
     if csgraph.nnz == 0:
         return m, cupy.arange(m, dtype=csgraph.indices.dtype)

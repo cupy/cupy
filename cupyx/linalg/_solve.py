@@ -18,10 +18,10 @@ def invh(a):
     """
 
     _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_square(a)
 
     # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
-    _util._assert_rank2(a)
+    _util._assert_2d(a)
 
     n = a.shape[-1]
     identity_matrix = cupy.eye(n, dtype=a.dtype)

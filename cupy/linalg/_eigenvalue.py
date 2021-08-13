@@ -144,7 +144,7 @@ def eigvalsh(a, UPLO='L'):
     if a.ndim < 2:
         raise ValueError('Array must be at least two-dimensional')
 
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_square(a)
 
     if a.ndim > 2 or runtime.is_hip:
         return cupy.cusolver.syevj(a, UPLO, False)

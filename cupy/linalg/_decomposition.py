@@ -173,7 +173,7 @@ def cholesky(a):
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
     _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_square(a)
 
     if a.ndim > 2:
         return _potrf_batched(a)

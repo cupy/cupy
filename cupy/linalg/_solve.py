@@ -44,7 +44,7 @@ def solve(a, b):
         return batched_gesv(a, b)
 
     _util._assert_cupy_array(a, b)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_square(a)
 
     if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
             a.shape[:-1] == b.shape[:a.ndim - 1]):
@@ -243,7 +243,7 @@ def lstsq(a, b, rcond='warn'):
         rcond = -1
 
     _util._assert_cupy_array(a, b)
-    _util._assert_rank2(a)
+    _util._assert_2d(a)
     if b.ndim > 2:
         raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
                                  ' most two-dimensional'.format(b.ndim))
@@ -307,8 +307,8 @@ def inv(a):
         return _batched_inv(a)
 
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
-    _util._assert_nd_squareness(a)
+    _util._assert_2d(a)
+    _util._assert_stacked_square(a)
 
     dtype, out_dtype = _util.linalg_common_type(a)
     order = 'F' if a._f_contiguous else 'C'
@@ -326,7 +326,7 @@ def _batched_inv(a):
 
     assert(a.ndim >= 3)
     _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_square(a)
     dtype, out_dtype = _util.linalg_common_type(a)
 
     if dtype == cupy.float32:

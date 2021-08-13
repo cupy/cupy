@@ -19,7 +19,7 @@ def _assert_cupy_array(*arrays):
                 'cupy.linalg only supports cupy.ndarray')
 
 
-def _assert_rank2(*arrays):
+def _assert_2d(*arrays):
     for a in arrays:
         if a.ndim != 2:
             raise linalg.LinAlgError(
@@ -27,9 +27,18 @@ def _assert_rank2(*arrays):
                 'two-dimensional'.format(a.ndim))
 
 
-def _assert_nd_squareness(*arrays):
+def _assert_stacked_2d(*arrays):
     for a in arrays:
-        if max(a.shape[-2:]) != min(a.shape[-2:]):
+        if a.ndim != 2:
+            raise linalg.LinAlgError(
+                '{}-dimensional array given. Array must be '
+                'at least two-dimensional'.format(a.ndim))
+
+
+def _assert_stacked_square(*arrays):
+    for a in arrays:
+        m, n = a.shape[-2:]
+        if m != n:
             raise linalg.LinAlgError(
                 'Last 2 dimensions of the array must be square')
 
