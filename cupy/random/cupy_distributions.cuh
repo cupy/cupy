@@ -32,6 +32,7 @@ void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t st
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p);
 void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample);
+void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p);
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam);
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
@@ -53,6 +54,7 @@ void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t st
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
 void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {}
+void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream){}

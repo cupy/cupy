@@ -81,14 +81,14 @@ _available_cuda_version = {
 }
 
 _available_hip_version = {
-    'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
-    'potrfBatched': (306, None),
-    # Below are APIs supported by CUDA but not yet by HIP. We need them here
+    # For APIs supported by CUDA but not yet by HIP, we still need them here
     # so that our test suite can cover both platforms.
     'gesvdj': (_numpy.inf, None),
+    'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
     'gesvda': (_numpy.inf, None),
+    'potrfBatched': (306, None),
     'potrsBatched': (_numpy.inf, None),
-    'syevj': (_numpy.inf, None),
+    'syevj': (402, None),
     'gesv': (_numpy.inf, None),
     'gels': (_numpy.inf, None),
     'csrlsvqr': (_numpy.inf, None),
@@ -572,8 +572,13 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     a = a.reshape(batch_size, m, lda)
     v = _cupy.array(
         a.swapaxes(-2, -1), order='C', copy=True, dtype=dtype)
+    if runtime._is_hip_environment:
+        # the batched syev/heev has a different signature...
+        vp = _linalg._mat_ptrs(v)
+    else:
+        vp = v
 
-    w = _cupy.empty((batch_size, m), real_dtype).swapaxes(-2, 1)
+    w = _cupy.empty((batch_size, m), real_dtype).swapaxes(-2, -1)
     dev_info = _cupy.empty((batch_size,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
@@ -605,10 +610,11 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
     params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
-        handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params, batch_size)
+        handle, jobz, uplo, m, vp.data.ptr, lda,
+        w.data.ptr, params, batch_size)
     work = _cupy.empty(work_size, dtype)
     syevjBatched(
-        handle, jobz, uplo, m, v.data.ptr, lda,
+        handle, jobz, uplo, m, vp.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(

@@ -311,3 +311,12 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         actual = cupy.random.default_rng(seed).standard_exponential()
         expected = cupy.random.default_rng(seed).standard_exponential()
         assert actual == expected
+
+
+@testing.parameterize(*common_distributions.logseries_params)
+@testing.fix_random()
+class TestLogseries(
+    common_distributions.Logseries,
+    GeneratorTestCase
+):
+    pass
