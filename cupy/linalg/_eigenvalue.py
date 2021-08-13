@@ -4,6 +4,7 @@ import cupy
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy.cuda import runtime
 from cupy.linalg import _util
 
 
@@ -104,8 +105,9 @@ def eigh(a, UPLO='L'):
     if m != n:
         raise ValueError('Last 2 dimensions of the array must be square')
 
-    if a.ndim > 2:
-        return cupy.cusolver.syevj(a, UPLO, True)
+    if a.ndim > 2 or runtime.is_hip:
+        w, v = cupy.cusolver.syevj(a, UPLO, True)
+        return w, v
     else:
         return _syevd(a, UPLO, True)
 
@@ -144,7 +146,7 @@ def eigvalsh(a, UPLO='L'):
 
     _util._assert_nd_squareness(a)
 
-    if a.ndim > 2:
+    if a.ndim > 2 or runtime.is_hip:
         return cupy.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]
