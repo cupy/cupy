@@ -1,6 +1,4 @@
 import cupy
-
-from cupy.linalg import _util
 import cupyx.scipy.sparse
 try:
     from cupy_backends.cuda.libs import cugraph
@@ -40,10 +38,14 @@ def connected_components(csgraph, directed=True, connection='weak',
     if not directed:
         connection = 'weak'
 
+    if csgraph.ndim != 2:
+        raise ValueError('graph should have two dimensions')
+
     if not cupyx.scipy.sparse.isspmatrix_csr(csgraph):
         csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
-    _util._assert_stacked_square(csgraph)
-    m = csgraph.shape[0]
+    m, m1 = csgraph.shape
+    if m != m1:
+        raise ValueError('graph should be a square array')
     if csgraph.nnz == 0:
         return m, cupy.arange(m, dtype=csgraph.indices.dtype)
     labels = cupy.empty(m, dtype=csgraph.indices.dtype)

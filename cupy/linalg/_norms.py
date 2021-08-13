@@ -1,5 +1,4 @@
 import numpy
-from numpy import linalg
 
 import cupy
 from cupy import _core
@@ -234,10 +233,7 @@ def slogdet(a):
 
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
-    if a.ndim < 2:
-        msg = ('%d-dimensional array given. '
-               'Array must be at least two-dimensional' % a.ndim)
-        raise linalg.LinAlgError(msg)
+    _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
     dtype, sign_dtype = _util.linalg_common_type(a)

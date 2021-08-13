@@ -363,6 +363,7 @@ def matrix_power(M, n):
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
     _util._assert_cupy_array(M)
+    _util._assert_stacked_2d(M)
     _util._assert_stacked_square(M)
     if not isinstance(n, int):
         raise TypeError('exponent must be an integer')

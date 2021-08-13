@@ -43,7 +43,9 @@ def solve(a, b):
         # large, so it is not used in such cases.
         return batched_gesv(a, b)
 
+    # TODO(kataoka): Move the checks to the beginning
     _util._assert_cupy_array(a, b)
+    _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
     if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
@@ -244,6 +246,7 @@ def lstsq(a, b, rcond='warn'):
 
     _util._assert_cupy_array(a, b)
     _util._assert_2d(a)
+    # TODO(kataoka): Fix 0-dim
     if b.ndim > 2:
         raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
                                  ' most two-dimensional'.format(b.ndim))
@@ -306,6 +309,7 @@ def inv(a):
     if a.ndim >= 3:
         return _batched_inv(a)
 
+    # TODO(kataoka): Move the checks to the beginning
     _util._assert_cupy_array(a)
     _util._assert_2d(a)
     _util._assert_stacked_square(a)
@@ -324,7 +328,7 @@ def inv(a):
 
 def _batched_inv(a):
 
-    assert(a.ndim >= 3)
+    assert a.ndim >= 3
     _util._assert_cupy_array(a)
     _util._assert_stacked_square(a)
     dtype, out_dtype = _util.linalg_common_type(a)

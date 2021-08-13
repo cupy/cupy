@@ -141,9 +141,7 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    if a.ndim < 2:
-        raise ValueError('Array must be at least two-dimensional')
-
+    _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
     if a.ndim > 2 or runtime.is_hip:

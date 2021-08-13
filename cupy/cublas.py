@@ -36,6 +36,7 @@ def batched_gesv(a, b):
             The matrix with dimension ``(..., M)`` or ``(..., M, K)``.
     """
     _util._assert_cupy_array(a, b)
+    _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
     if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
