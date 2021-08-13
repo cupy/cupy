@@ -27,6 +27,7 @@ ELSE:
 
 cdef extern from '../../cupy_backend.h' nogil:
     # Build-time version
+    # Note: CUDA_VERSION is defined either in CUDA Python or _driver_extern.pxi
     int HIP_VERSION
 
 # Provide access to constants from Python.
