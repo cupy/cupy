@@ -875,8 +875,6 @@ class TestCsrlsvqr:
 
     @testing.for_dtypes('fdFD')
     def test_csrlsvqr(self, dtype):
-        if not cupy.cusolver.check_availability('csrlsvqr'):
-            unittest.SkipTest('csrlsvqr is not available')
         a, b, test_tol = self._setup(dtype)
         ref_x = numpy.linalg.solve(a, b)
         cp_a = cupy.array(a)
