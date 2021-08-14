@@ -4,7 +4,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy import testing
 
@@ -26,7 +25,7 @@ def _get_hermitian(xp, a, UPLO):
 }))
 @testing.gpu
 @pytest.mark.skipif(
-    runtime.is_hip and driver.get_build_version() < 402,
+    runtime.is_hip,
     reason='eigensolver not added until ROCm 4.2.0')
 class TestEigenvalue(unittest.TestCase):
 
@@ -81,13 +80,7 @@ class TestEigenvalue(unittest.TestCase):
         # so w's should be directly comparable. However,
         # rocSOLVER seems to pick a different convention in eigenvectors,
         # so v's are not directly comparible
-        if runtime.is_hip:
-            A = _get_hermitian(xp, a, self.UPLO)
-            testing.assert_allclose(
-                A.dot(v), w*v, rtol=1e-5, atol=1e-5)
-            return w
-        else:
-            return w, v
+        return w, v
 
     @testing.for_dtypes('FD')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
