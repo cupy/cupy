@@ -186,25 +186,13 @@ class TestBinomial(RandomGeneratorTestCase):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
 
-@testing.parameterize(
-    {'df': 1.0},
-    {'df': 3.0},
-    {'df': 10.0},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.chisquare_params)
 @testing.fix_random()
-class TestChisquare(RandomGeneratorTestCase):
-
-    target_method = 'chisquare'
-
-    def test_chisquare(self):
-        self.generate(df=self.df, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_chisquare_ks(self, dtype):
-        self.check_ks(0.05)(
-            df=self.df, size=2000, dtype=dtype)
+class TestChisquare(
+    common_distributions.Chisquare,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu
