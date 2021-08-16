@@ -12,6 +12,8 @@ import cupyx
 _default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
 
 
+# The helper functions raise LinAlgError if the conditions are not met.
+
 def _assert_cupy_array(*arrays):
     for a in arrays:
         if not isinstance(a, cupy._core.ndarray):
@@ -36,6 +38,18 @@ def _assert_stacked_2d(*arrays):
 
 
 def _assert_stacked_square(*arrays):
+    """Assert that stacked matrices are square matrices
+
+    Precondition: `arrays` are at least 2d. The caller should assert it
+    beforehand. For example,
+
+    >>> def det(a):
+    ...     _assert_stacked_2d(a)
+    ...     _assert_stacked_square(a)
+    ...     ...
+
+    """
+
     for a in arrays:
         m, n = a.shape[-2:]
         if m != n:
