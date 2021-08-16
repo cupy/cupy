@@ -315,7 +315,7 @@ class Generator:
         y = ndarray(size, numpy.float64)
 
         df = cupy.broadcast_to(df, y.shape)
-        y = self.standard_gamma(df/2)
+        y = self.standard_gamma(df / 2)
         y *= 2
         return y
 
