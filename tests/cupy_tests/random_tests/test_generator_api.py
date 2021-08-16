@@ -329,3 +329,12 @@ class TestLogseries(
     GeneratorTestCase
 ):
     pass
+
+
+@testing.parameterize(*common_distributions.chisquare_params)
+@testing.fix_random()
+class TestChisquare(
+    common_distributions.Chisquare,
+    GeneratorTestCase
+):
+    pass

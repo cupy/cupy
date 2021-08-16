@@ -389,3 +389,29 @@ class Logseries:
         if not isinstance(self.p, float):
             self.skipTest('Statistical checks only for scalar `p`')
         self.check_ks(0.05)(p=self.p, size=2000)
+
+
+chisquare_params = [
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+    {'df': [2, 5, 8]},
+]
+
+
+class Chisquare:
+
+    target_method = 'chisquare'
+
+    def test_chisquare(self):
+        df = self.df
+        if not isinstance(self.df, float):
+            df = cupy.array(self.df)
+        self.generate(df=df)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_chisquare_ks(self):
+        if not isinstance(self.df, float):
+            self.skipTest('Statistical checks only for scalar `df`')
+        self.check_ks(0.05)(
+            df=self.df, size=2000)

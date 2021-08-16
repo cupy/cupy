@@ -275,6 +275,50 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def chisquare(self, df, size=None):
+        """Chi-square distribution.
+
+        Returns an array of samples drawn from the chi-square distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2}.
+
+        Args:
+            df (float or array_like of floats): Degree of freedom :math:`k`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the chi-square distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.chisquare`
+        """
+
+        cdef ndarray y
+
+        if not isinstance(df, ndarray):
+            if type(df) in (float, int):
+                df = cupy.asarray(df, numpy.float64)
+            else:
+                raise TypeError('df is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            df = df.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        if size is None:
+            size = df.shape
+
+        y = ndarray(size, numpy.float64)
+
+        df = cupy.broadcast_to(df, y.shape)
+        y = self.standard_gamma(df / 2)
+        y *= 2
+        return y
+
     def exponential(self, scale=1.0, size=None):
         """Exponential distribution.
 
