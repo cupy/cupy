@@ -415,3 +415,28 @@ class Chisquare:
             self.skipTest('Statistical checks only for scalar `df`')
         self.check_ks(0.05)(
             df=self.df, size=2000)
+
+
+dirichlet_params = [
+    {'alpha': 5},
+    {'alpha': 1},
+    {'alpha': [2, 5, 8]}
+]
+
+
+class Dirichlet:
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, float):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=(3, 2))
+
+    def test_dirichlet_int_shape(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, int):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=5)
+
+    # TODO(kataoka): add distribution test
