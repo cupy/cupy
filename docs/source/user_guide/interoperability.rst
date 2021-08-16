@@ -28,7 +28,7 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
 
 :class:`cupy.ndarray` also implements ``__array_function__`` interface (see `NEP 18 — A dispatch mechanism for NumPy’s high level array functions <http://www.numpy.org/neps/nep-0018-array-function-protocol.html>`_ for details).
 This enables code using NumPy to be directly operated on CuPy arrays.
-``__array_function__`` feature requires NumPy 1.16 or later; As of NumPy 1.17, `__array_function__` is enabled by default.
+``__array_function__`` feature requires NumPy 1.16 or later; As of NumPy 1.17, ``__array_function__`` is enabled by default.
 
 
 Numba
