@@ -340,6 +340,32 @@ class Hypergeometric:
         self.check_ks(0.05)(self.ngood, self.nbad, self.nsample, size=2000)
 
 
+power_params = [
+    {'a': 0.5},
+    {'a': 1},
+    {'a': 5},
+    {'a': [0.8, 0.7, 1, 2, 5]},
+]
+
+
+class Power:
+
+    target_method = 'power'
+
+    def test_power(self):
+        a = self.a
+        if not isinstance(self.a, float):
+            a = cupy.array(self.a)
+        self.generate(a=a)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_power_ks(self):
+        if not isinstance(self.a, float):
+            self.skipTest('Statistical checks only for scalar `a`')
+        self.check_ks(0.05)(
+            a=self.a, size=2000)
+
+
 logseries_params = [
     {'p': 0.5},
     {'p': 0.1},

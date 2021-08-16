@@ -631,23 +631,13 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
-@testing.parameterize(
-    {'a': 0.5},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.power_params)
 @testing.fix_random()
-class TestPower(RandomGeneratorTestCase):
-
-    target_method = 'power'
-
-    def test_power(self):
-        self.generate(a=self.a, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_power_ks(self, dtype):
-        self.check_ks(0.05)(
-            a=self.a, size=2000, dtype=dtype)
+class TestPower(
+    common_distributions.Power,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(

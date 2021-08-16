@@ -573,6 +573,48 @@ class Generator:
         _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
         return y
 
+    def power(self, a, size=None):
+        """Power distribution.
+
+        Returns an array of samples drawn from the power distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = ax^{a-1}.
+
+        Args:
+            a (float or array_like of floats): Parameter of the power
+                distribution :math:`a`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the power distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.power`
+        """
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            a = a.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = a.shape
+
+        x = self.standard_exponential(size)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
+
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Standard normal distribution.
 
