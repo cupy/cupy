@@ -242,7 +242,7 @@ def qr(a, mode='reduced'):
     """
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
+    _util._assert_2d(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):
