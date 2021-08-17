@@ -172,7 +172,8 @@ def cholesky(a):
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
     _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
     if a.ndim > 2:
         return _potrf_batched(a)
@@ -241,7 +242,7 @@ def qr(a, mode='reduced'):
     """
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
+    _util._assert_2d(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):

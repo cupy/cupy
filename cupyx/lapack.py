@@ -281,8 +281,10 @@ def posv(a, b):
         x (cupy.ndarray): The solution (shape matches b).
     """
 
-    _cupy.linalg._util._assert_cupy_array(a, b)
-    _cupy.linalg._util._assert_nd_squareness(a)
+    _util = _cupy.linalg._util
+    _util._assert_cupy_array(a, b)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
     if a.ndim > 2:
         return _batched_posv(a, b)
