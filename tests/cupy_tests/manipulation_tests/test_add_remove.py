@@ -128,6 +128,26 @@ class TestUnique(unittest.TestCase):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True)[1]
 
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_return_all(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return xp.unique(
+            a, return_index=True, return_inverse=True, return_counts=True)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_empty(self, xp, dtype):
+        a = xp.empty((0,), dtype)
+        return xp.unique(a)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_empty_return_all(self, xp, dtype):
+        a = xp.empty((3, 0, 2), dtype)
+        return xp.unique(
+            a, return_index=True, return_inverse=True, return_counts=True)
+
 
 @testing.parameterize(*testing.product({
     'trim': ['fb', 'f', 'b']
