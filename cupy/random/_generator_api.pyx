@@ -342,6 +342,58 @@ class Generator:
         """
         return self.standard_exponential(size) * scale
 
+    def f(self, dfnum, dfden, size=None):
+        """F distribution.
+
+        Returns an array of samples drawn from the f distribution. Its
+        probability density function is defined as
+
+        .. math::
+            f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+                \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+                x^{\\frac{d_1}{2}-1} \
+                \\left(1+\\frac{d_1}{d_2}x\\right) \
+                ^{-\\frac{d_1+d_2}{2}}.
+
+        Args:
+            dfnum (float or array_like of floats): Degrees of freedom in
+                numerator, :math:`d_1`.
+            dfden (float or array_like of floats): Degrees of freedom in
+                denominator, :math:`d_2`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the f distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.f`
+        """
+        if not isinstance(dfnum, ndarray):
+            if type(dfnum) in (float, int):
+                dfnum = cupy.asarray(dfnum, numpy.float64)
+            else:
+                raise TypeError('dfnum is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            dfnum = dfnum.astype('d', copy=False)
+
+        if not isinstance(dfden, ndarray):
+            if type(dfden) in (float, int):
+                dfden = cupy.asarray(dfden, numpy.float64)
+            else:
+                raise TypeError('dfden is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            dfden = dfden.astype('d', copy=False)
+
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden).shape
+
+        y = (self.chisquare(dfnum, size) * dfden) / (
+            self.chisquare(dfden, size) * dfnum)
+        return y
+
     def geometric(self, p, size=None):
         """Geometric distribution.
 
