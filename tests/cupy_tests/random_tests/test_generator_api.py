@@ -338,3 +338,12 @@ class TestChisquare(
     GeneratorTestCase
 ):
     pass
+
+
+@testing.parameterize(*common_distributions.f_params)
+@testing.fix_random()
+class TestF(
+    common_distributions.F,
+    GeneratorTestCase
+):
+    pass

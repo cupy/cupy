@@ -415,3 +415,30 @@ class Chisquare:
             self.skipTest('Statistical checks only for scalar `df`')
         self.check_ks(0.05)(
             df=self.df, size=2000)
+
+
+f_params = [
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+    {'dfnum': [1.0, 3.0, 3.0], 'dfden': [3.0, 3.0, 1.0]},
+]
+
+
+class F:
+
+    target_method = 'f'
+
+    def test_f(self):
+        dfnum = self.dfnum
+        dfden = self.dfden
+        if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
+            dfnum = cupy.array(self.dfnum)
+            dfden = cupy.array(self.dfden)
+        self.generate(dfnum, dfden)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_f_ks(self):
+        if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(self.dfnum, self.dfden, size=2000)
