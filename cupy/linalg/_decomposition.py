@@ -229,7 +229,7 @@ def _qr_batched(a, mode):
             return (cupy.empty(batch_shape + (m, 0), out_dtype),
                     cupy.empty(batch_shape + (0, n), out_dtype))
         elif mode == 'complete':
-            q = _util.batch_identity(batch_shape, m, out_dtype)
+            q = _util.stacked_identity(batch_shape, m, out_dtype)
             return (q, cupy.empty(batch_shape + (m, n), out_dtype))
         elif mode == 'r':
             return cupy.empty(batch_shape + (0, n), out_dtype)
@@ -412,8 +412,8 @@ def _svd_batched(a, full_matrices, compute_uv):
         s = cupy.empty(batch_shape + (0,), s_dtype)
         if compute_uv:
             if full_matrices:
-                u = _util.batch_identity(batch_shape, n, uv_dtype)
-                vt = _util.batch_identity(batch_shape, m, uv_dtype)
+                u = _util.stacked_identity(batch_shape, n, uv_dtype)
+                vt = _util.stacked_identity(batch_shape, m, uv_dtype)
             else:
                 u = cupy.empty(batch_shape + (n, 0), dtype=uv_dtype)
                 vt = cupy.empty(batch_shape + (0, m), dtype=uv_dtype)

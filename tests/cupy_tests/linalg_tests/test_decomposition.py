@@ -244,11 +244,11 @@ class TestSVD(unittest.TestCase):
         vh_len = vh_gpu.shape[-2]
         cupy.testing.assert_allclose(
             cupy.matmul(u_gpu.swapaxes(-1, -2).conj(), u_gpu),
-            _util.batch_identity(shape[:-2], u_len, dtype),
+            _util.stacked_identity(shape[:-2], u_len, dtype),
             atol=1e-4)
         cupy.testing.assert_allclose(
             cupy.matmul(vh_gpu, vh_gpu.swapaxes(-1, -2).conj()),
-            _util.batch_identity(shape[:-2], vh_len, dtype),
+            _util.stacked_identity(shape[:-2], vh_len, dtype),
             atol=1e-4)
 
     @testing.for_dtypes([

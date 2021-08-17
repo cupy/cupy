@@ -22,5 +22,5 @@ def invh(a):
     _util._assert_2d(a)
     _util._assert_stacked_square(a)
 
-    b = _util.batch_identity_like(a)
+    b = _util.stacked_identity_like(a)
     return lapack.posv(a, b)

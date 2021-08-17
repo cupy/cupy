@@ -176,7 +176,7 @@ def _triu(x, k=0):
     return x
 
 
-def batch_identity(batch_shape, n, dtype):
+def stacked_identity(batch_shape, n, dtype):
     shape = batch_shape + (n, n)
     idx = cupy.arange(n)
     x = cupy.zeros(shape, dtype)
@@ -184,7 +184,7 @@ def batch_identity(batch_shape, n, dtype):
     return x
 
 
-def batch_identity_like(x):
+def stacked_identity_like(x):
     """
     Precondition: ``x`` is `cupy.ndarray` of shape ``(..., N, N)``
     """

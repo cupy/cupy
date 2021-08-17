@@ -369,7 +369,7 @@ def matrix_power(M, n):
         raise TypeError('exponent must be an integer')
 
     if n == 0:
-        return _util.batch_identity_like(M)
+        return _util.stacked_identity_like(M)
     elif n < 0:
         M = _solve.inv(M)
         n *= -1
