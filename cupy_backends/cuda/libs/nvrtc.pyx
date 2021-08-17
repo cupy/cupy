@@ -21,25 +21,28 @@ from cupy_backends.cuda.api cimport runtime
 # Extern
 ###############################################################################
 
-cdef extern from '../../cupy_rtc.h' nogil:
-    const char *nvrtcGetErrorString(Result result)
-    int nvrtcVersion(int *major, int *minor)
-    int nvrtcCreateProgram(
-        Program* prog, const char* src, const char* name, int numHeaders,
-        const char** headers, const char** includeNames)
-    int nvrtcDestroyProgram(Program *prog)
-    int nvrtcCompileProgram(Program prog, int numOptions,
-                            const char** options)
-    int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
-    int nvrtcGetPTX(Program prog, char *ptx)
-    int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
-    int nvrtcGetCUBIN(Program prog, char *cubin)
-    int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
-    int nvrtcGetProgramLog(Program prog, char* log)
-    int nvrtcAddNameExpression(Program, const char*)
-    int nvrtcGetLoweredName(Program, const char*, const char**)
-    int nvrtcGetNumSupportedArchs(int* numArchs)
-    int nvrtcGetSupportedArchs(int* supportedArchs)
+IF CUPY_USE_CUDA_PYTHON:
+    from cuda.cnvrtc cimport *
+ELSE:
+    cdef extern from '../../cupy_rtc.h' nogil:
+        const char *nvrtcGetErrorString(Result result)
+        int nvrtcVersion(int *major, int *minor)
+        int nvrtcCreateProgram(
+            Program* prog, const char* src, const char* name, int numHeaders,
+            const char** headers, const char** includeNames)
+        int nvrtcDestroyProgram(Program *prog)
+        int nvrtcCompileProgram(Program prog, int numOptions,
+                                const char** options)
+        int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
+        int nvrtcGetPTX(Program prog, char *ptx)
+        int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
+        int nvrtcGetCUBIN(Program prog, char *cubin)
+        int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
+        int nvrtcGetProgramLog(Program prog, char* log)
+        int nvrtcAddNameExpression(Program, const char*)
+        int nvrtcGetLoweredName(Program, const char*, const char**)
+        int nvrtcGetNumSupportedArchs(int* numArchs)
+        int nvrtcGetSupportedArchs(int* supportedArchs)
 
 
 ###############################################################################

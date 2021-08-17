@@ -47,7 +47,8 @@ def lsqr(A, b):
         raise RuntimeError('HIP does not support lsqr')
     if not sparse.isspmatrix_csr(A):
         A = sparse.csr_matrix(A)
-    _util._assert_nd_squareness(A)
+    # csr_matrix is 2d
+    _util._assert_stacked_square(A)
     _util._assert_cupy_array(b)
     m = A.shape[0]
     if b.ndim != 1 or len(b) != m:

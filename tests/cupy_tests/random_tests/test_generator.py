@@ -186,25 +186,13 @@ class TestBinomial(RandomGeneratorTestCase):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
 
-@testing.parameterize(
-    {'df': 1.0},
-    {'df': 3.0},
-    {'df': 10.0},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.chisquare_params)
 @testing.fix_random()
-class TestChisquare(RandomGeneratorTestCase):
-
-    target_method = 'chisquare'
-
-    def test_chisquare(self):
-        self.generate(df=self.df, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_chisquare_ks(self, dtype):
-        self.check_ks(0.05)(
-            df=self.df, size=2000, dtype=dtype)
+class TestChisquare(
+    common_distributions.Chisquare,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu
@@ -383,21 +371,13 @@ class TestLogNormal(RandomGeneratorTestCase):
             *self.args, size=self.size, dtype=dtype)
 
 
-@testing.parameterize(
-    {'p': 0.5},
-    {'p': 0.1},
-    {'p': 0.9},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.logseries_params)
 @testing.fix_random()
-class TestLogseries(RandomGeneratorTestCase):
-
-    target_method = 'logseries'
-
-    def test_logseries(self):
-        self.generate(p=self.p, size=(3, 2))
-
-    # TODO(kataoka): add distribution test
+class TestLogseries(
+    common_distributions.Logseries,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu
@@ -639,23 +619,13 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
-@testing.parameterize(
-    {'a': 0.5},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.power_params)
 @testing.fix_random()
-class TestPower(RandomGeneratorTestCase):
-
-    target_method = 'power'
-
-    def test_power(self):
-        self.generate(a=self.a, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_power_ks(self, dtype):
-        self.check_ks(0.05)(
-            a=self.a, size=2000, dtype=dtype)
+class TestPower(
+    common_distributions.Power,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(

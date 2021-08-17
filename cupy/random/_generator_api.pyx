@@ -40,6 +40,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void hypergeometric(
         int generator, intptr_t state, intptr_t out, ssize_t size,
         intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
+    void logseries(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t arg1)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -272,6 +275,50 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def chisquare(self, df, size=None):
+        """Chi-square distribution.
+
+        Returns an array of samples drawn from the chi-square distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2}.
+
+        Args:
+            df (float or array_like of floats): Degree of freedom :math:`k`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the chi-square distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.chisquare`
+        """
+
+        cdef ndarray y
+
+        if not isinstance(df, ndarray):
+            if type(df) in (float, int):
+                df = cupy.asarray(df, numpy.float64)
+            else:
+                raise TypeError('df is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            df = df.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        if size is None:
+            size = df.shape
+
+        y = ndarray(size, numpy.float64)
+
+        df = cupy.broadcast_to(df, y.shape)
+        y = self.standard_gamma(df / 2)
+        y *= 2
+        return y
+
     def exponential(self, scale=1.0, size=None):
         """Exponential distribution.
 
@@ -308,8 +355,8 @@ class Generator:
             p (float or cupy.ndarray of floats): Success probability of
                 the geometric distribution.
             size (int or tuple of ints, optional): The shape of the output
-                array. If `None`(default), a single value is returned if ``p``
-                is scalar. Otherwise, ``p.size`` samples are drawn.
+                array. If ``None`` (default), a single value is returned if
+                ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
 
         Returns:
             cupy.ndarray: Samples drawn from the geometric distribution.
@@ -427,6 +474,53 @@ class Generator:
                      (ngood_ptr, nbad_ptr, nsample_ptr))
         return y
 
+    def logseries(self, p, size=None):
+        """Log series distribution.
+
+        Returns an array of samples drawn from the log series distribution.
+        Its probability mass function is defined as
+
+        .. math::
+           f(x) = \\frac{-p^x}{x\\ln(1-p)}.
+
+        Args:
+            p (float or cupy.ndarray of floats): Parameter of the log series
+                distribution. Must be in the range (0, 1).
+            size (int or tuple of ints, optional): The shape of the output
+                array. If ``None`` (default), a single value is returned if
+                ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the log series distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.logseries`
+        """
+        cdef ndarray y
+        cdef ndarray p_arr
+
+        if not isinstance(p, ndarray):
+            if type(p) in (float, int):
+                p = cupy.asarray(p, numpy.float64)
+            else:
+                raise TypeError('p is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            p = p.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = p.shape
+
+        y = ndarray(size, numpy.int64)
+
+        p = cupy.broadcast_to(p, y.shape)
+        p_arr = _array_data(p)
+        p_ptr = p_arr.data.ptr
+        _launch_dist(self.bit_generator, logseries, y, (p_ptr,))
+        return y
+
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
             method='inv', out=None):
@@ -443,8 +537,8 @@ class Generator:
                 a zero-dimensional array is generated.
             dtype: Data type specifier. Only :class:`numpy.float32` and
                 :class:`numpy.float64` types are allowed.
-            method (str): Method to sample, Currently onlu 'inv', sample from
-                the default inverse CDF is supported.
+            method (str): Method to sample. Currently only ``'inv'``, sampling
+                from the default inverse CDF, is supported.
             out (cupy.ndarray, optional): If specified, values will be written
                 to this array
         Returns:
@@ -486,7 +580,7 @@ class Generator:
                 the poisson distribution
                 :math:`\\lambda`.
             size (int or tuple of ints): The shape of the array. If ``None``,
-            this function generate an array whose shape is `lam.shape`.
+                this function generate an array whose shape is ``lam.shape``.
 
         Returns:
             cupy.ndarray: Samples drawn from the poisson distribution.
@@ -522,6 +616,48 @@ class Generator:
         lam_ptr = lam_arr.data.ptr
         _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
         return y
+
+    def power(self, a, size=None):
+        """Power distribution.
+
+        Returns an array of samples drawn from the power distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = ax^{a-1}.
+
+        Args:
+            a (float or array_like of floats): Parameter of the power
+                distribution :math:`a`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the power distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.power`
+        """
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            a = a.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = a.shape
+
+        x = self.standard_exponential(size)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Standard normal distribution.

@@ -112,6 +112,14 @@ Here are the environment variables that CuPy uses at runtime.
   If set to ``1``, CuPy will use the CUDA per-thread default stream, effectively causing each host thread to automatically execute in its own stream, unless the CUDA default (``null``) stream or a user-created stream is specified.
   If set to ``0`` (default), the CUDA default (``null``) stream is used, unless the per-thread default stream (``ptds``) or a user-created stream is specified.
 
+.. envvar:: CUPY_COMPILE_WITH_PTX
+
+  Default: ``0``
+
+  By default, CuPy directly compiles kernels into SASS (CUBIN) to support `CUDA Enhanced Compatibility <https://docs.nvidia.com/deploy/cuda-compatibility/>`_
+  If set to ``1``, CuPy instead compiles kernels into PTX and lets CUDA Driver assemble SASS from PTX.
+  This option is only effective for CUDA 11.1 or later; CuPy always compiles into PTX on earlier CUDA versions. Also, this option only applies when NVRTC is selected as the compilation backend. NVCC backend always compiles into SASS (CUBIN).
+
 CUDA Toolkit Environment Variables
   In addition to the environment variables listed above, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit Documentation`_ will also be honored.
 
@@ -138,8 +146,14 @@ These environment variables are used during installation (building CuPy from sou
 
   Default: ``0``
 
-  Build CuPy for AMD ROCm Platform (experimental).
+  If set to ``1``, CuPy is built for AMD ROCm Platform (experimental).
   For building the ROCm support, see :ref:`install_hip` for further detail.
+
+.. envvar:: CUPY_USE_CUDA_PYTHON
+
+  Default: ``0``
+
+  If set to ``1``, CuPy is built using `CUDA Python <https://github.com/NVIDIA/cuda-python>`_.
 
 .. envvar:: CUPY_NVCC_GENERATE_CODE
 

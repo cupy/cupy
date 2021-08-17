@@ -280,6 +280,15 @@ class TestHypergeometric(
     pass
 
 
+@testing.parameterize(*common_distributions.power_params)
+@testing.fix_random()
+class TestPower(
+    common_distributions.Power,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -311,3 +320,21 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         actual = cupy.random.default_rng(seed).standard_exponential()
         expected = cupy.random.default_rng(seed).standard_exponential()
         assert actual == expected
+
+
+@testing.parameterize(*common_distributions.logseries_params)
+@testing.fix_random()
+class TestLogseries(
+    common_distributions.Logseries,
+    GeneratorTestCase
+):
+    pass
+
+
+@testing.parameterize(*common_distributions.chisquare_params)
+@testing.fix_random()
+class TestChisquare(
+    common_distributions.Chisquare,
+    GeneratorTestCase
+):
+    pass
