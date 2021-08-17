@@ -185,6 +185,9 @@ def batch_identity(batch_shape, n, dtype):
 
 
 def batch_identity_like(x):
+    """
+    Precondition: ``x`` is `cupy.ndarray` of shape ``(..., N, N)``
+    """
     n = x.shape[-1]
     idx = cupy.arange(n)
     x = cupy.zeros_like(x)
