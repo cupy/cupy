@@ -504,7 +504,11 @@ cpdef ndarray tensordot_core(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 11000 and compute_capability >= 50:
+    if (
+        not runtime._is_hip_environment and
+        _cuda_runtime_version >= 11000 and
+        compute_capability >= 50
+    ):
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         return out
 
