@@ -87,8 +87,11 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
 
     if a.base is not None or not a.flags.c_contiguous:
         a = a.copy()
-    elif (value_type == 'C2R' and not overwrite_x and
-            10010 <= cupy.cuda.runtime.runtimeGetVersion()):
+    elif (
+        not cupy.cuda.runtime.is_hip and
+        value_type == 'C2R' and not overwrite_x and
+        10010 <= cupy.cuda.runtime.runtimeGetVersion()
+    ):
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
         a = a.copy()
