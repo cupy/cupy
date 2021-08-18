@@ -179,7 +179,7 @@ def unique(ar, return_index=False, return_inverse=False,
         ar.sort()
         aux = ar
     mask = cupy.empty(aux.shape, dtype=cupy.bool_)
-    mask[0] = True
+    mask[:1] = True
     mask[1:] = aux[1:] != aux[:-1]
 
     ret = aux[mask]
