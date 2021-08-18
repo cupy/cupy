@@ -347,6 +347,7 @@ class TestWhereError(unittest.TestCase):
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestNonzero(unittest.TestCase):
@@ -382,6 +383,7 @@ class TestNonzeroZeroDimension(unittest.TestCase):
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestFlatNonzero(unittest.TestCase):
@@ -399,6 +401,7 @@ class TestFlatNonzero(unittest.TestCase):
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestArgwhere(unittest.TestCase):

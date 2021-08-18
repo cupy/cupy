@@ -74,7 +74,7 @@ def _parameterize_test_case(base, i, param):
     return (cls_name, mb, lambda method: method)
 
 
-def parameterize(*params):
+def parameterize(*params, **kwargs):
     """Generates test classes with given sets of additional attributes
 
     >>> @parameterize({"a": 1}, {"b": 2, "c": 3})
@@ -91,10 +91,11 @@ def parameterize(*params):
     """
     def f(cls):
         if issubclass(cls, unittest.TestCase):
+            assert not kwargs
             deco = _bundle.make_decorator(
                 lambda base: _parameterize_test_case_generator(base, params))
         else:
-            deco = _pytest_impl.parameterize(*params)
+            deco = _pytest_impl.parameterize(*params, **kwargs)
         return deco(cls)
     return f
 
