@@ -1,10 +1,13 @@
 import itertools
+import re
 import types
-import typing as tp  # NOQA
 import unittest
 
 from cupy.testing import _bundle
 from cupy.testing import _pytest_impl
+
+
+_bad_name = re.compile(r' at 0x[0-9a-f]*')
 
 
 def _param_to_str(obj):
@@ -13,7 +16,7 @@ def _param_to_str(obj):
     elif hasattr(obj, '__name__') and isinstance(obj.__name__, str):
         # print __name__ attribute for classes, functions and modules
         return obj.__name__
-    return repr(obj)
+    return _bad_name.sub('', repr(obj))
 
 
 def _shorten(s, maxlen):
