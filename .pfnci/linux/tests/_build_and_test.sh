@@ -9,13 +9,14 @@ pytest_opts=(
     --timeout 300
     --maxfail 500
     --showlocals
+    --numprocesses auto
 )
 
 if [[ "${MARKER}" != "" ]]; then
     pytest_opts+=(-m "${MARKER}")
 fi
 
-python3 -m pip install --user pytest-timeout
+python3 -m pip install --user pytest-timeout pytest-xdist
 python3 -m pip install --user -v ".[all,test]"
 
 pushd tests
