@@ -11,7 +11,7 @@ def cuda_version():
     return cupy.cuda.runtime.runtimeGetVersion()
 
 
-@testing.gpu
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'CUDA specific tests')
 class TestNvrtcArch(unittest.TestCase):
     def setUp(self):
         cupy.clear_memo()  # _get_arch result is cached
