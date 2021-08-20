@@ -174,3 +174,22 @@ _triu_kernel = _core.ElementwiseKernel(
 def _triu(x, k=0):
     _triu_kernel(k, x)
     return x
+
+
+def stacked_identity(batch_shape, n, dtype):
+    shape = batch_shape + (n, n)
+    idx = cupy.arange(n)
+    x = cupy.zeros(shape, dtype)
+    x[..., idx, idx] = 1
+    return x
+
+
+def stacked_identity_like(x):
+    """
+    Precondition: ``x`` is `cupy.ndarray` of shape ``(..., N, N)``
+    """
+    n = x.shape[-1]
+    idx = cupy.arange(n)
+    x = cupy.zeros_like(x)
+    x[..., idx, idx] = 1
+    return x

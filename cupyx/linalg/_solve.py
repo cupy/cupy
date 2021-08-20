@@ -1,4 +1,3 @@
-import cupy
 from cupy.linalg import _util
 from cupyx import lapack
 
@@ -23,9 +22,5 @@ def invh(a):
     _util._assert_2d(a)
     _util._assert_stacked_square(a)
 
-    n = a.shape[-1]
-    identity_matrix = cupy.eye(n, dtype=a.dtype)
-    b = cupy.empty(a.shape, a.dtype)
-    b[...] = identity_matrix
-
+    b = _util.stacked_identity_like(a)
     return lapack.posv(a, b)
