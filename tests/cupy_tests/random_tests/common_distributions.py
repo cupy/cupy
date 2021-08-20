@@ -442,3 +442,28 @@ class F:
         if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
             self.skipTest('Stastical checks only for scalar args')
         self.check_ks(0.05)(self.dfnum, self.dfden, size=2000)
+
+
+dirichlet_params = [
+    {'alpha': 5},
+    {'alpha': 1},
+    {'alpha': [2, 5, 8]}
+]
+
+
+class Dirichlet:
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, float):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=(3, 2))
+
+    def test_dirichlet_int_shape(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, int):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=5)
+
+    # TODO(kataoka): add distribution test

@@ -195,23 +195,13 @@ class TestChisquare(
     pass
 
 
-@testing.gpu
-@testing.parameterize(
-    {'alpha': cupy.array([1.0, 1.0, 1.0])},
-    {'alpha': cupy.array([1.0, 3.0, 5.0])},
-)
+@testing.parameterize(*common_distributions.dirichlet_params)
 @testing.fix_random()
-class TestDirichlet(RandomGeneratorTestCase):
-
-    target_method = 'dirichlet'
-
-    def test_dirichlet(self):
-        self.generate(alpha=self.alpha, size=(3, 2, 3))
-
-    def test_dirichlet_int_shape(self):
-        self.generate(alpha=self.alpha, size=5)
-
-    # TODO(kataoka): add distribution test
+class TestDirichlet(
+    common_distributions.Dirichlet,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(*common_distributions.exponential_params)

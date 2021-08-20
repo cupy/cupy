@@ -319,6 +319,51 @@ class Generator:
         y *= 2
         return y
 
+    def dirichlet(self, alpha, size=None):
+        """Dirichlet distribution.
+
+        Returns an array of samples drawn from the dirichlet distribution. Its
+        probability density function is defined as
+
+        .. math::
+            f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
+                {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
+                \\prod_{i=1}^Kx_i^{\\alpha_i-1}.
+
+        Args:
+            alpha (array): Parameters of the dirichlet distribution
+                :math:`\\alpha`.
+            size (int or tuple of ints): The shape of the array. If ``None``,
+                array of ``alpha.shape`` is generated
+
+        Returns:
+            cupy.ndarray: Samples drawn from the dirichlet distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.dirichlet`
+        """
+
+        if not isinstance(alpha, ndarray):
+            if type(alpha) in (float, int):
+                alpha = cupy.asarray(alpha, numpy.float64)
+            else:
+                raise TypeError('alpha is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            alpha = alpha.astype('d', copy=False)
+
+        if size is not None:
+            if not isinstance(size, tuple):
+                size = (size,)
+            size += alpha.shape
+
+        elif size is None:
+            size = alpha.shape
+
+        y = self.standard_gamma(alpha, size)
+        y /= y.sum(axis=-1, keepdims=True)
+        return y
+
     def exponential(self, scale=1.0, size=None):
         """Exponential distribution.
 
