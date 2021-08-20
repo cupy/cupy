@@ -214,25 +214,13 @@ class TestExponential(
     pass
 
 
-@testing.parameterize(
-    {'dfnum': 1.0, 'dfden': 3.0},
-    {'dfnum': 3.0, 'dfden': 3.0},
-    {'dfnum': 3.0, 'dfden': 1.0},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.f_params)
 @testing.fix_random()
-class TestF(RandomGeneratorTestCase):
-
-    target_method = 'f'
-
-    def test_f(self):
-        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_f_ks(self, dtype):
-        self.check_ks(0.05)(
-            self.dfnum, self.dfden, size=2000, dtype=dtype)
+class TestF(
+    common_distributions.F,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(*common_distributions.gamma_params)

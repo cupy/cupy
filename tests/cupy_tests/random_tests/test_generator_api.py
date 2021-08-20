@@ -340,10 +340,20 @@ class TestChisquare(
     pass
 
 
+@testing.parameterize(*common_distributions.f_params)
+@testing.fix_random()
+class TestF(
+    common_distributions.F,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.parameterize(*common_distributions.dirichlet_params)
 @testing.fix_random()
 class TestDrichlet(
     common_distributions.Dirichlet,
+
     GeneratorTestCase
 ):
     pass
