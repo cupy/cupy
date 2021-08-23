@@ -382,7 +382,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2 / v4.3
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -390,6 +390,9 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
+
+.. note::
+   ROCm 4.3 is known to have an issue related to clang/HIP. If you experienced an error like ``fatal error: '__clang_hip_runtime_wrapper.h' file not found``, please try setting an environment variable ``LLVM_PATH`` (e.g., ``export LLVM_PATH="${ROCM_HOME}/llvm"``). See `#5592 <https://github.com/cupy/cupy/issues/5592#issuecomment-901136342>`_ for details.
 
 Environment Variables
 ---------------------
@@ -424,6 +427,8 @@ Package names are different depending on your ROCm version.
      - ``$ pip install cupy-rocm-4-0``
    * - v4.2
      - ``$ pip install cupy-rocm-4-2``
+   * - v4.3
+     - ``$ pip install cupy-rocm-4-3``
 
 Building CuPy for ROCm From Source
 ----------------------------------
