@@ -389,6 +389,13 @@ The following ROCm libraries are required:
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
 
+.. note::
+   ROCm 4.3 is known to have an issue related to clang/HIP. As a workaround, please specify ``LLVM_PATH`` environment variable when you use CuPy with ROCm 4.3. (`#5592-comment <https://github.com/cupy/cupy/issues/5592#issuecomment-901136342>`_)
+
+   ```
+   export LLVM_PATH="${ROCM_HOME}/llvm"
+   ```
+
 Environment Variables
 ---------------------
 
