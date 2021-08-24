@@ -200,7 +200,12 @@ class NCCL:
             self._recv(out_array[i], i, odtype, ocount, stream)
         nccl.ncclGroupEnd()
 
-    def barrier(self):
+    def cpu_barrier(self):
+        # implements a barrier CPU side
+        # TODO allow multiple barriers to be executed
+        self._store_proxy.wait_until('barrier', 0)
+
+    def cpu_broadcast(self, value, root=0):
         # implements a barrier CPU side
         # TODO allow multiple barriers to be executed
         self._store_proxy.wait_until('barrier', 0)
