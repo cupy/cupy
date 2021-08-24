@@ -163,13 +163,20 @@ class _RuntimeInfo:
             pass
 
         # cuDNN
+        if cupy._environment._can_attempt_preload('cudnn'):
+            self.cudnn_build_version = (
+                '(not loaded; try `import cupy.cuda.cudnn` first)')
+            self.cudnn_version = self.cudnn_build_version
+            if full:
+                cupy._environment._preload_library('cudnn')
         try:
             import cupy_backends.cuda.libs.cudnn as cudnn
             self.cudnn_build_version = cudnn.get_build_version()
             self.cudnn_version = _eval_or_error(
                 cudnn.getVersion, cudnn.CuDNNError)
         except ImportError:
-            pass
+            self.cudnn_build_version = None
+            self.cudnn_version = None
 
         # NCCL
         try:

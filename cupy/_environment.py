@@ -54,9 +54,9 @@ not expected to be parsed by end-users.
 _preload_config = None
 
 _preload_libs = {
-    'cudnn': {},
-    'nccl': {},
-    'cutensor': {},
+    'cudnn': None,
+    'nccl': None,
+    'cutensor': None,
 }
 
 _preload_logs = []
@@ -275,12 +275,8 @@ def get_preload_config():
     return _preload_config
 
 
-def _preload_libraries():
-    """Preload dependent shared libraries.
-
-    The preload configuration file (cupy/.data/_wheel.json) will be added
-    during the wheel build process.
-    """
+def _can_attempt_preload(lib: str) -> bool:
+    """Returns if the preload can be attempted."""
 
     config = get_preload_config()
     if (config is None) or (config['packaging'] == 'conda'):
@@ -290,63 +286,87 @@ def _preload_libraries():
         # Conda-Forge. See here for the configuration files used in
         # Conda-Forge distributions.
         # https://github.com/conda-forge/cupy-feedstock/blob/master/recipe/preload_config/
-        _log('Skip preloading as this is not a wheel installation')
-        return
+        _log(f'Cannot preload {lib} as this is not a wheel installation')
+        return False
 
+    if lib not in _preload_libs:
+        raise AssertionError(f'Unknown preload library: {lib}')
+
+    if lib not in config:
+        _log(f'Preload {lib} not configured in wheel')
+        return False
+
+    if _preload_libs[lib] is not None:
+        _log(f'Preload already attempted: {lib}')
+        return False
+
+    return True
+
+
+def _preload_library(lib):
+    """Preload dependent shared libraries.
+
+    The preload configuration file (cupy/.data/_wheel.json) will be added
+    during the wheel build process.
+    """
+
+    _log(f'Preloading triggered for library: {lib}')
+
+    if not _can_attempt_preload(lib):
+        return
+    _preload_libs[lib] = {}
+
+    config = get_preload_config()
     cuda_version = config['cuda']
     _log('CuPy wheel package built for CUDA {}'.format(cuda_version))
 
     cupy_cuda_lib_path = get_cupy_cuda_lib_path()
     _log('CuPy CUDA library directory: {}'.format(cupy_cuda_lib_path))
 
-    for lib in _preload_libs.keys():
-        if lib not in config:
-            _log('Not preloading {}'.format(lib))
-            continue
-        version = config[lib]['version']
-        filenames = config[lib]['filenames']
-        for filename in filenames:
-            _log(f'Looking for {lib} version {version} ({filename})')
+    version = config[lib]['version']
+    filenames = config[lib]['filenames']
+    for filename in filenames:
+        _log(f'Looking for {lib} version {version} ({filename})')
 
-            # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
-            # "lib64": cuDNN (Linux)
-            # "bin": cuDNN (Windows)
-            libpath_cands = [
-                os.path.join(
-                    cupy_cuda_lib_path, config['cuda'], lib, version, x,
-                    filename)
-                for x in ['lib', 'lib64', 'bin']]
-            for libpath in libpath_cands:
-                if not os.path.exists(libpath):
-                    _log('Rejected candidate (not found): {}'.format(libpath))
-                    continue
+        # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
+        # "lib64": cuDNN (Linux)
+        # "bin": cuDNN (Windows)
+        libpath_cands = [
+            os.path.join(
+                cupy_cuda_lib_path, config['cuda'], lib, version, x,
+                filename)
+            for x in ['lib', 'lib64', 'bin']]
+        for libpath in libpath_cands:
+            if not os.path.exists(libpath):
+                _log('Rejected candidate (not found): {}'.format(libpath))
+                continue
 
-                try:
-                    _log(f'Trying to load {libpath}')
-                    # Keep reference to the preloaded module.
-                    _preload_libs[lib][libpath] = ctypes.CDLL(libpath)
-                    _log('Loaded')
-                    break
-                except Exception as e:
-                    e_type = type(e).__name__  # NOQA
-                    msg = (
-                        f'CuPy failed to preload library ({libpath}): '
-                        f'{e_type} ({e})')
-                    _log(msg)
-                    warnings.warn(msg)
-            else:
-                _log('File {} could not be found'.format(filename))
+            try:
+                _log(f'Trying to load {libpath}')
+                # Keep reference to the preloaded module.
+                _preload_libs[lib][libpath] = ctypes.CDLL(libpath)
+                _log('Loaded')
+                break
+            except Exception as e:
+                e_type = type(e).__name__  # NOQA
+                msg = (
+                    f'CuPy failed to preload library ({libpath}): '
+                    f'{e_type} ({e})')
+                _log(msg)
+                warnings.warn(msg)
+        else:
+            _log('File {} could not be found'.format(filename))
 
-                # Lookup library with fully-qualified version (e.g.,
-                # `libcudnn.so.X.Y.Z`).
-                _log(f'Trying to load {filename} from default search path')
-                try:
-                    _preload_libs[lib][filename] = ctypes.CDLL(filename)
-                    _log('Loaded')
-                except Exception as e:
-                    # Fallback to the standard shared library lookup which only
-                    # uses the major version (e.g., `libcudnn.so.X`).
-                    _log(f'Library {lib} could not be preloaded: {e}')
+            # Lookup library with fully-qualified version (e.g.,
+            # `libcudnn.so.X.Y.Z`).
+            _log(f'Trying to load {filename} from default search path')
+            try:
+                _preload_libs[lib][filename] = ctypes.CDLL(filename)
+                _log('Loaded')
+            except Exception as e:
+                # Fallback to the standard shared library lookup which only
+                # uses the major version (e.g., `libcudnn.so.X`).
+                _log(f'Library {lib} could not be preloaded: {e}')
 
 
 def _get_preload_logs():
