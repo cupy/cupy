@@ -1,6 +1,8 @@
+import os
+
 import cupy
 from cupy.cuda import nccl
-
+from cupyx.distributed import _store
 
 _nccl_dtypes = {cupy.int8: nccl.NCCL_INT8,
                 cupy.uint8: nccl.NCCL_UINT8,
@@ -22,12 +24,23 @@ _nccl_ops = {'sum': nccl.NCCL_SUM,
              'min': nccl.NCCL_MIN}
 
 
-class NCCLCommunicator:
-    def __init__(self, n_devices, comm_id, rank):
+class NCCL:
+    def __init__(self, n_devices, rank):
         self._n_devices = n_devices
-        self._comm_id = comm_id
         self.rank = rank
-        self._comm = nccl.NcclCommunicator(n_devices, comm_id, rank)
+        host = int(os.environ.get('CUPYX_DISTRIBUTED_HOST', '127.0.0.1'))
+        port = int(os.environ.get('CUPYX_DISTRIBUTED_PORT', '12345'))
+        self._store_proxy = _store.TCPStoreProxy(host, port)
+        if rank == 0:
+            self._store = _store.TCPStore()
+            self._store.run(host, port)
+            nccl_id = nccl.get_unique_id()
+            self._store_proxy['nccl_id'] = nccl_id
+        else:
+            nccl_id = self._store_proxy['nccl_id']
+
+        # Initialize comm with the above id
+        self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
     def _check_contiguous(self, array):
         if not array.flags.c_contiguous or array.flags.f_contiguous:
@@ -186,3 +199,8 @@ class NCCLCommunicator:
             self._send(in_array[i], i, idtype, icount, stream)
             self._recv(out_array[i], i, odtype, ocount, stream)
         nccl.ncclGroupEnd()
+
+    def barrier(self):
+        # implements a barrier CPU side
+        # TODO allow multiple barriers to be executed
+        self._store_proxy.wait_until('barrier', 0)
