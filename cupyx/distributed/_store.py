@@ -95,7 +95,7 @@ class TCPStoreProxy:
             s.sendall(pickle.dumps(TCPStore.Set(key, value)))
 
 
-if __name__ == '__main__':
+def main():
     store = TCPStore()
     store.run(0)
     print('creating proxy')
@@ -103,4 +103,7 @@ if __name__ == '__main__':
     time.sleep(1)
     proxy[123] = 24
     print(proxy[123])
-    del store
+
+
+if __name__ == '__main__':
+    main()
