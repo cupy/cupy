@@ -9,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir "cupy-cuda112[all]==9.3.0"
+RUN pip3 install --no-cache-dir "cupy-cuda112[all]==9.4.0"
