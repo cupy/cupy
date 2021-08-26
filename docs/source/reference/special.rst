@@ -51,8 +51,13 @@ Gamma and related functions
 
    gamma
    gammaln
+   gammainc
+   gammaincinv
+   gammaincc
+   gammainccinv
    polygamma
    digamma
+   poch
 
 
 Error function and Fresnel integrals
@@ -68,6 +73,16 @@ Error function and Fresnel integrals
    erfcinv
 
 
+Legendre functions
+---------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lpmv
+   sph_harm
+
+
 Other special functions
 -----------------------
 
@@ -75,3 +90,12 @@ Other special functions
    :toctree: generated/
 
    zeta
+
+
+Convenience functions
+-----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   log1p
