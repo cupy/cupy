@@ -32,7 +32,7 @@ _zeta_c = _zeta_c.replace(
 # TODO: finish
 
 # See the following on error states:
-#    https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.errstate.html
+#    docs.scipy.org/doc/scipy/reference/generated/scipy.special.errstate.html
 #    scipy/special/sf_error.h
 
 # TODO: which value for MACHEP, MAXLOG from const.c to use?
@@ -383,9 +383,11 @@ __device__ double lanczos_sum(double x)
 __device__ double lanczos_sum_expg_scaled(double x)
 {
     return ratevl(x, lanczos_sum_expg_scaled_num,
-          sizeof(lanczos_sum_expg_scaled_num) / sizeof(lanczos_sum_expg_scaled_num[0]) - 1,
+          sizeof(lanczos_sum_expg_scaled_num)
+              / sizeof(lanczos_sum_expg_scaled_num[0]) - 1,
           lanczos_sum_expg_scaled_denom,
-          sizeof(lanczos_sum_expg_scaled_denom) / sizeof(lanczos_sum_expg_scaled_denom[0]) - 1);
+          sizeof(lanczos_sum_expg_scaled_denom)
+              / sizeof(lanczos_sum_expg_scaled_denom[0]) - 1);
 }
 
 
@@ -394,7 +396,9 @@ __device__ double lanczos_sum_near_1(double dx)
     double result = 0;
     unsigned k;
 
-    for (k = 1; k <= sizeof(lanczos_sum_near_1_d)/sizeof(lanczos_sum_near_1_d[0]); ++k) {
+    for (k = 1;
+         k <= sizeof(lanczos_sum_near_1_d) / sizeof(lanczos_sum_near_1_d[0]);
+         ++k) {
     result += (-lanczos_sum_near_1_d[k-1]*dx)/(k*dx + k*k);
     }
     return result;
@@ -407,7 +411,9 @@ __device__ double lanczos_sum_near_2(double dx)
     double x = dx + 2;
     unsigned k;
 
-    for(k = 1; k <= sizeof(lanczos_sum_near_2_d)/sizeof(lanczos_sum_near_2_d[0]); ++k) {
+    for(k = 1;
+        k <= sizeof(lanczos_sum_near_2_d) / sizeof(lanczos_sum_near_2_d[0]);
+        ++k) {
     result += (-lanczos_sum_near_2_d[k-1]*dx)/(x + k*x + k*k - 1);
     }
     return result;
@@ -924,11 +930,12 @@ __device__ double find_inverse_gamma(double a, double p, double q)
             double c4 = (a - 1) * ((c1_3 / 3) - (3 * a - 5) * c1_2 / 2
                                    + (a_2 - 6 * a + 7) * c1
                                    + (11 * a_2 - 46 * a + 47) / 6);
-            double c5 = (a - 1) * (-(c1_4 / 4)
-                                   + (11 * a - 17) * c1_3 / 6
-                                   + (-3 * a_2 + 13 * a -13) * c1_2
-                                   + (2 * a_3 - 25 * a_2 + 72 * a - 61) * c1 / 2
-                                   + (25 * a_3 - 195 * a_2 + 477 * a - 379) / 12);
+            double c5 = (a - 1)
+                        * (-(c1_4 / 4)
+                        + (11 * a - 17) * c1_3 / 6
+                        + (-3 * a_2 + 13 * a -13) * c1_2
+                        + (2 * a_3 - 25 * a_2 + 72 * a - 61) * c1 / 2
+                        + (25 * a_3 - 195 * a_2 + 477 * a - 379) / 12);
 
             double y_2 = y * y;
             double y_3 = y_2 * y;
@@ -989,12 +996,15 @@ __device__ double find_inverse_gamma(double a, double p, double q)
                     double y_2 = y * y;
                     double y_3 = y_2 * y;
                     double y_4 = y_2 * y_2;
-                    result = y + c1 + (c2 / y) + (c3 / y_2) + (c4 / y_3) + (c5 / y_4);
+                    result = y + c1 + (c2 / y) + (c3 / y_2) + (c4 / y_3)
+                             + (c5 / y_4);
                 }
                 else {
                     /* DiDonato and Morris Eq 33: */
-                    double u = -lb + (a - 1) * log(w) - log(1 + (1 - a) / (1 + w));
-                    result = -lb + (a - 1) * log(u) - log(1 + (1 - a) / (1 + u));
+                    double u = -lb + (a - 1) * log(w)
+                               - log(1 + (1 - a) / (1 + w));
+                    result = -lb + (a - 1) * log(u)
+                             - log(1 + (1 - a) / (1 + u));
                 }
             }
         }

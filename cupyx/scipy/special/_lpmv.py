@@ -19,7 +19,8 @@ The fortran code in scipy originated in the following book.
 
 from cupy import _core
 
-# May want to use CUDART_PI instead of redefining here. differs in last digit, though.
+# May want to use CUDART_PI instead of redefining here.
+# The two seem to differ in the last didit, though.
 #     #define CUDART_PI               3.1415926535897931e+0
 
 nan_inf = """
@@ -292,7 +293,8 @@ __device__ double lpmv0(double v, double m, double x)
                 {
                     s2 += 1.0/(j*(j*j - v*v));
                 }
-                double pss = pa + s + 2.0*v*v*s2 - 1.0/(m + k - v) + log(0.5*(1.0 + x));
+                double pss = pa + s + 2.0*v*v*s2 - 1.0/(m + k - v)
+                             + log(0.5*(1.0 + x));
                 r2 = pss*r;
                 pmv += r2;
                 if (fabs(r2/pmv) < EPS)

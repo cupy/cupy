@@ -32,7 +32,8 @@ __device__ complex<double> sph_harmonic(int m, int n, double theta, double phi)
     x = cos(phi);
     if (abs(m) > n)
     {
-        // sf_error.error("sph_harm", sf_error.ARG, "m should not be greater than n")
+        // sf_error.error("sph_harm", sf_error.ARG,
+        //                "m should not be greater than n")
         return CUDART_NAN;
     }
     if (n < 0)
