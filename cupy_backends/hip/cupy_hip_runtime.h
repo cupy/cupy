@@ -142,8 +142,8 @@ cudaError_t cudaHostUnregister(...) {
     return hipErrorUnknown;
 }
 
-cudaError_t cudaMallocManaged(...) {
-    return hipErrorUnknown;
+cudaError_t cudaMallocManaged(void** ptr, size_t size, unsigned int flags) {
+    return hipMallocManaged(ptr, size, flags);
 }
 
 int cudaFree(void* ptr) {
@@ -229,12 +229,14 @@ cudaError_t cudaMemsetAsync(void* dst, int value, size_t sizeBytes,
     return hipMemsetAsync(dst, value, sizeBytes, stream);
 }
 
-cudaError_t cudaMemAdvise(...) {
-    return hipErrorUnknown;
+cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
+                          cudaMemoryAdvise advice, int device) {
+    return hipMemAdvise(devPtr, count, advice, device);
 }
 
-cudaError_t cudaMemPrefetchAsync(...) {
-    return hipErrorUnknown;
+cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
+				 int dstDevice, cudaStream_t stream) {
+    return hipMemPrefetchAsync(devPtr, count, dstDevice, stream);
 }
 
 cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,

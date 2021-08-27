@@ -48,8 +48,6 @@ class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
         if cupy.cuda.runtime.is_hip:
-            if self.allocator is memory.malloc_managed:
-                raise unittest.SkipTest('HIP does not support managed memory')
             if self.allocator is memory.malloc_async:
                 raise unittest.SkipTest('HIP does not support async mempool')
         elif cupy.cuda.driver.get_build_version() < 11020:
@@ -654,9 +652,6 @@ class TestParseMempoolLimitEnvVar(unittest.TestCase):
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
-        if (cupy.cuda.runtime.is_hip
-                and self.allocator is memory.malloc_managed):
-            raise unittest.SkipTest('HIP does not support managed memory')
         self.pool = memory.MemoryPool(self.allocator)
 
     def tearDown(self):

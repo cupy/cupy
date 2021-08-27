@@ -210,8 +210,6 @@ cdef class ManagedMemory(BaseMemory):
     """
 
     def __init__(self, size_t size):
-        if runtime._is_hip_environment:
-            raise RuntimeError('HIP does not support managed memory')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
