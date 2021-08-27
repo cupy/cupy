@@ -940,6 +940,21 @@ class TestSplineFilter1d:
         return output
 
 
+# See #5537
+@testing.slow
+@testing.with_requires('scipy')
+class TestSplineFilter1dLargeArray:
+
+    @pytest.mark.parametrize('mode', ['mirror', 'grid-wrap', 'reflect'])
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d_large_array(self, xp, scp, mode):
+        if mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        x = testing.shaped_random(
+            (2**10, 2**10, 2**10), dtype=numpy.float64, xp=xp)
+        return scp.ndimage.spline_filter1d(x, mode=mode)
+
+
 @testing.parameterize(*testing.product({
     # these 3 modes have analytical spline boundary conditions
     'mode': ['mirror', 'grid-wrap', 'reflect'],
