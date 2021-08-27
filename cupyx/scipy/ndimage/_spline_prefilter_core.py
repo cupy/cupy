@@ -50,7 +50,7 @@ def _causal_init_code(mode):
         z_n_1 = pow(z, (P)(n - 1));
 
         c[0] = c[0] + z_n_1 * c[(n - 1) * element_stride];
-        for (i = 1; i < min(n - 1, {n_boundary}); ++i) {{
+        for (i = 1; i < min(n - 1, static_cast<idx_t>({n_boundary})); ++i) {{
             c[0] += z_i * (c[i * element_stride] +
                            z_n_1 * c[(n - 1 - i) * element_stride]);
             z_i *= z;
@@ -60,7 +60,7 @@ def _causal_init_code(mode):
         code += '''
         z_i = z;
 
-        for (i = 1; i < min(n, {n_boundary}); ++i) {{
+        for (i = 1; i < min(n, static_cast<idx_t>({n_boundary})); ++i) {{
             c[0] += z_i * c[(n - i) * element_stride];
             z_i *= z;
         }}
@@ -72,7 +72,7 @@ def _causal_init_code(mode):
         c0 = c[0];
 
         c[0] = c[0] + z_n * c[(n - 1) * element_stride];
-        for (i = 1; i < min(n, {n_boundary}); ++i) {{
+        for (i = 1; i < min(n, static_cast<idx_t>({n_boundary})); ++i) {{
             c[0] += z_i * (c[i * element_stride] +
                            z_n * c[(n - 1 - i) * element_stride]);
             z_i *= z;
@@ -100,7 +100,7 @@ def _anticausal_init_code(mode):
         code += '''
         z_i = z;
 
-        for (i = 0; i < min(n - 1, {n_boundary}); ++i) {{
+        for (i = 0; i < min(n - 1, static_cast<idx_t>({n_boundary})); ++i) {{
             c[(n - 1) * element_stride] += z_i * c[i * element_stride];
             z_i *= z;
         }}
