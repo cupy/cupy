@@ -1,1 +1,1 @@
-from cupyx.distributed._comm import NCCLCommunicator  # NOQA
+from cupyx.distributed._comm import NCCLBackend  # NOQA

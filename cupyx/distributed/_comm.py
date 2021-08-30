@@ -4,18 +4,20 @@ import cupy
 from cupy.cuda import nccl
 from cupyx.distributed import _store
 
-_nccl_dtypes = {cupy.int8: nccl.NCCL_INT8,
-                cupy.uint8: nccl.NCCL_UINT8,
-                cupy.int32: nccl.NCCL_INT32,
-                cupy.uint32: nccl.NCCL_UINT32,
-                cupy.int64: nccl.NCCL_INT64,
-                cupy.uint64: nccl.NCCL_UINT64,
-                cupy.float16: nccl.NCCL_FLOAT16,
-                cupy.float32: nccl.NCCL_FLOAT32,
-                cupy.float64: nccl.NCCL_FLOAT64,
+_nccl_dtypes = {'b': nccl.NCCL_INT8,
+                'B': nccl.NCCL_UINT8,
+                'i': nccl.NCCL_INT32,
+                'I': nccl.NCCL_UINT32,
+                'l': nccl.NCCL_INT64,
+                'L': nccl.NCCL_UINT64,
+                'q': nccl.NCCL_INT64,
+                'Q': nccl.NCCL_UINT64,
+                'e': nccl.NCCL_FLOAT16,
+                'f': nccl.NCCL_FLOAT32,
+                'd': nccl.NCCL_FLOAT64,
                 # Size of array will be doubled
-                cupy.complex64: nccl.NCCL_FLOAT32,
-                cupy.complex128: nccl.NCCL_FLOAT64}
+                'F': nccl.NCCL_FLOAT32,
+                'D': nccl.NCCL_FLOAT64}
 
 
 _nccl_ops = {'sum': nccl.NCCL_SUM,
@@ -24,22 +26,25 @@ _nccl_ops = {'sum': nccl.NCCL_SUM,
              'min': nccl.NCCL_MIN}
 
 
-class NCCL:
+class NCCLBackend:
+    # TODO(ecastill)
+    # Allow this to use mpi, or when not available, use the regular store
     def __init__(self, n_devices, rank):
         self._n_devices = n_devices
         self.rank = rank
-        host = int(os.environ.get('CUPYX_DISTRIBUTED_HOST', '127.0.0.1'))
+        host = os.environ.get('CUPYX_DISTRIBUTED_HOST', '127.0.0.1')
         port = int(os.environ.get('CUPYX_DISTRIBUTED_PORT', '12345'))
         self._store_proxy = _store.TCPStoreProxy(host, port)
         if rank == 0:
-            self._store = _store.TCPStore()
+            self._store = _store.TCPStore(n_devices)
             self._store.run(host, port)
             nccl_id = nccl.get_unique_id()
             self._store_proxy['nccl_id'] = nccl_id
+            self._store_proxy.barrier()
         else:
+            self._store_proxy.barrier()
             nccl_id = self._store_proxy['nccl_id']
-
-        # Initialize comm with the above id
+        # Initialize devices
         self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
     def _check_contiguous(self, array):
@@ -47,11 +52,11 @@ class NCCL:
             raise RuntimeError('NCCL requires arrays to be contiguous')
 
     def _get_nccl_dtype_and_count(self, array):
-        dtype = array.dtype
+        dtype = array.dtype.char
         if dtype not in _nccl_dtypes:
-            raise TypeError(f'Unknown dtype {dtype} for NCCL')
+            raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
         nccl_dtype = _nccl_dtypes[dtype]
-        if dtype.kind == 'c':
+        if dtype in 'FD':
             return nccl_dtype, 2 * array.size
         return nccl_dtype, array.size
 
@@ -85,7 +90,7 @@ class NCCL:
             in_array.data.ptr, out_array.data.ptr,
             count, dtype, op, root, stream)
 
-    def broadcast(self, in_array, root=0, op='sum', stream=None):
+    def broadcast(self, in_array, root=0, stream=None):
         # in_array for root !=0 will be used as output
         self._check_contiguous(in_array)
         stream = self._get_stream(stream)
