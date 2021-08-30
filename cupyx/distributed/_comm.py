@@ -65,9 +65,12 @@ class NCCLBackend:
             stream = cupy.cuda.stream.get_current_stream()
         return stream.ptr
 
-    def _get_op(self, op):
+    def _get_op(self, op, dtype):
         if op not in _nccl_ops:
             raise RuntimeError(f'Unknown op {op} for NCCL')
+        if dtype in 'FD' and op != nccl.NCCL_SUM:
+            raise ValueError(
+               'Only nccl.SUM is supported for complex arrays')
         return _nccl_ops[op]
 
     def all_reduce(self, in_array, out_array, op='sum', stream=None):
@@ -75,7 +78,7 @@ class NCCLBackend:
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(in_array)
-        op = self._get_op(op)
+        op = self._get_op(op, in_array.dtype.char)
         self._comm.allReduce(
             in_array.data.ptr, out_array.data_ptr, count, dtype, op, stream)
 
@@ -85,7 +88,7 @@ class NCCLBackend:
             self._check_contiguous(out_array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(in_array)
-        op = self._get_op(op)
+        op = self._get_op(op, in_array.dtype.char)
         self._comm.reduce(
             in_array.data.ptr, out_array.data.ptr,
             count, dtype, op, root, stream)
@@ -103,7 +106,7 @@ class NCCLBackend:
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(in_array)
-        op = self._get_op(op)
+        op = self._get_op(op, in_array.dtype.char)
         self._comm.reduceScatter(
             in_array.data.ptr, out_array.data_ptr, count, dtype, op, stream)
 
