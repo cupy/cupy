@@ -18,4 +18,27 @@ def expm(a):
 
     .. seealso:: :func:`numpy.linalg.expm`
     """
+
+    a = cupy.asarray(a)
+    _util._assert_2d(a)
+    _util._assert_stacked_square(a)
+
+    # dtype = a.dtype
+
+    # if dtype.char == 'f':
+    #     getrf = cusolver.sgetrf
+    #     getrf_bufferSize = cusolver.sgetrf_bufferSize
+    # elif dtype.char == 'd':
+    #     getrf = cusolver.dgetrf
+    #     getrf_bufferSize = cusolver.dgetrf_bufferSize
+    # elif dtype.char == 'F':
+    #     getrf = cusolver.cgetrf
+    #     getrf_bufferSize = cusolver.cgetrf_bufferSize
+    # elif dtype.char == 'D':
+    #     getrf = cusolver.zgetrf
+    #     getrf_bufferSize = cusolver.zgetrf_bufferSize
+    # else:
+    #     msg = 'Only float32, float64, complex64 and complex128 are supported.'
+    #     raise NotImplementedError(msg)
+
     pass
