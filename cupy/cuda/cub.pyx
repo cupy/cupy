@@ -4,7 +4,6 @@
 
 from cpython cimport sequence
 
-from cupy_backends.cuda.api.driver cimport Stream as Stream_t
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _internal_asfortranarray
@@ -47,6 +46,8 @@ CUB_sum_support_dtype = {}
 ###############################################################################
 
 cdef extern from 'cupy_cub.h' nogil:
+    ctypedef void* Stream_t 'cudaStream_t'
+
     void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
                            int, int)
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, int,

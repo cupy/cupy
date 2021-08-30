@@ -54,7 +54,7 @@ Legacy Random Generation
 
 .. Hint::
    * `NumPy API Reference: Legacy Random Generation <https://numpy.org/doc/stable/reference/random/legacy.html>`_
-   * `NumPy 1.16 Reference <https://docs.scipy.org/doc/numpy-1.16.1/reference/routines.random.html>`_
+   * `NumPy 1.16 Reference <https://numpy.org/doc/1.16/reference/routines.random.html>`_
 
 .. autosummary::
    :toctree: generated/

@@ -272,6 +272,143 @@ class TestAffineExceptions:
             with pytest.raises(RuntimeError):
                 ndi.affine_transform(x, xp.ones((0, 3)), output=output)
 
+    def test_invalid_texture_arguments(self):
+        if runtime.is_hip:
+            pytest.skip('texture memory not supported yet')
+
+        aft = cupyx.scipy.ndimage.affine_transform
+        x = [cupy.ones((8, ) * n, dtype=cupy.float32) for n in range(1, 5)]
+
+        # (ndim < 2) and (ndim > 3) must fail
+        for i in [0, 3]:
+            with pytest.raises(ValueError):
+                aft(x[i], cupy.eye(i + 1, dtype=cupy.float32),
+                    texture_memory=True)
+        # wrong input dtype
+        for dt in [cupy.float16, cupy.float64, cupy.int32, cupy.int64]:
+            with pytest.raises(ValueError):
+                aft(cupy.ones((8, 8), dtype=dt),
+                    cupy.eye(3, dtype=cupy.float32), texture_memory=True)
+        # wrong matrix shape
+        for i in range(len(x)):
+            with pytest.raises(ValueError):
+                aft(x[i], cupy.eye(i, dtype=cupy.float32),
+                    texture_memory=True)
+        # wrong output
+        with pytest.raises(ValueError):
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output='wrong',
+                texture_memory=True)
+        # wrong mode
+        for m in ['mirror', 'reflect', 'wrap', 'grid-mirror',
+                  'grid-wrap', 'grid-constant', 'opencv']:
+            with pytest.raises(ValueError):
+                aft(x[2], cupy.eye(3, dtype=cupy.float32), mode=m,
+                    texture_memory=True)
+        # non matching output_shape and output's shape
+        with pytest.raises(ValueError):
+            output = cupy.empty((7, 7, 7), dtype=cupy.float32)
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output_shape=(8, 8, 8),
+                output=output, texture_memory=True)
+        # non matching output_shape and input shape
+        with pytest.raises(ValueError):
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output_shape=(7, 7, 7),
+                texture_memory=True)
+
+
+@pytest.mark.skipif(runtime.is_hip, reason='texture memory not supported yet')
+@testing.parameterize(*testing.product({
+    'output': [None, numpy.float32, 'empty'],
+    'output_shape': [None, 10],
+    'order': [0, 1],
+    'mode': ['constant', 'nearest'],
+    'shape': [(100, 100), (10, 20), (10, 10, 10), (10, 20, 30)],
+    'theta': [0, 90, 180, 270]
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestAffineTransformTextureMemory:
+
+    _multiprocess_can_split = True
+
+    def _2d_rotation_matrix(self, theta, rotation_center):
+        import scipy.special
+        c, s = scipy.special.cosdg(theta), scipy.special.sindg(theta)
+        m = numpy.array([
+            [1, 0, rotation_center[0]],
+            [0, 1, rotation_center[1]],
+            [0, 0, 1]
+        ], numpy.float32)
+        m = numpy.dot(m, numpy.array([
+            [c, -s, 0],
+            [s, c, 0],
+            [0, 0, 1]
+        ], numpy.float32))
+        m = numpy.dot(m, numpy.array([
+            [1, 0, -rotation_center[0]],
+            [0, 1, -rotation_center[1]],
+            [0, 0, 1]
+        ], numpy.float32))
+        return m
+
+    def _3d_rotation_matrix(self, theta, rotation_center):
+        c, s = scipy.special.cosdg(theta), scipy.special.sindg(theta)
+        m = numpy.array([
+            [1, 0, 0, rotation_center[0]],
+            [0, 1, 0, rotation_center[1]],
+            [0, 0, 1, rotation_center[2]],
+            [0, 0, 0, 1]
+        ], numpy.float32)
+        m = numpy.dot(m, numpy.array([
+            [1, 0, 0, 0],
+            [0, c, -s, 0],
+            [0, s, c, 0],
+            [0, 0, 0, 1]
+        ], numpy.float32))
+        m = numpy.dot(m, numpy.array([
+            [1, 0, 0, -rotation_center[0]],
+            [0, 1, 0, -rotation_center[1]],
+            [0, 0, 1, -rotation_center[2]],
+            [0, 0, 0, 1]
+        ], numpy.float32))
+        return m
+
+    @testing.numpy_cupy_allclose(atol=0.1, scipy_name='scp')
+    def test_affine_transform_texture_memory(self, xp, scp):
+        a = xp.ones(self.shape, dtype=xp.float32)
+        center = numpy.divide(numpy.subtract(self.shape, 1), 2)
+
+        if len(self.shape) == 2:
+            matrix = self._2d_rotation_matrix(self.theta, center)
+        elif len(self.shape) == 3:
+            matrix = self._3d_rotation_matrix(self.theta, center)
+        else:
+            return pytest.xfail('Unsupported shape')
+
+        if self.output == 'empty':
+            output = xp.empty(self.shape, dtype=xp.float32)
+            if self.output_shape:
+                return pytest.skip('This combination is tested in '
+                                   'test_invalid_texture_arguments')
+        else:
+            output = self.output
+
+        if self.output_shape:
+            output_shape = (self.output_shape, ) * len(self.shape)
+        else:
+            output_shape = self.output_shape
+
+        if xp == cupy:
+            m = cupyx.scipy.ndimage.affine_transform
+            matrix = cupy.array(matrix)
+            return m(a, matrix, output_shape=output_shape,
+                     output=output, order=self.order,
+                     mode=self.mode, texture_memory=True)
+        else:
+            m = scp.ndimage.affine_transform
+            return m(a, matrix, output_shape=output_shape,
+                     output=output, order=self.order,
+                     mode=self.mode)
+
 
 @testing.gpu
 @testing.with_requires('opencv-python')
@@ -801,6 +938,21 @@ class TestSplineFilter1d:
         scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
                                     output=output, mode=self.mode)
         return output
+
+
+# See #5537
+@testing.slow
+@testing.with_requires('scipy')
+class TestSplineFilter1dLargeArray:
+
+    @pytest.mark.parametrize('mode', ['mirror', 'grid-wrap', 'reflect'])
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d_large_array(self, xp, scp, mode):
+        if mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        x = testing.shaped_random(
+            (2**10, 2**10, 2**10), dtype=numpy.float64, xp=xp)
+        return scp.ndimage.spline_filter1d(x, mode=mode)
 
 
 @testing.parameterize(*testing.product({

@@ -443,7 +443,7 @@ cpdef ndarray _nanmedian(
 
     if axis is None:
         axis = tuple(range(a.ndim))
-    if not isinstance(axis, tuple):
+    if not sequence.PySequence_Check(axis):
         axis = (axis,)
 
     reduce_axis = []
@@ -588,25 +588,29 @@ __device__ double my_norm(const complex<double>& x) { return norm(x); }
 cdef _var_core_float16 = ReductionKernel(
     'S x, T mean, float32 alpha', 'float16 out',
     'my_norm(x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+    'a + b', 'out = alpha * a', '0', 'cupy_var_core_float16',
+    preamble=_norm_preamble)
 
 
 cdef _var_core_float32 = ReductionKernel(
     'S x, T mean, float32 alpha', 'float32 out',
     'my_norm(x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+    'a + b', 'out = alpha * a', '0', 'cupy_var_core_float32',
+    preamble=_norm_preamble)
 
 
 cdef _var_core_float64 = ReductionKernel(
     'S x, T mean, float64 alpha', 'float64 out',
     'my_norm(x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+    'a + b', 'out = alpha * a', '0', 'cupy_var_core_float64',
+    preamble=_norm_preamble)
 
 
 cdef _var_core_out = ReductionKernel(
     'S x, T mean, U alpha', 'U out',
     'my_norm(x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core', preamble=_norm_preamble)
+    'a + b', 'out = alpha * a', '0', 'cupy_var_core_out',
+    preamble=_norm_preamble)
 
 
 # TODO(okuta) needs cast
@@ -620,7 +624,7 @@ cdef _mean_core = create_reduction_func(
      'out0 = a / _type_reduce(_in_ind.size() / _out_ind.size())', None))
 
 cdef _mean_core_empty = create_reduction_func(
-    'cupy_mean',
+    'cupy_mean_empty',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),

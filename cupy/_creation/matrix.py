@@ -71,7 +71,7 @@ _tri_kernel = _core.ElementwiseKernel(
     int col = i % m;
     out = (col <= row + k);
     ''',
-    'tri',
+    'cupy_tri',
 )
 
 

@@ -4,6 +4,7 @@ import cupy
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy.cuda import runtime
 from cupy.linalg import _util
 
 
@@ -66,10 +67,13 @@ def _syevd(a, UPLO, with_eigen_vector):
 
 
 def eigh(a, UPLO='L'):
-    """Eigenvalues and eigenvectors of a symmetric matrix.
+    """
+    Return the eigenvalues and eigenvectors of a complex Hermitian
+    (conjugate symmetric) or a real symmetric matrix.
 
-    This method calculates eigenvalues and eigenvectors of a given
-    symmetric matrix.
+    Returns two objects, a 1-D array containing the eigenvalues of `a`, and
+    a 2-D square array or matrix (depending on the input type) of the
+    corresponding eigenvectors (in columns).
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
@@ -101,8 +105,9 @@ def eigh(a, UPLO='L'):
     if m != n:
         raise ValueError('Last 2 dimensions of the array must be square')
 
-    if a.ndim > 2:
-        return cupy.cusolver.syevj(a, UPLO, True)
+    if a.ndim > 2 or runtime.is_hip:
+        w, v = cupy.cusolver.syevj(a, UPLO, True)
+        return w, v
     else:
         return _syevd(a, UPLO, True)
 
@@ -111,11 +116,10 @@ def eigh(a, UPLO='L'):
 
 
 def eigvalsh(a, UPLO='L'):
-    """Calculates eigenvalues of a symmetric matrix.
+    """
+    Compute the eigenvalues of a complex Hermitian or real symmetric matrix.
 
-    This method calculates eigenvalues a given symmetric matrix.
-    Note that :func:`cupy.linalg.eigh` calculates both eigenvalues and
-    eigenvectors.
+    Main difference from eigh: the eigenvectors are not computed.
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
@@ -137,12 +141,10 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    if a.ndim < 2:
-        raise ValueError('Array must be at least two-dimensional')
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
-    _util._assert_nd_squareness(a)
-
-    if a.ndim > 2:
+    if a.ndim > 2 or runtime.is_hip:
         return cupy.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]

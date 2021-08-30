@@ -14,7 +14,7 @@ def may_share_memory(a, b, max_work=None):
 _get_memory_ptrs_kernel = _kernel.ElementwiseKernel(
     'T x', 'uint64 out',
     'out = (unsigned long long)(&x)',
-    'get_memory_ptrs'
+    'cupy_get_memory_ptrs'
 )
 
 

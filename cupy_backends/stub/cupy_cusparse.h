@@ -6,9 +6,7 @@
 extern "C" {
 
 typedef enum {} cusparseIndexBase_t;
-typedef enum {
-  CUSPARSE_STATUS_SUCCESS=0,
-}  cusparseStatus_t;
+typedef enum { CUSPARSE_STATUS_SUCCESS=0, } cusparseStatus_t;  // one-liner for easy parsing
 
 typedef void* cusparseHandle_t;
 typedef void* cusparseMatDescr_t;

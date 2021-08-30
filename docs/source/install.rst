@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2 / v11.3
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.21 and SciPy 1.7, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20
+* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20 / v1.21
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7
 
     * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
@@ -54,7 +54,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.6 / v2.7 / v2.8 / v2.9
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.6 / v2.7 / v2.8 / v2.9 / v2.10
 
     * The library to perform collective multi-GPU / multi-node computations.
 
@@ -92,6 +92,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda112``
    * - v11.3
      - ``$ pip install cupy-cuda113``
+   * - v11.4
+     - ``$ pip install cupy-cuda114``
 
 .. note::
 
@@ -378,7 +380,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2 / v4.3
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -386,6 +388,9 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
+
+.. note::
+   ROCm 4.3 is known to have an issue related to clang/HIP. If you experienced an error like ``fatal error: '__clang_hip_runtime_wrapper.h' file not found``, please try setting an environment variable ``LLVM_PATH`` (e.g., ``export LLVM_PATH="${ROCM_HOME}/llvm"``). See `#5592 <https://github.com/cupy/cupy/issues/5592#issuecomment-901136342>`_ for details.
 
 Environment Variables
 ---------------------
@@ -420,6 +425,8 @@ Package names are different depending on your ROCm version.
      - ``$ pip install cupy-rocm-4-0``
    * - v4.2
      - ``$ pip install cupy-rocm-4-2``
+   * - v4.3
+     - ``$ pip install cupy-rocm-4-3``
 
 Building CuPy for ROCm From Source
 ----------------------------------

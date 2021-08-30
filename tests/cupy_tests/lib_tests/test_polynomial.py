@@ -4,6 +4,7 @@ import pytest
 import numpy
 
 import cupy
+from cupy.cuda import driver
 from cupy.cuda import runtime
 import cupyx
 from cupy import testing
@@ -127,7 +128,8 @@ class TestPoly1d(unittest.TestCase):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         return xp.poly1d(a).order
 
-    @pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
+                        reason='syevj not available')
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_poly1d_roots(self, xp, dtype):
@@ -780,7 +782,8 @@ class TestPolyRoutinesNdim(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [[2, -1, -2], [-4, 10, 4]],
 }))
-@pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
+@pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
+                    reason='syevj not available')
 class TestRootsReal(unittest.TestCase):
 
     @testing.for_signed_dtypes()

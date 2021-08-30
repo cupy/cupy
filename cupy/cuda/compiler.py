@@ -15,10 +15,9 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip:
-    _cuda_version = driver.get_build_version()
-    if _cuda_version > 0:
-        from cupy.cuda.jitify import jitify
+_cuda_hip_version = driver.get_build_version()
+if not runtime.is_hip and _cuda_hip_version > 0:
+    from cupy.cuda.jitify import jitify
 
 
 _nvrtc_version = None
@@ -121,26 +120,52 @@ def _get_nvrtc_version():
 _tegra_archs = ('53', '62', '72')
 
 
+@_util.memoize()
+def _get_max_compute_capability():
+    major, minor = _get_nvrtc_version()
+    if major < 10 or (major == 10 and minor == 0):
+        # CUDA 9.x / 10.0
+        nvrtc_max_compute_capability = '70'
+    elif major < 11:
+        # CUDA 10.1 / 10.2
+        nvrtc_max_compute_capability = '75'
+    elif major == 11 and minor == 0:
+        # CUDA 11.0
+        nvrtc_max_compute_capability = '80'
+    else:
+        # CUDA 11.1 / 11.2 / 11.3 / 11.4
+        nvrtc_max_compute_capability = '86'
+    return nvrtc_max_compute_capability
+
+
 @_util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
-    major, minor = _get_nvrtc_version()
-    if major < 10 or (major == 10 and minor == 0):
-        # CUDA 9.x / 10.0
-        _nvrtc_max_compute_capability = '70'
-    elif major < 11:
-        # CUDA 10.1 / 10.2
-        _nvrtc_max_compute_capability = '75'
-    else:
-        # CUDA 11.0 / 11.1 / 11.2
-        _nvrtc_max_compute_capability = '80'
+    nvrtc_max_compute_capability = _get_max_compute_capability()
 
     arch = device.Device().compute_capability
     if arch in _tegra_archs:
         return arch
     else:
-        return min(arch, _nvrtc_max_compute_capability)
+        return min(arch, nvrtc_max_compute_capability)
+
+
+def _get_arch_for_options_for_nvrtc(arch=None):
+    # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
+    # version than the one included in the used CUDA version, as
+    # documented in:
+    # https://docs.nvidia.com/cuda/archive/11.3.0/nvrtc/index.html#versioning
+    # Here we use `-arch=sm_*` instead of `-arch=compute_*` to directly
+    # generate cubin (SASS) instead of PTX. See #5097 for details.
+    if arch is None:
+        arch = _get_arch()
+    if (
+        not _use_ptx and _cuda_hip_version >= 11010
+        and arch < _get_max_compute_capability()
+    ):
+        return f'-arch=sm_{arch}', 'cubin'
+    return f'-arch=compute_{arch}', 'ptx'
 
 
 def _is_cudadevrt_needed(options):
@@ -190,6 +215,7 @@ def _get_bool_env_variable(name, default):
         return False
 
 
+_use_ptx = _get_bool_env_variable('CUPY_COMPILE_WITH_PTX', False)
 _jitify_header_source_map_populated = False
 
 
@@ -234,12 +260,6 @@ def _jitify_prep(source, options, cu_path):
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
-    # For hipRTC, arch is ignored
-    if not runtime.is_hip:
-        if not arch:
-            arch = _get_arch()
-        options += ('-arch=compute_{}'.format(arch),)
-
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
 
@@ -249,17 +269,24 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         else:
             headers = include_names = ()
 
+        if not runtime.is_hip:
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
+            options += (arch_opt,)
+        else:
+            method = 'ptx'
+
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
-                             name_expressions=name_expressions)
+                             name_expressions=name_expressions, method=method)
+
         try:
-            ptx, mapping = prog.compile(options, log_stream)
+            compiled_obj, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
             if dump:
                 e.dump(sys.stderr)
             raise
-        return ptx, mapping
+        return compiled_obj, mapping
 
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
@@ -366,8 +393,9 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
+        # For the preprocess it is enough to use PTX method
+        # we don't need to explicitly obtain a CUBIN file.
         options += ('-arch=compute_{}'.format(arch),)
-
         prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
@@ -467,7 +495,8 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
-    env = (arch, options, _get_nvrtc_version(), backend)
+    env = ((arch, options, _get_nvrtc_version(), backend)
+           + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
@@ -596,7 +625,7 @@ class CompileException(Exception):
 class _NVRTCProgram(object):
 
     def __init__(self, src, name='default_program', headers=(),
-                 include_names=(), name_expressions=None):
+                 include_names=(), name_expressions=None, method='ptx'):
         self.ptr = None
 
         if isinstance(src, bytes):
@@ -608,6 +637,7 @@ class _NVRTCProgram(object):
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
         self.name_expressions = name_expressions
+        self.method = method
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
@@ -628,8 +658,13 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            # TODO(leofang): use getCUBIN() for _cuda_version >= 11010?
-            return nvrtc.getPTX(self.ptr), mapping
+            # This is to ensure backwards compatibility with nvrtc
+            if self.method == 'cubin':
+                return nvrtc.getCUBIN(self.ptr), mapping
+            elif self.method == 'ptx':
+                return nvrtc.getPTX(self.ptr), mapping
+            else:
+                raise RuntimeError('Unknown NVRTC compile method')
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options,
@@ -719,7 +754,8 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    if not is_hiprtc:
+    if (not is_hiprtc) or (is_hiprtc and _cuda_hip_version >= 402):
+        # "-I" is fixed on ROCm 4.2.0+
         return '#include <hip/hip_runtime.h>\n' + source
 
     # Workaround for hiprtc: it does not follow the -I option to search

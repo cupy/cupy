@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
 
 
 class TestVectorizeOps(unittest.TestCase):
@@ -599,8 +600,10 @@ class TestVectorizeBroadcast(unittest.TestCase):
 
 class TestVectorize(unittest.TestCase):
 
-    @testing.for_dtypes('qQefdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(
+        rtol={'default': 1e-5,
+              numpy.float16: 1e-3 if runtime.is_hip else 1e-5})
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):
             y = x1 + x2 * x3 ** x1
@@ -608,7 +611,7 @@ class TestVectorize(unittest.TestCase):
             return x1 + x2 + x3
 
         f = xp.vectorize(my_func)
-        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1, scale=5)
         x2 = testing.shaped_random((20, 30), xp, dtype, seed=2)
         x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
         return f(x1, x2, x3)
