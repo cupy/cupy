@@ -80,7 +80,7 @@ class NCCLBackend:
         dtype, count = self._get_nccl_dtype_and_count(in_array)
         op = self._get_op(op, in_array.dtype.char)
         self._comm.allReduce(
-            in_array.data.ptr, out_array.data_ptr, count, dtype, op, stream)
+            in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
 
     def reduce(self, in_array, out_array, root=0, op='sum', stream=None):
         self._check_contiguous(in_array)
@@ -108,7 +108,7 @@ class NCCLBackend:
         dtype, count = self._get_nccl_dtype_and_count(in_array)
         op = self._get_op(op, in_array.dtype.char)
         self._comm.reduceScatter(
-            in_array.data.ptr, out_array.data_ptr, count, dtype, op, stream)
+            in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
 
     def all_gather(self, in_array, out_array, stream=None):
         self._check_contiguous(in_array)
@@ -116,7 +116,7 @@ class NCCLBackend:
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(in_array)
         self._comm.allGather(
-            in_array.data.ptr, out_array.data_ptr, count, dtype, stream)
+            in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
 
     def send(self, array, peer, stream=None):
         self._check_contiguous(array)

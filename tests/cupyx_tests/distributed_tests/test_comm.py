@@ -20,7 +20,7 @@ N_WORKERS = 2
 
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestNCCLBackend:
-    def _launch_workers(self, n_workers, func, args):
+    def _launch_workers(self, n_workers, func, args=()):
         processes = []
         # TODO catch exceptions
         for rank in range(n_workers):
@@ -66,7 +66,17 @@ class TestNCCLBackend:
         self._launch_workers(N_WORKERS, run_reduce, (1,))
 
     def test_all_reduce(self):
-        pass
+        def run_all_reduce(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = cupy.arange(2 * 3 * 4, dtype='f').reshape(2, 3, 4)
+            out_array = cupy.zeros((2, 3, 4), dtype='f')
+
+            comm.all_reduce(in_array, out_array)
+            testing.assert_allclose(out_array, 2 * in_array)
+
+        self._launch_workers(N_WORKERS, run_all_reduce)
 
     def test_reduce_scatter(self):
         pass
