@@ -16,7 +16,7 @@ def expm(a):
     Returns:
         scalar :class:`~cupy.ndarray`:
 
-    .. seealso:: :func:`numpy.linalg.expm`
+    .. seealso:: :func:`scipy.linalg.expm`
     """
 
     a = cupy.asarray(a)
