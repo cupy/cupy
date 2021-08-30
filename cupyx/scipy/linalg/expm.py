@@ -38,7 +38,8 @@ def expm(a):
     #     getrf = cusolver.zgetrf
     #     getrf_bufferSize = cusolver.zgetrf_bufferSize
     # else:
-    #     msg = 'Only float32, float64, complex64 and complex128 are supported.'
+    #     msg = 'Only float32, float64, complex64
+    # and complex128 are supported.'
     #     raise NotImplementedError(msg)
 
     pass
