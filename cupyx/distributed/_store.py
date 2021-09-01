@@ -1,5 +1,4 @@
 import multiprocessing
-import pickle
 import threading
 import socket
 import time
@@ -31,23 +30,28 @@ class TCPStore:
     def _process_request(self, c_socket):
         with c_socket:
             # Receive in KLV format
-            k_l = c_socket.recv(3 + 8)
-            k_l = bytearray(k_l)
-            k = k_l[0:3].decode('utf-8')
-            k_l = k_l[3:]
-            le = int.from_bytes(k_l[:8], 'big')
-            # receive the exact amount of bytes that L field specifies
-            v = c_socket.recv(le)
-            if k == "set":
-                action = TCPStore.Set.from_klv(v)
-            elif k == "get":
-                action = TCPStore.Get.from_klv(v)
-            elif k == "bar":
-                assert le == 0
-                action = TCPStore.Barrier()
-            r = action(self)
-            if r is not None:
-                c_socket.sendall(pickle.dumps(r))
+            klv = c_socket.recv(1024)
+            if len(klv) > 0:
+                klv = bytearray(klv)
+                k = klv[0:3].decode('utf-8')
+                klv = klv[3:]
+                le = int.from_bytes(klv[:8], 'big')
+                # receive the remaining amount of bytes that L field specifies
+                v = klv[8:]
+                if le + 3 + 8 > 1024:
+                    v = c_socket.recv(le)
+                if k == "set":
+                    action = _store_actions.Set.from_klv(v)
+                elif k == "get":
+                    action = _store_actions.Get.from_klv(v)
+                elif k == "bar":
+                    assert le == 0
+                    action = _store_actions.Barrier()
+                else:
+                    raise ValueError(f'unknown action {k}')
+                r = action(self)
+                if r is not None:
+                    c_socket.sendall(r.klv())
 
     def _server_loop(self, host, port):
         # This is for minimum info exchange during initialization
@@ -118,7 +122,7 @@ class TCPStoreProxy:
         return self._send_recv(_store_actions.Get(key))
 
     def __setitem__(self, key, value):
-        self._send(TCPStore._store_actions.Set(key, value))
+        self._send(_store_actions.Set(key, value))
 
     def barrier(self):
         # Barrier has special semantics

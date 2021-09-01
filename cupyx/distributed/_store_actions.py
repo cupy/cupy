@@ -34,7 +34,7 @@ class Set:
             v = v + bytearray('i'.encode('ascii'))
             v = v + bytearray(self.value.to_bytes(8, byteorder='big'))
         else:
-            raise ValueError('invalid type for self.value')
+            raise ValueError(f'invalid type for self.value {self.value}')
         le = len(v).to_bytes(8, byteorder='big')
         return bytes(k + bytearray(le) + v)
 
@@ -61,11 +61,12 @@ class Get:
 
         @staticmethod
         def from_klv(klv):
+            klv = bytearray(klv)
+            assert len(klv[9:]) == int.from_bytes(klv[1:9], 'big')
             if klv[0:1] == 'i'.encode('ascii'):
-                assert len(klv[1:]) == 8
-                v = int.from_bytes(klv[1:], 'big')
+                v = int.from_bytes(klv[9:], 'big')
             if klv[0:1] == 'b'.encode('ascii'):
-                v = bytes(klv[1:])
+                v = bytes(klv[9:])
             return v
 
     def __init__(self, key):
@@ -91,7 +92,10 @@ class Get:
     def __call__(self, store):
         # TODO - return in KLV too
         # wrap into GetResult class with klv, from_klv_methods
-        return Get.GetResult(store.storage[self.key]).klv()
+        return Get.GetResult(store.storage[self.key])
+
+    def decode_result(self, data):
+        return Get.GetResult.from_klv(data)
 
 
 class _BarrierImpl:
@@ -110,6 +114,26 @@ class _BarrierImpl:
 
 
 class Barrier:
+    class BarrierResult:
+        def klv(self):
+            v = bytearray(bytes(True))
+            le = len(v).to_bytes(8, byteorder='big')
+            return bytes(bytearray(le) + v)
+
+        @staticmethod
+        def from_klv(klv):
+            # don't need to parse, barrier always sends True
+            return True
+
+    def klv(self):
+        k = bytearray('bar'.encode('ascii'))
+        le = len([]).to_bytes(8, byteorder='big')
+        return bytes(k + bytearray(le))
+
+    @staticmethod
+    def from_klv(klv):
+        return Barrier()
+
     def __call__(self, store):
         with store._lock:
             if store._current_barrier is None:
@@ -118,4 +142,7 @@ class Barrier:
         # Once the barrier has been completed, just clean it
         with store._lock:
             store._current_barrier = None
-        return True
+        return Barrier.BarrierResult()
+
+    def decode_result(self, data):
+        return Barrier.BarrierResult.from_klv(data)

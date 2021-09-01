@@ -39,12 +39,14 @@ class NCCLBackend:
             self._store = _store.TCPStore(n_devices)
             self._store.run(host, port)
             nccl_id = nccl.get_unique_id()
+            nccl_id = bytes([b + 128 for b in nccl_id])
             self._store_proxy['nccl_id'] = nccl_id
             self._store_proxy.barrier()
         else:
             self._store_proxy.barrier()
             nccl_id = self._store_proxy['nccl_id']
         # Initialize devices
+        nccl_id = tuple([int(b) - 128 for b in nccl_id])
         self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
     def _check_contiguous(self, array):
