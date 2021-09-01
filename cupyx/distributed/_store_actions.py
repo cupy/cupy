@@ -1,5 +1,7 @@
 import threading
 
+from cupyx.distributed import _klv_utils
+
 
 class Set:
     def __init__(self, key, value):
@@ -16,25 +18,14 @@ class Set:
                 break
         else:
             raise ValueError('No separation character for key found')
-        if klv[0:1] == 'i'.encode('ascii'):
-            assert len(klv[1:]) == 8
-            v = int.from_bytes(klv[1:], 'big')
-        if klv[0:1] == 'b'.encode('ascii'):
-            v = bytes(klv[1:])
+        v = _klv_utils.get_value_from_bytes(klv)
         return Set(k, v)
 
     def klv(self):
         k = bytearray('set'.encode('ascii'))
         v = bytearray(self.key.encode('ascii'))
         v.append(0)  # marker to show where the value begins
-        if type(self.value) is bytes:
-            v = v + bytearray('b'.encode('ascii'))
-            v = v + bytearray(self.value)
-        elif type(self.value) is int:
-            v = v + bytearray('i'.encode('ascii'))
-            v = v + bytearray(self.value.to_bytes(8, byteorder='big'))
-        else:
-            raise ValueError(f'invalid type for self.value {self.value}')
+        v += _klv_utils.create_value_bytes(self.value)
         le = len(v).to_bytes(8, byteorder='big')
         return bytes(k + bytearray(le) + v)
 
@@ -48,44 +39,27 @@ class Get:
             self.value = value
 
         def klv(self):
-            if type(self.value) is bytes:
-                k = bytearray('b'.encode('ascii'))
-                v = bytearray(self.value)
-            elif type(self.value) is int:
-                k = bytearray('i'.encode('ascii'))
-                v = bytearray(self.value.to_bytes(8, byteorder='big'))
-            else:
-                raise ValueError('invalid type for self.value')
+            v = _klv_utils.create_value_bytes(self.value)
             le = len(v).to_bytes(8, byteorder='big')
-            return bytes(k + bytearray(le) + v)
+            return bytes(bytearray(le) + v)
 
         @staticmethod
         def from_klv(klv):
             klv = bytearray(klv)
-            assert len(klv[9:]) == int.from_bytes(klv[1:9], 'big')
-            if klv[0:1] == 'i'.encode('ascii'):
-                v = int.from_bytes(klv[9:], 'big')
-            if klv[0:1] == 'b'.encode('ascii'):
-                v = bytes(klv[9:])
-            return v
+            assert len(klv[8:]) == int.from_bytes(klv[:8], 'big')
+            return _klv_utils.get_value_from_bytes(klv[8:])
 
     def __init__(self, key):
         self.key = key
 
     @staticmethod
     def from_klv(klv):
-        for i, b in enumerate(klv):
-            if b == 0:
-                k = klv[:i].decode('utf-8')
-                break
-        else:
-            raise ValueError('No separation character for key found')
+        k = klv.decode('utf-8')
         return Get(k)
 
     def klv(self):
         k = bytearray('get'.encode('ascii'))
         v = bytearray(self.key.encode('ascii'))
-        v.append(0)  # marker to show where the value begins
         le = len(v).to_bytes(8, byteorder='big')
         return bytes(k + bytearray(le) + v)
 

@@ -3,6 +3,7 @@ import threading
 import socket
 import time
 
+from cupyx.distributed import _klv_utils
 from cupyx.distributed import _store_actions
 
 
@@ -33,13 +34,13 @@ class TCPStore:
             klv = c_socket.recv(1024)
             if len(klv) > 0:
                 klv = bytearray(klv)
-                k = klv[0:3].decode('utf-8')
-                klv = klv[3:]
-                le = int.from_bytes(klv[:8], 'big')
                 # receive the remaining amount of bytes that L field specifies
-                v = klv[8:]
+                k, le, v = _klv_utils.split_klv(klv)
                 if le + 3 + 8 > 1024:
-                    v = c_socket.recv(le)
+                    remaining = (le + 3 + 8) - 1024
+                    v += bytearray(c_socket.recv(remaining))
+                if le != len(v):
+                    raise ValueError('Invalid payload length')
                 if k == "set":
                     action = _store_actions.Set.from_klv(v)
                 elif k == "get":
