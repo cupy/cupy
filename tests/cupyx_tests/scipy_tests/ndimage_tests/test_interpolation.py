@@ -941,7 +941,6 @@ class TestSplineFilter1d:
 
 
 # See #5537
-@testing.slow
 @testing.with_requires('scipy')
 class TestSplineFilter1dLargeArray:
 
