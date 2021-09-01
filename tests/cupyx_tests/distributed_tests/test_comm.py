@@ -18,14 +18,37 @@ else:
 N_WORKERS = 2
 
 
+class Process(multiprocessing.Process):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pconn, self._cconn = multiprocessing.Pipe()
+        self._exception = None
+
+    def run(self):
+        try:
+            super().run()
+            self._cconn.send(None)
+        except Exception as e:
+            self._cconn.send(e)
+            # raise e  # You can still rise this exception if you need to
+
+    def join(self):
+        super().join()
+        if self._pconn.poll():
+            exception = self._pconn.recv()
+        if exception is not None:
+            raise exception
+
+
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestNCCLBackend:
     def _launch_workers(self, n_workers, func, args=()):
         processes = []
         # TODO catch exceptions
         for rank in range(n_workers):
-            p = multiprocessing.Process(
-                target=func, args=(rank, n_workers) + args)
+            p = Process(
+                target=func,
+                args=(rank, n_workers) + args)
             p.start()
             processes.append(p)
 
