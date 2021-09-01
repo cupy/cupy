@@ -4,20 +4,7 @@ import threading
 import socket
 import time
 
-
-class _BarrierImpl:
-    def __init__(self, world_size):
-        self._world_size = world_size
-        self._cvar = threading.Condition()
-
-    def __call__(self):
-        # Superlame implementation, should be improved
-        with self._cvar:
-            self._world_size -= 1
-            if self._world_size == 0:
-                self._cvar.notifyAll()
-            elif self._world_size > 0:
-                self._cvar.wait()
+from cupyx.distributed import _store_actions
 
 
 class TCPStore:
@@ -38,43 +25,27 @@ class TCPStore:
                 self._run.value = 0
             self._process.join()
 
-    class Set:
-        def __init__(self, key, value):
-            self.key = key
-            self.value = value
-
-        def __call__(self, store):
-            store.storage[self.key] = self.value
-
-    class Get:
-        def __init__(self, key):
-            self.key = key
-
-        def __call__(self, store):
-            return store.storage[self.key]
-
-    class Exit:
-        def __call__(self, store):
-            store._run = False
-
-    class Barrier:
-        def __call__(self, store):
-            with store._lock:
-                if store._current_barrier is None:
-                    store._current_barrier = _BarrierImpl(store._world_size)
-            store._current_barrier()
-            # Once the barrier has been completed, just clean it
-            with store._lock:
-                store._current_barrier = None
-            return True
-
     def _set_process(self, process):
         self._process = process
 
     def _process_request(self, c_socket):
         with c_socket:
-            data = c_socket.recv(1024)
-            r = pickle.loads(data)(self)
+            # Receive in KLV format
+            k_l = c_socket.recv(3 + 8)
+            k_l = bytearray(k_l)
+            k = k_l[0:3].decode('utf-8')
+            k_l = k_l[3:]
+            le = int.from_bytes(k_l[:8], 'big')
+            # receive the exact amount of bytes that L field specifies
+            v = c_socket.recv(le)
+            if k == "set":
+                action = TCPStore.Set.from_klv(v)
+            elif k == "get":
+                action = TCPStore.Get.from_klv(v)
+            elif k == "bar":
+                assert le == 0
+                action = TCPStore.Barrier()
+            r = action(self)
             if r is not None:
                 c_socket.sendall(pickle.dumps(r))
 
@@ -122,7 +93,7 @@ class TCPStoreProxy:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     # TODO retry connects
                     s.connect((self.host, self.port))
-                    s.sendall(pickle.dumps(action))
+                    s.sendall(action.klv())
                     return
             except ConnectionRefusedError:
                 time.sleep(TCPStoreProxy.DELAY_FOR_RETRY)
@@ -136,19 +107,19 @@ class TCPStoreProxy:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     # TODO retry connects
                     s.connect((self.host, self.port))
-                    s.sendall(pickle.dumps(action))
+                    s.sendall(action.klv())
                     data = s.recv(1024)
-                    return pickle.loads(data)
+                    return action.decode_result(data)
             except ConnectionRefusedError:
                 time.sleep(TCPStoreProxy.DELAY_FOR_RETRY)
         raise RuntimeError('TCPStore is not available')
 
     def __getitem__(self, key):
-        return self._send_recv(TCPStore.Get(key))
+        return self._send_recv(_store_actions.Get(key))
 
     def __setitem__(self, key, value):
-        self._send(TCPStore.Set(key, value))
+        self._send(TCPStore._store_actions.Set(key, value))
 
     def barrier(self):
         # Barrier has special semantics
-        self._send_recv(TCPStore.Barrier())
+        self._send_recv(_store_actions.Barrier())
