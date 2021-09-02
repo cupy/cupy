@@ -30,11 +30,8 @@ class NCCLBackend(Backend):
     # Allow this to use mpi, or when not available, use the regular store
     def __init__(self, n_devices, rank,
                  host=_store._DEFAULT_HOST, port=_store._DEFAULT_PORT):
-        self._n_devices = n_devices
-        self.rank = rank
-        self._store_proxy = _store.TCPStoreProxy(host, port)
+        super().__init__(n_devices, rank, host, port)
         if rank == 0:
-            self._store = _store.TCPStore(n_devices)
             self._store.run(host, port)
             nccl_id = nccl.get_unique_id()
             nccl_id = bytes([b + 128 for b in nccl_id])

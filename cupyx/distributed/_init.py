@@ -24,6 +24,14 @@ def init_process_group(
     number of processes, and start all the processes in different hosts
     manually.
 
+    The process with rank 0 will spawn a TCP server using a
+    subprocess that listens in the port indicated by
+    the env var `CUPYX_DISTRIBUTED_PORT`, the rank 0 must be executed
+    in the host determined by the env var `CUPYX_DISTRIBUTED_HOST`
+
+    Add example showing how to use it with two processes here:
+    >>>
+
     Args:
         n_devices (int): Total number of devices that will be used in the
             distributed execution.
@@ -49,4 +57,4 @@ def init_process_group(
         port = int(os.environ.get(
             'CUPYX_DISTRIBUTED_PORT', _store._DEFAULT_PORT))
 
-    return NCCLBackend(n_devices, rank, host, port)
+    return _backends[backend](n_devices, rank, host, port)
