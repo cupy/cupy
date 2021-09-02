@@ -7,14 +7,18 @@ from cupyx.distributed import _klv_utils
 from cupyx.distributed import _store_actions
 
 
+_DEFAULT_HOST = '127.0.0.1'
+_DEFAULT_PORT = 12345
+
+
 class TCPStore:
     # This is only used for initialization of nccl so we don't care
     # too much about peformance
     def __init__(self, world_size):
         self.storage = {}
         self._process = None
-        self._run = multiprocessing.Value('b', True)
         self._world_size = world_size
+        self._run = multiprocessing.Value('b', True)
         # For implementing a barrier
         self._lock = threading.Lock()
         self._current_barrier = None
@@ -73,7 +77,7 @@ class TCPStore:
                 t.setDaemon(True)
                 t.start()
 
-    def run(self, host='127.0.0.1', port=12345):
+    def run(self, host=_DEFAULT_HOST, port=_DEFAULT_PORT):
         # Run the TCP store in a different process
         p = multiprocessing.Process(
             target=self._server_loop, args=(host, port))
@@ -86,23 +90,9 @@ class TCPStoreProxy:
     MAX_NUM_RETRIES = 50
     DELAY_FOR_RETRY = 0.5
 
-    def __init__(self, host='127.0.0.1', port=12345):
+    def __init__(self, host=_DEFAULT_HOST, port=_DEFAULT_PORT):
         self.host = host
         self.port = port
-
-    def _send(self, action):
-        # Retry several times in case the rank 0 has not established the
-        # main store yet
-        for i in range(TCPStoreProxy.MAX_NUM_RETRIES):
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    # TODO retry connects
-                    s.connect((self.host, self.port))
-                    s.sendall(action.klv())
-                    return
-            except ConnectionRefusedError:
-                time.sleep(TCPStoreProxy.DELAY_FOR_RETRY)
-        raise RuntimeError('TCPStore is not available')
 
     def _send_recv(self, action):
         # Retry several times in case the rank 0 has not established the
@@ -123,7 +113,7 @@ class TCPStoreProxy:
         return self._send_recv(_store_actions.Get(key))
 
     def __setitem__(self, key, value):
-        self._send(_store_actions.Set(key, value))
+        self._send_recv(_store_actions.Set(key, value))
 
     def barrier(self):
         # Barrier has special semantics

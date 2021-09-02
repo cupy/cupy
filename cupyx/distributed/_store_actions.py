@@ -4,6 +4,16 @@ from cupyx.distributed import _klv_utils
 
 
 class Set:
+    class SetResult:
+        def klv(self):
+            v = bytearray(bytes(True))
+            le = len(v).to_bytes(8, byteorder='big')
+            return bytes(bytearray(le) + v)
+
+        @staticmethod
+        def from_klv(klv):
+            return True
+
     def __init__(self, key, value):
         self.key = key
         self.value = value
@@ -31,6 +41,10 @@ class Set:
 
     def __call__(self, store):
         store.storage[self.key] = self.value
+        return Set.SetResult()
+
+    def decode_result(self, data):
+        return Set.SetResult.from_klv(data)
 
 
 class Get:

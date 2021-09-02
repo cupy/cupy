@@ -32,8 +32,9 @@ class NCCLBackend:
     def __init__(self, n_devices, rank):
         self._n_devices = n_devices
         self.rank = rank
-        host = os.environ.get('CUPYX_DISTRIBUTED_HOST', '127.0.0.1')
-        port = int(os.environ.get('CUPYX_DISTRIBUTED_PORT', '12345'))
+        host = os.environ.get('CUPYX_DISTRIBUTED_HOST', _store._DEFAULT_HOST)
+        port = int(os.environ.get('CUPYX_DISTRIBUTED_PORT',
+                                  _store._DEFAULT_PORT))
         self._store_proxy = _store.TCPStoreProxy(host, port)
         if rank == 0:
             self._store = _store.TCPStore(n_devices)
