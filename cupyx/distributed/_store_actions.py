@@ -10,6 +10,22 @@ class Actions(enum.IntEnum):
     Barrier = 3
 
 
+class ActionError:
+    def __init__(self, exception):
+        self._exception = exception
+
+    def klv(self):
+        e = self._exception
+        return _klv_utils.get_result_action_t(1, str(e).encode('ascii'))
+
+    @staticmethod
+    def from_klv(klv):
+        raise RuntimeError(klv._exception.decode('utf-8'))
+
+    def decode_result(self, data):
+        ActionError.from_klv(data)
+
+
 def execute_action(action, value, store):
     # receive the remaining amount of bytes that L field specifies
     try:
@@ -23,7 +39,7 @@ def execute_action(action, value, store):
             raise ValueError(f'unknown action {action}')
         return action_obj(store)
     except Exception as e:
-        return _klv_utils.get_result_action_t(1, str(e).encode('ascii'))
+        return ActionError(e)
 
 
 class Set:
@@ -40,6 +56,11 @@ class Set:
     def __init__(self, key, value):
         self.key = key
         self.value = value
+        if not isinstance(key, str):
+            raise ValueError('Invalid type for key, only str allowed')
+        if type(value) not in (bytes, bytearray, int):
+            raise ValueError(
+                'Invalid type for value, only int or bytes allowed')
         # Check, value can only be integer or bytes
 
     @staticmethod
@@ -87,6 +108,8 @@ class Get:
 
     def __init__(self, key):
         self.key = key
+        if not isinstance(key, str):
+            raise ValueError('Invalid type for key, only str allowed')
 
     @staticmethod
     def from_klv(value):

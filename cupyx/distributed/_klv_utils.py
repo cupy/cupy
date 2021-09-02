@@ -51,6 +51,6 @@ def get_value_from_bytes(v):
     if v[0:1] == b'i':
         assert len(v[1:]) == 8
         v = int.from_bytes(v[1:], 'big')
-    if v[0:1] == b'b':
+    elif v[0:1] == b'b':
         v = bytes(v[1:])
     return v

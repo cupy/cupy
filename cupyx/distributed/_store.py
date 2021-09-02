@@ -114,13 +114,14 @@ class TCPStoreProxy:
                     s.sendall(action.klv())
                     result_bytes = s.recv(sizeof(
                         _klv_utils.result_action_t))
-                    result = _klv_utils.result_action_t.from_buffer_copy(
-                        result_bytes)
-                    value = bytearray(result.value)[:result.length]
-                    if result.status == 0:
-                        return action.decode_result(value)
-                    else:
-                        raise RuntimeError(value.decode('utf-8'))
+                    if len(result_bytes) > 0:
+                        result = _klv_utils.result_action_t.from_buffer_copy(
+                            result_bytes)
+                        value = bytearray(result.value)[:result.length]
+                        if result.status == 0:
+                            return action.decode_result(value)
+                        else:
+                            raise RuntimeError(value.decode('utf-8'))
             except ConnectionRefusedError:
                 time.sleep(TCPStoreProxy.DELAY_FOR_RETRY)
         raise RuntimeError('TCPStore is not available')
