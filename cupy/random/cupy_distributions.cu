@@ -11,12 +11,6 @@
 
 
 struct rk_state {
-
-#ifdef CUPY_USE_BINOMIAL
-    int has_binomial;
-    int nsave, m;
-    double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
-#endif
     __device__ virtual uint32_t rk_int() {
         return  0;
     }
@@ -62,7 +56,6 @@ struct curand_pseudo_state: rk_state {
         return curand_normal(_state);
     }
 };
-
 
 // This design is the same as the dtypes one
 template <typename F, typename... Ts>
@@ -221,7 +214,7 @@ __device__ double loggam(double x) {
     }
     return gl;
 }
-h
+
 __device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
     int64_t X;
     double prod, U, enlam;
@@ -305,48 +298,49 @@ __device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask)
     return sampled;
 }
 
-__device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p) {
+__device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p, rk_binomial_state *binomial_state) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
     int m,y,k,i;
-    if (!(state->has_binomial) ||
-         (state->nsave != n) ||
-         (state->psave != p)) {
+
+    if (!(binomial_state->initialized) ||
+         (binomial_state->nsave != n) ||
+         (binomial_state->psave != p)) {
         /* initialize */
-        state->nsave = n;
-        state->psave = p;
-        state->has_binomial = 1;
-        state->r = r = min(p, 1.0-p);
-        state->q = q = 1.0 - r;
-        state->fm = fm = n*r+r;
-        state->m = m = (long)floor(state->fm);
-        state->p1 = p1 = floor(2.195*sqrt(n*r*q)-4.6*q) + 0.5;
-        state->xm = xm = m + 0.5;
-        state->xl = xl = xm - p1;
-        state->xr = xr = xm + p1;
-        state->c = c = 0.134 + 20.5/(15.3 + m);
+        binomial_state->nsave = n;
+        binomial_state->psave = p;
+        binomial_state->initialized = 1;
+        binomial_state->r = r = min(p, 1.0-p);
+        binomial_state->q = q = 1.0 - r;
+        binomial_state->fm = fm = n*r+r;
+        binomial_state->m = m = (long)floor(binomial_state->fm);
+        binomial_state->p1 = p1 = floor(2.195*sqrt(n*r*q)-4.6*q) + 0.5;
+        binomial_state->xm = xm = m + 0.5;
+        binomial_state->xl = xl = xm - p1;
+        binomial_state->xr = xr = xm + p1;
+        binomial_state->c = c = 0.134 + 20.5/(15.3 + m);
         a = (fm - xl)/(fm-xl*r);
-        state->laml = laml = a*(1.0 + a/2.0);
+        binomial_state->laml = laml = a*(1.0 + a/2.0);
         a = (xr - fm)/(xr*q);
-        state->lamr = lamr = a*(1.0 + a/2.0);
-        state->p2 = p2 = p1*(1.0 + 2.0*c);
-        state->p3 = p3 = p2 + c/laml;
-        state->p4 = p4 = p3 + c/lamr;
+        binomial_state->lamr = lamr = a*(1.0 + a/2.0);
+        binomial_state->p2 = p2 = p1*(1.0 + 2.0*c);
+        binomial_state->p3 = p3 = p2 + c/laml;
+        binomial_state->p4 = p4 = p3 + c/lamr;
     } else {
-        r = state->r;
-        q = state->q;
-        fm = state->fm;
-        m = state->m;
-        p1 = state->p1;
-        xm = state->xm;
-        xl = state->xl;
-        xr = state->xr;
-        c = state->c;
-        laml = state->laml;
-        lamr = state->lamr;
-        p2 = state->p2;
-        p3 = state->p3;
-        p4 = state->p4;
+        r = binomial_state->r;
+        q = binomial_state->q;
+        fm = binomial_state->fm;
+        m = binomial_state->m;
+        p1 = binomial_state->p1;
+        xm = binomial_state->xm;
+        xl = binomial_state->xl;
+        xr = binomial_state->xr;
+        c = binomial_state->c;
+        laml = binomial_state->laml;
+        lamr = binomial_state->lamr;
+        p2 = binomial_state->p2;
+        p3 = binomial_state->p3;
+        p4 = binomial_state->p4;
     }
   /* sigh ... */
   Step10:
@@ -420,24 +414,25 @@ __device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p) {
     return y;
 }
 
-__device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p) {
+__device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p, rk_binomial_state *binomial_state) {
     double q, qn, np, px, U;
     int X, bound;
-    if (!(state->has_binomial) ||
-         (state->nsave != n) ||
-         (state->psave != p)) {
-        state->nsave = n;
-        state->psave = p;
-        state->has_binomial = 1;
-        state->q = q = 1.0 - p;
-        state->r = qn = exp(n * log(q));
-        state->c = np = n*p;
-        state->m = bound = min((double)n, np + 10.0*sqrt(np*q + 1));
+
+    if (!(binomial_state->initialized) ||
+         (binomial_state->nsave != n) ||
+         (binomial_state->psave != p)) {
+        binomial_state->nsave = n;
+        binomial_state->psave = p;
+        binomial_state->initialized = 1;
+        binomial_state->q = q = 1.0 - p;
+        binomial_state->r = qn = exp(n * log(q));
+        binomial_state->c = np = n*p;
+        binomial_state->m = bound = min((double)n, np + 10.0*sqrt(np*q + 1));
     } else {
-        q = state->q;
-        qn = state->r;
-        np = state->c;
-        bound = state->m;
+        q = binomial_state->q;
+        qn = binomial_state->r;
+        np = binomial_state->c;
+        bound = binomial_state->m;
     }
     X = 0;
     px = qn;
@@ -456,20 +451,21 @@ __device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p) {
     return X;
 }
 
-__device__ int64_t rk_binomial(rk_state *state, int n, double p) {
+__device__ int64_t rk_binomial(rk_state *state, int n, double p, rk_binomial_state *binomial_state) {
     double q;
+
     if (p <= 0.5) {
         if (p*n <= 30.0) {
-            return rk_binomial_inversion(state, n, p);
+            return rk_binomial_inversion(state, n, p, binomial_state);
         } else {
-            return rk_binomial_btpe(state, n, p);
+            return rk_binomial_btpe(state, n, p, binomial_state);
         }
     } else {
         q = 1.0-p;
         if (q*n <= 30.0) {
-            return n - rk_binomial_inversion(state, n, q);
+            return n - rk_binomial_inversion(state, n, q, binomial_state);
         } else {
-            return n - rk_binomial_btpe(state, n, q);
+            return n - rk_binomial_btpe(state, n, q, binomial_state);
         }
     }
 }
@@ -561,7 +557,8 @@ struct binomial_functor {
 // When a pointer is present in the variadic Args, it will be replaced by
 // the value of pointer[thread_id]
 template<typename T>
-__device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
+__device__ T get_index(T* value0, int id) {
+    int64_t* value = reinterpret_cast<int64_t*>(value0);
     intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
     int ndim = value[1];
     ptrdiff_t offset = 0;
@@ -569,12 +566,16 @@ __device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_
         offset += value[ndim + dim + 2] * (id % value[dim + 2]);
         id /= value[dim + 2];
     }
-    return *reinterpret_cast<double*>(ptr + offset);
+    return *reinterpret_cast<T*>(ptr + offset);
 }
 
 template<typename T>
 __device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
     return value;
+}
+
+__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
+    return value + id;
 }
 
 template<typename F, typename T, typename R, typename... Args>
@@ -637,7 +638,7 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
     kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(lam));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<double*>(lam));
 }
 
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
@@ -652,10 +653,10 @@ void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t 
 
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
     kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(shape));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<double*>(shape));
 }
 
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, double p) {
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
     kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(n), p);
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int*>(n), reinterpret_cast<double*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
 }

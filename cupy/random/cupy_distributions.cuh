@@ -1,6 +1,5 @@
 #ifndef _CUPY_TEST_H
 #define _CUPY_TEST_H
-#define CUPY_USE_BINOMIAL
 
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
@@ -19,6 +18,12 @@ enum RandGenerators{
    CURAND_PHILOX_4x32_10
 };
 
+//
+struct rk_binomial_state {
+    int initialized;
+    int nsave, m;
+    double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
+};
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #include <curand_kernel.h>
@@ -34,7 +39,7 @@ void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape);
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, double p);
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state);
 
 # else 
 
@@ -54,7 +59,7 @@ void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream){}
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, double p) {}
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {}
 
 #endif
 #endif

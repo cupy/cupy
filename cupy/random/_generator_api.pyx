@@ -13,6 +13,8 @@ _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 cdef extern from 'cupy_distributions.cuh' nogil:
+    cppclass rk_binomial_state:
+        pass
     void init_curand_generator(
         int generator, intptr_t state_ptr, uint64_t seed,
         ssize_t size, intptr_t stream)
@@ -52,8 +54,8 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
     void binomial(
-        int generator, intptr_t state, intptr_t out,
-        ssize_t size, intptr_t stream, intptr_t arg1, double arg2)
+        int generator, intptr_t state, intptr_t out, ssize_t size,
+        intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
 
 
 cdef ndarray _array_data(ndarray x):
@@ -83,6 +85,7 @@ class Generator:
     """
     def __init__(self, bit_generator):
         self.bit_generator = bit_generator
+        self._binomial_state = None
 
     def _check_output_array(self, dtype, size, out, check_only_c_cont=False):
         # Checks borrowed from NumPy
@@ -503,6 +506,7 @@ class Generator:
         cdef ndarray y
         cdef ndarray n_arr
         cdef ndarray p_arr
+        cdef intptr_t binomial_state_ptr
 
         n = cupy.asarray(n)
         p = cupy.asarray(p)
@@ -519,7 +523,14 @@ class Generator:
         n_ptr = n_arr.data.ptr
         p_ptr = p_arr.data.ptr
 
-        _launch_dist(self.bit_generator, binomial, y, (n_ptr, p_ptr,))
+        if self._binomial_state is None:
+            state_size = self.bit_generator._state_size()
+            self._binomial_state = cupy.zeros(
+                sizeof(rk_binomial_state) * state_size, dtype=numpy.int8)
+        binomial_state_ptr = <intptr_t>self._binomial_state.data.ptr
+        _launch_dist(
+            self.bit_generator, binomial, y,
+            (n_ptr, p_ptr, binomial_state_ptr))
         return y
 
 
