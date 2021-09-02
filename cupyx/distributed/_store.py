@@ -1,3 +1,4 @@
+from ctypes import sizeof
 import multiprocessing
 import threading
 import socket
@@ -35,26 +36,13 @@ class TCPStore:
     def _process_request(self, c_socket):
         with c_socket:
             # Receive in KLV format
-            klv = c_socket.recv(1024)
-            if len(klv) > 0:
-                klv = bytearray(klv)
-                # receive the remaining amount of bytes that L field specifies
-                k, le, v = _klv_utils.split_klv(klv)
-                if le + 3 + 8 > 1024:
-                    remaining = (le + 3 + 8) - 1024
-                    v += bytearray(c_socket.recv(remaining))
-                if le != len(v):
-                    raise ValueError('Invalid payload length')
-                if k == "set":
-                    action = _store_actions.Set.from_klv(v)
-                elif k == "get":
-                    action = _store_actions.Get.from_klv(v)
-                elif k == "bar":
-                    assert le == 0
-                    action = _store_actions.Barrier()
-                else:
-                    raise ValueError(f'unknown action {k}')
-                r = action(self)
+            action_bytes = c_socket.recv(sizeof(_klv_utils.action_t))
+            if len(action_bytes) > 0:
+                action_m = _klv_utils.action_t.from_buffer_copy(action_bytes)
+                if action_m.length > 256:
+                    raise ValueError('Invalid length for message')
+                value = bytearray(action_m.value)[:action_m.length]
+                r = _store_actions.execute_action(action_m.action, value, self)
                 if r is not None:
                     c_socket.sendall(r.klv())
 
@@ -103,8 +91,15 @@ class TCPStoreProxy:
                     # TODO retry connects
                     s.connect((self.host, self.port))
                     s.sendall(action.klv())
-                    data = s.recv(1024)
-                    return action.decode_result(data)
+                    result_bytes = s.recv(sizeof(
+                        _klv_utils.result_action_t))
+                    result = _klv_utils.result_action_t.from_buffer_copy(
+                        result_bytes)
+                    value = bytearray(result.value)[:result.length]
+                    if result.status == 0:
+                        return action.decode_result(value)
+                    else:
+                        raise RuntimeError(value.decode('utf-8'))
             except ConnectionRefusedError:
                 time.sleep(TCPStoreProxy.DELAY_FOR_RETRY)
         raise RuntimeError('TCPStore is not available')

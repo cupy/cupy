@@ -1,15 +1,46 @@
-def split_klv(klv, key_len=3, l_len=8):
-    k = klv[0:key_len].decode('utf-8')
-    le = int.from_bytes(klv[key_len:key_len + l_len], 'big')
-    return k, le, klv[key_len + l_len:]
+from ctypes import Structure, c_int, c_byte
+
+
+_VALUE_BUFFER_SIZE = 256
+
+
+class action_t(Structure):
+    _fields_ = [
+        ('action', c_int),
+        ('length', c_int),
+        ('value', c_byte * _VALUE_BUFFER_SIZE)]
+
+
+class result_action_t(Structure):
+    _fields_ = [
+        # If error value contains a message
+        ('status', c_int),  # 0 OK, 1 Error
+        ('length', c_int),
+        ('value', c_byte * _VALUE_BUFFER_SIZE)]
+
+
+def get_action_t(action, value):
+    l_v = len(value)
+    value = bytearray(value) + bytearray(
+        b'\x00' * (_VALUE_BUFFER_SIZE - len(value)))
+    value = (c_byte * _VALUE_BUFFER_SIZE).from_buffer(value)
+    return action_t(action, l_v, value)
+
+
+def get_result_action_t(status, value):
+    l_v = len(value)
+    value = bytearray(value) + bytearray(
+        b'\x00' * (_VALUE_BUFFER_SIZE - len(value)))
+    value = (c_byte * _VALUE_BUFFER_SIZE).from_buffer(value)
+    return result_action_t(status, l_v, value)
 
 
 def create_value_bytes(value):
     if type(value) is bytes:
-        v = bytearray('b'.encode('ascii'))
+        v = bytearray(b'b')
         v = v + bytearray(value)
     elif type(value) is int:
-        v = bytearray('i'.encode('ascii'))
+        v = bytearray(b'i')
         v = v + bytearray(value.to_bytes(8, byteorder='big'))
     else:
         raise ValueError(f'invalid type for self.value {value}')
@@ -17,9 +48,9 @@ def create_value_bytes(value):
 
 
 def get_value_from_bytes(v):
-    if v[0:1] == 'i'.encode('ascii'):
+    if v[0:1] == b'i':
         assert len(v[1:]) == 8
         v = int.from_bytes(v[1:], 'big')
-    if v[0:1] == 'b'.encode('ascii'):
+    if v[0:1] == b'b':
         v = bytes(v[1:])
     return v
