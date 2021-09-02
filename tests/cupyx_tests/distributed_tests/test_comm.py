@@ -20,7 +20,7 @@ N_WORKERS = 2
 
 
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
-class TestNCCLBackend:
+class TestNCCLBackend(unittest.TestCase):
     def _launch_workers(self, n_workers, func, args=()):
         processes = []
         # TODO catch exceptions
@@ -34,26 +34,33 @@ class TestNCCLBackend:
         for p in processes:
             p.join()
 
-    # TODO for all dtypes
-    def test_broadcast(self):
-        def run_broadcast(rank, n_workers, root):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_broadcast(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_broadcast(rank, n_workers, root, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
-            expected = cupy.arange(2 * 3 * 4, dtype='f').reshape((2, 3, 4))
+            expected = cupy.arange(2 * 3 * 4, dtype=dtype).reshape((2, 3, 4))
             if rank == root:
                 in_array = expected
             else:
-                in_array = cupy.zeros((2, 3, 4), dtype='f')
+                in_array = cupy.zeros((2, 3, 4), dtype=dtype)
 
             comm.broadcast(in_array, root)
             testing.assert_allclose(in_array, expected)
 
-        self._launch_workers(N_WORKERS, run_broadcast, (0,))
-        self._launch_workers(N_WORKERS, run_broadcast, (1,))
+        self._launch_workers(N_WORKERS, run_broadcast, (0, dtype))
+        self._launch_workers(N_WORKERS, run_broadcast, (1, dtype))
 
-    def test_reduce(self):
-        def run_reduce(rank, n_workers, root):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_reduce(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_reduce(rank, n_workers, root, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -63,11 +70,15 @@ class TestNCCLBackend:
             if rank == root:
                 testing.assert_allclose(out_array, 2 * in_array)
 
-        self._launch_workers(N_WORKERS, run_reduce, (0,))
-        self._launch_workers(N_WORKERS, run_reduce, (1,))
+        self._launch_workers(N_WORKERS, run_reduce, (0, dtype))
+        self._launch_workers(N_WORKERS, run_reduce, (1, dtype))
 
-    def test_all_reduce(self):
-        def run_all_reduce(rank, n_workers):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_all_reduce(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_all_reduce(rank, n_workers, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -77,10 +88,14 @@ class TestNCCLBackend:
             comm.all_reduce(in_array, out_array)
             testing.assert_allclose(out_array, 2 * in_array)
 
-        self._launch_workers(N_WORKERS, run_all_reduce)
+        self._launch_workers(N_WORKERS, run_all_reduce, (dtype,))
 
-    def test_reduce_scatter(self):
-        def run_reduce_scatter(rank, n_workers):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_reduce_scatter(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_reduce_scatter(rank, n_workers, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -91,10 +106,14 @@ class TestNCCLBackend:
             comm.reduce_scatter(in_array, out_array, 10)
             testing.assert_allclose(out_array, 2 * in_array[rank])
 
-        self._launch_workers(N_WORKERS, run_reduce_scatter)
+        self._launch_workers(N_WORKERS, run_reduce_scatter, (dtype,))
 
-    def test_all_gather(self):
-        def run_all_gather(rank, n_workers):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_all_gather(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_all_gather(rank, n_workers, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -107,10 +126,14 @@ class TestNCCLBackend:
                 cupy.arange(10, dtype='f'), (n_workers, 10))
             testing.assert_allclose(out_array, expected)
 
-        self._launch_workers(N_WORKERS, run_all_gather)
+        self._launch_workers(N_WORKERS, run_all_gather, (dtype,))
 
-    def test_send_and_recv(self):
-        def run_send_and_recv(rank, n_workers):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_send_and_recv(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_send_and_recv(rank, n_workers, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -122,10 +145,14 @@ class TestNCCLBackend:
                 comm.recv(out_array, 0)
                 testing.assert_allclose(out_array, in_array)
 
-        self._launch_workers(N_WORKERS, run_send_and_recv)
+        self._launch_workers(N_WORKERS, run_send_and_recv, (dtype,))
 
-    def test_send_recv(self):
-        def run_send_recv(rank, n_workers):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_send_recv(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_send_recv(rank, n_workers, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -135,10 +162,14 @@ class TestNCCLBackend:
                 comm.send_recv(in_array, out_array, i)
                 testing.assert_allclose(out_array, in_array)
 
-        self._launch_workers(N_WORKERS, run_send_recv)
+        self._launch_workers(N_WORKERS, run_send_recv, (dtype,))
 
-    def test_scatter(self):
-        def run_scatter(rank, n_workers, root):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_scatter(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_scatter(rank, n_workers, root, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -150,11 +181,15 @@ class TestNCCLBackend:
             if rank > 0:
                 testing.assert_allclose(out_array, in_array[rank])
 
-        self._launch_workers(N_WORKERS, run_scatter, (0,))
-        self._launch_workers(N_WORKERS, run_scatter, (1,))
+        self._launch_workers(N_WORKERS, run_scatter, (0, dtype))
+        self._launch_workers(N_WORKERS, run_scatter, (1, dtype))
 
-    def test_gather(self):
-        def run_gather(rank, n_workers, root):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_gather(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_gather(rank, n_workers, root, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -167,11 +202,15 @@ class TestNCCLBackend:
                     cupy.arange(10, dtype='f'), (n_workers, 10))
                 testing.assert_allclose(out_array, expected)
 
-        self._launch_workers(N_WORKERS, run_gather, (0,))
-        self._launch_workers(N_WORKERS, run_gather, (1,))
+        self._launch_workers(N_WORKERS, run_gather, (0, dtype))
+        self._launch_workers(N_WORKERS, run_gather, (1, dtype))
 
-    def test_all_to_all(self):
-        def run_all_to_all(rank, n_workers):
+    @testing.for_all_dtypes(no_bool=True)
+    def test_all_to_all(self, dtype):
+        if dtype in (cupy.int16, cupy.uint16):
+            return  # nccl does not support int16
+
+        def run_all_to_all(rank, n_workers, dtype):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
@@ -183,7 +222,7 @@ class TestNCCLBackend:
                 cupy.arange(10, dtype='f'), (n_workers, 10))
             testing.assert_allclose(out_array, expected)
 
-        self._launch_workers(N_WORKERS, run_all_to_all)
+        self._launch_workers(N_WORKERS, run_all_to_all, (dtype,))
 
     def test_barrier(self):
         def run_barrier(rank, n_workers):

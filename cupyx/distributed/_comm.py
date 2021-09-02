@@ -54,14 +54,16 @@ class NCCLBackend:
         if not array.flags.c_contiguous and not array.flags.f_contiguous:
             raise RuntimeError('NCCL requires arrays to be c-contiguous')
 
-    def _get_nccl_dtype_and_count(self, array):
+    def _get_nccl_dtype_and_count(self, array, count=None):
         dtype = array.dtype.char
         if dtype not in _nccl_dtypes:
             raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
         nccl_dtype = _nccl_dtypes[dtype]
+        if count is None:
+            count = array.size
         if dtype in 'FD':
-            return nccl_dtype, 2 * array.size
-        return nccl_dtype, array.size
+            return nccl_dtype, 2 * count
+        return nccl_dtype, count
 
     def _get_stream(self, stream):
         if stream is None:
@@ -109,7 +111,7 @@ class NCCLBackend:
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        dtype, _ = self._get_nccl_dtype_and_count(in_array)
+        dtype, count = self._get_nccl_dtype_and_count(in_array, count)
         op = self._get_op(op, in_array.dtype.char)
         self._comm.reduceScatter(
             in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
@@ -118,7 +120,7 @@ class NCCLBackend:
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        dtype, _ = self._get_nccl_dtype_and_count(in_array)
+        dtype, count = self._get_nccl_dtype_and_count(in_array, count)
         self._comm.allGather(
             in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
 
