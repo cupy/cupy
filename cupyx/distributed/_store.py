@@ -12,6 +12,27 @@ _DEFAULT_HOST = '127.0.0.1'
 _DEFAULT_PORT = 12345
 
 
+class ExceptionAwareProcess(multiprocessing.Process):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._exception = None
+        self._parent_p, self._child_p = multiprocessing.Pipe()
+
+    def run(self):
+        try:
+            super().run()
+            self._child_p.send(None)
+        except Exception as e:
+            self._child_p.send(e)
+
+    def join(self):
+        super().join()
+        if self._parent_p.poll():
+            exception = self._parent_p.recv()
+        if exception is not None:
+            raise exception
+
+
 class TCPStore:
     # This is only used for initialization of nccl so we don't care
     # too much about peformance
@@ -67,7 +88,7 @@ class TCPStore:
 
     def run(self, host=_DEFAULT_HOST, port=_DEFAULT_PORT):
         # Run the TCP store in a different process
-        p = multiprocessing.Process(
+        p = ExceptionAwareProcess(
             target=self._server_loop, args=(host, port))
         p.start()
         self._process = p

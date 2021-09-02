@@ -1,4 +1,3 @@
-import multiprocessing
 import time
 import unittest
 
@@ -8,6 +7,7 @@ from cupy.cuda import nccl
 from cupy import testing
 
 from cupyx.distributed import NCCLBackend
+from cupyx.distributed._store import ExceptionAwareProcess
 
 nccl_available = nccl.available
 
@@ -19,34 +19,13 @@ else:
 N_WORKERS = 2
 
 
-class Process(multiprocessing.Process):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._pconn, self._cconn = multiprocessing.Pipe()
-        self._exception = None
-
-    def run(self):
-        try:
-            super().run()
-            self._cconn.send(None)
-        except Exception as e:
-            self._cconn.send(e)
-
-    def join(self):
-        super().join()
-        if self._pconn.poll():
-            exception = self._pconn.recv()
-        if exception is not None:
-            raise exception
-
-
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestNCCLBackend:
     def _launch_workers(self, n_workers, func, args=()):
         processes = []
         # TODO catch exceptions
         for rank in range(n_workers):
-            p = Process(
+            p = ExceptionAwareProcess(
                 target=func,
                 args=(rank, n_workers) + args)
             p.start()
@@ -80,7 +59,6 @@ class TestNCCLBackend:
             comm = NCCLBackend(n_workers, rank)
             in_array = cupy.arange(2 * 3 * 4, dtype='f').reshape(2, 3, 4)
             out_array = cupy.zeros((2, 3, 4), dtype='f')
-
             comm.reduce(in_array, out_array, root)
             if rank == root:
                 testing.assert_allclose(out_array, 2 * in_array)
