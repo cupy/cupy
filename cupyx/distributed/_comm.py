@@ -214,4 +214,4 @@ class NCCLBackend:
     def cpu_barrier(self):
         # implements a barrier CPU side
         # TODO allow multiple barriers to be executed
-        self._store_proxy.wait_until('barrier', 0)
+        self._store_proxy.barrier()

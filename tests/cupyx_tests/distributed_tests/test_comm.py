@@ -1,4 +1,5 @@
 import multiprocessing
+import time
 import unittest
 
 import cupy
@@ -207,4 +208,16 @@ class TestNCCLBackend:
         self._launch_workers(N_WORKERS, run_all_to_all)
 
     def test_barrier(self):
-        pass
+        def run_barrier(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            comm.cpu_barrier()
+            before = time.time()
+            if rank == 0:
+                time.sleep(2)
+            comm.cpu_barrier()
+            after = time.time()
+            assert int(after - before) == 2
+
+        self._launch_workers(N_WORKERS, run_barrier)
