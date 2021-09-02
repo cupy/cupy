@@ -229,11 +229,11 @@ class TestNCCLBackend(unittest.TestCase):
             dev = cuda.Device(rank)
             dev.use()
             comm = NCCLBackend(n_workers, rank)
-            comm.cpu_barrier()
+            comm.barrier()
             before = time.time()
             if rank == 0:
                 time.sleep(2)
-            comm.cpu_barrier()
+            comm.barrier()
             after = time.time()
             assert int(after - before) == 2
 
