@@ -50,8 +50,8 @@ class NCCLBackend:
         self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
     def _check_contiguous(self, array):
-        if not array.flags.c_contiguous or array.flags.f_contiguous:
-            raise RuntimeError('NCCL requires arrays to be contiguous')
+        if not array.flags.c_contiguous and not array.flags.f_contiguous:
+            raise RuntimeError('NCCL requires arrays to be c-contiguous')
 
     def _get_nccl_dtype_and_count(self, array):
         dtype = array.dtype.char
@@ -72,7 +72,7 @@ class NCCLBackend:
             raise RuntimeError(f'Unknown op {op} for NCCL')
         if dtype in 'FD' and op != nccl.NCCL_SUM:
             raise ValueError(
-               'Only nccl.SUM is supported for complex arrays')
+                'Only nccl.SUM is supported for complex arrays')
         return _nccl_ops[op]
 
     def all_reduce(self, in_array, out_array, op='sum', stream=None):
@@ -103,20 +103,21 @@ class NCCLBackend:
         self._comm.broadcast(
             in_array.data.ptr, in_array.data.ptr, count, dtype, root, stream)
 
-    def reduce_scatter(self, in_array, out_array, op='sum', stream=None):
+    def reduce_scatter(
+            self, in_array, out_array, count, op='sum', stream=None):
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array)
+        dtype, _ = self._get_nccl_dtype_and_count(in_array)
         op = self._get_op(op, in_array.dtype.char)
         self._comm.reduceScatter(
             in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
 
-    def all_gather(self, in_array, out_array, stream=None):
+    def all_gather(self, in_array, out_array, count, stream=None):
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array)
+        dtype, _ = self._get_nccl_dtype_and_count(in_array)
         self._comm.allGather(
             in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
 
@@ -127,7 +128,7 @@ class NCCLBackend:
         self._send(array, peer, dtype, count, stream)
 
     def _send(self, array, peer, dtype, count, stream=None):
-        self._comm.send(array.data.ptr, dtype, count, peer, stream)
+        self._comm.send(array.data.ptr, count, dtype, peer, stream)
 
     def recv(self, out_array, peer, stream=None):
         self._check_contiguous(out_array)
@@ -146,10 +147,10 @@ class NCCLBackend:
         stream = self._get_stream(stream)
         idtype, icount = self._get_nccl_dtype_and_count(in_array)
         odtype, ocount = self._get_nccl_dtype_and_count(out_array)
-        nccl.ncclGroupStart()
+        self._comm.group_start()
         self._send(in_array, peer, idtype, icount, stream)
         self._recv(out_array, peer, odtype, ocount, stream)
-        nccl.ncclGroupEnd()
+        self._comm.group_end()
 
     def scatter(self, in_array, out_array, root=0, stream=None):
         if in_array.shape[0] != self._n_devices:
@@ -159,15 +160,15 @@ class NCCLBackend:
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        nccl.ncclGroupStart()
+        self._comm.group_start()
         if root == self.rank:
             for i in range(self._n_devices):
                 array = in_array[i]
-                idtype, icount = self._get_nccl_dtype_and_count(out_array)
+                idtype, icount = self._get_nccl_dtype_and_count(array)
                 self._send(array, i, idtype, icount, stream)
         dtype, count = self._get_nccl_dtype_and_count(out_array)
         self._recv(out_array, root, dtype, count, stream)
-        nccl.ncclGroupEnd()
+        self._comm.group_end()
 
     def gather(self, in_array, out_array, root=0, stream=None):
         # TODO(ecastill) out_array needs to have comm size in shape[0]
@@ -178,15 +179,15 @@ class NCCLBackend:
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        nccl.ncclGroupStart()
+        self._comm.group_start()
         if root == self.rank:
             for i in range(self._n_devices):
                 array = out_array[i]
-                odtype, ocount = self._get_nccl_dtype_and_count(out_array)
+                odtype, ocount = self._get_nccl_dtype_and_count(array)
                 self._recv(array, i, odtype, ocount, stream)
         dtype, count = self._get_nccl_dtype_and_count(in_array)
         self._send(in_array, root, dtype, count, stream)
-        nccl.ncclGroupEnd()
+        self._comm.group_end()
 
     def all_to_all(self, in_array, out_array, stream=None):
         # TODO(ecastill) out_array needs to have comm size in shape[0]
@@ -204,11 +205,11 @@ class NCCLBackend:
         idtype, icount = self._get_nccl_dtype_and_count(in_array[0])
         odtype, ocount = self._get_nccl_dtype_and_count(out_array[0])
         # TODO check out dtypes are the same as in dtypes
-        nccl.ncclGroupStart()
+        self._comm.group_start()
         for i in range(self._n_devices):
             self._send(in_array[i], i, idtype, icount, stream)
             self._recv(out_array[i], i, odtype, ocount, stream)
-        nccl.ncclGroupEnd()
+        self._comm.group_end()
 
     def cpu_barrier(self):
         # implements a barrier CPU side

@@ -30,7 +30,6 @@ class Process(multiprocessing.Process):
             self._cconn.send(None)
         except Exception as e:
             self._cconn.send(e)
-            # raise e  # You can still rise this exception if you need to
 
     def join(self):
         super().join()
@@ -102,19 +101,110 @@ class TestNCCLBackend:
         self._launch_workers(N_WORKERS, run_all_reduce)
 
     def test_reduce_scatter(self):
-        pass
+        def run_reduce_scatter(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = 1 + cupy.arange(
+                n_workers * 10, dtype='f').reshape(n_workers, 10)
+            out_array = cupy.zeros((10,), dtype='f')
+
+            comm.reduce_scatter(in_array, out_array, 10)
+            testing.assert_allclose(out_array, 2 * in_array[rank])
+
+        self._launch_workers(N_WORKERS, run_reduce_scatter)
 
     def test_all_gather(self):
-        pass
+        def run_all_gather(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = (rank + 1) * cupy.arange(
+                n_workers * 10, dtype='f').reshape(n_workers, 10)
+            out_array = cupy.zeros((n_workers, 10), dtype='f')
+            comm.all_gather(in_array, out_array, 10)
+            expected = 1 + cupy.arange(n_workers).reshape(n_workers, 1)
+            expected = expected * cupy.broadcast_to(
+                cupy.arange(10, dtype='f'), (n_workers, 10))
+            testing.assert_allclose(out_array, expected)
 
-    def test_send_rcv(self):
-        pass
+        self._launch_workers(N_WORKERS, run_all_gather)
+
+    def test_send_and_recv(self):
+        def run_send_and_recv(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = cupy.arange(10, dtype='f')
+            out_array = cupy.zeros((10,), dtype='f')
+            if rank == 0:
+                comm.send(in_array, 1)
+            else:
+                comm.recv(out_array, 0)
+                testing.assert_allclose(out_array, in_array)
+
+        self._launch_workers(N_WORKERS, run_send_and_recv)
+
+    def test_send_recv(self):
+        def run_send_recv(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = cupy.arange(10, dtype='f')
+            for i in range(n_workers):
+                out_array = cupy.zeros((10,), dtype='f')
+                comm.send_recv(in_array, out_array, i)
+                testing.assert_allclose(out_array, in_array)
+
+        self._launch_workers(N_WORKERS, run_send_recv)
 
     def test_scatter(self):
-        pass
+        def run_scatter(rank, n_workers, root):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = 1 + cupy.arange(
+                n_workers * 10, dtype='f').reshape(n_workers, 10)
+            out_array = cupy.zeros((10,), dtype='f')
+
+            comm.scatter(in_array, out_array, root)
+            if rank > 0:
+                testing.assert_allclose(out_array, in_array[rank])
+
+        self._launch_workers(N_WORKERS, run_scatter, (0,))
+        self._launch_workers(N_WORKERS, run_scatter, (1,))
 
     def test_gather(self):
-        pass
+        def run_gather(rank, n_workers, root):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = (rank + 1) * cupy.arange(10, dtype='f')
+            out_array = cupy.zeros((n_workers, 10), dtype='f')
+            comm.gather(in_array, out_array, root)
+            if rank == root:
+                expected = 1 + cupy.arange(n_workers).reshape(n_workers, 1)
+                expected = expected * cupy.broadcast_to(
+                    cupy.arange(10, dtype='f'), (n_workers, 10))
+                testing.assert_allclose(out_array, expected)
+
+        self._launch_workers(N_WORKERS, run_gather, (0,))
+        self._launch_workers(N_WORKERS, run_gather, (1,))
 
     def test_all_to_all(self):
+        def run_all_to_all(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = NCCLBackend(n_workers, rank)
+            in_array = cupy.arange(
+                n_workers * 10, dtype='f').reshape(n_workers, 10)
+            out_array = cupy.zeros((n_workers, 10), dtype='f')
+            comm.all_to_all(in_array, out_array)
+            expected = (10 * rank) + cupy.broadcast_to(
+                cupy.arange(10, dtype='f'), (n_workers, 10))
+            testing.assert_allclose(out_array, expected)
+
+        self._launch_workers(N_WORKERS, run_all_to_all)
+
+    def test_barrier(self):
         pass

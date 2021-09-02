@@ -70,7 +70,8 @@ cdef extern from '../../cupy_nccl.h':
     ncclResult_t ncclRecv(void* recvbuff, size_t count,
                           ncclDataType_t datatype, int peer, ncclComm_t comm,
                           driver.Stream stream) nogil
-
+    ncclResult_t ncclGroupStart() nogil
+    ncclResult_t ncclGroupEnd() nogil
     # Build-time version
     int NCCL_VERSION_CODE
 
@@ -488,4 +489,14 @@ cdef class NcclCommunicator:
         with nogil:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
         check_status(asyncError)
+        check_status(result)
+
+    def group_start(self):
+        with nogil:
+            result = ncclGroupStart()
+        check_status(result)
+
+    def group_end(self):
+        with nogil:
+            result = ncclGroupEnd()
         check_status(result)
