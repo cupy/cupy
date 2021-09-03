@@ -11,6 +11,7 @@
 
 
 struct rk_state {
+
     __device__ virtual uint32_t rk_int() {
         return  0;
     }
@@ -23,7 +24,6 @@ struct rk_state {
     __device__ virtual float rk_normal_float() {
         return  0.0;
     }
-
 };
 
 template<typename CURAND_TYPE>
@@ -56,6 +56,7 @@ struct curand_pseudo_state: rk_state {
         return curand_normal(_state);
     }
 };
+
 
 // This design is the same as the dtypes one
 template <typename F, typename... Ts>
@@ -554,17 +555,21 @@ struct binomial_functor {
 
 // The following templates are used to unwrap arrays into an elementwise
 // approach, the array is `_array_data` in `cupy/random/_generator_api.pyx`.
-// When a pointer is present in the variadic Args, it will be replaced by
-// the value of pointer[thread_id]
+// When a pointer to `array_data<T>` is present in the variadic Args, it will
+// be replaced by the value of pointer[thread_id]
+
 template<typename T>
-__device__ T get_index(T* value0, int id) {
-    int64_t* value = reinterpret_cast<int64_t*>(value0);
-    intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
-    int ndim = value[1];
+struct array_data {};  // opaque type
+
+template<typename T>
+__device__ T get_index(array_data<T> *value, int id) {
+    int64_t* data = reinterpret_cast<int64_t*>(value);
+    intptr_t ptr = reinterpret_cast<intptr_t>(data[0]);
+    int ndim = data[1];
     ptrdiff_t offset = 0;
     for (int dim = ndim; --dim >= 0; ) {
-        offset += value[ndim + dim + 2] * (id % value[dim + 2]);
-        id /= value[dim + 2];
+        offset += data[ndim + dim + 2] * (id % data[dim + 2]);
+        id /= data[dim + 2];
     }
     return *reinterpret_cast<T*>(ptr + offset);
 }
@@ -638,7 +643,7 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
     kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<double*>(lam));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(lam));
 }
 
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
@@ -653,10 +658,10 @@ void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t 
 
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
     kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<double*>(shape));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(shape));
 }
 
 void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
     kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int*>(n), reinterpret_cast<double*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
 }

@@ -1,6 +1,7 @@
 #ifndef _CUPY_TEST_H
 #define _CUPY_TEST_H
 
+
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
@@ -18,7 +19,6 @@ enum RandGenerators{
    CURAND_PHILOX_4x32_10
 };
 
-//
 struct rk_binomial_state {
     int initialized;
     int nsave, m;
