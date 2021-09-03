@@ -16,9 +16,9 @@ def init_process_group(
     This call initializes the distributed environment, it needs to be
     called for every process that is involved in the communications.
 
-    We only allow to run a single GPU per returned communication
-    object, being the user the responsible of setting the appropiated gpu
-    to be used.
+    A single device per returned communication is only allowed. It is the user
+    responsibility of setting the appropiated gpu to be used before creating
+    and using the communicator.
 
     Currently the user needs to specify each process rank and the total
     number of processes, and start all the processes in different hosts
@@ -31,8 +31,27 @@ def init_process_group(
     In case their values are not specified, `'127.0.0.1'` and `12345` will be
     used by default.
 
-    Add example showing how to use it with two processes here:
-    >>>
+    Example:
+
+        Process 0:
+
+        >>> import cupy
+        >>> import cupyx.distributed
+        >>> cupy.cuda.Device(0).use()
+        >>> comm = cupyx.distributed.init_process_group(2, 0)
+        >>> array = cupy.ones(1)
+        >>> comm.broadcast(array, 0)
+
+        Process 1:
+
+        >>> import cupy
+        >>> import cupyx.distributed
+        >>> cupy.cuda.Device(1).use()
+        >>> comm = cupyx.distributed.init_process_group(2, 1)
+        >>> array = cupy.zeros(1)
+        >>> comm.broadcast(array, 0)
+        >>> cupy.equal(array, cupy.ones(1))
+        array([ True])
 
     Args:
         n_devices (int): Total number of devices that will be used in the
