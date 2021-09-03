@@ -169,8 +169,7 @@ class Backend:
             in_array (cupy.ndarray): array to be sent.
             out_array (cupy.ndarray): array where the result with be stored.
                 Its shape must be `(total_ranks, ...)`.
-            root (int): rank that will receive the `in_array`s
-                from other ranks.
+            root (int): rank that will receive `in_array` from other ranks.
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
