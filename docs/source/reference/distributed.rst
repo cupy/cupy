@@ -8,7 +8,7 @@ between different processes in CuPy.
 
 .. module:: cupyx.distributed
 
-.. toctree::
+.. autosummary::
    :toctree: generated/
 
    init_process_group
