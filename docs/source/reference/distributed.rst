@@ -9,7 +9,7 @@ between different processes in CuPy.
 .. module:: cupyx.distributed
 
 .. toctree::
-   :maxdepth: 2
+   :toctree: generated/
 
    init_process_group
    Backend
