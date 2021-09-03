@@ -3,10 +3,10 @@ import os
 import cupy.cuda.nccl
 
 from cupyx.distributed import _store
-from cupyx.distributed._nccl import NCCLBackend
+from cupyx.distributed._nccl_comm import NCCLBackend
 
 
-_backends = {'nccl', NCCLBackend}
+_backends = {'nccl': NCCLBackend}
 
 
 def init_process_group(
@@ -27,7 +27,9 @@ def init_process_group(
     The process with rank 0 will spawn a TCP server using a
     subprocess that listens in the port indicated by
     the env var `CUPYX_DISTRIBUTED_PORT`, the rank 0 must be executed
-    in the host determined by the env var `CUPYX_DISTRIBUTED_HOST`
+    in the host determined by the env var `CUPYX_DISTRIBUTED_HOST`.
+    In case their values are not specified, `'127.0.0.1'` and `12345` will be
+    used by default.
 
     Add example showing how to use it with two processes here:
     >>>
@@ -47,6 +49,10 @@ def init_process_group(
         Backend: object used to perform communications, adheres to the
             :class:`~cupyx.distributed.Backend` specification:
     """
+    if n_devices <= 0:
+        raise ValueError(f'Invalid number of devices {n_devices}')
+    if not (0 <= rank < n_devices):
+        raise ValueError(f'Invalid number of rank {rank} {n_devices}')
     if backend not in _backends:
         raise ValueError(f'{backend} is not supported')
     if not cupy.cuda.nccl.available:

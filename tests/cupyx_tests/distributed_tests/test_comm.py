@@ -1,26 +1,24 @@
 import time
 import unittest
+import pytest
 
 import cupy
 from cupy import cuda
 from cupy.cuda import nccl
 from cupy import testing
 
-from cupyx.distributed import NCCLBackend
+from cupyx.distributed import init_process_group
+from cupyx.distributed._nccl_comm import NCCLBackend
 from cupyx.distributed._store import ExceptionAwareProcess
 
 nccl_available = nccl.available
 
-if nccl_available:
-    nccl_version = nccl.get_version()
-else:
-    nccl_version = -1
 
 N_WORKERS = 2
 
 
-@unittest.skipUnless(nccl_available, 'nccl is not installed')
-class TestNCCLBackend(unittest.TestCase):
+@pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
+class TestNCCLBackend:
     def _launch_workers(self, n_workers, func, args=()):
         processes = []
         # TODO catch exceptions
@@ -238,3 +236,51 @@ class TestNCCLBackend(unittest.TestCase):
             assert int(after - before) == 2
 
         self._launch_workers(N_WORKERS, run_barrier)
+
+
+@unittest.skipUnless(nccl_available, 'nccl is not installed')
+class TestInitDistributed(unittest.TestCase):
+    def _launch_workers(self, n_workers, func, args=()):
+        processes = []
+        # TODO catch exceptions
+        for rank in range(n_workers):
+            p = ExceptionAwareProcess(
+                target=func,
+                args=(rank, n_workers) + args)
+            p.start()
+            processes.append(p)
+
+        for p in processes:
+            p.join()
+
+    def test_init(self):
+        def run_init(rank, n_workers):
+            dev = cuda.Device(rank)
+            dev.use()
+            comm = init_process_group(n_workers, rank)
+            # Do a simple call to verify we got a valid comm
+            in_array = cupy.zeros(1)
+            if rank == 0:
+                in_array = in_array + 1
+            comm.broadcast(in_array, 0)
+            testing.assert_allclose(in_array, cupy.ones(1))
+
+        self._launch_workers(N_WORKERS, run_init)
+
+    def test_invalid_backend(self):
+        with pytest.raises(ValueError):
+            init_process_group(1, 0, backend='mpi')
+
+    def test_invalid_n_devices(self):
+        with pytest.raises(ValueError):
+            init_process_group(0, 0)
+
+        with pytest.raises(ValueError):
+            init_process_group(-1, 0)
+
+    def test_invalid_rank(self):
+        with pytest.raises(ValueError):
+            init_process_group(2, -1)
+
+        with pytest.raises(ValueError):
+            init_process_group(2, 3)

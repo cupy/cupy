@@ -1,6 +1,7 @@
 import cupy
 from cupy.cuda import nccl
-from cupyx.distributed import _store, Backend
+from cupyx.distributed import _store
+from cupyx.distributed._comm import Backend
 
 
 _nccl_dtypes = {'b': nccl.NCCL_INT8,
@@ -26,8 +27,19 @@ _nccl_ops = {'sum': nccl.NCCL_SUM,
 
 
 class NCCLBackend(Backend):
-    # TODO(ecastill)
-    # Allow this to use mpi, or when not available, use the regular store
+    """Interface that uses NVIDIA's NCCL to perform communications.
+
+    Args:
+        n_devices (int): Total number of devices that will be used in the
+            distributed execution.
+        rank (int): Unique id of the GPU that the communicator is associated to
+            its value needs to be `0 <= rank < n_devices`.
+        host (str, optional): host address for the process rendezvous on
+            initialization. Defaults to `"127.0.0.1"`.
+        port (int, optional): port used for the process rendezvous on
+            initialization. Defaults to `12345`.
+    """
+
     def __init__(self, n_devices, rank,
                  host=_store._DEFAULT_HOST, port=_store._DEFAULT_PORT):
         super().__init__(n_devices, rank, host, port)
@@ -73,6 +85,17 @@ class NCCLBackend(Backend):
         return _nccl_ops[op]
 
     def all_reduce(self, in_array, out_array, op='sum', stream=None):
+        """Performs an all reduce operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent.
+            out_array (cupy.ndarray): array where the result with be stored.
+            op (str): reduction operation, can be one of
+                ('sum', 'prod', 'min' 'max'), arrays of complex type only
+                support `'sum'`. Defaults to `'sum'`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
@@ -82,6 +105,20 @@ class NCCLBackend(Backend):
             in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
 
     def reduce(self, in_array, out_array, root=0, op='sum', stream=None):
+        """Performs a reduce operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent.
+            out_array (cupy.ndarray): array where the result with be stored.
+                will only be modified by the `root` process.
+            root (int, optional): rank of the process that will perform the
+                reduction. Defaults to `0`.
+            op (str): reduction operation, can be one of
+                ('sum', 'prod', 'min' 'max'), arrays of complex type only
+                support `'sum'`. Defaults to `'sum'`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(in_array)
         if self.rank == root:
             self._check_contiguous(out_array)
@@ -93,6 +130,16 @@ class NCCLBackend(Backend):
             count, dtype, op, root, stream)
 
     def broadcast(self, in_array, root=0, stream=None):
+        """Performs a broadcast operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent for `root` rank.
+                Other ranks will receive the broadcast data here.
+            root (int, optional): rank of the process that will send the
+                broadcast. Defaults to `0`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         # in_array for root !=0 will be used as output
         self._check_contiguous(in_array)
         stream = self._get_stream(stream)
@@ -102,6 +149,18 @@ class NCCLBackend(Backend):
 
     def reduce_scatter(
             self, in_array, out_array, count, op='sum', stream=None):
+        """Performs a reduce scatter operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent.
+            out_array (cupy.ndarray): array where the result with be stored.
+            count (int): Number of elements to send to each rank.
+            op (str): reduction operation, can be one of
+                ('sum', 'prod', 'min' 'max'), arrays of complex type only
+                support `'sum'`. Defaults to `'sum'`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
@@ -111,6 +170,18 @@ class NCCLBackend(Backend):
             in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
 
     def all_gather(self, in_array, out_array, count, stream=None):
+        """Performs an all gather operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent.
+            out_array (cupy.ndarray): array where the result with be stored.
+            count (int): Number of elements to send to each rank.
+            op (str): reduction operation, can be one of
+                ('sum', 'prod', 'min' 'max'), arrays of complex type only
+                support `'sum'`. Defaults to `'sum'`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
@@ -119,6 +190,14 @@ class NCCLBackend(Backend):
             in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
 
     def send(self, array, peer, stream=None):
+        """Performs a send operation.
+
+        Args:
+            array (cupy.ndarray): array to be sent.
+            peer (int): rank of the process `array` will be sent to.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(array)
@@ -128,6 +207,14 @@ class NCCLBackend(Backend):
         self._comm.send(array.data.ptr, count, dtype, peer, stream)
 
     def recv(self, out_array, peer, stream=None):
+        """Performs a receive operation.
+
+        Args:
+            array (cupy.ndarray): array used to receive data.
+            peer (int): rank of the process `array` will be received from.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(out_array)
@@ -139,6 +226,16 @@ class NCCLBackend(Backend):
     # TODO(ecastill) implement nccl missing calls combining the above ones
     # AlltoAll, AllGather, and similar MPI calls that can be easily implemented
     def send_recv(self, in_array, out_array, peer, stream=None):
+        """Performs a send and receive operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent.
+            out_array (cupy.ndarray): array used to receive data.
+            peer (int): rank of the process to send `in_array` and receive
+                `out_array`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
@@ -150,6 +247,16 @@ class NCCLBackend(Backend):
         self._comm.group_end()
 
     def scatter(self, in_array, out_array, root=0, stream=None):
+        """Performs a scatter operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent. Its shape must be
+                `(total_ranks, ...)`.
+            out_array (cupy.ndarray): array where the result with be stored.
+            root (int): rank that will send the `in_array` to other ranks.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         if in_array.shape[0] != self._n_devices:
             raise RuntimeError(
                 f'scatter requires in_array to have {self._n_devices}'
@@ -168,6 +275,17 @@ class NCCLBackend(Backend):
         self._comm.group_end()
 
     def gather(self, in_array, out_array, root=0, stream=None):
+        """Performs a gather operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent.
+            out_array (cupy.ndarray): array where the result with be stored.
+                Its shape must be `(total_ranks, ...)`.
+            root (int): rank that will receive the `in_array`s
+                from other ranks.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         # TODO(ecastill) out_array needs to have comm size in shape[0]
         if out_array.shape[0] != self._n_devices:
             raise RuntimeError(
@@ -187,6 +305,16 @@ class NCCLBackend(Backend):
         self._comm.group_end()
 
     def all_to_all(self, in_array, out_array, stream=None):
+        """Performs an all to all operation.
+
+        Args:
+            in_array (cupy.ndarray): array to be sent. Its shape must be
+                `(total_ranks, ...)`.
+            out_array (cupy.ndarray): array where the result with be stored.
+                Its shape must be `(total_ranks, ...)`.
+            stream (cupy.cuda.Stream, optional): if supported, stream to
+                perform the communication.
+        """
         # TODO(ecastill) out_array needs to have comm size in shape[0]
         if out_array.shape[0] != self._n_devices:
             raise RuntimeError(
@@ -209,6 +337,11 @@ class NCCLBackend(Backend):
         self._comm.group_end()
 
     def barrier(self):
+        """Performs a barrier operation.
+
+        The barrier is done in the cpu and is a explicit synchronization
+        mechanism that halts the thread progression.
+        """
         # implements a barrier CPU side
         # TODO allow multiple barriers to be executed
         self._store_proxy.barrier()
