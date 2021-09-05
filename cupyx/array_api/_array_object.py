@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 import cupy as cp
 
-from cupy import array_api
+from cupyx import array_api
 
 
 class Array:
@@ -99,7 +99,7 @@ class Array:
         """
         Performs the operation __repr__.
         """
-        return f"Array({cp.array2string(self._array, separator=', ')}, dtype={self.dtype.name})"
+        return f"Array({repr(self._array)}, dtype={self.dtype.name})"
 
     # These are various helper functions to make the array behavior match the
     # spec in places where it either deviates from or is more strict than
