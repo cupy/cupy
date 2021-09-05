@@ -4,7 +4,7 @@ from ._array_object import Array
 
 from typing import Optional, Tuple, Union
 
-import numpy as np
+import cupy as cp
 
 
 def max(
@@ -14,7 +14,7 @@ def max(
     axis: Optional[Union[int, Tuple[int, ...]]] = None,
     keepdims: bool = False,
 ) -> Array:
-    return Array._new(np.max(x._array, axis=axis, keepdims=keepdims))
+    return Array._new(cp.max(x._array, axis=axis, keepdims=keepdims))
 
 
 def mean(
@@ -24,7 +24,7 @@ def mean(
     axis: Optional[Union[int, Tuple[int, ...]]] = None,
     keepdims: bool = False,
 ) -> Array:
-    return Array._new(np.mean(x._array, axis=axis, keepdims=keepdims))
+    return Array._new(cp.mean(x._array, axis=axis, keepdims=keepdims))
 
 
 def min(
@@ -34,7 +34,7 @@ def min(
     axis: Optional[Union[int, Tuple[int, ...]]] = None,
     keepdims: bool = False,
 ) -> Array:
-    return Array._new(np.min(x._array, axis=axis, keepdims=keepdims))
+    return Array._new(cp.min(x._array, axis=axis, keepdims=keepdims))
 
 
 def prod(
@@ -44,7 +44,7 @@ def prod(
     axis: Optional[Union[int, Tuple[int, ...]]] = None,
     keepdims: bool = False,
 ) -> Array:
-    return Array._new(np.prod(x._array, axis=axis, keepdims=keepdims))
+    return Array._new(cp.prod(x._array, axis=axis, keepdims=keepdims))
 
 
 def std(
@@ -56,7 +56,7 @@ def std(
     keepdims: bool = False,
 ) -> Array:
     # Note: the keyword argument correction is different here
-    return Array._new(np.std(x._array, axis=axis, ddof=correction, keepdims=keepdims))
+    return Array._new(cp.std(x._array, axis=axis, ddof=correction, keepdims=keepdims))
 
 
 def sum(
@@ -66,7 +66,7 @@ def sum(
     axis: Optional[Union[int, Tuple[int, ...]]] = None,
     keepdims: bool = False,
 ) -> Array:
-    return Array._new(np.sum(x._array, axis=axis, keepdims=keepdims))
+    return Array._new(cp.sum(x._array, axis=axis, keepdims=keepdims))
 
 
 def var(
@@ -78,4 +78,4 @@ def var(
     keepdims: bool = False,
 ) -> Array:
     # Note: the keyword argument correction is different here
-    return Array._new(np.var(x._array, axis=axis, ddof=correction, keepdims=keepdims))
+    return Array._new(cp.var(x._array, axis=axis, ddof=correction, keepdims=keepdims))

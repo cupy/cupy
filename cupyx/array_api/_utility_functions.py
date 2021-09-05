@@ -4,7 +4,7 @@ from ._array_object import Array
 
 from typing import Optional, Tuple, Union
 
-import numpy as np
+import cupy as cp
 
 
 def all(
@@ -15,11 +15,11 @@ def all(
     keepdims: bool = False,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`np.all <numpy.all>`.
+    Array API compatible wrapper for :py:func:`cp.all <cupy.all>`.
 
     See its docstring for more information.
     """
-    return Array._new(np.asarray(np.all(x._array, axis=axis, keepdims=keepdims)))
+    return Array._new(cp.asarray(cp.all(x._array, axis=axis, keepdims=keepdims)))
 
 
 def any(
@@ -30,8 +30,8 @@ def any(
     keepdims: bool = False,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`np.any <numpy.any>`.
+    Array API compatible wrapper for :py:func:`cp.any <cupy.any>`.
 
     See its docstring for more information.
     """
-    return Array._new(np.asarray(np.any(x._array, axis=axis, keepdims=keepdims)))
+    return Array._new(cp.asarray(cp.any(x._array, axis=axis, keepdims=keepdims)))
