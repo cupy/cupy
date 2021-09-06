@@ -130,13 +130,14 @@ def generate():
         'Special Functions',
         'scipy.special', 'cupyx.scipy.special', 'SciPy')
 
-    buf += [
-        'NumPy / CuPy Array APIs',
-        '-----------------------',
-        '',
-    ]
-    buf += _section(
-        'Python array API compliance',
-        'numpy.array_api', 'cupyx.array_api', 'NumPy')
+    # numpy.array_api is not ready yet...
+    #    buf += [
+    #        'NumPy / CuPy Array APIs',
+    #        '-----------------------',
+    #        '',
+    #    ]
+    #    buf += _section(
+    #        'Python array API compliance',
+    #        'numpy.array_api', 'cupyx.array_api', 'NumPy')
 
     return '\n'.join(buf)
