@@ -1,8 +1,8 @@
 from numpy.testing import assert_raises
-import numpy as np
+import cupy as cp
 
-from .. import ones, asarray, result_type
-from .._dtypes import (
+from cupyx.array_api import ones, asarray, result_type
+from cupyx.array_api._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
     _floating_dtypes,
@@ -28,7 +28,7 @@ def test_validate_index():
     # and the docstring of Array._validate_index for the exact indexing
     # behavior that should be allowed. This does not test indices that are
     # already invalid in NumPy itself because Array will generally just pass
-    # such indices directly to the underlying np.ndarray.
+    # such indices directly to the underlying cp.ndarray.
 
     a = ones((3, 4))
 
@@ -65,9 +65,9 @@ def test_validate_index():
     assert_raises(IndexError, lambda: a[[0, 1]])
     assert_raises(IndexError, lambda: a[(0, 1), (0, 1)])
     assert_raises(IndexError, lambda: a[[0, 1]])
-    assert_raises(IndexError, lambda: a[np.array([[0, 1]])])
+    assert_raises(IndexError, lambda: a[cp.array([[0, 1]])])
 
-    # np.newaxis is not allowed
+    # cp.newaxis is not allowed
     assert_raises(IndexError, lambda: a[None])
     assert_raises(IndexError, lambda: a[None, ...])
     assert_raises(IndexError, lambda: a[..., None])

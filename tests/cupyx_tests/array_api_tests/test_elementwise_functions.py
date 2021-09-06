@@ -2,9 +2,9 @@ from inspect import getfullargspec
 
 from numpy.testing import assert_raises
 
-from .. import asarray, _elementwise_functions
-from .._elementwise_functions import bitwise_left_shift, bitwise_right_shift
-from .._dtypes import (
+from cupyx.array_api import asarray, _elementwise_functions
+from cupyx.array_api._elementwise_functions import bitwise_left_shift, bitwise_right_shift
+from cupyx.array_api._dtypes import (
     _dtype_categories,
     _boolean_dtypes,
     _floating_dtypes,
