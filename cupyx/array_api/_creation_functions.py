@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from ._dtypes import _all_dtypes
 
 import cupy as cp
+from cupy.cuda import Device as _Device
 
 
 def _check_valid_dtype(dtype):
@@ -55,20 +56,25 @@ def asarray(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
+    if device is None:
+        device = _Device()  # current device
     if copy is False:
         # Note: copy=False is not yet implemented in cp.asarray
         raise NotImplementedError("copy=False is not yet implemented")
     if isinstance(obj, Array) and (dtype is None or obj.dtype == dtype):
         if copy is True:
+            # TODO(leofang): Check the conclusion about cross-device copies:
+            # https://github.com/data-apis/array-api/issues/254
             return Array._new(cp.array(obj._array, copy=True, dtype=dtype))
         return obj
     if dtype is None and isinstance(obj, int) and (obj > 2 ** 64 or obj < -(2 ** 63)):
         # Give a better error message in this case. NumPy would convert this
         # to an object array. TODO: This won't handle large integers in lists.
         raise OverflowError("Integer out of bounds for array dtypes")
-    res = cp.asarray(obj, dtype=dtype)
+    with device:
+        res = cp.asarray(obj, dtype=dtype)
     return Array._new(res)
 
 
@@ -89,9 +95,12 @@ def arange(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.arange(start, stop=stop, step=step, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.arange(start, stop=stop, step=step, dtype=dtype))
 
 
 def empty(
@@ -108,9 +117,12 @@ def empty(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.empty(shape, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.empty(shape, dtype=dtype))
 
 
 def empty_like(
@@ -124,9 +136,12 @@ def empty_like(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.empty_like(x._array, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.empty_like(x._array, dtype=dtype))
 
 
 def eye(
@@ -146,14 +161,22 @@ def eye(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.eye(n_rows, M=n_cols, k=k, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.eye(n_rows, M=n_cols, k=k, dtype=dtype))
 
 
 def from_dlpack(x: object, /) -> Array:
-    # Note: dlpack support is not yet implemented on Array
-    raise NotImplementedError("DLPack support is not yet implemented")
+    """
+    Array API compatible wrapper for :py:func:`cp.from_dlpack <cupy.from_dlpack>`.
+
+    See its docstring for more information.
+    """
+    from ._array_object import Array
+    return Array._new(cp.from_dlpack(x))
 
 
 def full(
@@ -171,11 +194,14 @@ def full(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
+    if device is None:
+        device = _Device()  # current device
     if isinstance(fill_value, Array) and fill_value.ndim == 0:
         fill_value = fill_value._array
-    res = cp.full(shape, fill_value, dtype=dtype)
+    with device:
+        res = cp.full(shape, fill_value, dtype=dtype)
     if res.dtype not in _all_dtypes:
         # This will happen if the fill value is not something that NumPy
         # coerces to one of the acceptable dtypes.
@@ -199,9 +225,14 @@ def full_like(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    res = cp.full_like(x._array, fill_value, dtype=dtype)
+    if device is None:
+        device = _Device()  # current device
+    if isinstance(fill_value, Array) and fill_value.ndim == 0:
+        fill_value = fill_value._array
+    with device:
+        res = cp.full_like(x._array, fill_value, dtype=dtype)
     if res.dtype not in _all_dtypes:
         # This will happen if the fill value is not something that NumPy
         # coerces to one of the acceptable dtypes.
@@ -227,9 +258,12 @@ def linspace(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is None:
+        device = _Device()  # current device
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.linspace(start, stop, num, dtype=dtype, endpoint=endpoint))
+    with device:
+        return Array._new(cp.linspace(start, stop, num, dtype=dtype, endpoint=endpoint))
 
 
 def meshgrid(*arrays: Sequence[Array], indexing: str = "xy") -> List[Array, ...]:
@@ -260,9 +294,12 @@ def ones(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.ones(shape, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.ones(shape, dtype=dtype))
 
 
 def ones_like(
@@ -276,9 +313,12 @@ def ones_like(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.ones_like(x._array, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.ones_like(x._array, dtype=dtype))
 
 
 def zeros(
@@ -295,9 +335,12 @@ def zeros(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.zeros(shape, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.zeros(shape, dtype=dtype))
 
 
 def zeros_like(
@@ -311,6 +354,9 @@ def zeros_like(
     from ._array_object import Array
 
     _check_valid_dtype(dtype)
-    if device not in ["cpu", None]:
+    if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    return Array._new(cp.zeros_like(x._array, dtype=dtype))
+    if device is None:
+        device = _Device()  # current device
+    with device:
+        return Array._new(cp.zeros_like(x._array, dtype=dtype))

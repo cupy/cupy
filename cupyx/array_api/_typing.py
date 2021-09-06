@@ -6,6 +6,9 @@ annotations in the function signatures. The functions in the module are only
 valid for inputs that match the given type annotations.
 """
 
+from cupy.cuda import Device as _Device
+
+
 __all__ = [
     "Array",
     "Device",
@@ -35,7 +38,7 @@ from . import (
 # similar comment in numpy/typing/_array_like.py
 NestedSequence = Sequence[Sequence[Any]]
 
-Device = Any
+Device = _Device
 Dtype = Type[
     Union[[int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64]]
 ]

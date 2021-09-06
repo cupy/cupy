@@ -990,7 +990,7 @@ class Array:
 
     @property
     def device(self) -> Device:
-        return "cpu"
+        return self._array.device
 
     @property
     def ndim(self) -> int:
