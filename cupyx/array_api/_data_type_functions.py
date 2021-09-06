@@ -79,12 +79,16 @@ def finfo(type: Union[Dtype, Array], /) -> finfo_object:
     fi = cp.finfo(type)
     # Note: The types of the float data here are float, whereas in NumPy they
     # are scalars of the corresponding float dtype.
+    try:
+        tiny = fi.smallest_normal
+    except AttributeError:  # for backward compatibility
+        tiny = fi.tiny
     return finfo_object(
         fi.bits,
         float(fi.eps),
         float(fi.max),
         float(fi.min),
-        float(fi.smallest_normal),
+        float(tiny),
     )
 
 
