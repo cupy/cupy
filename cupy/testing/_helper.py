@@ -17,17 +17,19 @@ from cupy.testing import _parameterized
 import cupyx
 import cupyx.scipy.sparse
 
-try:
+from cupy.testing._pytest_impl import is_available, check_available
+
+
+if is_available():
     import pytest
     import _pytest.outcomes
-except ImportError:
-    _is_pytest_available = False
-    _skip_classes = unittest.SkipTest,
-    _skipif = unittest.skipIf
-else:
     _is_pytest_available = True
     _skip_classes = unittest.SkipTest, _pytest.outcomes.Skipped
     _skipif = pytest.mark.skipif
+else:
+    _is_pytest_available = False
+    _skip_classes = unittest.SkipTest,
+    _skipif = unittest.skipIf
 
 
 def _format_exception(exc):

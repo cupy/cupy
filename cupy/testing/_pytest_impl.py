@@ -4,17 +4,20 @@ import cupy.testing._parameterized
 
 try:
     import pytest
+    import _pytest
     _error = None
 except ImportError as e:
+    pytest = None
+    _pytest = None
     _error = e
 
 
 def is_available():
-    return _error is None
+    return _error is None and hasattr(pytest, 'fixture')
 
 
 def check_available():
-    if _error is not None:
+    if not is_available():
         raise RuntimeError('''\
 {} is not available.
 

@@ -1,30 +1,12 @@
 import os
 
 
-try:
+from cupy.testing._pytest_impl import is_available, check_available
+
+
+if is_available():
     import pytest
-    _error = None
-except ImportError as e:
-    _error = e
 
-
-def is_available():
-    return _error is None
-
-
-def check_available():
-    if _error is not None:
-        raise RuntimeError('''\
-{} is not available.
-
-Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
-
-
-def get_error():
-    return _error
-
-
-if _error is None:
     _gpu_limit = int(os.getenv('CUPY_TEST_GPU_LIMIT', '-1'))
 
     def cudnn(*args, **kwargs):
