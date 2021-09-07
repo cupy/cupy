@@ -1,42 +1,4 @@
 configs {
-  key: "cupy.py27and35.gpu"
-  value {
-    requirement {
-      cpu: 8
-      memory: 24
-      disk: 10
-      gpu: 2
-    }
-    time_limit {
-      seconds: 1800
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    environment_variables { key: "GPU" value: "2" }
-    command: "bash .pfnci/script.sh py27and35"
-  }
-}
-configs {
-  key: "cupy.py37.gpu"
-  value {
-    requirement {
-      cpu: 8
-      memory: 24
-      disk: 10
-      gpu: 2
-    }
-    time_limit {
-      seconds: 1800
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    environment_variables { key: "GPU" value: "2" }
-    command: "bash .pfnci/script.sh py37"
-  }
-}
-configs {
   key: "cupy.experimental.win.cuda100"
   value {
     requirement {
@@ -58,74 +20,56 @@ configs {
   }
 }
 
+# Project to build Docker images
+configs {
+  key: "cupy.prep-linux"
+  value {
+    requirement {
+      cpu: 12
+      memory: 64
+      disk: 10
+      image: "docker"
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    command: ".pfnci/linux/main-flexci-prep.sh"
+  }
+}
 
-# CuPy CI related targets: cupy.docker.{version}.{action}.
-# - version should be either "py37" or "py27and35".
-# - action should be either "test" or "push".  "test" only builds a Docker
-#   image, and "push" additionally pushes the Docker image to Google Container
-#   Registry.
+# CUDA 11.4
 configs {
-  key: "cupy.docker.py37.test"
+  key: "cupy.linux.cuda114"
   value {
     requirement {
-      cpu: 2
-      memory: 12
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
     }
     time_limit: {
-      seconds: 3600
+      seconds: 21600
     }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py37.test"
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda114"
   }
 }
+
+# CUDA 11.x + CUDA Python
 configs {
-  key: "cupy.docker.py27and35.test"
+  key: "cupy.linux.cuda11x-cuda-python"
   value {
     requirement {
-      cpu: 2
-      memory: 12
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
     }
     time_limit: {
-      seconds: 3600
+      seconds: 21600
     }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py27and35.test"
-  }
-}
-configs {
-  key: "cupy.docker.py37.push"
-  value {
-    requirement {
-      cpu: 2
-      memory: 12
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py37.push"
-  }
-}
-configs {
-  key: "cupy.docker.py27and35.push"
-  value {
-    requirement {
-      cpu: 2
-      memory: 12
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py27and35.push"
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda11x-cuda-python"
   }
 }
 
@@ -166,22 +110,5 @@ configs {
     environment_variables { key: "ROCM_REPO" value: "debian" }
     environment_variables { key: "ROCM_PACKAGES" value: "rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl" }
     command: "bash .pfnci/script.sh py37.rocm-latest"
-  }
-}
-
-# ChainerCV's tests are disabled in the master branch, but configs can be removed
-# only after removing web hooks.
-# TODO(maehashi): when discontinuing v7 branch, remove the web hooks and remove
-# configurations below.
-configs {
-  key: "cupy.py3.cv.gpu"
-  value {
-    command: "true"
-  }
-}
-configs {
-  key: "cupy.py3.cv.examples"
-  value {
-    command: "true"
   }
 }

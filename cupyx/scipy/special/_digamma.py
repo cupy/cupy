@@ -175,7 +175,7 @@ double __device__ psi(double x)
 
 
 digamma = _core.create_ufunc(
-    'cupyx_scipy_digamma', ('f->f', 'd->d'),
+    'cupyx_scipy_special_digamma', ('f->f', 'd->d'),
     'out0 = psi(in0)',
     preamble=polevl_definition+psi_definition,
     doc="""The digamma function.

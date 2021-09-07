@@ -20,8 +20,8 @@ class TestLUFactor(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_lu_factor(self, dtype):
         if self.shape[0] != self.shape[1]:
-            # skip non-square tests since scipy.lu_factor requires square
-            return unittest.SkipTest()
+            self.skipTest(
+                'skip non-square tests since scipy.lu_factor requires square')
         a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
         a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
@@ -65,7 +65,8 @@ class TestLUFactor(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_lu_factor_reconstruction_singular(self, dtype):
         if self.shape[0] != self.shape[1]:
-            return unittest.SkipTest()
+            self.skipTest(
+                'skip non-square tests since scipy.lu_factor requires square')
         A = testing.shaped_random(self.shape, cupy, dtype=dtype)
         A -= A.mean(axis=0, keepdims=True)
         A -= A.mean(axis=1, keepdims=True)

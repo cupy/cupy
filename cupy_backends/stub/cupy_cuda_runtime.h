@@ -75,6 +75,10 @@ cudaError_t cudaDeviceEnablePeerAccess(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaDeviceDisablePeerAccess(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaDeviceGetLimit(...) {
     return cudaSuccess;
 }

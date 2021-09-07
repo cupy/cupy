@@ -14,11 +14,11 @@ from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core._ufuncs import elementwise_copy_where
 from cupy._core import flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
+from cupy.cuda import stream as stream_mod
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -113,7 +113,7 @@ cdef class ndarray:
 
             .. seealso::
                `Data type objects (dtype) \
-               <https://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
+               <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_
         ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
@@ -218,9 +218,50 @@ cdef class ndarray:
 
         return desc
 
+    def __dlpack__(self, stream=None):
+        # Note: the stream argument is supplied by the consumer, not by CuPy
+        curr_stream = stream_module.get_current_stream()
+        curr_stream_ptr = curr_stream.ptr
+
+        # stream must be an int for CUDA/ROCm
+        if not runtime._is_hip_environment:  # CUDA
+            if stream is None:
+                stream = runtime.streamLegacy
+            elif not isinstance(stream, int) or stream < -1 or stream == 0:
+                raise ValueError(
+                    f'On CUDA, the valid stream for the DLPack protocol is -1,'
+                    f' 1, 2, or any larger value, but {stream} was provided')
+            if curr_stream_ptr == 0:
+                curr_stream_ptr = runtime.streamLegacy
+        else:  # ROCm/HIP
+            if stream is None:
+                stream = 0
+            elif (not isinstance(stream, int) or stream < -1
+                    or stream in (1, 2)):
+                raise ValueError(
+                    f'On ROCm/HIP, the valid stream for the DLPack protocol is'
+                    f' -1, 0, or any value > 2, but {stream} was provided')
+
+        # if -1, no stream order should be established; otherwise, the consumer
+        # stream should wait for the work on CuPy's current stream to finish
+        if stream >= 0 and stream != curr_stream_ptr:
+            next_stream = stream_mod.ExternalStream(stream)
+            event = curr_stream.record()
+            next_stream.wait_event(event)
+
+        return dlpack.toDlpack(self)
+
+    def __dlpack_device__(self):
+        if not runtime._is_hip_environment:
+            # TODO(leofang): support kDLCUDAManaged
+            device_type = dlpack.device_CUDA
+        else:
+            device_type = dlpack.device_ROCM
+        return (device_type, self.device)
+
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
-    # https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
+    # https://numpy.org/doc/stable/reference/arrays.ndarray.html
 
     # -------------------------------------------------------------------------
     # Memory layout
@@ -454,14 +495,11 @@ cdef class ndarray:
 
         if self.size == 0:
             # skip copy
-            pass
-        elif self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
-            cupy.not_equal(self, 0j, out=newarray)
-        elif self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
-            warnings.warn(
-                'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
-            elementwise_copy(self.real, newarray)
+            if self.dtype.kind == 'c' and newarray.dtype.kind not in 'bc':
+                warnings.warn(
+                    'Casting complex values to real discards the imaginary '
+                    'part',
+                    numpy.ComplexWarning)
         else:
             elementwise_copy(self, newarray)
         return newarray
@@ -538,8 +576,7 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.view`
 
         """
-        # Use __new__ instead of __init__ to skip recomputation of contiguity
-        cdef Py_ssize_t ndim
+        cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
         v = self._view(self._shape, self._strides, False, False)
         if dtype is None:
@@ -555,13 +592,43 @@ cdef class ndarray:
             raise ValueError(
                 'Changing the dtype of a 0d array is only supported if '
                 'the itemsize is unchanged')
-        if not self._c_contiguous:
+        if self._c_contiguous:
+            axis = ndim - 1
+        elif self._f_contiguous:
+            warnings.warn(
+                'Changing the shape of an F-contiguous array by '
+                'descriptor assignment is deprecated. To maintain the '
+                'Fortran contiguity of a multidimensional Fortran '
+                'array, use \'a.T.view(...).T\' instead',
+                DeprecationWarning)
+            axis = 0
+        else:
+            # Don't mention the deprecated F-contiguous support
             raise ValueError(
                 'To change to a dtype of a different size, the array must '
                 'be C-contiguous')
-        v._shape[ndim - 1] = v._shape[ndim - 1] * self_is // v_is
-        v._strides[ndim - 1] = v._strides[ndim - 1] * v_is // self_is
-        v.size = v.size * self_is // v_is
+
+        # Normalize `_strides[axis]` whenever itemsize changes
+        v._strides[axis] = v_is
+
+        tmp_size = v._shape[axis] * self_is
+        if tmp_size % v_is != 0:
+            raise ValueError(
+                'When changing to a larger dtype, its size must be a '
+                'divisor of the total size in bytes of the last axis '
+                'of the array.')
+            # itemsize of dtype in CuPy is one of 1, 2, 4, 8, 16.
+            # Thus, CuPy does not raise the following:
+            # raise ValueError(
+            #     'When changing to a smaller dtype, its size must be a '
+            #     'divisor of the size of original dtype')
+        v._shape[axis] = tmp_size // v_is
+        v.size = v.size * self_is // v_is  # divisible because shape[axis] is.
+
+        if axis != ndim - 1:
+            v._update_c_contiguity()
+        if axis != 0:
+            v._update_f_contiguity()
         return v
 
     # TODO(okuta): Implement getfield
@@ -1745,6 +1812,7 @@ cdef class ndarray:
                        bint update_c_contiguity,
                        bint update_f_contiguity):
         cdef ndarray v
+        # Use __new__ instead of __init__ to skip recomputation of contiguity
         v = ndarray.__new__(ndarray)
         v.data = self.data
         v.base = self.base if self.base is not None else self
@@ -1784,7 +1852,7 @@ cdef class ndarray:
 
         Returns:
             dltensor (:class:`PyCapsule`): Output DLPack tensor which is
-                encapsulated in a :class:`PyCapsule` object.
+            encapsulated in a :class:`PyCapsule` object.
 
         .. seealso::
 
@@ -1839,6 +1907,7 @@ cdef list cupy_header_list = [
 ]
 if _is_hip:
     cupy_header_list.append('cupy/math_constants.h')
+    cupy_header_list.append('cupy/hip_workaround.cuh')
 
 # expose to Python for unit testing
 _cupy_header_list = cupy_header_list
@@ -1976,6 +2045,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.2'
         elif 11030 <= _cuda_runtime_version < 11040:
             bundled_include = 'cuda-11.3'
+        elif 11040 <= _cuda_runtime_version < 11050:
+            bundled_include = 'cuda-11.4'
         else:
             # CUDA versions not yet supported.
             bundled_include = None
@@ -2011,7 +2082,7 @@ cpdef function.Module compile_with_cache(
 
 cdef str _id = 'out0 = in0'
 
-cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
+cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);

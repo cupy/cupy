@@ -16,6 +16,7 @@ from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
+from cupy_backends.cuda.api import driver
 
 
 _test_source1 = r'''
@@ -633,7 +634,12 @@ class TestRaw(unittest.TestCase):
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        if self.backend == 'nvrtc' and not cupy.cuda.runtime.is_hip:
+        use_ptx = os.environ.get(
+            'CUPY_COMPILE_WITH_PTX', False)
+        if (self.backend == 'nvrtc' and (
+                use_ptx or (
+                not cupy.cuda.runtime.is_hip
+                and driver.get_build_version() < 11010))):
             # raised when calling ls.complete()
             error = cupy.cuda.driver.CUDADriverError
         else:  # nvcc, hipcc, hiprtc
@@ -1087,6 +1093,7 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
     'Requires compute capability 6.0 or later')
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Skip on HIP')
 class TestRawGridSync(unittest.TestCase):
 
     def test_grid_sync_rawkernel(self):
@@ -1270,13 +1277,13 @@ class TestRawJitify(unittest.TestCase):
         ker((1,), (N,), (a, N))
         assert cupy.allclose(a, b+100)
 
-    @pytest.mark.xfail(sys.platform.startswith('win32'),
-                       reason='macro preprocessing in NVRTC is likely buggy')
     def test_jitify1(self):
         # simply prepend an unused header
         hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'
 
         if self.jitify:
+            if sys.platform.startswith('win32'):
+                pytest.xfail('macro preprocessing in NVRTC is likely buggy')
             # Jitify will make it work
             self._helper(hdr)
         else:

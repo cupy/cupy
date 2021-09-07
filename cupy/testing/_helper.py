@@ -213,7 +213,7 @@ def _signed_counterpart(dtype):
     return numpy.dtype(numpy.dtype(dtype).char.lower()).type
 
 
-def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
+def _make_positive_masks(self, impl, args, kw, name, sp_name, scipy_name):
     # Returns a mask of output arrays that indicates valid elements for
     # comparison. See the comment at the caller.
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
@@ -222,7 +222,9 @@ def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
     result, error = _call_func_cupy(
         self, impl, args, kw, name, sp_name, scipy_name)
     assert error is None
-    return cupy.asnumpy(result) >= 0
+    if not isinstance(result, (tuple, list)):
+        result = result,
+    return [cupy.asnumpy(r) >= 0 for r in result]
 
 
 def _contains_signed_and_unsigned(kw):
@@ -320,8 +322,21 @@ numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
             for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                 assert cupy_r.shape == numpy_r.shape
 
+            masks = [None] * len(cupy_result)
+            if _contains_signed_and_unsigned(kw):
+                needs_mask = [
+                    cupy_r.dtype in _unsigned_dtypes
+                    for cupy_r in cupy_result]
+                if any(needs_mask):
+                    masks = _make_positive_masks(
+                        self, impl, args, kw, name, sp_name, scipy_name)
+                    for i, flag in enumerate(needs_mask):
+                        if not flag:
+                            masks[i] = None
+
             # Check item values
-            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
+            for (cupy_r, numpy_r), mask in zip(
+                    cupy_numpy_result_ndarrays, masks):
                 # Behavior of assigning a negative value to an unsigned integer
                 # variable is undefined.
                 # nVidia GPUs and Intel CPUs behave differently.
@@ -329,10 +344,7 @@ numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
                 # values are negative.
 
                 skip = False
-                if (_contains_signed_and_unsigned(kw)
-                        and cupy_r.dtype in _unsigned_dtypes):
-                    mask = _make_positive_mask(
-                        self, impl, args, kw, name, sp_name, scipy_name)
+                if mask is not None:
                     if cupy_r.shape == ():
                         skip = (mask == 0).all()
                     else:
@@ -1348,7 +1360,7 @@ def shaped_random(
 
     Returns:
          numpy.ndarray or cupy.ndarray: The array with
-             given shape, array module,
+         given shape, array module,
 
     If ``dtype`` is ``numpy.bool_``, the elements are
     independently drawn from ``True`` and ``False``

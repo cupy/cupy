@@ -237,7 +237,7 @@ class RandomState(object):
     _laplace_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
-        'laplace_kernel')
+        'cupy_laplace_kernel')
 
     def laplace(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from the laplace distribution.
@@ -875,7 +875,7 @@ class RandomState(object):
             x = right - sqrt((1.0 - x) * rightprod);
         }
         """,
-        'triangular_kernel'
+        'cupy_triangular_kernel'
     )
 
     def triangular(self, left, mode, right, size=None, dtype=float):
@@ -951,7 +951,7 @@ class RandomState(object):
                 X = mean*mean/X;
             }
         """,
-        'wald_scale')
+        'cupy_wald_scale')
 
     def wald(self, mean, scale, size=None, dtype=float):
         """Returns an array of samples drawn from the Wald distribution.
@@ -1141,7 +1141,7 @@ class RandomState(object):
     _gumbel_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) - log(-log(x)) * T(scale)',
-        'gumbel_kernel')
+        'cupy_gumbel_kernel')
 
     def gumbel(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a Gumbel distribution.

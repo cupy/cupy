@@ -1,3 +1,4 @@
+import functools
 import itertools
 import unittest
 
@@ -11,6 +12,7 @@ except ImportError:
 import cupy
 import cupyx
 from cupy import testing
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
 
@@ -392,6 +394,21 @@ class TestSliceIndexing(IndexingTestBase):
         return res
 
 
+def skip_HIP_0_size_matrix():
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            try:
+                impl(self, *args, **kw)
+            except AssertionError as e:
+                if runtime.is_hip:
+                    assert 'ValueError: hipSPARSE' in str(e)
+                    pytest.xfail('may be buggy')
+                raise
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.0, 0.5],
@@ -434,6 +451,7 @@ class TestArrayIndexing(IndexingTestBase):
                         # CuPy does not check boundaries.
                         pytest.skip('Out of bounds')
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(
         sp_name='sp', type_check=False, accept_error=IndexError)
@@ -443,6 +461,7 @@ class TestArrayIndexing(IndexingTestBase):
         _check_shares_memory(xp, sp, a, res)
         return res
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
     @testing.numpy_cupy_array_equal(
@@ -454,6 +473,7 @@ class TestArrayIndexing(IndexingTestBase):
         _check_shares_memory(xp, sp, a, res)
         return res
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
     @testing.numpy_cupy_array_equal(

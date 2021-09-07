@@ -6,7 +6,7 @@ _piecewise_krnl = _core.ElementwiseKernel(
     'bool cond, T value',
     'T y',
     'if (cond) y = value',
-    'piecewise_kernel'
+    'cupy_piecewise_kernel'
 )
 
 
@@ -24,7 +24,7 @@ def piecewise(x, condlist, funclist):
 
         Returns:
             cupy.ndarray: the scalar values in funclist on portions of x
-                defined by condlist.
+            defined by condlist.
 
         .. warning::
 

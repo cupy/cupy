@@ -231,7 +231,7 @@ cpdef TensorDescriptor create_tensor_descriptor(
 
     Returns:
         (Descriptor): A instance of class Descriptor which holds a pointer to
-            tensor descriptor and its destructor.
+        tensor descriptor and its destructor.
     """
     if handle is None:
         handle = _get_handle()

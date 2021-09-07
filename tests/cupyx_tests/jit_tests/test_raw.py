@@ -7,6 +7,7 @@ import cupy
 import cupyx
 from cupyx import jit
 from cupy import testing
+from cupy.cuda import device
 from cupy.cuda import runtime
 
 
@@ -78,6 +79,54 @@ class TestRaw(unittest.TestCase):
             err = ValueError if isinstance(n, int) else TypeError
             with pytest.raises(err):
                 f((1,), (1,), ())
+
+    def test_raw_gridsize_1D(self):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            gx = jit.gridsize(1)
+            if x == 0:
+                arr[x] = gx
+
+        x = cupy.zeros(1)
+        grid = 8
+        block = 10
+        f((grid,), (block,), (x,))
+        assert x == grid * block
+
+    def test_raw_gridsize_2D(self):
+        @jit.rawkernel()
+        def f(arr):
+            x, y = jit.grid(2)
+            gx, gy = jit.gridsize(2)
+            if x == 0 and y == 0:
+                arr[0] = gx
+                arr[1] = gy
+
+        x = cupy.zeros(2)
+        grid = (2, 7)
+        block = (3, 5)
+        f(grid, block, (x,))
+        assert x[0] == grid[0] * block[0]
+        assert x[1] == grid[1] * block[1]
+
+    def test_raw_gridsize_3D(self):
+        @jit.rawkernel()
+        def f(arr):
+            x, y, z = jit.grid(3)
+            gx, gy, gz = jit.gridsize(3)
+            if x == 0 and y == 0 and z == 0:
+                arr[0] = gx
+                arr[1] = gy
+                arr[2] = gz
+
+        x = cupy.zeros(3)
+        grid = (2, 7, 4)
+        block = (3, 5, 11)
+        f(grid, block, (x,))
+        assert x[0] == grid[0] * block[0]
+        assert x[1] == grid[1] * block[1]
+        assert x[2] == grid[2] * block[2]
 
     def test_raw_one_thread(self):
         @jit.rawkernel()
@@ -210,8 +259,6 @@ class TestRaw(unittest.TestCase):
         f((1,), (32, 32), (x, y, buf))
         assert bool((x == y).all())
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     def test_syncwarp(self):
         @jit.rawkernel()
         def f(x):
@@ -228,8 +275,6 @@ class TestRaw(unittest.TestCase):
         y[16:] += 1
         assert bool((x == y).all())
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     def test_syncwarp_mask(self):
         @jit.rawkernel()
         def f(x, m):
@@ -307,6 +352,170 @@ class TestRaw(unittest.TestCase):
         cupyx.scatter_add(expected, index, x)
         self._check(out, expected)
 
+    @testing.for_dtypes('iI')
+    def test_atomic_sub(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_sub(out, 0, x[tid])
+
+        x = cupy.ones((1024,), dtype=dtype)
+        out = cupy.sum(x, dtype=dtype).reshape(1,)
+        f((32,), (32,), (x, out))
+        expected = cupy.zeros_like(out)
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQf')
+    def test_atomic_exch(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_exch(out, x.size - tid - 1, x[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        out = cupy.zeros_like(x)
+        f((32,), (32,), (x, out))
+        expected = x[::-1]
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_min(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_min(out, tid, x[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        out = x + 1
+        f((32,), (32,), (x, out))  # effectively copy x to out
+        self._check(out, x)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_max(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_max(out, tid, x[tid])
+
+        x = cupy.arange(1, 1025, dtype=dtype)
+        out = x - 1
+        f((32,), (32,), (x, out))  # effectively copy x to out
+        self._check(out, x)
+
+    def test_atomic_inc(self):
+        dtype = cupy.uint32  # atomic_inc only supports 1 dtype
+
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                # = 0 if out[tid] >= x[tid] else out[tid] + 1
+                jit.atomic_inc(out, tid, x[tid])
+
+        x = cupy.arange(1, 1025, dtype=dtype)
+        out = x - 1
+        f((32,), (32,), (x, out))
+        expected = x
+        self._check(out, expected)
+
+    def test_atomic_dec(self):
+        dtype = cupy.uint32  # atomic_dec only supports 1 dtype
+
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                # = x[tid] if (out[tid] == 0 or out[tid] >= x[tid]) \
+                # else out[tid] - 1
+                jit.atomic_dec(out, tid, x[tid])
+
+        x = cupy.zeros(1024, dtype=dtype)
+        out = cupy.arange(1024, dtype=dtype)
+        f((32,), (32,), (x, out))
+        expected = x
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ' if runtime.is_hip else 'iHILQ')
+    def test_atomic_cas(self, dtype):
+        if dtype == cupy.uint16:
+            if (
+                runtime.is_hip or
+                runtime.runtimeGetVersion() < 10010 or
+                int(device.get_compute_capability()) < 70
+            ):
+                self.skipTest('not supported')
+
+        @jit.rawkernel()
+        def f(x, y, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                # = y[tid] if out[tid] == x[tid] else out[tid]
+                jit.atomic_cas(out, tid, x[tid], y[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        y = x.copy()
+        y[512:] = 0
+        out = x.copy()
+        out[:512] = 0
+        f((32,), (32,), (x, y, out))
+        expected = cupy.zeros_like(out)
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_and(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_and(out, tid, x[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        out = cupy.ones_like(x)
+        f((32,), (32,), (x, out))
+        expected = cupy.zeros_like(out)
+        expected[1::2] = 1
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_or(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_or(out, tid, x[tid])
+
+        x = testing.shaped_random((1024,), dtype=dtype, seed=0)
+        out = testing.shaped_random((1024,), dtype=dtype, seed=1)
+        y = out.copy()
+        f((32,), (32,), (x, out))
+        expected = x | y
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_xor(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_xor(out, tid, x[tid])
+
+        @jit.rawkernel()
+        def f_no_atomic(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                out[tid] = out[tid] ^ x[tid]
+
+        x = testing.shaped_random((1024,), dtype=dtype, seed=0)
+        out = testing.shaped_random((1024,), dtype=dtype, seed=1)
+        expected = out.copy()
+        f((32,), (32,), (x, out))
+        f_no_atomic((32,), (32,), (x, expected))
+        self._check(out, expected)
+
     def test_raw_grid_block_interface(self):
         @jit.rawkernel()
         def f(x, y, size):
@@ -320,8 +529,6 @@ class TestRaw(unittest.TestCase):
         f[5, 6](x, y, numpy.uint32(1024))
         assert bool((x == y).all())
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl(self, dtype):
@@ -340,8 +547,6 @@ class TestRaw(unittest.TestCase):
         f[1, 32](a, b)
         assert (b == a * cupy.ones((32,), dtype=dtype)).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     def test_shfl_width(self):
         @jit.rawkernel()
         def f(a, b, w):
@@ -357,8 +562,6 @@ class TestRaw(unittest.TestCase):
             c[c % w != 0] = c[c % w == 0]
             assert (b == c).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_up(self, dtype):
@@ -374,25 +577,24 @@ class TestRaw(unittest.TestCase):
         expected = [i for i in range(N)] + [i for i in range(32-N)]
         assert(a == cupy.asarray(expected, dtype=dtype)).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_down(self, dtype):
         N = 5
+        # __shfl_down() on HIP does not seem to have the same behavior...
+        block = 64 if runtime.is_hip else 32
 
         @jit.rawkernel()
         def f(a):
             value = jit.shfl_down_sync(0xffffffff, a[jit.threadIdx.x], N)
             a[jit.threadIdx.x] = value
 
-        a = cupy.arange(32, dtype=dtype)
-        f[1, 32](a)
-        expected = [i for i in range(N, 32)] + [(32-N+i) for i in range(N)]
+        a = cupy.arange(block, dtype=dtype)
+        f[1, block](a)
+        expected = [i for i in range(N, block)]
+        expected += [(block-N+i) for i in range(N)]
         assert(a == cupy.asarray(expected, dtype=dtype)).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_xor(self, dtype):
@@ -426,3 +628,28 @@ class TestRaw(unittest.TestCase):
         x = cupy.zeros((10,), dtype=numpy.float32)
         with pytest.raises(NameError, match=mes):
             f((1,), (1,), (x,))
+
+    def test_laneid(self):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            if x < arr.size:
+                arr[x] = jit.laneid()
+
+        N = 64 if runtime.is_hip else 32
+        x = cupy.zeros((N*2,), dtype=cupy.uint32)
+        f((1,), (N*2,), (x,))
+        y = cupy.arange(N*2, dtype=cupy.uint32) % N
+        assert (x == y).all()
+
+    def test_warpsize(self):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            if x == 0:
+                arr[0] = jit.warpsize
+
+        N = 64 if runtime.is_hip else 32
+        x = cupy.zeros((1,), dtype=cupy.uint32)
+        f((1,), (1,), (x,))
+        assert x == N

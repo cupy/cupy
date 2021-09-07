@@ -88,7 +88,7 @@ from numpy import PZERO  # NOQA
 # Data types (borrowed from NumPy)
 #
 # The order of these declarations are borrowed from the NumPy document:
-# https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+# https://numpy.org/doc/stable/reference/arrays.scalars.html
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -217,7 +217,7 @@ from numpy import complex128  # NOQA
 # Routines
 #
 # The order of these declarations are borrowed from the NumPy document:
-# https://docs.scipy.org/doc/numpy/reference/routines.html
+# https://numpy.org/doc/stable/reference/routines.html
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -752,6 +752,7 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 # -----------------------------------------------------------------------------
 
 from cupy._core import fromDlpack  # NOQA
+from cupy._core import from_dlpack  # NOQA
 
 
 def asnumpy(a, stream=None, order='C', out=None):

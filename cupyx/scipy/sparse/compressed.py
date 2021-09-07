@@ -172,7 +172,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             }
         }
         diff = diff_out;
-        ''', 'has_sorted_indices')
+        ''', 'cupyx_scipy_sparse_has_sorted_indices')
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
     _has_canonical_format_kern = _core.ElementwiseKernel(
@@ -190,7 +190,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             }
         }
         diff = diff_out;
-        ''', 'has_canonical_format')
+        ''', 'cupyx_scipy_sparse_has_canonical_format')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
@@ -798,7 +798,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         Returns:
             (cupy.ndarray): Reduce result for nonzeros in each
-                major_index.
+            major_index.
 
         """
         out_shape = self.shape[1 - axis]
@@ -832,7 +832,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         Returns:
             (cupy.ndarray): Reduce result for nonzeros in each
-                major_index
+            major_index
 
         """
 

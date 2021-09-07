@@ -19,10 +19,18 @@ from cupy._core._ufuncs import elementwise_copy as _elementwise_copy
 from cupy import _util
 from cupy_backends.cuda.libs import cudnn as _py_cudnn
 
-cdef int _cudnn_version = cudnn.getVersion()
+
+cdef int _cudnn_version = -1
 cdef _thread_local = _threading.local()
 
 cdef vector.vector[size_t] _handles
+
+
+cdef inline int cudnn_version():
+    global _cudnn_version
+    if _cudnn_version == -1:
+        _cudnn_version = cudnn.getVersion()
+    return _cudnn_version
 
 
 cpdef size_t get_handle() except? 0:
@@ -216,7 +224,7 @@ cpdef _create_convolution_descriptor(
             c_dilation.assign(ndim, 1)
         else:
             c_dilation = dilation
-            if _cudnn_version < 6000:
+            if cudnn_version() < 6000:
                 for i in c_dilation:
                     if i != 1:
                         raise ValueError(
@@ -229,13 +237,13 @@ cpdef _create_convolution_descriptor(
             d0 = d1 = 1
         else:
             d0, d1 = dilation
-            if _cudnn_version < 6000 and (d0 != 1 or d1 != 1):
+            if cudnn_version() < 6000 and (d0 != 1 or d1 != 1):
                 raise ValueError('dilation must be one when cuDNN < 6.0')
         p0, p1 = pad
         s0, s1 = stride
         cudnn.setConvolution2dDescriptor_v5(
             desc, p0, p1, s0, s1, d0, d1, mode, compute_type)
-    if _cudnn_version >= 7000:
+    if cudnn_version() >= 7000:
         if use_tensor_core:
             math_type = cudnn.CUDNN_TENSOR_OP_MATH
             cudnn.setConvolutionMathType(desc, math_type)
@@ -812,7 +820,7 @@ def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type, algo=None):
     desc = Descriptor(cudnn.createRNNDescriptor(),
                       _py_cudnn.destroyRNNDescriptor)
-    if _cudnn_version >= 6000:
+    if cudnn_version() >= 6000:
         _handle = get_handle()
         if algo is None:
             algo = cudnn.CUDNN_RNN_ALGO_STANDARD
@@ -1230,7 +1238,7 @@ def create_reduce_tensor_descriptor(reduce_type, dtype):
 
 
 cpdef bint is_tensor_core_available(dtype) except *:
-    return (_cudnn_version >= 7000 and
+    return (cudnn_version() >= 7000 and
             (<str>dtype.char) == 'e' and
             int(device.get_compute_capability()) == 70)
 
@@ -1354,7 +1362,7 @@ cpdef _Algorithm _find_algorithm_fwd(
     if algo is not None:
         return algo
     workspace = memory.alloc(max_workspace_size)
-    if _cudnn_version >= 7000:
+    if cudnn_version() >= 7000:
         perf = cudnn.findConvolutionForwardAlgorithmEx_v7(
             handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
             y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
@@ -1383,7 +1391,8 @@ cpdef _Algorithm _get_algorithm_fwd(
         return algo
     cdef list ret
     cdef bint skip
-    if (use_tensor_core and _cudnn_version >= 7000) or _cudnn_version >= 8000:
+    cdef int cudnn_ver = cudnn_version()
+    if (use_tensor_core and cudnn_ver >= 7000) or cudnn_ver >= 8000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
         skip = False
@@ -1441,7 +1450,7 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
     if algo is not None:
         return algo
     workspace = memory.alloc(max_workspace_size)
-    if _cudnn_version >= 7000:
+    if cudnn_version() >= 7000:
         if deterministic:
             ret = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
                 handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
@@ -1485,7 +1494,7 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
         return algo
     cdef list ret
     cdef bint skip
-    if _cudnn_version >= 7000:
+    if cudnn_version() >= 7000:
         ret = cudnn.getConvolutionBackwardFilterAlgorithm_v7(
             handle, x_desc, gy_desc, conv_desc, filter_desc, 10)
         skip = False
@@ -1546,7 +1555,7 @@ cpdef _Algorithm _find_algorithm_bwd_data(
     if algo is not None:
         return algo
     workspace = memory.alloc(max_workspace_size)
-    if _cudnn_version >= 7000:
+    if cudnn_version() >= 7000:
         if deterministic:
             ret = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
                 handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
@@ -1588,7 +1597,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
         return algo
     cdef list ret
     cdef bint skip
-    if _cudnn_version >= 7000:
+    if cudnn_version() >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
         skip = False
@@ -1708,7 +1717,7 @@ def convolution_forward(
                 x, W, y, conv_param, handle, x_desc, filter_desc,
                 conv_desc, y_desc, max_workspace_size, use_tensor_core)
 
-        if _cudnn_version >= 7000:
+        if cudnn_version() >= 7000:
             cudnn.setConvolutionMathType(conv_desc, perf.mathType)
 
         workspace = memory.alloc(perf.memory)
@@ -1802,7 +1811,7 @@ def convolution_backward_filter(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if deterministic and _cudnn_version < 7000:
+        if deterministic and cudnn_version() < 7000:
             # TODO(imanishi): Support Tensor Core in deterministic mode.
             algo = cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
@@ -1827,7 +1836,7 @@ def convolution_backward_filter(
             workspace_size = perf.memory
             math_type = perf.mathType
 
-        if _cudnn_version >= 7000:
+        if cudnn_version() >= 7000:
             cudnn.setConvolutionMathType(conv_desc, math_type)
 
         workspace = memory.alloc(workspace_size)
@@ -1902,7 +1911,7 @@ def convolution_backward_data(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if deterministic and _cudnn_version < 7000:
+        if deterministic and cudnn_version() < 7000:
             # TODO(imanishi): Support Tensor Core in deterministic mode.
             algo = cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
@@ -1927,7 +1936,7 @@ def convolution_backward_data(
             workspace_size = perf.memory
             math_type = perf.mathType
 
-        if _cudnn_version >= 7000:
+        if cudnn_version() >= 7000:
             cudnn.setConvolutionMathType(conv_desc, math_type)
 
         workspace = memory.alloc(workspace_size)
@@ -2172,7 +2181,7 @@ cdef _batch_normalization_forward_training(
         # current implementation of our BN depends on this behavior so that
         # we can reduce the number of reduction kernels.
 
-        if _cudnn_version >= 7401:
+        if cudnn_version() >= 7401:
 
             bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
 
@@ -2349,7 +2358,7 @@ def batch_normalization_backward(
         ggamma = core.ndarray(gamma._shape, dtype_param)
         gbeta = core.ndarray(gamma._shape, dtype_param)
 
-        if _cudnn_version >= 7401:
+        if cudnn_version() >= 7401:
             bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
 
             workspace_size = (

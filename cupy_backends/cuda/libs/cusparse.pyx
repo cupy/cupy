@@ -1,7 +1,6 @@
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api.runtime cimport DataType
+from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy_backends.cuda cimport stream as stream_module
 
 
@@ -13,6 +12,7 @@ cdef extern from '../../cupy_complex.h':
         double x, y
 
 cdef extern from '../../cupy_sparse.h' nogil:
+    ctypedef void* Stream 'cudaStream_t'
 
     # Version
     cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int* version)
@@ -29,8 +29,8 @@ cdef extern from '../../cupy_sparse.h' nogil:
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
 
     # Stream
-    Status cusparseSetStream(Handle handle, driver.Stream streamId)
-    Status cusparseGetStream(Handle handle, driver.Stream* streamId)
+    Status cusparseSetStream(Handle handle, Stream streamId)
+    Status cusparseGetStream(Handle handle, Stream* streamId)
 
     # cuSPARSE Level1 Function
     Status cusparseSgthr(
@@ -1384,6 +1384,22 @@ cdef dict STATUS = {
 }
 
 
+cdef dict HIP_STATUS = {
+    0: 'HIPSPARSE_STATUS_SUCCESS',
+    1: 'HIPSPARSE_STATUS_NOT_INITIALIZED',
+    2: 'HIPSPARSE_STATUS_ALLOC_FAILED',
+    3: 'HIPSPARSE_STATUS_INVALID_VALUE',
+    4: 'HIPSPARSE_STATUS_ARCH_MISMATCH',
+    5: 'HIPSPARSE_STATUS_MAPPING_ERROR',
+    6: 'HIPSPARSE_STATUS_EXECUTION_FAILED',
+    7: 'HIPSPARSE_STATUS_INTERNAL_ERROR',
+    8: 'HIPSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
+    9: 'HIPSPARSE_STATUS_ZERO_PIVOT',
+    10: 'HIPSPARSE_STATUS_NOT_SUPPORTED',
+    11: 'HIPSPARSE_STATUS_INSUFFICIENT_RESOURCES',
+}
+
+
 cdef class SpVecAttributes:
 
     def __init__(self, int64_t size, int64_t nnz,
@@ -1478,7 +1494,12 @@ class CuSparseError(RuntimeError):
 
     def __init__(self, int status):
         self.status = status
-        super(CuSparseError, self).__init__('%s' % (STATUS[status]))
+        cdef str err
+        if _is_hip_environment:
+            err = HIP_STATUS[status]
+        else:
+            err = STATUS[status]
+        super(CuSparseError, self).__init__('%s' % (err))
 
     def __reduce__(self):
         return (type(self), (self.status,))
@@ -1569,12 +1590,12 @@ cpdef setPointerMode(intptr_t handle, int mode):
 # Stream
 
 cpdef setStream(intptr_t handle, size_t stream):
-    status = cusparseSetStream(<Handle>handle, <driver.Stream>stream)
+    status = cusparseSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(intptr_t handle) except? 0:
-    cdef driver.Stream stream
+    cdef Stream stream
     status = cusparseGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
@@ -4835,6 +4856,7 @@ cpdef size_t sparseToDense_bufferSize(intptr_t handle, size_t matA,
 
 cpdef sparseToDense(intptr_t handle, size_t matA, size_t matB, int alg,
                     intptr_t buffer):
+    _setStream(handle)
     status = cusparseSparseToDense(
         <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
         <cusparseSparseToDenseAlg_t>alg, <void*>buffer)
@@ -4851,6 +4873,7 @@ cpdef size_t denseToSparse_bufferSize(intptr_t handle, size_t matA,
 
 cpdef denseToSparse_analysis(intptr_t handle, size_t matA, size_t matB,
                              int alg, intptr_t buffer):
+    _setStream(handle)
     status = cusparseDenseToSparse_analysis(
         <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
         <cusparseDenseToSparseAlg_t>alg, <void*>buffer)
@@ -4858,6 +4881,7 @@ cpdef denseToSparse_analysis(intptr_t handle, size_t matA, size_t matB,
 
 cpdef denseToSparse_convert(intptr_t handle, size_t matA, size_t matB,
                             int alg, intptr_t buffer):
+    _setStream(handle)
     status = cusparseDenseToSparse_convert(
         <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
         <cusparseDenseToSparseAlg_t>alg, <void*>buffer)

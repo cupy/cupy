@@ -4,12 +4,16 @@
 from cupy_backends.cuda.api cimport runtime
 
 
+# TODO(kmaehashi): cudaProfilerInitialize is deprecated thus unsupported in
+# cudapython.
 cdef extern from '../../cupy_profiler.h' nogil:
-    runtime.Error cudaProfilerInitialize(const char *configFile,
-                                         const char *outputFile,
-                                         int outputMode)
-    runtime.Error cudaProfilerStart()
-    runtime.Error cudaProfilerStop()
+    ctypedef int cudaError_t
+
+    cudaError_t cudaProfilerInitialize(const char *configFile,
+                                       const char *outputFile,
+                                       int outputMode)
+    cudaError_t cudaProfilerStart()
+    cudaError_t cudaProfilerStop()
 
 
 cpdef initialize(str config_file,

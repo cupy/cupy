@@ -113,7 +113,7 @@ def _label(x, structure, y):
 def _kernel_init():
     return _core.ElementwiseKernel(
         'X x', 'Y y', 'if (x == 0) { y = -1; } else { y = i; }',
-        'cupyx_nd_label_init')
+        'cupyx_scipy_ndimage_label_init')
 
 
 def _kernel_connect():
@@ -156,7 +156,7 @@ def _kernel_connect():
             }
         }
         ''',
-        'cupyx_nd_label_connect')
+        'cupyx_scipy_ndimage_label_connect')
 
 
 def _kernel_count():
@@ -169,7 +169,7 @@ def _kernel_count():
         if (j != i) y[i] = j;
         else atomicAdd(&count[0], 1);
         ''',
-        'cupyx_nd_label_count')
+        'cupyx_scipy_ndimage_label_count')
 
 
 def _kernel_labels():
@@ -180,7 +180,7 @@ def _kernel_labels():
         int j = atomicAdd(&count[1], 1);
         labels[j] = i;
         ''',
-        'cupyx_nd_label_labels')
+        'cupyx_scipy_ndimage_label_labels')
 
 
 def _kernel_finalize():
@@ -203,7 +203,7 @@ def _kernel_finalize():
         }
         y[i] = j + 1;
         ''',
-        'cupyx_nd_label_finalize')
+        'cupyx_scipy_ndimage_label_finalize')
 
 
 _ndimage_variance_kernel = _core.ElementwiseKernel(
@@ -216,7 +216,8 @@ _ndimage_variance_kernel = _core.ElementwiseKernel(
         break;
       }
     }
-    """)
+    """,
+    'cupyx_scipy_ndimage_variance')
 
 
 _ndimage_sum_kernel = _core.ElementwiseKernel(
@@ -229,7 +230,8 @@ _ndimage_sum_kernel = _core.ElementwiseKernel(
         break;
       }
     }
-    """)
+    """,
+    'cupyx_scipy_ndimage_sum')
 
 
 def _ndimage_sum_kernel_2(input, labels, index, sum_val, batch_size=4):
@@ -253,7 +255,8 @@ _ndimage_mean_kernel = _core.ElementwiseKernel(
         break;
       }
     }
-    """)
+    """,
+    'cupyx_scipy_ndimage_mean')
 
 
 def _ndimage_mean_kernel_2(input, labels, index, batch_size=4,
@@ -298,8 +301,8 @@ def variance(input, labels=None, index=None):
             (default), all values where `labels` is non-zero are used.
 
     Returns:
-        variance (cupy.ndarray): Values of variance, for each sub-region if
-            `labels` and `index` are specified.
+        cupy.ndarray: Values of variance, for each sub-region if
+        `labels` and `index` are specified.
 
     .. seealso:: :func:`scipy.ndimage.variance`
     """

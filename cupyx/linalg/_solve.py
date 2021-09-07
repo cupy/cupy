@@ -1,4 +1,3 @@
-import cupy
 from cupy.linalg import _util
 from cupyx import lapack
 
@@ -18,14 +17,10 @@ def invh(a):
     """
 
     _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    # TODO: Use `_assert_stacked_2d` instead, once cusolver supports nrhs > 1
+    # for potrsBatched
+    _util._assert_2d(a)
+    _util._assert_stacked_square(a)
 
-    # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
-    _util._assert_rank2(a)
-
-    n = a.shape[-1]
-    identity_matrix = cupy.eye(n, dtype=a.dtype)
-    b = cupy.empty(a.shape, a.dtype)
-    b[...] = identity_matrix
-
+    b = _util.stacked_identity_like(a)
     return lapack.posv(a, b)

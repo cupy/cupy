@@ -385,16 +385,18 @@ def check_compute_capabilities(compiler, settings):
     """Return compute capabilities of the installed devices."""
     global _compute_capabilities
     try:
-        src = '''#include <cuda_runtime_api.h>
+        src = '''
+        #include <cuda_runtime_api.h>
         #include <stdio.h>
+        #define CHECK_CUDART(x) { if ((x) != cudaSuccess) return 1; }
+
         int main() {
-          cudaDeviceProp prop;
           int device_count;
-          int i;
-          cudaGetDeviceCount(&device_count);
-          for(i=0; i < device_count; i++) {
-              cudaGetDeviceProperties(&prop, i);
-              printf("%d%d ", prop.major,prop.minor);
+          CHECK_CUDART(cudaGetDeviceCount(&device_count));
+          for (int i = 0; i < device_count; i++) {
+              cudaDeviceProp prop;
+              CHECK_CUDART(cudaGetDeviceProperties(&prop, i));
+              printf("%d%d ", prop.major, prop.minor);
           }
           return 0;
         }
@@ -406,7 +408,7 @@ def check_compute_capabilities(compiler, settings):
             library_dirs=settings['library_dirs'])
         _compute_capabilities = set([int(o) for o in out.split()])
     except Exception as e:
-        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        utils.print_warning('Cannot check compute capability\n{0}'.format(e))
         return False
 
     return True

@@ -155,3 +155,20 @@ ufunc.at
 
 Currently, CuPy does not support ``at`` for ufuncs in general.
 However, :func:`cupyx.scatter_add` can substitute ``add.at`` as both behave identically.
+
+
+Generalized Universal Functions
+-------------------------------
+
+.. currentmodule:: cupyx
+
+In addition to regular ufuncs, CuPy also provides a wrapper class to convert
+regular cupy functions into Generalized Universal Functions as in NumPy `<https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html>`_.
+This allows to automatically use keyword arguments such as ``axes``, ``order``, ``dtype``
+without needing to explicitly implement them in the wrapped function.
+
+
+.. autosummary::
+   :toctree: generated/
+
+   GeneralizedUFunc

@@ -1,2 +1,2 @@
 # Functions from the following NumPy document
-# https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html
+# https://numpy.org/doc/stable/reference/routines.array-manipulation.html

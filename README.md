@@ -38,18 +38,21 @@ You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://
 Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Choose the right package for your platform.
 
-| Platform  | Command                        |
-| --------- | ------------------------------ |
-| CUDA 10.0 | `pip install cupy-cuda100`     |
-| CUDA 10.1 | `pip install cupy-cuda101`     |
-| CUDA 10.2 | `pip install cupy-cuda102`     |
-| CUDA 11.0 | `pip install cupy-cuda110`     |
-| CUDA 11.1 | `pip install cupy-cuda111`     |
-| CUDA 11.2 | `pip install cupy-cuda112`     |
-| CUDA 11.3 | `pip install cupy-cuda112` (*) |
-| ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
+| Platform      | Command                       |
+| ------------- | ----------------------------- |
+| CUDA 10.0     | `pip install cupy-cuda100`    |
+| CUDA 10.1     | `pip install cupy-cuda101`    |
+| CUDA 10.2     | `pip install cupy-cuda102`    |
+| CUDA 11.0     | `pip install cupy-cuda110`    |
+| CUDA 11.1     | `pip install cupy-cuda111`    |
+| CUDA 11.2     | `pip install cupy-cuda112`    |
+| CUDA 11.3     | `pip install cupy-cuda113`    |
+| CUDA 11.4     | `pip install cupy-cuda114`    |
+| ROCm 4.0 (*)  | `pip install cupy-rocm-4-0`   |
+| ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
+| ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |
 
-*(\*) CUDA 11.3 support is currently under verification. Meanwhile you can use wheels for CUDA 11.2 which is compatible with CUDA 11.3.*
+(\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 

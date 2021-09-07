@@ -4,7 +4,6 @@
 
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
@@ -20,6 +19,9 @@ cdef extern from '../../cupy_complex.h':
         double x, y
 
 cdef extern from '../../cupy_blas.h' nogil:
+    ctypedef void* Stream 'cudaStream_t'
+    ctypedef int DataType 'cudaDataType'
+
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)
@@ -28,8 +30,8 @@ cdef extern from '../../cupy_blas.h' nogil:
     int cublasSetPointerMode(Handle handle, PointerMode mode)
 
     # Stream
-    int cublasSetStream(Handle handle, driver.Stream streamId)
-    int cublasGetStream(Handle handle, driver.Stream* streamId)
+    int cublasSetStream(Handle handle, Stream streamId)
+    int cublasGetStream(Handle handle, Stream* streamId)
 
     # Math Mode
     int cublasSetMathMode(Handle handle, Math mode)
@@ -260,9 +262,9 @@ cdef extern from '../../cupy_blas.h' nogil:
     int cublasSgemmEx(
         Handle handle, Operation transa,
         Operation transb, int m, int n, int k,
-        const float *alpha, const void *A, runtime.DataType Atype,
-        int lda, const void *B, runtime.DataType Btype, int ldb,
-        const float *beta, void *C, runtime.DataType Ctype, int ldc)
+        const float *alpha, const void *A, DataType Atype,
+        int lda, const void *B, DataType Btype, int ldb,
+        const float *beta, void *C, DataType Ctype, int ldc)
     int cublasSgetrfBatched(
         Handle handle, int n, float **Aarray, int lda,
         int *PivotArray, int *infoArray, int batchSize)
@@ -313,19 +315,19 @@ cdef extern from '../../cupy_blas.h' nogil:
         Handle handle, Operation transa, Operation transb,
         int m, int n, int k,
         const void *alpha,
-        const void *A, runtime.DataType Atype, int lda,
-        const void *B, runtime.DataType Btype, int ldb,
+        const void *A, DataType Atype, int lda,
+        const void *B, DataType Btype, int ldb,
         const void *beta,
-        void *C, runtime.DataType Ctype, int ldc,
-        runtime.DataType computetype, GemmAlgo algo)
+        void *C, DataType Ctype, int ldc,
+        DataType computetype, GemmAlgo algo)
     int cublasGemmEx_v11(
         Handle handle, Operation transa, Operation transb,
         int m, int n, int k,
         const void *alpha,
-        const void *A, runtime.DataType Atype, int lda,
-        const void *B, runtime.DataType Btype, int ldb,
+        const void *A, DataType Atype, int lda,
+        const void *B, DataType Btype, int ldb,
         const void *beta,
-        void *C, runtime.DataType Ctype, int ldc,
+        void *C, DataType Ctype, int ldc,
         ComputeType computetype, GemmAlgo algo)
     int cublasStpttr(
         Handle handle, FillMode uplo, int n, const float *AP, float *A,
@@ -440,12 +442,12 @@ cpdef setPointerMode(intptr_t handle, int mode):
 
 cpdef setStream(intptr_t handle, size_t stream):
     with nogil:
-        status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
+        status = cublasSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(intptr_t handle) except? 0:
-    cdef driver.Stream stream
+    cdef Stream stream
     with nogil:
         status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
@@ -1161,9 +1163,9 @@ cpdef sgemmEx(
     with nogil:
         status = cublasSgemmEx(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <const float*>alpha, <const void*>A, <runtime.DataType>Atype, lda,
-            <const void*>B, <runtime.DataType>Btype, ldb, <const float*>beta,
-            <void*>C, <runtime.DataType>Ctype, ldc)
+            <const float*>alpha, <const void*>A, <DataType>Atype, lda,
+            <const void*>B, <DataType>Btype, ldb, <const float*>beta,
+            <void*>C, <DataType>Ctype, ldc)
     check_status(status)
 
 
@@ -1309,20 +1311,20 @@ cpdef gemmEx(
             status = cublasGemmEx_v11(
                 <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
                 <const void*>alpha,
-                <const void*>A, <runtime.DataType>Atype, lda,
-                <const void*>B, <runtime.DataType>Btype, ldb,
+                <const void*>A, <DataType>Atype, lda,
+                <const void*>B, <DataType>Btype, ldb,
                 <const void*>beta,
-                <void*>C, <runtime.DataType>Ctype, ldc,
+                <void*>C, <DataType>Ctype, ldc,
                 <ComputeType>computeType, <GemmAlgo>algo)
         else:
             status = cublasGemmEx(
                 <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
                 <const void*>alpha,
-                <const void*>A, <runtime.DataType>Atype, lda,
-                <const void*>B, <runtime.DataType>Btype, ldb,
+                <const void*>A, <DataType>Atype, lda,
+                <const void*>B, <DataType>Btype, ldb,
                 <const void*>beta,
-                <void*>C, <runtime.DataType>Ctype, ldc,
-                <runtime.DataType>computeType, <GemmAlgo>algo)
+                <void*>C, <DataType>Ctype, ldc,
+                <DataType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 

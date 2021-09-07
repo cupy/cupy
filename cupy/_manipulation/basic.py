@@ -46,24 +46,26 @@ def copyto(dst, src, casting='same_kind', where=None):
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
 
+    if where is not None:
+        _core.elementwise_copy(src, dst, _where=where)
+        return
+
     if dst.size == 0:
         return
 
-    if src_is_python_scalar and where is None:
+    if src_is_python_scalar:
         dst.fill(src)
         return
 
-    if where is None:
-        if _can_memcpy(dst, src):
-            dst.data.copy_from_async(src.data, src.nbytes)
-        else:
-            device = dst.device
-            with device:
-                if src.device != device:
-                    src = src.copy()
-                _core.elementwise_copy(src, dst)
-    else:
-        _core.elementwise_copy_where(src, where, dst)
+    if _can_memcpy(dst, src):
+        dst.data.copy_from_async(src.data, src.nbytes)
+        return
+
+    device = dst.device
+    with device:
+        if src.device != device:
+            src = src.copy()
+        _core.elementwise_copy(src, dst)
 
 
 def _can_memcpy(dst, src):
