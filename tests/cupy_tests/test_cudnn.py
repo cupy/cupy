@@ -387,7 +387,7 @@ class TestConvolutionBackwardData:
 }))
 @pytest.mark.skipif(
     not cudnn_enabled or cudnn_version < 7500 or cudnn_version >= 8000,
-    reason='cuDNN 7.5.0 or later is required')
+    reason='cuDNN 7.x (x >= 5) is required')
 class TestConvolutionNoAvailableAlgorithm:
     '''Checks if an expected error is raised.
 
