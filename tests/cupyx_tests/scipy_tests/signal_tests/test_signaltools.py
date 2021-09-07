@@ -1,12 +1,9 @@
-import unittest
-
 import numpy as np
 import pytest
 
 import cupy
 from cupy.cuda import runtime
 from cupy import testing
-
 import cupyx.scipy.signal
 
 try:
@@ -22,7 +19,7 @@ except ImportError:
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveCorrelate(unittest.TestCase):
+class TestConvolveCorrelate:
     def _filter(self, func, dtype, xp, scp):
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
@@ -51,7 +48,7 @@ class TestConvolveCorrelate(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestFFTConvolve(unittest.TestCase):
+class TestFFTConvolve:
     def _filter(self, func, dtype, xp, scp, **kwargs):
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
@@ -153,7 +150,7 @@ class TestFFTConvolveFastShape:
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestOAConvolve(unittest.TestCase):
+class TestOAConvolve:
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
             np.float16: 1e-3, 'default': 1e-8}
 
@@ -184,11 +181,11 @@ class TestOAConvolve(unittest.TestCase):
 })))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveCorrelate2D(unittest.TestCase):
+class TestConvolveCorrelate2D:
     def _filter(self, func, dtype, xp, scp):
         if self.mode == 'full' and self.boundary != 'fill':
             # See https://github.com/scipy/scipy/issues/12685
-            raise unittest.SkipTest('broken in scipy')
+            pytest.skip('broken in scipy')
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random(self.size2, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
@@ -214,7 +211,7 @@ class TestConvolveCorrelate2D(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
-class TestChooseConvMethod(unittest.TestCase):
+class TestChooseConvMethod:
 
     @testing.for_dtypes('efdFD')
     def test_choose_conv_method1(self, dtype):
@@ -259,7 +256,7 @@ class TestChooseConvMethod(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestWiener(unittest.TestCase):
+class TestWiener:
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
             np.float16: 1e-3, 'default': 1e-10}
 
@@ -288,7 +285,7 @@ class TestWiener(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestOrderFilter(unittest.TestCase):
+class TestOrderFilter:
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
@@ -307,7 +304,7 @@ class TestOrderFilter(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy<1.7.0')
-class TestMedFilt(unittest.TestCase):
+class TestMedFilt:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
@@ -325,7 +322,7 @@ class TestMedFilt(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy<1.7.0')
-class TestMedFilt2d(unittest.TestCase):
+class TestMedFilt2d:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels

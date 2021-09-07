@@ -1,5 +1,4 @@
 import pickle
-import unittest
 
 import numpy
 import pytest
@@ -19,7 +18,7 @@ if cupy.cuda.runtime.is_hip:
                 allow_module_level=True)
 
 
-class TestMatDescriptor(unittest.TestCase):
+class TestMatDescriptor:
 
     def test_create(self):
         md = cusparse.MatDescriptor.create()
@@ -37,11 +36,12 @@ class TestMatDescriptor(unittest.TestCase):
     'transa': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestCsrmm(unittest.TestCase):
+class TestCsrmm:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.op_a = scipy.sparse.random(2, 3, density=0.5, dtype=self.dtype)
         if self.transa:
@@ -78,11 +78,12 @@ class TestCsrmm(unittest.TestCase):
     'trans': [(False, False), (True, False), (False, True)],
 }))
 @testing.with_requires('scipy')
-class TestCsrmm2(unittest.TestCase):
+class TestCsrmm2:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.transa, self.transb = self.trans
         self.op_a = scipy.sparse.random(2, 3, density=0.5, dtype=self.dtype)
@@ -126,11 +127,12 @@ class TestCsrmm2(unittest.TestCase):
     'shape': [(3, 4), (4, 3)]
 }))
 @testing.with_requires('scipy>=1.2.0')
-class TestCsrgeam(unittest.TestCase):
+class TestCsrgeam:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n = self.shape
         self.a = scipy.sparse.random(m, n, density=0.3, dtype=self.dtype)
@@ -156,11 +158,12 @@ class TestCsrgeam(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestCsrgeamInvalidCases(unittest.TestCase):
+class TestCsrgeamInvalidCases:
 
     dtype = numpy.float32
     shape = (4, 3)
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n = self.shape
         self.a = scipy.sparse.random(m, n, density=0.3, dtype=self.dtype)
@@ -171,9 +174,9 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
             pytest.skip('csrgeam is not available')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgeam(a, b)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgeam(b, a)
 
     def test_csrgeam_invalid_shape(self):
@@ -181,14 +184,14 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
             pytest.skip('csrgeam is not available')
         a = sparse.csr_matrix(self.a.T)
         b = sparse.csr_matrix(self.b)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.csrgeam(a, b)
 
     def test_csrgeam_availability(self):
         if not cupy.cusparse.check_availability('csrgeam'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 cupy.cusparse.csrgeam(a, b)
 
     def test_csrgeam2_invalid_format(self):
@@ -196,9 +199,9 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
             pytest.skip('csrgeam2 is not available')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgeam2(a, b)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgeam2(b, a)
 
     def test_csrgeam2_invalid_shape(self):
@@ -206,14 +209,14 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
             pytest.skip('csrgeam2 is not available')
         a = sparse.csr_matrix(self.a.T)
         b = sparse.csr_matrix(self.b)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.csrgeam2(a, b)
 
     def test_csrgeam2_availability(self):
         if not cupy.cusparse.check_availability('csrgeam2'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 cupy.cusparse.csrgeam2(a, b)
 
 
@@ -223,8 +226,9 @@ class TestCsrgeamInvalidCases(unittest.TestCase):
     'transb': [False, True],
 }))
 @testing.with_requires('scipy')
-class TestCsrgemm(unittest.TestCase):
+class TestCsrgemm:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.op_a = scipy.sparse.random(2, 3, density=0.5, dtype=self.dtype)
         if self.transa:
@@ -253,11 +257,12 @@ class TestCsrgemm(unittest.TestCase):
     'shape': [(2, 3, 4), (4, 3, 2)]
 }))
 @testing.with_requires('scipy>=1.2.0')
-class TestCsrgemm2(unittest.TestCase):
+class TestCsrgemm2:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n, k = self.shape
         self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
@@ -287,11 +292,12 @@ class TestCsrgemm2(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestCsrgemm2InvalidCases(unittest.TestCase):
+class TestCsrgemm2InvalidCases:
 
     dtype = numpy.float32
     shape = (2, 3, 4)
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n, k = self.shape
         self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
@@ -303,16 +309,16 @@ class TestCsrgemm2InvalidCases(unittest.TestCase):
             pytest.skip('csrgemm2 is not available.')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csc_matrix(self.b)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         d = sparse.csc_matrix(self.d)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.cusparse.csrgemm2(a, b, d=d)
 
     def test_csrgemm2_invalid_shape(self):
@@ -320,23 +326,23 @@ class TestCsrgemm2InvalidCases(unittest.TestCase):
             pytest.skip('csrgemm2 is not available.')
         a = sparse.csc_matrix(self.a).T
         b = sparse.csr_matrix(self.b)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csc_matrix(self.b).T
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         d = sparse.csc_matrix(self.d).T
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.csrgemm2(a, b, d=d)
 
     def test_csrgemm2_availability(self):
         if not cupy.cusparse.check_availability('csrgemm2'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 cupy.cusparse.csrgemm2(a, b)
 
 
@@ -345,11 +351,12 @@ class TestCsrgemm2InvalidCases(unittest.TestCase):
     'transa': [False, True],
 }))
 @testing.with_requires('scipy')
-class TestCsrmv(unittest.TestCase):
+class TestCsrmv:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.op_a = scipy.sparse.random(2, 3, density=0.5, dtype=self.dtype)
         if self.transa:
@@ -428,8 +435,9 @@ class TestCsrmv(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestCoosort(unittest.TestCase):
+class TestCoosort:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusparse.check_availability('coosort'):
             pytest.skip('coosort is not available')
@@ -459,8 +467,9 @@ class TestCoosort(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestCsrsort(unittest.TestCase):
+class TestCsrsort:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusparse.check_availability('csrsort'):
             pytest.skip('csrsort is not available')
@@ -481,8 +490,9 @@ class TestCsrsort(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestCscsort(unittest.TestCase):
+class TestCscsort:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         if not cusparse.check_availability('cscsort'):
             pytest.skip('cscsort is not available')
@@ -509,11 +519,12 @@ class TestCscsort(unittest.TestCase):
     'format': ['csr', 'csc', 'coo'],
 }))
 @testing.with_requires('scipy>=1.2.0')
-class TestSpmv(unittest.TestCase):
+class TestSpmv:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n = self.shape
         self.op_a = scipy.sparse.random(m, n, density=0.5, format=self.format,
@@ -558,10 +569,11 @@ class TestSpmv(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestErrorSpmv(unittest.TestCase):
+class TestErrorSpmv:
 
     dtype = numpy.float32
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n = 2, 3
         self.a = scipy.sparse.random(m, n, density=0.5,
@@ -575,17 +587,17 @@ class TestErrorSpmv(unittest.TestCase):
 
         a = sparse.csr_matrix(self.a.T)
         x = cupy.array(self.x)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.spmv(a, x)
 
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.spmv(a, x, transa=True)
 
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.y)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.spmv(a, x)
 
 
@@ -597,11 +609,12 @@ class TestErrorSpmv(unittest.TestCase):
     'format': ['csr', 'csc', 'coo'],
 }))
 @testing.with_requires('scipy>=1.2.0')
-class TestSpmm(unittest.TestCase):
+class TestSpmm:
 
     alpha = 0.5
     beta = 0.25
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n, k = self.dims
         self.op_a = scipy.sparse.random(m, k, density=0.5, format=self.format,
@@ -652,10 +665,11 @@ class TestSpmm(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestErrorSpmm(unittest.TestCase):
+class TestErrorSpmm:
 
     dtype = numpy.float32
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         m, n, k = 2, 3, 4
         self.a = scipy.sparse.random(m, k, density=0.5,
@@ -669,28 +683,28 @@ class TestErrorSpmm(unittest.TestCase):
 
         a = sparse.csr_matrix(self.a.T)
         b = cupy.array(self.b, order='f')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             cupy.cusparse.spmm(a, b.T)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b)
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             cupy.cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.c, order='f')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.b, order='f')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.cusparse.spmm(a, b, c=c)
 
 
@@ -705,7 +719,7 @@ class TestErrorSpmm(unittest.TestCase):
     'order': ['C', 'F']
 }))
 @testing.with_requires('scipy')
-class TestCsrsm2(unittest.TestCase):
+class TestCsrsm2:
 
     n = 6
     alpha = 1.0
@@ -751,10 +765,10 @@ class TestCsrsm2(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_csrsm2(self, dtype):
         if not cusparse.check_availability('csrsm2'):
-            raise unittest.SkipTest('csrsm2 is not available')
+            pytest.skip('csrsm2 is not available')
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
                 self.transa == 'H'):
-            raise unittest.SkipTest('unsupported combination')
+            pytest.skip('unsupported combination')
         self._setup(dtype)
         x = self.b.copy(order=self.order)
         cusparse.csrsm2(self.a, x, alpha=self.alpha,
@@ -769,13 +783,13 @@ class TestCsrsm2(unittest.TestCase):
     'level_info': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestCsrilu02(unittest.TestCase):
+class TestCsrilu02:
 
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_matrix(self, dtype):
         if not cusparse.check_availability('csrilu02'):
-            unittest.SkipTest('csrilu02 is not available')
+            pytest.skip('csrilu02 is not available')
         a = testing.shaped_random((self.n, self.n), cupy, dtype=dtype,
                                   scale=0.9) + 0.1
         a = a + cupy.diag(cupy.ones((self.n,), dtype=dtype.char.lower()))
@@ -801,27 +815,27 @@ class TestCsrilu02(unittest.TestCase):
 
         # invalid format
         a = sparse.csc_matrix(a_ref)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cusparse.csrilu02(a, level_info=self.level_info)
 
         # invalid shape
         a = cupy.ones((self.n, self.n + 1), dtype=dtype)
         a = sparse.csr_matrix(a)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cusparse.csrilu02(a, level_info=self.level_info)
 
         # matrix with zero diagonal element
         a = a_ref
         a[-1, -1] = 0
         a = sparse.csr_matrix(a)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cusparse.csrilu02(a, level_info=self.level_info)
 
         # singular matrix
         a = a_ref
         a[1:] = a[0]
         a = sparse.csr_matrix(a)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cusparse.csrilu02(a, level_info=self.level_info)
 
 
@@ -831,7 +845,7 @@ class TestCsrilu02(unittest.TestCase):
     'format': ['csr', 'csc', 'coo']
 }))
 @testing.with_requires('scipy')
-class TestSparseMatrixConversion(unittest.TestCase):
+class TestSparseMatrixConversion:
 
     @testing.for_dtypes('fdFD')
     def test_denseToSparse(self, dtype):

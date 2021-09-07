@@ -1,4 +1,3 @@
-import unittest
 import math
 
 import numpy
@@ -12,9 +11,11 @@ from cupy import testing
 
 
 @testing.gpu
-class TestSumprod(unittest.TestCase):
+class TestSumprod:
 
+    @pytest.fixture(autouse=True)
     def tearDown(self):
+        yield
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
         cupy.get_default_pinned_memory_pool().free_all_blocks()
@@ -166,7 +167,7 @@ class TestSumprod(unittest.TestCase):
     def test_sum_out_wrong_shape(self):
         a = testing.shaped_arange((2, 3, 4))
         b = cupy.empty((2, 3))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             a.sum(axis=1, out=b)
 
     @testing.for_all_dtypes()
@@ -209,22 +210,23 @@ class TestSumprod(unittest.TestCase):
     'backend': ('device', 'block'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
-class TestCubReduction(unittest.TestCase):
+@pytest.mark.skipif(
+    not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+class TestCubReduction:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
-        self.old_routine_accelerators = _acc.get_routine_accelerators()
-        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        old_routine_accelerators = _acc.get_routine_accelerators()
+        old_reduction_accelerators = _acc.get_reduction_accelerators()
         if self.backend == 'device':
             _acc.set_routine_accelerators(['cub'])
             _acc.set_reduction_accelerators([])
         elif self.backend == 'block':
             _acc.set_routine_accelerators([])
             _acc.set_reduction_accelerators(['cub'])
-
-    def tearDown(self):
-        _acc.set_routine_accelerators(self.old_routine_accelerators)
-        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
+        yield
+        _acc.set_routine_accelerators(old_routine_accelerators)
+        _acc.set_reduction_accelerators(old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
@@ -321,7 +323,7 @@ class TestCubReduction(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
         if self.backend == 'block':
-            raise unittest.SkipTest('does not support')
+            pytest.skip('does not support')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -346,7 +348,7 @@ class TestCubReduction(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
         if self.backend == 'block':
-            raise unittest.SkipTest('does not support')
+            pytest.skip('does not support')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -386,16 +388,17 @@ class TestCubReduction(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cutensor.available,
-                     'The cuTENSOR routine is not enabled')
-class TestCuTensorReduction(unittest.TestCase):
+@pytest.mark.skipif(
+    not cupy.cuda.cutensor.available,
+    reason='The cuTENSOR routine is not enabled')
+class TestCuTensorReduction:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
-        self.old_accelerators = cupy._core.get_routine_accelerators()
+        old_accelerators = cupy._core.get_routine_accelerators()
         cupy._core.set_routine_accelerators(['cutensor'])
-
-    def tearDown(self):
-        cupy._core.set_routine_accelerators(self.old_accelerators)
+        yield
+        cupy._core.set_routine_accelerators(old_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
@@ -441,7 +444,7 @@ class TestCuTensorReduction(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNansumNanprodLong(unittest.TestCase):
+class TestNansumNanprodLong:
 
     def _do_transposed_axis_test(self):
         return not self.transpose_axes and self.axis != 1
@@ -482,7 +485,7 @@ class TestNansumNanprodLong(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNansumNanprodExtra(unittest.TestCase):
+class TestNansumNanprodExtra:
 
     def test_nansum_axis_float16(self):
         # Note that the above test example overflows in float16. We use a
@@ -511,7 +514,7 @@ class TestNansumNanprodExtra(unittest.TestCase):
         a = testing.shaped_arange(self.shape)
         a[:, 1] = cupy.nan
         b = cupy.empty((2, 3))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.nansum(a, axis=1, out=b)
 
 
@@ -522,7 +525,7 @@ class TestNansumNanprodExtra(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNansumNanprodAxes(unittest.TestCase):
+class TestNansumNanprodAxes:
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nansum_axes(self, xp, dtype):
@@ -533,7 +536,7 @@ class TestNansumNanprodAxes(unittest.TestCase):
 
 
 @testing.gpu
-class TestNansumNanprodHuge(unittest.TestCase):
+class TestNansumNanprodHuge:
     def _test(self, xp, nan_slice):
         a = testing.shaped_random((2048, 1, 1024), xp, 'f')
         a[nan_slice] = xp.nan
@@ -558,7 +561,7 @@ axes = [0, 1, 2]
 
 @testing.parameterize(*testing.product({'axis': axes}))
 @testing.gpu
-class TestCumsum(unittest.TestCase):
+class TestCumsum:
 
     def _cumsum(self, xp, a, *args, **kwargs):
         b = a.copy()
@@ -645,7 +648,7 @@ class TestCumsum(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_invalid_axis_lower2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(numpy.AxisError):
+        with pytest.raises(numpy.AxisError):
             return cupy.cumsum(a, axis=-a.ndim - 1)
 
     @testing.for_all_dtypes()
@@ -658,22 +661,22 @@ class TestCumsum(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(numpy.AxisError):
+        with pytest.raises(numpy.AxisError):
             return cupy.cumsum(a, axis=a.ndim + 1)
 
     def test_cumsum_arraylike(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             return cupy.cumsum((1, 2, 3))
 
     @testing.for_float_dtypes()
     def test_cumsum_numpy_array(self, dtype):
         a_numpy = numpy.arange(8, dtype=dtype)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             return cupy.cumsum(a_numpy)
 
 
 @testing.gpu
-class TestCumprod(unittest.TestCase):
+class TestCumprod:
 
     def _cumprod(self, xp, a, *args, **kwargs):
         b = a.copy()
@@ -758,17 +761,17 @@ class TestCumprod(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_invalid_axis_upper2(self, dtype):
         a = testing.shaped_arange((4, 5), cupy, dtype)
-        with self.assertRaises(numpy.AxisError):
+        with pytest.raises(numpy.AxisError):
             return cupy.cumprod(a, axis=a.ndim)
 
     def test_cumprod_arraylike(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             return cupy.cumprod((1, 2, 3))
 
     @testing.for_float_dtypes()
     def test_cumprod_numpy_array(self, dtype):
         a_numpy = numpy.arange(1, 6, dtype=dtype)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
 
 
@@ -778,7 +781,7 @@ class TestCumprod(unittest.TestCase):
     'func': ('nancumsum', 'nancumprod'),
 }))
 @testing.gpu
-class TestNanCumSumProd(unittest.TestCase):
+class TestNanCumSumProd:
 
     zero_density = 0.25
 
@@ -806,7 +809,7 @@ class TestNanCumSumProd(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_nancumsumprod(self, xp, dtype):
         if self.axis is not None and self.axis >= len(self.shape):
-            raise unittest.SkipTest()
+            pytest.skip()
         a = xp.array(self._make_array(dtype))
         out = getattr(xp, self.func)(a, axis=self.axis)
         return xp.ascontiguousarray(out)
@@ -816,10 +819,10 @@ class TestNanCumSumProd(unittest.TestCase):
     def test_nancumsumprod_out(self, xp, dtype):
         dtype = numpy.dtype(dtype)
         if self.axis is not None and self.axis >= len(self.shape):
-            raise unittest.SkipTest()
+            pytest.skip()
         if len(self.shape) > 1 and self.axis is None:
             # Skip the cases where np.nancum{sum|prod} raise AssertionError.
-            raise unittest.SkipTest()
+            pytest.skip()
         a = xp.array(self._make_array(dtype))
         out = xp.empty(self.shape, dtype=dtype)
         getattr(xp, self.func)(a, axis=self.axis, out=out)
@@ -827,7 +830,7 @@ class TestNanCumSumProd(unittest.TestCase):
 
 
 @testing.gpu
-class TestDiff(unittest.TestCase):
+class TestDiff:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -914,7 +917,7 @@ class TestDiff(unittest.TestCase):
     }),
 ))
 @testing.gpu
-class TestGradient(unittest.TestCase):
+class TestGradient:
 
     def _gradient(self, xp, dtype, shape, spacing, axis, edge_order):
         x = testing.shaped_random(shape, xp, dtype=dtype)
@@ -963,7 +966,7 @@ class TestGradient(unittest.TestCase):
 
 
 @testing.gpu
-class TestGradientErrors(unittest.TestCase):
+class TestGradientErrors:
 
     def test_gradient_invalid_spacings1(self):
         # more spacings than axes

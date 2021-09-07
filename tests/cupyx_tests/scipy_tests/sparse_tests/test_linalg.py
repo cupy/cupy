@@ -5,16 +5,14 @@ import io
 import unittest
 import warnings
 
-
 import numpy
 import pytest
 try:
     import scipy.sparse
     import scipy.sparse.linalg
     import scipy.stats
-    scipy_available = True
 except ImportError:
-    scipy_available = False
+    pass
 
 from cupy import testing
 from cupy.testing import _condition
@@ -76,7 +74,7 @@ class TestLsqr(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-class TestMatrixNorm(unittest.TestCase):
+class TestMatrixNorm:
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  accept_error=(ValueError,
@@ -102,7 +100,8 @@ class TestMatrixNorm(unittest.TestCase):
 )
 @testing.with_requires('scipy')
 @testing.gpu
-class TestVectorNorm(unittest.TestCase):
+class TestVectorNorm:
+
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  accept_error=(ValueError,))
     def test_vector_norm(self, xp, sp):
@@ -187,7 +186,7 @@ class TestEigsh:
 
     def test_invalid(self):
         if self.use_linear_operator is True:
-            raise unittest.SkipTest
+            pytest.skip()
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a = xp.diag(xp.ones((self.n, ), dtype='f'))
             with pytest.raises(ValueError):
@@ -272,7 +271,7 @@ class TestSvds:
 
     def test_invalid(self):
         if self.use_linear_operator is True:
-            raise unittest.SkipTest
+            pytest.skip()
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a = xp.diag(xp.ones(self.shape, dtype='f'))
             with pytest.raises(ValueError):
@@ -371,7 +370,7 @@ class TestCg:
     def test_empty(self, dtype, xp, sp):
         if not (self.x0 is None and self.M is None and self.atol is None and
                 self.use_linear_operator is False):
-            raise unittest.SkipTest
+            pytest.skip()
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
         if self.atol is None and xp == numpy:
@@ -386,7 +385,7 @@ class TestCg:
     def test_callback(self, dtype):
         if not (self.x0 is None and self.M is None and self.atol is None and
                 self.use_linear_operator is False):
-            raise unittest.SkipTest
+            pytest.skip()
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
         b = self._make_normalized_vector(dtype, xp)
@@ -402,7 +401,7 @@ class TestCg:
     def test_invalid(self):
         if not (self.x0 is None and self.M is None and self.atol is None and
                 self.use_linear_operator is False):
-            raise unittest.SkipTest
+            pytest.skip()
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)
             b = self._make_normalized_vector('f', xp)
@@ -527,7 +526,7 @@ class TestGmres:
     def test_empty(self, dtype, xp, sp):
         if not (self.x0 is None and self.M is None and self.atol is None and
                 self.restart is None and self.use_linear_operator is False):
-            raise unittest.SkipTest
+            pytest.skip()
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
         if self.atol is None and xp == numpy:
@@ -542,7 +541,7 @@ class TestGmres:
     def test_callback(self, dtype):
         if not (self.x0 is None and self.M is None and self.atol is None and
                 self.restart is None and self.use_linear_operator is False):
-            raise unittest.SkipTest
+            pytest.skip()
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
         b = self._make_normalized_vector(dtype, xp)
@@ -566,7 +565,7 @@ class TestGmres:
     def test_invalid(self):
         if not (self.x0 is None and self.M is None and self.atol is None and
                 self.restart is None and self.use_linear_operator is False):
-            raise unittest.SkipTest
+            pytest.skip()
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)
             b = self._make_normalized_vector('f', xp)
@@ -612,7 +611,7 @@ class TestGmres:
 }))
 @testing.gpu
 @testing.with_requires('scipy>=1.4')
-class TestLinearOperator(unittest.TestCase):
+class TestLinearOperator:
 
     # modified from scipy
     # class that defines parametrized custom cases
@@ -766,7 +765,7 @@ class TestSpsolveTriangular:
         dtype = 'float64'
         if not (self.lower and self.unit_diagonal and self.nrhs == 4 and
                 self.order == 'C'):
-            raise unittest.SkipTest
+            pytest.skip()
 
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, b = self._make_matrix(dtype, xp)
@@ -808,7 +807,7 @@ class TestSpsolveTriangular:
     'reorder': [0, 1, 2, 3],
 }))
 @testing.with_requires('scipy')
-class TestCsrlsvqr(unittest.TestCase):
+class TestCsrlsvqr:
 
     n = 8
     density = 0.75
@@ -829,8 +828,6 @@ class TestCsrlsvqr(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_csrlsvqr(self, dtype):
-        if not cupy.cusolver.check_availability('csrlsvqr'):
-            unittest.SkipTest('csrlsvqr is not available')
         a, b, test_tol = self._setup(dtype)
         ref_x = numpy.linalg.solve(a, b)
         cp_a = cupy.array(a)
@@ -859,7 +856,7 @@ def _eigen_vec_transform(block_vec, xp):
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
 # tests adapted from scipy's tests of lobpcg
-class TestLOBPCG(unittest.TestCase):
+class TestLOBPCG:
 
     def _generate_input_for_elastic_rod(self, n, xp):
         """Build the matrices for the generalized eigenvalue problem of the
@@ -1155,7 +1152,7 @@ class TestLOBPCG(unittest.TestCase):
     'sparse_format': ['coo', 'csr', 'csc']
 }))
 # test class for testing against diagonal matrices overall various data types
-class TestLOBPCGForDiagInput(unittest.TestCase):
+class TestLOBPCGForDiagInput:
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1211,9 +1208,9 @@ class TestLOBPCGForDiagInput(unittest.TestCase):
     'nrhs': [None, 1, 4],
     'order': ['C', 'F']
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
-class TestSplu(unittest.TestCase):
+class TestSplu:
 
     n = 10
     density = 0.5
