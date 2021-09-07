@@ -18,7 +18,6 @@ import cupyx
 import cupyx.scipy.sparse
 
 from cupy.testing._pytest_impl import is_available
-from cupy.testing._pytest_impl import check_available
 
 
 if is_available():
