@@ -53,6 +53,7 @@ enum {
         = hipDeviceAttributeComputeCapabilityMajor,
     cudaDevAttrComputeCapabilityMinor
         = hipDeviceAttributeComputeCapabilityMinor,
+    cudaDevAttrMemoryPoolsSupported = -1,  // not supported
 };
 
 typedef hipError_t cudaError_t;

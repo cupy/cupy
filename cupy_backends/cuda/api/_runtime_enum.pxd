@@ -200,6 +200,7 @@ IF HIP_VERSION > 0:
         # cudaDevAttrMaxSharedMemoryPerBlockOptin
         # cudaDevAttrCanFlushRemoteWrites
         # cudaDevAttrHostRegisterSupported
+        cudaDevAttrMemoryPoolsSupported = -1  # not supported
     IF HIP_VERSION >= 310:
         cpdef enum:
             # hipDeviceAttributeAsicRevision  # does not exist in CUDA

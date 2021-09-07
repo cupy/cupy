@@ -29,7 +29,8 @@ cudaError_t cudaDriverGetVersion(int* driverVersion) {
     return cudaSuccess;
 }
 
-cudaError_t cudaRuntimeGetVersion(...) {
+cudaError_t cudaRuntimeGetVersion(int* runtimeVersion) {
+    *runtimeVersion = 0; // make the stub work safely without driver
     return cudaSuccess;
 }
 
