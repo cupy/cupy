@@ -275,6 +275,95 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def chisquare(self, df, size=None):
+        """Chi-square distribution.
+
+        Returns an array of samples drawn from the chi-square distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2}.
+
+        Args:
+            df (float or array_like of floats): Degree of freedom :math:`k`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the chi-square distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.chisquare`
+        """
+
+        cdef ndarray y
+
+        if not isinstance(df, ndarray):
+            if type(df) in (float, int):
+                df = cupy.asarray(df, numpy.float64)
+            else:
+                raise TypeError('df is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            df = df.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        if size is None:
+            size = df.shape
+
+        y = ndarray(size, numpy.float64)
+
+        df = cupy.broadcast_to(df, y.shape)
+        y = self.standard_gamma(df / 2)
+        y *= 2
+        return y
+
+    def dirichlet(self, alpha, size=None):
+        """Dirichlet distribution.
+
+        Returns an array of samples drawn from the dirichlet distribution. Its
+        probability density function is defined as
+
+        .. math::
+            f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
+                {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
+                \\prod_{i=1}^Kx_i^{\\alpha_i-1}.
+
+        Args:
+            alpha (array): Parameters of the dirichlet distribution
+                :math:`\\alpha`.
+            size (int or tuple of ints): The shape of the array. If ``None``,
+                array of ``alpha.shape`` is generated
+
+        Returns:
+            cupy.ndarray: Samples drawn from the dirichlet distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.dirichlet`
+        """
+
+        if not isinstance(alpha, ndarray):
+            if type(alpha) in (float, int):
+                alpha = cupy.asarray(alpha, numpy.float64)
+            else:
+                raise TypeError('alpha is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            alpha = alpha.astype('d', copy=False)
+
+        if size is not None:
+            if not isinstance(size, tuple):
+                size = (size,)
+            size += alpha.shape
+
+        elif size is None:
+            size = alpha.shape
+
+        y = self.standard_gamma(alpha, size)
+        y /= y.sum(axis=-1, keepdims=True)
+        return y
+
     def exponential(self, scale=1.0, size=None):
         """Exponential distribution.
 
@@ -297,6 +386,58 @@ class Generator:
             :meth:`numpy.random.Generator.exponential`
         """
         return self.standard_exponential(size) * scale
+
+    def f(self, dfnum, dfden, size=None):
+        """F distribution.
+
+        Returns an array of samples drawn from the f distribution. Its
+        probability density function is defined as
+
+        .. math::
+            f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+                \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+                x^{\\frac{d_1}{2}-1} \
+                \\left(1+\\frac{d_1}{d_2}x\\right) \
+                ^{-\\frac{d_1+d_2}{2}}.
+
+        Args:
+            dfnum (float or array_like of floats): Degrees of freedom in
+                numerator, :math:`d_1`.
+            dfden (float or array_like of floats): Degrees of freedom in
+                denominator, :math:`d_2`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the f distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.f`
+        """
+        if not isinstance(dfnum, ndarray):
+            if type(dfnum) in (float, int):
+                dfnum = cupy.asarray(dfnum, numpy.float64)
+            else:
+                raise TypeError('dfnum is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            dfnum = dfnum.astype('d', copy=False)
+
+        if not isinstance(dfden, ndarray):
+            if type(dfden) in (float, int):
+                dfden = cupy.asarray(dfden, numpy.float64)
+            else:
+                raise TypeError('dfden is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            dfden = dfden.astype('d', copy=False)
+
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden).shape
+
+        y = (self.chisquare(dfnum, size) * dfden) / (
+            self.chisquare(dfden, size) * dfnum)
+        return y
 
     def geometric(self, p, size=None):
         """Geometric distribution.
@@ -572,6 +713,48 @@ class Generator:
         lam_ptr = lam_arr.data.ptr
         _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
         return y
+
+    def power(self, a, size=None):
+        """Power distribution.
+
+        Returns an array of samples drawn from the power distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = ax^{a-1}.
+
+        Args:
+            a (float or array_like of floats): Parameter of the power
+                distribution :math:`a`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the power distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.power`
+        """
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            a = a.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = a.shape
+
+        x = self.standard_exponential(size)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Standard normal distribution.

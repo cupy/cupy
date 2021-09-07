@@ -340,6 +340,32 @@ class Hypergeometric:
         self.check_ks(0.05)(self.ngood, self.nbad, self.nsample, size=2000)
 
 
+power_params = [
+    {'a': 0.5},
+    {'a': 1},
+    {'a': 5},
+    {'a': [0.8, 0.7, 1, 2, 5]},
+]
+
+
+class Power:
+
+    target_method = 'power'
+
+    def test_power(self):
+        a = self.a
+        if not isinstance(self.a, float):
+            a = cupy.array(self.a)
+        self.generate(a=a)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_power_ks(self):
+        if not isinstance(self.a, float):
+            self.skipTest('Statistical checks only for scalar `a`')
+        self.check_ks(0.05)(
+            a=self.a, size=2000)
+
+
 logseries_params = [
     {'p': 0.5},
     {'p': 0.1},
@@ -363,3 +389,81 @@ class Logseries:
         if not isinstance(self.p, float):
             self.skipTest('Statistical checks only for scalar `p`')
         self.check_ks(0.05)(p=self.p, size=2000)
+
+
+chisquare_params = [
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+    {'df': [2, 5, 8]},
+]
+
+
+class Chisquare:
+
+    target_method = 'chisquare'
+
+    def test_chisquare(self):
+        df = self.df
+        if not isinstance(self.df, float):
+            df = cupy.array(self.df)
+        self.generate(df=df)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_chisquare_ks(self):
+        if not isinstance(self.df, float):
+            self.skipTest('Statistical checks only for scalar `df`')
+        self.check_ks(0.05)(
+            df=self.df, size=2000)
+
+
+f_params = [
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+    {'dfnum': [1.0, 3.0, 3.0], 'dfden': [3.0, 3.0, 1.0]},
+]
+
+
+class F:
+
+    target_method = 'f'
+
+    def test_f(self):
+        dfnum = self.dfnum
+        dfden = self.dfden
+        if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
+            dfnum = cupy.array(self.dfnum)
+            dfden = cupy.array(self.dfden)
+        self.generate(dfnum, dfden)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_f_ks(self):
+        if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(self.dfnum, self.dfden, size=2000)
+
+
+dirichlet_params = [
+    {'alpha': 5},
+    {'alpha': 1},
+    {'alpha': [2, 5, 8]}
+]
+
+
+class Dirichlet:
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, float):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=(3, 2))
+
+    def test_dirichlet_int_shape(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, int):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=5)
+
+    # TODO(kataoka): add distribution test

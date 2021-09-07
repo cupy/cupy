@@ -504,7 +504,11 @@ cpdef ndarray tensordot_core(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 11000 and compute_capability >= 50:
+    if (
+        not runtime._is_hip_environment and
+        _cuda_runtime_version >= 11000 and
+        compute_capability >= 50
+    ):
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         return out
 
@@ -526,7 +530,8 @@ cpdef ndarray tensordot_core(
                       'half precision floating numbers, so the computation '
                       'will be done by casting to single precision')
     if dtype == 'e':
-        use_tensor_core = (_cuda_runtime_version >= 9000 and
+        use_tensor_core = (not runtime._is_hip_environment and
+                           _cuda_runtime_version >= 9000 and
                            compute_capability >= 70)
         if use_tensor_core:
             cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)

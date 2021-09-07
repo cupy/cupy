@@ -88,7 +88,7 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
 
 def _lu_factor(a, overwrite_a=False, check_finite=True):
     a = cupy.asarray(a)
-    _util._assert_rank2(a)
+    _util._assert_2d(a)
 
     dtype = a.dtype
 
@@ -286,8 +286,8 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     (lu, ipiv) = lu_and_piv
 
     _util._assert_cupy_array(lu)
-    _util._assert_rank2(lu)
-    _util._assert_nd_squareness(lu)
+    _util._assert_2d(lu)
+    _util._assert_stacked_square(lu)
 
     m = lu.shape[0]
     if m != b.shape[0]:

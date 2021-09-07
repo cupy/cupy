@@ -601,7 +601,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -614,7 +614,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -803,7 +803,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1123,7 +1123,7 @@ class TestCscMatrixSum:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1320,7 +1320,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1338,7 +1338,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1351,7 +1351,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version <= 402:
+            elif HIP_version < 40400000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 

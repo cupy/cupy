@@ -280,6 +280,15 @@ class TestHypergeometric(
     pass
 
 
+@testing.parameterize(*common_distributions.power_params)
+@testing.fix_random()
+class TestPower(
+    common_distributions.Power,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -317,6 +326,34 @@ class TestRandomStateThreadSafe(unittest.TestCase):
 @testing.fix_random()
 class TestLogseries(
     common_distributions.Logseries,
+    GeneratorTestCase
+):
+    pass
+
+
+@testing.parameterize(*common_distributions.chisquare_params)
+@testing.fix_random()
+class TestChisquare(
+    common_distributions.Chisquare,
+    GeneratorTestCase
+):
+    pass
+
+
+@testing.parameterize(*common_distributions.f_params)
+@testing.fix_random()
+class TestF(
+    common_distributions.F,
+    GeneratorTestCase
+):
+    pass
+
+
+@testing.parameterize(*common_distributions.dirichlet_params)
+@testing.fix_random()
+class TestDrichlet(
+    common_distributions.Dirichlet,
+
     GeneratorTestCase
 ):
     pass

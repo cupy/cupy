@@ -12,6 +12,8 @@ import cupyx
 _default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
 
 
+# The helper functions raise LinAlgError if the conditions are not met.
+
 def _assert_cupy_array(*arrays):
     for a in arrays:
         if not isinstance(a, cupy._core.ndarray):
@@ -19,7 +21,7 @@ def _assert_cupy_array(*arrays):
                 'cupy.linalg only supports cupy.ndarray')
 
 
-def _assert_rank2(*arrays):
+def _assert_2d(*arrays):
     for a in arrays:
         if a.ndim != 2:
             raise linalg.LinAlgError(
@@ -27,9 +29,30 @@ def _assert_rank2(*arrays):
                 'two-dimensional'.format(a.ndim))
 
 
-def _assert_nd_squareness(*arrays):
+def _assert_stacked_2d(*arrays):
     for a in arrays:
-        if max(a.shape[-2:]) != min(a.shape[-2:]):
+        if a.ndim < 2:
+            raise linalg.LinAlgError(
+                '{}-dimensional array given. Array must be '
+                'at least two-dimensional'.format(a.ndim))
+
+
+def _assert_stacked_square(*arrays):
+    """Assert that stacked matrices are square matrices
+
+    Precondition: `arrays` are at least 2d. The caller should assert it
+    beforehand. For example,
+
+    >>> def det(a):
+    ...     _assert_stacked_2d(a)
+    ...     _assert_stacked_square(a)
+    ...     ...
+
+    """
+
+    for a in arrays:
+        m, n = a.shape[-2:]
+        if m != n:
             raise linalg.LinAlgError(
                 'Last 2 dimensions of the array must be square')
 
@@ -150,4 +173,23 @@ _triu_kernel = _core.ElementwiseKernel(
 
 def _triu(x, k=0):
     _triu_kernel(k, x)
+    return x
+
+
+def stacked_identity(batch_shape, n, dtype):
+    shape = batch_shape + (n, n)
+    idx = cupy.arange(n)
+    x = cupy.zeros(shape, dtype)
+    x[..., idx, idx] = 1
+    return x
+
+
+def stacked_identity_like(x):
+    """
+    Precondition: ``x`` is `cupy.ndarray` of shape ``(..., N, N)``
+    """
+    n = x.shape[-1]
+    idx = cupy.arange(n)
+    x = cupy.zeros_like(x)
+    x[..., idx, idx] = 1
     return x

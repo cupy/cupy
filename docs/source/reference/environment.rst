@@ -146,8 +146,14 @@ These environment variables are used during installation (building CuPy from sou
 
   Default: ``0``
 
-  Build CuPy for AMD ROCm Platform (experimental).
+  If set to ``1``, CuPy is built for AMD ROCm Platform (experimental).
   For building the ROCm support, see :ref:`install_hip` for further detail.
+
+.. envvar:: CUPY_USE_CUDA_PYTHON
+
+  Default: ``0``
+
+  If set to ``1``, CuPy is built using `CUDA Python <https://github.com/NVIDIA/cuda-python>`_.
 
 .. envvar:: CUPY_NVCC_GENERATE_CODE
 
