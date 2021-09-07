@@ -1,7 +1,7 @@
 import sys
-import unittest
 
 import numpy
+import pytest
 
 import cupy
 import cupy.cuda.cudnn as libcudnn
@@ -40,9 +40,10 @@ else:
     'dtype': [numpy.float32, numpy.float64],
     'mode': modes,
 }))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-class TestCudnnActivation(unittest.TestCase):
+@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+class TestCudnnActivation:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
         self.y = testing.shaped_arange((3, 4), cupy, self.dtype)
@@ -59,9 +60,10 @@ class TestCudnnActivation(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
     'mode': coef_modes,
 }))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-class TestCudnnActivationCoef(unittest.TestCase):
+@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+class TestCudnnActivationCoef:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
         self.y = testing.shaped_arange((3, 4), cupy, self.dtype)
@@ -81,9 +83,10 @@ class TestCudnnActivationCoef(unittest.TestCase):
     'ratio': [0.0, 0.1, 0.2, 0.5],
     'seed': [0, 100]
 }))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-class TestCudnnDropout(unittest.TestCase):
+@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+class TestCudnnDropout:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
         self.gy = testing.shaped_arange((3, 4), cupy, self.dtype)
@@ -133,9 +136,10 @@ class TestCudnnDropout(unittest.TestCase):
     'bias': [True, False],
     'layout': layouts,
 })))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-class TestConvolutionForward(unittest.TestCase):
+@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+class TestConvolutionForward:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         ndim = self.ndim
         dtype = self.dtype
@@ -181,11 +185,10 @@ class TestConvolutionForward(unittest.TestCase):
             self.err = ValueError
         elif ndim > 2 and self.dilate > 1:
             self.err = libcudnn.CuDNNError
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
-
-    def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        yield
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def call(self):
         cudnn.convolution_forward(
@@ -198,16 +201,16 @@ class TestConvolutionForward(unittest.TestCase):
         if self.layout == libcudnn.CUDNN_TENSOR_NHWC:
             version = libcudnn.getVersion()
             if self.groups > 1:
-                return unittest.SkipTest()
+                pytest.skip()
             if self.dilate > 1 and version < 7300:
-                return unittest.SkipTest()
+                pytest.skip()
             if self.dtype is numpy.float64 and version < 7100:
-                return unittest.SkipTest()
+                pytest.skip()
         if self.err is None:
             self.call()
             assert (self.y == 0).all()
         else:
-            with self.assertRaises(self.err):
+            with pytest.raises(self.err):
                 self.call()
 
 
@@ -221,9 +224,10 @@ class TestConvolutionForward(unittest.TestCase):
     'auto_tune': [True, False],
     'deterministic': [True, False],
 })))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-class TestConvolutionBackwardFilter(unittest.TestCase):
+@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+class TestConvolutionBackwardFilter:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         ndim = self.ndim
         dtype = self.dtype
@@ -263,11 +267,10 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
               self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
             self.err = RuntimeError
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
-
-    def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        yield
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def call(self):
         cudnn.convolution_backward_filter(
@@ -285,7 +288,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
             self.call()
             assert (self.gW == 0).all()
         else:
-            with self.assertRaises(self.err):
+            with pytest.raises(self.err):
                 self.call()
 
 
@@ -300,9 +303,10 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
     'deterministic': [True, False],
     'bias': [True, False],
 })))
-@unittest.skipUnless(cudnn_enabled, 'cuDNN is not available')
-class TestConvolutionBackwardData(unittest.TestCase):
+@pytest.mark.skipif(not cudnn_enabled, reason='cuDNN is not available')
+class TestConvolutionBackwardData:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         ndim = self.ndim
         dtype = self.dtype
@@ -350,11 +354,10 @@ class TestConvolutionBackwardData(unittest.TestCase):
               self.dilate > 1 and self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
             self.err = RuntimeError
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
-
-    def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        yield
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def call(self):
         cudnn.convolution_backward_data(
@@ -372,7 +375,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
             self.call()
             assert (self.gx == 0).all()
         else:
-            with self.assertRaises(self.err):
+            with pytest.raises(self.err):
                 self.call()
 
 
@@ -382,9 +385,10 @@ class TestConvolutionBackwardData(unittest.TestCase):
     'stride': [2, 4],
     'auto_tune': [True, False],
 }))
-@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500 or
-                 cudnn_version >= 8000, 'cuDNN 7.5.0 or later is required')
-class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
+@pytest.mark.skipif(
+    not cudnn_enabled or cudnn_version < 7500 or cudnn_version >= 8000,
+    reason='cuDNN 7.x (x >= 5) is required')
+class TestConvolutionNoAvailableAlgorithm:
     '''Checks if an expected error is raised.
 
     This checks if an expected error is raised when no available algorithm
@@ -396,6 +400,7 @@ class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
     cuDNN version. The conditions below are set based on cuDNN 7.5.0 and 7.6.0.
     '''
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.layout = libcudnn.CUDNN_TENSOR_NHWC
         n = 16
@@ -417,17 +422,16 @@ class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
         self.gx = cupy.empty(x_shape, dtype=self.dtype)
         self.gW = cupy.empty(W_shape, dtype=self.dtype)
         self.gy = cupy.ones(y_shape, dtype=self.dtype)
-        self._workspace_size = cudnn.get_max_workspace_size()
+        _workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(0)
-
-    def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        yield
+        cudnn.set_max_workspace_size(_workspace_size)
 
     def test_backward_filter(self):
         if not (self.layout == libcudnn.CUDNN_TENSOR_NHWC and
                 self.dtype == numpy.float64):
-            return unittest.SkipTest()
-        with self.assertRaises(RuntimeError):
+            pytest.skip()
+        with pytest.raises(RuntimeError):
             cudnn.convolution_backward_filter(
                 self.x, self.gy, self.gW,
                 pad=(self.pad, self.pad), stride=(self.stride, self.stride),
@@ -437,8 +441,8 @@ class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
 
     def test_backward_data(self):
         if self.layout != libcudnn.CUDNN_TENSOR_NHWC:
-            return unittest.SkipTest()
-        with self.assertRaises(RuntimeError):
+            pytest.skip()
+        with pytest.raises(RuntimeError):
             cudnn.convolution_backward_data(
                 self.W, self.gy, None, self.gx,
                 pad=(self.pad, self.pad), stride=(self.stride, self.stride),

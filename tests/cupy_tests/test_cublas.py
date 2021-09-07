@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -16,7 +14,7 @@ from cupy.testing import _attr
     'nrhs': [None, 1, 10],
 }))
 @_attr.gpu
-class TestBatchedGesv(unittest.TestCase):
+class TestBatchedGesv:
     _tol = {'f': 5e-5, 'd': 1e-12}
 
     def _make_random_matrices(self, shape, xp):
@@ -34,6 +32,7 @@ class TestBatchedGesv(unittest.TestCase):
         a = numpy.einsum('...ik,...k,...kj->...ij', u, s, vh)
         return cupy.array(a)
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
         if self.dtype.char in 'fF':
@@ -72,9 +71,10 @@ class TestBatchedGesv(unittest.TestCase):
     'mode': [None, numpy, cupy],
 }))
 @_attr.gpu
-class TestLevel1Functions(unittest.TestCase):
+class TestLevel1Functions:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
         self.tol = self._tol[self.dtype.char.lower()]
@@ -142,7 +142,7 @@ class TestLevel1Functions(unittest.TestCase):
         ref = x.dot(y)
         out = self._make_out(self.dtype)
         if self.dtype.char in 'FD':
-            with self.assertRaises(TypeError):
+            with pytest.raises(TypeError):
                 res = cublas.dot(x, y, out=out)
             return
         res = cublas.dot(x, y, out=out)
@@ -195,9 +195,10 @@ class TestLevel1Functions(unittest.TestCase):
     'mode': [None, numpy, cupy],
 }))
 @_attr.gpu
-class TestGemv(unittest.TestCase):
+class TestGemv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
         self.tol = self._tol[self.dtype.char.lower()]
@@ -236,9 +237,10 @@ class TestGemv(unittest.TestCase):
     'mode': [None, numpy, cupy],
 }))
 @_attr.gpu
-class TestGer(unittest.TestCase):
+class TestGer:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
         self.tol = self._tol[self.dtype.char.lower()]
@@ -254,7 +256,7 @@ class TestGer(unittest.TestCase):
 
     def test_ger(self):
         if self.dtype.char in 'FD':
-            with self.assertRaises(TypeError):
+            with pytest.raises(TypeError):
                 cublas.ger(self.alpha, self.x, self.y, self.a)
             return
         ref = self.alpha * cupy.outer(self.x, self.y) + self.a
@@ -288,7 +290,7 @@ class TestGer(unittest.TestCase):
     'mode': [None, numpy, cupy],
 }))
 @_attr.gpu
-class TestGemmAndGeam(unittest.TestCase):
+class TestGemmAndGeam:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_matrix(self, m, n, trans, order, dtype):
@@ -309,7 +311,7 @@ class TestGemmAndGeam(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_gemm(self, dtype):
         if not (self.mode is None and self.orderc == 'C'):
-            raise unittest.SkipTest()
+            pytest.skip()
         dtype = numpy.dtype(dtype)
         tol = self._tol[dtype.char.lower()]
         m, n, k = self.mnk
@@ -347,7 +349,7 @@ class TestGemmAndGeam(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_geam(self, dtype):
         if self.orderc != 'F':
-            raise unittest.SkipTest()
+            pytest.skip()
         dtype = numpy.dtype(dtype)
         tol = self._tol[dtype.char.lower()]
         m, n, _ = self.mnk
@@ -397,7 +399,7 @@ class TestGemmAndGeam(unittest.TestCase):
     'orderc': ['C', 'F'],
 }))
 @_attr.gpu
-class TestDgmm(unittest.TestCase):
+class TestDgmm:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _setup(self, dtype, xdim=1):
@@ -421,7 +423,7 @@ class TestDgmm(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_dgmm(self, dtype):
         if self.orderc != 'F':
-            raise unittest.SkipTest()
+            pytest.skip()
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x) @ self.a
@@ -444,7 +446,7 @@ class TestDgmm(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_dgmm_inplace(self, dtype):
         if self.orderc != 'F':
-            raise unittest.SkipTest()
+            pytest.skip()
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x) @ self.a
@@ -467,7 +469,7 @@ class TestDgmm(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_dgmm_incx_minus_one(self, dtype):
         if self.orderc != 'F':
-            raise unittest.SkipTest()
+            pytest.skip()
         if cupy.cuda.runtime.is_hip:
             if self._check_dgmm_incx_minus_one_hip_skip_condition():
                 pytest.xfail('HIP dgmm may have a bug')
@@ -482,7 +484,7 @@ class TestDgmm(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_dgmm_x_scalar(self, dtype):
         if self.orderc != 'F':
-            raise unittest.SkipTest()
+            pytest.skip()
         self._setup(dtype, xdim=0)
         ref = self.x * self.a
         c = cublas.dgmm(self.side, self.a, self.x, incx=0)
@@ -491,7 +493,7 @@ class TestDgmm(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_dgmm_x_matrix(self, dtype):
         if self.orderc != 'F':
-            raise unittest.SkipTest()
+            pytest.skip()
         self._setup(dtype, xdim=2)
         if self.side == 'L':
             ref = cupy.diag(cupy.diag(self.x)) @ self.a
