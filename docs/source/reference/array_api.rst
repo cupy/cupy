@@ -1,5 +1,8 @@
 Python Array API Support
 ========================
 
-.. automodule:: cupyx.array_api
-   :members:
+.. toctree::
+   :maxdepth: 2
+
+   array_api_functions
+   array_api_array
