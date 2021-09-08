@@ -248,7 +248,7 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
             n_ellipses += 1
             ellipsis = i
     if n_ellipses > 1:
-        raise ValueError('Only one Ellipsis is allowed in index')
+        raise IndexError("an index can only have a single ellipsis ('...')")
 
     n = ndim - <Py_ssize_t>len(slice_list) + n_newaxes
     if n_ellipses > 0:
