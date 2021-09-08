@@ -1,5 +1,3 @@
-import unittest
-
 import numpy as np
 try:
     # scipy.fft is available since scipy v1.4.0+
@@ -15,7 +13,6 @@ import cupy as cp
 from cupy import testing
 from cupy.fft._fft import _default_fft_func, _fftn
 import cupyx.scipy.fft as cp_fft
-from cupyx.scipy.fft import _scipy_150
 
 
 def _fft_module(xp):
@@ -56,8 +53,9 @@ def _skip_forward_backward(norm):
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 @testing.gpu
-class TestFft(unittest.TestCase):
+class TestFft:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
@@ -155,8 +153,7 @@ class TestFft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None or not _scipy_150,
-                     'need scipy >= 1.5.0')
+    @testing.with_requires('scipy>=1.5.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -275,8 +272,7 @@ class TestFft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None or not _scipy_150,
-                     'need scipy >= 1.5.0')
+    @testing.with_requires('scipy>=1.5.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -320,8 +316,9 @@ class TestFft(unittest.TestCase):
     )
 ))
 @testing.gpu
-class TestFft2(unittest.TestCase):
+class TestFft2:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
@@ -416,8 +413,7 @@ class TestFft2(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None or not _scipy_150,
-                     'need scipy >= 1.5.0')
+    @testing.with_requires('scipy>=1.5.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -533,8 +529,7 @@ class TestFft2(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None or not _scipy_150,
-                     'need scipy >= 1.5.0')
+    @testing.with_requires('scipy>=1.5.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -582,8 +577,9 @@ class TestFft2(unittest.TestCase):
     )
 ))
 @testing.gpu
-class TestFftn(unittest.TestCase):
+class TestFftn:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
@@ -679,8 +675,7 @@ class TestFftn(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None or not _scipy_150,
-                     'need scipy >= 1.5.0')
+    @testing.with_requires('scipy>=1.5.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -796,8 +791,7 @@ class TestFftn(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @unittest.skipIf(scipy_fft is None or not _scipy_150,
-                     'need scipy >= 1.5.0')
+    @testing.with_requires('scipy>=1.5.0')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -829,8 +823,9 @@ class TestFftn(unittest.TestCase):
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 @testing.gpu
-class TestRfft(unittest.TestCase):
+class TestRfft:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
@@ -1008,8 +1003,9 @@ def _skip_hipFFT_PlanNd_bug(axes, shape):
     if cp.cuda.runtime.is_hip:
         # TODO(leofang): test newer ROCm versions
         if (axes == (0, 1) and shape == (2, 3, 4)):
-            raise unittest.SkipTest("hipFFT's PlanNd for this case is buggy, "
-                                    "so Plan1d is generated instead")
+            pytest.skip(
+                "hipFFT's PlanNd for this case is buggy, "
+                "so Plan1d is generated instead")
 
 
 @testing.parameterize(*(
@@ -1033,8 +1029,9 @@ def _skip_hipFFT_PlanNd_bug(axes, shape):
     )
 ))
 @testing.gpu
-class TestRfft2(unittest.TestCase):
+class TestRfft2:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
@@ -1174,8 +1171,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
-    @unittest.skipIf(cp.cuda.runtime.is_hip,
-                     "hipFFT's PlanNd for C2R is buggy")
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1202,8 +1199,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
-    @unittest.skipIf(cp.cuda.runtime.is_hip,
-                     "hipFFT's PlanNd for C2R is buggy")
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1227,8 +1224,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
-    @unittest.skipIf(cp.cuda.runtime.is_hip,
-                     "hipFFT's PlanNd for C2R is buggy")
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1293,8 +1290,9 @@ class TestRfft2(unittest.TestCase):
     )
 ))
 @testing.gpu
-class TestRfftn(unittest.TestCase):
+class TestRfftn:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
@@ -1434,8 +1432,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
-    @unittest.skipIf(cp.cuda.runtime.is_hip,
-                     "hipFFT's PlanNd for C2R is buggy")
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1462,8 +1460,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
-    @unittest.skipIf(cp.cuda.runtime.is_hip,
-                     "hipFFT's PlanNd for C2R is buggy")
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1487,8 +1485,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
-    @unittest.skipIf(cp.cuda.runtime.is_hip,
-                     "hipFFT's PlanNd for C2R is buggy")
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1539,8 +1537,9 @@ class TestRfftn(unittest.TestCase):
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
-class TestHfft(unittest.TestCase):
+class TestHfft:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         _skip_forward_backward(self.norm)
 
