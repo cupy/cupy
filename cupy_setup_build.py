@@ -292,8 +292,7 @@ if not use_hip:
         'required': True,
         'file': [
             'cupy.random._bit_generator',
-            ('cupy.random._generator_api',
-             ['cupy/random/cupy_distributions.cu']),
+            'cupy.random._generator_api',
         ],
         'include': [
         ],
@@ -731,9 +730,15 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        extra_objects = []
         if module['name'] == 'random':
             if compiler.compiler_type == 'msvc':
                 compile_args.append('-D_USE_MATH_DEFINES')
+            import subprocess
+            command = 'nvcc -c cupy/random/cupy_distributions.cu -o TMP_cupy_distributions.o -O2 --compiler-options="-fPIC"'
+            print('NVCC COMPILE --- ', command)
+            subprocess.check_call(command.split())
+            extra_objects = ['TMP_cupy_distributions.o']
 
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
@@ -778,7 +783,7 @@ def make_extensions(options, compiler, use_cython):
                 ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
-
+            s_file['extra_objects'] = extra_objects
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s_file)
             ret.append(extension)
