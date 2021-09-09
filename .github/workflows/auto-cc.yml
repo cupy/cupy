@@ -10,7 +10,11 @@ jobs:
   auto-notify:
     if: |
         github.repository_owner == 'cupy' &&
-        github.event.label.name == 'hip'
+        contains('|hip|array-api|', github.event.label.name)
+    env:
+      NOTIFY_TARGETS: '{"hip": "@amathews-amd", "array-api": "@asmeurer"}'
+      ISSUE_NUMBER: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
+      ISSUE_BODY_TAG: "<!-- Added by Auto Notify Bot (${{ github.event.label.name }}) -->"
     runs-on: ubuntu-20.04
 
     steps:
@@ -18,15 +22,15 @@ jobs:
         uses: peter-evans/find-comment@v1
         id: fc
         with:
-            issue-number: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
-            body-includes: "<!-- Added by CuPy Auto Notify Bot -->"
+            issue-number: ${{ env.ISSUE_NUMBER }}
+            body-includes: ${{ env.ISSUE_BODY_TAG }}
 
       - name: Create comment
         uses: peter-evans/create-or-update-comment@v1
         with:
-            issue-number: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
+            issue-number: ${{ env.ISSUE_NUMBER }}
             comment-id: ${{steps.fc.outputs.comment-id}}
             edit-mode: replace
             body: |
-                <!-- Added by CuPy Auto Notify Bot -->
-                cc/ @amathews-amd
+                ${{ env.ISSUE_BODY_TAG }}
+                cc/ ${{ fromJSON(env.NOTIFY_TARGETS)[github.event.label.name] }}
