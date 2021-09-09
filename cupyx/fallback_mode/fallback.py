@@ -422,6 +422,7 @@ class vectorize(object):
             args = (args[0]._numpy_object,) + args[1:]
         notification._dispatch_notification(np.vectorize)
         self.__dict__['vec_obj'] = np.vectorize(*args, **kwargs)
+        self.__dict__['__doc__'] = self.__dict__['vec_obj'].__doc__
 
     def __getattr__(self, attr):
         return getattr(self.__dict__['vec_obj'], attr)
