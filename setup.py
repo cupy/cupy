@@ -5,7 +5,9 @@ import os
 from setuptools import setup, find_packages
 import sys
 
-import cupy_setup_build
+sys.path.append(
+    os.path.join(os.path.abspath(os.path.dirname(__file__)), 'install'))
+from cupy_builder import cupy_setup_build
 
 
 for submodule in ('cupy/_core/include/cupy/cub/',
