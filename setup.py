@@ -5,9 +5,13 @@ import os
 from setuptools import setup, find_packages
 import sys
 
-sys.path.append(
-    os.path.join(os.path.abspath(os.path.dirname(__file__)), 'install'))
-from cupy_builder import cupy_setup_build
+source_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(os.path.join(source_root, 'install'))
+
+import cupy_builder  # NOQA
+from cupy_builder import cupy_setup_build  # NOQA
+
+cupy_builder.initialize(source_root)
 
 
 for submodule in ('cupy/_core/include/cupy/cub/',

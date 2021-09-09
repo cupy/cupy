@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 
-
+import cupy_builder
 import cupy_builder.install_utils as utils
 
 
@@ -173,8 +173,8 @@ def get_compiler_setting(use_hip):
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
     # for <cupy/complex.cuh>
-    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/_core/include')
+    cupy_header = os.path.join(
+        cupy_builder.get_source_root(), 'cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
