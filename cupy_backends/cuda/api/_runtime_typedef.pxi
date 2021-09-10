@@ -107,13 +107,13 @@ cdef extern from *:
     ctypedef void* MemPool 'cudaMemPool_t'
     ctypedef int MemPoolAttr 'cudaMemPoolAttr'
 
-    IF CUDA_VERSION > 0:
+    IF CUPY_CUDA_VERSION > 0:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
             int type
             int device
             void* devicePointer
             void* hostPointer
-    ELIF HIP_VERSION > 0:
+    ELIF CUPY_HIP_VERSION > 0:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
             int memoryType
             int device
@@ -123,7 +123,7 @@ cdef extern from *:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
             pass  # for RTD
 
-    IF CUDA_VERSION >= 11000:
+    IF CUPY_CUDA_VERSION >= 11000:
         # We can't use IF in the middle of structs declaration
         # to add or ignore fields in compile time so we have to
         # replicate the struct definition
@@ -208,7 +208,7 @@ cdef extern from *:
             int          maxBlocksPerMultiProcessor  # CUDA 11.0 field
             int          accessPolicyMaxWindowSize  # CUDA 11.0 field
             size_t       reservedSharedMemPerBlock  # CUDA 11.0 field
-    ELIF CUDA_VERSION >= 10000:
+    ELIF CUPY_CUDA_VERSION >= 10000:
         ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
@@ -286,7 +286,7 @@ cdef extern from *:
             size_t       sharedMemPerBlockOptin
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
-    ELIF CUDA_VERSION == 9020:
+    ELIF CUPY_CUDA_VERSION == 9020:
         ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             size_t       totalGlobalMem
@@ -361,7 +361,7 @@ cdef extern from *:
             size_t       sharedMemPerBlockOptin
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
-    ELIF HIP_VERSION > 0:
+    ELIF CUPY_HIP_VERSION > 0:
         ctypedef struct deviceArch 'hipDeviceArch_t':
             unsigned hasGlobalInt32Atomics
             unsigned hasGlobalFloatAtomicExch
@@ -386,7 +386,7 @@ cdef extern from *:
             unsigned has3dGrid
             unsigned hasDynamicParallelism
 
-        IF HIP_VERSION >= 310:
+        IF CUPY_HIP_VERSION >= 310:
             ctypedef struct DeviceProp 'cudaDeviceProp':
                 char name[256]
                 size_t totalGlobalMem
