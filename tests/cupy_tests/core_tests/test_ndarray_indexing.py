@@ -107,23 +107,20 @@ class TestArrayIndexingParameterized(unittest.TestCase):
 
 @testing.parameterize(
     {'shape': (), 'transpose': None, 'indexes': 0},
-    {'shape': (), 'transpose': None, 'indexes': (slice(0, 1, 0),)},
+    # Do not test which class will be raised:
+    # - too many indices (IndexError)
+    # - slice step cannot be zero (ValueError)
+    # {'shape': (), 'transpose': None, 'indexes': (slice(0, 1, 0),)},
     {'shape': (2, 3), 'transpose': None, 'indexes': (0, 0, 0)},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': -3},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': -5},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': 3},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': 5},
     {'shape': (2, 3, 4), 'transpose': None,
-     'indexes': (slice(0, 1, 0), )},
-    {'shape': (2, 3, 4), 'transpose': None,
-     'indexes': (slice((0, 0), None, None), )},
-    {'shape': (2, 3, 4), 'transpose': None,
-     'indexes': (slice(None, (0, 0), None), )},
-    {'shape': (2, 3, 4), 'transpose': None,
-     'indexes': (slice(None, None, (0, 0)), )},
+     'indexes': (Ellipsis, Ellipsis, 1)},
 )
 @testing.gpu
-class TestArrayInvalidIndex(unittest.TestCase):
+class TestArrayIndexIndexError(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_invalid_getitem(self, dtype):
@@ -131,7 +128,27 @@ class TestArrayInvalidIndex(unittest.TestCase):
             a = testing.shaped_arange(self.shape, xp, dtype)
             if self.transpose:
                 a = a.transpose(self.transpose)
-            with pytest.raises((ValueError, IndexError, TypeError)):
+            with pytest.raises(IndexError):
+                a[self.indexes]
+
+
+@testing.parameterize(
+    {'error_class': ValueError, 'indexes': (slice(0, 1, 0),)},
+    {'error_class': TypeError,
+     'indexes': (slice((0, 0), None, None), )},
+    {'error_class': TypeError,
+     'indexes': (slice(None, (0, 0), None), )},
+    {'error_class': TypeError,
+     'indexes': (slice(None, None, (0, 0)), )},
+)
+@testing.gpu
+class TestArrayIndexOtherError(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_invalid_getitem(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            with pytest.raises(self.error_class):
                 a[self.indexes]
 
 
