@@ -106,10 +106,16 @@ library_records['cudnn'] = _cudnn_records
 
 
 def _make_cutensor_url(public_version, filename):
-    # https://developer.download.nvidia.com/compute/cutensor/1.2.2/local_installers/libcutensor-linux-x86_64-1.2.2.5.tar.gz
-    return (
-        'https://developer.download.nvidia.com/compute/cutensor/' +
-        '{}/local_installers/{}'.format(public_version, filename))
+    if public_version == '1.2.2':  # v10.1
+        # https://developer.download.nvidia.com/compute/cutensor/1.2.2/local_installers/libcutensor-linux-x86_64-1.2.2.5.tar.gz
+        return (
+            'https://developer.download.nvidia.com/compute/cutensor/' +
+            '{}/local_installers/{}'.format(public_version, filename))
+    else:
+        # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz
+        return (
+            'https://developer.download.nvidia.com/compute/cutensor/' +
+            'redist/libcutensor/linux-x86_64/{}'.format(filename))
 
 
 def _make_cutensor_record(
@@ -131,29 +137,29 @@ def _make_cutensor_record(
 
 
 _cutensor_records.append(_make_cutensor_record(
-    '11.4', '1.3.1',
-    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.1.3.zip'))
+    '11.4', '1.3.3',
+    'libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz',
+    'libcutensor-windows-x86_64-1.3.3.2-archive.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.3', '1.3.1',
-    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.1.3.zip'))
+    '11.3', '1.3.3',
+    'libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz',
+    'libcutensor-windows-x86_64-1.3.3.2-archive.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.2', '1.3.1',
-    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.1.3.zip'))
+    '11.2', '1.3.3',
+    'libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz',
+    'libcutensor-windows-x86_64-1.3.3.2-archive.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.1', '1.3.1',
-    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.1.3.zip'))
+    '11.1', '1.3.3',
+    'libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz',
+    'libcutensor-windows-x86_64-1.3.3.2-archive.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.0', '1.3.1',
-    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.1.3.zip'))
+    '11.0', '1.3.3',
+    'libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz',
+    'libcutensor-windows-x86_64-1.3.3.2-archive.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '10.2', '1.3.1',
-    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.1.3.zip'))
+    '10.2', '1.3.3',
+    'libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz',
+    'libcutensor-windows-x86_64-1.3.3.2-archive.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '10.1', '1.2.2',
     'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
@@ -255,18 +261,20 @@ The current platform ({}) is not supported.'''.format(target_platform))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
+            if cuda == '10.1':  # v1.2.2
+                dir_name = 'libcutensor'
+                license = 'license.pdf'
+            else:  # v1.3.3
+                dir_name = os.path.basename(url)[:-7]  # remove '.tar.xz'
+                license = 'LICENSE'
             shutil.move(
-                os.path.join(outdir, 'libcutensor', 'include'),
+                os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
             shutil.move(
-                os.path.join(outdir, 'libcutensor', 'lib', cuda),
+                os.path.join(outdir, dir_name, 'lib', cuda),
                 os.path.join(destination, 'lib'))
-            if cuda == '10.1':
-                license = 'license.pdf'  # v1.2.2
-            else:
-                license = 'license.txt'  # v1.3.0
             shutil.move(
-                os.path.join(outdir, 'libcutensor', license), destination)
+                os.path.join(outdir, dir_name, license), destination)
         elif library == 'nccl':
             subdir = os.listdir(outdir)  # ['nccl_2.8.4-1+cuda11.2_x86_64']
             assert len(subdir) == 1
