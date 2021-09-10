@@ -14,9 +14,9 @@ import pkg_resources
 import setuptools
 from setuptools.command import build_ext
 
-from install import build
-from install.build import PLATFORM_LINUX
-from install.build import PLATFORM_WIN32
+import cupy_builder.install_build as build
+from cupy_builder.install_build import PLATFORM_LINUX
+from cupy_builder.install_build import PLATFORM_WIN32
 
 try:
     # This is to avoid getting numpy imported inside other modules and
