@@ -235,18 +235,17 @@ class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'object': ['ndarray']},
-    {'object': ['ndarray', '__add__']},
-    {'object': ['vectorize']},
-    {'object': ['linalg', 'eig']},
+    {'object': 'ndarray'},
+    {'object': 'ndarray.__add__'},
+    {'object': 'vectorize'},
+    {'object': 'linalg.eig'},
 )
 @testing.gpu
 class TestDocs(unittest.TestCase):
 
     @numpy_fallback_equal()
     def test_docs(self, xp):
-        obj = functools.reduce(getattr, self.object, xp)
-        return getattr(obj, '__doc__')
+        return operator.attrgetter(self.object)(xp).__doc__
 
 
 @testing.gpu
