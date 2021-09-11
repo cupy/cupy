@@ -80,6 +80,7 @@ class LinuxGenerator:
                 '       zlib-devel bzip2 bzip2-devel readline-devel sqlite \\',
                 '       sqlite-devel openssl-devel tk-devel libffi-devel \\',
                 '       xz-devel && \\',
+                '    yum -y install epel-release && \\',
                 '    yum -y install "@Development Tools" ccache git curl && \\',  # NOQA
                 '    yum -y install {}'.format(
                     ' '.join(self._additional_packages('yum'))
