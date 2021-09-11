@@ -1,0 +1,36 @@
+name: Docker
+
+on:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - docker/**
+
+jobs:
+  docker-build-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Login to DockerHub
+      if: github.event_name == 'release'
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Docker Build & Push (docker/python3)
+      uses: docker/build-push-action@v2
+      with:
+        context: docker/python3
+        tags: cupy/cupy:${{ github.event.release.tag_name }}
+        push: ${{ github.event_name == 'release' }}
+
+    - name: Docker Build & Push (docker/rocm)
+      uses: docker/build-push-action@v2
+      with:
+        context: docker/rocm
+        tags: cupy/cupy-rocm:${{ github.event.release.tag_name }}
+        push: ${{ github.event_name == 'release' }}
