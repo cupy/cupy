@@ -1,3 +1,7 @@
+import cupy_builder.install_build as build
+
+from cupy_builder import Context
+
 # The value of the key 'file' is a list that contains extension names
 # or tuples of an extension name and a list of other souces files
 # required to build the extension such as .cpp files and .cu files.
@@ -7,9 +11,8 @@
 # The extension name is also interpreted as the name of the Cython
 # source file required to build the extension with appending '.pyx'
 # file extension.
-MODULES = []
 
-cuda_files = [
+_cuda_files = [
     'cupy_backends.cuda.api.driver',
     'cupy_backends.cuda.api._driver_enum',
     'cupy_backends.cuda.api.runtime',
@@ -59,19 +62,20 @@ cuda_files = [
     'cupy.fft._cache',
     'cupy.fft._callback',
     'cupy.lib._polynomial',
-    'cupy._util'
+    'cupy._util',
 ]
 
-if use_hip:
+
+def get_modules(context: Context):
     # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
-    MODULES.append({
+    HIP_cuda_nvtx_cusolver = {
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'required': True,
-        'file': cuda_files + [
+        'file': _cuda_files + [
             'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
             'cupy.cusolver',
@@ -100,12 +104,11 @@ if use_hip:
         ],
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
-    })
-else:
-    MODULES.append({
+    }
+    CUDA_cuda = {
         'name': 'cuda',
         'required': True,
-        'file': cuda_files,
+        'file': _cuda_files,
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -119,19 +122,17 @@ else:
         # TODO(kmaehashi): Split profiler module to remove dependency to
         # cudart when using CUDA Python.
         'libraries':
-            (['cudart'] if use_cuda_python else ['cuda', 'cudart']) + [
-            'cublas',
-            'cufft',
-            'curand',
-            'cusparse',
-            'nvrtc',
+            (['cudart'] if context.use_cuda_python else ['cuda', 'cudart']) + [
+                'cublas',
+                'cufft',
+                'curand',
+                'cusparse',
+                'nvrtc',
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
-    })
-
-if not use_hip:
-    MODULES.append({
+    }
+    CUDA_cusolver = {
         'name': 'cusolver',
         'required': True,
         'file': [
@@ -145,10 +146,8 @@ if not use_hip:
             'cusolver',
         ],
         'check_method': build.check_cuda_version,
-    })
-
-if not use_hip:
-    MODULES.append({
+    }
+    CUDA_cudnn = {
         'name': 'cudnn',
         'file': [
             'cupy_backends.cuda.libs.cudnn',
@@ -162,9 +161,8 @@ if not use_hip:
         ],
         'check_method': build.check_cudnn_version,
         'version_method': build.get_cudnn_version,
-    })
-
-    MODULES.append({
+    }
+    CUDA_nccl = {
         'name': 'nccl',
         'file': [
             'cupy_backends.cuda.libs.nccl',
@@ -177,9 +175,8 @@ if not use_hip:
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    })
-
-    MODULES.append({
+    }
+    CUDA_nvtx = {
         'name': 'nvtx',
         'file': [
             'cupy_backends.cuda.libs.nvtx',
@@ -188,12 +185,11 @@ if not use_hip:
             'nvToolsExt.h',
         ],
         'libraries': [
-            'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
+            'nvToolsExt' if not build.PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
-    })
-
-    MODULES.append({
+    }
+    CUDA_cutensor = {
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
@@ -208,9 +204,8 @@ if not use_hip:
         ],
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
-    })
-
-    MODULES.append({
+    }
+    CUDA_cub = {
         'name': 'cub',
         'required': True,
         'file': [
@@ -225,9 +220,8 @@ if not use_hip:
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
-    })
-
-    MODULES.append({
+    }
+    CUDA_jitify = {
         'name': 'jitify',
         'required': True,
         'file': [
@@ -246,9 +240,8 @@ if not use_hip:
         ],
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
-    })
-
-    MODULES.append({
+    }
+    CUDA_random = {
         'name': 'random',
         'required': True,
         'file': [
@@ -263,9 +256,8 @@ if not use_hip:
             'cudart',
             'curand',
         ],
-    })
-
-    MODULES.append({
+    }
+    CUDA_cusparselt = {
         'name': 'cusparselt',
         'file': [
             'cupy_backends.cuda.libs.cusparselt',
@@ -278,9 +270,8 @@ if not use_hip:
         ],
         'check_method': build.check_cusparselt_version,
         'version_method': build.get_cusparselt_version,
-    })
-
-    MODULES.append({
+    }
+    CUDA_cugraph = {
         'name': 'cugraph',
         'file': [
             'cupy_backends.cuda.libs.cugraph',
@@ -293,10 +284,8 @@ if not use_hip:
         ],
         'check_method': build.check_cugraph_version,
         'version_method': build.get_cugraph_version,
-    })
-
-else:
-    MODULES.append({
+    }
+    HIP_cub = {
         'name': 'cub',
         'required': True,
         'file': [
@@ -310,9 +299,8 @@ else:
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
-    })
-
-    MODULES.append({
+    }
+    HIP_nccl = {
         'name': 'nccl',
         'file': [
             'cupy_backends.cuda.libs.nccl',
@@ -325,11 +313,8 @@ else:
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    })
-
-if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
-    if use_hip:
-        MODULES.append({
+    }
+    HIP_thrust = {
             'name': 'thrust',
             'required': True,
             'file': [
@@ -341,9 +326,8 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'libraries': [
                 'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             ],
-        })
-    else:
-        MODULES.append({
+    }
+    CUDA_thrust = {
             'name': 'thrust',
             'required': True,
             'file': [
@@ -360,16 +344,38 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             ],
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
-        })
+    }
+    COMMON_dlpack = {
+        'name': 'dlpack',
+        'required': True,
+        'file': [
+            'cupy._core.dlpack',
+        ],
+        'include': [
+            'cupy/dlpack/dlpack.h',
+        ],
+        'libraries': [],
+    }
 
-MODULES.append({
-    'name': 'dlpack',
-    'required': True,
-    'file': [
-        'cupy._core.dlpack',
-    ],
-    'include': [
-        'cupy/dlpack/dlpack.h',
-    ],
-    'libraries': [],
-})
+    if context.use_hip:
+        return [
+            HIP_cuda_nvtx_cusolver,
+            HIP_cub,
+            HIP_nccl,
+            COMMON_dlpack,
+        ] + [HIP_thrust] if context.enable_thrust else []
+
+    return [
+        CUDA_cuda,
+        CUDA_cusolver,
+        CUDA_cudnn,
+        CUDA_nccl,
+        CUDA_nvtx,
+        CUDA_cutensor,
+        CUDA_cub,
+        CUDA_jitify,
+        CUDA_random,
+        CUDA_cusparselt,
+        CUDA_cugraph,
+        COMMON_dlpack,
+    ] + [CUDA_thrust] if context.enable_thrust else []
