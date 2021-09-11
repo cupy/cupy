@@ -5,7 +5,13 @@ import os
 from setuptools import setup, find_packages
 import sys
 
-import cupy_setup_build
+source_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(os.path.join(source_root, 'install'))
+
+import cupy_builder  # NOQA
+from cupy_builder import cupy_setup_build  # NOQA
+
+cupy_builder.initialize(source_root)
 
 
 for submodule in ('cupy/_core/include/cupy/cub/',
@@ -31,11 +37,12 @@ requirements = {
     ],
 
     'install': [
-        'numpy>=1.17,<1.23',  # see #4773
+        'numpy>=1.17,<1.24',  # see #4773
         'fastrlock>=0.5',
     ],
     'all': [
-        'scipy>=1.4,<1.9',  # see #4773
+        'scipy>=1.4,<1.10',  # see #4773
+        'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
 

@@ -173,7 +173,7 @@ class AtomicOp(BuiltinFunc):
         self._op = op
         self._name = 'atomic' + op
         self._dtypes = dtypes
-        doc = f"""Call the ``{self._name}`` function to operate atomically on
+        doc = f"""Calls the ``{self._name}`` function to operate atomically on
         ``array[index]``. Please refer to `Atomic Functions`_ for detailed
         explanation.
 
@@ -238,14 +238,27 @@ class AtomicOp(BuiltinFunc):
         return Data(code, ctype)
 
 
-class Grid(BuiltinFunc):
+class GridFunc(BuiltinFunc):
 
-    def __call__(self, ndim):
-        """Compute the thread index in the grid.
+    def __init__(self, mode):
+        if mode == 'grid':
+            self._desc = 'Compute the thread index in the grid.'
+            self._eq = 'jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x'
+            self._link = 'numba.cuda.grid'
+            self._code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
+        elif mode == 'gridsize':
+            self._desc = 'Compute the grid size.'
+            self._eq = 'jit.blockDim.x * jit.gridDim.x'
+            self._link = 'numba.cuda.gridsize'
+            self._code = 'blockDim.{n} * gridDim.{n}'
+        else:
+            raise ValueError('unsupported function')
+
+        doc = f"""        {self._desc}
 
         Computation of the first integer is as follows::
 
-            jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x
+            {self._eq}
 
         and for the other two integers the ``y`` and ``z`` attributes are used.
 
@@ -257,12 +270,15 @@ class Grid(BuiltinFunc):
                 If ``ndim`` is 1, an integer is returned, otherwise a tuple.
 
         .. note::
-            This function follows the convention of Numba's `numba.cuda.grid`_.
+            This function follows the convention of Numba's `{self._link}`_.
 
-        .. _numba.cuda.grid:
-            https://numba.readthedocs.io/en/stable/cuda/kernels.html#absolute-positions
+        .. _{self._link}:
+            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#{self._link}
 
         """
+        self.__doc__ = doc
+
+    def __call__(self, ndim):
         super().__call__()
 
     def call_const(self, env, ndim):
@@ -271,9 +287,8 @@ class Grid(BuiltinFunc):
 
         # Numba convention: for 1D we return a single variable,
         # otherwise a tuple
-        code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
         if ndim == 1:
-            return Data(code.format(n='x'), _cuda_types.uint32)
+            return Data(self._code.format(n='x'), _cuda_types.uint32)
         elif ndim == 2:
             dims = ('x', 'y')
         elif ndim == 3:
@@ -281,7 +296,7 @@ class Grid(BuiltinFunc):
         else:
             raise ValueError('Only ndim=1,2,3 are supported')
 
-        elts_code = ', '.join(code.format(n=n) for n in dims)
+        elts_code = ', '.join(self._code.format(n=n) for n in dims)
         ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
         return Data(f'thrust::make_tuple({elts_code})', ctype)
 
@@ -292,7 +307,7 @@ class WarpShuffleOp(BuiltinFunc):
         self._op = op
         self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
         self._dtypes = dtypes
-        doc = f"""Call the ``{self._name}`` function. Please refer to
+        doc = f"""Calls the ``{self._name}`` function. Please refer to
         `Warp Shuffle Functions`_ for detailed explanation.
 
         .. _Warp Shuffle Functions:
@@ -344,6 +359,41 @@ class WarpShuffleOp(BuiltinFunc):
         return Data(code, ctype)
 
 
+class LaneID(BuiltinFunc):
+    def __call__(self):
+        """Returns the lane ID of the calling thread, ranging in
+        ``[0, jit.warpsize)``.
+
+        .. note::
+            Unlike `numba.cuda.laneid`_, this is a callable function instead
+            of a property.
+
+        .. _numba.cuda.laneid:
+            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.laneid
+        """
+        super().__call__()
+
+    def _get_preamble(self):
+        preamble = '__device__ __forceinline__ unsigned int LaneId() {'
+        if not runtime.is_hip:
+            # see https://github.com/NVIDIA/cub/blob/main/cub/util_ptx.cuh#L419
+            preamble += """
+                unsigned int ret;
+                asm ("mov.u32 %0, %%laneid;" : "=r"(ret) );
+                return ret; }
+            """
+        else:
+            # defined in hip/hcc_detail/device_functions.h
+            preamble += """
+                return __lane_id(); }
+            """
+        return preamble
+
+    def call_const(self, env):
+        env.preambles.add(self._get_preamble())
+        return Data('LaneId()', _cuda_types.uint32)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
     len: LenFunc(),
@@ -354,7 +404,9 @@ builtin_functions_dict = {
 syncthreads = SyncThreads()
 syncwarp = SyncWarp()
 shared_memory = SharedMemory()
-grid = Grid()
+grid = GridFunc('grid')
+gridsize = GridFunc('gridsize')
+laneid = LaneID()
 
 # atomic functions
 atomic_add = AtomicOp(

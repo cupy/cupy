@@ -4,7 +4,6 @@
 
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
@@ -21,6 +20,8 @@ cdef extern from '../../cupy_complex.h':
         double x, y
 
 cdef extern from '../../cupy_lapack.h' nogil:
+    ctypedef void* Stream 'cudaStream_t'
+
     # Context
     int cusolverDnCreate(Handle* handle)
     int cusolverSpCreate(SpHandle* handle)
@@ -28,10 +29,10 @@ cdef extern from '../../cupy_lapack.h' nogil:
     int cusolverSpDestroy(SpHandle handle)
 
     # Stream
-    int cusolverDnGetStream(Handle handle, driver.Stream* streamId)
-    int cusolverSpGetStream(SpHandle handle, driver.Stream* streamId)
-    int cusolverDnSetStream(Handle handle, driver.Stream streamId)
-    int cusolverSpSetStream(SpHandle handle, driver.Stream streamId)
+    int cusolverDnGetStream(Handle handle, Stream* streamId)
+    int cusolverSpGetStream(SpHandle handle, Stream* streamId)
+    int cusolverDnSetStream(Handle handle, Stream streamId)
+    int cusolverSpSetStream(SpHandle handle, Stream streamId)
 
     # Library Property
     int cusolverGetProperty(LibraryPropertyType type, int* value)
@@ -1108,12 +1109,12 @@ cpdef spDestroy(intptr_t handle):
 
 cpdef setStream(intptr_t handle, size_t stream):
     with nogil:
-        status = cusolverDnSetStream(<Handle>handle, <driver.Stream>stream)
+        status = cusolverDnSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(intptr_t handle) except? 0:
-    cdef driver.Stream stream
+    cdef Stream stream
     with nogil:
         status = cusolverDnGetStream(<Handle>handle, &stream)
     check_status(status)
@@ -1122,12 +1123,12 @@ cpdef size_t getStream(intptr_t handle) except? 0:
 
 cpdef spSetStream(intptr_t handle, size_t stream):
     with nogil:
-        status = cusolverSpSetStream(<SpHandle>handle, <driver.Stream>stream)
+        status = cusolverSpSetStream(<SpHandle>handle, <Stream>stream)
     check_status(status)
 
 
 cpdef size_t spGetStream(intptr_t handle) except *:
-    cdef driver.Stream stream
+    cdef Stream stream
     with nogil:
         status = cusolverSpGetStream(<SpHandle>handle, &stream)
     check_status(status)

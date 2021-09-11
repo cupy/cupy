@@ -1,6 +1,0 @@
-name: cupy
-type: sphinx
-base: docs/source
-requirements_file: docs/requirements.txt
-python:
-  pip_install: true

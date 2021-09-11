@@ -14,10 +14,16 @@ import pkg_resources
 import setuptools
 from setuptools.command import build_ext
 
-from install import build
-from install.build import PLATFORM_LINUX
-from install.build import PLATFORM_WIN32
+import cupy_builder.install_build as build
+from cupy_builder.install_build import PLATFORM_LINUX
+from cupy_builder.install_build import PLATFORM_WIN32
 
+try:
+    # This is to avoid getting numpy imported inside other modules and
+    # overwritting setuptools compilers (#5476)
+    import numpy.distutils  # NOQA
+except Exception:
+    pass
 
 # Cython requirements (minimum version and versions known to be broken).
 # Note: this must be in sync with setup_requires defined in setup.py.
@@ -25,6 +31,10 @@ required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
 use_hip = build.use_hip
+
+
+# Enable CUDA Python
+use_cuda_python = (os.environ.get('CUPY_USE_CUDA_PYTHON', '0') != '0')
 
 
 # The value of the key 'file' is a list that contains extension names
@@ -40,7 +50,9 @@ MODULES = []
 
 cuda_files = [
     'cupy_backends.cuda.api.driver',
+    'cupy_backends.cuda.api._driver_enum',
     'cupy_backends.cuda.api.runtime',
+    'cupy_backends.cuda.api._runtime_enum',
     'cupy_backends.cuda.libs.cublas',
     'cupy_backends.cuda.libs.curand',
     'cupy_backends.cuda.libs.cusparse',
@@ -108,6 +120,7 @@ if use_hip:
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipsparse.h',
             'hipfft.h',
             'roctx.h',
             'rocsolver.h',
@@ -117,10 +130,12 @@ if use_hip:
             'hipblas',
             ('hipfft', lambda hip_version: hip_version >= 401),
             'hiprand',
+            'hipsparse',
             'rocfft',
             'roctx64',
             'rocblas',
             'rocsolver',
+            'rocsparse',
         ],
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
@@ -140,10 +155,11 @@ else:
             'cusparse.h',
             'nvrtc.h',
         ],
-        'libraries': [
+        # TODO(kmaehashi): Split profiler module to remove dependency to
+        # cudart when using CUDA Python.
+        'libraries':
+            (['cudart'] if use_cuda_python else ['cuda', 'cudart']) + [
             'cublas',
-            'cuda',
-            'cudart',
             'cufft',
             'curand',
             'cusparse',
@@ -243,6 +259,7 @@ if not use_hip:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': [
+            # Dependency from CUB header files
             'cudart',
         ],
         'check_method': build.check_cub_version,
@@ -261,6 +278,7 @@ if not use_hip:
             'nvrtc.h',
         ],
         'libraries': [
+            # Dependency from Jitify header files
             'cuda',
             'cudart',
             'nvrtc',
@@ -280,6 +298,7 @@ if not use_hip:
         'include': [
         ],
         'libraries': [
+            # Dependency from cuRAND header files
             'cudart',
             'curand',
         ],
@@ -375,6 +394,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/sort.h',
             ],
             'libraries': [
+                # Dependency from Thrust header files
                 'cudart',
             ],
             'check_method': build.check_thrust_version,
@@ -672,6 +692,9 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
     if use_hip:
         settings['define_macros'].append(('CUPY_USE_HIP', '1'))
+        # introduced since ROCm 4.2.0
+        settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
+        # deprecated since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
     available_modules = []
@@ -914,17 +937,24 @@ def cythonize(extensions, arg_options):
     if compile_time_env is None:
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
+
+    # Enable CUDA Python.
+    # TODO: add `cuda` to `setup_requires` only when this flag is set
+    compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
+    if use_cuda_python:
+        print('Using CUDA Python')
+
     compile_time_env['CUPY_CUFFT_STATIC'] = False
-    compile_time_env['cython_version'] = str(cython_version)
+    compile_time_env['CUPY_CYTHON_VERSION'] = str(cython_version)
     if arg_options['no_cuda']:  # on RTD
-        compile_time_env['CUDA_VERSION'] = 0
-        compile_time_env['HIP_VERSION'] = 0
+        compile_time_env['CUPY_CUDA_VERSION'] = 0
+        compile_time_env['CUPY_HIP_VERSION'] = 0
     elif use_hip:  # on ROCm/HIP
-        compile_time_env['CUDA_VERSION'] = 0
-        compile_time_env['HIP_VERSION'] = build.get_hip_version()
+        compile_time_env['CUPY_CUDA_VERSION'] = 0
+        compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
     else:  # on CUDA
-        compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
-        compile_time_env['HIP_VERSION'] = 0
+        compile_time_env['CUPY_CUDA_VERSION'] = build.get_cuda_version()
+        compile_time_env['CUPY_HIP_VERSION'] = 0
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
@@ -1004,7 +1034,17 @@ def _nvcc_gencode_options(cuda_version):
         #
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
-        if cuda_version >= 11000:
+        if cuda_version >= 11010:
+            arch_list = ['compute_35',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         ('compute_80', 'sm_80'),
+                         ('compute_86', 'sm_86'),
+                         'compute_86']
+        elif cuda_version >= 11000:
             arch_list = ['compute_35',
                          'compute_50',
                          ('compute_60', 'sm_60'),

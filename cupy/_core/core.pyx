@@ -14,7 +14,6 @@ from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core._ufuncs import elementwise_copy_where
 from cupy._core import flags
 from cupy._core import syncdetect
 from cupy import cuda
@@ -114,7 +113,7 @@ cdef class ndarray:
 
             .. seealso::
                `Data type objects (dtype) \
-               <https://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
+               <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_
         ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
@@ -262,7 +261,7 @@ cdef class ndarray:
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
-    # https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
+    # https://numpy.org/doc/stable/reference/arrays.ndarray.html
 
     # -------------------------------------------------------------------------
     # Memory layout
@@ -496,14 +495,11 @@ cdef class ndarray:
 
         if self.size == 0:
             # skip copy
-            pass
-        elif self.dtype.kind == 'c' and newarray.dtype.kind == 'b':
-            cupy.not_equal(self, 0j, out=newarray)
-        elif self.dtype.kind == 'c' and newarray.dtype.kind != 'c':
-            warnings.warn(
-                'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
-            elementwise_copy(self.real, newarray)
+            if self.dtype.kind == 'c' and newarray.dtype.kind not in 'bc':
+                warnings.warn(
+                    'Casting complex values to real discards the imaginary '
+                    'part',
+                    numpy.ComplexWarning)
         else:
             elementwise_copy(self, newarray)
         return newarray
@@ -2049,6 +2045,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.2'
         elif 11030 <= _cuda_runtime_version < 11040:
             bundled_include = 'cuda-11.3'
+        elif 11040 <= _cuda_runtime_version < 11050:
+            bundled_include = 'cuda-11.4'
         else:
             # CUDA versions not yet supported.
             bundled_include = None
@@ -2084,7 +2082,7 @@ cpdef function.Module compile_with_cache(
 
 cdef str _id = 'out0 = in0'
 
-cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'fill')
+cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);

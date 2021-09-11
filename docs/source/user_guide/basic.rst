@@ -51,7 +51,7 @@ Using CuPy, we can perform the same calculations on GPU in a similar way:
 CuPy implements many functions on :class:`cupy.ndarray` objects.
 See the :ref:`reference <cupy_reference>` for the supported subset of NumPy API.
 Knowledge of NumPy will help you utilize most of the CuPy features.
-We, therefore, recommend you familiarize yourself with the `NumPy documentation <https://docs.scipy.org/doc/numpy/index.html>`_.
+We, therefore, recommend you familiarize yourself with the `NumPy documentation <https://numpy.org/doc/stable/index.html>`_.
 
 
 Current Device

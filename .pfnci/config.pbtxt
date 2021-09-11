@@ -43,18 +43,35 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 36
       disk: 10
       gpu: 2
     }
     time_limit: {
-      seconds: 14400
+      seconds: 21600
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda114"
   }
 }
 
+# CUDA 11.x + CUDA Python
+configs {
+  key: "cupy.linux.cuda11x-cuda-python"
+  value {
+    requirement {
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda11x-cuda-python"
+  }
+}
 
 # ROCm build test
 configs {

@@ -65,9 +65,14 @@ class TestNewDLPackConversion(unittest.TestCase):
                 with src_s:
                     orig_array = _gen_array(cupy.float32)
                     # If src_s != dst_s, dst_s waits until src_s complete.
-                    # Null stream (0) must be passed as streamLegacy (1).
-                    dltensor = orig_array.__dlpack__(
-                        1 if dst_s.ptr == 0 else dst_s.ptr)
+                    # Null stream (0) must be passed as streamLegacy (1)
+                    # on CUDA.
+                    if not cuda.runtime.is_hip and dst_s.ptr == 0:
+                        s_ptr = 1
+                    else:
+                        s_ptr = dst_s.ptr
+                    dltensor = orig_array.__dlpack__(s_ptr)
+
                 with dst_s:
                     out_array = cupy.from_dlpack(dltensor)
                     testing.assert_array_equal(orig_array, out_array)

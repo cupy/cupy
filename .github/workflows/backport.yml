@@ -11,7 +11,10 @@ jobs:
     if: |
         github.repository_owner == 'cupy' &&
         github.event.pull_request.merged == true &&
-        contains(github.event.pull_request.labels.*.name, 'to-be-backported')
+        (
+            (github.event.action == 'closed'  && contains(github.event.pull_request.labels.*.name, 'to-be-backported')) ||
+            (github.event.action == 'labeled' && github.event.label.name == 'to-be-backported')
+        )
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub

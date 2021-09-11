@@ -28,7 +28,7 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
 
 :class:`cupy.ndarray` also implements ``__array_function__`` interface (see `NEP 18 — A dispatch mechanism for NumPy’s high level array functions <http://www.numpy.org/neps/nep-0018-array-function-protocol.html>`_ for details).
 This enables code using NumPy to be directly operated on CuPy arrays.
-``__array_function__`` feature requires NumPy 1.16 or later; note that this is currently defined as an experimental feature of NumPy and you need to specify the environment variable (``NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1``) to enable it.
+``__array_function__`` feature requires NumPy 1.16 or later; As of NumPy 1.17, ``__array_function__`` is enabled by default.
 
 
 Numba
@@ -171,7 +171,7 @@ PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpa
 	dx = to_dlpack(tx1)
 
 	# Convert it into a CuPy array.
-	cx = cupy.fromDlpack(dx)
+	cx = cupy.from_dlpack(dx)
 
 	# Convert it back to a PyTorch tensor.
 	tx2 = from_dlpack(cx.toDlpack())
@@ -231,7 +231,7 @@ DLPack
 
 `DLPack <https://github.com/dmlc/dlpack>`__ is a specification of tensor structure to share tensors among frameworks.
 
-CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.fromDlpack` and :func:`cupy.ndarray.toDlpack`).
+CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.from_dlpack` and :func:`cupy.ndarray.toDlpack`).
 
 Here is a simple example:
 
@@ -246,7 +246,7 @@ Here is a simple example:
 	dx = cx1.toDlpack()
 
 	# Convert it back to a CuPy array.
-	cx2 = cupy.fromDlpack(dx)
+	cx2 = cupy.from_dlpack(dx)
 
 `TensorFlow <https://www.tensorflow.org>`_ also supports DLpack, so zero-copy data exchange between CuPy and TensorFlow through
 DLPack is possible:
@@ -268,7 +268,7 @@ DLPack is possible:
     >>> a.device
     '/job:localhost/replica:0/task:0/device:GPU:0'
     >>> cap = tf.experimental.dlpack.to_dlpack(a)
-    >>> b = cp.fromDlpack(cap)
+    >>> b = cp.from_dlpack(cap)
     >>> b *= 3
     >>> b
     array([1.4949363 , 0.60699713, 1.3276931 , 1.5781245 , 1.1914308 ,

@@ -465,6 +465,21 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_typecast_float2(self):
         self.check_typecast(100000.0)
 
+    # Skip float16 because of NumPy #19514
+    @testing.for_all_dtypes(name='x_type', no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def check_array_boolarray_op(self, op, xp, x_type):
+        a = xp.array([[2, 7, 1], [8, 2, 8]], x_type)
+        # Cast from np.bool8 array should not read bytes
+        b = xp.array([[3, 1, 4], [-1, -5, -9]], numpy.int8).view(bool)
+        return op(a, b)
+
+    def test_add_array_boolarray(self):
+        self.check_array_boolarray_op(operator.add)
+
+    def test_iadd_array_boolarray(self):
+        self.check_array_boolarray_op(operator.iadd)
+
 
 @testing.gpu
 class TestArrayIntElementwiseOp(unittest.TestCase):

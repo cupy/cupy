@@ -16,6 +16,7 @@ from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
+from cupy_backends.cuda.api import driver
 
 
 _test_source1 = r'''
@@ -633,7 +634,12 @@ class TestRaw(unittest.TestCase):
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        if self.backend == 'nvrtc' and not cupy.cuda.runtime.is_hip:
+        use_ptx = os.environ.get(
+            'CUPY_COMPILE_WITH_PTX', False)
+        if (self.backend == 'nvrtc' and (
+                use_ptx or (
+                not cupy.cuda.runtime.is_hip
+                and driver.get_build_version() < 11010))):
             # raised when calling ls.complete()
             error = cupy.cuda.driver.CUDADriverError
         else:  # nvcc, hipcc, hiprtc
@@ -1087,6 +1093,7 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
     'Requires compute capability 6.0 or later')
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Skip on HIP')
 class TestRawGridSync(unittest.TestCase):
 
     def test_grid_sync_rawkernel(self):

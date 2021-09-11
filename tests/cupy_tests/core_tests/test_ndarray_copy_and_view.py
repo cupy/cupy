@@ -163,6 +163,13 @@ class TestArrayCopyAndView:
         a = testing.shaped_arange((2, 3, 4), xp, src_dtype)
         return astype_without_warning(a, dst_dtype, order=order)
 
+    @testing.for_orders(['C', 'F', 'A', 'K', None])
+    @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
+    @testing.numpy_cupy_array_equal()
+    def test_astype_empty(self, xp, src_dtype, dst_dtype, order):
+        a = testing.shaped_arange((2, 0, 4), xp, src_dtype)
+        return astype_without_warning(a, dst_dtype, order=order)
+
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
     def test_astype_type(self, src_dtype, dst_dtype, order):
@@ -211,6 +218,12 @@ class TestArrayCopyAndView:
         src, _ = xp.broadcast_arrays(xp.empty((2,), dtype=src_dtype),
                                      xp.empty((2, 3, 2), dtype=src_dtype))
         return astype_without_warning(src, dst_dtype, order='K').strides
+
+    @testing.numpy_cupy_array_equal()
+    def test_astype_boolean_view(self, xp):
+        # See #4354
+        a = xp.array([0, 1, 2], dtype=numpy.int8).view(dtype=numpy.bool_)
+        return a.astype(numpy.int8)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

@@ -273,6 +273,9 @@ class TestAffineExceptions:
                 ndi.affine_transform(x, xp.ones((0, 3)), output=output)
 
     def test_invalid_texture_arguments(self):
+        if runtime.is_hip:
+            pytest.skip('texture memory not supported yet')
+
         aft = cupyx.scipy.ndimage.affine_transform
         x = [cupy.ones((8, ) * n, dtype=cupy.float32) for n in range(1, 5)]
 
@@ -312,6 +315,7 @@ class TestAffineExceptions:
                 texture_memory=True)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='texture memory not supported yet')
 @testing.parameterize(*testing.product({
     'output': [None, numpy.float32, 'empty'],
     'output_shape': [None, 10],
@@ -327,6 +331,7 @@ class TestAffineTransformTextureMemory:
     _multiprocess_can_split = True
 
     def _2d_rotation_matrix(self, theta, rotation_center):
+        import scipy.special
         c, s = scipy.special.cosdg(theta), scipy.special.sindg(theta)
         m = numpy.array([
             [1, 0, rotation_center[0]],
@@ -933,6 +938,26 @@ class TestSplineFilter1d:
         scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
                                     output=output, mode=self.mode)
         return output
+
+
+# See #5537
+@testing.slow
+@testing.with_requires('scipy')
+class TestSplineFilter1dLargeArray:
+
+    @pytest.mark.parametrize('mode', ['mirror', 'grid-wrap', 'reflect'])
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d_large_array(self, xp, scp, mode):
+        if mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
+        # Test input that cannot be indexed by int32 in bytes, i.e.
+        # x.size * dtype.itemsize >= 2 ** 31
+        x = xp.empty((2**20, 2**9), numpy.float32)
+        # To speed-up, do not generate many random numbers
+        x = x[::2**15, :]
+        x[...] = testing.shaped_random(
+            (2**5, 2**9), dtype=numpy.float32, xp=xp)
+        return scp.ndimage.spline_filter1d(x, mode=mode)
 
 
 @testing.parameterize(*testing.product({

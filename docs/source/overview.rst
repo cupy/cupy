@@ -12,17 +12,17 @@ interface.
 
 The following is a brief overview of supported subset of NumPy interface:
 
-- `Basic indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
+- `Basic indexing <https://numpy.org/doc/stable/reference/arrays.indexing.html>`_
   (indexing by ints, slices, newaxes, and Ellipsis)
-- Most of `Advanced indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing>`_
+- Most of `Advanced indexing <https://numpy.org/doc/stable/reference/arrays.indexing.html#advanced-indexing>`_
   (except for some indexing patterns with boolean masks)
 - Data types (dtypes): ``bool_``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``, ``float16``, ``float32``, ``float64``, ``complex64``, ``complex128``
-- Most of the `array creation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html>`_ (\ ``empty``, ``ones_like``, ``diag``, etc.)
-- Most of the `array manipulation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html>`_ (\ ``reshape``, ``rollaxis``, ``concatenate``, etc.)
-- All operators with `broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_
-- All `universal functions <https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_
+- Most of the `array creation routines <https://numpy.org/doc/stable/reference/routines.array-creation.html>`_ (\ ``empty``, ``ones_like``, ``diag``, etc.)
+- Most of the `array manipulation routines <https://numpy.org/doc/stable/reference/routines.array-manipulation.html>`_ (\ ``reshape``, ``rollaxis``, ``concatenate``, etc.)
+- All operators with `broadcasting <https://numpy.org/doc/stable/user/basics.broadcasting.html>`_
+- All `universal functions <https://numpy.org/doc/stable/reference/ufuncs.html>`_
   for elementwise operations (except those for complex numbers)
-- `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_ and `cuSOLVER <https://developer.nvidia.com/cusolver>`_
+- `Linear algebra functions <https://numpy.org/doc/stable/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_ and `cuSOLVER <https://developer.nvidia.com/cusolver>`_
 - Multi-dimensional `fast Fourier transform <https://numpy.org/doc/stable/reference/routines.fft.html>`_ (FFT), accelerated by `cuFFT <https://developer.nvidia.com/cufft>`_
 - Reduction along axes (``sum``, ``max``, ``argmax``, etc.)
 

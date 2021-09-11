@@ -66,7 +66,7 @@ double __device__ pseudo_huber(double delta, double r) {
 
 
 entr = _core.create_ufunc(
-    'cupyx_scipy_entr', ('f->f', 'd->d'),
+    'cupyx_scipy_special_entr', ('f->f', 'd->d'),
     'out0 = out0_type(entr(in0));',
     preamble=_float_preamble,
     doc='''Elementwise function for computing entropy.
@@ -77,7 +77,7 @@ entr = _core.create_ufunc(
 
 
 kl_div = _core.create_ufunc(
-    'cupyx_scipy_kl_div', ('ff->f', 'dd->d'),
+    'cupyx_scipy_special_kl_div', ('ff->f', 'dd->d'),
     'out0 = out0_type(kl_div(in0, in1));',
     preamble=_float_preamble,
     doc='''Elementwise function for computing Kullback-Leibler divergence.
@@ -88,7 +88,7 @@ kl_div = _core.create_ufunc(
 
 
 rel_entr = _core.create_ufunc(
-    'cupyx_scipy_rel_entr', ('ff->f', 'dd->d'),
+    'cupyx_scipy_special_rel_entr', ('ff->f', 'dd->d'),
     'out0 = out0_type(rel_entr(in0, in1));',
     preamble=_float_preamble,
     doc='''Elementwise function for computing relative entropy.
@@ -99,7 +99,7 @@ rel_entr = _core.create_ufunc(
 
 
 huber = _core.create_ufunc(
-    'cupyx_scipy_huber', ('ff->f', 'dd->d'),
+    'cupyx_scipy_special_huber', ('ff->f', 'dd->d'),
     'out0 = out0_type(huber(in0, in1));',
     preamble=_float_preamble,
     doc='''Elementwise function for computing the Huber loss.
@@ -110,7 +110,7 @@ huber = _core.create_ufunc(
 
 
 pseudo_huber = _core.create_ufunc(
-    'cupyx_scipy_pseudo_huber', ('ff->f', 'dd->d'),
+    'cupyx_scipy_special_pseudo_huber', ('ff->f', 'dd->d'),
     'out0 = out0_type(pseudo_huber(in0, in1));',
     preamble=_float_preamble,
     doc='''Elementwise function for computing the Pseudo-Huber loss.

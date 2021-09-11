@@ -6,6 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
+from cupy.cuda import runtime
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
@@ -83,7 +84,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm'):
+            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+                # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
                 return cusparse.csrgemm(a, other, transa=True)
             elif cusparse.check_availability('csrgemm2'):
@@ -95,7 +97,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm'):
+            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+                # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
                 b = other.T
                 return cusparse.csrgemm(a, b, transa=True, transb=True)
@@ -115,16 +118,22 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmv'):
+                if cusparse.check_availability('csrmv') and not runtime.is_hip:
+                    # trans=True is buggy as of ROCm 4.2.0
                     csrmv = cusparse.csrmv
-                elif cusparse.check_availability('spmv'):
+                elif (cusparse.check_availability('spmv')
+                        and not runtime.is_hip):
+                    # trans=True is buggy as of ROCm 4.2.0
+                    # (I got HIPSPARSE_STATUS_INTERNAL_ERROR...)
                     csrmv = cusparse.spmv
                 else:
                     raise NotImplementedError
                 return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmm2'):
+                if (cusparse.check_availability('csrmm2')
+                        and not runtime.is_hip):
+                    # trans=True is buggy as of ROCm 4.2.0
                     csrmm = cusparse.csrmm2
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
@@ -187,7 +196,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
         x.sum_duplicates()
-        if cusparse.check_availability('sparseToDense'):
+        if (cusparse.check_availability('sparseToDense')
+                and (not runtime.is_hip or x.nnz > 0)):
+            # On HIP, nnz=0 is problematic as of ROCm 4.2.0
             y = cusparse.sparseToDense(x)
             if order == 'F':
                 return y
