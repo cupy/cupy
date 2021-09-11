@@ -87,9 +87,8 @@ long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
 
-here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
-with open(os.path.join(here, 'cupy', '_version.py')) as f:
+with open(os.path.join(source_root, 'cupy', '_version.py')) as f:
     exec(f.read())
 
 CLASSIFIERS = """\
