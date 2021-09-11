@@ -1,5 +1,6 @@
-import cupy_builder.install_build as build
+from typing import Any, Dict, List
 
+import cupy_builder.install_build as build
 from cupy_builder import Context
 
 # The value of the key 'file' is a list that contains extension names
@@ -66,7 +67,7 @@ _cuda_files = [
 ]
 
 
-def get_modules(context: Context):
+def get_modules(context: Context) -> List[Dict[str, Any]]:
     # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of

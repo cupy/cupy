@@ -1,3 +1,5 @@
+import typing as _typing
+
 # Legacy modules
 from cupy_builder import cupy_setup_build  # NOQA
 from cupy_builder import install_build  # NOQA
@@ -7,7 +9,7 @@ from cupy_builder._context import Context  # NOQA
 from cupy_builder._modules import get_modules  # NOQA
 
 
-_context: Context = None
+_context: _typing.Optional[Context] = None
 
 
 def initialize(context: Context) -> None:
