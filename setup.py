@@ -11,22 +11,10 @@ sys.path.append(os.path.join(source_root, 'install'))
 import cupy_builder  # NOQA
 from cupy_builder import cupy_setup_build  # NOQA
 
-cupy_builder.initialize(cupy_builder.Context(source_root))
-
-
-for submodule in ('cupy/_core/include/cupy/cub/',
-                  'cupy/_core/include/cupy/jitify'):
-    if len(os.listdir(submodule)) == 0:
-        msg = '''
-        The folder %s is a git submodule but is
-        currently empty. Please use the command
-
-            git submodule update --init
-
-        to populate the folder before building from source.
-        ''' % submodule
-        print(msg, file=sys.stderr)
-        sys.exit(1)
+ctx = cupy_builder.Context(source_root)
+cupy_builder.initialize(ctx)
+if not cupy_builder.preflight_check(ctx):
+    sys.exit(1)
 
 
 requirements = {
