@@ -14,6 +14,7 @@ import pkg_resources
 import setuptools
 from setuptools.command import build_ext
 
+import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder.install_build import PLATFORM_LINUX
 from cupy_builder.install_build import PLATFORM_WIN32
@@ -31,10 +32,6 @@ required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
 use_hip = build.use_hip
-
-
-# Enable CUDA Python
-use_cuda_python = (os.environ.get('CUPY_USE_CUDA_PYTHON', '0') != '0')
 
 
 def ensure_module_file(file):
@@ -68,6 +65,7 @@ def module_extension_sources(file, use_cython, no_cuda):
 
 
 def get_required_modules():
+    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
     return [m['name'] for m in MODULES if m.get('required', False)]
 
 
@@ -117,6 +115,8 @@ def preconfigure_modules(compiler, settings):
     can be built in the current environment and reports it.
     Returns a list of module names available.
     """
+
+    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
 
     nvcc_path = build.get_nvcc_path()
     hipcc_path = build.get_hipcc_path()
@@ -284,6 +284,8 @@ def _rpath_base():
 
 def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
+
+    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
 
     no_cuda = options['no_cuda']
     use_hip = not no_cuda and options['use_hip']
@@ -563,6 +565,7 @@ def cythonize(extensions, arg_options):
 
     # Enable CUDA Python.
     # TODO: add `cuda` to `setup_requires` only when this flag is set
+    use_cuda_python = cupy_builder.get_context().use_cuda_python
     compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
     if use_cuda_python:
         print('Using CUDA Python')

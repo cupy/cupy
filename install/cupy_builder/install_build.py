@@ -174,7 +174,7 @@ def get_compiler_setting(use_hip):
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(
-        cupy_builder.get_source_root(), 'cupy/_core/include')
+        cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:

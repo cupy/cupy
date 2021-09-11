@@ -11,7 +11,7 @@ sys.path.append(os.path.join(source_root, 'install'))
 import cupy_builder  # NOQA
 from cupy_builder import cupy_setup_build  # NOQA
 
-cupy_builder.initialize(source_root)
+cupy_builder.initialize(cupy_builder.Context(source_root))
 
 
 for submodule in ('cupy/_core/include/cupy/cub/',
