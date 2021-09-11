@@ -315,35 +315,35 @@ def get_modules(context: Context):
         'version_method': build.get_nccl_version,
     }
     HIP_thrust = {
-            'name': 'thrust',
-            'required': True,
-            'file': [
-                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-            ],
-            'include': [
-                'thrust/version.h',
-            ],
-            'libraries': [
-                'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
-            ],
+        'name': 'thrust',
+        'required': True,
+        'file': [
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+        ],
+        'include': [
+            'thrust/version.h',
+        ],
+        'libraries': [
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
+        ],
     }
     CUDA_thrust = {
-            'name': 'thrust',
-            'required': True,
-            'file': [
-                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-            ],
-            'include': [
-                'thrust/device_ptr.h',
-                'thrust/sequence.h',
-                'thrust/sort.h',
-            ],
-            'libraries': [
-                # Dependency from Thrust header files
-                'cudart',
-            ],
-            'check_method': build.check_thrust_version,
-            'version_method': build.get_thrust_version,
+        'name': 'thrust',
+        'required': True,
+        'file': [
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+        ],
+        'include': [
+            'thrust/device_ptr.h',
+            'thrust/sequence.h',
+            'thrust/sort.h',
+        ],
+        'libraries': [
+            # Dependency from Thrust header files
+            'cudart',
+        ],
+        'check_method': build.check_thrust_version,
+        'version_method': build.get_thrust_version,
     }
     COMMON_dlpack = {
         'name': 'dlpack',
