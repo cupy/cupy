@@ -30,3 +30,5 @@ pip install PyYAML
 * Test notifications to Gitter.
 * Generate shuffle tests from `schema.yaml`.
 * Support using OS-provided Python binary packages instead of pyenv.
+* Support coverage reporting.
+* Support installation tests.
