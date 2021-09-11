@@ -62,7 +62,7 @@ class LinuxGenerator:
                 '       libxml2-dev libxmlsec1-dev libffi-dev \\',
                 '       liblzma-dev && \\',
                 '    apt-get -qqy install ccache git curl && \\',
-                '    apt-get -qqy install {}'.format(
+                '    apt-get -qqy --allow-change-held-packages install {}'.format(
                     ' '.join(self._additional_packages('apt'))
                 ),
                 '',
@@ -142,9 +142,12 @@ class LinuxGenerator:
             cudnn = matrix.cudnn
             if nccl is not None:
                 spec = self.schema['nccl'][nccl]['spec']
-                packages.append(
-                    f'libnccl-dev={spec}+cuda{cuda}' if apt else
-                    f'libnccl-devel-{spec}+cuda{cuda}')
+                major = nccl.split('.')[0]
+                if apt:
+                    packages.append(f'libnccl{major}={spec}+cuda{cuda}')
+                    packages.append(f'libnccl-dev={spec}+cuda{cuda}')
+                else:
+                    packages.append(f'libnccl-devel-{spec}+cuda{cuda}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 packages.append(
@@ -157,7 +160,7 @@ class LinuxGenerator:
                     f'libcusparselt-devel-{spec}')
             if cudnn is not None:
                 spec = self.schema['cudnn'][cudnn]['spec']
-                major = cudnn.split('.', 2)[0]
+                major = cudnn.split('.')[0]
                 packages.append(
                     f'libcudnn{major}-dev={spec}+cuda{cuda}' if apt else
                     f'libcudnn{major}-devel-{spec}+cuda{cuda}')
@@ -429,7 +432,6 @@ def main(argv: List[str]) -> int:
 
     covgen = CoverageGenerator(schema, matrixes)
     output['coverage.md'] = covgen.generate_markdown()
-
     # Write output files.
     base_dir = (
         options.directory if options.directory else
