@@ -402,7 +402,10 @@ def lt_pyfunc(x):
     testing.product_dict(
         testing.product({
             'filter': ['generic_filter'],
-            'func_or_kernel': [(rms_raw, rms_pyfunc), (lt_red, lt_pyfunc)],
+            'func_or_kernel': [
+                ('rms_raw', 'rms_pyfunc'),
+                ('lt_red', 'lt_pyfunc'),
+            ],
             'footprint': [False, True],
         }),
 
@@ -426,7 +429,10 @@ def lt_pyfunc(x):
         })
     ) + testing.product({
         'filter': ['generic_filter'],
-        'func_or_kernel': [(rms_red, rms_pyfunc), (lt_raw, lt_pyfunc)],
+        'func_or_kernel': [
+            ('rms_red', 'rms_pyfunc'),
+            ('lt_raw', 'lt_pyfunc'),
+        ],
         'footprint': [False, True],
         **COMMON_PARAMS,
         'dtype': [numpy.float64],
@@ -435,11 +441,25 @@ def lt_pyfunc(x):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestGenericFilter(FilterTestCaseBase):
+
+    _func_or_kernels = {
+        'rms_raw': rms_raw,
+        'rms_red': rms_red,
+        'rms_pyfunc': rms_pyfunc,
+        'lt_raw': lt_raw,
+        'lt_red': lt_red,
+        'lt_pyfunc': lt_pyfunc,
+    }
+
+    def get_func_or_kernel(self, xp):
+        return self._func_or_kernels[
+            self.func_or_kernel[1 if xp == numpy else 0]]
+
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         # Need to deal with the different versions of the functions given to
         # numpy vs cupy
-        self.function = self.func_or_kernel[int(xp == numpy)]
+        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 

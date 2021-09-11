@@ -941,6 +941,7 @@ class TestSplineFilter1d:
 
 
 # See #5537
+@testing.slow
 @testing.with_requires('scipy')
 class TestSplineFilter1dLargeArray:
 
@@ -951,11 +952,11 @@ class TestSplineFilter1dLargeArray:
             pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
         # Test input that cannot be indexed by int32 in bytes, i.e.
         # x.size * dtype.itemsize >= 2 ** 31
-        x = xp.empty((2**20, 2**9), numpy.float64)
+        x = xp.empty((2**20, 2**9), numpy.float32)
         # To speed-up, do not generate many random numbers
         x = x[::2**15, :]
         x[...] = testing.shaped_random(
-            (2**5, 2**9), dtype=numpy.float64, xp=xp)
+            (2**5, 2**9), dtype=numpy.float32, xp=xp)
         return scp.ndimage.spline_filter1d(x, mode=mode)
 
 

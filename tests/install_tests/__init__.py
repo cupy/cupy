@@ -3,12 +3,18 @@ import os
 import sys
 
 
+source_root = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
 def _from_install_import(name):
-    install_module_path = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'install')
     original_sys_path = sys.path.copy()
     try:
-        sys.path.append(install_module_path)
+        sys.path.append(os.path.join(source_root, 'install'))
         return importlib.import_module(name)
     finally:
         sys.path = original_sys_path
+
+
+cupy_builder = _from_install_import('cupy_builder')
+cupy_builder.initialize(source_root)
