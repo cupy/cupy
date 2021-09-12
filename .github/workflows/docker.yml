@@ -10,6 +10,8 @@ on:
 jobs:
   docker-build-push:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_TAG_NAME: ${{ (github.event_name == 'release' && github.event.release.tag_name) || 'pull-request-test' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -25,12 +27,12 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         context: docker/python3
-        tags: cupy/cupy:${{ github.event.release.tag_name }}
+        tags: cupy/cupy:${{ env.DOCKER_TAG_NAME }}
         push: ${{ github.event_name == 'release' }}
 
     - name: Docker Build & Push (docker/rocm)
       uses: docker/build-push-action@v2
       with:
         context: docker/rocm
-        tags: cupy/cupy-rocm:${{ github.event.release.tag_name }}
+        tags: cupy/cupy-rocm:${{ env.DOCKER_TAG_NAME }}
         push: ${{ github.event_name == 'release' }}
