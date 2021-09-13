@@ -57,13 +57,7 @@ cdef _ndarray_shape_setter(ndarray self, newshape):
         newshape = (newshape,)
     shape = internal.infer_unknown_dimension(newshape, self.size)
     _get_strides_for_nocopy_reshape(self, shape, strides)
-    if strides.size() != shape.size():
-        raise AttributeError(
-            'Incompatible shape for in-place modification. Use `.reshape()` '
-            'to make a copy with the desired shape.')
-    self._shape = shape
-    self._strides = strides
-    self._update_f_contiguity()
+    self._set_shape_and_strides(shape, strides, False, True)
 
 
 cdef ndarray _ndarray_reshape(ndarray self, tuple shape, order):
@@ -116,6 +110,7 @@ cdef ndarray _ndarray_swapaxes(
 
 
 cdef ndarray _ndarray_flatten(ndarray self):
+    # TODO(leofang): check if we need a MAX_NDIM guard
     newarray = self.copy(order='C')
     newarray._shape.assign(<Py_ssize_t>1, self.size)
     newarray._strides.assign(<Py_ssize_t>1,

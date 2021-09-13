@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 import cupy
 from cupy import testing
 

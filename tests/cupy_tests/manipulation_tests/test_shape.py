@@ -122,6 +122,30 @@ class TestReshape(unittest.TestCase):
         a = xp.zeros((8,), dtype=xp.float32)
         return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
 
+    def _test_ndim_limit(self, xp, ndim, dtype, order):
+        idx = [1]*ndim
+        idx[-1] = ndim
+        a = xp.ones(ndim, dtype=dtype)
+        a = a.reshape(idx, order=order)
+        assert a.ndim == ndim
+        return a
+
+    @testing.for_orders('CFA')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ndim_limit1(self, xp, dtype, order):
+        # from cupy/cupy#4193
+        a = self._test_ndim_limit(xp, 32, dtype, order)
+        return a
+
+    @testing.for_orders('CFA')
+    @testing.for_all_dtypes()
+    def test_ndim_limit2(self, dtype, order):
+        # from cupy/cupy#4193
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                a = self._test_ndim_limit(xp, 33, dtype, order)
+
 
 @testing.gpu
 class TestRavel(unittest.TestCase):
