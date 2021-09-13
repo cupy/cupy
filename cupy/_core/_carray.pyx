@@ -30,7 +30,7 @@ cdef class CArray(function.CPointer):
 
 cdef class CIndexer(function.CPointer):
 
-    cdef void init(self, Py_ssize_t size, const shape_t &shape):
+    cdef void init(self, Py_ssize_t size, const shape_t &shape) except*:
         cdef size_t ndim = shape.size()
         if ndim > get_max_ndim():
             raise ValueError(f'The input array dimension ({ndim}) is beyond '

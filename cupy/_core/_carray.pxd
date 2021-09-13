@@ -40,7 +40,7 @@ cdef class CIndexer(function.CPointer):
     cdef:
         _CIndexer val
 
-    cdef void init(self, Py_ssize_t size, const shape_t &shape)
+    cdef void init(self, Py_ssize_t size, const shape_t &shape) except*
 
 
 cdef class Indexer:
