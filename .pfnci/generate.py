@@ -53,8 +53,8 @@ class LinuxGenerator:
             if matrix.rocm is not None:
                 # GPG key has expired in ROCm 4.2 (or earlier) docker images
                 lines += [
-                    'RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',
-                ]  # NOQA
+                    'RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
+                ]
 
             lines += [
                 'RUN export DEBIAN_FRONTEND=noninteractive && \\',
