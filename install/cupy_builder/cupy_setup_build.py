@@ -64,8 +64,7 @@ def module_extension_sources(file, use_cython, no_cuda):
     return [pyx] + others
 
 
-def get_required_modules():
-    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
+def get_required_modules(MODULES):
     return [m['name'] for m in MODULES if m.get('required', False)]
 
 
@@ -108,15 +107,13 @@ def canonicalize_hip_libraries(hip_version, libraries):
     libraries.extend(new_libraries)
 
 
-def preconfigure_modules(compiler, settings):
+def preconfigure_modules(MODULES, compiler, settings):
     """Returns a list of modules buildable in given environment and settings.
 
     For each module in MODULES list, this function checks if the module
     can be built in the current environment and reports it.
     Returns a list of module names available.
     """
-
-    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
 
     nvcc_path = build.get_nvcc_path()
     hipcc_path = build.get_hipcc_path()
@@ -191,6 +188,7 @@ def preconfigure_modules(compiler, settings):
                     settings['include_dirs'].insert(0, inc_path)
                     lib_path = os.path.join(rocm_path, 'hipfft', 'lib')
                     settings['library_dirs'].insert(0, lib_path)
+                # n.b., this modifieds MODULES['cuda']['libraries'] inplace
                 canonicalize_hip_libraries(hip_version, module['libraries'])
 
         print('')
@@ -326,8 +324,9 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules, settings = preconfigure_modules(compiler, settings)
-        required_modules = get_required_modules()
+        available_modules, settings = preconfigure_modules(
+            MODULES, compiler, settings)
+        required_modules = get_required_modules(MODULES)
         if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
