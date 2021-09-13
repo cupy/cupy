@@ -110,7 +110,6 @@ cdef ndarray _ndarray_swapaxes(
 
 
 cdef ndarray _ndarray_flatten(ndarray self):
-    # TODO(leofang): check if we need a MAX_NDIM guard
     newarray = self.copy(order='C')
     newarray._shape.assign(<Py_ssize_t>1, self.size)
     newarray._strides.assign(<Py_ssize_t>1,
