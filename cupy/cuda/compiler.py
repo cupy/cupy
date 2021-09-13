@@ -164,7 +164,6 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         version = runtime.runtimeGetVersion()
     else:
         version = _cuda_hip_version
-    max_cc = _get_max_compute_capability()
     if (
         not _use_ptx and version >= 11010
         and arch < _get_max_compute_capability()

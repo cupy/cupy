@@ -16,7 +16,6 @@ from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
-from cupy_backends.cuda.api import driver
 
 
 _test_source1 = r'''

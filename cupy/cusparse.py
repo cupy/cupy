@@ -4,6 +4,7 @@ import numpy as _numpy
 import platform as _platform
 
 import cupy as _cupy
+from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype

@@ -9,7 +9,6 @@ try:
 except ImportError:
     _scipy_available = False
 
-from cupy_backends.cuda.api import driver
 import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub

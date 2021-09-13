@@ -1064,7 +1064,7 @@ class TestMallocAsync(unittest.TestCase):
                     and cupy.cuda.runtime.runtimeGetVersion() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 @pytest.mark.skipif(not cupy.cuda.driver._is_cuda_python()
-                    cupy.cuda.driver.get_build_version() < 11020,
+                    and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 class TestMemoryAsyncPool(unittest.TestCase):
 
