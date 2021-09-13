@@ -16,12 +16,12 @@ def is_available():
     return _error is None and hasattr(pytest, 'fixture')
 
 
-def check_available():
+def check_available(feature):
     if not is_available():
         raise RuntimeError('''\
-{} is not available.
+cupy.testing: {} is not available.
 
-Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
+Reason: {}: {}'''.format(feature, type(_error).__name__, _error))
 
 
 if is_available():
@@ -42,7 +42,7 @@ if is_available():
 
 
 def parameterize(*params):
-    check_available()
+    check_available('parameterize')
     param_name = cupy.testing._parameterized._make_class_name
     # TODO(kataoka): Give better names (`id`).
     # For now, use legacy `_make_class_name` just for consistency. Here,

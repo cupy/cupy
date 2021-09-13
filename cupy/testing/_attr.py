@@ -17,7 +17,7 @@ if is_available():
 
 else:
     def _dummy_callable(*args, **kwargs):
-        check_available()
+        check_available('pytest attributes')
         assert False  # Not reachable
 
     cudnn = _dummy_callable
@@ -34,7 +34,7 @@ def multi_gpu(gpu_num):
     be skipped.
     """
 
-    check_available()
+    check_available('multi_gpu attribute')
     # at this point we know pytest is available for sure
     return pytest.mark.skipif(
         0 <= _gpu_limit < gpu_num,
@@ -48,5 +48,5 @@ def gpu(f):
     declare that one GPU is required to run.
     """
 
-    check_available()
+    check_available('gpu attribute')
     return multi_gpu(1)(pytest.mark.gpu(f))
