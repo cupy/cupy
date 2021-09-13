@@ -1534,10 +1534,6 @@ cpdef int getVersion(intptr_t handle) except? -1:
     return version
 
 
-def _get_cuda_build_version():
-    return CUPY_CUDA_VERSION
-
-
 def get_build_version():
     return CUSPARSE_VERSION
 
