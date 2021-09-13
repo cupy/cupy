@@ -144,7 +144,7 @@ class TestReshape(unittest.TestCase):
         # from cupy/cupy#4193
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
-                a = self._test_ndim_limit(xp, 33, dtype, order)
+                self._test_ndim_limit(xp, 33, dtype, order)
 
 
 @testing.gpu
