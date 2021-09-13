@@ -26,13 +26,13 @@
 - project: "cupy.linux.cuda101"
   target: "cuda101"
   system: "linux"
-  os: "centos:8"
+  os: "centos:7"
   cuda: "10.1"
   rocm: null
-  nccl: "2.7"
+  nccl: "2.8"
   cutensor: null
   cusparselt: null
-  cudnn: "8.0"
+  cudnn: "7.6"
   python: "3.7"
   numpy: "1.18"
   scipy: "1.5"
