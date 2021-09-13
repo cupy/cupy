@@ -11,7 +11,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev && \
     apt-get -qqy install ccache git curl && \
-    apt-get -qqy install libnccl-dev=2.8.*+cuda10.2 libcutensor-dev=1.3.* libcudnn8-dev=8.1.*+cuda10.2
+    apt-get -qqy --allow-change-held-packages \
+            --allow-downgrades install libnccl2=2.8.*+cuda10.2 libnccl-dev=2.8.*+cuda10.2 libcutensor-dev=1.3.* libcudnn8=8.1.*+cuda10.2 libcudnn8-dev=8.1.*+cuda10.2
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 

@@ -12,7 +12,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev && \
     apt-get -qqy install ccache git curl && \
-    apt-get -qqy install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
+    apt-get -qqy --allow-change-held-packages \
+            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 

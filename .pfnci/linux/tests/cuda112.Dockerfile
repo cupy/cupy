@@ -6,8 +6,9 @@ RUN yum -y install \
        zlib-devel bzip2 bzip2-devel readline-devel sqlite \
        sqlite-devel openssl-devel tk-devel libffi-devel \
        xz-devel && \
+    yum -y install epel-release && \
     yum -y install "@Development Tools" ccache git curl && \
-    yum -y install libnccl-devel-2.8.*+cuda11.2 libcutensor-devel-1.3.* libcusparselt-devel-0.1.0.* libcudnn8-devel-8.1.*+cuda11.2
+    yum -y install libnccl-devel-2.8.*-*+cuda11.2 libcutensor-devel-1.3.* libcusparselt-devel-0.1.0.* libcudnn8-devel-8.1.*-*.cuda11.2
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 

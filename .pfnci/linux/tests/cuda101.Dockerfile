@@ -1,13 +1,14 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:10.1-devel-centos8"
+ARG BASE_IMAGE="nvidia/cuda:10.1-devel-centos7"
 FROM ${BASE_IMAGE}
 
 RUN yum -y install \
        zlib-devel bzip2 bzip2-devel readline-devel sqlite \
        sqlite-devel openssl-devel tk-devel libffi-devel \
        xz-devel && \
+    yum -y install epel-release && \
     yum -y install "@Development Tools" ccache git curl && \
-    yum -y install libnccl-devel-2.7.*+cuda10.1 libcudnn8-devel-8.0.*+cuda10.1
+    yum -y install libnccl-devel-2.8.*-*+cuda10.1 libcudnn7-devel-7.6.*-*.cuda10.1
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 

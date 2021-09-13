@@ -2,6 +2,7 @@
 ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:4.0.1"
 FROM ${BASE_IMAGE}
 
+RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install \
@@ -11,7 +12,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev && \
     apt-get -qqy install ccache git curl && \
-    apt-get -qqy install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
+    apt-get -qqy --allow-change-held-packages \
+            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
