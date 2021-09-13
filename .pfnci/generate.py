@@ -68,7 +68,8 @@ class LinuxGenerator:
                 '       libxml2-dev libxmlsec1-dev libffi-dev \\',
                 '       liblzma-dev && \\',
                 '    apt-get -qqy install ccache git curl && \\',
-                '    apt-get -qqy --allow-change-held-packages install {}'.format(
+                '    apt-get -qqy --allow-change-held-packages \\',
+                '            --allow-downgrades install {}'.format(
                     ' '.join(self._additional_packages('apt'))
                 ),
                 '',
@@ -154,7 +155,7 @@ class LinuxGenerator:
                     packages.append(f'libnccl{major}={spec}+cuda{cuda}')
                     packages.append(f'libnccl-dev={spec}+cuda{cuda}')
                 else:
-                    packages.append(f'libnccl-devel-{spec}+cuda{cuda}')
+                    packages.append(f'libnccl-devel-{spec}-*+cuda{cuda}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 packages.append(
@@ -167,10 +168,16 @@ class LinuxGenerator:
                     f'libcusparselt-devel-{spec}')
             if cudnn is not None:
                 spec = self.schema['cudnn'][cudnn]['spec']
+                cudnn_cuda_schema = self.schema['cudnn'][cudnn]['cuda'][cuda]
+                alias = cuda
+                if cudnn_cuda_schema is not None:
+                    alias = cudnn_cuda_schema['alias']
                 major = cudnn.split('.')[0]
-                packages.append(
-                    f'libcudnn{major}-dev={spec}+cuda{cuda}' if apt else
-                    f'libcudnn{major}-devel-{spec}+cuda{cuda}')
+                if apt:
+                    packages.append(f'libcudnn{major}={spec}+cuda{alias}')
+                    packages.append(f'libcudnn{major}-dev={spec}+cuda{alias}')
+                else:
+                    packages.append(f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
         elif matrix.rocm is not None:
             return ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
@@ -314,7 +321,7 @@ def validate_schema(schema: SchemaType):
                         f'while parsing schema os:{value}')
         if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
             for value, value_schema in key_schema.items():
-                for cuda in value_schema.get('cuda', []):
+                for cuda, alias in value_schema.get('cuda', {}).items():
                     if cuda not in schema['cuda'].keys():
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
