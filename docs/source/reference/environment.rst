@@ -98,6 +98,12 @@ Here are the environment variables that CuPy uses at runtime.
   If set to ``2``, the CuPy stream on which the data is being operated will not be exported and thus the Consumer (another library) will not perform any stream synchronization.
   For more detail, see the `Synchronization`_ requirement in the CUDA Array Interface v3 documentation.
 
+.. envvar:: CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+
+  Default: ``0.6``
+
+  This controls CuPy's DLPack support. Currently, setting a value smaller than 0.6 would disguise managed memory as normal device memory, which enables data exchanges with libraries that have not updated their DLPack support, whereas starting 0.6 CUDA managed memory can be correctly recognized as a valid device type.
+
 .. envvar:: NVCC
 
   Default: ``nvcc``

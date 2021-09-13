@@ -26,6 +26,10 @@ CUDA_ARRAY_INTERFACE_EXPORT_VERSION = int(
     os.environ.get('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION', 3))
 
 
+CUPY_DLPACK_EXPORT_VERSION = float(
+    os.environ.get('CUPY_DLPACK_EXPORT_VERSION', '0.6'))
+
+
 cdef list _memos = []
 
 
