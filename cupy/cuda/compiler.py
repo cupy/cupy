@@ -160,8 +160,13 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
+    if driver._is_cuda_python():
+        version = runtime.runtimeGetVersion()
+    else:
+        version = _cuda_hip_version
+    max_cc = _get_max_compute_capability()
     if (
-        not _use_ptx and _cuda_hip_version >= 11010
+        not _use_ptx and version >= 11010
         and arch < _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'

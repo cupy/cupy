@@ -4,7 +4,6 @@ import numpy as _numpy
 import platform as _platform
 
 import cupy as _cupy
-from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype
@@ -156,10 +155,10 @@ def _get_version(x):
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cusparse_version
-        version = _cusparse.get_build_version()
+        version = _cusparse._get_cuda_build_version()
     else:
         available_version = _available_hipsparse_version
-        version = _driver.get_build_version()  # = HIP_VERSION
+        version = _cusparse._get_cuda_build_version()  # = HIP_VERSION
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)

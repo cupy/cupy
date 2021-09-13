@@ -636,10 +636,13 @@ class TestRaw(unittest.TestCase):
         x = cupy.zeros((N,), dtype=cupy.float32)
         use_ptx = os.environ.get(
             'CUPY_COMPILE_WITH_PTX', False)
-        if (self.backend == 'nvrtc' and (
-                use_ptx or (
-                not cupy.cuda.runtime.is_hip
-                and driver.get_build_version() < 11010))):
+        if self.backend == 'nvrtc' and (
+                use_ptx or
+                (cupy.cuda.driver._is_cuda_python()
+                 and cupy.cuda.runtime.runtimeGetVersion() < 11010) or
+                (not cupy.cuda.driver._is_cuda_python()
+                 and not cupy.cuda.runtime.is_hip
+                 and cupy.cuda.driver.get_build_version() < 11010)):
             # raised when calling ls.complete()
             error = cupy.cuda.driver.CUDADriverError
         else:  # nvcc, hipcc, hiprtc
