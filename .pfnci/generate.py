@@ -53,9 +53,11 @@ class LinuxGenerator:
             if matrix.rocm is not None:
                 # GPG key has expired in ROCm 4.2 (or earlier) docker images
                 lines += [
-                    'RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
+                    'RUN export DEBIAN_FRONTEND=noninteractive && \\',
+                    '    ( apt-get -qqy update || true ) && \\',
+                    '    apt-get -qqy install ca-certificates && \\',
+                    '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
-
             lines += [
                 'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                 '    apt-get -qqy update && \\',
@@ -181,9 +183,7 @@ class LinuxGenerator:
                         f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
         elif matrix.rocm is not None:
-            return ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-                    'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-                    'rocprim', 'rccl']
+            return self.schema['rocm'][matrix.rocm]['packages']
         raise AssertionError
 
     def generate_script(self) -> str:
