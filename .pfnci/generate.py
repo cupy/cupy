@@ -54,7 +54,7 @@ class LinuxGenerator:
                 # GPG key has expired in ROCm 4.2 (or earlier) docker images
                 lines += [
                     'RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',
-                ]
+                ]  # NOQA
 
             lines += [
                 'RUN export DEBIAN_FRONTEND=noninteractive && \\',
@@ -177,7 +177,8 @@ class LinuxGenerator:
                     packages.append(f'libcudnn{major}={spec}+cuda{alias}')
                     packages.append(f'libcudnn{major}-dev={spec}+cuda{alias}')
                 else:
-                    packages.append(f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
+                    packages.append(
+                        f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
         elif matrix.rocm is not None:
             return ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
