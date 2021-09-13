@@ -1799,10 +1799,10 @@ cdef class ndarray:
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
-        if shape.size() > _carray.get_max_ndim():
+        if shape.size() > _carray.MAX_NDIM:
             msg = f'The input array dimension ({shape.size()}) is '
             msg += 'beyond CuPy\'s current limitation ('
-            msg += f'{_carray.get_max_ndim()})'
+            msg += f'{_carray.MAX_NDIM})'
             raise ValueError(msg)
         self._shape = shape
         self._strides = strides

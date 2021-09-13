@@ -8,10 +8,8 @@ ctypedef vector.vector[Py_ssize_t] shape_t
 ctypedef vector.vector[Py_ssize_t] strides_t
 
 # this matches NPY_MAXDIMS
-DEF MAX_NDIM = 32
-cdef inline int get_max_ndim():
-    # we can't access module-level constants due to Cython's limitation...
-    return MAX_NDIM
+# Note: we make it an enum to work around cython/cython#4369
+cdef enum: MAX_NDIM = 32
 
 
 cdef struct _CArray:
