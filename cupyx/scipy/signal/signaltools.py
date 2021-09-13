@@ -117,18 +117,16 @@ def _correlate(in1, in2, mode='full', method='auto', convolution=False):
                                           convolution)
 
     # if method == 'fft':
+    if not convolution:
+        in2 = _st_core._reverse(in2).conj()
     inputs_swapped = _st_core._inputs_swap_needed(mode, in1.shape, in2.shape)
     if inputs_swapped:
         in1, in2 = in2, in1
-    if not convolution:
-        in2 = _st_core._reverse(in2).conj()
     out = fftconvolve(in1, in2, mode)
     result_type = cupy.result_type(in1, in2)
     if result_type.kind in 'ui':
         out = out.round()
     out = out.astype(result_type, copy=False)
-    if not convolution and inputs_swapped:
-        out = cupy.ascontiguousarray(_st_core._reverse(out).conj())
     return out
 
 
@@ -187,11 +185,11 @@ def choose_conv_method(in1, in2, mode='full'):
     Args:
         in1 (cupy.ndarray): first input.
         in2 (cupy.ndarray): second input.
-        mode (str, optional): ``valid``, ``same``, ``full``.
+        mode (str, optional): ``'valid'``, ``'same'``, ``'full'``.
 
     Returns:
         str: A string indicating which convolution method is fastest,
-        either ``direct`` or ``fft1``.
+        either ``'direct'`` or ``'fft'``.
 
     .. warning::
         This function currently doesn't support measure option,

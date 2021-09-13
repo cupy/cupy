@@ -1,6 +1,5 @@
 import contextlib
 import distutils.util
-import importlib
 import os
 import re
 import shutil
@@ -8,20 +7,8 @@ import subprocess
 import sys
 import tempfile
 
-
-# This is done because pip is installed in no editable mode in
-# windows CI so the kernel cache gets always a deterministic path.
-def _from_install_import(name):
-    install_module_path = os.path.join(os.path.dirname(__file__))
-    original_sys_path = sys.path.copy()
-    try:
-        sys.path.append(install_module_path)
-        return importlib.import_module(name)
-    finally:
-        sys.path = original_sys_path
-
-
-utils = _from_install_import('utils')
+import cupy_builder
+import cupy_builder.install_utils as utils
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
@@ -186,8 +173,8 @@ def get_compiler_setting(use_hip):
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
     # for <cupy/complex.cuh>
-    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/_core/include')
+    cupy_header = os.path.join(
+        cupy_builder.get_source_root(), 'cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
@@ -385,16 +372,18 @@ def check_compute_capabilities(compiler, settings):
     """Return compute capabilities of the installed devices."""
     global _compute_capabilities
     try:
-        src = '''#include <cuda_runtime_api.h>
+        src = '''
+        #include <cuda_runtime_api.h>
         #include <stdio.h>
+        #define CHECK_CUDART(x) { if ((x) != cudaSuccess) return 1; }
+
         int main() {
-          cudaDeviceProp prop;
           int device_count;
-          int i;
-          cudaGetDeviceCount(&device_count);
-          for(i=0; i < device_count; i++) {
-              cudaGetDeviceProperties(&prop, i);
-              printf("%d%d ", prop.major,prop.minor);
+          CHECK_CUDART(cudaGetDeviceCount(&device_count));
+          for (int i = 0; i < device_count; i++) {
+              cudaDeviceProp prop;
+              CHECK_CUDART(cudaGetDeviceProperties(&prop, i));
+              printf("%d%d ", prop.major, prop.minor);
           }
           return 0;
         }
@@ -406,7 +395,7 @@ def check_compute_capabilities(compiler, settings):
             library_dirs=settings['library_dirs'])
         _compute_capabilities = set([int(o) for o in out.split()])
     except Exception as e:
-        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        utils.print_warning('Cannot check compute capability\n{0}'.format(e))
         return False
 
     return True

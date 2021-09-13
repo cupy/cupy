@@ -186,44 +186,22 @@ class TestBinomial(RandomGeneratorTestCase):
         self.generate(n=self.n, p=self.p, size=(3, 2))
 
 
-@testing.parameterize(
-    {'df': 1.0},
-    {'df': 3.0},
-    {'df': 10.0},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.chisquare_params)
 @testing.fix_random()
-class TestChisquare(RandomGeneratorTestCase):
-
-    target_method = 'chisquare'
-
-    def test_chisquare(self):
-        self.generate(df=self.df, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_chisquare_ks(self, dtype):
-        self.check_ks(0.05)(
-            df=self.df, size=2000, dtype=dtype)
+class TestChisquare(
+    common_distributions.Chisquare,
+    RandomGeneratorTestCase
+):
+    pass
 
 
-@testing.gpu
-@testing.parameterize(
-    {'alpha': cupy.array([1.0, 1.0, 1.0])},
-    {'alpha': cupy.array([1.0, 3.0, 5.0])},
-)
+@testing.parameterize(*common_distributions.dirichlet_params)
 @testing.fix_random()
-class TestDirichlet(RandomGeneratorTestCase):
-
-    target_method = 'dirichlet'
-
-    def test_dirichlet(self):
-        self.generate(alpha=self.alpha, size=(3, 2, 3))
-
-    def test_dirichlet_int_shape(self):
-        self.generate(alpha=self.alpha, size=5)
-
-    # TODO(kataoka): add distribution test
+class TestDirichlet(
+    common_distributions.Dirichlet,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(*common_distributions.exponential_params)
@@ -236,25 +214,13 @@ class TestExponential(
     pass
 
 
-@testing.parameterize(
-    {'dfnum': 1.0, 'dfden': 3.0},
-    {'dfnum': 3.0, 'dfden': 3.0},
-    {'dfnum': 3.0, 'dfden': 1.0},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.f_params)
 @testing.fix_random()
-class TestF(RandomGeneratorTestCase):
-
-    target_method = 'f'
-
-    def test_f(self):
-        self.generate(dfnum=self.dfnum, dfden=self.dfden, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_f_ks(self, dtype):
-        self.check_ks(0.05)(
-            self.dfnum, self.dfden, size=2000, dtype=dtype)
+class TestF(
+    common_distributions.F,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(*common_distributions.gamma_params)
@@ -276,21 +242,13 @@ class TestGeometric(
     pass
 
 
-@testing.parameterize(
-    {'ngood': 1, 'nbad': 1, 'nsample': 1},
-    {'ngood': 1, 'nbad': 1, 'nsample': 2},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.hypergeometric_params)
 @testing.fix_random()
-class TestHypergeometric(RandomGeneratorTestCase):
-
-    target_method = 'hypergeometric'
-
-    def test_hypergeometric(self):
-        self.generate(ngood=self.ngood, nbad=self.nbad, nsample=self.nsample,
-                      size=(3, 2))
-
-    # TODO(kataoka): add distribution test
+class TestHypergeometric(
+    common_distributions.Hypergeometric,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu
@@ -391,21 +349,13 @@ class TestLogNormal(RandomGeneratorTestCase):
             *self.args, size=self.size, dtype=dtype)
 
 
-@testing.parameterize(
-    {'p': 0.5},
-    {'p': 0.1},
-    {'p': 0.9},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.logseries_params)
 @testing.fix_random()
-class TestLogseries(RandomGeneratorTestCase):
-
-    target_method = 'logseries'
-
-    def test_logseries(self):
-        self.generate(p=self.p, size=(3, 2))
-
-    # TODO(kataoka): add distribution test
+class TestLogseries(
+    common_distributions.Logseries,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.gpu
@@ -647,23 +597,13 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
-@testing.parameterize(
-    {'a': 0.5},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.power_params)
 @testing.fix_random()
-class TestPower(RandomGeneratorTestCase):
-
-    target_method = 'power'
-
-    def test_power(self):
-        self.generate(a=self.a, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_power_ks(self, dtype):
-        self.check_ks(0.05)(
-            a=self.a, size=2000, dtype=dtype)
+class TestPower(
+    common_distributions.Power,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(

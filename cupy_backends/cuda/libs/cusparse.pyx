@@ -1,8 +1,6 @@
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.api.runtime cimport DataType
+from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy_backends.cuda cimport stream as stream_module
 
 
@@ -14,6 +12,7 @@ cdef extern from '../../cupy_complex.h':
         double x, y
 
 cdef extern from '../../cupy_sparse.h' nogil:
+    ctypedef void* Stream 'cudaStream_t'
 
     # Version
     cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int* version)
@@ -30,8 +29,8 @@ cdef extern from '../../cupy_sparse.h' nogil:
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
 
     # Stream
-    Status cusparseSetStream(Handle handle, driver.Stream streamId)
-    Status cusparseGetStream(Handle handle, driver.Stream* streamId)
+    Status cusparseSetStream(Handle handle, Stream streamId)
+    Status cusparseGetStream(Handle handle, Stream* streamId)
 
     # cuSPARSE Level1 Function
     Status cusparseSgthr(
@@ -1496,7 +1495,7 @@ class CuSparseError(RuntimeError):
     def __init__(self, int status):
         self.status = status
         cdef str err
-        if runtime._is_hip_environment:
+        if _is_hip_environment:
             err = HIP_STATUS[status]
         else:
             err = STATUS[status]
@@ -1591,12 +1590,12 @@ cpdef setPointerMode(intptr_t handle, int mode):
 # Stream
 
 cpdef setStream(intptr_t handle, size_t stream):
-    status = cusparseSetStream(<Handle>handle, <driver.Stream>stream)
+    status = cusparseSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(intptr_t handle) except? 0:
-    cdef driver.Stream stream
+    cdef Stream stream
     status = cusparseGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream

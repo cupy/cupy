@@ -1,7 +1,7 @@
 import itertools
-import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cuda
@@ -9,7 +9,7 @@ from cupy import testing
 
 
 @testing.gpu
-class TestBasic(unittest.TestCase):
+class TestBasic:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -44,6 +44,16 @@ class TestBasic(unittest.TestCase):
         xp.copyto(a, b, where=c)
         return a
 
+    @pytest.mark.parametrize('shape', [(2, 3, 4), (0,)])
+    @testing.for_all_dtypes(no_bool=True)
+    def test_copyto_where_raises(self, dtype, shape):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(shape, xp, 'i')
+            b = testing.shaped_reverse_arange(shape, xp, 'i')
+            c = testing.shaped_arange(shape, xp, dtype)
+            with pytest.raises(TypeError):
+                xp.copyto(a, b, where=c)
+
     def _check_copyto_where_multigpu_raises(self, dtype, ngpus):
         def get_numpy():
             a = testing.shaped_arange((2, 3, 4), numpy, dtype)
@@ -65,9 +75,10 @@ class TestBasic(unittest.TestCase):
             with cuda.Device(dev3):
                 c = testing.shaped_arange((2, 3, 4), cupy, '?')
             with cuda.Device(dev4):
-                with self.assertRaisesRegex(
+                with pytest.raises(
                         ValueError,
-                        '^Array device must be same as the current device'):
+                        match='^Array device must be same as the '
+                        'current device'):
                     cupy.copyto(a, b, where=c)
 
     @testing.multi_gpu(2)
@@ -108,7 +119,7 @@ class TestBasic(unittest.TestCase):
         {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j],
          'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)]}))
 @testing.gpu
-class TestCopytoFromScalar(unittest.TestCase):
+class TestCopytoFromScalar:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(accept_error=TypeError)
@@ -125,3 +136,16 @@ class TestCopytoFromScalar(unittest.TestCase):
             self.dst_shape, xp, dtype) % 2).astype(xp.bool_)
         xp.copyto(dst, self.src, where=mask)
         return dst
+
+
+@pytest.mark.parametrize('shape', [(3, 2), (0,)])
+@pytest.mark.parametrize('where', [
+    float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j
+])
+@testing.for_all_dtypes()
+@testing.numpy_cupy_allclose()
+def test_copyto_scalarwhere(xp, dtype, where, shape):
+    dst = xp.zeros(shape, dtype=dtype)
+    src = xp.ones(shape, dtype=dtype)
+    xp.copyto(dst, src, where=where)
+    return dst

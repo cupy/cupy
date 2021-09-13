@@ -4,13 +4,15 @@ import numpy
 
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
 import cupyx
 
 
 @testing.gpu
 class TestScatter(unittest.TestCase):
 
-    @testing.for_dtypes('iILQefd')
+    # HIP does not support fp16 atomicAdd
+    @testing.for_dtypes('iILQfd' if runtime.is_hip else 'iILQefd')
     def test_scatter_add(self, dtype):
         a = cupy.zeros((3,), dtype=dtype)
         i = cupy.array([1, 1], numpy.int32)

@@ -139,6 +139,10 @@ def _init_nd_and_axes(x, axes):
 
 def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
     # See scipy's documentation in scipy.signal.signaltools
+    if not axes:
+        # rfftn/irfftn require an axis or more.
+        return in1 * in2
+
     real = (in1.dtype.kind != 'c' and in2.dtype.kind != 'c')
     fshape = ([fft.next_fast_len(shape[a], real) for a in axes]
               if calc_fast_len else shape)

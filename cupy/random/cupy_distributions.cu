@@ -243,6 +243,110 @@ __device__ double loggam(double x) {
     return gl;
 }
 
+__device__ int64_t rk_hypergeometric_hyp(rk_state *state, double good, double bad, double sample) {
+    int64_t Z;
+    double K, d1, d2, U, Y;
+
+    d1 = bad + good - sample;
+    d2 = min(bad, good);
+
+    Y = d2;
+    K = sample;
+    while (Y > 0.0)
+    {
+        U = state->rk_double();
+        Y -= (int64_t)floor(U + Y/(d1 + K));
+        K--;
+        if (K == 0) break;
+    }
+    Z = (int64_t)(d2 - Y);
+    if (good > bad) Z = (int64_t)sample - Z;
+    return Z;
+}
+
+
+__device__ int64_t rk_hypergeometric_hrua(rk_state *state, double good, double bad, double sample) {
+    int64_t Z;
+    double m, mingoodbad, maxgoodbad, popsize, d4, d5, d6, d7, d8, d9, d10, d11, T, W, X, Y;
+    double D1=1.7155277699214135, D2=0.8989161620588988;
+
+    mingoodbad = min(good, bad);
+    popsize = good + bad;
+    maxgoodbad = max(good, bad);
+    m = min(sample, popsize - sample);
+    d4 = mingoodbad / popsize;
+    d5 = 1.0 - d4;
+    d6 = m*d4 + 0.5;
+    d7 = sqrt((popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
+    d8 = D1*d7 + D2;
+    d9 = floor((m + 1) * (mingoodbad + 1) / (popsize + 2));
+    d10 = loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) + loggam(maxgoodbad-m+d9+1);
+    d11 = min(min(m, mingoodbad)+1.0, floor(d6+16*d7));
+    /* 16 for 16-decimal-digit precision in D1 and D2 */
+
+    while (1) {
+        X = state->rk_double();
+        Y = state->rk_double();
+        W = d6 + d8*(Y- 0.5)/X;
+
+        if ((W < 0.0) || (W >= d11)) continue;
+
+        Z = (int64_t)floor(W);
+        T = d10 - (loggam(Z+1) + loggam(mingoodbad-Z+1) + loggam(m-Z+1) +
+                   loggam(maxgoodbad-m+Z+1));
+
+        if ((X*(4.0-X)-3.0) <= T) break;
+
+        if (X*(X-T) >= 1) continue;
+
+        if (2.0*log(X) <= T) break;
+    }
+
+    if (good > bad) Z = (int64_t)m - Z;
+    if (m < sample) Z = (int64_t)good - Z;
+
+    return Z;
+}
+
+__device__ int64_t rk_hypergeometric(rk_state *state, double good, double bad, double sample) {
+    if (sample > 10) {
+        return rk_hypergeometric_hrua(state, good, bad, sample);
+    }
+    else {
+        return rk_hypergeometric_hyp(state, good, bad, sample);
+    }
+}
+
+__device__ int64_t rk_logseries(rk_state *state, double p)
+{
+    double q, r, U, V;
+    int64_t result;
+
+    r = log(1.0 - p);
+
+    while (1) {
+        V = state->rk_double();
+        if (V >= p) {
+            return 1;
+        }
+        U = state->rk_double();
+        q = 1.0 - exp(r*U);
+        if (V <= q*q) {
+            result = floor(1 + log(V)/log(q));
+            if (result < 1) {
+                continue;
+            }
+            else {
+                return result;
+            }
+        }
+        if (V >= q) {
+            return 1;
+        }
+        return 2;
+    }
+}
+
 __device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
     int64_t X;
     double prod, U, enlam;
@@ -386,6 +490,20 @@ struct geometric_functor {
     }
 };
 
+struct hypergeometric_functor {
+    template<typename... Args>
+    __device__ int64_t operator () (Args&&... args) {
+        return rk_hypergeometric(args...);
+    }
+};
+
+struct logseries_functor {
+    template<typename... Args>
+    __device__ int64_t operator () (Args&&... args) {
+        return rk_logseries(args...);
+    }
+};
+
 struct standard_normal_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
@@ -477,9 +595,9 @@ void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intp
     generator_dispatcher(generator, launcher, state, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
 }
 
-void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
+void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
     kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, a, b);
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(a), reinterpret_cast<int64_t*>(b));
 }
 
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
@@ -489,6 +607,16 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
     kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
+}
+
+void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
+    kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(ngood), reinterpret_cast<int64_t*>(nbad), reinterpret_cast<int64_t*>(nsample));
+}
+
+void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
 }
 

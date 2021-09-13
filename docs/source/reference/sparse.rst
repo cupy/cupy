@@ -130,6 +130,7 @@ Iterative methods for linear equation systems:
    cg
    gmres
    cgs
+   minres
 
 Iterative methods for least-squares problems:
 
@@ -137,6 +138,7 @@ Iterative methods for least-squares problems:
    :toctree: generated/
 
    lsqr
+   lsmr
 
 
 Matrix factorizations

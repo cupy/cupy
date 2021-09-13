@@ -18,9 +18,6 @@ cdef extern from 'halffloat.h':
     uint32_t npy_halfbits_to_floatbits(uint16_t h)
 
 
-cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
-
-
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
     cdef Py_ssize_t n = 1
@@ -251,7 +248,7 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
             n_ellipses += 1
             ellipsis = i
     if n_ellipses > 1:
-        raise ValueError('Only one Ellipsis is allowed in index')
+        raise IndexError("an index can only have a single ellipsis ('...')")
 
     n = ndim - <Py_ssize_t>len(slice_list) + n_newaxes
     if n_ellipses > 0:
@@ -310,7 +307,7 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
 
 
 cdef _broadcast_core(list arrays, shape_t& shape):
-    cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
+    cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
     cdef strides_t strides
     cdef vector.vector[int] index
     cdef ndarray a
@@ -331,20 +328,24 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 
     shape.reserve(nd)
     for i in range(nd):
-        smin = PY_SSIZE_T_MAX
-        smax = 0
+        s = 1
         for j in index:
             a = arrays[j]
             a_ndim = <Py_ssize_t>a._shape.size()
-            if i >= nd - a_ndim:
-                s = a._shape[i - (nd - a_ndim)]
-                smin = min(smin, s)
-                smax = max(smax, s)
-        if smin == 0 and smax > 1:
+            if i < nd - a_ndim:
+                continue
+            a_sh = a._shape[i - (nd - a_ndim)]
+            if a_sh == s or a_sh == 1:
+                continue
+            if s == 1:
+                s = a_sh
+                continue
             raise ValueError(
-                'shape mismatch: objects cannot be broadcast to a '
-                'single shape')
-        shape.push_back(0 if smin == 0 else smax)
+                'operands could not be broadcast together with shapes {}'
+                .format(
+                    ' '.join([str(x.shape) if isinstance(x, ndarray)
+                              else '()' for x in arrays])))
+        shape.push_back(s)
 
     for i in index:
         a = arrays[i]
@@ -357,12 +358,6 @@ cdef _broadcast_core(list arrays, shape_t& shape):
             a_sh = a._shape[j]
             if a_sh == shape[j + nd - a_ndim]:
                 strides[j + nd - a_ndim] = a._strides[j]
-            elif a_sh != 1:
-                raise ValueError(
-                    'operands could not be broadcast together with shapes '
-                    '{}'.format(
-                        ', '.join([str(x.shape) if isinstance(x, ndarray)
-                                   else '()' for x in arrays])))
 
         # TODO(niboshi): Confirm update_x_contiguity flags
         arrays[i] = a._view(shape, strides, True, True)
@@ -484,15 +479,16 @@ cpdef tuple _broadcast_shapes(shapes):
             Resulting shape of broadcasting shapes together.
     """
     out_ndim = max([len(shape) for shape in shapes])
-    shapes = [(1,) * (out_ndim - len(shape)) + shape for shape in shapes]
+    padded_shapes = [
+        (1,) * (out_ndim - len(shape)) + shape for shape in shapes]
 
     result_shape = []
-    for dims in zip(*shapes):
+    for dims in zip(*padded_shapes):
         dims = [dim for dim in dims if dim != 1]
         out_dim = 1 if len(dims) == 0 else dims[0]
         if any([dim != out_dim for dim in dims]):
             raise ValueError(
-                'Operands could not be broadcast together with shapes' +
+                'operands could not be broadcast together with shapes' +
                 ' '.join([str(shape) for shape in shapes]))
         result_shape.append(out_dim)
 
