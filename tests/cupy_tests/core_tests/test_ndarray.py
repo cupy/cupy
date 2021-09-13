@@ -240,6 +240,14 @@ class TestNdarrayShape(unittest.TestCase):
         arr.shape = 6
         return xp.array(arr.shape)
 
+    def test_shape_need_copy(self):
+        # from cupy/cupy#5470
+        for xp in (numpy, cupy):
+            arr = xp.ndarray((2, 3), order='F')
+            with pytest.raises(AttributeError) as e:
+                arr.shape = (3, 2)
+            assert 'Incompatible shape' in str(e.value)
+
 
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support this')
