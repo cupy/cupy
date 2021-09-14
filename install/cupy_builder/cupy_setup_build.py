@@ -26,11 +26,6 @@ try:
 except Exception:
     pass
 
-# Cython requirements (minimum version and versions known to be broken).
-# Note: this must be in sync with setup_requires defined in setup.py.
-required_cython_version = pkg_resources.parse_version('0.29.22')
-ignore_cython_versions = [
-]
 use_hip = build.use_hip
 
 
@@ -460,10 +455,6 @@ def cythonize(extensions, ctx: Context):
     import Cython
     import Cython.Build
     cython_version = pkg_resources.parse_version(Cython.__version__)
-    if (cython_version < required_cython_version or
-            cython_version in ignore_cython_versions):
-        raise AssertionError(
-            'Unsupported Cython version: {}'.format(cython_version))
 
     directives = {
         'linetrace': ctx.linetrace,
@@ -512,9 +503,9 @@ def check_extensions(extensions):
             if not path.isfile(f):
                 raise RuntimeError('''\
 Missing file: {}
-Please install Cython {} or later. Please also check the version of Cython.
+Please install Cython.
 See https://docs.cupy.dev/en/stable/install.html for details.
-'''.format(f, required_cython_version))
+'''.format(f))
 
 
 def get_ext_modules(use_cython: bool, ctx: Context):
