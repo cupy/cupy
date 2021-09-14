@@ -15,6 +15,7 @@ from setuptools.command import build_ext
 
 import cupy_builder
 import cupy_builder.install_build as build
+from cupy_builder._context import Context
 from cupy_builder.install_build import PLATFORM_LINUX
 from cupy_builder.install_build import PLATFORM_WIN32
 
@@ -275,13 +276,13 @@ def _rpath_base():
         raise Exception('not supported on this platform')
 
 
-def make_extensions(options, compiler, use_cython):
+def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     MODULES = cupy_builder.get_modules(cupy_builder.get_context())
 
-    no_cuda = options['no_cuda']
-    use_hip = not no_cuda and options['use_hip']
+    no_cuda = ctx.use_stub
+    use_hip = not no_cuda and ctx.use_hip
     settings = build.get_compiler_setting(use_hip)
 
     include_dirs = settings['include_dirs']
@@ -293,7 +294,7 @@ def make_extensions(options, compiler, use_cython):
 
     # Adjust rpath to use CUDA libraries in `cupy/.data/lib/*.so`) from CuPy.
     use_wheel_libs_rpath = (
-        0 < len(options['wheel_libs']) and not PLATFORM_WIN32)
+        0 < len(ctx.wheel_libs) and not PLATFORM_WIN32)
 
     # In the environment with CUDA 7.5 on Ubuntu 16.04, gcc5.3 does not
     # automatically deal with memcpy because string.h header file has
@@ -303,7 +304,7 @@ def make_extensions(options, compiler, use_cython):
     # https://groups.google.com/forum/#!topic/theano-users/3ihQYiTRG4E
     settings['define_macros'].append(('_FORCE_INLINES', '1'))
 
-    if options['linetrace']:
+    if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
@@ -372,7 +373,7 @@ def make_extensions(options, compiler, use_cython):
                 continue
 
             rpath = []
-            if not options['no_rpath']:
+            if not ctx.no_rpath:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
                 # RPATH.
                 rpath += s_file['library_dirs']
@@ -405,11 +406,7 @@ def make_extensions(options, compiler, use_cython):
     return ret
 
 
-cupy_setup_options = parse_args()
-print('Options:', cupy_setup_options)
-
-
-def prepare_wheel_libs():
+def prepare_wheel_libs(ctx: Context):
     """Prepare shared libraries and include files for wheels.
 
     Shared libraries are placed under `cupy/.data/lib` and
@@ -429,22 +426,21 @@ def prepare_wheel_libs():
     files_to_copy = []
 
     # Library files
-    for srcpath in cupy_setup_options['wheel_libs']:
+    for srcpath in ctx.wheel_libs:
         relpath = os.path.basename(srcpath)
         dstpath = os.path.join(data_dir, 'lib', relpath)
         files_to_copy.append((srcpath, dstpath))
 
     # Include files
-    for include_path_spec in cupy_setup_options['wheel_includes']:
+    for include_path_spec in ctx.wheel_includes:
         srcpath, relpath = include_path_spec.rsplit(':', 1)
         dstpath = os.path.join(data_dir, 'include', relpath)
         files_to_copy.append((srcpath, dstpath))
 
     # Wheel meta data
-    wheel_metadata = cupy_setup_options['wheel_metadata']
-    if wheel_metadata:
+    if ctx.wheel_metadata_path:
         files_to_copy.append(
-            (wheel_metadata, os.path.join(data_dir, '_wheel.json')))
+            (ctx.wheel_metadata_path, os.path.join(data_dir, '_wheel.json')))
 
     # Copy
     for srcpath, dstpath in files_to_copy:
@@ -458,7 +454,7 @@ def prepare_wheel_libs():
     return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
 
 
-def cythonize(extensions, arg_options):
+def cythonize(extensions, ctx: Context):
     # Delay importing Cython as it may be installed via setup_requires if
     # the user does not have Cython installed.
     import Cython
@@ -469,15 +465,16 @@ def cythonize(extensions, arg_options):
         raise AssertionError(
             'Unsupported Cython version: {}'.format(cython_version))
 
-    directive_keys = ('linetrace', 'profile')
-    directives = {key: arg_options[key] for key in directive_keys}
+    directives = {
+        'linetrace': ctx.linetrace,
+        'profile': ctx.profile,
+        # Embed signatures for Sphinx documentation.
+        'embedsignature': True,
+    }
 
-    # Embed signatures for Sphinx documentation.
-    directives['embedsignature'] = True
-
-    cythonize_option_keys = ('annotate',)
-    cythonize_options = {key: arg_options[key]
-                         for key in cythonize_option_keys}
+    cythonize_options = {
+        'annotate': ctx.annotate
+    }
 
     # Compile-time constants to be used in Cython code
     compile_time_env = cythonize_options.get('compile_time_env')
@@ -494,7 +491,7 @@ def cythonize(extensions, arg_options):
 
     compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['CUPY_CYTHON_VERSION'] = str(cython_version)
-    if arg_options['no_cuda']:  # on RTD
+    if ctx.use_stub:  # on RTD
         compile_time_env['CUPY_CUDA_VERSION'] = 0
         compile_time_env['CUPY_HIP_VERSION'] = 0
     elif use_hip:  # on ROCm/HIP
@@ -520,16 +517,14 @@ See https://docs.cupy.dev/en/stable/install.html for details.
 '''.format(f, required_cython_version))
 
 
-def get_ext_modules(use_cython=False):
-    arg_options = cupy_setup_options
-
+def get_ext_modules(use_cython: bool, ctx: Context):
     # We need to call get_config_vars to initialize _config_vars in distutils
     # see #1849
     sysconfig.get_config_vars()
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
 
-    extensions = make_extensions(arg_options, compiler, use_cython)
+    extensions = make_extensions(ctx, compiler, use_cython)
 
     return extensions
 
@@ -804,8 +799,9 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
-        ext_modules = get_ext_modules(True)  # get .pyx modules
-        cythonize(ext_modules, cupy_setup_options)
+        ctx = cupy_builder.get_context()
+        ext_modules = get_ext_modules(True, ctx)  # get .pyx modules
+        cythonize(ext_modules, ctx)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
 

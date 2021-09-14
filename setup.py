@@ -80,9 +80,9 @@ package_data = {
     ],
 }
 
-package_data['cupy'] += cupy_setup_build.prepare_wheel_libs()
+package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
-ext_modules = cupy_setup_build.get_ext_modules()
+ext_modules = cupy_setup_build.get_ext_modules(False, ctx)
 build_ext = cupy_setup_build.custom_build_ext
 
 # Get __version__ variable
