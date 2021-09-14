@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - docker/**
+      - .github/workflows/docker.yml
 
 jobs:
   docker-build-push:
