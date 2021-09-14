@@ -16,6 +16,14 @@ class Matrix:
     def __init__(self, record: Dict[str, str]):
         self._rec = record
 
+    def env(self):
+        envvars = {}
+        for k, v in self._rec.items():
+            if not k.startswith('env:') or v is None:
+                continue
+            envvars[k.split(':', 2)[1]] = v
+        return envvars
+
     def __getattr__(self, key):
         return self._rec[key]
 
@@ -213,9 +221,9 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
-        if matrix.accelerators is not None:
+        for key, value in matrix.env().items():
             lines += [
-                f'export CUPY_ACCELERATORS="{matrix.accelerators}"',
+                f'export {key}="{value}"',
                 '',
             ]
 
