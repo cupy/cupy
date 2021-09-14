@@ -143,7 +143,11 @@ cudaError_t cudaHostUnregister(...) {
 }
 
 cudaError_t cudaMallocManaged(void** ptr, size_t size, unsigned int flags) {
+#if HIP_VERSION >= 40300000
     return hipMallocManaged(ptr, size, flags);
+#else
+    return hipErrorUnknown;
+#endif
 }
 
 int cudaFree(void* ptr) {
@@ -231,12 +235,20 @@ cudaError_t cudaMemsetAsync(void* dst, int value, size_t sizeBytes,
 
 cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
                           cudaMemoryAdvise advice, int device) {
+#if HIP_VERSION >= 40300000
     return hipMemAdvise(devPtr, count, advice, device);
+#else
+    return hipErrorUnknown;
+#endif
 }
 
 cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
 				 int dstDevice, cudaStream_t stream) {
+#if HIP_VERSION >= 40300000
     return hipMemPrefetchAsync(devPtr, count, dstDevice, stream);
+#else
+    return hipErrorUnknown;
+#endif
 }
 
 cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
