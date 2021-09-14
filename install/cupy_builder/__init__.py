@@ -6,6 +6,7 @@ from cupy_builder import install_build  # NOQA
 from cupy_builder import install_utils  # NOQA
 
 from cupy_builder._context import Context  # NOQA
+from cupy_builder._preflight import preflight_check  # NOQA
 from cupy_builder._modules import get_modules  # NOQA
 
 

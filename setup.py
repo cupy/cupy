@@ -11,41 +11,27 @@ sys.path.append(os.path.join(source_root, 'install'))
 import cupy_builder  # NOQA
 from cupy_builder import cupy_setup_build  # NOQA
 
-cupy_builder.initialize(cupy_builder.Context(source_root))
+ctx = cupy_builder.Context(source_root)
+cupy_builder.initialize(ctx)
+if not cupy_builder.preflight_check(ctx):
+    sys.exit(1)
 
 
-for submodule in ('cupy/_core/include/cupy/cub/',
-                  'cupy/_core/include/cupy/jitify'):
-    if len(os.listdir(submodule)) == 0:
-        msg = '''
-        The folder %s is a git submodule but is
-        currently empty. Please use the command
-
-            git submodule update --init
-
-        to populate the folder before building from source.
-        ''' % submodule
-        print(msg, file=sys.stderr)
-        sys.exit(1)
-
-
-requirements = {
-    # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
-    'setup': [
-        'Cython>=0.29.22,<3',
-        'fastrlock>=0.5',
-    ],
-
-    'install': [
-        'numpy>=1.17,<1.24',  # see #4773
-        'fastrlock>=0.5',
-    ],
+# TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
+setup_requires = [
+    'Cython>=0.29.22,<3',
+    'fastrlock>=0.5',
+]
+install_requires = [
+    'numpy>=1.17,<1.24',  # see #4773
+    'fastrlock>=0.5',
+]
+extras_require = {
     'all': [
         'scipy>=1.4,<1.10',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
-
     'stylecheck': [
         'autopep8==1.5.5',
         'flake8==3.8.4',
@@ -56,8 +42,9 @@ requirements = {
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
     ],
+    # TODO(kmaehashi): Remove 'jenkins' requirements.
     'jenkins': [
-        '-r test',
+        'pytest>=6.2',
         'pytest-timeout',
         'pytest-cov',
         'coveralls',
@@ -65,32 +52,8 @@ requirements = {
         'coverage<5',  # Otherwise, Python must be built with sqlite
     ],
 }
+tests_require = extras_require['test']
 
-
-def reduce_requirements(key):
-    # Resolve recursive requirements notation (-r)
-    reqs = requirements[key]
-    resolved_reqs = []
-    for req in reqs:
-        if req.startswith('-r'):
-            depend_key = req[2:].lstrip()
-            reduce_requirements(depend_key)
-            resolved_reqs += requirements[depend_key]
-        else:
-            resolved_reqs.append(req)
-    requirements[key] = resolved_reqs
-
-
-for k in requirements.keys():
-    reduce_requirements(k)
-
-
-extras_require = {k: v for k, v in requirements.items() if k != 'install'}
-
-
-setup_requires = requirements['setup']
-install_requires = requirements['install']
-tests_require = requirements['test']
 
 # List of files that needs to be in the distribution (sdist/wheel).
 # Notes:
@@ -124,9 +87,8 @@ long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
 
-here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
-with open(os.path.join(here, 'cupy', '_version.py')) as f:
+with open(os.path.join(source_root, 'cupy', '_version.py')) as f:
     exec(f.read())
 
 CLASSIFIERS = """\
