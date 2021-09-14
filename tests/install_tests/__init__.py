@@ -17,4 +17,4 @@ def _from_install_import(name):
 
 
 cupy_builder = _from_install_import('cupy_builder')
-cupy_builder.initialize(cupy_builder.Context(source_root))
+cupy_builder.initialize(cupy_builder.Context(source_root, _env={}, _argv=[]))
