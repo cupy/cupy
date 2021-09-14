@@ -187,13 +187,32 @@
   test: "unit"
 
 # ROCm 4.2 | Linux
-# The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-4-2"
   target: "rocm-4-2"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: null
   rocm: '4.2'
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.8"
+  numpy: "1.20"
+  scipy: "1.6"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+# ROCm 4.3 | Linux
+# The latest ROCm version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.rocm-4-3"
+  target: "rocm-4-3"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: null
+  rocm: '4.3'
   nccl: null
   cutensor: null
   cusparselt: null
@@ -205,6 +224,7 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: null
   test: "unit"
+
 
 ###############################################################################
 # Slow Tests
