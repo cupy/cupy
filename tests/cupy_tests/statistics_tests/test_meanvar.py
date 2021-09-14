@@ -1,8 +1,7 @@
 import math
-import unittest
-import pytest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -12,7 +11,7 @@ ignore_runtime_warnings = pytest.mark.filterwarnings(
 
 
 @testing.gpu
-class TestMedian(unittest.TestCase):
+class TestMedian:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -74,7 +73,7 @@ class TestMedian(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestMedianAxis(unittest.TestCase):
+class TestMedianAxis:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -92,7 +91,7 @@ class TestMedianAxis(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNanMedian(unittest.TestCase):
+class TestNanMedian:
 
     zero_density = 0.25
 
@@ -126,7 +125,7 @@ class TestNanMedian(unittest.TestCase):
 
 
 @testing.gpu
-class TestAverage(unittest.TestCase):
+class TestAverage:
 
     _multiprocess_can_split_ = True
 
@@ -177,7 +176,7 @@ class TestAverage(unittest.TestCase):
 
 
 @testing.gpu
-class TestMeanVar(unittest.TestCase):
+class TestMeanVar:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -326,7 +325,7 @@ class TestMeanVar(unittest.TestCase):
     })
 )
 @testing.gpu
-class TestNanMean(unittest.TestCase):
+class TestNanMean:
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -348,7 +347,7 @@ class TestNanMean(unittest.TestCase):
 
 
 @testing.gpu
-class TestNanMeanAdditional(unittest.TestCase):
+class TestNanMeanAdditional:
 
     @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True)
@@ -397,7 +396,7 @@ class TestNanMeanAdditional(unittest.TestCase):
         'ddof': [0, 1]
     }))
 @testing.gpu
-class TestNanVarStd(unittest.TestCase):
+class TestNanVarStd:
 
     @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
@@ -421,7 +420,7 @@ class TestNanVarStd(unittest.TestCase):
 
 
 @testing.gpu
-class TestNanVarStdAdditional(unittest.TestCase):
+class TestNanVarStdAdditional:
 
     @ignore_runtime_warnings
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
@@ -498,7 +497,7 @@ class TestNanVarStdAdditional(unittest.TestCase):
     'func': ['mean', 'std', 'var'],
 }))
 @testing.gpu
-class TestProductZeroLength(unittest.TestCase):
+class TestProductZeroLength:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()

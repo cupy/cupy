@@ -1,7 +1,5 @@
-import pytest
-import unittest
-
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -26,7 +24,7 @@ if cupy.cuda.runtime.is_hip:
               numpy.int32, numpy.uint8, numpy.uint16, numpy.uint32),
     'c_contiguous': (True, False),
 }))
-class TestCUDAarray(unittest.TestCase):
+class TestCUDAarray:
     def test_array_gen_cpy(self):
         xp = numpy if self.xp == 'numpy' else cupy
         stream = None if not self.stream else cupy.cuda.Stream()
@@ -256,7 +254,7 @@ __global__ void copyKernel3D_4ch(float* output_x,
     'mem_type': ('CUDAarray', 'linear', 'pitch2D'),
     'target': ('object', 'reference'),
 }))
-class TestTexture(unittest.TestCase):
+class TestTexture:
     def test_fetch_float_texture(self):
         width, height, depth = self.dimensions
         dim = 3 if depth != 0 else 2 if height != 0 else 1
@@ -357,7 +355,7 @@ class TestTexture(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'target': ('object', 'reference'),
 }))
-class TestTextureVectorType(unittest.TestCase):
+class TestTextureVectorType:
     def test_fetch_float4_texture(self):
         width = 47
         height = 39
@@ -467,7 +465,7 @@ __global__ void writeKernel3D(cudaSurfaceObject_t surf,
 @testing.parameterize(*testing.product({
     'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 32)),
 }))
-class TestSurface(unittest.TestCase):
+class TestSurface:
     def test_write_float_surface(self):
         width, height, depth = self.dimensions
         dim = 3 if depth != 0 else 2 if height != 0 else 1

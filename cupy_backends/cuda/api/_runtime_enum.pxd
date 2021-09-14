@@ -84,7 +84,7 @@ cpdef enum:
 # so that we can directly assign their C counterparts here. Now because
 # of backward compatibility and no flexible Cython macro (IF/ELSE), we
 # have to duplicate the enum. (CUDA and HIP use different values!)
-IF HIP_VERSION > 0:
+IF CUPY_HIP_VERSION > 0:
     # separate in groups of 10 for easier counting...
     cpdef enum:
         cudaDevAttrMaxThreadsPerBlock = 0
@@ -200,7 +200,7 @@ IF HIP_VERSION > 0:
         # cudaDevAttrMaxSharedMemoryPerBlockOptin
         # cudaDevAttrCanFlushRemoteWrites
         # cudaDevAttrHostRegisterSupported
-    IF HIP_VERSION >= 310:
+    IF CUPY_HIP_VERSION >= 310:
         cpdef enum:
             # hipDeviceAttributeAsicRevision  # does not exist in CUDA
             cudaDevAttrManagedMemory = 47
