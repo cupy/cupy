@@ -8,6 +8,7 @@ Arguments:
 - TARGET: Name of the test target. Targets are defined in 'tests' directory.
 - STAGE: Test stage(s) to execute. Possible stages are:
   - build: Build a docker image used for testing.
+  - rmi: Remove a docker image used for testing.
   - push: Push the built docker image so that further test runs can reuse
           the image.
   - cache_get: Pull cache from Google Cloud Storage to CACHE_DIR if available.
@@ -73,6 +74,10 @@ main() {
     build )
       tests_dir="${repo_root}/.pfnci/linux/tests"
       docker build -t "${docker_image}" -f "${tests_dir}/${TARGET}.Dockerfile" "${tests_dir}"
+      ;;
+
+    rmi )
+      docker rmi "${docker_image}"
       ;;
 
     push )
