@@ -711,7 +711,7 @@ struct binomial_functor {
 // be replaced by the value of pointer[thread_id]
 
 template<typename T>
-struct array_data {};  // opaque type
+struct array_data {};  // opaque type always used as a pointer type
 
 template<typename T>
 __device__ T get_index(array_data<T> *value, int id) {
@@ -785,7 +785,7 @@ void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
     kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(a), reinterpret_cast<int64_t*>(b));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(a), reinterpret_cast<array_data<double>*>(b));
 }
 
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
@@ -795,17 +795,17 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
     kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
 void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
     kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(ngood), reinterpret_cast<int64_t*>(nbad), reinterpret_cast<int64_t*>(nsample));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(ngood), reinterpret_cast<array_data<double>*>(nbad), reinterpret_cast<array_data<double>*>(nsample));
 }
 
 void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
     kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
