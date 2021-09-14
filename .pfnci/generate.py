@@ -258,7 +258,8 @@ class CoverageGenerator:
             ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
             ['', 'System'] + [m.system for m in self.matrixes] + [''],
             ['', 'Target'] + [
-                f'[{m.target}][t{i}]' for i, m in enumerate(self.matrixes)
+                f'[{m.target}][t{i}][🐳][d{i}][📜][s{i}]'
+                for i, m in enumerate(self.matrixes)
             ] + [''],
             [''] * (len(self.matrixes) + 3)
         ]
@@ -306,10 +307,14 @@ class CoverageGenerator:
                 ]
 
         # Add links to FlexCI projects.
-        lines += [''] + [
-            f'[t{i}]:https://ci.preferred.jp/{m.project}/'
-            for i, m in enumerate(self.matrixes)
-        ] + ['']
+        lines += ['']
+        for i, m in enumerate(self.matrixes):
+            lines += [
+                f'[t{i}]:https://ci.preferred.jp/{m.project}/',
+                f'[d{i}]:{m.system}/tests/{m.target}.Dockerfile',
+                f'[s{i}]:{m.system}/tests/{m.target}.sh',
+            ]
+        lines += ['']
 
         return '\n'.join(lines)
 
