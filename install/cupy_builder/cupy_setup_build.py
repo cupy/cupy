@@ -409,18 +409,6 @@ cupy_setup_options = parse_args()
 print('Options:', cupy_setup_options)
 
 
-def get_package_name():
-    return cupy_setup_options['package_name']
-
-
-def get_long_description():
-    path = cupy_setup_options['long_description']
-    if path is None:
-        return None
-    with open(path) as f:
-        return f.read()
-
-
 def prepare_wheel_libs():
     """Prepare shared libraries and include files for wheels.
 
