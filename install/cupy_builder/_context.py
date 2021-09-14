@@ -1,14 +1,18 @@
+import argparse
 import os
-import typing
+import sys
+from typing import Any, List, Mapping, Optional, Tuple
 
 
-def _get_env_bool(name: str, default: bool, env: typing.Mapping) -> bool:
+def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
     return env[name] != '0' if name in env else default
 
 
 class Context:
     def __init__(
-            self, source_root: str, *, _env: typing.Mapping = os.environ):
+            self, source_root: str, *,
+            _env: Mapping[str, str] = os.environ,
+            _argv: List[str] = sys.argv):
         self.source_root = source_root
 
         self.enable_thrust = _get_env_bool(
@@ -18,8 +22,25 @@ class Context:
         self.use_hip = _get_env_bool(
             'CUPY_INSTALL_USE_HIP', False, _env)
 
+        cmdopts, _argv[:] = parse_args(_argv)
+        self.package_name: str = cmdopts.cupy_package_name
+        self.long_description_path: Optional[str] = (
+            cmdopts.cupy_long_description)
+        self.wheel_libs: List[str] = cmdopts.cupy_wheel_lib
+        self.wheel_includes: List[str] = cmdopts.cupy_wheel_include
+        self.wheel_metadata_path: Optional[str] = (
+            cmdopts.cupy_wheel_metadata)
+        self.no_rpath: bool = cmdopts.cupy_no_rpath
+        self.profile: bool = cmdopts.cupy_profile
+        self.linetrace: bool = cmdopts.cupy_coverage
+        self.annotate: bool = cmdopts.cupy_coverage
+        self.use_stub: bool = cmdopts.cupy_no_cuda
 
-def parse_args():
+        if os.environ.get('READTHEDOCS', None) == 'True':
+            self.use_stub = True
+
+
+def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument(
@@ -54,25 +75,5 @@ def parse_args():
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
-    # parser.add_argument(
-    #     '--cupy-use-hip', action='store_true', default=False,
-    #     help='build CuPy with HIP')
 
-    opts, sys.argv = parser.parse_known_args(sys.argv)
-
-    arg_options = {
-        'package_name': opts.cupy_package_name,
-        'long_description': opts.cupy_long_description,
-        'wheel_libs': opts.cupy_wheel_lib,  # list
-        'wheel_includes': opts.cupy_wheel_include,  # list
-        'wheel_metadata': opts.cupy_wheel_metadata,
-        'no_rpath': opts.cupy_no_rpath,
-        'profile': opts.cupy_profile,
-        'linetrace': opts.cupy_coverage,
-        'annotate': opts.cupy_coverage,
-        'no_cuda': opts.cupy_no_cuda,
-        'use_hip': use_hip  # opts.cupy_use_hip,
-    }
-    if check_readthedocs_environment():
-        arg_options['no_cuda'] = True
-    return arg_options
+    return parser.parse_known_args(argv)

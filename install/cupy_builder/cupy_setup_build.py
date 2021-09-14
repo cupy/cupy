@@ -1,4 +1,3 @@
-import argparse
 import copy
 from distutils import ccompiler
 from distutils import errors
@@ -66,10 +65,6 @@ def module_extension_sources(file, use_cython, no_cuda):
 
 def get_required_modules(MODULES):
     return [m['name'] for m in MODULES if m.get('required', False)]
-
-
-def check_readthedocs_environment():
-    return os.environ.get('READTHEDOCS', None) == 'True'
 
 
 def check_library(compiler, includes=(), libraries=(),
