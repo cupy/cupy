@@ -182,7 +182,8 @@ cdef int check_stream_device_match(int device_id) except? -1:
         device_id = curr_dev
     if device_id != curr_dev:
         raise RuntimeError(
-            f'This stream was not created on device {curr_dev}')
+            f'The device that the stream is created on ({device_id})'
+            f' does not match with the current device ({curr_dev})')
     return device_id
 
 
