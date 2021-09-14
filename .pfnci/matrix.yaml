@@ -19,7 +19,7 @@
   scipy: "1.4"
   optuna: "2"
   cython: "0.29"
-  accelerators: null
+  env:CUPY_ACCELERATORS: null
   test: "unit"
 
 # CUDA 10.1 | Linux
@@ -38,7 +38,7 @@
   scipy: "1.5"
   optuna: null
   cython: "0.29"
-  accelerators: "cub"
+  env:CUPY_ACCELERATORS: "cub"
   test: "unit"
 
 # CUDA 10.2 | Linux
@@ -57,7 +57,7 @@
   scipy: "1.6"
   optuna: "2"
   cython: "0.29"
-  accelerators: "cutensor"
+  env:CUPY_ACCELERATORS: "cutensor"
   test: "unit"
 
 # CUDA 11.0 | Linux
@@ -76,7 +76,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  accelerators: "cub,cutensor"
+  env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
 # CUDA 11.1 | Linux
@@ -95,7 +95,7 @@
   scipy: null
   optuna: "2"
   cython: "0.29"
-  accelerators: "cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 11.2 | Linux
@@ -114,7 +114,7 @@
   scipy: "1.5"
   optuna: "2"
   cython: "0.29"
-  accelerators: null
+  env:CUPY_ACCELERATORS: null
   test: "unit"
 
 # CUDA 11.3 | Linux
@@ -133,7 +133,7 @@
   scipy: "1.6"
   optuna: "2"
   cython: "0.29"
-  accelerators: "cub,cutensor"
+  env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
 # CUDA 11.4 | Linux
@@ -153,7 +153,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  accelerators: "cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 ###############################################################################
@@ -183,7 +183,7 @@
   scipy: "1.4"
   optuna: "2"
   cython: "0.29"
-  accelerators: null
+  env:CUPY_ACCELERATORS: null
   test: "unit"
 
 # ROCm 4.2 | Linux
@@ -203,7 +203,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  accelerators: null
+  env:CUPY_ACCELERATORS: null
   test: "unit"
 
 ###############################################################################
@@ -226,7 +226,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  accelerators: "cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "slow"
 
 ###############################################################################
@@ -250,7 +250,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  accelerators: "cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "doctest"
 
 ###############################################################################
@@ -273,7 +273,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  accelerators: null
+  env:CUPY_ACCELERATORS: null
   test: "example"
 
 ###############################################################################
@@ -297,5 +297,5 @@
   scipy: "pre"
   optuna: "pre"
   cython: "0.29"  # TODO: support Cython 3
-  accelerators: "cub,cutensor"
+  env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"

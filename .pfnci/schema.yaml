@@ -322,10 +322,9 @@ cython:
     spec: ">=0a0"  # latest, including pre-releases
 
 ###############################################################################
-# Accelerators
+# Environment Variables
 ###############################################################################
-# Corresponds to the environment variable "CUPY_ACCELERATORS".
-accelerators:
+env:CUPY_ACCELERATORS:
   null:
   "cub":
   "cutensor":
