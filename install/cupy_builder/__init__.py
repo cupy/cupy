@@ -1,16 +1,22 @@
+import typing as _typing
+
+# Legacy modules
 from cupy_builder import cupy_setup_build  # NOQA
 from cupy_builder import install_build  # NOQA
 from cupy_builder import install_utils  # NOQA
 
-
-_source_root = None
-
-
-def initialize(source_root):
-    global _source_root
-    _source_root = source_root
+from cupy_builder._context import Context  # NOQA
+from cupy_builder._modules import get_modules  # NOQA
 
 
-def get_source_root():
-    assert _source_root is not None, 'cupy_builder is not initialized'
-    return _source_root
+_context: _typing.Optional[Context] = None
+
+
+def initialize(context: Context) -> None:
+    global _context
+    _context = context
+
+
+def get_context() -> Context:
+    assert _context is not None, 'cupy_builder is not initialized'
+    return _context

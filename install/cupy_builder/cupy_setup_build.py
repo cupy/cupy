@@ -14,6 +14,7 @@ import pkg_resources
 import setuptools
 from setuptools.command import build_ext
 
+import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder.install_build import PLATFORM_LINUX
 from cupy_builder.install_build import PLATFORM_WIN32
@@ -31,387 +32,6 @@ required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
 use_hip = build.use_hip
-
-
-# Enable CUDA Python
-use_cuda_python = (os.environ.get('CUPY_USE_CUDA_PYTHON', '0') != '0')
-
-
-# The value of the key 'file' is a list that contains extension names
-# or tuples of an extension name and a list of other souces files
-# required to build the extension such as .cpp files and .cu files.
-#
-#   <extension name> | (<extension name>, a list of <other source>)
-#
-# The extension name is also interpreted as the name of the Cython
-# source file required to build the extension with appending '.pyx'
-# file extension.
-MODULES = []
-
-cuda_files = [
-    'cupy_backends.cuda.api.driver',
-    'cupy_backends.cuda.api._driver_enum',
-    'cupy_backends.cuda.api.runtime',
-    'cupy_backends.cuda.api._runtime_enum',
-    'cupy_backends.cuda.libs.cublas',
-    'cupy_backends.cuda.libs.curand',
-    'cupy_backends.cuda.libs.cusparse',
-    'cupy_backends.cuda.libs.nvrtc',
-    'cupy_backends.cuda.libs.profiler',
-    'cupy_backends.cuda.stream',
-    'cupy._core._accelerator',
-    'cupy._core._carray',
-    'cupy._core._cub_reduction',
-    'cupy._core._dtype',
-    'cupy._core._fusion_kernel',
-    'cupy._core._fusion_thread_local',
-    'cupy._core._fusion_trace',
-    'cupy._core._fusion_variable',
-    'cupy._core._kernel',
-    'cupy._core._memory_range',
-    'cupy._core._optimize_config',
-    'cupy._core._reduction',
-    'cupy._core._routines_binary',
-    'cupy._core._routines_indexing',
-    'cupy._core._routines_linalg',
-    'cupy._core._routines_logic',
-    'cupy._core._routines_manipulation',
-    'cupy._core._routines_math',
-    'cupy._core._routines_sorting',
-    'cupy._core._routines_statistics',
-    'cupy._core._scalar',
-    'cupy._core.core',
-    'cupy._core.flags',
-    'cupy._core.internal',
-    'cupy._core.fusion',
-    'cupy._core.new_fusion',
-    'cupy._core.raw',
-    'cupy.cuda.common',
-    'cupy.cuda.cufft',
-    'cupy.cuda.device',
-    'cupy.cuda.memory',
-    'cupy.cuda.memory_hook',
-    'cupy.cuda.pinned_memory',
-    'cupy.cuda.function',
-    'cupy.cuda.stream',
-    'cupy.cuda.texture',
-    'cupy.fft._cache',
-    'cupy.fft._callback',
-    'cupy.lib._polynomial',
-    'cupy._util'
-]
-
-if use_hip:
-    # We handle nvtx (and likely any other future support) here, because
-    # the HIP stubs (hip/cupy_*.h) would cause many symbols
-    # to leak into all these modules even if unused. It's easier for all of
-    # them to link to the same set of shared libraries.
-    MODULES.append({
-        # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
-        'name': 'cuda',
-        'required': True,
-        'file': cuda_files + [
-            'cupy_backends.cuda.libs.nvtx',
-            'cupy_backends.cuda.libs.cusolver',
-            'cupy.cusolver',
-        ],
-        'include': [
-            'hip/hip_runtime_api.h',
-            'hip/hiprtc.h',
-            'hipblas.h',
-            'hiprand/hiprand.h',
-            'hipsparse.h',
-            'hipfft.h',
-            'roctx.h',
-            'rocsolver.h',
-        ],
-        'libraries': [
-            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
-            'hipblas',
-            ('hipfft', lambda hip_version: hip_version >= 401),
-            'hiprand',
-            'hipsparse',
-            'rocfft',
-            'roctx64',
-            'rocblas',
-            'rocsolver',
-            'rocsparse',
-        ],
-        'check_method': build.check_hip_version,
-        'version_method': build.get_hip_version,
-    })
-else:
-    MODULES.append({
-        'name': 'cuda',
-        'required': True,
-        'file': cuda_files,
-        'include': [
-            'cublas_v2.h',
-            'cuda.h',
-            'cuda_profiler_api.h',
-            'cuda_runtime.h',
-            'cufft.h',
-            'curand.h',
-            'cusparse.h',
-            'nvrtc.h',
-        ],
-        # TODO(kmaehashi): Split profiler module to remove dependency to
-        # cudart when using CUDA Python.
-        'libraries':
-            (['cudart'] if use_cuda_python else ['cuda', 'cudart']) + [
-            'cublas',
-            'cufft',
-            'curand',
-            'cusparse',
-            'nvrtc',
-        ],
-        'check_method': build.check_cuda_version,
-        'version_method': build.get_cuda_version,
-    })
-
-if not use_hip:
-    MODULES.append({
-        'name': 'cusolver',
-        'required': True,
-        'file': [
-            'cupy_backends.cuda.libs.cusolver',
-            'cupy.cusolver',
-        ],
-        'include': [
-            'cusolverDn.h',
-        ],
-        'libraries': [
-            'cusolver',
-        ],
-        'check_method': build.check_cuda_version,
-    })
-
-if not use_hip:
-    MODULES.append({
-        'name': 'cudnn',
-        'file': [
-            'cupy_backends.cuda.libs.cudnn',
-            'cupy.cudnn',
-        ],
-        'include': [
-            'cudnn.h',
-        ],
-        'libraries': [
-            'cudnn',
-        ],
-        'check_method': build.check_cudnn_version,
-        'version_method': build.get_cudnn_version,
-    })
-
-    MODULES.append({
-        'name': 'nccl',
-        'file': [
-            'cupy_backends.cuda.libs.nccl',
-        ],
-        'include': [
-            'nccl.h',
-        ],
-        'libraries': [
-            'nccl',
-        ],
-        'check_method': build.check_nccl_version,
-        'version_method': build.get_nccl_version,
-    })
-
-    MODULES.append({
-        'name': 'nvtx',
-        'file': [
-            'cupy_backends.cuda.libs.nvtx',
-        ],
-        'include': [
-            'nvToolsExt.h',
-        ],
-        'libraries': [
-            'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
-        ],
-        'check_method': build.check_nvtx,
-    })
-
-    MODULES.append({
-        'name': 'cutensor',
-        'file': [
-            'cupy_backends.cuda.libs.cutensor',
-            'cupy.cutensor',
-        ],
-        'include': [
-            'cutensor.h',
-        ],
-        'libraries': [
-            'cutensor',
-            'cublas',
-        ],
-        'check_method': build.check_cutensor_version,
-        'version_method': build.get_cutensor_version,
-    })
-
-    MODULES.append({
-        'name': 'cub',
-        'required': True,
-        'file': [
-            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
-        ],
-        'include': [
-            'cub/util_namespace.cuh',  # dummy
-        ],
-        'libraries': [
-            # Dependency from CUB header files
-            'cudart',
-        ],
-        'check_method': build.check_cub_version,
-        'version_method': build.get_cub_version,
-    })
-
-    MODULES.append({
-        'name': 'jitify',
-        'required': True,
-        'file': [
-            'cupy.cuda.jitify',
-        ],
-        'include': [
-            'cuda.h',
-            'cuda_runtime.h',
-            'nvrtc.h',
-        ],
-        'libraries': [
-            # Dependency from Jitify header files
-            'cuda',
-            'cudart',
-            'nvrtc',
-        ],
-        'check_method': build.check_jitify_version,
-        'version_method': build.get_jitify_version,
-    })
-
-    MODULES.append({
-        'name': 'random',
-        'required': True,
-        'file': [
-            'cupy.random._bit_generator',
-            ('cupy.random._generator_api',
-             ['cupy/random/cupy_distributions.cu']),
-        ],
-        'include': [
-        ],
-        'libraries': [
-            # Dependency from cuRAND header files
-            'cudart',
-            'curand',
-        ],
-    })
-
-    MODULES.append({
-        'name': 'cusparselt',
-        'file': [
-            'cupy_backends.cuda.libs.cusparselt',
-        ],
-        'include': [
-            'cusparseLt.h',
-        ],
-        'libraries': [
-            'cusparseLt',
-        ],
-        'check_method': build.check_cusparselt_version,
-        'version_method': build.get_cusparselt_version,
-    })
-
-    MODULES.append({
-        'name': 'cugraph',
-        'file': [
-            'cupy_backends.cuda.libs.cugraph',
-        ],
-        'include': [
-            'cugraph/raft/error.hpp',  # dummy
-        ],
-        'libraries': [
-            'cugraph',
-        ],
-        'check_method': build.check_cugraph_version,
-        'version_method': build.get_cugraph_version,
-    })
-
-else:
-    MODULES.append({
-        'name': 'cub',
-        'required': True,
-        'file': [
-            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
-        ],
-        'include': [
-            'hipcub/hipcub_version.hpp',  # dummy
-        ],
-        'libraries': [
-            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
-        ],
-        'check_method': build.check_cub_version,
-        'version_method': build.get_cub_version,
-    })
-
-    MODULES.append({
-        'name': 'nccl',
-        'file': [
-            'cupy_backends.cuda.libs.nccl',
-        ],
-        'include': [
-            'rccl.h',
-        ],
-        'libraries': [
-            'rccl',
-        ],
-        'check_method': build.check_nccl_version,
-        'version_method': build.get_nccl_version,
-    })
-
-if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
-    if use_hip:
-        MODULES.append({
-            'name': 'thrust',
-            'required': True,
-            'file': [
-                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-            ],
-            'include': [
-                'thrust/version.h',
-            ],
-            'libraries': [
-                'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
-            ],
-        })
-    else:
-        MODULES.append({
-            'name': 'thrust',
-            'required': True,
-            'file': [
-                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-            ],
-            'include': [
-                'thrust/device_ptr.h',
-                'thrust/sequence.h',
-                'thrust/sort.h',
-            ],
-            'libraries': [
-                # Dependency from Thrust header files
-                'cudart',
-            ],
-            'check_method': build.check_thrust_version,
-            'version_method': build.get_thrust_version,
-        })
-
-MODULES.append({
-    'name': 'dlpack',
-    'required': True,
-    'file': [
-        'cupy._core.dlpack',
-    ],
-    'include': [
-        'cupy/dlpack/dlpack.h',
-    ],
-    'libraries': [],
-})
 
 
 def ensure_module_file(file):
@@ -444,7 +64,7 @@ def module_extension_sources(file, use_cython, no_cuda):
     return [pyx] + others
 
 
-def get_required_modules():
+def get_required_modules(MODULES):
     return [m['name'] for m in MODULES if m.get('required', False)]
 
 
@@ -487,7 +107,7 @@ def canonicalize_hip_libraries(hip_version, libraries):
     libraries.extend(new_libraries)
 
 
-def preconfigure_modules(compiler, settings):
+def preconfigure_modules(MODULES, compiler, settings):
     """Returns a list of modules buildable in given environment and settings.
 
     For each module in MODULES list, this function checks if the module
@@ -568,6 +188,7 @@ def preconfigure_modules(compiler, settings):
                     settings['include_dirs'].insert(0, inc_path)
                     lib_path = os.path.join(rocm_path, 'hipfft', 'lib')
                     settings['library_dirs'].insert(0, lib_path)
+                # n.b., this modifieds MODULES['cuda']['libraries'] inplace
                 canonicalize_hip_libraries(hip_version, module['libraries'])
 
         print('')
@@ -662,6 +283,8 @@ def _rpath_base():
 def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
+    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
+
     no_cuda = options['no_cuda']
     use_hip = not no_cuda and options['use_hip']
     settings = build.get_compiler_setting(use_hip)
@@ -701,8 +324,9 @@ def make_extensions(options, compiler, use_cython):
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules, settings = preconfigure_modules(compiler, settings)
-        required_modules = get_required_modules()
+        available_modules, settings = preconfigure_modules(
+            MODULES, compiler, settings)
+        required_modules = get_required_modules(MODULES)
         if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
@@ -940,6 +564,7 @@ def cythonize(extensions, arg_options):
 
     # Enable CUDA Python.
     # TODO: add `cuda` to `setup_requires` only when this flag is set
+    use_cuda_python = cupy_builder.get_context().use_cuda_python
     compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
     if use_cuda_python:
         print('Using CUDA Python')
