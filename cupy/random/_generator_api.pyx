@@ -931,8 +931,19 @@ class Generator:
         cdef ndarray p_arr
         cdef intptr_t binomial_state_ptr
 
-        n = cupy.asarray(n)
-        p = cupy.asarray(p)
+        if isinstance(n, ndarray):
+            n = n.astype(numpy.int64, copy=False)
+        elif type(n) in (float, int):
+            n = cupy.asarray(n, numpy.int64)
+        else:
+            raise TypeError('n is required to be a cupy.ndarray or a scalar')
+
+        if isinstance(p, ndarray):
+            p = p.astype(numpy.float64, copy=False)
+        elif type(p) is float:
+            p = cupy.asarray(p, numpy.float64)
+        else:
+            raise TypeError('p is required to be a cupy.ndarray or a scalar')
 
         if size is None:
             size = cupy.broadcast(n, p).shape
