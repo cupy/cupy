@@ -146,7 +146,7 @@ class TestOptimize(unittest.TestCase):
             # existing file, readonly=False
             with cupyx.optimizing.optimize(path=filepath, readonly=False):
                 cupy.sum(cupy.arange(8))
-            assert filesize < os.stat(filepath).st_size
+            assert filesize <= os.stat(filepath).st_size
 
 
 # TODO(leofang): check the optimizer is not applicable to the cutensor backend?
