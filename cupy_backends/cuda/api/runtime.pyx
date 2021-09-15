@@ -448,7 +448,7 @@ cpdef intptr_t malloc(size_t size) except? 0:
 
 cpdef intptr_t mallocManaged(
         size_t size, unsigned int flags=cudaMemAttachGlobal) except? 0:
-    if CUPY_HIP_VERSION < 40300000:
+    if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('HIP does not support managed memory')
     cdef void* ptr
     with nogil:
@@ -632,7 +632,7 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
-    if CUPY_HIP_VERSION < 40300000:
+    if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('HIP does not support managed memory')
     with nogil:
         status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
@@ -640,7 +640,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
-    if CUPY_HIP_VERSION < 40300000:
+    if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('HIP does not support managed memory')
     with nogil:
         status = cudaMemAdvise(<void*>devPtr, count,
