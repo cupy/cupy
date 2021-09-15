@@ -923,7 +923,7 @@ class Generator:
         Returns:
             cupy.ndarray: Samples drawn from the binomial distribution.
 
-        .. sesalso::
+        .. seealso::
            :meth:`numpy.random.Generator.binomial`
         """
         cdef ndarray y
