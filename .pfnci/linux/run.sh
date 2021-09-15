@@ -14,6 +14,8 @@ Arguments:
   - cache_get: Pull cache from Google Cloud Storage to CACHE_DIR if available.
   - cache_put: Push cache from CACHE_DIR to Google Cloud Storage.
   - test: Run tests.
+  - shell: Start an interactive shell in the docker image for debugging.
+           The source tree will be read-write mounted for convenience.
 
 Environment variables:
 
@@ -107,14 +109,12 @@ main() {
       rm -f "${cache_archive}"
       ;;
 
-    test )
+    test | shell )
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
         --rm
         --name "${container_name}"
-        --volume="${repo_root}:/src:ro"
-        --workdir "/src"
         --env "BASE_BRANCH=${base_branch}"
       )
       if [[ -t 1 ]]; then
@@ -138,12 +138,17 @@ main() {
         exit 1
       fi
 
-      docker_args+=("${docker_image}" timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh")
-      "${docker_args[@]}" &
-      docker_pid=$!
-      trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
-      wait $docker_pid
-      trap TERM INT HUP
+      if [[ "${stage}" = "test" ]]; then
+        "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
+            "${docker_image}" timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh" &
+        docker_pid=$!
+        trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
+        wait $docker_pid
+        trap TERM INT HUP
+      elif [[ "${stage}" = "shell" ]]; then
+        "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" --tty \
+            "${docker_image}" bash
+      fi
       ;;
 
     * )
