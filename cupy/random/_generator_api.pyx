@@ -901,7 +901,31 @@ class Generator:
         return (<object>y).astype(dtype, copy=False)
 
     def binomial(self, n, p, size=None):
-        """binomial"""
+        """Binomial distribution.
+
+        Returns an array of samples drawn from the binomial distribution. Its
+        probability mass function is defined as
+
+        .. math::
+           f(x) = \\binom{n}{x}p^x(1-p)^(n-x).
+
+        Args:
+            n (int or cupy.ndarray of ints): Parameter of the distribution,
+                >= 0. Floats are also accepted, but they will be truncated to
+                integers.
+            p (float or cupy.ndarray of floats): Parameter of the distribution,
+                >= 0 and <= 1.
+            size (int or tuple of ints, optional): The shape of the output
+                array. If ``None`` (default), a single value is returned if
+                ``n`` and ``p`` are both scalars. Otherwise,
+                ``cupy.broadcast(n, p).size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the binomial distribution.
+
+        .. sesalso::
+           :meth:`numpy.random.Generator.binomial`
+        """
         cdef ndarray y
         cdef ndarray n_arr
         cdef ndarray p_arr
