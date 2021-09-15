@@ -38,6 +38,10 @@ class TestOptimize(unittest.TestCase):
         testing.assert_array_equal(y1, y2)
 
     def test_optimize_cache(self):
+        if (_accelerator.ACCELERATOR_CUB
+                in _accelerator.get_reduction_accelerators()):
+            pytest.skip('optimize cannot be mocked for CUB reduction')
+
         target = cupyx.optimizing._optimize._optimize
         target_full_name = '{}.{}'.format(target.__module__, target.__name__)
 
@@ -81,6 +85,10 @@ class TestOptimize(unittest.TestCase):
 
     @testing.multi_gpu(2)
     def test_optimize_cache_multi_gpus(self):
+        if (_accelerator.ACCELERATOR_CUB
+                in _accelerator.get_reduction_accelerators()):
+            pytest.skip('optimize cannot be mocked for CUB reduction')
+
         target = cupyx.optimizing._optimize._optimize
         target_full_name = '{}.{}'.format(target.__module__, target.__name__)
 
