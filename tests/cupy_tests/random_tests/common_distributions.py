@@ -282,6 +282,30 @@ class Gamma:
             self.shape, self.scale, size=2000)
 
 
+binomial_params = [
+    {'n': 2, 'p': 0.5},
+    {'n': 5, 'p': 0.5},
+    {'n': 10, 'p': 0.5},
+    {'n': 2, 'p': 0.1},
+    {'n': 5, 'p': 0.1},
+    {'n': 10, 'p': 0.1},
+    {'n': 2, 'p': 1.0},
+    {'n': 2, 'p': 1.0},
+    {'n': 2, 'p': 1.0}]
+
+
+class Binomial:
+
+    target_method = 'binomial'
+
+    def test_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_binomial_ks(self):
+        self.check_ks(0.05)(self.n, self.p, size=2000)
+
+
 geometric_params = [
     {'p': 0.5},
     {'p': 0.1},
