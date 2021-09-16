@@ -80,16 +80,20 @@ package_data = {
     ],
 }
 
-package_data['cupy'] += cupy_setup_build.prepare_wheel_libs()
+package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
-package_name = cupy_setup_build.get_package_name()
-long_description = cupy_setup_build.get_long_description()
-ext_modules = cupy_setup_build.get_ext_modules()
+ext_modules = cupy_setup_build.get_ext_modules(False, ctx)
 build_ext = cupy_setup_build.custom_build_ext
 
 # Get __version__ variable
 with open(os.path.join(source_root, 'cupy', '_version.py')) as f:
     exec(f.read())
+
+long_description = None
+if ctx.long_description_path is not None:
+    with open(ctx.long_description_path) as f:
+        long_description = f.read()
+
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
@@ -112,7 +116,7 @@ Operating System :: Microsoft :: Windows
 
 
 setup(
-    name=package_name,
+    name=ctx.package_name,
     version=__version__,  # NOQA
     description='CuPy: NumPy & SciPy for GPU',
     long_description=long_description,
