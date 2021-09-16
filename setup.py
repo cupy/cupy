@@ -150,6 +150,7 @@ setup(
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
+    maintainer='CuPy Developers',
     url='https://cupy.dev/',
     license='MIT License',
     project_urls={
