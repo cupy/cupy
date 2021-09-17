@@ -32,7 +32,7 @@ def column_stack(tup):
     return concatenate(lst, axis=1)
 
 
-def concatenate(tup, axis=0, out=None):
+def concatenate(tup, axis=0, out=None, *, dtype=None, casting='same_kind'):
     """Joins arrays along an axis.
 
     Args:
@@ -42,6 +42,11 @@ def concatenate(tup, axis=0, out=None):
             If axis is None, arrays are flattened before use.
             Default is 0.
         out (cupy.ndarray): Output array.
+        dtype (str or dtype): If provided, the destination array will have this
+            dtype. Cannot be provided together with ``out``.
+        casting ({‘no’, ‘equiv’, ‘safe’, ‘same_kind’, ‘unsafe’}, optional):
+            Controls what kind of data casting may occur. Defaults to
+            ``'same_kind'``.
 
     Returns:
         cupy.ndarray: Joined array.
@@ -52,7 +57,7 @@ def concatenate(tup, axis=0, out=None):
     if axis is None:
         tup = [m.ravel() for m in tup]
         axis = 0
-    return _core.concatenate_method(tup, axis, out)
+    return _core.concatenate_method(tup, axis, out, dtype, casting)
 
 
 def dstack(tup):
