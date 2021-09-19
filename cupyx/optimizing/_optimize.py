@@ -101,7 +101,8 @@ The optimization results will never be stored.
 
     try:
         yield context
-        if path is not None and not readonly and context._is_dirty():
-            context.save(path)
+        if path is not None and not readonly:
+            if context._is_dirty() or not os.path.exists(path):
+                context.save(path)
     finally:
         _optimize_config.set_current_context(old_context)
