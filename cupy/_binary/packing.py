@@ -42,16 +42,16 @@ def packbits(myarray):
     return _packbits_kernel(myarray, myarray.size, packed)
 
 
-_unpackbits_kernel = { 'big': _core.ElementwiseKernel(
+_unpackbits_kernel = {'big': _core.ElementwiseKernel(
                             'raw uint8 myarray', 'T unpacked',
                             'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
                             'cupy_unpackbits_kernel'
-                        ),
-                        'little': _core.ElementwiseKernel(
+                            ),
+                      'little': _core.ElementwiseKernel(
                             'raw uint8 myarray', 'T unpacked',
                             'unpacked = (myarray[i / 8] >> (i % 8)) & 1;',
                             'cupy_unpackbits_kernel'
-                        ) }
+                            )}
 
 
 def unpackbits(myarray, bitorder='big'):
