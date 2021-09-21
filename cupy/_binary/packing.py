@@ -62,7 +62,7 @@ def unpackbits(myarray, bitorder='big'):
     Args:
         myarray (cupy.ndarray): Input array.
 
-        bitorder{'big', 'little'}, optional. Defaults to 'big'
+        bitorder : {'big', 'little'}, optional. Defaults to 'big'
 
     Returns:
         cupy.ndarray: The unpacked array.
@@ -73,7 +73,7 @@ def unpackbits(myarray, bitorder='big'):
         raise TypeError('Expected an input array of unsigned byte data type')
 
     if bitorder not in ['big', 'little']:
-        raise ValueError(f"bitorder must be either 'big' or 'little' not '{bitorder}'")
+        raise ValueError("bitorder must be either 'big' or 'little'")
 
     unpacked = cupy.ndarray((myarray.size * 8), dtype=cupy.uint8)
     return _unpackbits_kernel[bitorder](myarray, unpacked)
