@@ -74,4 +74,4 @@ cdef extern from '../../cupy_backend.h' nogil:
         block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
 
     # Build-time version
-    int CUDA_VERSION
+    enum: CUDA_VERSION

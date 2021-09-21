@@ -37,14 +37,14 @@ def _format_exception(exc):
     return ''.join(traceback.TracebackException.from_exception(exc).format())
 
 
-def _call_func(self, impl, args, kw):
+def _call_func(impl, args, kw):
     # Note that `_pytest.outcomes.Skipped` is derived from BaseException.
     exceptions = Exception,
     if _is_pytest_available:
         exceptions += _pytest.outcomes.Skipped,
 
     try:
-        result = impl(self, *args, **kw)
+        result = impl(*args, **kw)
         error = None
     except exceptions as e:
         tb = e.__traceback__
@@ -57,7 +57,7 @@ def _call_func(self, impl, args, kw):
     return result, error
 
 
-def _call_func_cupy(self, impl, args, kw, name, sp_name, scipy_name):
+def _call_func_cupy(impl, args, kw, name, sp_name, scipy_name):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -69,11 +69,11 @@ def _call_func_cupy(self, impl, args, kw, name, sp_name, scipy_name):
     if scipy_name:
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
-    result, error = _call_func(self, impl, args, kw)
+    result, error = _call_func(impl, args, kw)
     return result, error
 
 
-def _call_func_numpy(self, impl, args, kw, name, sp_name, scipy_name):
+def _call_func_numpy(impl, args, kw, name, sp_name, scipy_name):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -87,18 +87,18 @@ def _call_func_numpy(self, impl, args, kw, name, sp_name, scipy_name):
     if scipy_name:
         import scipy
         kw[scipy_name] = scipy
-    result, error = _call_func(self, impl, args, kw)
+    result, error = _call_func(impl, args, kw)
     return result, error
 
 
-def _call_func_numpy_cupy(self, impl, args, kw, name, sp_name, scipy_name):
+def _call_func_numpy_cupy(impl, args, kw, name, sp_name, scipy_name):
     # Run cupy
     cupy_result, cupy_error = _call_func_cupy(
-        self, impl, args, kw, name, sp_name, scipy_name)
+        impl, args, kw, name, sp_name, scipy_name)
 
     # Run numpy
     numpy_result, numpy_error = _call_func_numpy(
-        self, impl, args, kw, name, sp_name, scipy_name)
+        impl, args, kw, name, sp_name, scipy_name)
 
     return (
         cupy_result, cupy_error,
@@ -213,14 +213,14 @@ def _signed_counterpart(dtype):
     return numpy.dtype(numpy.dtype(dtype).char.lower()).type
 
 
-def _make_positive_masks(self, impl, args, kw, name, sp_name, scipy_name):
+def _make_positive_masks(impl, args, kw, name, sp_name, scipy_name):
     # Returns a mask of output arrays that indicates valid elements for
     # comparison. See the comment at the caller.
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
         kw[k] = _signed_counterpart(kw[k])
     result, error = _call_func_cupy(
-        self, impl, args, kw, name, sp_name, scipy_name)
+        impl, args, kw, name, sp_name, scipy_name)
     assert error is None
     if not isinstance(result, (tuple, list)):
         result = result,
@@ -258,13 +258,13 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
     def decorator(impl):
         @_wraps_partial_xp(impl, name, sp_name, scipy_name)
-        def test_func(self, *args, **kw):
+        def test_func(*args, **kw):
             # Run cupy and numpy
             (
                 cupy_result, cupy_error,
                 numpy_result, numpy_error) = (
                     _call_func_numpy_cupy(
-                        self, impl, args, kw, name, sp_name, scipy_name))
+                        impl, args, kw, name, sp_name, scipy_name))
             assert cupy_result is not None or cupy_error is not None
             assert numpy_result is not None or numpy_error is not None
 
@@ -329,7 +329,7 @@ numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
                     for cupy_r in cupy_result]
                 if any(needs_mask):
                     masks = _make_positive_masks(
-                        self, impl, args, kw, name, sp_name, scipy_name)
+                        impl, args, kw, name, sp_name, scipy_name)
                     for i, flag in enumerate(needs_mask):
                         if not flag:
                             masks[i] = None
@@ -738,7 +738,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          sp_name(str or None): Argument name whose value is either
-             ``scipy.sparse`` or ``cupyx.sciyp.sparse`` module. If ``None``, no
+             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
              argument is given for the modules.
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
@@ -749,13 +749,13 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
     """
     def decorator(impl):
         @_wraps_partial_xp(impl, name, sp_name, scipy_name)
-        def test_func(self, *args, **kw):
+        def test_func(*args, **kw):
             # Run cupy and numpy
             (
                 cupy_result, cupy_error,
                 numpy_result, numpy_error) = (
                     _call_func_numpy_cupy(
-                        self, impl, args, kw, name, sp_name, scipy_name))
+                        impl, args, kw, name, sp_name, scipy_name))
 
             if cupy_error or numpy_error:
                 _check_cupy_numpy_error(
@@ -801,13 +801,13 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
 
     def decorator(impl):
         @_wraps_partial_xp(impl, name, sp_name, scipy_name)
-        def test_func(self, *args, **kw):
+        def test_func(*args, **kw):
             # Run cupy and numpy
             (
                 cupy_result, cupy_error,
                 numpy_result, numpy_error) = (
                     _call_func_numpy_cupy(
-                        self, impl, args, kw, name, sp_name, scipy_name))
+                        impl, args, kw, name, sp_name, scipy_name))
 
             _check_cupy_numpy_error(cupy_error,
                                     numpy_error,
@@ -830,11 +830,11 @@ def for_dtypes(dtypes, name='dtype'):
     """
     def decorator(impl):
         @_wraps_partial(impl, name)
-        def test_func(self, *args, **kw):
+        def test_func(*args, **kw):
             for dtype in dtypes:
                 try:
                     kw[name] = numpy.dtype(dtype).type
-                    impl(self, *args, **kw)
+                    impl(*args, **kw)
                 except _skip_classes as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
@@ -1071,13 +1071,13 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
     def decorator(impl):
         @_wraps_partial(impl, *names)
-        def test_func(self, *args, **kw):
+        def test_func(*args, **kw):
             for dtypes in combination:
                 kw_copy = kw.copy()
                 kw_copy.update(dtypes)
 
                 try:
-                    impl(self, *args, **kw_copy)
+                    impl(*args, **kw_copy)
                 except _skip_classes as e:
                     msg = ', '.join(
                         '{} = {}'.format(name, dtype)
@@ -1180,11 +1180,11 @@ def for_orders(orders, name='order'):
     """
     def decorator(impl):
         @_wraps_partial(impl, name)
-        def test_func(self, *args, **kw):
+        def test_func(*args, **kw):
             for order in orders:
                 try:
                     kw[name] = order
-                    impl(self, *args, **kw)
+                    impl(*args, **kw)
                 except Exception:
                     print(name, 'is', order)
                     raise

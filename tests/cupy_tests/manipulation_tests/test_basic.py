@@ -138,15 +138,14 @@ class TestCopytoFromScalar:
         return dst
 
 
-class TestCopytoScalarWhere:
-    @pytest.mark.parametrize('shape', [(3, 2), (0,)])
-    @pytest.mark.parametrize('where', [
-        float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j
-    ])
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_copyto_scalarwhere(self, xp, dtype, where, shape):
-        dst = xp.zeros(shape, dtype=dtype)
-        src = xp.ones(shape, dtype=dtype)
-        xp.copyto(dst, src, where=where)
-        return dst
+@pytest.mark.parametrize('shape', [(3, 2), (0,)])
+@pytest.mark.parametrize('where', [
+    float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j
+])
+@testing.for_all_dtypes()
+@testing.numpy_cupy_allclose()
+def test_copyto_scalarwhere(xp, dtype, where, shape):
+    dst = xp.zeros(shape, dtype=dtype)
+    src = xp.ones(shape, dtype=dtype)
+    xp.copyto(dst, src, where=where)
+    return dst
