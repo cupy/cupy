@@ -54,3 +54,4 @@ class TestPacking(unittest.TestCase):
         a = cupy.array([10, 20, 30], dtype=cupy.uint8)
         pytest.raises(ValueError, cupy.unpackbits, a,  bitorder='r')
         pytest.raises(ValueError, cupy.unpackbits, a,  bitorder=10)
+        
