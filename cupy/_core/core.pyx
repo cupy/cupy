@@ -2029,13 +2029,7 @@ cpdef function.Module compile_with_cache(
             _cuda_path = cuda.get_rocm_path()
 
     if not _is_hip:
-        if 9020 <= _cuda_runtime_version < 9030:
-            bundled_include = 'cuda-9.2'
-        elif 10000 <= _cuda_runtime_version < 10010:
-            bundled_include = 'cuda-10.0'
-        elif 10010 <= _cuda_runtime_version < 10020:
-            bundled_include = 'cuda-10.1'
-        elif 10020 <= _cuda_runtime_version < 10030:
+        if 10020 <= _cuda_runtime_version < 10030:
             bundled_include = 'cuda-10.2'
         elif 11000 <= _cuda_runtime_version < 11010:
             bundled_include = 'cuda-11.0'
