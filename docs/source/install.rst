@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -78,10 +78,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - v10.0
-     - ``$ pip install cupy-cuda100``
-   * - v10.1
-     - ``$ pip install cupy-cuda101``
    * - v10.2
      - ``$ pip install cupy-cuda102``
    * - v11.0
@@ -129,9 +125,9 @@ and ``conda`` will install a pre-built CuPy binary package for you, along with t
 (``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
 
 Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
-However, if for any reason you need to force-install a particular CUDA version (say 10.0), you can do::
+However, if for any reason you need to force-install a particular CUDA version (say 11.0), you can do::
 
-    $ conda install -c conda-forge cupy cudatoolkit=10.0
+    $ conda install -c conda-forge cupy cudatoolkit=11.0
 
 .. note::
 
