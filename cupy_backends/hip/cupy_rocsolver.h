@@ -3,6 +3,7 @@
 
 #include "cupy_hip.h"
 #include "cupy_hipblas.h"
+#include <stdexcept>  // for gcc 10.0
 
 
 extern "C" {
