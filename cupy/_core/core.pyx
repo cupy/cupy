@@ -1122,7 +1122,7 @@ cdef class ndarray:
         return _math._negative(self)
 
     def __pos__(self):
-        return self
+        return _math._positive(self)
 
     def __abs__(self):
         return _math._absolute(self)
