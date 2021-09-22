@@ -441,7 +441,7 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
   $ export CUPY_INSTALL_USE_HIP=1
   $ export ROCM_HOME=/opt/rocm
   $ export HCC_AMDGPU_TARGET=gfx906
-  $ pip install --pre cupy
+  $ pip install cupy
 
 .. note::
 
