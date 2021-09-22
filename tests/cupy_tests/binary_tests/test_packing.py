@@ -1,6 +1,7 @@
 import numpy
 import unittest
-
+import pytest
+import cupy
 from cupy import testing
 
 
@@ -16,9 +17,9 @@ class TestPacking(unittest.TestCase):
         return xp.packbits(a)
 
     @testing.numpy_cupy_array_equal()
-    def check_unpackbits(self, data, xp):
+    def check_unpackbits(self, data, xp, bitorder='big'):
         a = xp.array(data, dtype=xp.uint8)
-        return xp.unpackbits(a)
+        return xp.unpackbits(a, bitorder=bitorder)
 
     def test_packbits(self):
         self.check_packbits([0])
@@ -39,3 +40,21 @@ class TestPacking(unittest.TestCase):
         self.check_unpackbits([1])
         self.check_unpackbits([255])
         self.check_unpackbits([100, 200, 123, 213])
+
+    def test_unpack_invalid_array(self):
+        a = cupy.array([10, 20, 30])
+        pytest.raises(TypeError, cupy.unpackbits, a)
+        pytest.raises(TypeError, cupy.unpackbits, a.astype(float))
+
+    def test_pack_unpack_order(self):
+        for bo in ['big', 'little']:
+            self.check_unpackbits([], bitorder=bo)
+            self.check_unpackbits([0], bitorder=bo)
+            self.check_unpackbits([1], bitorder=bo)
+            self.check_unpackbits([255], bitorder=bo)
+            self.check_unpackbits([100, 200, 123, 213], bitorder=bo)
+
+    def test_unpack_invalid_order(self):
+        a = cupy.array([10, 20, 30], dtype=cupy.uint8)
+        pytest.raises(ValueError, cupy.unpackbits, a, bitorder='r')
+        pytest.raises(ValueError, cupy.unpackbits, a, bitorder=10)
