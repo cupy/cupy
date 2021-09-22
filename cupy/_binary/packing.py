@@ -62,7 +62,9 @@ def unpackbits(myarray, bitorder='big'):
     Args:
         myarray (cupy.ndarray): Input array.
 
-        bitorder (str, optional): bit order to use when unpacking the array, allowed values are `'little'` and `'big'`. Defaults to `'big'`.
+        bitorder (str, optional): bit order to use when unpacking the array,
+
+        allowed values are `'little'` and `'big'`. Defaults to `'big'`.
 
     Returns:
         cupy.ndarray: The unpacked array.
