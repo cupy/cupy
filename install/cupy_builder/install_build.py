@@ -1,6 +1,5 @@
 import contextlib
 import distutils.util
-import importlib
 import os
 import re
 import shutil
@@ -8,20 +7,8 @@ import subprocess
 import sys
 import tempfile
 
-
-# This is done because pip is installed in no editable mode in
-# windows CI so the kernel cache gets always a deterministic path.
-def _from_install_import(name):
-    install_module_path = os.path.join(os.path.dirname(__file__))
-    original_sys_path = sys.path.copy()
-    try:
-        sys.path.append(install_module_path)
-        return importlib.import_module(name)
-    finally:
-        sys.path = original_sys_path
-
-
-utils = _from_install_import('utils')
+import cupy_builder
+import cupy_builder.install_utils as utils
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
@@ -186,8 +173,8 @@ def get_compiler_setting(use_hip):
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
     # for <cupy/complex.cuh>
-    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/_core/include')
+    cupy_header = os.path.join(
+        cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:

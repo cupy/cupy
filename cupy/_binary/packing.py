@@ -42,20 +42,29 @@ def packbits(myarray):
     return _packbits_kernel(myarray, myarray.size, packed)
 
 
-_unpackbits_kernel = _core.ElementwiseKernel(
+_unpackbits_kernel = {'big': _core.ElementwiseKernel(
     'raw uint8 myarray', 'T unpacked',
     'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
     'cupy_unpackbits_kernel'
-)
+),
+    'little': _core.ElementwiseKernel(
+    'raw uint8 myarray', 'T unpacked',
+    'unpacked = (myarray[i / 8] >> (i % 8)) & 1;',
+    'cupy_unpackbits_kernel'
+)}
 
 
-def unpackbits(myarray):
+def unpackbits(myarray, bitorder='big'):
     """Unpacks elements of a uint8 array into a binary-valued output array.
 
     This function currently does not support ``axis`` option.
 
     Args:
         myarray (cupy.ndarray): Input array.
+
+        bitorder (str, optional): bit order to use when unpacking the array,
+
+        allowed values are `'little'` and `'big'`. Defaults to `'big'`.
 
     Returns:
         cupy.ndarray: The unpacked array.
@@ -65,5 +74,8 @@ def unpackbits(myarray):
     if myarray.dtype != cupy.uint8:
         raise TypeError('Expected an input array of unsigned byte data type')
 
+    if bitorder not in ['big', 'little']:
+        raise ValueError("bitorder must be either 'big' or 'little'")
+
     unpacked = cupy.ndarray((myarray.size * 8), dtype=cupy.uint8)
-    return _unpackbits_kernel(myarray, unpacked)
+    return _unpackbits_kernel[bitorder](myarray, unpacked)

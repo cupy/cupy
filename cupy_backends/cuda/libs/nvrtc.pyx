@@ -78,7 +78,7 @@ cpdef tuple getVersion():
 cpdef tuple getSupportedArchs():
     cdef int status, num_archs
     cdef vector.vector[int] archs
-    if CUDA_VERSION < 11020 or runtime._is_hip_environment:
+    if CUPY_CUDA_VERSION < 11020 or runtime._is_hip_environment:
         raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
 
     with nogil:
@@ -171,7 +171,7 @@ cpdef bytes getCUBIN(intptr_t prog):
     cdef size_t cubinSizeRet = 0
     cdef vector.vector[char] cubin
     cdef char* cubin_ptr = NULL
-    if CUDA_VERSION < 11010 or runtime._is_hip_environment:
+    if CUPY_CUDA_VERSION < 11010 or runtime._is_hip_environment:
         raise RuntimeError("getCUBIN is supported since CUDA 11.1")
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)

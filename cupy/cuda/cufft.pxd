@@ -9,7 +9,7 @@ cdef extern from *:
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
 
-    IF HIP_VERSION > 0:
+    IF CUPY_HIP_VERSION > 0:
         ctypedef int Handle 'cufftHandle'
     ELSE:
         ctypedef struct hipHandle 'hipfftHandle_t':

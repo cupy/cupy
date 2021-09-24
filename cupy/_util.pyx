@@ -12,7 +12,7 @@ import cupy
 from cupy.cuda cimport device
 
 
-DEF CYTHON_BUILD_VER = cython_version
+DEF CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
 cython_build_ver = CYTHON_BUILD_VER
 
 
