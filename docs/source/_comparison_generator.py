@@ -138,6 +138,6 @@ def generate():
     #    ]
     #    buf += _section(
     #        'Python array API compliance',
-    #        'numpy.array_api', 'cupyx.array_api', 'NumPy')
+    #        'numpy.array_api', 'cupy.array_api', 'NumPy')
 
     return '\n'.join(buf)

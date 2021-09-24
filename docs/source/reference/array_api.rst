@@ -8,7 +8,7 @@ writing backend-agnostic codes for better portability.
 
 CuPy provides **experimental** support based on NumPy's `NEP-47 <https://numpy.org/neps/nep-0047-array-api-standard.html>`_,
 which is in turn based on the draft standard to be finalized in 2021. All of the functionalities can be accessed
-through the :mod:`cupyx.array_api` namespace.
+through the :mod:`cupy.array_api` namespace.
 
 The key difference between NumPy and CuPy is that we are a GPU-only library, therefore CuPy users should be aware
 of potential `device management <https://data-apis.org/array-api/latest/design_topics/device_support.html>`_ issues.

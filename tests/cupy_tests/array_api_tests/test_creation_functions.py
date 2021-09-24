@@ -1,10 +1,10 @@
 from numpy.testing import assert_raises
 import cupy as cp
-# due to the module structure we can't import it from cupyx.array_api._typing
+# due to the module structure we can't import it from cupy.array_api._typing
 from cupy.cuda import Device
 
-from cupyx.array_api import all
-from cupyx.array_api._creation_functions import (
+from cupy.array_api import all
+from cupy.array_api._creation_functions import (
     asarray,
     arange,
     empty,
@@ -20,8 +20,8 @@ from cupyx.array_api._creation_functions import (
     zeros,
     zeros_like,
 )
-from cupyx.array_api._array_object import Array
-from cupyx.array_api._dtypes import (
+from cupy.array_api._array_object import Array
+from cupy.array_api._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
     _floating_dtypes,

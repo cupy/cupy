@@ -1,8 +1,8 @@
 from numpy.testing import assert_raises
 import cupy as cp
 
-from cupyx.array_api import ones, asarray, result_type
-from cupyx.array_api._dtypes import (
+from cupy.array_api import ones, asarray, result_type
+from cupy.array_api._dtypes import (
     _all_dtypes,
     _boolean_dtypes,
     _floating_dtypes,
