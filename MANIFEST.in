@@ -9,7 +9,6 @@ recursive-exclude cupy *.cpp
 recursive-exclude cupy_backends *.cpp
 
 # Installers
-include cupy_setup_build.py
 recursive-include install *.py
 recursive-include tests *.py
 

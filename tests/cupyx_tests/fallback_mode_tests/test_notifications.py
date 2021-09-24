@@ -1,9 +1,8 @@
 import contextlib
 import io
-import pytest
-import unittest
 
 import numpy
+import pytest
 
 from cupy import testing
 from cupyx import fallback_mode
@@ -11,13 +10,13 @@ from cupyx import _ufunc_config
 from cupyx_tests.fallback_mode_tests import test_fallback as test_utils
 
 
-class NotificationTestBase(unittest.TestCase):
+class NotificationTestBase:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
-        self.old_config = _ufunc_config.geterr()
-
-    def tearDown(self):
-        _ufunc_config.seterr(**self.old_config)
+        old_config = _ufunc_config.geterr()
+        yield
+        _ufunc_config.seterr(**old_config)
 
 
 @testing.gpu
@@ -49,10 +48,16 @@ class TestNotifications(NotificationTestBase):
 
 
 @testing.parameterize(
-    {'func': fallback_mode.numpy.array_equiv, 'shape': (3, 4)},
+    {'func_name': 'array_equiv', 'shape': (3, 4)},
 )
 @testing.gpu
 class TestNotificationModes(NotificationTestBase):
+
+    @property
+    def func(self):
+        if self.func_name == 'array_equiv':
+            return fallback_mode.numpy.array_equiv
+        assert False
 
     def test_notification_ignore(self):
 
