@@ -1122,6 +1122,11 @@ cdef class ndarray:
         return _math._negative(self)
 
     def __pos__(self):
+        if self.dtype == numpy.bool_:
+            msg = ("Applying '+' to a non-numerical array is ill-defined. "
+                   'Returning a copy, but in the future this will error.')
+            warnings.warn(msg, DeprecationWarning)
+            return self.copy()
         return _math._positive(self)
 
     def __abs__(self):
