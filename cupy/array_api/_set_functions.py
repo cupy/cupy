@@ -4,7 +4,7 @@ from ._array_object import Array
 
 from typing import Tuple, Union
 
-import cupy as cp
+import cupy as np
 
 
 def unique(
@@ -16,11 +16,11 @@ def unique(
     return_inverse: bool = False,
 ) -> Union[Array, Tuple[Array, ...]]:
     """
-    Array API compatible wrapper for :py:func:`cp.unique <cupy.unique>`.
+    Array API compatible wrapper for :py:func:`np.unique <numpy.unique>`.
 
     See its docstring for more information.
     """
-    res = cp.unique(
+    res = np.unique(
         x._array,
         return_counts=return_counts,
         return_index=return_index,

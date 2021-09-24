@@ -10,36 +10,36 @@ if TYPE_CHECKING:
     from ._typing import Dtype
     from collections.abc import Sequence
 
-import cupy as cp
+import cupy as np
 
 
 def broadcast_arrays(*arrays: Sequence[Array]) -> List[Array]:
     """
-    Array API compatible wrapper for :py:func:`cp.broadcast_arrays <cupy.broadcast_arrays>`.
+    Array API compatible wrapper for :py:func:`np.broadcast_arrays <numpy.broadcast_arrays>`.
 
     See its docstring for more information.
     """
     from ._array_object import Array
 
     return [
-        Array._new(array) for array in cp.broadcast_arrays(*[a._array for a in arrays])
+        Array._new(array) for array in np.broadcast_arrays(*[a._array for a in arrays])
     ]
 
 
 def broadcast_to(x: Array, /, shape: Tuple[int, ...]) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.broadcast_to <cupy.broadcast_to>`.
+    Array API compatible wrapper for :py:func:`np.broadcast_to <numpy.broadcast_to>`.
 
     See its docstring for more information.
     """
     from ._array_object import Array
 
-    return Array._new(cp.broadcast_to(x._array, shape))
+    return Array._new(np.broadcast_to(x._array, shape))
 
 
 def can_cast(from_: Union[Dtype, Array], to: Dtype, /) -> bool:
     """
-    Array API compatible wrapper for :py:func:`cp.can_cast <cupy.can_cast>`.
+    Array API compatible wrapper for :py:func:`np.can_cast <numpy.can_cast>`.
 
     See its docstring for more information.
     """
@@ -47,7 +47,7 @@ def can_cast(from_: Union[Dtype, Array], to: Dtype, /) -> bool:
 
     if isinstance(from_, Array):
         from_ = from_._array
-    return cp.can_cast(from_, to)
+    return np.can_cast(from_, to)
 
 
 # These are internal objects for the return types of finfo and iinfo, since
@@ -72,11 +72,11 @@ class iinfo_object:
 
 def finfo(type: Union[Dtype, Array], /) -> finfo_object:
     """
-    Array API compatible wrapper for :py:func:`cp.finfo <cupy.finfo>`.
+    Array API compatible wrapper for :py:func:`np.finfo <numpy.finfo>`.
 
     See its docstring for more information.
     """
-    fi = cp.finfo(type)
+    fi = np.finfo(type)
     # Note: The types of the float data here are float, whereas in NumPy they
     # are scalars of the corresponding float dtype.
     try:
@@ -94,29 +94,29 @@ def finfo(type: Union[Dtype, Array], /) -> finfo_object:
 
 def iinfo(type: Union[Dtype, Array], /) -> iinfo_object:
     """
-    Array API compatible wrapper for :py:func:`cp.iinfo <cupy.iinfo>`.
+    Array API compatible wrapper for :py:func:`np.iinfo <numpy.iinfo>`.
 
     See its docstring for more information.
     """
-    ii = cp.iinfo(type)
+    ii = np.iinfo(type)
     return iinfo_object(ii.bits, ii.max, ii.min)
 
 
 def result_type(*arrays_and_dtypes: Sequence[Union[Array, Dtype]]) -> Dtype:
     """
-    Array API compatible wrapper for :py:func:`cp.result_type <cupy.result_type>`.
+    Array API compatible wrapper for :py:func:`np.result_type <numpy.result_type>`.
 
     See its docstring for more information.
     """
     # Note: we use a custom implementation that gives only the type promotions
-    # required by the spec rather than using cp.result_type. NumPy implements
+    # required by the spec rather than using np.result_type. NumPy implements
     # too many extra type promotions like int64 + uint64 -> float64, and does
     # value-based casting on scalar arrays.
     A = []
     for a in arrays_and_dtypes:
         if isinstance(a, Array):
             a = a.dtype
-        elif isinstance(a, cp.ndarray) or a not in _all_dtypes:
+        elif isinstance(a, np.ndarray) or a not in _all_dtypes:
             raise TypeError("result_type() inputs must be array_api arrays or dtypes")
         A.append(a)
 

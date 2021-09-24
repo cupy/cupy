@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 from ._dtypes import _all_dtypes
 
-import cupy as cp
+import cupy as np
 from cupy.cuda import Device as _Device
 
 
@@ -47,7 +47,7 @@ def asarray(
     copy: Optional[bool] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.asarray <cupy.asarray>`.
+    Array API compatible wrapper for :py:func:`np.asarray <numpy.asarray>`.
 
     See its docstring for more information.
     """
@@ -61,20 +61,20 @@ def asarray(
     if device is None:
         device = _Device()  # current device
     if copy is False:
-        # Note: copy=False is not yet implemented in cp.asarray
+        # Note: copy=False is not yet implemented in np.asarray
         raise NotImplementedError("copy=False is not yet implemented")
     if isinstance(obj, Array) and (dtype is None or obj.dtype == dtype):
         if copy is True:
             # TODO(leofang): Check the conclusion about cross-device copies:
             # https://github.com/data-apis/array-api/issues/254
-            return Array._new(cp.array(obj._array, copy=True, dtype=dtype))
+            return Array._new(np.array(obj._array, copy=True, dtype=dtype))
         return obj
     if dtype is None and isinstance(obj, int) and (obj > 2 ** 64 or obj < -(2 ** 63)):
         # Give a better error message in this case. NumPy would convert this
         # to an object array. TODO: This won't handle large integers in lists.
         raise OverflowError("Integer out of bounds for array dtypes")
     with device:
-        res = cp.asarray(obj, dtype=dtype)
+        res = np.asarray(obj, dtype=dtype)
     return Array._new(res)
 
 
@@ -88,7 +88,7 @@ def arange(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.arange <cupy.arange>`.
+    Array API compatible wrapper for :py:func:`np.arange <numpy.arange>`.
 
     See its docstring for more information.
     """
@@ -100,7 +100,7 @@ def arange(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.arange(start, stop=stop, step=step, dtype=dtype))
+        return Array._new(np.arange(start, stop=stop, step=step, dtype=dtype))
 
 
 def empty(
@@ -110,7 +110,7 @@ def empty(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.empty <cupy.empty>`.
+    Array API compatible wrapper for :py:func:`np.empty <numpy.empty>`.
 
     See its docstring for more information.
     """
@@ -122,14 +122,14 @@ def empty(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.empty(shape, dtype=dtype))
+        return Array._new(np.empty(shape, dtype=dtype))
 
 
 def empty_like(
     x: Array, /, *, dtype: Optional[Dtype] = None, device: Optional[Device] = None
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.empty_like <cupy.empty_like>`.
+    Array API compatible wrapper for :py:func:`np.empty_like <numpy.empty_like>`.
 
     See its docstring for more information.
     """
@@ -141,7 +141,7 @@ def empty_like(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.empty_like(x._array, dtype=dtype))
+        return Array._new(np.empty_like(x._array, dtype=dtype))
 
 
 def eye(
@@ -154,7 +154,7 @@ def eye(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.eye <cupy.eye>`.
+    Array API compatible wrapper for :py:func:`np.eye <numpy.eye>`.
 
     See its docstring for more information.
     """
@@ -166,17 +166,17 @@ def eye(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.eye(n_rows, M=n_cols, k=k, dtype=dtype))
+        return Array._new(np.eye(n_rows, M=n_cols, k=k, dtype=dtype))
 
 
 def from_dlpack(x: object, /) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.from_dlpack <cupy.from_dlpack>`.
+    Array API compatible wrapper for :py:func:`np.from_dlpack <numpy.from_dlpack>`.
 
     See its docstring for more information.
     """
     from ._array_object import Array
-    return Array._new(cp.from_dlpack(x))
+    return Array._new(np.from_dlpack(x))
 
 
 def full(
@@ -187,7 +187,7 @@ def full(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.full <cupy.full>`.
+    Array API compatible wrapper for :py:func:`np.full <numpy.full>`.
 
     See its docstring for more information.
     """
@@ -201,7 +201,7 @@ def full(
     if isinstance(fill_value, Array) and fill_value.ndim == 0:
         fill_value = fill_value._array
     with device:
-        res = cp.full(shape, fill_value, dtype=dtype)
+        res = np.full(shape, fill_value, dtype=dtype)
     if res.dtype not in _all_dtypes:
         # This will happen if the fill value is not something that NumPy
         # coerces to one of the acceptable dtypes.
@@ -218,7 +218,7 @@ def full_like(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.full_like <cupy.full_like>`.
+    Array API compatible wrapper for :py:func:`np.full_like <numpy.full_like>`.
 
     See its docstring for more information.
     """
@@ -232,7 +232,7 @@ def full_like(
     if isinstance(fill_value, Array) and fill_value.ndim == 0:
         fill_value = fill_value._array
     with device:
-        res = cp.full_like(x._array, fill_value, dtype=dtype)
+        res = np.full_like(x._array, fill_value, dtype=dtype)
     if res.dtype not in _all_dtypes:
         # This will happen if the fill value is not something that NumPy
         # coerces to one of the acceptable dtypes.
@@ -251,7 +251,7 @@ def linspace(
     endpoint: bool = True,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.linspace <cupy.linspace>`.
+    Array API compatible wrapper for :py:func:`np.linspace <numpy.linspace>`.
 
     See its docstring for more information.
     """
@@ -263,12 +263,12 @@ def linspace(
     if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
     with device:
-        return Array._new(cp.linspace(start, stop, num, dtype=dtype, endpoint=endpoint))
+        return Array._new(np.linspace(start, stop, num, dtype=dtype, endpoint=endpoint))
 
 
 def meshgrid(*arrays: Sequence[Array], indexing: str = "xy") -> List[Array, ...]:
     """
-    Array API compatible wrapper for :py:func:`cp.meshgrid <cupy.meshgrid>`.
+    Array API compatible wrapper for :py:func:`np.meshgrid <numpy.meshgrid>`.
 
     See its docstring for more information.
     """
@@ -276,7 +276,7 @@ def meshgrid(*arrays: Sequence[Array], indexing: str = "xy") -> List[Array, ...]
 
     return [
         Array._new(array)
-        for array in cp.meshgrid(*[a._array for a in arrays], indexing=indexing)
+        for array in np.meshgrid(*[a._array for a in arrays], indexing=indexing)
     ]
 
 
@@ -287,7 +287,7 @@ def ones(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.ones <cupy.ones>`.
+    Array API compatible wrapper for :py:func:`np.ones <numpy.ones>`.
 
     See its docstring for more information.
     """
@@ -299,14 +299,14 @@ def ones(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.ones(shape, dtype=dtype))
+        return Array._new(np.ones(shape, dtype=dtype))
 
 
 def ones_like(
     x: Array, /, *, dtype: Optional[Dtype] = None, device: Optional[Device] = None
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.ones_like <cupy.ones_like>`.
+    Array API compatible wrapper for :py:func:`np.ones_like <numpy.ones_like>`.
 
     See its docstring for more information.
     """
@@ -318,7 +318,7 @@ def ones_like(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.ones_like(x._array, dtype=dtype))
+        return Array._new(np.ones_like(x._array, dtype=dtype))
 
 
 def zeros(
@@ -328,7 +328,7 @@ def zeros(
     device: Optional[Device] = None,
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.zeros <cupy.zeros>`.
+    Array API compatible wrapper for :py:func:`np.zeros <numpy.zeros>`.
 
     See its docstring for more information.
     """
@@ -340,14 +340,14 @@ def zeros(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.zeros(shape, dtype=dtype))
+        return Array._new(np.zeros(shape, dtype=dtype))
 
 
 def zeros_like(
     x: Array, /, *, dtype: Optional[Dtype] = None, device: Optional[Device] = None
 ) -> Array:
     """
-    Array API compatible wrapper for :py:func:`cp.zeros_like <cupy.zeros_like>`.
+    Array API compatible wrapper for :py:func:`np.zeros_like <numpy.zeros_like>`.
 
     See its docstring for more information.
     """
@@ -359,4 +359,4 @@ def zeros_like(
     if device is None:
         device = _Device()  # current device
     with device:
-        return Array._new(cp.zeros_like(x._array, dtype=dtype))
+        return Array._new(np.zeros_like(x._array, dtype=dtype))

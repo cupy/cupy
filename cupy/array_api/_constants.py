@@ -1,6 +1,6 @@
-import cupy as cp
+import cupy as np
 
-e = cp.e
-inf = cp.inf
-nan = cp.nan
-pi = cp.pi
+e = np.e
+inf = np.inf
+nan = np.nan
+pi = np.pi
