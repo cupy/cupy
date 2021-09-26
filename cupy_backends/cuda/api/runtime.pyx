@@ -807,7 +807,9 @@ cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
 
 
 cpdef streamQuery(intptr_t stream):
-    return cudaStreamQuery(<driver.Stream>stream)
+    with nogil:
+        status = cudaStreamQuery(<driver.Stream>stream)
+    return status
 
 
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
@@ -819,35 +821,42 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 cpdef intptr_t eventCreate() except? 0:
     cdef driver.Event event
-    status = cudaEventCreate(&event)
+    with nogil:
+        status = cudaEventCreate(&event)
     check_status(status)
     return <intptr_t>event
 
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Event event
-    status = cudaEventCreateWithFlags(&event, flags)
+    with nogil:
+        status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
     return <intptr_t>event
 
 
 cpdef eventDestroy(intptr_t event):
-    status = cudaEventDestroy(<driver.Event>event)
+    with nogil:
+        status = cudaEventDestroy(<driver.Event>event)
     check_status(status)
 
 
 cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0:
     cdef float ms
-    status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
+    with nogil:
+        status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
     check_status(status)
     return ms
 
 
 cpdef eventQuery(intptr_t event):
-    return cudaEventQuery(<driver.Event>event)
+    with nogil:
+        status = cudaEventQuery(<driver.Event>event)
+    return status
 
 
 cpdef eventRecord(intptr_t event, intptr_t stream):
-    status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
+    with nogil:
+        status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
     check_status(status)
 
 
