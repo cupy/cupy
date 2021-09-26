@@ -843,7 +843,9 @@ cpdef eventDestroy(intptr_t event):
 cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0:
     cdef float ms
     with nogil:
-        status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
+        status = cudaEventElapsedTime(
+            &ms, <driver.Event>start, <driver.Event>end
+        )
     check_status(status)
     return ms
 
