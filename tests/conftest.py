@@ -46,6 +46,9 @@ class DeferPlugin:
     def _rotate_cuda_visible_devices(self, worker_id):
         n_gpu = os.environ.get('CUPY_TEST_GPU_LIMIT')
         if n_gpu is None:
+            print('Tip: when using pytest-xdist, you can automatically rotate'
+                  ' CUDA_VISIBLE_DEVICES for each test worker by setting'
+                  ' CUPY_TEST_GPU_LIMIT environment variable.')
             return
         n_gpu = int(n_gpu)
 
