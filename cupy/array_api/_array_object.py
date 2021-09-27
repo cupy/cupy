@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from ._typing import PyCapsule, Device, Dtype
 
 import cupy as np
+from cupy.cuda import Device as _Device
 
 from cupy import array_api
 
@@ -990,9 +991,16 @@ class Array:
         return self.__class__._new(res)
 
     def to_device(self: Array, device: Device, /) -> Array:
-        if device == 'cpu':
+        if device == self.device:
             return self
-        raise ValueError(f"Unsupported device {device!r}")
+        elif not isinstance(device, _Device):
+            raise ValueError(f"Unsupported device {device!r}")
+        else:
+            # TODO(leofang): we currently do a blocking copy; after data-apis/array-api#256
+            # is addressed we can do a nonblocking copy
+            with device:
+                arr = self._array.copy()
+            return Array._new(arr)
 
     @property
     def dtype(self) -> Dtype:
