@@ -146,7 +146,8 @@ main() {
         wait $docker_pid
         trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
-        "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" --tty \
+        "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" \
+            --tty --user "$(id -u):$(id -g)" \
             "${docker_image}" bash
       fi
       ;;
