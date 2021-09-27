@@ -106,7 +106,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Use ``pip install --pre cupy-cudaXXX`` if you want to install pre-release (development) versions.
+   Use ``pip install cupy-cudaXXX -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
