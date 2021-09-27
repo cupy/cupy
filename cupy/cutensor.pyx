@@ -92,6 +92,7 @@ cdef dict _dict_compute_type_v10200 = {
 cdef dict _available_compute_capability = {
     'contraction': 60,
     'reduction': 60,
+    'elementwise': 60,
 }
 
 
@@ -779,6 +780,8 @@ def _try_reduction_routine(
     else:
         out_arg = out
 
+    # TODO(kmaeahshi): need to zero out when beta != 0
+
     # TODO(asi1024): Remove temporary fix
     in_arg._set_contiguous_strides(in_arg.itemsize, True)
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
@@ -803,3 +806,50 @@ def _try_reduction_routine(
         reduce_op, _get_cutensor_compute_type(compute_dtype))
 
     return out
+
+
+def _try_elementwise_binary_routine(
+        ndarray a, ndarray c, dtype, ndarray out, op, alpha, gamma):
+    cdef Handle handle
+    cdef TensorDescriptor desc_a, desc_c, desc_out
+
+    if not check_availability('elementwise'):
+        return None
+
+    if dtype is None:
+        dtype = a.dtype
+    if not (dtype == a.dtype == c.dtype):
+        return None
+    if dtype not in _cutensor_dtypes:
+        return None
+
+    if not (a._c_contiguous and a._c_contiguous):
+        return None
+    if not internal.vector_equal(a.shape, c.shape):
+        return None
+
+    if out is None:
+        out = core._ndarray_init(a.shape, dtype=dtype)
+    elif not internal.vector_equal(a.shape, out._shape):
+        return None
+    elif out.dtype != dtype:
+        return None
+    elif not out._c_contiguous:
+        return None
+
+    handle = _get_handle()
+
+    print('DEBUG: using cuTENSOR elementiwse op!')  # TODO
+    return _elementwise_binary_impl(
+        handle,
+        _create_scalar(alpha, dtype),
+        a,
+        create_tensor_descriptor(a, handle=handle),
+        _create_mode_with_cache(a._shape.size()),
+        _create_scalar(gamma, dtype),
+        c,
+        create_tensor_descriptor(c, handle=handle),
+        _create_mode_with_cache(c._shape.size()),
+        out,
+        op,
+        _dtype.to_cuda_dtype(dtype, is_half_allowed=True))
