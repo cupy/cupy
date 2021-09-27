@@ -125,6 +125,12 @@ class TestNdarrayInitRaise(unittest.TestCase):
         with pytest.raises(ValueError):
             _core.array(arr)
 
+    def test_excessive_ndim(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                arr = xp.ndarray(
+                    shape=[1 for i in range(33)], dtype=xp.int8)
+
 
 @testing.parameterize(
     *testing.product({

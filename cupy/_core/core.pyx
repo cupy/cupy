@@ -137,6 +137,10 @@ cdef class ndarray:
             raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
+        if len(s) > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {len(s)}'
+            raise ValueError(msg)
         self._shape.reserve(len(s))
         for x in s:
             if x < 0:
@@ -171,6 +175,10 @@ cdef class ndarray:
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
         cdef Py_ssize_t itemsize
+        if shape.size() > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
+            raise ValueError(msg)
         self._shape = shape
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
