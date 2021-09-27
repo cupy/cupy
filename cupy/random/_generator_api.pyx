@@ -525,29 +525,29 @@ class Generator:
 
         if not isinstance(ngood, ndarray):
             if type(ngood) in (float, int):
-                ngood_a = ndarray((), numpy.float64)
+                ngood_a = ndarray((), numpy.int64)
                 ngood_a.fill(ngood)
                 ngood = ngood_a
             else:
                 raise TypeError('ngood is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            ngood = ngood.astype('d', copy=False)
+            ngood = ngood.astype(numpy.int64, copy=False)
 
         if not isinstance(nbad, ndarray):
             if type(nbad) in (float, int):
-                nbad_a = ndarray((), numpy.float64)
+                nbad_a = ndarray((), numpy.int64)
                 nbad_a.fill(nbad)
                 nbad = nbad_a
             else:
                 raise TypeError('nbad is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            nbad = nbad.astype('d', copy=False)
+            nbad = nbad.astype(numpy.int64, copy=False)
 
         if not isinstance(nsample, ndarray):
             if type(nsample) in (float, int):
-                nsample_a = ndarray((), numpy.float64)
+                nsample_a = ndarray((), numpy.int64)
                 nsample_a.fill(nsample)
                 nsample = nsample_a
             else:
