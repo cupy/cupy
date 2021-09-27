@@ -105,17 +105,17 @@ _cudnn_records.append(_make_cudnn_record(
 library_records['cudnn'] = _cudnn_records
 
 
-def _make_cutensor_url(public_version, filename):
+def _make_cutensor_url(public_version, platform, filename):
     if public_version == '1.2.2':  # v10.1
         # https://developer.download.nvidia.com/compute/cutensor/1.2.2/local_installers/libcutensor-linux-x86_64-1.2.2.5.tar.gz
         return (
             'https://developer.download.nvidia.com/compute/cutensor/' +
-            '{}/local_installers/{}'.format(public_version, filename))
+            f'{public_version}/local_installers/{filename}')
     else:
         # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.3.3.2-archive.tar.xz
         return (
             'https://developer.download.nvidia.com/compute/cutensor/' +
-            'redist/libcutensor/linux-x86_64/{}'.format(filename))
+            f'redist/libcutensor/{platform}-x86_64/{filename}')
 
 
 def _make_cutensor_record(
@@ -125,11 +125,13 @@ def _make_cutensor_record(
         'cutensor': public_version,
         'assets': {
             'Linux': {
-                'url': _make_cutensor_url(public_version, filename_linux),
+                'url': _make_cutensor_url(
+                    public_version, 'linux', filename_linux),
                 'filenames': ['libcutensor.so.{}'.format(public_version)],
             },
             'Windows': {
-                'url': _make_cutensor_url(public_version, filename_windows),
+                'url': _make_cutensor_url(
+                    public_version, 'windows', filename_windows),
                 'filenames': ['cutensor.dll'],
             },
         }
