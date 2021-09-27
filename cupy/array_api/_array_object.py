@@ -499,8 +499,11 @@ class Array:
         """
         Performs the operation __index__.
         """
-        res = self._array.__index__()
-        return res
+        # TODO(leofang): just do this when CuPy is ready:
+        # res = self._array.__index__()
+        if self.ndim != 0 or self.dtype not in _integer_dtypes:
+            raise TypeError("only integer scalar arrays can be converted to a scalar index")
+        return int(self._array)
 
     def __invert__(self: Array, /) -> Array:
         """
