@@ -13,9 +13,7 @@ cdef class CArray(function.CPointer):
             const shape_t& shape, const strides_t& strides) except*:
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
-        if ndim > MAX_NDIM:
-            raise ValueError(f'The input array dimension ({ndim}) is beyond '
-                             f'CuPy\'s current limitation ({MAX_NDIM})')
+        assert ndim <= MAX_NDIM
         cdef Py_ssize_t* shape_and_strides = (
             self.val.shape_and_strides)
         cdef size_t i
@@ -32,9 +30,7 @@ cdef class CIndexer(function.CPointer):
 
     cdef void init(self, Py_ssize_t size, const shape_t &shape) except*:
         cdef size_t ndim = shape.size()
-        if ndim > MAX_NDIM:
-            raise ValueError(f'The input array dimension ({ndim}) is beyond '
-                             f'CuPy\'s current limitation ({MAX_NDIM})')
+        assert ndim <= MAX_NDIM
         self.val.size = size
         cdef Py_ssize_t i
         for i in range(<Py_ssize_t>shape.size()):

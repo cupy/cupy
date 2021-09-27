@@ -1800,9 +1800,8 @@ cdef class ndarray:
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
         if shape.size() > _carray.MAX_NDIM:
-            msg = f'The input array dimension ({shape.size()}) is '
-            msg += 'beyond CuPy\'s current limitation ('
-            msg += f'{_carray.MAX_NDIM})'
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
             raise ValueError(msg)
         self._shape = shape
         self._strides = strides
