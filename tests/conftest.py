@@ -44,6 +44,11 @@ class DeferPlugin:
     # See also https://github.com/pytest-dev/pytest-xdist/issues/179.
     @pytest.fixture(autouse=True, scope='session')
     def _rotate_cuda_visible_devices(self, worker_id):
+        if worker_id == 'master':
+            # `worker_id` can be `master` if `pytest-xdist` is installed and
+            # run without `-n` option.
+            return
+
         n_gpu = os.environ.get('CUPY_TEST_GPU_LIMIT')
         if n_gpu is None:
             print('Tip: when using pytest-xdist, you can automatically rotate'
