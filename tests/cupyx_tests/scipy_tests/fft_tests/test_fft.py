@@ -1657,12 +1657,8 @@ class TestHfft2:
     def test_hfft2(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-        with pytest.warns(None) as record:
-            out = _fft_module(xp).hfft2(x, s=self.s, axes=self.axes,
-                                        norm=self.norm)
-        if len(record) == 1 and 'issue of cuFFT' in record[0].message:
-            # CUDA 10.2 bug
-            pytest.skip(record[0].message)
+        out = _fft_module(xp).hfft2(x, s=self.s, axes=self.axes,
+                                    norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1673,13 +1669,8 @@ class TestHfft2:
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
         backend = 'scipy' if xp is np else cp_fft
-        with pytest.warns(None) as record:
-            with scipy_fft.set_backend(backend):
-                out = scipy_fft.hfft2(
-                    x, s=self.s, axes=self.axes, norm=self.norm)
-        if len(record) == 1 and 'issue of cuFFT' in record[0].message:
-            # CUDA 10.2 bug
-            pytest.skip(record[0].message)
+        with scipy_fft.set_backend(backend):
+            out = scipy_fft.hfft2(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1738,13 +1729,8 @@ class TestHfftn:
     def test_hfftn(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
-
-        with pytest.warns(None) as record:
-            out = _fft_module(xp).hfftn(x, s=self.s, axes=self.axes,
-                                        norm=self.norm)
-        if len(record) == 1 and 'issue of cuFFT' in record[0].message:
-            # CUDA 10.2 bug
-            pytest.skip(record[0].message)
+        out = _fft_module(xp).hfftn(x, s=self.s, axes=self.axes,
+                                    norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1755,13 +1741,8 @@ class TestHfftn:
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
         backend = 'scipy' if xp is np else cp_fft
-        with pytest.warns(None) as record:
-            with scipy_fft.set_backend(backend):
-                out = scipy_fft.hfftn(
-                    x, s=self.s, axes=self.axes, norm=self.norm)
-        if len(record) == 1 and 'issue of cuFFT' in record[0].message:
-            # CUDA 10.2 bug
-            pytest.skip(record[0].message)
+        with scipy_fft.set_backend(backend):
+            out = scipy_fft.hfftn(x, s=self.s, axes=self.axes, norm=self.norm)
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
