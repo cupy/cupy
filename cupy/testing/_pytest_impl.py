@@ -38,9 +38,14 @@ if is_available():
             self.__dict__.update(_cupy_testing_param)
 
 
-def parameterize(*params):
+def parameterize(*params, _ids=True):
     check_available()
-    param_name = cupy.testing._parameterized._make_class_name
+    if _ids:
+        param_name = cupy.testing._parameterized._make_class_name
+    else:
+        def param_name(_, i, param):
+            return str(i)
+
     # TODO(kataoka): Give better names (`id`).
     # For now, use legacy `_make_class_name` just for consistency. Here,
     # a generated name is `TestFoo::test_bar[_param_0_{...}]`, whereas
