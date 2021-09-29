@@ -252,7 +252,7 @@ class TestNdarrayShape(unittest.TestCase):
             arr = xp.ndarray((2, 3), order='F')
             with pytest.raises(AttributeError) as e:
                 arr.shape = (3, 2)
-            assert 'Incompatible shape' in str(e.value)
+            assert 'incompatible shape' in str(e.value).lower()
 
 
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
