@@ -123,11 +123,8 @@ _tegra_archs = ('53', '62', '72')
 @_util.memoize()
 def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
-    if major < 10 or (major == 10 and minor == 0):
-        # CUDA 9.x / 10.0
-        nvrtc_max_compute_capability = '70'
-    elif major < 11:
-        # CUDA 10.1 / 10.2
+    if major < 11:
+        # CUDA 10.2
         nvrtc_max_compute_capability = '75'
     elif major == 11 and minor == 0:
         # CUDA 11.0

@@ -1,5 +1,5 @@
 configs {
-  key: "cupy.experimental.win.cuda100"
+  key: "cupy.win.cuda102"
   value {
     requirement {
       cpu: 8
@@ -16,7 +16,7 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
-    command: ".pfnci\\windows\\run.bat 10.0 3.7 test"
+    command: ".pfnci\\windows\\run.bat 10.2 3.7 test"
   }
 }
 
