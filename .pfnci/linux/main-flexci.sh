@@ -23,8 +23,10 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
 fi
 
 echo "Starting: "${TARGET}" "${stages[@]}""
-CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${stages[@]}" > /tmp/log.txt 2>&1 && echo Test succeeded!
-test_retval=$?
+echo "****************************************************************************************************"
+CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${stages[@]}" 2>&1 | tee /tmp/log.txt
+test_retval=${PIPESTATUS[0]}
+echo "****************************************************************************************************"
 echo "Exit with status ${test_retval}"
 
 echo "Uploading the log..."
