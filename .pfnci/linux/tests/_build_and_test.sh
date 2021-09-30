@@ -9,6 +9,7 @@ pytest_opts=(
     --timeout 300
     --maxfail 500
     --showlocals
+    --durations 10
     --numprocesses 2
 )
 
