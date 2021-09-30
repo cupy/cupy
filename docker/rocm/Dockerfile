@@ -5,12 +5,15 @@ USER root
 RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-    python3-dev \
-    python3-pip \
-    python3-wheel \
-    python3-setuptools \
     hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends python3.7 python3.7-distutils && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 2 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+
+RUN curl https://bootstrap.pypa.io/get-pip.py | sudo python3.7
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
 RUN pip3 install --no-cache-dir -f https://github.com/cupy/cupy/releases/v10.0.0b3 "cupy-rocm-4-0[all]==10.0.0b3"
