@@ -18,7 +18,7 @@ __all__ = [
     "PyCapsule",
 ]
 
-from typing import Any, Sequence, Type, Union
+from typing import Any, Literal, Sequence, Type, Union
 
 from . import (
     Array,
