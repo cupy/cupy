@@ -119,7 +119,7 @@ cuTENSOR can now be used when installing CuPy via wheels.
 ``cupy.cuda.{nccl,cudnn}`` Modules Needs Explicit Import
 --------------------------------------------------------
 
-Previously ``import cupy.cuda`` automatically made ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules available.
+Previously ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules were automatically imported.
 Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
 
 Baseline API Changes
