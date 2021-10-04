@@ -11,7 +11,7 @@ Dropping CUDA 9.2 / 10.0 / 10.1 Support
 ---------------------------------------
 
 CUDA 10.1 or earlier is no longer supported.
-Use CUDA 9.2 or later.
+Use CUDA 10.2 or later.
 
 Dropping NCCL v2.4 Support
 -----------------------------
@@ -120,7 +120,7 @@ cuTENSOR can now be used when installing CuPy via wheels.
 --------------------------------------------------------
 
 Previously ``import cupy.cuda`` automatically made ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules available.
-In CuPy v9, you need to import them explicitly to use these modules (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
+Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
 
 Baseline API Changes
 --------------------
