@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -8,8 +6,7 @@ from cupy import testing
 from cupy import cuda
 
 
-@testing.gpu
-class TestJoin(unittest.TestCase):
+class TestJoin:
 
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
@@ -23,19 +20,19 @@ class TestJoin(unittest.TestCase):
     def test_column_stack_wrong_ndim1(self):
         a = cupy.zeros(())
         b = cupy.zeros((3,))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.column_stack((a, b))
 
     def test_column_stack_wrong_ndim2(self):
         a = cupy.zeros((3, 2, 3))
         b = cupy.zeros((3, 2))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.column_stack((a, b))
 
     def test_column_stack_wrong_shape(self):
         a = cupy.zeros((3, 2))
         b = cupy.zeros((4, 3))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.column_stack((a, b))
 
     @testing.for_all_dtypes(name='dtype')
@@ -140,14 +137,14 @@ class TestJoin(unittest.TestCase):
     def test_concatenate_wrong_ndim(self):
         a = cupy.empty((2, 3))
         b = cupy.empty((2,))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.concatenate((a, b))
 
     def test_concatenate_wrong_shape(self):
         a = cupy.empty((2, 3, 4))
         b = cupy.empty((3, 3, 4))
         c = cupy.empty((4, 4, 4))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.concatenate((a, b, c))
 
     @testing.for_all_dtypes(name='dtype')
@@ -267,7 +264,7 @@ class TestJoin(unittest.TestCase):
     def test_vstack_wrong_ndim(self):
         a = cupy.empty((3,))
         b = cupy.empty((3, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.vstack((a, b))
 
     @testing.numpy_cupy_array_equal()
@@ -339,7 +336,7 @@ class TestJoin(unittest.TestCase):
 
     def test_stack_out_of_bounds2(self):
         a = testing.shaped_arange((2, 3), cupy)
-        with self.assertRaises(numpy.AxisError):
+        with pytest.raises(numpy.AxisError):
             return cupy.stack([a, a], axis=3)
 
     @testing.for_all_dtypes(name='dtype')
