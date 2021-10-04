@@ -13,6 +13,8 @@ _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 cdef extern from 'cupy_distributions.cuh' nogil:
+    cppclass rk_binomial_state:
+        pass
     void init_curand_generator(
         int generator, intptr_t state_ptr, uint64_t seed,
         ssize_t size, intptr_t stream)
@@ -60,6 +62,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void poisson(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
+    void binomial(
+        int generator, intptr_t state, intptr_t out, ssize_t size,
+        intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
 
 
 cdef ndarray _array_data(ndarray x):
@@ -89,6 +94,7 @@ class Generator:
     """
     def __init__(self, bit_generator):
         self.bit_generator = bit_generator
+        self._binomial_state = None
 
     def _check_output_array(self, dtype, size, out, check_only_c_cont=False):
         # Checks borrowed from NumPy
@@ -893,6 +899,73 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+    def binomial(self, n, p, size=None):
+        """Binomial distribution.
+
+        Returns an array of samples drawn from the binomial distribution. Its
+        probability mass function is defined as
+
+        .. math::
+           f(x) = \\binom{n}{x}p^x(1-p)^(n-x).
+
+        Args:
+            n (int or cupy.ndarray of ints): Parameter of the distribution,
+                >= 0. Floats are also accepted, but they will be truncated to
+                integers.
+            p (float or cupy.ndarray of floats): Parameter of the distribution,
+                >= 0 and <= 1.
+            size (int or tuple of ints, optional): The shape of the output
+                array. If ``None`` (default), a single value is returned if
+                ``n`` and ``p`` are both scalars. Otherwise,
+                ``cupy.broadcast(n, p).size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the binomial distribution.
+
+        .. seealso::
+           :meth:`numpy.random.Generator.binomial`
+        """
+        cdef ndarray y
+        cdef ndarray n_arr
+        cdef ndarray p_arr
+        cdef intptr_t binomial_state_ptr
+
+        if isinstance(n, ndarray):
+            n = n.astype(numpy.int64, copy=False)
+        elif type(n) in (float, int):
+            n = cupy.asarray(n, numpy.int64)
+        else:
+            raise TypeError('n is required to be a cupy.ndarray or a scalar')
+
+        if isinstance(p, ndarray):
+            p = p.astype(numpy.float64, copy=False)
+        elif type(p) is float:
+            p = cupy.asarray(p, numpy.float64)
+        else:
+            raise TypeError('p is required to be a cupy.ndarray or a scalar')
+
+        if size is None:
+            size = cupy.broadcast(n, p).shape
+
+        y = ndarray(size if size is not None else (), numpy.int64)
+
+        n = cupy.broadcast_to(n, y.shape)
+        p = cupy.broadcast_to(p, y.shape)
+        n_arr = _array_data(n)
+        p_arr = _array_data(p)
+        n_ptr = n_arr.data.ptr
+        p_ptr = p_arr.data.ptr
+
+        if self._binomial_state is None:
+            state_size = self.bit_generator._state_size()
+            self._binomial_state = cupy.zeros(
+                sizeof(rk_binomial_state) * state_size, dtype=numpy.int8)
+        binomial_state_ptr = <intptr_t>self._binomial_state.data.ptr
+        _launch_dist(
+            self.bit_generator, binomial, y,
+            (n_ptr, p_ptr, binomial_state_ptr))
+        return y
 
 
 def init_curand(generator, state, seed, size):

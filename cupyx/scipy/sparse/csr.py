@@ -331,7 +331,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             other.sum_duplicates()
             return multiply_by_csr(self, other)
         else:
-            msg = 'expected scalar, dense matrix/vector or csr matrixr'
+            msg = 'expected scalar, dense matrix/vector or csr matrix'
             raise TypeError(msg)
 
     # TODO(unno): Implement prune

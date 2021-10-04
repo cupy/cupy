@@ -9,6 +9,7 @@ pytest_opts=(
     --timeout 300
     --maxfail 500
     --showlocals
+    --numprocesses 2
 )
 
 if [[ "${MARKER}" != "" ]]; then
@@ -16,7 +17,7 @@ if [[ "${MARKER}" != "" ]]; then
 fi
 
 # TODO: support coverage reporting
-python3 -m pip install --user pytest-timeout
+python3 -m pip install --user pytest-timeout pytest-xdist
 
 pushd tests
 python3 -c 'import cupy; cupy.show_config()'

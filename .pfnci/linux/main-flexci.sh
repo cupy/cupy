@@ -29,9 +29,15 @@ echo "Exit with status ${test_retval}"
 
 echo "Uploading the log..."
 gsutil -m -q cp /tmp/log.txt "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+
+echo "****************************************************************************************************"
 echo "Last 100 lines of the log:"
+echo "****************************************************************************************************"
 tail -n 100 /tmp/log.txt
-echo "Full log is available at: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/log.txt"
+echo "****************************************************************************************************"
+echo "Full log is available at:"
+echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/log.txt"
+echo "****************************************************************************************************"
 
 # TODO: implement gitter notification
 

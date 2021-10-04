@@ -61,9 +61,7 @@ cdef _ndarray_shape_setter(ndarray self, newshape):
         raise AttributeError(
             'Incompatible shape for in-place modification. Use `.reshape()` '
             'to make a copy with the desired shape.')
-    self._shape = shape
-    self._strides = strides
-    self._update_f_contiguity()
+    self._set_shape_and_strides(shape, strides, False, True)
 
 
 cdef ndarray _ndarray_reshape(ndarray self, tuple shape, order):
