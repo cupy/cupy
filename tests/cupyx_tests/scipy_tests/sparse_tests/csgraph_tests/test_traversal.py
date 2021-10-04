@@ -9,10 +9,10 @@ except ImportError:
     scipy_available = False
 import cupyx.scipy.sparse.csgraph  # NOQA
 try:
-    from cupy_backends.cuda.libs import cugraph  # NOQA
-    cugraph_available = True
+    import pylibcugraph
+    pylibcugraph_available = True
 except ImportError:
-    cugraph_available = False
+    pylibcugraph_available = False
 from cupy import testing
 
 
@@ -24,8 +24,8 @@ from cupy import testing
     'connection': ['weak', 'strong'],
     'return_labels': [True, False],
 }))
-@unittest.skipUnless(scipy_available and cugraph_available,
-                     'requires scipy and cugraph')
+@unittest.skipUnless(scipy_available and pylibcugraph_available,
+                     'requires scipy and pylibcugraph')
 class TestConnectedComponents(unittest.TestCase):
 
     def _make_matrix(self, dtype, xp):
