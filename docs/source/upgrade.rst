@@ -34,6 +34,17 @@ NCCL and cuDNN No Longer Included in Wheels
 NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
 
+cuTENSOR Enabled in Wheels
+--------------------------
+
+cuTENSOR can now be used when installing CuPy via wheels.
+
+``cupy.cuda.{nccl,cudnn}`` Modules Needs Explicit Import
+--------------------------------------------------------
+
+Previously ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules were automatically imported.
+Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
+
 Baseline API Changes
 --------------------
 
