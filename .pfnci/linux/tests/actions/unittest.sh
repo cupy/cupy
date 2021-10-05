@@ -16,8 +16,8 @@ if [[ "${MARKER}" != "" ]]; then
     pytest_opts+=(-m "${MARKER}")
 fi
 
+# TODO: support coverage reporting
 python3 -m pip install --user pytest-timeout pytest-xdist
-python3 -m pip install --user -v ".[all,test]"
 
 pushd tests
 python3 -c 'import cupy; cupy.show_config(_full=True)'
@@ -42,5 +42,3 @@ case ${test_retval} in
         exit $test_retval
         ;;
 esac
-
-python3 .pfnci/trim_cupy_kernel_cache.py --max-size $((5*1024*1024*1024)) --rm

@@ -37,4 +37,6 @@ echo "Full log is available at:"
 echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/log.txt"
 echo "****************************************************************************************************"
 
+# TODO: implement gitter notification
+
 exit ${test_retval}
