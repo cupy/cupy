@@ -118,7 +118,7 @@ class TestJoin:
         return xp.concatenate((a, b, c, d, e) * 2, axis=-1)
 
     @testing.numpy_cupy_array_equal()
-    def test_concatenate_many_multi_dptye(self, xp):
+    def test_concatenate_many_multi_dtype(self, xp):
         a = testing.shaped_arange((2, 1), xp, 'i')
         b = testing.shaped_arange((2, 1), xp, 'f')
         return xp.concatenate((a, b) * 1024, axis=1)
@@ -207,6 +207,39 @@ class TestJoin:
         b = testing.shaped_arange((3, 4), xp, dtype1)
         out = xp.zeros((6, 4), dtype=dtype2)
         return xp.concatenate((a, b), out=out)
+
+    @testing.with_requires('numpy>=1.20.0')
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_concatenate_dtype(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((3, 4), xp, dtype1)
+        b = testing.shaped_arange((3, 4), xp, dtype1)
+        return xp.concatenate((a, b), dtype=dtype2)
+
+    @testing.with_requires('numpy>=1.20.0')
+    def test_concatenate_dtype_invalid_out(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, xp.float64)
+            b = testing.shaped_arange((3, 4), xp, xp.float64)
+            out = xp.zeros((6, 4), dtype=xp.int64)
+            with pytest.raises(TypeError):
+                xp.concatenate((a, b), out=out, dtype=xp.int64)
+
+    @testing.with_requires('numpy>=1.20.0')
+    @pytest.mark.parametrize('casting', [
+        'no',
+        'equiv',
+        'safe',
+        'same_kind',
+        'unsafe',
+    ])
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
+        a = testing.shaped_arange((3, 4), xp, dtype1)
+        b = testing.shaped_arange((3, 4), xp, dtype1)
+        # may raise TypeError
+        return xp.concatenate((a, b), dtype=dtype2)
 
     @testing.numpy_cupy_array_equal()
     def test_dstack(self, xp):
