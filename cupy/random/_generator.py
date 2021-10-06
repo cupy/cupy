@@ -1111,9 +1111,22 @@ class RandomState(object):
 
     def _permutation(self, num):
         """Returns a permuted range."""
-        sample = cupy.empty((num,), dtype=numpy.int32)
-        curand.generate(self._generator, sample.data.ptr, num)
-        array = cupy.argsort(sample)
+        if num <= 4 * 1024 * 1024:
+            size = 1
+            count = 0
+            while size < num:
+                size *= 2
+                count += 1
+            sample = cupy.empty((size,), dtype=numpy.int32)
+            curand.generate(self._generator, sample.data.ptr, size)
+            array = cupy.empty((num,), dtype=numpy.int32)
+            return _cupy_permutation(sample, count, num, array)
+        else:
+            # When num > 4M, argsort is used, because it is faster than
+            # custom kernel. See https://github.com/cupy/cupy/pull/5838.
+            sample = cupy.empty((num,), dtype=numpy.int32)
+            curand.generate(self._generator, sample.data.ptr, num)
+            array = cupy.argsort(sample)
         return array
 
     _gumbel_kernel = _core.ElementwiseKernel(
@@ -1165,6 +1178,27 @@ class RandomState(object):
         x = self._interval(diff, size).astype(dtype, copy=False)
         cupy.add(x, lo, out=x)
         return x
+
+
+_cupy_permutation = _core.ElementwiseKernel(
+    'raw int32 sample, int32 count, int32 num',
+    'int32 retval',
+    '''
+    // Here, let pos[x] be the value of pos of x-th thread.
+    // pos[x] is equal to x initially.
+    int pos = i;
+    do {
+        // 2**count size permutation
+        for (int phase = 0; phase < count; ++phase) {
+            int bit = 1 << phase;
+            // Swaps pos[i] and pos[i ^ bit] at 50% possibility.
+            pos ^= (sample[pos | bit] & bit);
+        }
+    } while (pos >= num);
+    retval = pos;
+    ''',
+    'cupy_permutation',
+)
 
 
 def seed(seed=None):
