@@ -496,7 +496,6 @@ class TestFromData(unittest.TestCase):
             fh.seek(0)
             return xp.fromfile(fh, dtype="u1")
 
-
     @testing.numpy_cupy_array_equal()
     def test_fromfile_big_endian(self, xp):
         with tempfile.TemporaryFile() as fh:
