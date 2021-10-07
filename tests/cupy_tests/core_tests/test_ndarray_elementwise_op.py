@@ -2,12 +2,12 @@ import operator
 import unittest
 
 import numpy
-import pytest
 
 import cupy
 from cupy import testing
 
 
+@testing.gpu
 class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
@@ -479,12 +479,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_iadd_array_boolarray(self):
         self.check_array_boolarray_op(operator.iadd)
-
-    def test_pos_boolarray(self):
-        for xp in (numpy, cupy):
-            a = xp.array(True, dtype=xp.bool_)
-            with pytest.deprecated_call():
-                assert a is not +a
 
 
 @testing.gpu
