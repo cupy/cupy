@@ -174,7 +174,27 @@ cdef class Device:
     cpdef use(self):
         """Makes this device current.
 
-        If you want to switch a device temporarily, use the *with* statement.
+        In general, usage of this method is discouraged. Instead use the Device
+        object as a context manager (*with* statement) to switch the current
+        device for the specified scope.
+
+        Note that the mixed use of this method and *with* statement may cause
+        surprising results in some cases:
+
+        .. testcode::
+
+            dev0 = cupy.cuda.Device(0)
+            dev1 = cupy.cuda.Device(1)
+
+            dev1.use()
+            with dev0:
+                dev1.use()
+                with dev0:
+                    pass
+                # The current device remains 0.
+                # Notice that the current device at the time of entering the
+                # context is not recalled when exiting a context.
+            # The current device still remains 0.
 
         """
         runtime.setDevice(self.id)
