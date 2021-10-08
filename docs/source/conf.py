@@ -437,3 +437,22 @@ def linkcode_resolve(domain, info):
 
     return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
         tag, relpath, linenum)
+
+
+# Python Array API methods have type hints, which do not render
+# nicely by default. This option moves the type hints to the
+# doc content so as to make the function signatures shorter and
+# look nicer.
+autodoc_typehints = 'description'
+
+
+def remove_array_api_module_docstring(app, what, name, obj, options, lines):
+    # We don't want to take the docstring in cupyx.array_api because:
+    #   1. It's not how we document module-level stuff
+    #   2. The docstring is taken from numpy.array_api, which requires rewriting
+    # Here we remove the docstring and will add our own description in array_api.rst
+    if what == "module" and 'array_api' in name:
+        del lines[:]
+
+def setup(app):
+    app.connect("autodoc-process-docstring", remove_array_api_module_docstring)

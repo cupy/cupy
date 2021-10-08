@@ -1760,7 +1760,7 @@ class TestCsrMatrixGetitem2:
 @testing.with_requires('scipy')
 @testing.gpu
 @pytest.mark.skipif(
-    driver.get_build_version() >= 11000,
+    cupy.cuda.cub._get_cuda_build_version() >= 11000,
     reason='CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
 @pytest.mark.skipif(runtime.is_hip, reason='hipCUB does not provide spmv')
 @pytest.mark.skipif(

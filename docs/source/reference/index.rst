@@ -30,3 +30,4 @@ API Reference
    prof
    environment
    comparison
+   array_api

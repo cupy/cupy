@@ -1,0 +1,321 @@
+###############################################################################
+# CUDA (Linux)
+###############################################################################
+
+# CUDA 10.0 | Linux
+# The lowest CUDA version matrix is intended to cover the lowest supported combination.
+- project: "cupy.linux.cuda100"
+  target: "cuda100"
+  system: "linux"
+  os: "centos:7"
+  cuda: "10.0"
+  rocm: null
+  nccl: "2.6"
+  cutensor: null
+  cusparselt: null
+  cudnn: "7.6"
+  python: "3.6"
+  numpy: "1.17"
+  scipy: "1.4"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+# CUDA 10.1 | Linux
+- project: "cupy.linux.cuda101"
+  target: "cuda101"
+  system: "linux"
+  os: "centos:7"
+  cuda: "10.1"
+  rocm: null
+  nccl: "2.8"
+  cutensor: null
+  cusparselt: null
+  cudnn: "7.6"
+  python: "3.7"
+  numpy: "1.18"
+  scipy: "1.5"
+  optuna: null
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cub"
+  test: "unit"
+
+# CUDA 10.2 | Linux
+- project: "cupy.linux.cuda102"
+  target: "cuda102"
+  system: "linux"
+  os: "ubuntu:18.04"
+  cuda: "10.2"
+  rocm: null
+  nccl: "2.8"
+  cutensor: "1.3"
+  cusparselt: null
+  cudnn: "8.1"
+  python: "3.8"
+  numpy: "1.19"
+  scipy: "1.6"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cutensor"
+  test: "unit"
+
+# CUDA 11.0 | Linux
+- project: "cupy.linux.cuda110"
+  target: "cuda110"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.0"
+  rocm: null
+  nccl: "2.9"
+  cutensor: "1.3"
+  cusparselt: null
+  cudnn: "8.2"
+  python: "3.9"
+  numpy: "1.20"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cub,cutensor"
+  test: "unit"
+
+# CUDA 11.1 | Linux
+- project: "cupy.linux.cuda111"
+  target: "cuda111"
+  system: "linux"
+  os: "centos:7"
+  cuda: "11.1"
+  rocm: null
+  nccl: "2.7"
+  cutensor: "1.3"
+  cusparselt: null
+  cudnn: "8.0"
+  python: "3.6"
+  numpy: "1.19"
+  scipy: null
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.2 | Linux
+- project: "cupy.linux.cuda112"
+  target: "cuda112"
+  system: "linux"
+  os: "centos:8"
+  cuda: "11.2"
+  rocm: null
+  nccl: "2.8"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.1"
+  python: "3.7"
+  numpy: "1.17"
+  scipy: "1.5"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+# CUDA 11.3 | Linux
+- project: "cupy.linux.cuda113"
+  target: "cuda113"
+  system: "linux"
+  os: "ubuntu:18.04"
+  cuda: "11.3"
+  rocm: null
+  nccl: "2.9"
+  cutensor: "1.3"
+  cusparselt: null
+  cudnn: "8.2"
+  python: "3.8"
+  numpy: "1.18"
+  scipy: "1.6"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cub,cutensor"
+  test: "unit"
+
+# CUDA 11.4 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda114"
+  target: "cuda114"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.4"
+  rocm: null
+  nccl: "2.10"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.2"
+  python: "3.9"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+###############################################################################
+# CUDA (Windows)
+###############################################################################
+
+# TBF
+
+###############################################################################
+# ROCm (Linux)
+###############################################################################
+
+# ROCm 4.0 | Linux
+# The lowest ROCm version matrix is intended to cover the lowest supported combination.
+- project: "cupy.linux.rocm-4-0"
+  target: "rocm-4-0"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: null
+  rocm: "4.0"
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.6"
+  numpy: "1.17"
+  scipy: "1.4"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+# ROCm 4.2 | Linux
+- project: "cupy.linux.rocm-4-2"
+  target: "rocm-4-2"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: null
+  rocm: '4.2'
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.8"
+  numpy: "1.20"
+  scipy: "1.6"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+# ROCm 4.3 | Linux
+# The latest ROCm version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.rocm-4-3"
+  target: "rocm-4-3"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: null
+  rocm: '4.3'
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.9"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+
+###############################################################################
+# Slow Tests
+###############################################################################
+
+# Slow | Linux
+- project: "cupy.linux.cuda-slow"
+  target: "cuda-slow"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.4"
+  rocm: null
+  nccl: "2.10"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.2"
+  python: "3.9"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "slow"
+
+###############################################################################
+# Doctest
+###############################################################################
+
+# Doctest | Linux
+# Note that library versions may be overridden by docs/requirements.txt
+- project: "cupy.linux.cuda-doctest"
+  target: "cuda-doctest"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.4"
+  rocm: null
+  nccl: "2.10"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.2"
+  python: "3.9"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "doctest"
+
+###############################################################################
+# Example
+###############################################################################
+
+# Example | Linux
+- project: "cupy.linux.cuda-example"
+  target: "cuda-example"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.4"
+  rocm: null
+  nccl: "2.10"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.2"
+  python: "3.7"
+  numpy: "1.20"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: null
+  test: "example"
+
+###############################################################################
+# HEAD Tests
+###############################################################################
+
+# HEAD | Linux
+# This combination tests against pre-releases. Use the highest supported combination.
+- project: "cupy.linux.cuda-head"
+  target: "cuda-head"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.4"
+  rocm: null
+  nccl: "2.10"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.2"
+  python: "3.9"
+  numpy: "pre"
+  scipy: "pre"
+  optuna: "pre"
+  cython: "0.29"  # TODO: support Cython 3
+  env:CUPY_ACCELERATORS: "cub,cutensor"
+  test: "unit"

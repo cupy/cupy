@@ -84,8 +84,12 @@ _available_cusparse_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
+
+    # Generic APIs are not available on CUDA 10.2 on Windows.
     'spmv': ({'Linux': 10200, 'Windows': 11000}, None),
-    'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
+    # accuracy bugs in cuSparse 10.3.0
+    'spmm': ({'Linux': 10301, 'Windows': 11000}, None),
+
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
     'csrsort': (8000, None),

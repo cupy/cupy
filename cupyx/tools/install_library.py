@@ -90,18 +90,6 @@ _cudnn_records.append(_make_cudnn_record(
     '10.2', '8.2.4',
     'cudnn-10.2-linux-x64-v8.2.4.15.tgz',
     'cudnn-10.2-windows10-x64-v8.2.4.15.zip'))
-_cudnn_records.append(_make_cudnn_record(
-    '10.1', '8.0.5',
-    'cudnn-10.1-linux-x64-v8.0.5.39.tgz',
-    'cudnn-10.1-windows10-x64-v8.0.5.39.zip'))
-_cudnn_records.append(_make_cudnn_record(
-    '10.0', '7.6.5',
-    'cudnn-10.0-linux-x64-v7.6.5.32.tgz',
-    'cudnn-10.0-windows10-x64-v7.6.5.32.zip'))
-_cudnn_records.append(_make_cudnn_record(
-    '9.2', '7.6.5',
-    'cudnn-9.2-linux-x64-v7.6.5.32.tgz',
-    'cudnn-9.2-windows10-x64-v7.6.5.32.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
@@ -154,10 +142,6 @@ _cutensor_records.append(_make_cutensor_record(
     '10.2', '1.3.1',
     'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
     'libcutensor-windows-x86_64-1.3.1.3.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '10.1', '1.2.2',
-    'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
-    'libcutensor-windows-x86_64-1.2.2.5.zip'))
 library_records['cutensor'] = _cutensor_records
 
 
@@ -200,15 +184,6 @@ _nccl_records.append(_make_nccl_record(
 _nccl_records.append(_make_nccl_record(
     '10.2', '2.11.4', '2.11',
     'nccl_2.11.4-1+cuda10.2_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '10.1', '2.8.3', '2.8',
-    'nccl_2.8.3-1+cuda10.1_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '10.0', '2.6.4', '2.6',
-    'nccl_2.6.4-1+cuda10.0_x86_64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '9.2', '2.4.8', '2.4',
-    'nccl_2.4.8-1+cuda9.2_x86_64.txz'))
 library_records['nccl'] = _nccl_records
 
 

@@ -1,25 +1,35 @@
-FROM rocm/dev-ubuntu-20.04:4.3
+# AUTO GENERATED: DO NOT EDIT!
+ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:4.3"
+FROM ${BASE_IMAGE}
 
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ( apt-get -qqy update || true ) && \
+    apt-get -qqy install ca-certificates && \
+    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
-    apt-get -qqy install rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl && \
-    apt-get -qqy install ccache
+    apt-get -qqy install \
+       make build-essential libssl-dev zlib1g-dev \
+       libbz2-dev libreadline-dev libsqlite3-dev wget \
+       curl llvm libncursesw5-dev xz-utils tk-dev \
+       libxml2-dev libxmlsec1-dev libffi-dev \
+       liblzma-dev && \
+    apt-get -qqy install ccache git curl && \
+    apt-get -qqy --allow-change-held-packages \
+            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
 
-ENV PATH="/usr/lib/ccache:${PATH}"
-ENV ROCM_HOME="/opt/rocm"
-ENV LD_LIBRARY_PATH="${ROCM_HOME}/lib"
-ENV CPATH="${ROCM_HOME}/include"
-ENV LDFLAGS="-L${ROCM_HOME}/lib"
+ENV PATH "/usr/lib/ccache:${PATH}"
 
-# In ROCm 4.3, hiprtc has a problem that it can not find a header file related
-# to LLVM/clang. As a workaround, we temporarily give LLVM_PATH here. See
-# #5592.
-ENV LLVM_PATH="${ROCM_HOME}/llvm"
+ENV ROCM_HOME "/opt/rocm"
+ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
+ENV CPATH "${ROCM_HOME}/include"
+ENV LDFLAGS "-L${ROCM_HOME}/lib"
 
-# Python 3.8
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get -qqy install python3 python3-dev python3-pip python3-setuptools && \
-    python3 -m pip install -U pip setuptools && \
-    apt-get -qqy purge python3-pip python3-setuptools
+RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
+ENV PYENV_ROOT "/opt/pyenv"
+ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
+RUN pyenv install 3.9.6 && \
+    pyenv global 3.9.6 && \
+    pip install -U setuptools pip
 
-RUN python3 -m pip install cython numpy scipy
+RUN pip install -U numpy==1.21.* scipy==1.7.* optuna==2.* cython==0.29.*

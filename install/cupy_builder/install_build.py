@@ -14,7 +14,7 @@ import cupy_builder.install_utils as utils
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 10000
+minimum_cuda_version = 10020
 minimum_cudnn_version = 7600
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
@@ -174,7 +174,7 @@ def get_compiler_setting(use_hip):
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(
-        cupy_builder.get_source_root(), 'cupy/_core/include')
+        cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
@@ -313,7 +313,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 10.0 or newer is required')
+            'CUDA 10.2 or newer is required')
         return False
 
     return True

@@ -11,6 +11,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport core
 from cupy._core.core cimport ndarray
@@ -61,9 +62,7 @@ cdef _ndarray_shape_setter(ndarray self, newshape):
         raise AttributeError(
             'Incompatible shape for in-place modification. Use `.reshape()` '
             'to make a copy with the desired shape.')
-    self._shape = shape
-    self._strides = strides
-    self._update_f_contiguity()
+    self._set_shape_and_strides(shape, strides, False, True)
 
 
 cdef ndarray _ndarray_reshape(ndarray self, tuple shape, order):
@@ -530,50 +529,80 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     return ret
 
 
-cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
-    cdef int ndim, a_ndim
+cpdef ndarray concatenate_method(tup, int axis, ndarray out=None, dtype=None,
+                                 casting='same_kind'):
+    cdef int ndim0
     cdef int i
-    cdef ndarray a
-    cdef bint have_same_types
+    cdef ndarray a, a0
     cdef shape_t shape
 
-    ndim = -1
-    dtype = None
-    have_same_types = True
+    if dtype is not None:
+        dtype = get_dtype(dtype)
+
     arrays = list(tup)
+
+    # Check if the input is not an empty sequence
+    if len(arrays) == 0:
+        raise ValueError('Cannot concatenate from empty tuple')
+
+    # Check types of the input arrays
     for o in arrays:
         if not isinstance(o, ndarray):
             raise TypeError('Only cupy arrays can be concatenated')
-        a = o
-        a_ndim = a._shape.size()
-        if a_ndim == 0:
-            raise TypeError('zero-dimensional arrays cannot be concatenated')
-        if ndim == -1:
-            ndim = a_ndim
-            shape = a._shape
-            axis = internal._normalize_axis_index(axis, ndim)
-            dtype = a.dtype
-            continue
 
-        have_same_types = have_same_types and (a.dtype == dtype)
-        if a_ndim != ndim:
+    # Check ndim > 0 for the input arrays
+    for o in arrays:
+        a = o
+        if a._shape.size() == 0:
+            raise TypeError('zero-dimensional arrays cannot be concatenated')
+
+    # Check ndim consistency of the input arrays
+    a0 = arrays[0]
+    ndim0 = a0._shape.size()
+    for o in arrays[1:]:
+        a = o
+        if a._shape.size() != ndim0:
             raise ValueError(
                 'All arrays to concatenate must have the same ndim')
-        for i in range(ndim):
-            if i != axis and shape[i] != a._shape[i]:
+
+    # Check shape consistency of the input arrays, and compute the output shape
+    shape0 = a0._shape
+    axis = internal._normalize_axis_index(axis, ndim0)
+    for o in arrays[1:]:
+        a = o
+        for i in range(ndim0):
+            if i != axis and shape0[i] != a._shape[i]:
                 raise ValueError(
                     'All arrays must have same shape except the axis to '
                     'concatenate')
-        shape[axis] += a._shape[axis]
+        shape0[axis] += a._shape[axis]
 
-    if ndim == -1:
-        raise ValueError('Cannot concatenate from empty tuple')
-
-    shape_t = tuple(shape)
+    # Compute the output dtype
     if out is None:
-        if not have_same_types:
-            dtype = functools.reduce(numpy.promote_types,
-                                     set([a.dtype for a in arrays]))
+        if dtype is None:
+            dtype = a0.dtype
+            have_same_types = True
+            for o in arrays[1:]:
+                have_same_types = have_same_types and (o.dtype == dtype)
+            if not have_same_types:
+                dtype = functools.reduce(
+                    numpy.promote_types, set([a.dtype for a in arrays]))
+    else:
+        if dtype is not None:
+            raise TypeError('concatenate() only takes `out` or `dtype` as an '
+                            'argument, but both were provided.')
+        dtype = out.dtype
+
+    # Check casting rule
+    for o in arrays:
+        if not _can_cast(o.dtype, dtype, casting):
+            msg = (f"Cannot cast array data from dtype('{o.dtype}') to "
+                   f"dtype('{dtype}') according to the rule '{casting}'")
+            raise TypeError(msg)
+
+    # Prpare the output array
+    shape_t = tuple(shape0)
+    if out is None:
         out = ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
@@ -581,11 +610,11 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
         if out.shape != shape_t:
             raise ValueError('Output array is the wrong shape')
 
-    return _concatenate(arrays, axis, shape_t, out)
+    return _concatenate(arrays, axis, shape_t, out, casting)
 
 
 cpdef ndarray _concatenate(
-        list arrays, Py_ssize_t axis, tuple shape, ndarray out):
+        list arrays, Py_ssize_t axis, tuple shape, ndarray out, str casting):
     cdef ndarray a
     cdef Py_ssize_t i, aw, itemsize, axis_size
     cdef bint all_same_type, same_shape_and_contiguous
@@ -619,7 +648,7 @@ cpdef ndarray _concatenate(
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
         elementwise_copy(
-            a, _indexing._simple_getitem(out, slice_list), casting='same_kind')
+            a, _indexing._simple_getitem(out, slice_list), casting=casting)
         i += aw
     return out
 
@@ -650,6 +679,15 @@ cpdef Py_ssize_t size(ndarray a, axis=None) except? -1:
 
 
 # private
+
+
+cdef _numpy_can_cast = numpy.can_cast
+
+
+cdef bint _can_cast(d1, d2, casting):
+    if casting == 'same_kind' and d1.kind == d2.kind:  # most cases
+        return True
+    return _numpy_can_cast(d1, d2, casting=casting)
 
 
 cdef bint _has_element(const shape_t &source, Py_ssize_t n):

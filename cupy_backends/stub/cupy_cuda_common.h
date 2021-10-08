@@ -75,6 +75,7 @@ enum cudaMemcpyKind {};
 typedef void (*cudaStreamCallback_t)(
     cudaStream_t stream, cudaError_t status, void* userData);
 
+typedef void (*cudaHostFn_t)(void* userData);
 
 struct cudaPointerAttributes{
     int device;
