@@ -116,7 +116,8 @@ Installing CuPy from Conda-Forge
 --------------------------------
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
-The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux and
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
+ppc64le, aarch64-sbsa) and
 Windows once the CUDA driver is correctly set up, you can also install CuPy from the ``conda-forge`` channel::
 
     $ conda install -c conda-forge cupy
