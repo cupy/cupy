@@ -448,6 +448,8 @@ cpdef intptr_t malloc(size_t size) except? 0:
 
 cpdef intptr_t mallocManaged(
         size_t size, unsigned int flags=cudaMemAttachGlobal) except? 0:
+    if 0 < CUPY_HIP_VERSION < 40300000:
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     cdef void* ptr
     with nogil:
         status = cudaMallocManaged(&ptr, size, flags)
@@ -638,12 +640,16 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
+    if 0 < CUPY_HIP_VERSION < 40300000:
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
         status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
                                       <driver.Stream> stream)
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
+    if 0 < CUPY_HIP_VERSION < 40300000:
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
         status = cudaMemAdvise(<void*>devPtr, count,
                                <MemoryAdvise>advice, device)
