@@ -633,7 +633,7 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
     if 0 < CUPY_HIP_VERSION < 40300000:
-        raise RuntimeError('HIP does not support managed memory')
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
         status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
                                       <driver.Stream> stream)
