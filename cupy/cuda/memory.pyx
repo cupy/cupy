@@ -214,7 +214,7 @@ cdef class ManagedMemory(BaseMemory):
             runtime._is_hip_environment and
             driver.get_build_version() < 40300000
         ):
-            raise RuntimeError('HIP does not support managed memory')
+            raise RuntimeError('Managed memory requires ROCm 4.3+')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
