@@ -51,7 +51,7 @@ class TestUnownedMemory(unittest.TestCase):
             if self.allocator is memory.malloc_managed:
                 if cupy.cuda.driver.get_build_version() < 40300000:
                     raise unittest.SkipTest(
-                        'HIP does not support managed memory')
+                        'Managed memory requires ROCm 4.3+')
                 else:
                     raise unittest.SkipTest(
                         'hipPointerGetAttributes does not support managed '
