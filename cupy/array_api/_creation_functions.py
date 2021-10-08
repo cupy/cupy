@@ -23,7 +23,7 @@ def _check_valid_dtype(dtype):
     # Note: Only spelling dtypes as the dtype objects is supported.
 
     # We use this instead of "dtype in _all_dtypes" because the dtype objects
-    # define equality with the sorts of things we want to disallw.
+    # define equality with the sorts of things we want to disallow.
     for d in (None,) + _all_dtypes:
         if dtype is d:
             return
@@ -319,6 +319,34 @@ def ones_like(
         device = _Device()  # current device
     with device:
         return Array._new(np.ones_like(x._array, dtype=dtype))
+
+
+def tril(x: Array, /, *, k: int = 0) -> Array:
+    """
+    Array API compatible wrapper for :py:func:`np.tril <numpy.tril>`.
+
+    See its docstring for more information.
+    """
+    from ._array_object import Array
+
+    if x.ndim < 2:
+        # Note: Unlike np.tril, x must be at least 2-D
+        raise ValueError("x must be at least 2-dimensional for tril")
+    return Array._new(np.tril(x._array, k=k))
+
+
+def triu(x: Array, /, *, k: int = 0) -> Array:
+    """
+    Array API compatible wrapper for :py:func:`np.triu <numpy.triu>`.
+
+    See its docstring for more information.
+    """
+    from ._array_object import Array
+
+    if x.ndim < 2:
+        # Note: Unlike np.triu, x must be at least 2-D
+        raise ValueError("x must be at least 2-dimensional for triu")
+    return Array._new(np.triu(x._array, k=k))
 
 
 def zeros(
