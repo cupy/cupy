@@ -665,7 +665,7 @@ class TestMemoryPool(unittest.TestCase):
             cupy.cuda.driver.get_build_version() < 40300000 and
             self.allocator is memory.malloc_managed
         ):
-            raise unittest.SkipTest('HIP does not support managed memory')
+            raise unittest.SkipTest('Managed memory requires ROCm 4.3+')
         self.pool = memory.MemoryPool(self.allocator)
 
     def tearDown(self):
