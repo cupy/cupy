@@ -21,6 +21,9 @@ reciprocal = _core.create_ufunc(
     ''')
 
 
+positive = _core.positive
+
+
 negative = _core.negative
 
 

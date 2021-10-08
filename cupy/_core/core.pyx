@@ -137,6 +137,10 @@ cdef class ndarray:
             raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
+        if len(s) > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {len(s)}'
+            raise ValueError(msg)
         self._shape.reserve(len(s))
         for x in s:
             if x < 0:
@@ -171,6 +175,10 @@ cdef class ndarray:
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
         cdef Py_ssize_t itemsize
+        if shape.size() > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
+            raise ValueError(msg)
         self._shape = shape
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
@@ -1122,7 +1130,12 @@ cdef class ndarray:
         return _math._negative(self)
 
     def __pos__(self):
-        return self
+        if self.dtype == numpy.bool_:
+            msg = ("Applying '+' to a non-numerical array is ill-defined. "
+                   'Returning a copy, but in the future this will error.')
+            warnings.warn(msg, DeprecationWarning)
+            return self.copy()
+        return _math._positive(self)
 
     def __abs__(self):
         return _math._absolute(self)
@@ -1799,6 +1812,10 @@ cdef class ndarray:
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
+        if shape.size() > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
+            raise ValueError(msg)
         self._shape = shape
         self._strides = strides
         self.size = internal.prod(shape)
@@ -2029,13 +2046,7 @@ cpdef function.Module compile_with_cache(
             _cuda_path = cuda.get_rocm_path()
 
     if not _is_hip:
-        if 9020 <= _cuda_runtime_version < 9030:
-            bundled_include = 'cuda-9.2'
-        elif 10000 <= _cuda_runtime_version < 10010:
-            bundled_include = 'cuda-10.0'
-        elif 10010 <= _cuda_runtime_version < 10020:
-            bundled_include = 'cuda-10.1'
-        elif 10020 <= _cuda_runtime_version < 10030:
+        if 10020 <= _cuda_runtime_version < 10030:
             bundled_include = 'cuda-10.2'
         elif 11000 <= _cuda_runtime_version < 11010:
             bundled_include = 'cuda-11.0'

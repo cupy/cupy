@@ -614,6 +614,7 @@ from cupy._math.arithmetic import fmod  # NOQA
 from cupy._math.arithmetic import modf  # NOQA
 from cupy._math.arithmetic import multiply  # NOQA
 from cupy._math.arithmetic import negative  # NOQA
+from cupy._math.arithmetic import positive  # NOQA
 from cupy._math.arithmetic import power  # NOQA
 from cupy._math.arithmetic import reciprocal  # NOQA
 from cupy._math.arithmetic import remainder  # NOQA

@@ -276,8 +276,6 @@ cpdef int funcGetAttribute(int attribute, intptr_t f) except? -2:
 
 
 cpdef funcSetAttribute(intptr_t f, int attribute, int value):
-    if CUPY_CUDA_VERSION < 9000:
-        raise RuntimeError("Your CUDA does not support cuFuncSetAttribute.")
     with nogil:
         status = cuFuncSetAttribute(
             <Function> f,

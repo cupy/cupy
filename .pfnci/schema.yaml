@@ -1,0 +1,346 @@
+###############################################################################
+# System
+###############################################################################
+# Target system to test on.
+system:
+  "linux":
+  "windows":
+
+###############################################################################
+# OS
+###############################################################################
+# Name and version of the operating system to test on.
+os:
+  "ubuntu:18.04":
+    system: "linux"
+  "ubuntu:20.04":
+    system: "linux"
+  "centos:7":
+    system: "linux"
+  "centos:8":
+    system: "linux"
+  "ws:2016":
+    system: "windows"
+
+###############################################################################
+# CUDA & ROCm
+###############################################################################
+# The platform to test with.
+# `cuda` and `rocm` are mutually exclusive; when one is set, the other must be null.
+# `full_version` is the version used in base Docker images.
+# When adding a new CUDA version, you may also need to add the version to the
+# list of supported CUDA versions in the optional libraries.
+cuda:
+  null:
+    full_version: null
+  "10.0":
+    full_version: "10.0"
+  "10.1":
+    full_version: "10.1"
+  "10.2":
+    full_version: "10.2"
+  "11.0":
+    full_version: "11.0.3"
+  "11.1":
+    full_version: "11.1.1"
+  "11.2":
+    full_version: "11.2.1"
+  "11.3":
+    full_version: "11.3.1"
+  "11.4":
+    full_version: "11.4.0"
+rocm:
+  null:
+    full_version: null
+    packages: []
+  "4.0":
+    full_version: "4.0.1"
+    packages: ['rocm-dev', 'hipblas', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "4.2":
+    full_version: "4.2"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "4.3":
+    full_version: "4.3"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+
+###############################################################################
+# CUDA Optional Libraries
+###############################################################################
+# The optional libraries to install: NCCL, cuTENSOR, cuSPARSELt and cuDNN.
+# `spec` must be a version specifier accepted by apt and yum.
+# `cuda` lists the supported CUDA version.
+# `cuda.alias` (cuDNN only) is an alias name for package name suffix.
+nccl:
+  # https://docs.nvidia.com/deeplearning/nccl/archives/
+  # https://developer.nvidia.com/nccl/nccl-download
+  null:
+    spec: null
+  "2.6":
+    spec: "2.6.*"
+    cuda:
+      "10.0":
+      "10.1":
+      "10.2":
+  "2.7":
+    spec: "2.7.*"
+    cuda:
+      # "10.1":  # note: RHEL 8 not supported
+      "10.2":
+      "11.0":
+      "11.1":
+  "2.8":
+    spec: "2.8.*"
+    cuda:
+      "10.1":
+      "10.2":
+      "11.0":
+      "11.1":
+      "11.2":
+  "2.9":
+    spec: "2.9.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.3":
+  "2.10":
+    spec: "2.10.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.4":
+  "2.11":
+    spec: "2.11.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.4":
+cutensor:
+  # https://docs.nvidia.com/cuda/cutensor/
+  # https://developer.nvidia.com/cutensor/downloads
+  null:
+    spec: null
+  "1.3":
+    spec: "1.3.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.1":
+      "11.2":
+      "11.3":
+      "11.4":
+cusparselt:
+  # https://docs.nvidia.com/cuda/cusparselt/
+  # https://developer.nvidia.com/cusparselt/downloads
+  null:
+    spec: null
+  "0.1.0":
+    spec: "0.1.0.*"
+    cuda:
+      "11.2":
+      "11.3":
+      "11.4":
+cudnn:
+  # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
+  # https://docs.nvidia.com/deeplearning/cudnn/archives/
+  # https://developer.nvidia.com/rdp/cudnn-download
+  null:
+    spec: null
+  "7.6":
+    spec: "7.6.*"
+    cuda:
+      "10.0":
+      "10.1":
+      "10.2":
+  "8.0":
+    spec: "8.0.*"
+    cuda:
+      # "10.1":  # note: RHEL 8 not supported
+      "10.2":
+      "11.0":
+      "11.1":
+  "8.1":
+    spec: "8.1.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.2"
+      "11.1":
+        alias: "11.2"
+      "11.2":
+        alias: "11.2"
+  "8.2":
+    spec: "8.2.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.4"
+      "11.1":
+        alias: "11.4"
+      "11.2":
+        alias: "11.4"
+      "11.3":
+        alias: "11.4"
+      "11.4":
+        alias: "11.4"
+
+###############################################################################
+# Python
+###############################################################################
+# Python version to test with.
+# `spec` must be a version specifier accepted by pyenv.
+# When adding a new Python version, you may also need to add the version to the
+# list of supported Python versions in the Python libraries.
+python:
+  "3.6":
+    spec: "3.6.14"
+  "3.7":
+    spec: "3.7.11"
+  "3.8":
+    spec: "3.8.11"
+  "3.9":
+    spec: "3.9.6"
+  "pre":
+    spec: "3.10.0b3"  # note that dependency python libraies may not work
+
+###############################################################################
+# Python Libraries
+###############################################################################
+# Library versions to test with.
+# `spec` must be a version specifier accepted by pip.
+# When adding a new NumPy version, you may also need to add the version to the
+# list of supported Python versions in SciPy.
+numpy:
+  "1.17":
+    spec: "==1.17.*"
+    python:
+      # - "3.5"
+      - "3.6"
+      - "3.7"
+      - "3.8"
+  "1.18":
+    spec: "==1.18.*"
+    python:
+      # - "3.5"
+      - "3.6"
+      - "3.7"
+      - "3.8"
+  "1.19":
+    spec: "==1.19.*"
+    python:
+      - "3.6"
+      - "3.7"
+      - "3.8"
+      - "3.9"
+  "1.20":
+    spec: "==1.20.*"
+    python:
+      - "3.7"
+      - "3.8"
+      - "3.9"
+  "1.21":
+    spec: "==1.21.*"
+    python:
+      - "3.7"
+      - "3.8"
+      - "3.9"
+  "pre":
+    spec: ">=0a0"  # latest, including pre-releases
+scipy:
+  null:
+    spec: null
+  "1.4":
+    spec: "==1.4.*"
+    python:
+      # - "3.5"
+      - "3.6"
+      - "3.7"
+      - "3.8"
+    numpy:
+      # - "1.13"
+      # - "1.14"
+      # - "1.15"
+      # - "1.16"
+      - "1.17"
+      - "1.18"
+      - "1.19"
+      - "1.20"
+      - "1.21"
+  "1.5":
+    spec: "==1.5.*"
+    python:
+      - "3.6"
+      - "3.7"
+      - "3.8"
+      - "3.9"
+    numpy:
+      # - "1.16"
+      - "1.17"
+      - "1.18"
+      - "1.19"
+      - "1.20"
+      - "1.21"
+  "1.6":
+    spec: "==1.6.*"
+    python:
+      - "3.7"
+      - "3.8"
+      - "3.9"
+    numpy:
+      # - "1.16"
+      - "1.17"
+      - "1.18"
+      - "1.19"
+      - "1.20"
+      - "1.21"
+  "1.7":
+    spec: "==1.7.*"
+    python:
+      - "3.7"
+      - "3.8"
+      - "3.9"
+    numpy:
+      # - "1.16"
+      - "1.17"
+      - "1.18"
+      - "1.19"
+      - "1.20"
+      - "1.21"
+  "pre":
+    spec: ">=0a0"  # latest, including pre-releases
+optuna:
+  null:
+    spec: null
+  "2":
+    spec: "==2.*"
+  "pre":
+    spec: ">=0a0"  # latest, including pre-releases
+cython:
+  "0.29":
+    spec: "==0.29.*"
+  "pre":
+    spec: ">=0a0"  # latest, including pre-releases
+
+###############################################################################
+# Environment Variables
+###############################################################################
+env:CUPY_ACCELERATORS:
+  null:
+  "cub":
+  "cutensor":
+  "cub,cutensor":
+  "cutensor,cub":
+
+###############################################################################
+# Test Variant
+###############################################################################
+test:
+  "unit":
+  "slow":
+  "doctest":
+  "example":

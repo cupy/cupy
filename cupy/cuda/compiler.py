@@ -123,11 +123,8 @@ _tegra_archs = ('53', '62', '72')
 @_util.memoize()
 def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
-    if major < 10 or (major == 10 and minor == 0):
-        # CUDA 9.x / 10.0
-        nvrtc_max_compute_capability = '70'
-    elif major < 11:
-        # CUDA 10.1 / 10.2
+    if major < 11:
+        # CUDA 10.2
         nvrtc_max_compute_capability = '75'
     elif major == 11 and minor == 0:
         # CUDA 11.0
@@ -160,8 +157,12 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
+    if driver._is_cuda_python():
+        version = runtime.runtimeGetVersion()
+    else:
+        version = _cuda_hip_version
     if (
-        not _use_ptx and _cuda_hip_version >= 11010
+        not _use_ptx and version >= 11010
         and arch < _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
