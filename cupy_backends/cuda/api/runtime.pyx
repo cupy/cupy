@@ -641,7 +641,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     if 0 < CUPY_HIP_VERSION < 40300000:
-        raise RuntimeError('HIP does not support managed memory')
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
         status = cudaMemAdvise(<void*>devPtr, count,
                                <MemoryAdvise>advice, device)
