@@ -52,9 +52,14 @@ class TestUnownedMemory(unittest.TestCase):
                 raise unittest.SkipTest('HIP does not support managed memory')
             if self.allocator is memory.malloc_async:
                 raise unittest.SkipTest('HIP does not support async mempool')
-        elif cupy.cuda.driver.get_build_version() < 11020:
-            raise unittest.SkipTest('malloc_async is supported since '
-                                    'CUDA 11.2')
+        else:
+            if cupy.cuda.driver._is_cuda_python():
+                version = cupy.cuda.runtime.runtimeGetVersion()
+            else:
+                version = cupy.cuda.driver.get_build_version()
+            if version < 11020:
+                raise unittest.SkipTest('malloc_async is supported since '
+                                        'CUDA 11.2')
 
         size = 24
         shape = (2, 3)
@@ -741,7 +746,11 @@ class TestAllocator(unittest.TestCase):
         if self.mempool == 'MemoryAsyncPool':
             if cupy.cuda.runtime.is_hip:
                 pytest.skip('HIP does not support async allocator')
-            if cupy.cuda.driver.get_build_version() < 11020:
+            if cupy.cuda.driver._is_cuda_python():
+                version = cupy.cuda.runtime.runtimeGetVersion()
+            else:
+                version = cupy.cuda.driver.get_build_version()
+            if version < 11020:
                 pytest.skip('malloc_async is supported since CUDA 11.2')
             if cupy.cuda.runtime.driverGetVersion() < 11030:
                 pytest.skip('pool statistics is supported with driver 11.3+')
@@ -977,7 +986,11 @@ class TestExceptionPicklable(unittest.TestCase):
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
-@pytest.mark.skipif(cupy.cuda.driver.get_build_version() < 11020,
+@pytest.mark.skipif(cupy.cuda.driver._is_cuda_python()
+                    and cupy.cuda.runtime.runtimeGetVersion() < 11020,
+                    reason='malloc_async is supported since CUDA 11.2')
+@pytest.mark.skipif(not cupy.cuda.driver._is_cuda_python()
+                    and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 class TestMallocAsync(unittest.TestCase):
 
@@ -1043,7 +1056,11 @@ class TestMallocAsync(unittest.TestCase):
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
-@pytest.mark.skipif(cupy.cuda.driver.get_build_version() < 11020,
+@pytest.mark.skipif(cupy.cuda.driver._is_cuda_python()
+                    and cupy.cuda.runtime.runtimeGetVersion() < 11020,
+                    reason='malloc_async is supported since CUDA 11.2')
+@pytest.mark.skipif(not cupy.cuda.driver._is_cuda_python()
+                    and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 class TestMemoryAsyncPool(unittest.TestCase):
 

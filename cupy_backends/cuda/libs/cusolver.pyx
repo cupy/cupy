@@ -8,6 +8,10 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 
+cpdef _get_cuda_build_version():
+    return CUPY_CUDA_VERSION
+
+
 ###############################################################################
 # Extern
 ###############################################################################
