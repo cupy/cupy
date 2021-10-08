@@ -449,7 +449,7 @@ cpdef intptr_t malloc(size_t size) except? 0:
 cpdef intptr_t mallocManaged(
         size_t size, unsigned int flags=cudaMemAttachGlobal) except? 0:
     if 0 < CUPY_HIP_VERSION < 40300000:
-        raise RuntimeError('HIP does not support managed memory')
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     cdef void* ptr
     with nogil:
         status = cudaMallocManaged(&ptr, size, flags)
