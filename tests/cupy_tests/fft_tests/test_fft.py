@@ -366,6 +366,8 @@ class TestFftAllocate:
         # Free huge memory for slow test
         del b
         cupy.get_default_memory_pool().free_all_blocks()
+        # Clean up FFT plan cache
+        cupy.fft.config.clear_plan_cache()
 
 
 @pytest.mark.usefixtures('skip_forward_backward')

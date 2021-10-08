@@ -7,7 +7,7 @@ import pytest
 from . import _from_install_import
 
 
-build = _from_install_import('build')
+build = _from_install_import('cupy_builder.install_build')
 
 
 class TestCheckVersion(unittest.TestCase):
