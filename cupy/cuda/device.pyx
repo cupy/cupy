@@ -178,6 +178,7 @@ cdef class Device:
 
         """
         runtime.setDevice(self.id)
+        return self
 
     cpdef synchronize(self):
         """Synchronizes the current thread to the device."""
