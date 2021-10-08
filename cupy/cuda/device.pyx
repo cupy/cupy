@@ -25,7 +25,7 @@ cdef class _ThreadLocalStack:
     cdef list _devices
 
     def __init__(self):
-        self._devices = []
+        self._devices = [0]
 
     @staticmethod
     cdef _ThreadLocalStack get():
@@ -36,11 +36,12 @@ cdef class _ThreadLocalStack:
             _thread_local._device_stack = stack
         return <_ThreadLocalStack>stack
 
-    cdef void push(self, int device_id) except *:
+    cdef void push_device(self, int device_id) except *:
         self._devices.append(device_id)
 
-    cdef int pop(self) except -1:
-        return <int>self._devices.pop()
+    cdef int pop_device(self) except -1:
+        self._devices.pop()
+        return <int>self._devices[-1]
 
 
 cpdef int get_device_id() except? -1:
@@ -157,14 +158,15 @@ cdef class Device:
         return self.id
 
     def __enter__(self):
-        cdef int id = runtime.getDevice()
-        _ThreadLocalStack.get().push(id)
-        if self.id != id:
-            self.use()
+        _ThreadLocalStack.get().push_device(self.id)
+        if self.id != runtime.getDevice():
+            runtime.setDevice(self.id)
         return self
 
     def __exit__(self, *args):
-        runtime.setDevice(_ThreadLocalStack.get().pop())
+        cdef int prev_device = _ThreadLocalStack.get().pop_device()
+        if prev_device != runtime.getDevice():
+            runtime.setDevice(prev_device)
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id
