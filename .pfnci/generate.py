@@ -114,6 +114,11 @@ class LinuxGenerator:
                 'ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"',
                 'ENV CPATH "${ROCM_HOME}/include"',
                 'ENV LDFLAGS "-L${ROCM_HOME}/lib"',
+
+                # In ROCm 4.3, hiprtc has a problem that it can not find a
+                # header file related to LLVM/clang. As a workaround, we
+                # temporarily give LLVM_PATH here. See #5592.
+                'ENV LLVM_PATH "${ROCM_HOME}/llvm"',
                 '',
             ]
 
