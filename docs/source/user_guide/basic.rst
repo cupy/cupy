@@ -66,7 +66,7 @@ In such a case, the following code would create an array ``x_on_gpu0`` on GPU 0.
 
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
 
-To switch to another GPU device, use ``with`` context manager:
+To switch to another GPU device, use the :class:`~cupy.cuda.Device` context manager:
 
 .. doctest::
 
