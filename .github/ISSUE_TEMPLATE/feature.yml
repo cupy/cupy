@@ -1,0 +1,21 @@
+name: 🚀 Feature Request
+description: Submit a request for a new feature.
+labels: ["cat:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request!
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: Propose a feature or change. Including a motivation or use-case would help us prioritize the request.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Additional Information
+      description: |
+        Add other information related to this case, if any.

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: ✋ Questions / Help / Support
+    url: https://github.com/cupy/cupy/wiki/Getting-Help
+    about: See the list of support resources.
