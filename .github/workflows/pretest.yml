@@ -44,7 +44,7 @@ jobs:
         SPHINXOPTS=-W make html
         popd
 
-    - name: Test: Installer
+    - name: Test - Installer
       run: |
         pip install mypy
         pushd install
