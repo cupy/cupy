@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import copy
 from distutils import ccompiler
 from distutils import errors
