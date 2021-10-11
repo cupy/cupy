@@ -19,7 +19,7 @@ fi
 
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
-CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_get test 2>&1 | tee "${LOG_FILE}"
+CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_get build test 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 echo "****************************************************************************************************"
 echo "Exit with status ${test_retval}"

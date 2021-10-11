@@ -75,7 +75,12 @@ main() {
   for stage in ${STAGES}; do case "${stage}" in
     build )
       tests_dir="${repo_root}/.pfnci/linux/tests"
-      docker build -t "${docker_image}" -f "${tests_dir}/${TARGET}.Dockerfile" "${tests_dir}"
+      DOCKER_BUILDKIT=1 docker build \
+          -t "${docker_image}" \
+          --cache-from "${docker_image}" \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          -f "${tests_dir}/${TARGET}.Dockerfile" \
+          "${tests_dir}"
       ;;
 
     rmi )
