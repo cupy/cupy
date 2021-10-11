@@ -9,7 +9,7 @@ except ImportError:
     scipy_available = False
 import cupyx.scipy.sparse.csgraph  # NOQA
 try:
-    import pylibcugraph
+    import pylibcugraph  # NOQA
     pylibcugraph_available = True
 except ImportError:
     pylibcugraph_available = False
