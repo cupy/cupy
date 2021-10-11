@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 
 from cupy.cuda import device
 from cupy.cuda import function
@@ -433,7 +434,16 @@ def get_cache_dir():
 _empty_file_preprocess_cache = {}
 
 
-def compile_with_cache(
+def compile_with_cache(*args, **kwargs):
+    # TODO(kmaehashi): change to visible warning in CuPy v11+.
+    warnings.warn(
+        'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
+        ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
+        ' instead.', DeprecationWarning)
+    _compile_module_with_cache(*args, **kwargs)
+
+
+def _compile_module_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
         name_expressions=None, log_stream=None, jitify=False):

@@ -2086,7 +2086,7 @@ cpdef function.Module compile_with_cache(
     if _cuda_path is not None:
         options += ('-I' + os.path.join(_cuda_path, 'include'),)
 
-    return cuda.compile_with_cache(
+    return cuda.compiler._compile_module_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,

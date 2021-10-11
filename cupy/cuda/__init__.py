@@ -92,7 +92,6 @@ def is_available():
 
 
 # import class and function
-from cupy.cuda.compiler import compile_with_cache  # NOQA
 from cupy.cuda.device import Device  # NOQA
 from cupy.cuda.device import get_cublas_handle  # NOQA
 from cupy.cuda.device import get_device_id  # NOQA
@@ -124,6 +123,9 @@ from cupy.cuda.stream import get_current_stream  # NOQA
 from cupy.cuda.stream import get_elapsed_time  # NOQA
 from cupy.cuda.stream import Stream  # NOQA
 from cupy.cuda.stream import ExternalStream  # NOQA
+
+# Importing only for backward compatibility:
+from cupy.cuda.compiler import compile_with_cache  # NOQA
 
 
 @contextlib.contextmanager
