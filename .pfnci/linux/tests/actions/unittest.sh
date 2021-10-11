@@ -10,6 +10,7 @@ pytest_opts=(
     --maxfail 500
     --showlocals
     --durations 10
+    --numprocesses 2
 )
 
 if [[ "${MARKER}" != "" ]]; then
