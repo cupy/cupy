@@ -554,13 +554,12 @@ class Generator:
                 raise TypeError('nsample is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            nsample = nsample.astype('d', copy=False)
+            nsample = nsample.astype(numpy.int64, copy=False)
 
         if size is not None and not isinstance(size, tuple):
             size = (size,)
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
-
         y = ndarray(size, numpy.int64)
 
         ngood = cupy.broadcast_to(ngood, y.shape)
