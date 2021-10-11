@@ -24,7 +24,7 @@ test_retval=${PIPESTATUS[0]}
 echo "****************************************************************************************************"
 echo "Exit with status ${test_retval}"
 
-if [[ "${pull_req}" != "" ]]; then
+if [[ "${pull_req}" == "" ]]; then
     # Upload cache when testing a branch, even when test failed.
     echo "Uploading cache..."
     CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put | tee --append "${LOG_FILE}"
