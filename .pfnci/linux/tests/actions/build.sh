@@ -2,4 +2,4 @@
 
 set -uex
 
-python3 -m pip install --user -v ".[test]"
+time python3 -m pip install --user -v ".[test]"
