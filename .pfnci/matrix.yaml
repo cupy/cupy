@@ -15,7 +15,7 @@
   cusparselt: null
   cudnn: "7.6"
   python: "3.7"
-  numpy: "1.17"
+  numpy: "1.18"
   scipy: "1.4"
   optuna: "2"
   cython: "0.29"
@@ -72,7 +72,7 @@
   cusparselt: "0.1.0"
   cudnn: "8.1"
   python: "3.7"
-  numpy: "1.17"
+  numpy: "1.18"
   scipy: "1.5"
   optuna: "2"
   cython: "0.29"
@@ -141,7 +141,7 @@
   cusparselt: null
   cudnn: null
   python: "3.7"
-  numpy: "1.17"
+  numpy: "1.18"
   scipy: "1.4"
   optuna: "2"
   cython: "0.29"
