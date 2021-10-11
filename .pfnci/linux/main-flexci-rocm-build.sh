@@ -34,7 +34,7 @@ main() {
       # Make sure that CuPy is importable.
       # Note that CuPy cannot be imported from the source directory.
       pushd /
-      python3.7 -c "import cupy"
+      python3.7 -c "import cupy; cupy.show_config(_full=True)"
       popd
 }
 
