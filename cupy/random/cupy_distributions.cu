@@ -243,9 +243,9 @@ __device__ double loggam(double x) {
     return gl;
 }
 
-__device__ int64_t rk_hypergeometric_hyp(rk_state *state, double good, double bad, double sample) {
-    int64_t Z;
-    double K, d1, d2, U, Y;
+__device__ int64_t rk_hypergeometric_hyp(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+    int64_t d1, K, Z;
+    double d2, U, Y;
 
     d1 = bad + good - sample;
     d2 = min(bad, good);
@@ -260,27 +260,30 @@ __device__ int64_t rk_hypergeometric_hyp(rk_state *state, double good, double ba
         if (K == 0) break;
     }
     Z = (int64_t)(d2 - Y);
-    if (good > bad) Z = (int64_t)sample - Z;
+    if (good > bad) Z = sample - Z;
     return Z;
 }
 
 
-__device__ int64_t rk_hypergeometric_hrua(rk_state *state, double good, double bad, double sample) {
+__device__ int64_t rk_hypergeometric_hrua(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+
+    int64_t mingoodbad, maxgoodbad, popsize, m, d9;
     int64_t Z;
-    double m, mingoodbad, maxgoodbad, popsize, d4, d5, d6, d7, d8, d9, d10, d11, T, W, X, Y;
+    double d4, d5, d6, d7, d8, d10, d11, T, W, X, Y;
     double D1=1.7155277699214135, D2=0.8989161620588988;
 
     mingoodbad = min(good, bad);
     popsize = good + bad;
     maxgoodbad = max(good, bad);
     m = min(sample, popsize - sample);
-    d4 = mingoodbad / popsize;
+    d4 = ((double)mingoodbad) / popsize;
     d5 = 1.0 - d4;
     d6 = m*d4 + 0.5;
-    d7 = sqrt((popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
+    d7 = sqrt((double)(popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
     d8 = D1*d7 + D2;
-    d9 = floor((m + 1) * (mingoodbad + 1) / (popsize + 2));
-    d10 = loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) + loggam(maxgoodbad-m+d9+1);
+    d9 = (int64_t)floor((double)(m + 1) * (mingoodbad + 1) / (popsize + 2));
+    d10 = (loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) +
+	   loggam(maxgoodbad-m+d9+1));
     d11 = min(min(m, mingoodbad)+1.0, floor(d6+16*d7));
     /* 16 for 16-decimal-digit precision in D1 and D2 */
 
@@ -302,13 +305,13 @@ __device__ int64_t rk_hypergeometric_hrua(rk_state *state, double good, double b
         if (2.0*log(X) <= T) break;
     }
 
-    if (good > bad) Z = (int64_t)m - Z;
-    if (m < sample) Z = (int64_t)good - Z;
+    if (good > bad) Z = m - Z;
+    if (m < sample) Z = good - Z;
 
     return Z;
 }
 
-__device__ int64_t rk_hypergeometric(rk_state *state, double good, double bad, double sample) {
+__device__ int64_t rk_hypergeometric(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
     if (sample > 10) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
@@ -800,7 +803,7 @@ void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr
 
 void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
     kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(ngood), reinterpret_cast<array_data<double>*>(nbad), reinterpret_cast<array_data<double>*>(nsample));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int64_t>*>(ngood), reinterpret_cast<array_data<int64_t>*>(nbad), reinterpret_cast<array_data<int64_t>*>(nsample));
 }
 
 void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
