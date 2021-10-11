@@ -33,10 +33,6 @@ os:
 cuda:
   null:
     full_version: null
-  "10.0":
-    full_version: "10.0"
-  "10.1":
-    full_version: "10.1"
   "10.2":
     full_version: "10.2"
   "11.0":
@@ -84,8 +80,8 @@ nccl:
   "2.6":
     spec: "2.6.*"
     cuda:
-      "10.0":
-      "10.1":
+      # "10.0":
+      # "10.1":
       "10.2":
   "2.7":
     spec: "2.7.*"
@@ -97,7 +93,7 @@ nccl:
   "2.8":
     spec: "2.8.*"
     cuda:
-      "10.1":
+      # "10.1":
       "10.2":
       "11.0":
       "11.1":
@@ -154,8 +150,8 @@ cudnn:
   "7.6":
     spec: "7.6.*"
     cuda:
-      "10.0":
-      "10.1":
+      # "10.0":
+      # "10.1":
       "10.2":
   "8.0":
     spec: "8.0.*"
@@ -197,8 +193,6 @@ cudnn:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
-  "3.6":
-    spec: "3.6.14"
   "3.7":
     spec: "3.7.11"
   "3.8":
@@ -220,20 +214,20 @@ numpy:
     spec: "==1.17.*"
     python:
       # - "3.5"
-      - "3.6"
+      # - "3.6"
       - "3.7"
       - "3.8"
   "1.18":
     spec: "==1.18.*"
     python:
       # - "3.5"
-      - "3.6"
+      # - "3.6"
       - "3.7"
       - "3.8"
   "1.19":
     spec: "==1.19.*"
     python:
-      - "3.6"
+      # - "3.6"
       - "3.7"
       - "3.8"
       - "3.9"
@@ -258,7 +252,7 @@ scipy:
     spec: "==1.4.*"
     python:
       # - "3.5"
-      - "3.6"
+      # - "3.6"
       - "3.7"
       - "3.8"
     numpy:
@@ -274,7 +268,7 @@ scipy:
   "1.5":
     spec: "==1.5.*"
     python:
-      - "3.6"
+      # - "3.6"
       - "3.7"
       - "3.8"
       - "3.9"
