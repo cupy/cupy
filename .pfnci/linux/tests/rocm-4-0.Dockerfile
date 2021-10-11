@@ -24,6 +24,7 @@ ENV ROCM_HOME "/opt/rocm"
 ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
 ENV CPATH "${ROCM_HOME}/include"
 ENV LDFLAGS "-L${ROCM_HOME}/lib"
+ENV LLVM_PATH "${ROCM_HOME}/llvm"
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
