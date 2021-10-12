@@ -6,7 +6,7 @@ import sys
 
 import yaml
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 SchemaType = Dict[str, Any]
@@ -257,7 +257,7 @@ class CoverageGenerator:
         self.schema = schema
         self.matrixes = matrixes
 
-    def generate_markdown(self) -> str:
+    def generate_markdown(self) -> Tuple[str, List[str]]:
         # Generate a matrix table.
         table = [
             ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
@@ -268,6 +268,7 @@ class CoverageGenerator:
             ] + [''],
             [''] * (len(self.matrixes) + 3)
         ]
+        coverage_warns = []
         for key, key_schema in self.schema.items():
             possible_values = key_schema.keys()
             matrix_values = [getattr(m, key) for m in self.matrixes]
@@ -282,6 +283,8 @@ class CoverageGenerator:
                     ],
                 ]
                 key_header = ''
+                if count == 0:
+                    coverage_warns.append(f'Uncovered axis: {key} = {value}')
 
         # Prepare markdown output.
         lines = [
@@ -321,7 +324,7 @@ class CoverageGenerator:
             ]
         lines += ['']
 
-        return '\n'.join(lines)
+        return '\n'.join(lines), coverage_warns
 
 
 def validate_schema(schema: SchemaType):
@@ -340,7 +343,7 @@ def validate_schema(schema: SchemaType):
                         f'while parsing schema os:{value}')
         if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
             for value, value_schema in key_schema.items():
-                for cuda, alias in value_schema.get('cuda', {}).items():
+                for cuda, _ in value_schema.get('cuda', {}).items():
                     if cuda not in schema['cuda'].keys():
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
@@ -464,7 +467,15 @@ def main(argv: List[str]) -> int:
             raise AssertionError
 
     covgen = CoverageGenerator(schema, matrixes)
-    output['coverage.md'] = covgen.generate_markdown()
+    covout, warns = covgen.generate_markdown()
+    output['coverage.md'] = covout
+    if len(warns) != 0:
+        log('----------------------------------------')
+        log('Test coverage warnings:')
+        for w in warns:
+            log(f'* {w}')
+        log('----------------------------------------')
+
     # Write output files.
     base_dir = (
         options.directory if options.directory else
