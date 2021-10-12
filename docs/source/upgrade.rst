@@ -76,7 +76,9 @@ To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if
 API Changes
 -----------
 
-Device synchronize detection APIs (``cupyx.allow_synchronize`` and ``cupyx.DeviceSynchronized``), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+
+*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel.rst` for their tutorials.
 
 Deprecated APIs may be removed in the future CuPy releases.
 
