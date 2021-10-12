@@ -10,6 +10,9 @@ on:
 
 jobs:
   docker-build-push:
+    if: |
+        github.repository_owner == 'cupy' ||
+        github.event_name != 'release'
     runs-on: ubuntu-latest
     env:
       DOCKER_TAG_NAME: ${{ (github.event_name == 'release' && github.event.release.tag_name) || 'pull-request-test' }}
