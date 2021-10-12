@@ -172,6 +172,23 @@ configs {
   }
 }
 
+# CUDA + RAPIDS
+configs {
+  key: "cupy.linux.cuda-rapids"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda-rapids"
+  }
+}
 
 ###
 ### Linux (ROCm) CI Projects
