@@ -30,7 +30,8 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             if self.dtype.kind == 'c' or dtype in ('F', 'D'):
                 # Complex dtype is not supported
                 continue
@@ -48,7 +49,8 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             if self.dtype.kind == 'c' or dtype in ('F', 'D'):
                 # Complex dtype is not supported
                 continue
@@ -69,7 +71,8 @@ cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
                 result -= cub.cub_reduction(
                     self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
                 return result
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             if self.dtype.kind == 'c':
                 # Complex dtype is not supported
                 continue
@@ -138,7 +141,8 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
                 n = self.size // result.size
                 cupy.true_divide(result, n, out=result, casting='unsafe')
                 break
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             reduce_axis, _ = _reduction._get_axis(axis, self._shape.size())
             n = 1
             for i in reduce_axis:
