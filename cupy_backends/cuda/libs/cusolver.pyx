@@ -9,7 +9,12 @@ from cupy_backends.cuda cimport stream as stream_module
 
 
 cpdef _get_cuda_build_version():
-    return CUPY_CUDA_VERSION
+    if CUPY_CUDA_VERSION > 0:
+        return CUPY_CUDA_VERSION
+    elif CUPY_HIP_VERSION > 0:
+        return CUPY_HIP_VERSION
+    else:
+        return 0
 
 
 ###############################################################################
