@@ -77,19 +77,6 @@ nccl:
   # https://developer.nvidia.com/nccl/nccl-download
   null:
     spec: null
-  "2.6":
-    spec: "2.6.*"
-    cuda:
-      # "10.0":
-      # "10.1":
-      "10.2":
-  "2.7":
-    spec: "2.7.*"
-    cuda:
-      # "10.1":  # note: RHEL 8 not supported
-      "10.2":
-      "11.0":
-      "11.1":
   "2.8":
     spec: "2.8.*"
     cuda:

@@ -8,7 +8,7 @@ RUN yum -y install \
        xz-devel && \
     yum -y install epel-release && \
     yum -y install "@Development Tools" ccache git curl && \
-    yum -y install libnccl-devel-2.7.*-*+cuda11.1 libcutensor-devel-1.3.* libcudnn8-devel-8.0.*-*.cuda11.1
+    yum -y install libnccl-devel-2.8.*-*+cuda11.1 libcutensor-devel-1.3.* libcudnn8-devel-8.0.*-*.cuda11.1
 
 ENV PATH "/usr/lib64/ccache:${PATH}"
 
