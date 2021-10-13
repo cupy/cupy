@@ -83,6 +83,8 @@ class LinuxGenerator:
                     ' '.join(self._additional_packages('apt'))
                 ),
                 '',
+                'ENV PATH "/usr/lib/ccache:${PATH}"',
+                '',
             ]
         elif os_name == 'centos':
             assert os_version in ('7', '8')
@@ -107,15 +109,11 @@ class LinuxGenerator:
                     ' '.join(self._additional_packages('yum'))
                 ),
                 '',
+                'ENV PATH "/usr/lib64/ccache:${PATH}"',
+                '',
             ]
         else:
             raise AssertionError
-
-        # Enable ccache for gcc/g++.
-        lines += [
-            'ENV PATH "/usr/lib/ccache:${PATH}"',
-            '',
-        ]
 
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
