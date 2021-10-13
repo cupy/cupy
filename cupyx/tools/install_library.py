@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import sys
 import tempfile
 import urllib.request
@@ -223,7 +224,17 @@ The current platform ({}) is not supported.'''.format(target_platform))
                 f.write(response.read())
         print('Extracting...')
         outdir = os.path.join(tmpdir, 'extract')
-        shutil.unpack_archive(f.name, outdir)
+        try:
+            shutil.unpack_archive(f.name, outdir)
+        except ValueError:
+            print("'xztar' archive format is not supported in your Python "
+                  'environment. Try extracting by a shell command...')
+            try:
+                os.makedirs(outdir, exist_ok=True)
+                subprocess.run(['tar', 'xf', f.name, '-C', outdir], check=True)
+            except subprocess.CalledProcessError:
+                msg = "Failed to extract from the xz'ed tar-file."
+                raise RuntimeError(msg)
         print('Installing...')
         if library == 'cudnn':
             shutil.move(os.path.join(outdir, 'cuda'), destination)
