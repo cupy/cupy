@@ -2,11 +2,11 @@
 
 set -uex
 
-src_dir=/src
-if ! touch "${src_dir}"; then
-    echo "Source directory (${src_dir}) is read-only; copying the source tree to /src-build"
-    cp -a /src /src-build
-    src_dir=/src-build
+src_dir=.
+if ! touch .; then
+    src_dir=$(mktemp -d)
+    echo "Source directory ($(pwd)) is read-only; copying the source tree to ${src_dir}"
+    cp -a . "${src_dir}"
 fi
 
 pushd "${src_dir}"
