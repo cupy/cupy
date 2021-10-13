@@ -98,7 +98,7 @@ main() {
         exit 1
       fi
       mkdir -p "${CACHE_DIR}"
-      gsutil -m -q cp "${cache_gcs_dir}/${cache_archive}" . &&
+      gsutil -m -o 'GSUtil:sliced_object_download_threshold=0' -q cp "${cache_gcs_dir}/${cache_archive}" . &&
         tar -x -f "${cache_archive}" -C "${CACHE_DIR}" &&
         rm -f "${cache_archive}" || echo "WARNING: Remote cache could not be retrieved."
       ;;
