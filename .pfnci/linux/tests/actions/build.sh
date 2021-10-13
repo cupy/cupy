@@ -10,5 +10,5 @@ if ! touch "${src_dir}"; then
 fi
 
 pushd "${src_dir}"
-python3 -m pip install --user -v ".[test]"
+time python3 -m pip install --user -v ".[test]"
 popd
