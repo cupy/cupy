@@ -216,7 +216,9 @@
 ###############################################################################
 
 # Doctest | Linux
-# Note that library versions may be overridden by docs/requirements.txt
+# Notes:
+# - Library versions may be overridden by docs/requirements.txt
+# - Accelerators are disabled as doctests expects it (#5891)
 - project: "cupy.linux.cuda-doctest"
   target: "cuda-doctest"
   system: "linux"
@@ -232,7 +234,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
-  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_ACCELERATORS: null
   test: "doctest"
 
 ###############################################################################
