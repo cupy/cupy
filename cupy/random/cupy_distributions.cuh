@@ -50,7 +50,7 @@ struct rk_binomial_state {
 #endif
 
 
-#if !defined(CUPY_NO_CUDA) && defined(COMPILE_FOR_HIP)
+#if defined(CUPY_NO_CUDA) || (defined(CUPY_USE_HIP) && HIP_VERSION < 403)
 typedef struct {} curandState;
 typedef struct {} curandStateMRG32k3a;
 typedef struct {} curandStatePhilox4_32_10_t;
