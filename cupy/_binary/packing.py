@@ -13,13 +13,17 @@ _packbits_kernel = _core.ElementwiseKernel(
 )
 
 
-def packbits(myarray):
+
+
+def packbits(myarray, bitorder='big'):
     """Packs the elements of a binary-valued array into bits in a uint8 array.
     This function currently does not support ``axis`` option.
     Args:
         myarray (cupy.ndarray): Input array.
     Returns:
         cupy.ndarray: The packed array.
+        bitorder (str, optional): bit order to use when packing the array,
+        allowed values are `'little'` and `'big'`. Defaults to `'big'`.
     .. note::
         When the input array is empty, this function returns a copy of it,
         i.e., the type of the output array is not necessarily always uint8.
@@ -31,13 +35,17 @@ def packbits(myarray):
         raise TypeError(
             'Expected an input array of integer or boolean data type')
 
+    if bitorder not in ['big', 'little']:
+        raise ValueError("bitorder must be either 'big' or 'little'")
+
     myarray = myarray.ravel()
     packed_size = (myarray.size + 7) // 8
     packed = cupy.zeros((packed_size,), dtype=cupy.uint8)
     return _packbits_kernel(myarray, myarray.size, packed)
 
 
-_unpackbits_kernel = {'big': _core.ElementwiseKernel(
+_unpackbits_kernel = {
+    'big': _core.ElementwiseKernel(
     'raw uint8 myarray', 'T unpacked',
     'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
     'cupy_unpackbits_kernel'
