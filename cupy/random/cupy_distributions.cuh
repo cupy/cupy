@@ -25,6 +25,21 @@ struct rk_binomial_state {
     double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
 };
 
+#ifdef CUPY_USE_HIP
+#include <hiprand_kernel.h>
+#define cudaStream_t hipStream_t
+#define curandState hiprandState
+#define curandStateMRG32k3a hiprandStateMRG32k3a
+#define curandStatePhilox4_32_10_t hiprandStatePhilox4_32_10_t
+#define curand_init hiprand_init
+#define curand hiprand
+#define curand_uniform hiprand_uniform
+#define curand_normal_double hiprand_normal_double
+#define curand_normal hiprand_normal
+#else
+#include <curand_kernel.h>
+#endif
+
 #if !defined(CUPY_NO_CUDA)
 
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);

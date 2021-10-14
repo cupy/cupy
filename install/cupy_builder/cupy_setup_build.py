@@ -215,6 +215,9 @@ def preconfigure_modules(MODULES, compiler, settings):
             cmd = 'nvcc' if not use_hip else 'hipcc'
             errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
+        elif use_hip and module['name'] == 'random':
+            if module['version_method']() < 403:
+                errmsg = ['Random API is only compatible with ROCm 4.3']
         else:
             installed = True
             status = 'Yes'
