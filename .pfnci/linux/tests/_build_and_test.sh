@@ -16,7 +16,14 @@ if [[ "${MARKER}" != "" ]]; then
 fi
 
 python3 -m pip install --user pytest-timeout
-python3 -m pip install --user -v ".[all,test]"
+
+src_dir=.
+if ! touch .; then
+    src_dir=$(mktemp -d)
+    echo "Source directory ($(pwd)) is read-only; copying the source tree to ${src_dir}"
+    cp -a . "${src_dir}"
+fi
+python3 -m pip install --user -v "${src_dir}/[all,test]"
 
 pushd tests
 python3 -c 'import cupy; cupy.show_config()'
