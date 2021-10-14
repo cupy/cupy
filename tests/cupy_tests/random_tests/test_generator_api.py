@@ -12,8 +12,10 @@ from cupy.testing import _condition
 from cupy_tests.random_tests import common_distributions
 
 
-# @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-#                     reason='HIP does not support this')
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip
+                    and (int(
+                        str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+                    reason='HIP<4.3 not supported ')
 class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
 
     target_method = None
@@ -301,8 +303,10 @@ class TestPower(
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
-# @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-#                     reason='HIP does not support this')
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip
+                    and (int(
+                        str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+                    reason='HIP<4.3 not supported ')
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def test_default_rng_thread_safe(self):

@@ -260,7 +260,7 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
     }
     HIP_random = {
         'name': 'random',
-        'required': False,
+        'required': True,
         'file': [
             'cupy.random._bit_generator',
             ('cupy.random._generator_api',
