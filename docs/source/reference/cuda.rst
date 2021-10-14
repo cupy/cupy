@@ -1,6 +1,8 @@
 Low-level CUDA support
 ======================
 
+.. _device_management:
+
 Device management
 -----------------
 

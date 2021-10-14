@@ -8,11 +8,14 @@ Arguments:
 - TARGET: Name of the test target. Targets are defined in 'tests' directory.
 - STAGE: Test stage(s) to execute. Possible stages are:
   - build: Build a docker image used for testing.
+  - rmi: Remove a docker image used for testing.
   - push: Push the built docker image so that further test runs can reuse
           the image.
   - cache_get: Pull cache from Google Cloud Storage to CACHE_DIR if available.
   - cache_put: Push cache from CACHE_DIR to Google Cloud Storage.
   - test: Run tests.
+  - shell: Start an interactive shell in the docker image for debugging.
+           The source tree will be read-write mounted for convenience.
 
 Environment variables:
 
@@ -72,7 +75,16 @@ main() {
   for stage in ${STAGES}; do case "${stage}" in
     build )
       tests_dir="${repo_root}/.pfnci/linux/tests"
-      docker build -t "${docker_image}" -f "${tests_dir}/${TARGET}.Dockerfile" "${tests_dir}"
+      DOCKER_BUILDKIT=1 docker build \
+          -t "${docker_image}" \
+          --cache-from "${docker_image}" \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          -f "${tests_dir}/${TARGET}.Dockerfile" \
+          "${tests_dir}"
+      ;;
+
+    rmi )
+      docker rmi "${docker_image}"
       ;;
 
     push )
@@ -86,7 +98,7 @@ main() {
         exit 1
       fi
       mkdir -p "${CACHE_DIR}"
-      gsutil -m -q cp "${cache_gcs_dir}/${cache_archive}" . &&
+      gsutil -m -o 'GSUtil:sliced_object_download_threshold=0' -q cp "${cache_gcs_dir}/${cache_archive}" . &&
         tar -x -f "${cache_archive}" -C "${CACHE_DIR}" &&
         rm -f "${cache_archive}" || echo "WARNING: Remote cache could not be retrieved."
       ;;
@@ -102,14 +114,12 @@ main() {
       rm -f "${cache_archive}"
       ;;
 
-    test )
+    test | shell )
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
         --rm
         --name "${container_name}"
-        --volume="${repo_root}:/src:ro"
-        --workdir "/src"
         --env "BASE_BRANCH=${base_branch}"
       )
       if [[ -t 1 ]]; then
@@ -133,12 +143,20 @@ main() {
         exit 1
       fi
 
-      docker_args+=("${docker_image}" timeout 8h "/src/.pfnci/linux/tests/${TARGET}.sh")
-      "${docker_args[@]}" &
-      docker_pid=$!
-      trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
-      wait $docker_pid
-      trap TERM INT HUP
+      test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
+      if [[ "${stage}" = "test" ]]; then
+        "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
+            "${docker_image}" timeout 8h "${test_command[@]}" &
+        docker_pid=$!
+        trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
+        wait $docker_pid
+        trap TERM INT HUP
+      elif [[ "${stage}" = "shell" ]]; then
+        echo "Hint: ${test_command[@]}"
+        "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" \
+            --tty --user "$(id -u):$(id -g)" \
+            "${docker_image}" bash
+      fi
       ;;
 
     * )

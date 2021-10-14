@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -10,7 +8,7 @@ from cupy import testing
 
 
 @testing.gpu
-class TestSearch(unittest.TestCase):
+class TestSearch:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -176,25 +174,26 @@ def _skip_cuda90(dtype):
     'backend': ('device', 'block'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
-class TestCubReduction(unittest.TestCase):
+@pytest.mark.skipif(
+    not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+class TestCubReduction:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.order, self.axis = self.order_and_axis
-        self.old_routine_accelerators = _acc.get_routine_accelerators()
-        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        old_routine_accelerators = _acc.get_routine_accelerators()
+        old_reduction_accelerators = _acc.get_reduction_accelerators()
         if self.backend == 'device':
             if self.axis is not None:
-                raise unittest.SkipTest('does not support')
+                pytest.skip('does not support')
             _acc.set_routine_accelerators(['cub'])
             _acc.set_reduction_accelerators([])
         elif self.backend == 'block':
             _acc.set_routine_accelerators([])
             _acc.set_reduction_accelerators(['cub'])
-
-    def tearDown(self):
-        _acc.set_routine_accelerators(self.old_routine_accelerators)
-        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
+        yield
+        _acc.set_routine_accelerators(old_routine_accelerators)
+        _acc.set_reduction_accelerators(old_reduction_accelerators)
 
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
@@ -273,7 +272,7 @@ class TestCubReduction(unittest.TestCase):
     'is_module': [True, False],
     'shape': [(3, 4), ()],
 }))
-class TestArgMinMaxDtype(unittest.TestCase):
+class TestArgMinMaxDtype:
 
     @testing.for_dtypes(
         dtypes=[numpy.int8, numpy.int16, numpy.int32, numpy.int64],
@@ -298,7 +297,7 @@ class TestArgMinMaxDtype(unittest.TestCase):
     {'cond_shape': (3, 4),    'x_shape': (2, 3, 4), 'y_shape': (4,)},
 )
 @testing.gpu
-class TestWhereTwoArrays(unittest.TestCase):
+class TestWhereTwoArrays:
 
     @testing.for_all_dtypes_combination(
         names=['cond_type', 'x_type', 'y_type'])
@@ -320,7 +319,7 @@ class TestWhereTwoArrays(unittest.TestCase):
     {'cond_shape': (3, 4)},
 )
 @testing.gpu
-class TestWhereCond(unittest.TestCase):
+class TestWhereCond:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -331,7 +330,7 @@ class TestWhereCond(unittest.TestCase):
 
 
 @testing.gpu
-class TestWhereError(unittest.TestCase):
+class TestWhereError:
 
     def test_one_argument(self):
         for xp in (numpy, cupy):
@@ -347,9 +346,10 @@ class TestWhereError(unittest.TestCase):
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
-class TestNonzero(unittest.TestCase):
+class TestNonzero:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -364,7 +364,7 @@ class TestNonzero(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('numpy>=1.17.0')
-class TestNonzeroZeroDimension(unittest.TestCase):
+class TestNonzeroZeroDimension:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -382,9 +382,10 @@ class TestNonzeroZeroDimension(unittest.TestCase):
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
-class TestFlatNonzero(unittest.TestCase):
+class TestFlatNonzero:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -399,9 +400,10 @@ class TestFlatNonzero(unittest.TestCase):
     {'array': numpy.empty((0,))},
     {'array': numpy.empty((0, 2))},
     {'array': numpy.empty((0, 2, 0))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
-class TestArgwhere(unittest.TestCase):
+class TestArgwhere:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -416,7 +418,7 @@ class TestArgwhere(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('numpy>=1.18')
-class TestArgwhereZeroDimension(unittest.TestCase):
+class TestArgwhereZeroDimension:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -426,7 +428,7 @@ class TestArgwhereZeroDimension(unittest.TestCase):
 
 
 @testing.gpu
-class TestNanArgMin(unittest.TestCase):
+class TestNanArgMin:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -518,7 +520,7 @@ class TestNanArgMin(unittest.TestCase):
 
 
 @testing.gpu
-class TestNanArgMax(unittest.TestCase):
+class TestNanArgMax:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
@@ -627,7 +629,7 @@ class TestNanArgMax(unittest.TestCase):
         'side': ['left', 'right'],
         'shape': [(), (10,), (6, 3, 3)]})
 )
-class TestSearchSorted(unittest.TestCase):
+class TestSearchSorted:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -642,7 +644,7 @@ class TestSearchSorted(unittest.TestCase):
 @testing.parameterize(
     {'side': 'left'},
     {'side': 'right'})
-class TestSearchSortedNanInf(unittest.TestCase):
+class TestSearchSortedNanInf:
 
     @testing.numpy_cupy_array_equal()
     def test_searchsorted_nanbins(self, xp):
@@ -702,7 +704,7 @@ class TestSearchSortedNanInf(unittest.TestCase):
 
 
 @testing.gpu
-class TestSearchSortedInvalid(unittest.TestCase):
+class TestSearchSortedInvalid:
 
     # Cant test unordered bins due to numpy undefined
     # behavior for searchsorted
@@ -716,7 +718,7 @@ class TestSearchSortedInvalid(unittest.TestCase):
 
 
 @testing.gpu
-class TestSearchSortedWithSorter(unittest.TestCase):
+class TestSearchSortedWithSorter:
 
     @testing.numpy_cupy_array_equal()
     def test_sorter(self, xp):

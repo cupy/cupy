@@ -65,7 +65,7 @@ const CUresult cudaErrorPeerAccessAlreadyEnabled = hipErrorPeerAccessAlreadyEnab
 typedef enum {} cudaDataType;
 typedef hipDeviceAttribute_t cudaDeviceAttr;
 typedef hipLimit_t cudaLimit;
-enum cudaMemoryAdvise {};
+typedef hipMemoryAdvise cudaMemoryAdvise;
 typedef hipMemcpyKind cudaMemcpyKind;
 typedef hipDeviceProp_t cudaDeviceProp;
 typedef void* cudaMemPool_t;

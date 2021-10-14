@@ -88,7 +88,8 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
         if result is not None:
@@ -106,7 +107,8 @@ cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
         if result is not None:
@@ -902,6 +904,24 @@ _angle = create_ufunc(
     ''')
 
 
+def _positive_boolean_error():
+    raise TypeError(
+        'The cupy boolean positive, the `+` operator, is not supported.')
+
+
+_positive = create_ufunc(
+    'cupy_positive',
+    (('?->?', _positive_boolean_error),
+     'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = +in0',
+    doc='''Takes numerical positive elementwise.
+
+    .. seealso:: :data:`numpy.positive`
+
+    ''')
+
+
 def _negative_boolean_error():
     raise TypeError(
         'The cupy boolean negative, the `-` operator, is not supported, '
@@ -1078,6 +1098,7 @@ _clip = create_ufunc(
 add = _add
 conjugate = _conjugate
 angle = _angle
+positive = _positive
 negative = _negative
 multiply = _multiply
 divide = _divide
