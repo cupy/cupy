@@ -25,8 +25,7 @@ struct rk_binomial_state {
     double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
 };
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-#include <curand_kernel.h>
+#if !defined(CUPY_NO_CUDA)
 
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);
 void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);

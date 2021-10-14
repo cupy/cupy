@@ -5,7 +5,20 @@
 #include <stdint.h>
 #include <type_traits>
 
+#ifdef CUPY_USE_HIP
+#include <hiprand_kernel.h>
+#define cudaStream_t hipStream_t
+#define curandState hiprandState
+#define curandStateMRG32k3a hiprandStateMRG32k3a
+#define curandStatePhilox4_32_10_t hiprandStatePhilox4_32_10_t
+#define curand_init hiprand_init
+#define curand hiprand
+#define curand_uniform hiprand_uniform
+#define curand_normal_double hiprand_normal_double
+#define curand_normal hiprand_normal
+#else
 #include <curand_kernel.h>
+#endif
 
 #include "cupy_distributions.cuh"
 
