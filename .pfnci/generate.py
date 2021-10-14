@@ -87,6 +87,16 @@ class LinuxGenerator:
                 '',
             ]
         elif os_name == 'centos':
+            assert os_version in ('7', '8')
+            if os_version == '7':
+                lines += [
+                    'RUN yum -y install centos-release-scl && \\',
+                    '    yum -y install devtoolset-7-gcc-c++',
+                    'ENV PATH "/opt/rh/devtoolset-7/root/usr/bin:${PATH}"',
+                    'ENV LD_LIBRARY_PATH "/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:${LD_LIBRARY_PATH}"',  # NOQA
+                    '',
+                ]
+
             lines += [
                 # pyenv: https://github.com/pyenv/pyenv/wiki
                 'RUN yum -y install \\',

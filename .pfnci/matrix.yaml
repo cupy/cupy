@@ -11,7 +11,7 @@
   cuda: "10.2"
   rocm: null
   nccl: "2.8"
-  cutensor: "1.3"
+  cutensor: null
   cusparselt: null
   cudnn: "7.6"
   python: "3.7"
