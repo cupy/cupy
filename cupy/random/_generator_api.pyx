@@ -7,6 +7,7 @@ import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy_backends.cuda.api import runtime
 
 
 _UINT32_MAX = 0xffffffff

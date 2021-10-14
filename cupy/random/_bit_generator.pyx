@@ -9,6 +9,7 @@ import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy.random._generator_api import init_curand, random_raw
+from cupy_backends.cuda.api import runtime
 
 # We need access to the sizes here, so this is why we have this header
 # in here instead of cupy backends
