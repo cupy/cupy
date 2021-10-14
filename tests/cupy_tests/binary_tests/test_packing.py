@@ -36,7 +36,8 @@ class TestPacking(unittest.TestCase):
             self.check_packbits([0, 1], bitorder=bo)
             self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1], bitorder=bo)
             self.check_packbits([1, 0, 1, 1, 0, 1, 1, 1, 1], bitorder=bo)
-            self.check_packbits(numpy.arange(24).reshape((2, 3, 4)) % 2, bitorder=bo)
+            self.check_packbits(numpy.arange(24).reshape((2, 3, 4)) % 2,
+                                bitorder=bo)
 
     def test_packbits_empty(self):
         # Note packbits of numpy <= 1.11 has a bug against empty arrays.
