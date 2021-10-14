@@ -2,15 +2,26 @@ import cupy
 from cupy import _core
 
 
-_packbits_kernel = _core.ElementwiseKernel(
-    'raw T myarray, raw int32 myarray_size', 'uint8 packed',
-    '''for (int j = 0; j < 8; ++j) {
-        int k = i * 8 + j;
-        int bit = k < myarray_size && myarray[k] != 0;
-        packed |= bit << (7 - j);
-    }''',
-    'cupy_packbits_kernel'
-)
+_packbits_kernel =  {
+    'big': _core.ElementwiseKernel(
+            'raw T myarray, raw int32 myarray_size', 'uint8 packed',
+            '''for (int j = 0; j < 8; ++j) {
+                int k = i * 8 + j;
+                int bit = k < myarray_size && myarray[k] != 0;
+                packed |= bit << (7 - j);
+            }''',
+            'cupy_packbits_kernel'
+            ),
+    'little': _core.ElementwiseKernel(
+                'raw T myarray, raw int32 myarray_size', 'uint8 packed',
+                '''for (int j = 0; j < 8; ++j) {
+                    int k = i * 8 + j;
+                    int bit = k < myarray_size && myarray[k] != 0;
+                    packed |= bit << j;
+                }''',
+                'cupy_packbits_kernel'
+                )
+}
 
 
 
@@ -41,20 +52,21 @@ def packbits(myarray, bitorder='big'):
     myarray = myarray.ravel()
     packed_size = (myarray.size + 7) // 8
     packed = cupy.zeros((packed_size,), dtype=cupy.uint8)
-    return _packbits_kernel(myarray, myarray.size, packed)
+    return _packbits_kernel[bitorder](myarray, myarray.size, packed)
 
 
 _unpackbits_kernel = {
     'big': _core.ElementwiseKernel(
-    'raw uint8 myarray', 'T unpacked',
-    'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
-    'cupy_unpackbits_kernel'
-),
+                'raw uint8 myarray', 'T unpacked',
+                'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
+                'cupy_unpackbits_kernel'
+            ),
     'little': _core.ElementwiseKernel(
-    'raw uint8 myarray', 'T unpacked',
-    'unpacked = (myarray[i / 8] >> (i % 8)) & 1;',
-    'cupy_unpackbits_kernel'
-)}
+                'raw uint8 myarray', 'T unpacked',
+                'unpacked = (myarray[i / 8] >> (i % 8)) & 1;',
+                'cupy_unpackbits_kernel'
+            )
+}
 
 
 def unpackbits(myarray, bitorder='big'):
