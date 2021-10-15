@@ -10,7 +10,7 @@ _packbits_kernel = {
                     int bit = k < myarray_size && myarray[k] != 0;
                     packed |= bit << (7 - j);
                 }''',
-        'cupy_packbits_kernel'
+        'cupy_packbits_big'
     ),
     'little': _core.ElementwiseKernel(
         'raw T myarray, raw int32 myarray_size', 'uint8 packed',
@@ -19,7 +19,7 @@ _packbits_kernel = {
                     int bit = k < myarray_size && myarray[k] != 0;
                     packed |= bit << j;
                 }''',
-        'cupy_packbits_kernel'
+        'cupy_packbits_little'
     )
 }
 
@@ -62,12 +62,12 @@ _unpackbits_kernel = {
     'big': _core.ElementwiseKernel(
         'raw uint8 myarray', 'T unpacked',
         'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
-        'cupy_unpackbits_kernel'
+        'cupy_unpackbits_big'
     ),
     'little': _core.ElementwiseKernel(
         'raw uint8 myarray', 'T unpacked',
         'unpacked = (myarray[i / 8] >> (i % 8)) & 1;',
-        'cupy_unpackbits_kernel'
+        'cupy_unpackbits_little'
     )
 }
 
