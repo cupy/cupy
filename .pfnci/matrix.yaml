@@ -110,9 +110,9 @@
   cutensor: "1.3"
   cusparselt: "0.1.0"
   cudnn: "8.2"
-  python: "3.9"
+  python: "3.10"
   numpy: "1.21"
-  scipy: "1.7"
+  scipy: null  # "1.7" once SciPy supports Python 3.10
   optuna: "2"
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cutensor,cub"

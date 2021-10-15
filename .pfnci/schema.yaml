@@ -186,8 +186,10 @@ python:
     spec: "3.8.11"
   "3.9":
     spec: "3.9.6"
+  "3.10":
+    spec: "3.10.0"
   "pre":
-    spec: "3.10.0b3"  # note that dependency python libraies may not work
+    spec: "3.11.0a1"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -223,6 +225,7 @@ numpy:
       - "3.7"
       - "3.8"
       - "3.9"
+      - "3.10"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
