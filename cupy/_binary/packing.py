@@ -24,13 +24,14 @@ _packbits_kernel = {
 }
 
 
-def packbits(myarray, bitorder='big'):
+def packbits(a, axis=None, bitorder='big'):
     """Packs the elements of a binary-valued array into bits in a uint8 array.
 
     This function currently does not support ``axis`` option.
 
     Args:
         myarray (cupy.ndarray): Input array.
+        axis (int, optional): Not supported yet.
         bitorder (str, optional): bit order to use when packing the array,
             allowed values are `'little'` and `'big'`. Defaults to `'big'`.
 
