@@ -50,7 +50,7 @@ def packbits(a, axis=None, bitorder='big'):
         raise TypeError(
             'Expected an input array of integer or boolean data type')
 
-    if bitorder not in ['big', 'little']:
+    if bitorder not in ('big', 'little'):
         raise ValueError("bitorder must be either 'big' or 'little'")
 
     myarray = myarray.ravel()
