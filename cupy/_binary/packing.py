@@ -26,18 +26,22 @@ _packbits_kernel = {
 
 def packbits(myarray, bitorder='big'):
     """Packs the elements of a binary-valued array into bits in a uint8 array.
+
     This function currently does not support ``axis`` option.
+
     Args:
         myarray (cupy.ndarray): Input array.
+        bitorder (str, optional): bit order to use when packing the array, allowed values are `'little'` and `'big'`. Defaults to `'big'`.
+
     Returns:
         cupy.ndarray: The packed array.
-        bitorder (str, optional): bit order to use when packing the array,
-        allowed values are `'little'` and `'big'`. Defaults to `'big'`.
+
     .. note::
         When the input array is empty, this function returns a copy of it,
         i.e., the type of the output array is not necessarily always uint8.
         This exactly follows the NumPy's behaviour (as of version 1.11),
         alghough this is inconsistent to the documentation.
+
     .. seealso:: :func:`numpy.packbits`
     """
     if myarray.dtype.kind not in 'biu':
@@ -69,13 +73,16 @@ _unpackbits_kernel = {
 
 def unpackbits(myarray, bitorder='big'):
     """Unpacks elements of a uint8 array into a binary-valued output array.
+
     This function currently does not support ``axis`` option.
+
     Args:
         myarray (cupy.ndarray): Input array.
-        bitorder (str, optional): bit order to use when unpacking the array,
-        allowed values are `'little'` and `'big'`. Defaults to `'big'`.
+        bitorder (str, optional): bit order to use when unpacking the array, allowed values are `'little'` and `'big'`. Defaults to `'big'`.
+
     Returns:
         cupy.ndarray: The unpacked array.
+
     .. seealso:: :func:`numpy.unpackbits`
     """
     if myarray.dtype != cupy.uint8:
