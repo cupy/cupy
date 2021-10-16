@@ -9,6 +9,8 @@
 
 import unittest
 
+import pytest
+
 import cupy as np
 from cupy import testing
 from cupyx.scipy import stats
@@ -53,7 +55,7 @@ class TestTrim(unittest.TestCase):
         res2 = stats.trim_mean(a.ravel(), 2 / 6.)
         testing.assert_array_equal(res1, res2)
 
-        testing.assert_raises(ValueError, stats.trim_mean, a, 0.6)
+        pytest.raises(ValueError, stats.trim_mean, a, 0.6)
 
         # empty input
         testing.assert_array_equal(stats.trim_mean([], 0.0), np.nan)
