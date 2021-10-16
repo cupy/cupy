@@ -3,6 +3,7 @@ import warnings
 
 import numpy
 
+import cupy
 from cupy.cuda import compiler
 from cupy import _util
 
@@ -25,6 +26,11 @@ from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+
+try:
+    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+except ImportError:
+    cuda_cutensor = None
 
 from cupy._core import _fusion_thread_local
 
@@ -1026,6 +1032,7 @@ cdef class ufunc:
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
+        readonly object _cutensor_op
         readonly tuple _params
         readonly tuple _params_with_where
         readonly dict _routine_cache
@@ -1036,7 +1043,7 @@ cdef class ufunc:
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
-            default_casting=None, *, _Ops out_ops=None):
+            default_casting=None, *, _Ops out_ops=None, cutensor_op=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1051,6 +1058,8 @@ cdef class ufunc:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
+        if cutensor_op is not None and cuda_cutensor is not None:
+            self._cutensor_op = getattr(cuda_cutensor, cutensor_op)
         _in_params = tuple(
             ParameterInfo('T in%d' % i, True)
             for i in range(nin))
@@ -1177,7 +1186,12 @@ cdef class ufunc:
 
         if _contains_zero(shape):
             return ret
-
+        if (cuda_cutensor is not None and self._cutensor_op is not None and
+            self.nin == 2 and self.nout == 1):
+            ret = cupy.cutensor._try_elementwise_binary_routine(
+                in_args[0], in_args[1], dtype, out_args[0], self._cutensor_op, 1, 1)
+            if ret is not None:
+                return ret
         inout_args = []
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
@@ -1373,9 +1387,11 @@ cdef class _Ops:
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None, loop_prep='', out_ops=None):
+                   default_casting=None, loop_prep='', out_ops=None,
+                   cutensor_op=None):
     ops_ = _Ops.from_tuples(ops, routine)
     _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
-        loop_prep, doc, default_casting=default_casting, out_ops=_out_ops)
+        loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
+        cutensor_op=cutensor_op)

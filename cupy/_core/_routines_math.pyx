@@ -851,7 +851,7 @@ _nanprod_complex_dtype = create_reduction_func(
     ''',
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
-cdef create_arithmetic(name, op, boolop, doc):
+cdef create_arithmetic(name, op, boolop, doc, cutensor_op=None):
     # boolop is either
     #  - str (the operator for bool-bool inputs) or
     #  - callable (a function to raise an error for bool-bool inputs).
@@ -865,7 +865,8 @@ cdef create_arithmetic(name, op, boolop, doc):
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc,
+        cutensor_op=cutensor_op)
 
 
 _add = create_arithmetic(
@@ -874,7 +875,8 @@ _add = create_arithmetic(
 
     .. seealso:: :data:`numpy.add`
 
-    ''')
+    ''',
+    cutensor_op='OP_ADD')
 
 
 _conjugate = create_ufunc(
