@@ -17,6 +17,7 @@ These functions cover a subset of
    scipy_linalg
    ndimage
    sparse
+   scipy_sparse_csgraph
    special
    signal
    stats
