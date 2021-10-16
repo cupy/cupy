@@ -13,3 +13,4 @@ Summary statistics
    :toctree: generated/
 
    entropy
+   trim_mean
