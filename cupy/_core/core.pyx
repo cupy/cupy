@@ -973,7 +973,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.clip`
 
         """
-        return _math._ndarray_clip(self, a_min, a_max, out)
+        return _math._ndarray_clip(self, min, max, out)
 
     cpdef ndarray round(self, decimals=0, out=None):
         """Returns an array with values rounded to the given number of decimals.
