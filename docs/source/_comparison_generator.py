@@ -27,7 +27,7 @@ def _import(mod, klass):
     obj = importlib.import_module(mod)
     if klass:
         obj = getattr(obj, klass)
-        return obj, ':meth:`{}.{}.{{}}`'.format(mod, klass)
+        return obj, ':obj:`{}.{}.{{}}`'.format(mod, klass)
     else:
         # ufunc is not a function
         return obj, ':obj:`{}.{{}}`'.format(mod)
