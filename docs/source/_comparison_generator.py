@@ -60,7 +60,7 @@ def _generate_comparison_rst(
             len(cp_funcs & base_funcs)),
         '   CuPy specific functions:',
     ] + [
-        '   - {}'.format(f) for f in (cp_funcs - base_funcs)
+        '   - {}'.format(f) for f in sorted(cp_funcs - base_funcs)
     ]
     return buf
 
