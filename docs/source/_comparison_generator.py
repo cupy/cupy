@@ -1,14 +1,24 @@
 import importlib
+import inspect
+
+import numpy
 
 
 def _get_functions(obj, blacklist=None):
     return set([
-        n for n in dir(obj)
-        if ((blacklist is None or n not in blacklist)
-            and callable(getattr(obj, n))  # callable
-            and not isinstance(getattr(obj, n), type)  # not class
-            and n[0].islower()  # starts with lower char
-            and not n.startswith('__')  # not special methods
+        n for n, target in [(n, getattr(obj, n)) for n in dir(obj)]
+        if (
+            # not blacklisted
+            (blacklist is None or n not in blacklist)
+            # not module:
+            and not inspect.ismodule(target)
+            # not constant:
+            and not isinstance(target, (int, float, bool, str, numpy.bool_))
+            # not exceptions or warning classes:
+            and (not inspect.isclass(target) or
+                 not issubclass(target, (BaseException,)))
+            # not private/special method:
+            and not n.startswith('_')
             )
     ])
 
@@ -93,8 +103,10 @@ def generate():
             'add_docstring',
             'add_newdoc',
             'add_newdoc_ufunc',
+            '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
             'test',
+            'Tester',
         ])
     buf += _section(
         'Multi-Dimensional Array',
