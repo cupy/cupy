@@ -13,10 +13,10 @@ These functions cover a subset of
    :maxdepth: 2
 
    scipy_fft
-   fftpack
+   scipy_fftpack
    scipy_linalg
-   ndimage
-   sparse
-   special
-   signal
-   stats
+   scipy_ndimage
+   scipy_sparse
+   scipy_special
+   scipy_signal
+   scipy_stats
