@@ -112,14 +112,8 @@ def generate():
         'Discrete Fourier Transform',
         'scipy.fft', 'cupyx.scipy.fft', 'SciPy')
     buf += _section(
-        'Discrete Fourier Transform (legacy fftpack module)',
+        'Legacy Discrete Fourier Transform',
         'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy')
-    buf += _section(
-        'Sparse Matrices',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy')
-    buf += _section(
-        'Sparse Linear Algebra',
-        'scipy.sparse.linalg', 'cupyx.scipy.sparse.linalg', 'SciPy')
     buf += _section(
         'Advanced Linear Algebra',
         'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy', exclude='numpy.linalg')
@@ -127,8 +121,24 @@ def generate():
         'Multidimensional Image Processing',
         'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy')
     buf += _section(
+        'Signal processing',
+        'scipy.signal', 'cupyx.scipy.signal', 'SciPy')
+    buf += _section(
+        'Sparse Matrices',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy')
+    buf += _section(
+        'Sparse Linear Algebra',
+        'scipy.sparse.linalg', 'cupyx.scipy.sparse.linalg', 'SciPy')
+    buf += _section(
+        'Compressed sparse graph routines',
+        'scipy.sparse.csgraph', 'cupyx.scipy.sparse.csgraph', 'SciPy')
+    buf += _section(
         'Special Functions',
         'scipy.special', 'cupyx.scipy.special', 'SciPy')
+    buf += _section(
+        'Statistical Functions',
+        'scipy.stats', 'cupyx.scipy.stats', 'SciPy')
+
 
     # numpy.array_api is not ready yet...
     #    buf += [
