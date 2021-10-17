@@ -1,12 +1,12 @@
 .. module:: cupyx.scipy.sparse.linalg
 
-Linear Algebra (:mod:`cupyx.scipy.sparse.linalg`)
--------------------------------------------------
+Sparse linear algebra (:mod:`cupyx.scipy.sparse.linalg`)
+========================================================
 
 .. Hint:: `SciPy API Reference: Sparse linear algebra (scipy.sparse.linalg) <https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html>`_
 
 Abstract linear operators
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 .. autosummary::
    :toctree: generated/
@@ -16,16 +16,16 @@ Abstract linear operators
 
 
 Matrix norms
-~~~~~~~~~~~~
+------------
 
 .. autosummary::
    :toctree: generated/
 
-   cupyx.scipy.sparse.linalg.norm
+   norm
 
 
 Solving linear problems
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 Direct methods for linear equation systems:
 
@@ -56,7 +56,7 @@ Iterative methods for least-squares problems:
 
 
 Matrix factorizations
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 Eigenvalue problems:
 
