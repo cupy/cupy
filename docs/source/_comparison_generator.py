@@ -1,10 +1,10 @@
 import importlib
 
 
-def _get_functions(obj):
+def _get_functions(obj, blacklist=[]):
     return set([
         n for n in dir(obj)
-        if (n not in ['test']  # not in blacklist
+        if (n not in blacklist
             and callable(getattr(obj, n))  # callable
             and not isinstance(getattr(obj, n), type)  # not class
             and n[0].islower()  # starts with lower char
@@ -24,9 +24,9 @@ def _import(mod, klass):
 
 
 def _generate_comparison_rst(
-        base_mod, cupy_mod, base_type, klass, exclude_mod):
+        base_mod, cupy_mod, base_type, klass, exclude_mod, blacklist):
     base_obj, base_fmt = _import(base_mod, klass)
-    base_funcs = _get_functions(base_obj)
+    base_funcs = _get_functions(base_obj, blacklist)
     cp_obj, cp_fmt = _import(cupy_mod, klass)
     cp_funcs = _get_functions(cp_obj)
 
@@ -67,13 +67,13 @@ def _generate_comparison_rst(
 
 def _section(
         header, base_mod, cupy_mod,
-        base_type='NumPy', klass=None, exclude=None):
+        base_type='NumPy', klass=None, exclude_mod=None, blacklist=['test']):
     return [
         header,
         '~' * len(header),
         '',
     ] + _generate_comparison_rst(
-        base_mod, cupy_mod, base_type, klass, exclude
+        base_mod, cupy_mod, base_type, klass, exclude_mod, blacklist
     ) + [
         '',
     ]
@@ -116,7 +116,8 @@ def generate():
         'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy')
     buf += _section(
         'Advanced Linear Algebra',
-        'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy', exclude='numpy.linalg')
+        'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy',
+        exclude_mod='numpy.linalg')
     buf += _section(
         'Multidimensional Image Processing',
         'scipy.ndimage', 'cupyx.scipy.ndimage', 'SciPy')
