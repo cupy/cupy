@@ -28,8 +28,11 @@ Conversion to/from CuPy ndarrays
 
 Converting between CuPy ndarray and CuPy sparse matrices does not incur data transfer; it is copied inside the GPU device.
 
+Contents
+--------
+
 Sparse matrix classes
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
    :toctree: generated/
@@ -42,7 +45,7 @@ Sparse matrix classes
 
 
 Functions
----------
+~~~~~~~~~
 
 Building sparse matrices:
 
@@ -82,3 +85,18 @@ Identifying sparse matrices:
    isspmatrix_csr
    isspmatrix_coo
    isspmatrix_dia
+
+
+Submodules
+~~~~~~~~~~
+
+.. autosummary::
+
+   csgraph - Compressed sparse graph routines
+   linalg - Sparse linear algebra routines
+
+Exceptions
+~~~~~~~~~~
+
+* :class:`scipy.sparse.SparseEfficiencyWarning`
+* :class:`scipy.sparse.SparseWarning`
