@@ -17,6 +17,7 @@ These functions cover a subset of
    scipy_linalg
    scipy_ndimage
    scipy_sparse
+   scipy_sparse_linalg
    scipy_special
    scipy_signal
    scipy_stats
