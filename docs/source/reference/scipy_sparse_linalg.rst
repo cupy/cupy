@@ -80,3 +80,4 @@ Complete or incomplete LU factorizations:
 
    splu
    spilu
+   SuperLU
