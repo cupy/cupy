@@ -93,6 +93,9 @@ cpdef str get_compute_capability():
 
 cdef bint _enable_peer_access(int device, int peer) except -1:
     """Enable accessing memory allocated on `peer` from `device`."""
+    if device == peer:
+        return True
+
     device_pair = device, peer
 
     if device_pair in _peer_access_checked:
