@@ -162,7 +162,6 @@ def generate():
         'scipy.stats', 'cupyx.scipy.stats', 'SciPy',
         exclude=['test'])
 
-
     # numpy.array_api is not ready yet...
     #    buf += [
     #        'NumPy / CuPy Array APIs',
