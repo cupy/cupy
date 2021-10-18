@@ -1,18 +1,3 @@
-# Copyright 2002 Gary Strangman.  All rights reserved
-# Copyright 2002-2016 The SciPy Developers
-#
-# The original code from Gary Strangman was heavily adapted for use in SciPy by
-# Travis Oliphant.  The original code came with the following disclaimer:
-#
-# This software is provided "as-is".  There are no expressed or implied
-# warranties of any kind, including, but not limited to, the warranties of
-# merchantability and fitness for a given application.  In no event shall Gary
-# Strangman be liable for any direct, indirect, incidental, special, exemplary
-# or consequential damages (including, but not limited to, loss of use, data or
-# profits, or business interruption) however caused and on any theory of
-# liability, whether in contract, strict liability or tort (including
-# negligence or otherwise) arising in any way out of the use of this software,
-# even if advised of the possibility of such damage.
 """
 A collection of basic statistical functions for Python.
 

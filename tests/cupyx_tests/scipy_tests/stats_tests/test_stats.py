@@ -1,12 +1,3 @@
-""" Test functions for stats module
-
-    WRITTEN BY LOUIS LUANGKESORN <lluang@yahoo.com> FOR THE STATS MODULE
-    BASED ON WILKINSON'S STATISTICS QUIZ
-    https://www.stanford.edu/~clint/bench/wilk.txt
-
-    Additional tests by a host of SciPy developers.
-"""
-
 import unittest
 
 import pytest
