@@ -169,6 +169,28 @@ class TestCuTensor:
 
 
 @pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestMode:
+
+    def test_create_mode_int(self):
+        m = cutensor.create_mode(10, 11, 12)
+        assert m.ndim == 3
+        assert repr(m) == 'mode(10, 11, 12)'
+
+    def test_create_mode_ascii(self):
+        m = cutensor.create_mode('x', 'y')
+        assert m.ndim == 2
+        assert repr(m) == 'mode(120, 121)'
+
+
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestScalar:
+
+    def test_create(self):
+        s = cutensor._Scalar(10, cupy.float32)
+        assert repr(s) == 'scalar(10.0, dtype=float32)'
+
+
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
 class TestCuTensorDescriptor:
 
     @pytest.fixture(autouse=True)
