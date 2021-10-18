@@ -604,7 +604,8 @@ cdef class MemoryPointer:
         with device.Device(device_id):
             try:
                 runtime.deviceEnablePeerAccess(peer_id)
-            # peer access could already be set by external libraries at this point
+            # peer access could already be set by external libraries at this
+            # point
             except CUDARuntimeError as e:
                 if e.status != runtime.errorPeerAccessAlreadyEnabled:
                     raise
