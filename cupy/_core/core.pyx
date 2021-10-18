@@ -1,5 +1,6 @@
 # distutils: language = c++
 
+import contextlib
 import functools
 import os
 import pickle
@@ -87,6 +88,8 @@ cdef inline _should_use_rop(x, y):
 
 
 cdef tuple _HANDLED_TYPES
+
+cdef object _null_context = contextlib.nullcontext()
 
 
 cdef class ndarray:
@@ -562,17 +565,16 @@ cdef class ndarray:
         newarray._strides = x._strides
         newarray._c_contiguous = x._c_contiguous
         newarray._f_contiguous = x._f_contiguous
+
+        copy_context = _null_context
         if runtime._is_hip_environment:
             # HIP requires changing the active device to the one where
             # src data is before the copy. From the docs:
             # it is recommended to set the current device to the device
             # where the src data is physically located.
-            runtime.setDevice(self.data.device_id)
-        try:
+            copy_context = self.device
+        with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
-        finally:
-            if runtime._is_hip_environment:
-                runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):

@@ -591,26 +591,23 @@ cdef class MemoryPointer:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
 
     @staticmethod
-    cdef _set_peer_access(int device, int peer):
-        device_pair = device, peer
+    cdef _set_peer_access(int device_id, int peer_id):
+        device_pair = device_id, peer_id
 
         if device_pair in _peer_access_checked:
             return
-        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+        cdef int can_access = runtime.deviceCanAccessPeer(device_id, peer_id)
         _peer_access_checked.add(device_pair)
         if not can_access:
             return
 
-        cdef int current = runtime.getDevice()
-        runtime.setDevice(device)
-        try:
-            runtime.deviceEnablePeerAccess(peer)
-        # peer access could already be set by external libraries at this point
-        except CUDARuntimeError as e:
-            if e.status != runtime.errorPeerAccessAlreadyEnabled:
-                raise
-        finally:
-            runtime.setDevice(current)
+        with device.Device(device_id):
+            try:
+                runtime.deviceEnablePeerAccess(peer_id)
+            # peer access could already be set by external libraries at this point
+            except CUDARuntimeError as e:
+                if e.status != runtime.errorPeerAccessAlreadyEnabled:
+                    raise
 
 
 # cpdef because unit-tested
