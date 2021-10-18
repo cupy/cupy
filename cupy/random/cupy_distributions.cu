@@ -863,9 +863,6 @@ void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_
 
 #else
 // the stubs need to be redeclared here for HIP versions less than 4.3 to avoid redeclarations in cython when importing the headers
-typedef struct {} curandState;
-typedef struct {} curandStateMRG32k3a;
-typedef struct {} curandStatePhilox4_32_10_t;
 // No cuda will not compile the .cu file, so the definition needs to be done here explicitly
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {}
 void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}

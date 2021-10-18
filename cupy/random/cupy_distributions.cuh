@@ -27,6 +27,7 @@ struct rk_binomial_state {
 
 #ifdef CUPY_USE_HIP
 #include <hiprand_kernel.h>
+
 #define cudaStream_t hipStream_t
 #define curandState hiprandState
 #define curandStateMRG32k3a hiprandStateMRG32k3a
