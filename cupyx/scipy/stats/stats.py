@@ -20,7 +20,7 @@ def trim_mean(a, proportiontocut, axis=0):
 
     Parameters
     ----------
-    a : array_like
+    a : cupy.ndarray
         Input array.
     proportiontocut : float
         Fraction to cut off of both tails of the distribution.

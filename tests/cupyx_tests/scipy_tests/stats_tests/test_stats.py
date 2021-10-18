@@ -26,13 +26,13 @@ class TestTrim(unittest.TestCase):
         testing.assert_array_equal(stats.trim_mean(a4, 2 / 6.),
                                    cp.array([9., 10., 11., 12., 13., 14.]))
         # shuffled arange(24) as array_like
-        a = [
+        a = cp.array([
             7, 11, 12, 21, 16, 6, 22, 1, 5, 0, 18, 10, 17, 9, 19, 15, 23, 20,
             2, 14, 4, 13, 8, 3
-        ]
+        ])
         testing.assert_array_equal(stats.trim_mean(a, 2 / 6.), 11.5)
-        testing.assert_array_equal(stats.trim_mean([5, 4, 3, 1, 2, 0], 2 / 6.),
-                                   2.5)
+        testing.assert_array_equal(
+            stats.trim_mean(cp.array([5, 4, 3, 1, 2, 0]), 2 / 6.), 2.5)
 
         # check axis argument
         cp.random.seed(1234)
@@ -49,5 +49,5 @@ class TestTrim(unittest.TestCase):
         pytest.raises(ValueError, stats.trim_mean, a, 0.6)
 
         # empty input
-        testing.assert_array_equal(stats.trim_mean([], 0.0), cp.nan)
-        testing.assert_array_equal(stats.trim_mean([], 0.6), cp.nan)
+        testing.assert_array_equal(stats.trim_mean(cp.array([]), 0.0), cp.nan)
+        testing.assert_array_equal(stats.trim_mean(cp.array([]), 0.6), cp.nan)
