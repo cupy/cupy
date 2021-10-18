@@ -268,7 +268,6 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         ],
         'include': [
             'hiprand/hiprand.h',
-            'hiprand/hiprand_kernel.h',
         ],
         'libraries': [
             # Dependency from cuRAND header files

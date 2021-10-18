@@ -43,8 +43,8 @@ class BitGenerator:
     """
     def __init__(self, seed=None):
         if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
-            raise RuntimeError('Generator API not supported in ROCm<4.3,'
-                               ' please use the legacy one or update ROCm.')
+            raise RuntimeError('Generator API not supported in ROCm<4.3, '
+                               'please use the legacy one or update ROCm.')
         self.lock = threading.Lock()
         # TODO(ecastill) port SeedSequence
         if isinstance(seed, numpy.random.SeedSequence):

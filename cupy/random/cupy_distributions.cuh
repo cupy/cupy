@@ -26,9 +26,6 @@ struct rk_binomial_state {
 };
 
 #ifdef CUPY_USE_HIP
-#include <hip/hip_version.h>
-#if HIP_VERSION >= 403
-#define COMPILE_FOR_HIP
 #include <hiprand_kernel.h>
 #define cudaStream_t hipStream_t
 #define curandState hiprandState
@@ -39,6 +36,10 @@ struct rk_binomial_state {
 #define curand_uniform hiprand_uniform
 #define curand_normal_double hiprand_normal_double
 #define curand_normal hiprand_normal
+
+#include <hip/hip_version.h>
+#if HIP_VERSION >= 403
+#define COMPILE_FOR_HIP
 #endif
 #endif
 
