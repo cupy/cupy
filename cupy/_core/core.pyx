@@ -549,11 +549,9 @@ cdef class ndarray:
             return self.astype(self.dtype, order=order)
 
         # It need to make a contiguous copy for copying from another device
-        runtime.setDevice(self.data.device_id)
-        try:
+        with self.device:
             x = self.astype(self.dtype, order=order, copy=False)
-        finally:
-            runtime.setDevice(dev_id)
+
         newarray = _ndarray_init(x._shape, x.dtype)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
