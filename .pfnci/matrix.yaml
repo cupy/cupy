@@ -113,7 +113,7 @@
   python: "3.10"
   numpy: "1.21"
   scipy: null  # "1.7" once SciPy supports Python 3.10
-  optuna: "2"
+  optuna: null
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
