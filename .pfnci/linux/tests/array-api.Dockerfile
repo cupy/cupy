@@ -3,7 +3,7 @@ FROM nvidia/cuda:11.4.2-devel-ubuntu20.04
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy --allow-change-held-packages --allow-downgrades install libnccl2=2.10.*+cuda11.4 libnccl-dev=2.10.*+cuda11.4 libcudnn8-dev=8.2.*+cuda11.4 libcutensor-dev=1.3.* libcusparselt-dev=0.1.* && \
-    apt-get -qqy install ccache
+    apt-get -qqy install git ccache
 
 ENV PATH="/usr/lib/ccache:${PATH}"
 
