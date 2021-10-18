@@ -197,6 +197,8 @@ cdef class Device:
             # The current device still remains 0.
 
         """
+        # N.B. for maintainers: use of this method or `setDevice` in CuPy
+        # codebase needs careful consideration. See #5913.
         runtime.setDevice(self.id)
         return self
 
