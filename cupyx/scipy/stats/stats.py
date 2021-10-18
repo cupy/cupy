@@ -7,7 +7,7 @@ References
    Probability and Statistics Tables and Formulae. Chapman & Hall: New
    York. 2000.
 """
-import cupy as np
+import cupy as cp
 
 
 def trim_mean(a, proportiontocut, axis=0):
@@ -40,9 +40,9 @@ def trim_mean(a, proportiontocut, axis=0):
 
     Examples
     --------
-    >>> import cupy as np
+    >>> import cupy as cp
     >>> from cupyx.scipy import stats
-    >>> x = np.arange(20)
+    >>> x = cp.arange(20)
     >>> stats.trim_mean(x, 0.1)
     array(9.5)
     >>> x2 = x.reshape(5, 4)
@@ -57,10 +57,8 @@ def trim_mean(a, proportiontocut, axis=0):
     >>> stats.trim_mean(x2, 0.25, axis=1)
     array([ 1.5,  5.5,  9.5, 13.5, 17.5])
     """
-    a = np.asarray(a)
-
     if a.size == 0:
-        return np.nan
+        return cp.nan
 
     if axis is None:
         a = a.ravel()
@@ -72,11 +70,11 @@ def trim_mean(a, proportiontocut, axis=0):
     if (lowercut > uppercut):
         raise ValueError("Proportion too big.")
 
-    atmp = np.partition(a, (lowercut, uppercut - 1), axis)
+    atmp = cp.partition(a, (lowercut, uppercut - 1), axis)
 
     sl = [slice(None)] * atmp.ndim
     sl[axis] = slice(lowercut, uppercut)
-    return np.mean(atmp[tuple(sl)], axis=axis)
+    return cp.mean(atmp[tuple(sl)], axis=axis)
 
 
 if __name__ == "__main__":
