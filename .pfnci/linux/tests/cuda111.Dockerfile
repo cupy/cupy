@@ -2,15 +2,20 @@
 ARG BASE_IMAGE="nvidia/cuda:11.1.1-devel-centos7"
 FROM ${BASE_IMAGE}
 
+RUN yum -y install centos-release-scl && \
+    yum -y install devtoolset-7-gcc-c++
+ENV PATH "/opt/rh/devtoolset-7/root/usr/bin:${PATH}"
+ENV LD_LIBRARY_PATH "/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:${LD_LIBRARY_PATH}"
+
 RUN yum -y install \
        zlib-devel bzip2 bzip2-devel readline-devel sqlite \
        sqlite-devel openssl-devel tk-devel libffi-devel \
        xz-devel && \
     yum -y install epel-release && \
     yum -y install "@Development Tools" ccache git curl && \
-    yum -y install libnccl-devel-2.7.*-*+cuda11.1 libcutensor-devel-1.3.* libcudnn8-devel-8.0.*-*.cuda11.1
+    yum -y install libnccl-devel-2.8.*-*+cuda11.1 libcutensor-devel-1.3.* libcudnn8-devel-8.0.*-*.cuda11.1
 
-ENV PATH "/usr/lib/ccache:${PATH}"
+ENV PATH "/usr/lib64/ccache:${PATH}"
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"

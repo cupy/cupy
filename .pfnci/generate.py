@@ -83,8 +83,20 @@ class LinuxGenerator:
                     ' '.join(self._additional_packages('apt'))
                 ),
                 '',
+                'ENV PATH "/usr/lib/ccache:${PATH}"',
+                '',
             ]
         elif os_name == 'centos':
+            assert os_version in ('7', '8')
+            if os_version == '7':
+                lines += [
+                    'RUN yum -y install centos-release-scl && \\',
+                    '    yum -y install devtoolset-7-gcc-c++',
+                    'ENV PATH "/opt/rh/devtoolset-7/root/usr/bin:${PATH}"',
+                    'ENV LD_LIBRARY_PATH "/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:${LD_LIBRARY_PATH}"',  # NOQA
+                    '',
+                ]
+
             lines += [
                 # pyenv: https://github.com/pyenv/pyenv/wiki
                 'RUN yum -y install \\',
@@ -97,15 +109,11 @@ class LinuxGenerator:
                     ' '.join(self._additional_packages('yum'))
                 ),
                 '',
+                'ENV PATH "/usr/lib64/ccache:${PATH}"',
+                '',
             ]
         else:
             raise AssertionError
-
-        # Enable ccache for gcc/g++.
-        lines += [
-            'ENV PATH "/usr/lib/ccache:${PATH}"',
-            '',
-        ]
 
         # Set environment variables for ROCm.
         if matrix.rocm is not None:

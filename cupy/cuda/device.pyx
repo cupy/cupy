@@ -158,9 +158,9 @@ cdef class Device:
         return self.id
 
     def __enter__(self):
-        _ThreadLocalStack.get().push_device(self.id)
         if self.id != runtime.getDevice():
             runtime.setDevice(self.id)
+        _ThreadLocalStack.get().push_device(self.id)
         return self
 
     def __exit__(self, *args):
