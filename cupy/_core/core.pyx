@@ -549,11 +549,9 @@ cdef class ndarray:
             return self.astype(self.dtype, order=order)
 
         # It need to make a contiguous copy for copying from another device
-        runtime.setDevice(self.data.device_id)
-        try:
+        with self.device:
             x = self.astype(self.dtype, order=order, copy=False)
-        finally:
-            runtime.setDevice(dev_id)
+
         newarray = _ndarray_init(x._shape, x.dtype)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
@@ -2245,7 +2243,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                      dtype, copy, order, subok, ndmin)
 
     # obj is sequence, numpy array, scalar or the other type of object
-    shape, elem_type, elem_dtype = _get_concat_shape(obj)
+    shape, elem_type, elem_dtype = _compute_concat_info(obj)
     if shape is not None and shape[-1] != 0:
         # obj is a non-empty sequence of ndarrays which share same shape
         # and dtype
@@ -2293,54 +2291,52 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     return _send_object_to_gpu(obj, dtype, order, ndmin)
 
 
-cdef tuple _get_concat_shape(object obj):
-    # Returns a tuple of the following:
-    # 1. concatenated shape if it can be converted to a single CuPy array by
-    #    just concatenating it (i.e., the object is a (nested) sequence only
-    #    which contains NumPy/CuPy array(s) with same shape and dtype).
-    #    Returns None otherwise.
-    # 2. type of the first item in the object
-    # 3. dtype if the object is an array
+cdef tuple _compute_concat_info(obj):
+    # Returns a tuple containing information if we can simply concatenate the
+    # input to make a CuPy array (i.e., a (nested) sequence that only contains
+    # NumPy/CuPy arrays with the same shape and dtype). `(None, None, None)`
+    # means we do not concatenate the input.
+    # 1. A concatenated shape
+    # 2. The type of the arrays to concatenate (numpy.ndarray or cupy.ndarray)
+    # 3. The dtype of the arrays to concatenate
     if isinstance(obj, (list, tuple)):
-        return _get_concat_shape_impl(obj)
-    return (None, None, None)
+        return _compute_concat_info_impl(obj)
+    else:
+        return None, None, None
 
 
-cdef tuple _get_concat_shape_impl(object obj):
-    cdef obj_type = type(obj)
-    if issubclass(obj_type, (numpy.ndarray, ndarray)):
-        # obj.shape is () when obj.ndim == 0
-        return (obj.shape, obj_type, obj.dtype)
+cdef tuple _compute_concat_info_impl(obj):
+    cdef Py_ssize_t dim
+
+    if isinstance(obj, (numpy.ndarray, ndarray)):
+        return obj.shape, type(obj), obj.dtype
+
     if isinstance(obj, (list, tuple)):
-        shape = None
-        typ = None
-        dtype = None
-        for elem in obj:
-            # Find the head recursively if obj is a nested built-in list
-            elem_shape, elem_type, elem_dtype = _get_concat_shape_impl(elem)
+        dim = len(obj)
+        if dim == 0:
+            return None, None, None
 
-            # Use shape of the first element as the common shape.
-            if shape is None:
-                shape = elem_shape
-                typ = elem_type
-                dtype = elem_dtype
+        concat_shape, concat_type, concat_dtype = (
+            _compute_concat_info_impl(obj[0]))
+        if concat_shape is None:
+            return None, None, None
 
-            # `elem` is not concatable or the shape and dtype does not match
-            # with siblings.
-            if elem_shape is None or shape != elem_shape:
-                return (None, obj_type, None)
+        for elem in obj[1:]:
+            concat_shape1, concat_type1, concat_dtype1 = (
+                _compute_concat_info_impl(elem))
+            if concat_shape1 is None:
+                return None, None, None
 
-            if dtype != elem_dtype:
-                dtype = numpy.promote_types(dtype, elem_dtype)
+            if concat_shape != concat_shape1:
+                return None, None, None
+            if concat_type is not concat_type1:
+                return None, None, None
+            if concat_dtype != concat_dtype1:
+                concat_dtype = numpy.promote_types(concat_dtype, concat_dtype1)
 
-        if shape is None:
-            shape = ()
-        return (
-            (len(obj),) + shape,
-            typ,
-            dtype)
-    # scalar or object
-    return (None, obj_type, None)
+        return (dim,) + concat_shape, concat_type, concat_dtype
+
+    return None, None, None
 
 
 cdef list _flatten_list(object obj):
