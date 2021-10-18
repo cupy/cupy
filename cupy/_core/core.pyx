@@ -963,15 +963,15 @@ cdef class ndarray:
         """
         return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
-    cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
-        """Returns an array with values limited to [a_min, a_max].
+    cpdef ndarray clip(self, min=None, max=None, out=None):
+        """Returns an array with values limited to [min, max].
 
         .. seealso::
            :func:`cupy.clip` for full documentation,
            :meth:`numpy.ndarray.clip`
 
         """
-        return _math._ndarray_clip(self, a_min, a_max, out)
+        return _math._ndarray_clip(self, min, max, out)
 
     cpdef ndarray round(self, decimals=0, out=None):
         """Returns an array with values rounded to the given number of decimals.
