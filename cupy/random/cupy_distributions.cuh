@@ -26,8 +26,22 @@ struct rk_binomial_state {
 };
 
 #ifdef CUPY_USE_HIP
-#include <hiprand_kernel.h>
+#include <hip/hip_version.h>
+#if HIP_VERSION >= 403
+#define COMPILE_FOR_HIP
+#endif
 
+// When compiling cython extensions with hip 4.0
+// gcc will be used, but the hiprand_kernel can only be compiled with llvm
+// so we need to explicitly declare stubs for the functions
+#if HIP_VERSION > 400
+#include <hiprand_kernel.h>
+#else
+#include <hiprand.h>
+typedef struct {} hiprandState;
+typedef struct {} hiprandStateMRG32k3a;
+typedef struct {} hiprandStatePhilox4_32_10_t;
+#endif
 #define cudaStream_t hipStream_t
 #define curandState hiprandState
 #define curandStateMRG32k3a hiprandStateMRG32k3a
@@ -38,10 +52,6 @@ struct rk_binomial_state {
 #define curand_normal_double hiprand_normal_double
 #define curand_normal hiprand_normal
 
-#include <hip/hip_version.h>
-#if HIP_VERSION >= 403
-#define COMPILE_FOR_HIP
-#endif
 #endif
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
