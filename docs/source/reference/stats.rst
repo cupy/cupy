@@ -1,16 +1,3 @@
-.. module:: cupyx.scipy.stats
+:orphan:
 
-Statistical functions (:mod:`cupyx.scipy.stats`)
-================================================
-
-.. Hint:: `SciPy API Reference: Statistical functions (scipy.stats) <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
-
-
-Summary statistics
-------------------
-
-.. autosummary::
-   :toctree: generated/
-
-   trim_mean
-   entropy
+This document has been moved to :doc:`scipy_stats`.

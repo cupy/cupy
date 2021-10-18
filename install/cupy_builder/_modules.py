@@ -272,20 +272,6 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         'check_method': build.check_cusparselt_version,
         'version_method': build.get_cusparselt_version,
     }
-    CUDA_cugraph = {
-        'name': 'cugraph',
-        'file': [
-            'cupy_backends.cuda.libs.cugraph',
-        ],
-        'include': [
-            'cugraph/raft/error.hpp',  # dummy
-        ],
-        'libraries': [
-            'cugraph',
-        ],
-        'check_method': build.check_cugraph_version,
-        'version_method': build.get_cugraph_version,
-    }
     HIP_cub = {
         'name': 'cub',
         'required': True,
@@ -377,6 +363,5 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         CUDA_jitify,
         CUDA_random,
         CUDA_cusparselt,
-        CUDA_cugraph,
         COMMON_dlpack,
     ] + [CUDA_thrust] if context.enable_thrust else []

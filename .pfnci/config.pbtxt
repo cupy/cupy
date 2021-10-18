@@ -190,6 +190,60 @@ configs {
   }
 }
 
+# CUDA + Doctest
+configs {
+  key: "cupy.linux.cuda-doctest"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda-doctest"
+  }
+}
+
+# CUDA + Example
+configs {
+  key: "cupy.linux.cuda-example"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda-example"
+  }
+}
+
+# CUDA + HEAD
+configs {
+  key: "cupy.linux.cuda-head"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda-head"
+  }
+}
+
 ###
 ### Linux (ROCm) CI Projects
 ###
