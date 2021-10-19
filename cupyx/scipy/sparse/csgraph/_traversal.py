@@ -10,6 +10,7 @@ except ModuleNotFoundError:
 def connected_components(csgraph, directed=True, connection='weak',
                          return_labels=True):
     """Analyzes the connected components of a sparse graph
+
     Args:
         csgraph (cupy.ndarray of cupyx.scipy.sparse.csr_matrix): The adjacency
             matrix representing connectivity among nodes.
@@ -21,11 +22,13 @@ def connected_components(csgraph, directed=True, connection='weak',
             If ``directed`` is ``False``, this argument is ignored.
         return_labels (bool): If ``True``, it returns the labels for each of
             the connected components.
+
     Returns:
         tuple of int and cupy.ndarray, or int:
             If ``return_labels`` == ``True``, returns a tuple ``(n, labels)``,
             where ``n`` is the number of connected components and ``labels`` is
             labels of each connected components. Otherwise, returns ``n``.
+
     .. seealso:: :func:`scipy.sparse.csgraph.connected_components`
     """
     if not pylibcugraph_available:
