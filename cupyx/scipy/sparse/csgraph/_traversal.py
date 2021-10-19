@@ -1,15 +1,16 @@
 import cupy
 import cupyx.scipy.sparse
 try:
-    from cupy_backends.cuda.libs import cugraph
-    _cugraph_available = True
-except ImportError:
-    _cugraph_available = False
+    import pylibcugraph
+    pylibcugraph_available = True
+except ModuleNotFoundError:
+    pylibcugraph_available = False
 
 
 def connected_components(csgraph, directed=True, connection='weak',
                          return_labels=True):
     """Analyzes the connected components of a sparse graph
+
     Args:
         csgraph (cupy.ndarray of cupyx.scipy.sparse.csr_matrix): The adjacency
             matrix representing connectivity among nodes.
@@ -21,15 +22,17 @@ def connected_components(csgraph, directed=True, connection='weak',
             If ``directed`` is ``False``, this argument is ignored.
         return_labels (bool): If ``True``, it returns the labels for each of
             the connected components.
+
     Returns:
         tuple of int and cupy.ndarray, or int:
             If ``return_labels`` == ``True``, returns a tuple ``(n, labels)``,
             where ``n`` is the number of connected components and ``labels`` is
             labels of each connected components. Otherwise, returns ``n``.
+
     .. seealso:: :func:`scipy.sparse.csgraph.connected_components`
     """
-    if not _cugraph_available:
-        raise RuntimeError('cugraph is not available')
+    if not pylibcugraph_available:
+        raise RuntimeError('pylibcugraph is not available')
 
     connection = connection.lower()
     if connection not in ('weak', 'strong'):
@@ -51,12 +54,16 @@ def connected_components(csgraph, directed=True, connection='weak',
     labels = cupy.empty(m, dtype=csgraph.indices.dtype)
 
     if connection == 'strong':
-        cugraph.strongly_connected_components(csgraph, labels)
+        pylibcugraph.strongly_connected_components(
+            offsets=csgraph.indptr, indices=csgraph.indices, weights=None,
+            num_verts=m, num_edges=csgraph.nnz, labels=labels)
     else:
         csgraph += csgraph.T
         if not cupyx.scipy.sparse.isspmatrix_csr(csgraph):
             csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
-        cugraph.weakly_connected_components(csgraph, labels)
+        pylibcugraph.weakly_connected_components(
+            offsets=csgraph.indptr, indices=csgraph.indices, weights=None,
+            num_verts=m, num_edges=csgraph.nnz, labels=labels)
         # Note: In the case of weak connection, cuGraph creates labels with a
         # start number of 1, so decrement the label number.
         labels -= 1

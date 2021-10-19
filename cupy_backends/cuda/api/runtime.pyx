@@ -211,7 +211,7 @@ cpdef getDeviceProperties(int device):
             'cooperativeLaunch': props.cooperativeLaunch,
             'cooperativeMultiDeviceLaunch': props.cooperativeMultiDeviceLaunch,
         }
-    IF CUPY_CUDA_VERSION >= 9020:
+    IF CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >= 9020:
         properties['deviceOverlap'] = props.deviceOverlap
         properties['maxTexture1DMipmap'] = props.maxTexture1DMipmap
         properties['maxTexture1DLinear'] = props.maxTexture1DLinear
@@ -259,11 +259,11 @@ cpdef getDeviceProperties(int device):
             props.pageableMemoryAccessUsesHostPageTables)
         properties['directManagedMemAccessFromHost'] = (
             props.directManagedMemAccessFromHost)
-    IF CUPY_CUDA_VERSION >= 10000:
+    if CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >=10000:
         properties['uuid'] = props.uuid.bytes
         properties['luid'] = props.luid
         properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
-    IF CUPY_CUDA_VERSION >= 11000:
+    if CUPY_USE_CUDA_PYTHON or CUPY_CUDA_VERSION >= 11000:
         properties['persistingL2CacheMaxSize'] = props.persistingL2CacheMaxSize
         properties['maxBlocksPerMultiProcessor'] = (
             props.maxBlocksPerMultiProcessor)
@@ -448,6 +448,8 @@ cpdef intptr_t malloc(size_t size) except? 0:
 
 cpdef intptr_t mallocManaged(
         size_t size, unsigned int flags=cudaMemAttachGlobal) except? 0:
+    if 0 < CUPY_HIP_VERSION < 40300000:
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     cdef void* ptr
     with nogil:
         status = cudaMallocManaged(&ptr, size, flags)
@@ -475,7 +477,11 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
 
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
     cdef void* ptr
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support mallocAsync')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('mallocAsync is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('mallocAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaMallocAsync(&ptr, size, <driver.Stream>stream)
@@ -515,7 +521,11 @@ cpdef freeArray(intptr_t ptr):
     check_status(status)
 
 cpdef freeAsync(intptr_t ptr, intptr_t stream):
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support freeAsync')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('freeAsync is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('freeAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaFreeAsync(<void*>ptr, <driver.Stream>stream)
@@ -630,12 +640,16 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
+    if 0 < CUPY_HIP_VERSION < 40300000:
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
         status = cudaMemPrefetchAsync(<void*>devPtr, count, dstDevice,
                                       <driver.Stream> stream)
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
+    if 0 < CUPY_HIP_VERSION < 40300000:
+        raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
         status = cudaMemAdvise(<void*>devPtr, count,
                                <MemoryAdvise>advice, device)
@@ -662,7 +676,12 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support deviceGetDefaultMemPool')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('deviceGetDefaultMemPool is supported since '
+                           'CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('deviceGetDefaultMemPool is supported since '
                            'CUDA 11.2')
     cdef MemPool pool
@@ -673,7 +692,12 @@ cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
 
 cpdef intptr_t deviceGetMemPool(int device) except? 0:
     '''Get the current mempool on the current device.'''
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support deviceGetMemPool')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('deviceGetMemPool is supported since '
+                           'CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('deviceGetMemPool is supported since '
                            'CUDA 11.2')
     cdef MemPool pool
@@ -684,7 +708,12 @@ cpdef intptr_t deviceGetMemPool(int device) except? 0:
 
 cpdef deviceSetMemPool(int device, intptr_t pool):
     '''Set the current mempool on the current device to pool.'''
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support deviceSetMemPool')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('deviceSetMemPool is supported since '
+                           'CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('deviceSetMemPool is supported since '
                            'CUDA 11.2')
     with nogil:
@@ -692,14 +721,22 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
     check_status(status)
 
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolTrimTo')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
     with nogil:
         status = cudaMemPoolTrimTo(<MemPool>pool, size)
     check_status(status)
 
 cpdef memPoolGetAttribute(intptr_t pool, int attr):
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolGetAttribute')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolGetAttribute is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('memPoolGetAttribute is supported since CUDA 11.2')
     cdef int val1
     cdef uint64_t val2
@@ -714,7 +751,11 @@ cpdef memPoolGetAttribute(intptr_t pool, int attr):
     return val1 if attr <= 0x3 else val2
 
 cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
-    if CUPY_CUDA_VERSION < 11020:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolSetAttribute')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolSetAttribute is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
         raise RuntimeError('memPoolSetAttribute is supported since CUDA 11.2')
     cdef int val1
     cdef uint64_t val2
@@ -768,13 +809,11 @@ cdef _streamCallbackFunc(driver.Stream hStream, int status,
     cpython.Py_DECREF(obj)
 
 
-# Use Cython macro to suppress compiler warning
-IF CUPY_CUDA_VERSION >= 10000:
-    cdef _HostFnFunc(void* func_arg) with gil:
-        obj = <object>func_arg
-        func, arg = obj
-        func(arg)
-        cpython.Py_DECREF(obj)
+cdef _HostFnFunc(void* func_arg) with gil:
+    obj = <object>func_arg
+    func, arg = obj
+    func(arg)
+    cpython.Py_DECREF(obj)
 
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
@@ -794,8 +833,6 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
     if _is_hip_environment:
         raise RuntimeError('This feature is not supported on HIP')
-    if CUPY_CUDA_VERSION < 10000:
-        raise RuntimeError('This feature is only supported on CUDA 10.0+')
 
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)

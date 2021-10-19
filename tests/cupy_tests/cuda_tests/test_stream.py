@@ -115,8 +115,6 @@ class TestStream(unittest.TestCase):
 
     @unittest.skipIf(cuda.runtime.is_hip,
                      'HIP does not support launch_host_func')
-    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
-                     'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -268,8 +266,6 @@ class TestExternalStream(unittest.TestCase):
 
     @unittest.skipIf(cuda.runtime.is_hip,
                      'HIP does not support launch_host_func')
-    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
-                     'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]

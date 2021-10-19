@@ -6,7 +6,6 @@ import warnings as _warnings
 
 import numpy as _numpy
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cusolver
 # due to a Cython bug (cython/cython#4000) we cannot just cimport the module
@@ -20,7 +19,6 @@ from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
-from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
@@ -106,7 +104,7 @@ def check_availability(name):
         available_version = _available_cuda_version
     else:
         available_version = _available_hip_version
-    version = _driver.get_build_version()
+    version = cusolver._get_cuda_build_version()
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)

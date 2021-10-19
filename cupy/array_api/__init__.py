@@ -118,6 +118,13 @@ Still TODO in this module are:
 
 """
 
+# CuPy-specific: still need to support Python 3.7.
+import sys
+
+if sys.version_info < (3, 8):
+    raise RuntimeError('cupy.array_api requires Python 3.8+')
+
+
 import warnings
 
 warnings.warn(
@@ -143,6 +150,8 @@ from ._creation_functions import (
     meshgrid,
     ones,
     ones_like,
+    tril,
+    triu,
     zeros,
     zeros_like,
 )
@@ -160,6 +169,8 @@ __all__ += [
     "meshgrid",
     "ones",
     "ones_like",
+    "tril",
+    "triu",
     "zeros",
     "zeros_like",
 ]
@@ -333,21 +344,22 @@ __all__ += [
 # from ._linear_algebra_functions import einsum
 # __all__ += ['einsum']
 
-from ._linear_algebra_functions import matmul, tensordot, transpose, vecdot
+from ._linear_algebra_functions import matmul, tensordot, matrix_transpose, vecdot
 
-__all__ += ["matmul", "tensordot", "transpose", "vecdot"]
+__all__ += ["matmul", "tensordot", "matrix_transpose", "vecdot"]
 
 from ._manipulation_functions import (
     concat,
     expand_dims,
     flip,
+    permute_dims,
     reshape,
     roll,
     squeeze,
     stack,
 )
 
-__all__ += ["concat", "expand_dims", "flip", "reshape", "roll", "squeeze", "stack"]
+__all__ += ["concat", "expand_dims", "flip", "permute_dims", "reshape", "roll", "squeeze", "stack"]
 
 from ._searching_functions import argmax, argmin, nonzero, where
 

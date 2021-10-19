@@ -25,6 +25,7 @@ cdef object _sum_auto_dtype
 cdef object _add
 cdef object _conj
 cdef object _angle
+cdef object _positive
 cdef object _negative
 cdef object _multiply
 cdef object _divide

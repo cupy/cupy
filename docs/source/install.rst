@@ -18,14 +18,14 @@ Requirements
 
 .. note::
 
-   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 (x86_64) and Windows Server 2016 (x86_64).
+   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS / 20.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 / 8 (x86_64) and Windows Server 2016 (x86_64).
 
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
 NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.21 and SciPy 1.7, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20 / v1.21
+* `NumPy <https://numpy.org/>`_: v1.18 / v1.19 / v1.20 / v1.21
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7
 
@@ -54,7 +54,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.6 / v2.7 / v2.8 / v2.9 / v2.10 / v2.11
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.8 / v2.9 / v2.10 / v2.11
 
     * The library to perform collective multi-GPU / multi-node computations.
 
@@ -116,7 +116,8 @@ Installing CuPy from Conda-Forge
 --------------------------------
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
-The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux and
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
+ppc64le, aarch64-sbsa) and
 Windows once the CUDA driver is correctly set up, you can also install CuPy from the ``conda-forge`` channel::
 
     $ conda install -c conda-forge cupy

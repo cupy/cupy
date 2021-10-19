@@ -104,7 +104,7 @@ def check_availability(name):
     return True
 
 
-cdef class Mode(object):
+cdef class Mode:
 
     cdef:
         object _array
@@ -118,10 +118,10 @@ cdef class Mode(object):
         self.data = self._array.ctypes.data
 
     def __repr__(self):
-        return 'mode([' + ', '.join(self._array) + '])'
+        return 'mode(' + ', '.join([str(x) for x in self._array]) + ')'
 
 
-cdef class _Scalar(object):
+cdef class _Scalar:
 
     cdef:
         object _array
@@ -132,7 +132,9 @@ cdef class _Scalar(object):
         self.ptr = self._array.ctypes.data
 
     def __repr__(self):
-        return self._array.item()
+        return (
+            'scalar(' + str(self._array.item()) +
+            ', dtype=' + str(self._array.dtype) + ')')
 
 
 cdef Handle _get_handle():

@@ -289,7 +289,6 @@ _jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
 _cusparselt_version = None
-_cugraph_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -737,50 +736,6 @@ def get_cusparselt_version(formatted=False):
         msg = 'check_cusparselt_version() must be called first.'
         raise RuntimeError(msg)
     return _cusparselt_version
-
-
-def check_cugraph_version(compiler, settings):
-    global _cugraph_version
-    try:
-        build_and_run(compiler, '''
-        #include <stdio.h>
-        #include <cugraph/raft/error.hpp>
-        int main(int argc, char* argv[]) {
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-    except Exception as e:
-        utils.print_warning('Cannot find cuGraph header files\n{0}'.format(e))
-        return False
-
-    try:
-        out = build_and_run(compiler, '''
-        #include <stdio.h>
-        #include <cugraph/version_config.hpp>
-        int main(int argc, char* argv[]) {
-          printf("%d", CUGRAPH_VERSION_MAJOR * 10000
-                     + CUGRAPH_VERSION_MINOR * 100
-                     + CUGRAPH_VERSION_PATCH);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-    except Exception as e:
-        utils.print_warning('Cannot find cuGRAPH version information\n{0}'.
-                            format(e))
-        _cugraph_version = 0
-        return True
-
-    _cugraph_version = int(out)
-    return True
-
-
-def get_cugraph_version(formatted=False):
-    """Return cuGraph version cached in check_cugraph_version()."""
-    global _cugraph_version
-    if _cugraph_version is None:
-        msg = 'check_cugraph_version() must be called first.'
-        raise RuntimeError(msg)
-    return _cugraph_version
 
 
 def build_shlib(compiler, source, libraries=(),
