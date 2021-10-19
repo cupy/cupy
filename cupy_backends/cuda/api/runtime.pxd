@@ -158,7 +158,7 @@ cpdef getDeviceProperties(int device)
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
 cpdef deviceEnablePeerAccess(int peerDevice)
-cdef _deviceEnsurePeerAccess(int peerDevice)
+cpdef _deviceEnsurePeerAccess(int peerDevice)
 
 cpdef size_t deviceGetLimit(int limit) except? -1
 cpdef deviceSetLimit(int limit, size_t value)
