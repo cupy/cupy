@@ -375,7 +375,10 @@ cpdef deviceDisablePeerAccess(int peerDevice):
 
 cpdef _deviceEnsurePeerAccess(int peerDevice):
     status = cudaDeviceEnablePeerAccess(peerDevice, 0)
-    if status == 0 or status == errorPeerAccessAlreadyEnabled:
+    if status == 0:
+        return
+    elif status == errorPeerAccessAlreadyEnabled:
+        cudaGetLastError()  # clear error status
         return
     check_status(status)
 
