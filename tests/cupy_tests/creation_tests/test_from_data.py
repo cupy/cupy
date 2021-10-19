@@ -483,6 +483,14 @@ class TestFromData(unittest.TestCase):
             f.seek(0)
             regexp = r"(\d+)\s+(...)"
             return xp.fromregex(file=f, regexp=regexp,  dtype=numpy.int64)
+        
+    @testing.numpy_cupy_array_equal()
+    def test_loadtxt(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"0 1\n2 3")
+            fh.flush()
+            fh.seek(0)
+            return xp.loadtxt(fh, dtype="u1")
 
 
 max_cuda_array_interface_version = 3
