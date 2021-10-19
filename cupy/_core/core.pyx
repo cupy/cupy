@@ -2214,86 +2214,180 @@ _round_ufunc = create_ufunc(
 cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
-    cdef Py_ssize_t ndim
-    cdef ndarray a, src
-    cdef size_t nbytes
-
     if subok:
         raise NotImplementedError
     if order is None:
         order = 'K'
 
     if isinstance(obj, ndarray):
-        src = obj
-        if dtype is None:
-            dtype = src.dtype
-        if src.data.device_id == device.get_device_id():
-            a = src.astype(dtype, order=order, copy=copy)
-        else:
-            a = src.copy(order=order).astype(dtype, copy=False)
-
-        ndim = a._shape.size()
-        if ndmin > ndim:
-            if a is obj:
-                # When `copy` is False, `a` is same as `obj`.
-                a = a.view()
-            a.shape = (1,) * (ndmin - ndim) + a.shape
-        return a
+        return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
 
     if hasattr(obj, '__cuda_array_interface__'):
-        return array(_convert_object_with_cuda_array_interface(obj),
-                     dtype, copy, order, subok, ndmin)
+        return _array_from_cuda_array_interface(
+            obj, dtype, copy, order, subok, ndmin)
 
-    # obj is sequence, numpy array, scalar or the other type of object
-    shape, elem_type, elem_dtype = _compute_concat_info(obj)
-    if shape is not None and shape[-1] != 0:
-        # obj is a non-empty sequence of ndarrays which share same shape
-        # and dtype
+    concat_shape, concat_type, concat_dtype = (
+        _array_info_from_nested_sequence(obj))
+    if concat_shape is not None:
+        return _array_from_nested_sequence(
+            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype)
 
-        # resulting array is C order unless 'F' is explicitly specified
-        # (i.e., it ignores order of element arrays in the sequence)
-        order = (
-            'F'
-            if order is not None and len(order) >= 1 and order[0] in 'Ff'
-            else 'C')
-        ndim = len(shape)
-        if ndmin > ndim:
-            shape = (1,) * (ndmin - ndim) + shape
+    return _array_default(obj, dtype, order, ndmin)
 
-        if dtype is None:
-            dtype = elem_dtype
-        # Note: dtype might not be numpy.dtype in this place
 
-        if issubclass(elem_type, numpy.ndarray):
-            # obj is Seq[numpy.ndarray]
-            return _send_numpy_array_list_to_gpu(
-                obj, elem_dtype, dtype, shape, order, ndmin)
+cdef ndarray _array_from_cupy_ndarray(
+        obj, dtype, bint copy, order, Py_ssize_t ndmin):
+    cdef Py_ssize_t ndim
+    cdef ndarray a, src
 
-        # obj is Seq[cupy.ndarray]
-        assert issubclass(elem_type, ndarray), elem_type
-        lst = _flatten_list(obj)
+    src = obj
 
-        # convert each scalar (0-dim) ndarray to 1-dim
-        lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
+    if dtype is None:
+        dtype = src.dtype
 
-        a =_manipulation.concatenate_method(lst, 0)
-        a = a.reshape(shape)
-        a = a.astype(dtype, order=order, copy=False)
+    if src.data.device_id == device.get_device_id():
+        a = src.astype(dtype, order=order, copy=copy)
+    else:
+        a = src.copy(order=order).astype(dtype, copy=False)
+
+    ndim = a._shape.size()
+    if ndmin > ndim:
+        if a is obj:
+            # When `copy` is False, `a` is same as `obj`.
+            a = a.view()
+        a.shape = (1,) * (ndmin - ndim) + a.shape
+
+    return a
+
+
+cdef ndarray _array_from_cuda_array_interface(
+        obj, dtype, bint copy, order, bint subok, Py_ssize_t ndmin):
+    return array(
+        _convert_object_with_cuda_array_interface(obj),
+        dtype, copy, order, subok, ndmin)
+
+
+cdef ndarray _array_from_nested_sequence(
+        obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
+        concat_dtype):
+    cdef Py_ssize_t ndim
+
+    # resulting array is C order unless 'F' is explicitly specified
+    # (i.e., it ignores order of element arrays in the sequence)
+    order = (
+        'F'
+        if order is not None and len(order) >= 1 and order[0] in 'Ff'
+        else 'C')
+
+    ndim = len(concat_shape)
+    if ndmin > ndim:
+        concat_shape = (1,) * (ndmin - ndim) + concat_shape
+
+    if dtype is None:
+        dtype = concat_dtype
+
+    if concat_type is numpy.ndarray:
+        return _array_from_nested_numpy_sequence(
+            obj, concat_dtype, dtype, concat_shape, order, ndmin)
+    elif concat_type is ndarray:
+        return _array_from_nested_cupy_sequence(
+            obj, dtype, concat_shape, order)
+    else:
+        assert False
+
+
+cdef ndarray _array_from_nested_numpy_sequence(
+        arrays, src_dtype, dst_dtype, const shape_t& shape, order,
+        Py_ssize_t ndmin):
+    a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
+    if a_dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % a_dtype)
+    cdef ndarray a  # allocate it after pinned memory is secured
+    cdef size_t itemcount = internal.prod(shape)
+    cdef size_t nbytes = itemcount * a_dtype.itemsize
+
+    stream = stream_module.get_current_stream()
+    # Note: even if arrays are already backed by pinned memory, we still need
+    # to allocate an extra buffer and copy from it to avoid potential data
+    # race, see the discussion here:
+    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
+    cdef pinned_memory.PinnedMemoryPointer mem = (
+        _alloc_async_transfer_buffer(nbytes))
+    cdef size_t offset, length
+    if mem is not None:
+        # write concatenated arrays to the pinned memory directly
+        src_cpu = (
+            numpy.frombuffer(mem, a_dtype, itemcount)
+            .reshape(shape, order=order))
+        _concatenate_numpy_array(
+            [numpy.expand_dims(e, 0) for e in arrays],
+            0,
+            get_dtype(src_dtype),
+            a_dtype,
+            src_cpu)
+        a = ndarray(shape, dtype=a_dtype, order=order)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    else:
+        # fallback to numpy array and send it to GPU
+        # Note: a_cpu.ndim is always >= 1
+        a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
+                            ndmin=ndmin)
+        a = ndarray(shape, dtype=a_dtype, order=order)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
+
+    return a
+
+
+cdef ndarray _array_from_nested_cupy_sequence(obj, dtype, shape, order):
+    lst = _flatten_list(obj)
+
+    # convert each scalar (0-dim) ndarray to 1-dim
+    lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
+
+    a = _manipulation.concatenate_method(lst, 0)
+    a = a.reshape(shape)
+    a = a.astype(dtype, order=order, copy=False)
+    return a
+
+
+cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
+    if order is not None and len(order) >= 1 and order[0] in 'KAka':
+        if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+            order = 'F'
+        else:
+            order = 'C'
+    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+                        ndmin=ndmin)
+    a_dtype = a_cpu.dtype  # converted to numpy.dtype
+    if a_dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % a_dtype)
+    cdef shape_t a_shape = a_cpu.shape
+    cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
+    if a_cpu.ndim == 0:
+        a.fill(a_cpu)
         return a
+    cdef Py_ssize_t nbytes = a.nbytes
 
-    # obj is:
-    # - numpy array
-    # - scalar or sequence of scalar
-    # - empty sequence or sequence with elements whose shapes or
-    #   dtypes are unmatched
-    # - other types
+    stream = stream_module.get_current_stream()
+    # Note: even if obj is already backed by pinned memory, we still need to
+    # allocate an extra buffer and copy from it to avoid potential data race,
+    # see the discussion here:
+    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
+    cdef pinned_memory.PinnedMemoryPointer mem = (
+        _alloc_async_transfer_buffer(nbytes))
+    if mem is not None:
+        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+        src_cpu[:] = a_cpu.ravel(order)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    else:
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
-    # fallback to numpy array and send it to GPU
-    # Note: dtype might not be numpy.dtype in this place
-    return _send_object_to_gpu(obj, dtype, order, ndmin)
+    return a
 
 
-cdef tuple _compute_concat_info(obj):
+cdef tuple _array_info_from_nested_sequence(obj):
     # Returns a tuple containing information if we can simply concatenate the
     # input to make a CuPy array (i.e., a (nested) sequence that only contains
     # NumPy/CuPy arrays with the same shape and dtype). `(None, None, None)`
@@ -2348,87 +2442,6 @@ cdef list _flatten_list(object obj):
             ret += _flatten_list(elem)
         return ret
     return [obj]
-
-
-cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
-    if order is not None and len(order) >= 1 and order[0] in 'KAka':
-        if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
-            order = 'F'
-        else:
-            order = 'C'
-    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
-                        ndmin=ndmin)
-    a_dtype = a_cpu.dtype  # converted to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
-        raise ValueError('Unsupported dtype %s' % a_dtype)
-    cdef shape_t a_shape = a_cpu.shape
-    cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
-    if a_cpu.ndim == 0:
-        a.fill(a_cpu)
-        return a
-    cdef Py_ssize_t nbytes = a.nbytes
-
-    stream = stream_module.get_current_stream()
-    # Note: even if obj is already backed by pinned memory, we still need to
-    # allocate an extra buffer and copy from it to avoid potential data race,
-    # see the discussion here:
-    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
-    cdef pinned_memory.PinnedMemoryPointer mem = (
-        _alloc_async_transfer_buffer(nbytes))
-    if mem is not None:
-        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-        src_cpu[:] = a_cpu.ravel(order)
-        a.data.copy_from_host_async(mem.ptr, nbytes)
-        pinned_memory._add_to_watch_list(stream.record(), mem)
-    else:
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
-
-    return a
-
-
-cdef ndarray _send_numpy_array_list_to_gpu(
-        list arrays, src_dtype, dst_dtype,
-        const shape_t& shape,
-        order, Py_ssize_t ndmin):
-
-    a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
-        raise ValueError('Unsupported dtype %s' % a_dtype)
-    cdef ndarray a  # allocate it after pinned memory is secured
-    cdef size_t itemcount = internal.prod(shape)
-    cdef size_t nbytes = itemcount * a_dtype.itemsize
-
-    stream = stream_module.get_current_stream()
-    # Note: even if arrays are already backed by pinned memory, we still need
-    # to allocate an extra buffer and copy from it to avoid potential data
-    # race, see the discussion here:
-    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
-    cdef pinned_memory.PinnedMemoryPointer mem = (
-        _alloc_async_transfer_buffer(nbytes))
-    cdef size_t offset, length
-    if mem is not None:
-        # write concatenated arrays to the pinned memory directly
-        src_cpu = (
-            numpy.frombuffer(mem, a_dtype, itemcount)
-            .reshape(shape, order=order))
-        _concatenate_numpy_array(
-            [numpy.expand_dims(e, 0) for e in arrays],
-            0,
-            get_dtype(src_dtype),
-            a_dtype,
-            src_cpu)
-        a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host_async(mem.ptr, nbytes)
-        pinned_memory._add_to_watch_list(stream.record(), mem)
-    else:
-        # fallback to numpy array and send it to GPU
-        # Note: a_cpu.ndim is always >= 1
-        a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
-                            ndmin=ndmin)
-        a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
-
-    return a
 
 
 cdef bint _numpy_concatenate_has_out_argument = (
