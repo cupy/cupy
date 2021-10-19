@@ -91,6 +91,23 @@ cpdef compute_type_to_str(compute_type):
         return compute_type
 
 
+# kludge: hiprtc seems to have a bug that it produces a wrong code when it
+# does runtime compilation more than once with the same name expressions
+# supplied. Instead, we use no-template kernel for HIP. See #5843.
+cdef _tensordot_core_int_kernel_hip(str code, dtype):
+    cdef str ctypename = get_typename(dtype)
+    cdef str ker_name = (
+        '_tensordot_core_int_kernel_' + ctypename.replace(' ', '_'))
+    code = 'extern "C" {\n' + code + '\n}'
+    code = code.replace('template<typename T>', '')
+    code = code.replace('_tensordot_core_int_kernel', ker_name)
+    code = code.replace('T ', ctypename + ' ')
+    code = code.replace('T*', ctypename + '*')
+    mod = cupy.RawModule(code=code, options=('--std=c++11',))
+    ker = mod.get_function(ker_name)
+    return ker
+
+
 @cupy._util.memoize(for_each_device=True)
 def _tensordot_core_int_kernel(config, dtype):
     # This code is based in the GEMM implementation from MAGMA
@@ -286,6 +303,11 @@ __global__ void _tensordot_core_int_kernel(
 '''
     for k, v in config:
         code = '#define ' + k + ' ' + str(v) + '\n' + code
+
+    # Use no-template kernel with HIP because of hiprtc bug.
+    if runtime._is_hip_environment:
+        return _tensordot_core_int_kernel_hip(code, dtype)
+
     name_expressions = ['_tensordot_core_int_kernel<bool>',
                         '_tensordot_core_int_kernel<signed char>',
                         '_tensordot_core_int_kernel<unsigned char>',
