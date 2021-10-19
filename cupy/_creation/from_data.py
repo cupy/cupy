@@ -191,4 +191,14 @@ def fromstring(*args, **kwargs):
     return asarray(numpy.fromstring(*args, **kwargs))
 
 
+def fromregex(*args, **kwargs):
+    """Construct an array from a text file, using regular expression parsing.
+
+    .. note::
+        Uses NumPy's ``fromregex`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromregex`
+    """
+    return asarray(numpy.fromregex(*args, **kwargs))
+
 # TODO(okuta): Implement loadtxt

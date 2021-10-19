@@ -474,6 +474,15 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_frombuffer(self, xp):
         return xp.frombuffer(b'\x01\x02', dtype=numpy.uint8)
+    
+    @testing.numpy_cupy_array_equal()
+    def test_fromregex(self, xp):
+        with tempfile.TemporaryFile() as f:
+            f.write(b"\x00\x01\x02\x03\x04")
+            f.flush()
+            f.seek(0)
+            regexp = r"(\d+)\s+(...)"
+            return xp.fromregex(file=f, regexp=regexp,  dtype=numpy.int64)
 
 
 max_cuda_array_interface_version = 3
