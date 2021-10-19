@@ -149,7 +149,15 @@ def fromfile(*args, **kwargs):
     return asarray(numpy.fromfile(*args, **kwargs))
 
 
-# TODO(okuta): Implement fromfunction
+def fromfunction(*args, **kwargs):
+    """Construct an array by executing a function over each coordinate.
+
+    .. note::
+        Uses NumPy's ``fromfunction`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromfunction`
+    """
+    return asarray(numpy.fromfunction(*args, **kwargs))
 
 
 # TODO(okuta): Implement fromiter
