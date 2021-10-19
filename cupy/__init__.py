@@ -242,6 +242,7 @@ from cupy._creation.from_data import ascontiguousarray  # NOQA
 from cupy._creation.from_data import fromfile  # NOQA
 from cupy._creation.from_data import fromfunction  # NOQA
 from cupy._creation.from_data import fromiter  # NOQA
+from cupy._creation.from_data import fromstring  # NOQA
 
 from cupy._creation.ranges import arange  # NOQA
 from cupy._creation.ranges import linspace  # NOQA
