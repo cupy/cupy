@@ -134,13 +134,10 @@ main() {
       if [[ "${GPU:-}" != "" ]]; then
         docker_args+=(--env "GPU=${GPU}")
       fi
-      if [[ "${TARGET}" == *cuda* ]]; then
-        docker_args+=(--runtime=nvidia)
-      elif [[ "${TARGET}" == *rocm* ]]; then
+      if [[ "${TARGET}" == *rocm* ]]; then
         docker_args+=(--device=/dev/kfd --device=/dev/dri)
       else
-        echo "ERROR: Unknown platform!"
-        exit 1
+        docker_args+=(--runtime=nvidia)
       fi
 
       test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
