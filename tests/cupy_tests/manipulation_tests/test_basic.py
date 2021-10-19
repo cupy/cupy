@@ -83,7 +83,7 @@ class TestBasic:
                 else:
                     with pytest.raises(
                             ValueError,
-                            match='Peer access could not be activated'):
+                            match='Peer access is unavailable'):
                         cupy.copyto(a, b, where=c)
 
     @testing.multi_gpu(2)
