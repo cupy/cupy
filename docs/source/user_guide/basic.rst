@@ -80,9 +80,9 @@ In general, CuPy functions expect that the array is on the same device as the cu
 Passing an array stored on a non-current device may work depending on the hardware configuration but is generally discouraged as it may not be performant.
 
 .. note::
-  If the array's device and the current device mismatch, CuPy functions try to establish `peer-to-peer memory access` <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#peer-to-peer-memory-access`_ (P2P) between them so that the current device can directly read the array from another device.
+  If the array's device and the current device mismatch, CuPy functions try to establish `peer-to-peer memory access <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#peer-to-peer-memory-access>`_ (P2P) between them so that the current device can directly read the array from another device.
   Note that P2P is available only when the topology permits it.
-  If P2P is available, such an attempt will fail with ``ValueError``.
+  If P2P is unavailable, such an attempt will fail with ``ValueError``.
 
 ``cupy.ndarray.device`` attribute indicates the device on which the array is allocated.
 
