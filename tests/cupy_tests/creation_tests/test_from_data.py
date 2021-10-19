@@ -456,6 +456,10 @@ class TestFromData(unittest.TestCase):
             fh.flush()
             fh.seek(0)
             return xp.fromfile(fh, dtype="u1")
+        
+    @testing.numpy_cupy_array_equal()
+    def test_fromfunction(self, xp):
+        return xp.fromfunction(function = lambda i, j: i == j, shape=(3, 3), dtype=int)
 
 
 max_cuda_array_interface_version = 3
