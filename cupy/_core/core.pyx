@@ -2215,15 +2215,16 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         return _array_from_cuda_array_interface(
             obj, dtype, copy, order, subok, ndmin)
 
-    concat_shape, concat_type, concat_dtype = _compute_concat_info(obj)
+    concat_shape, concat_type, concat_dtype = (
+        _array_info_from_nested_sequence(obj))
     if concat_shape is not None:
-        return _array_from_concatenatable_arrays(
+        return _array_from_nested_sequence(
             obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype)
 
     return _array_default(obj, dtype, order, ndmin)
 
 
-cpdef ndarray _array_from_cupy_ndarray(
+cdef ndarray _array_from_cupy_ndarray(
         obj, dtype, bint copy, order, Py_ssize_t ndmin):
     cdef Py_ssize_t ndim
     cdef ndarray a, src
@@ -2248,14 +2249,14 @@ cpdef ndarray _array_from_cupy_ndarray(
     return a
 
 
-cpdef ndarray _array_from_cuda_array_interface(
+cdef ndarray _array_from_cuda_array_interface(
         obj, dtype, bint copy, order, bint subok, Py_ssize_t ndmin):
     return array(
         _convert_object_with_cuda_array_interface(obj),
         dtype, copy, order, subok, ndmin)
 
 
-cpdef ndarray _array_from_concatenatable_arrays(
+cdef ndarray _array_from_nested_sequence(
         obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
         concat_dtype):
     cdef Py_ssize_t ndim
@@ -2275,16 +2276,16 @@ cpdef ndarray _array_from_concatenatable_arrays(
         dtype = concat_dtype
 
     if concat_type is numpy.ndarray:
-        return _array_from_concatenatable_numpy_arrays(
+        return _array_from_nested_numpy_sequence(
             obj, concat_dtype, dtype, concat_shape, order, ndmin)
     elif concat_type is ndarray:
-        return _array_from_concatenatable_cupy_arrays(
+        return _array_from_nested_cupy_sequence(
             obj, dtype, concat_shape, order)
     else:
         assert False
 
 
-cpdef ndarray _array_from_concatenatable_numpy_arrays(
+cdef ndarray _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
         Py_ssize_t ndmin):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
@@ -2327,13 +2328,13 @@ cpdef ndarray _array_from_concatenatable_numpy_arrays(
     return a
 
 
-cpdef ndarray _array_from_concatenatable_cupy_arrays(obj, dtype, shape, order):
+cdef ndarray _array_from_nested_cupy_sequence(obj, dtype, shape, order):
     lst = _flatten_list(obj)
 
     # convert each scalar (0-dim) ndarray to 1-dim
     lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
 
-    a =_manipulation.concatenate_method(lst, 0)
+    a = _manipulation.concatenate_method(lst, 0)
     a = a.reshape(shape)
     a = a.astype(dtype, order=order, copy=False)
     return a
@@ -2375,7 +2376,7 @@ cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
     return a
 
 
-cdef tuple _compute_concat_info(obj):
+cdef tuple _array_info_from_nested_sequence(obj):
     # Returns a tuple containing information if we can simply concatenate the
     # input to make a CuPy array (i.e., a (nested) sequence that only contains
     # NumPy/CuPy arrays with the same shape and dtype). `(None, None, None)`
