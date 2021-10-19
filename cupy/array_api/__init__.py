@@ -118,6 +118,13 @@ Still TODO in this module are:
 
 """
 
+# CuPy-specific: still need to support Python 3.7.
+import sys
+
+if sys.version_info < (3, 8):
+    raise RuntimeError('cupy.array_api requires Python 3.8+')
+
+
 import warnings
 
 warnings.warn(
