@@ -459,12 +459,17 @@ class TestFromData(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_fromfunction(self, xp):
-        return xp.fromfunction(function=lambda i, j: i == j, shape=(3, 3), dtype=int)
+        function=lambda i, j: i == j
+        return xp.fromfunction(function, shape=(3, 3), dtype=int)
 
     @testing.numpy_cupy_array_equal()
     def test_fromiter(self, xp):
         iterable = (x*x for x in range(5))
         return xp.fromiter(iterable, float)
+    
+    @testing.numpy_cupy_array_equal()
+    def test_fromstring(self, xp):
+        return xp.fromstring('1 2', dtype=int, sep=' ')
 
 
 max_cuda_array_interface_version = 3
