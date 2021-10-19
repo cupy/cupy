@@ -171,7 +171,15 @@ def fromiter(*args, **kwargs):
     return asarray(numpy.fromiter(*args, **kwargs))
 
 
-# TODO(okuta): Implement fromstring
+def fromstring(*args, **kwargs):
+    """A new 1-D array initialized from text data in a string.
+
+    .. note::
+        Uses NumPy's ``fromstring`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromstring`
+    """
+    return asarray(numpy.fromstring(*args, **kwargs))
 
 
 # TODO(okuta): Implement loadtxt
