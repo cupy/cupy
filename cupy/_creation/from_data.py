@@ -134,7 +134,16 @@ def copy(a, order='K'):
     return a.copy(order=order)
 
 
-# TODO(okuta): Implement frombuffer
+def frombuffer(*args, **kwargs):
+    """Interpret a buffer as a 1-dimensional array.
+
+    .. note::
+        Uses NumPy's ``frombuffer`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.frombuffer`
+
+    """
+    return asarray(numpy.frombuffer(*args, **kwargs))
 
 
 def fromfile(*args, **kwargs):
