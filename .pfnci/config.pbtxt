@@ -255,7 +255,7 @@ configs {
       gpu: 1
     }
     time_limit: {
-      seconds: 3600
+      seconds: 7200
     }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh array-api"
