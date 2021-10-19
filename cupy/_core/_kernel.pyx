@@ -87,7 +87,7 @@ cdef inline _check_peer_access(ndarray arr, int device_id):
         device_id, arr.data.device_id)
     if not peer_access:
         raise ValueError(
-            f'{msg} Peer access could not be activated automatically.')
+            f'{msg} Peer access is unavailable between these devices.')
     warnings.warn(
         f'{msg} Peer access has been activated automatically.',
         _util.PerformanceWarning)
