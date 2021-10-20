@@ -266,7 +266,6 @@ def calculate_destination(prefix, cuda, lib, lib_ver):
 def main(args):
     parser = argparse.ArgumentParser()
 
-    # TODO(kmaehashi): support NCCL
     parser.add_argument('--library',
                         choices=['cudnn', 'cutensor', 'nccl'],
                         required=True,
