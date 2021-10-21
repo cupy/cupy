@@ -1177,6 +1177,16 @@ cdef class ufunc:
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
+        if (cuda_cutensor is not None and self._cutensor_op is not None and
+            _accelerator.ACCELERATOR_CUTENSOR
+                    in _accelerator._elementwise_accelerators):
+                if self.nin == 2 and self.nout == 1:
+                    ret = cupy.cutensor._try_elementwise_binary_routine(
+                        in_args[0], in_args[1], dtype, None,
+                        self._cutensor_op, 1, 1)
+                    if ret is not None:
+                        return ret
+
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
         out_args = _get_out_args(out_args, op.out_types, shape, casting)
@@ -1187,15 +1197,7 @@ cdef class ufunc:
 
         if _contains_zero(shape):
             return ret
-        if (cuda_cutensor is not None and self._cutensor_op is not None and
-            _accelerator.ACCELERATOR_CUTENSOR
-                    in _accelerator._elementwise_accelerators):
-                if self.nin == 2 and self.nout == 1:
-                    ret = cupy.cutensor._try_elementwise_binary_routine(
-                        in_args[0], in_args[1], dtype, out_args[0],
-                        self._cutensor_op, 1, 1)
-                    if ret is not None:
-                        return ret
+
         inout_args = []
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
