@@ -809,9 +809,9 @@ def _try_reduction_routine(
     return out
 
 
-def _is_strides_positive(ndarray a):
+def _all_strides_positive(ndarray a):
     # cuTENSOR requires each stride > 0.
-    for s in a.strides:
+    for s in a._strides:
         if s <= 0:
             return False
     return True
@@ -827,28 +827,29 @@ def _try_elementwise_binary_routine(
 
     if dtype is None:
         dtype = a.dtype
-    if not (dtype == a.dtype == c.dtype):
-        return None
     if dtype not in _cutensor_dtypes:
         return None
 
-    if not internal.vector_equal(a.shape, c.shape):
+    if not (a.dtype == c.dtype == dtype):
         return None
-    if not (_is_strides_positive(a) and _is_strides_positive(c)):
+    if not internal.vector_equal(a._shape, c._shape):
+        return None
+    if not (_all_strides_positive(a) and _all_strides_positive(c)):
         return None
 
     if out is None:
-        out = core._ndarray_init(a.shape, dtype=dtype)
-    elif not internal.vector_equal(a.shape, out._shape):
-        return None
+        out = core._create_ndarray_from_shape_strides(c._shape, c._strides, dtype)
     elif out.dtype != dtype:
         return None
-    elif not _is_strides_positive(c):
+    elif not internal.vector_equal(c._shape, out._shape):
+        return None
+    elif not internal.vector_equal(c._strides, out._strides):
+        return None
+    elif not _all_strides_positive(out):
         return None
 
     handle = _get_handle()
 
-    print('DEBUG: using cuTENSOR elementiwse op!')  # TODO
     return _elementwise_binary_impl(
         handle,
         _create_scalar(alpha, dtype),
