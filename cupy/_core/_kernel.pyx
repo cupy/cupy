@@ -16,6 +16,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy.cuda cimport texture
+from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._dtype cimport get_dtype
@@ -1187,11 +1188,14 @@ cdef class ufunc:
         if _contains_zero(shape):
             return ret
         if (cuda_cutensor is not None and self._cutensor_op is not None and
-            self.nin == 2 and self.nout == 1):
-            ret = cupy.cutensor._try_elementwise_binary_routine(
-                in_args[0], in_args[1], dtype, out_args[0], self._cutensor_op, 1, 1)
-            if ret is not None:
-                return ret
+            _accelerator.ACCELERATOR_CUTENSOR
+                    in _accelerator._elementwise_accelerators):
+                if self.nin == 2 and self.nout == 1:
+                    ret = cupy.cutensor._try_elementwise_binary_routine(
+                        in_args[0], in_args[1], dtype, out_args[0],
+                        self._cutensor_op, 1, 1)
+                    if ret is not None:
+                        return ret
         inout_args = []
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
