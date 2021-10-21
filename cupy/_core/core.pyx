@@ -570,6 +570,7 @@ cdef class ndarray:
             # src data is before the copy. From the docs:
             # it is recommended to set the current device to the device
             # where the src data is physically located.
+            # TODO also use src as current in CUDA, or fix copy_from_device_async
             copy_context = self.device
         with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)

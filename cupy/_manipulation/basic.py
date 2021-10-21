@@ -10,8 +10,8 @@ def copyto(dst, src, casting='same_kind', where=None):
     """Copies values from one array to another with broadcasting.
 
     This function can be called for arrays on different devices. In this case,
-    casting, ``where``, and broadcasting is not supported, and an exception is
-    raised if these are used.
+    casting, ``where``, and broadcasting are supported only when peer access
+    is supported between devices involved.
 
     Args:
         dst (cupy.ndarray): Target array.
@@ -58,7 +58,8 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     if _can_memcpy(dst, src):
-        dst.data.copy_from_async(src.data, src.nbytes)
+        with src.device:
+            dst.data.copy_from_async(src.data, src.nbytes)
         return
 
     device = dst.device
