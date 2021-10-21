@@ -209,6 +209,9 @@ cdef Py_ssize_t _get_contiguous_size(
 
 cdef Py_ssize_t _default_block_size = (
     256 if runtime._is_hip_environment else 512)
+cdef Py_ssize_t _min_block_size_log = 5
+cdef Py_ssize_t _max_block_size_log = (
+    8 if runtime._is_hip_environment else 9)
 
 
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
@@ -418,7 +421,8 @@ cdef class _AbstractReductionKernel:
                 post_map_expr, reduce_type, stream, self._params)
 
         def suggest_func(trial):
-            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size_log = trial.suggest_int(
+                'block_size_log', _min_block_size_log, _max_block_size_log)
             block_size = 2 ** block_size_log
             block_stride_log = trial.suggest_int(
                 'block_stride_log', 0, block_size_log)
