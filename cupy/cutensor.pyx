@@ -809,6 +809,14 @@ def _try_reduction_routine(
     return out
 
 
+def _is_strides_positive(ndarray a):
+    # cuTENSOR requires each stride > 0.
+    for s in a.strides:
+        if s <= 0:
+            return False
+    return True
+
+
 def _try_elementwise_binary_routine(
         ndarray a, ndarray c, dtype, ndarray out, op, alpha, gamma):
     cdef Handle handle
@@ -824,9 +832,9 @@ def _try_elementwise_binary_routine(
     if dtype not in _cutensor_dtypes:
         return None
 
-    if not (a._c_contiguous and a._c_contiguous):
-        return None
     if not internal.vector_equal(a.shape, c.shape):
+        return None
+    if not (_is_strides_positive(a) and _is_strides_positive(c)):
         return None
 
     if out is None:
@@ -835,7 +843,7 @@ def _try_elementwise_binary_routine(
         return None
     elif out.dtype != dtype:
         return None
-    elif not out._c_contiguous:
+    elif not _is_strides_positive(c):
         return None
 
     handle = _get_handle()
