@@ -1042,7 +1042,8 @@ class RandomState(object):
                 raise ValueError('probabilities do not sum to 1')
 
         if size is None:
-            raise ValueError('size cannot be None')
+            raise NotImplementedError(
+                'choice() without specifying size is not supported yet')
         shape = size
         size = numpy.prod(shape)
 
