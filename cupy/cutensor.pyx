@@ -385,7 +385,7 @@ def elementwise_binary(
         _create_scalar(alpha, compute_dtype),
         A, desc_A, _auto_create_mode(A, mode_A),
         _create_scalar(gamma, compute_dtype),
-        C, desc_C, _auto_create_mode(A, mode_C),
+        C, desc_C, _auto_create_mode(C, mode_C),
         out, op_AC, _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
@@ -394,6 +394,7 @@ cdef inline ndarray _elementwise_binary_impl(
         _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
         _Scalar gamma, ndarray C, TensorDescriptor desc_C, Mode mode_C,
         ndarray out, int op_AC, int compute_type):
+    # stride and mode of `out` and `C` must be the same.
     cutensor.elementwiseBinary(
         handle,
         alpha.ptr, A.data.ptr, desc_A, mode_A.data,
