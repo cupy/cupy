@@ -876,7 +876,7 @@ _add = create_arithmetic(
     .. seealso:: :data:`numpy.add`
 
     ''',
-    cutensor_op='OP_ADD')
+    cutensor_op=('OP_ADD', 1, 1))
 
 
 _conjugate = create_ufunc(
@@ -949,7 +949,8 @@ _multiply = create_arithmetic(
 
     .. seealso:: :data:`numpy.multiply`
 
-    ''')
+    ''',
+    cutensor_op=('OP_MUL', 1, 1))
 
 
 # `integral_power` should return somewhat appropriate values for negative
@@ -1009,7 +1010,8 @@ _subtract = create_arithmetic(
 
     .. seealso:: :data:`numpy.subtract`
 
-    ''')
+    ''',
+    cutensor_op=('OP_ADD', 1, -1))
 
 
 _true_divide = create_ufunc(

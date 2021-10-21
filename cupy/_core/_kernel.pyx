@@ -1034,6 +1034,8 @@ cdef class ufunc:
         readonly object _loop_prep
         readonly object _default_casting
         readonly object _cutensor_op
+        readonly int _cutensor_alpha
+        readonly int _cutensor_gamma
         readonly tuple _params
         readonly tuple _params_with_where
         readonly dict _routine_cache
@@ -1060,7 +1062,9 @@ cdef class ufunc:
         else:
             self._default_casting = default_casting
         if cutensor_op is not None and cuda_cutensor is not None:
-            self._cutensor_op = getattr(cuda_cutensor, cutensor_op)
+            self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
+                getattr(cuda_cutensor, cutensor_op[0]),
+                cutensor_op[1], cutensor_op[2])
         _in_params = tuple(
             ParameterInfo('T in%d' % i, True)
             for i in range(nin))
@@ -1182,8 +1186,8 @@ cdef class ufunc:
                     in _accelerator._elementwise_accelerators):
                 if self.nin == 2 and self.nout == 1:
                     ret = cupy.cutensor._try_elementwise_binary_routine(
-                        in_args[0], in_args[1], dtype, None,
-                        self._cutensor_op, 1, 1)
+                        in_args[0], in_args[1], dtype, None, self._cutensor_op,
+                        self._cutensor_alpha, self._cutensor_gamma)
                     if ret is not None:
                         return ret
 
