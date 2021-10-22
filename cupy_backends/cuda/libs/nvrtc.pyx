@@ -13,10 +13,10 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libcpp cimport vector
-from libcpp.string cimport string
+
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.api cimport driver
-from cupy._environment import get_rocm_path
+
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -143,14 +143,6 @@ cpdef compileProgram(intptr_t prog, options):
     cdef const char** option_vec_ptr = NULL
     for i in option_list:
         option_vec.push_back(<const char*>i)
-
-    # Workaround ROCm 4.3 LLVM_PATH issue in hipRTC #5689
-    cdef string llvm_path = str.encode("-I" + get_rocm_path() + "/llvm/lib/clang/13.0.0/include/")
-    driver_build_version = driver.get_build_version()
-    if runtime._is_hip_environment and driver_build_version >= 40300000 and driver_build_version < 40500000:
-        option_vec.push_back(llvm_path.c_str())
-        option_num = option_num + 1
-
     if option_num > 0:
         option_vec_ptr = option_vec.data()
     with nogil:
