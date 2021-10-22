@@ -11,6 +11,7 @@ except ImportError:
 import cupy
 import cupyx
 
+from cupy_backends.cuda.api import runtime
 from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
@@ -844,14 +845,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         out = cupy.zeros(out_shape, dtype=int)
 
         # Perform the calculation
-        ker_name = '_arg_reduction<{}, {}>'.format(
-            _scalar.get_typename(self.data.dtype),
-            _scalar.get_typename(out.dtype))
+        if not runtime.is_hip:
+            ker_name = '_arg_reduction<{}, {}>'.format(
+                _scalar.get_typename(self.data.dtype),
+                _scalar.get_typename(out.dtype))
 
-        if ufunc == cupy.argmax:
-            ker = self._max_arg_reduction_mod.get_function('max' + ker_name)
-        elif ufunc == cupy.argmin:
-            ker = self._min_arg_reduction_mod.get_function('min' + ker_name)
+            if ufunc == cupy.argmax:
+                ker_name = 'max' + ker_name
+                ker = self._max_arg_reduction_mod.get_function(ker_name)
+            elif ufunc == cupy.argmin:
+                ker_name = 'min' + ker_name
+                ker = self._min_arg_reduction_mod.get_function(ker_name)
+        else:
+            # Use no-template kernel with HIP because of hiprtc bug.
+            if ufunc == cupy.argmax:
+                func, op = 'max', '>'
+            elif ufunc == cupy.argmin:
+                func, op = 'min', '<'
+            ker = _hip_arg_reduction_kernel(
+                func, op, self.data.dtype, out.dtype)
 
         ker((out_shape,), (1,),
             (self.data, self.indices,
@@ -860,3 +872,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
              out))
 
         return out
+
+
+# kludge: hiprtc seems to have a bug that it produces a wrong code when it
+# does runtime compilation more than once with the same name expressions
+# supplied. Instead, we use no-template kernel for HIP. See #5843.
+@cupy._util.memoize(for_each_device=True)
+def _hip_arg_reduction_kernel(func, op, dtype1, dtype2):
+    ctypename1 = _scalar.get_typename(dtype1)
+    ctypename2 = _scalar.get_typename(dtype2)
+    ker_name = '{}_arg_reduction_{}_{}'.format(
+        func, ctypename1.replace(' ', '_'), ctypename2.replace(' ', '_'))
+    code = _compressed_sparse_matrix._argmax_argmin_code
+    code = string.Template(code).substitute(func=func, op=op)
+    code = 'extern "C" {\n' + code + '\n}'
+    code = code.replace('template<typename T1, typename T2>', '')
+    code = code.replace(f'{func}_arg_reduction', ker_name)
+    code = code.replace('T1', ctypename1)
+    code = code.replace('T2', ctypename2)
+    mod = _core.RawModule(code=code, options=('-std=c++11',))
+    return mod.get_function(ker_name)

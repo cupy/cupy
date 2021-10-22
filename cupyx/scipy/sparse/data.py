@@ -201,6 +201,10 @@ class _minmax_mixin(object):
             raise ValueError("Can't apply the operation along a zero-sized "
                              "dimension.")
 
+        if self.dtype.kind == 'c':
+            raise NotImplementedError(
+                'Not supported for complex numbers when `axis` specified')
+
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
