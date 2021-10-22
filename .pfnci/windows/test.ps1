@@ -69,6 +69,8 @@ function Main {
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools
     RunOrDie python -m pip install Cython 'scipy<1.7' optuna
+    # TODO(kmaehashi): tentatively pin to 0.6 until Windows wheels released
+    RunOrDie python -m pip install 'fastrlock==0.6'
     RunOrDie python -m pip freeze
 
     echo "Building..."
