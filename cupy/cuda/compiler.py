@@ -660,7 +660,7 @@ class _NVRTCProgram(object):
         try:
             if self.name_expressions:
                 for ker in self.name_expressions:
-                    nvrtc.addAddNameExpression(self.ptr, ker)
+                    nvrtc.addNameExpression(self.ptr, ker)
             nvrtc.compileProgram(self.ptr, options)
             mapping = None
             if self.name_expressions:
