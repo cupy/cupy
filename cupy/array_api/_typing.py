@@ -6,10 +6,9 @@ annotations in the function signatures. The functions in the module are only
 valid for inputs that match the given type annotations.
 """
 
+from __future__ import annotations
 from cupy.cuda import Device as _Device
 
-
-from __future__ import annotations
 
 __all__ = [
     "Array",
