@@ -80,6 +80,15 @@ Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`c
 
 *Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
 
+The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
+
+A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module:
+  - :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
+  - :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
+  - :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
+  - :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.repeat`
+The old routines are deprecated.
+
 Deprecated APIs may be removed in the future CuPy releases.
 
 
