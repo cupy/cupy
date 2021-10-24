@@ -82,7 +82,7 @@ Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`c
 
 The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
 
-A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module::
+A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module:
 
     * :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
