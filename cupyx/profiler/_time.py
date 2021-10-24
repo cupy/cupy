@@ -4,13 +4,12 @@ import time as _time
 import numpy as _numpy
 
 import cupy as _cupy
-from cupy import _util
 
 
 class _PerfCaseResult:
     """ An obscure object encompassing timing results recorded by
-    :func:`~cupyx.profiler.repeat`. Simple statistics can be obtained by converting
-    an instance of this class to a string.
+    :func:`~cupyx.profiler.repeat`. Simple statistics can be obtained by
+    converting an instance of this class to a string.
 
     .. warning::
         This API is currently experimental and subject to change in future
