@@ -7,12 +7,12 @@ Benchmarking
 ------------
 
 It is utterly important to first identify the performance bottleneck before making any attempt to optimize
-your code. To help set up a baseline benchmark, CuPy provides a useful utility :func:`cupyx.time.repeat`
+your code. To help set up a baseline benchmark, CuPy provides a useful utility :func:`cupyx.profiler.repeat`
 for timing the elapsed time of a Python function on both CPU and GPU:
 
 .. doctest::
 
-    >>> from cupyx.time import repeat
+    >>> from cupyx.profiler import repeat
     >>> 
     >>> def my_func(a):
     ...     return cp.sqrt(cp.sum(a**2, axis=-1))
@@ -23,9 +23,9 @@ for timing the elapsed time of a Python function on both CPU and GPU:
 
 Because GPU executions run asynchronously with respect to CPU executions, a common pitfall in GPU programming is to mistakenly
 measure the elapsed time using CPU timing utilities (such as :py:func:`time.perf_counter` from the Python Standard Library
-or the ``%timeit`` magic from IPython), which have no knowledge in the GPU runtime. :func:`cupyx.time.repeat` addresses
+or the ``%timeit`` magic from IPython), which have no knowledge in the GPU runtime. :func:`cupyx.profiler.repeat` addresses
 this by setting up CUDA events on the :ref:`current_stream` right before and after the function to be measured and
-synchronizing over the end event (see :ref:`cuda_stream_event` for detail). Below we sketch what is done internally in :func:`cupyx.time.repeat`:
+synchronizing over the end event (see :ref:`cuda_stream_event` for detail). Below we sketch what is done internally in :func:`cupyx.profiler.repeat`:
 
 .. doctest::
 
@@ -42,7 +42,7 @@ synchronizing over the end event (see :ref:`cuda_stream_event` for detail). Belo
     >>> t_gpu = cp.cuda.get_elapsed_time(start_gpu, end_gpu)
     >>> t_cpu = end_cpu - start_cpu
 
-Additionally, :func:`cupyx.time.repeat` runs a few warm-up runs to reduce timing fluctuation and exclude the overhead in first invocations.
+Additionally, :func:`cupyx.profiler.repeat` runs a few warm-up runs to reduce timing fluctuation and exclude the overhead in first invocations.
 
 
 In-depth profiling
