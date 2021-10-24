@@ -48,7 +48,7 @@ Additionally, :func:`cupyx.profiler.repeat` runs a few warm-up runs to reduce ti
 In-depth profiling
 ------------------
 
-Under construction.
+Under construction. To mark with NVTX/rocTX ranges, you can use the :func:`cupyx.profiler.time_range` API. To start/stop the profiler, you can use the :func:`cupyx.profiler.profile` API.
 
 
 Use CUB/cuTENSOR backends for reduction operations

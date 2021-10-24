@@ -20,6 +20,9 @@ def profile():
         ``--profile-from-start off`` may be required for the desired behavior.
         Likewise, when using ``nsys profile`` setting ``-c cudaProfilerApi``
         may be required.
+
+    .. seealso:: :func:`cupy.cuda.profiler.start`,
+        :func:`cupy.cuda.profiler.stop`
     """
     _profiler.start()
     try:
