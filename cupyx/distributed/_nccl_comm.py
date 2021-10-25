@@ -241,10 +241,10 @@ class NCCLBackend(Backend):
         stream = self._get_stream(stream)
         idtype, icount = self._get_nccl_dtype_and_count(in_array)
         odtype, ocount = self._get_nccl_dtype_and_count(out_array)
-        self._comm.group_start()
+        self._comm.groupStart()
         self._send(in_array, peer, idtype, icount, stream)
         self._recv(out_array, peer, odtype, ocount, stream)
-        self._comm.group_end()
+        self._comm.groupEnd()
 
     def scatter(self, in_array, out_array, root=0, stream=None):
         """Performs a scatter operation.
@@ -264,7 +264,7 @@ class NCCLBackend(Backend):
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        self._comm.group_start()
+        self._comm.groupStart()
         if root == self.rank:
             for i in range(self._n_devices):
                 array = in_array[i]
@@ -272,7 +272,7 @@ class NCCLBackend(Backend):
                 self._send(array, i, idtype, icount, stream)
         dtype, count = self._get_nccl_dtype_and_count(out_array)
         self._recv(out_array, root, dtype, count, stream)
-        self._comm.group_end()
+        self._comm.groupEnd()
 
     def gather(self, in_array, out_array, root=0, stream=None):
         """Performs a gather operation.
@@ -293,7 +293,7 @@ class NCCLBackend(Backend):
         self._check_contiguous(in_array)
         self._check_contiguous(out_array)
         stream = self._get_stream(stream)
-        self._comm.group_start()
+        self._comm.groupStart()
         if root == self.rank:
             for i in range(self._n_devices):
                 array = out_array[i]
@@ -301,7 +301,7 @@ class NCCLBackend(Backend):
                 self._recv(array, i, odtype, ocount, stream)
         dtype, count = self._get_nccl_dtype_and_count(in_array)
         self._send(in_array, root, dtype, count, stream)
-        self._comm.group_end()
+        self._comm.groupEnd()
 
     def all_to_all(self, in_array, out_array, stream=None):
         """Performs an all to all operation.
@@ -329,11 +329,11 @@ class NCCLBackend(Backend):
         idtype, icount = self._get_nccl_dtype_and_count(in_array[0])
         odtype, ocount = self._get_nccl_dtype_and_count(out_array[0])
         # TODO check out dtypes are the same as in dtypes
-        self._comm.group_start()
+        self._comm.groupStart()
         for i in range(self._n_devices):
             self._send(in_array[i], i, idtype, icount, stream)
             self._recv(out_array[i], i, odtype, ocount, stream)
-        self._comm.group_end()
+        self._comm.groupEnd()
 
     def barrier(self):
         """Performs a barrier operation.

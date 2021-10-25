@@ -488,15 +488,4 @@ cdef class NcclCommunicator:
         # not block so far.
         with nogil:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
-        check_status(asyncError)
-        check_status(result)
-
-    def group_start(self):
-        with nogil:
-            result = ncclGroupStart()
-        check_status(result)
-
-    def group_end(self):
-        with nogil:
-            result = ncclGroupEnd()
         check_status(result)
