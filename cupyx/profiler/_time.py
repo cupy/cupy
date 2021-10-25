@@ -8,7 +8,7 @@ import cupy as _cupy
 
 class _PerfCaseResult:
     """ An obscure object encompassing timing results recorded by
-    :func:`~cupyx.profiler.repeat`. Simple statistics can be obtained by
+    :func:`~cupyx.profiler.benchmark`. Simple statistics can be obtained by
     converting an instance of this class to a string.
 
     .. warning::
@@ -60,7 +60,7 @@ class _PerfCaseResult:
         return self.to_str(show_gpu=True)
 
 
-def repeat(
+def benchmark(
         func, args=(), kwargs={}, n_repeat=10000, *,
         name=None, n_warmup=10, max_duration=_math.inf, devices=None):
     """ Timing utility for measuring time spent by both CPU and GPU.
@@ -74,14 +74,14 @@ def repeat(
     .. code-block:: py
 
         import cupy as cp
-        from cupyx.profiler import repeat
+        from cupyx.profiler import benchmark
 
         def f(a, b):
             return 3 * cp.sin(-a) * b
 
         a = 0.5 - cp.random.random((100,))
         b = cp.random.random((100,))
-        print(repeat(f, (a, b), n_repeat=1000))
+        print(benchmark(f, (a, b), n_repeat=1000))
 
 
     Args:

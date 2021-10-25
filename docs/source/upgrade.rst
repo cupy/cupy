@@ -87,7 +87,7 @@ A new module :mod:`cupyx.profiler` is added to host all profiling related APIs i
     * :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
-    * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.repeat`
+    * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
 
 The old routines are deprecated.
 

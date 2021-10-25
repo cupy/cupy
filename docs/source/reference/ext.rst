@@ -22,7 +22,7 @@ Profiling utilities
 .. autosummary::
    :toctree: generated/
 
-   cupyx.profiler.repeat
+   cupyx.profiler.benchmark
    cupyx.profiler.time_range
    cupyx.profiler.profile
 

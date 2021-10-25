@@ -4,7 +4,7 @@ import warnings as _warnings
 import numpy as _numpy
 
 import cupy as _cupy
-from cupyx.profiler._time import _repeat
+from cupyx.profiler._time import _repeat, _PerfCaseResult  # for tests  # NOQA
 
 
 # TODO(leofang): remove this function in CuPy v11
@@ -59,8 +59,9 @@ def repeat(
     """
 
     _warnings.warn(
-        'cupyx.time.repeat has been moved to cupyx.profiler.repeat since CuPy'
-        ' v10. Access through cupyx.time is deprecated.')
+        'cupyx.time.repeat has been moved to cupyx.profiler.benchmark since '
+        'CuPy v10. Access through cupyx.time is deprecated and will be '
+        'removed in the future.')
     if name is None:
         name = func.__name__
 

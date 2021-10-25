@@ -9,7 +9,7 @@ from cupyx import profiler
 from cupyx.profiler import _time
 
 
-class TestRepeat(unittest.TestCase):
+class TestBenchmark(unittest.TestCase):
 
     def test_cpu_routine(self):
         with mock.patch('time.perf_counter',
@@ -22,7 +22,7 @@ class TestRepeat(unittest.TestCase):
                 y = cupy.testing.shaped_random((2, 3), cupy, 'int32')
                 assert mock_func.call_count == 0
 
-                perf = profiler.repeat(
+                perf = profiler.benchmark(
                     mock_func, (x, y), n_repeat=10, n_warmup=3)
 
                 assert perf.name == 'test_name_xxx'
@@ -44,7 +44,7 @@ class TestRepeat(unittest.TestCase):
                 y = cupy.testing.shaped_random((2, 3), cupy, 'int32')
                 assert mock_func.call_count == 0
 
-                perf = profiler.repeat(
+                perf = profiler.benchmark(
                     mock_func, (x, y), n_repeat=10, n_warmup=3, devices=(0, 1))
 
                 assert perf.name == 'test_name_xxx'
@@ -54,7 +54,7 @@ class TestRepeat(unittest.TestCase):
                 assert (perf.cpu_times == 1.4).all()
                 assert (perf.gpu_times == 2.5).all()
 
-    def test_repeat_max_duration(self):
+    def test_benchmark_max_duration(self):
         with mock.patch('time.perf_counter',
                         mock.Mock(side_effect=[1., 2., 2.] * 6)):
             with mock.patch('cupy.cuda.get_elapsed_time',
@@ -65,7 +65,7 @@ class TestRepeat(unittest.TestCase):
                 y = cupy.testing.shaped_random((2, 3), cupy, 'int32')
                 assert mock_func.call_count == 0
 
-                perf = profiler.repeat(
+                perf = profiler.benchmark(
                     mock_func, (x, y), n_warmup=3, max_duration=2.5)
 
                 assert perf.name == 'test_name_xxx'
@@ -75,9 +75,9 @@ class TestRepeat(unittest.TestCase):
                 assert (perf.cpu_times == 1.).all()
                 assert (perf.gpu_times == 2.5).all()
 
-    def test_repeat_kwargs(self):
+    def test_benchmark_kwargs(self):
         x = cupy.random.rand(5)
-        profiler.repeat(
+        profiler.benchmark(
             cupy.nonzero, kwargs={'a': x}, n_repeat=1, n_warmup=1)
 
 

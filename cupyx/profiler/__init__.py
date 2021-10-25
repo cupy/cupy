@@ -1,6 +1,6 @@
 import contextlib as _contextlib
 from cupy.cuda import profiler as _profiler
-from cupyx.profiler._time import repeat  # NOQA
+from cupyx.profiler._time import benchmark  # NOQA
 from cupyx.profiler._time_range import time_range  # NOQA
 
 
