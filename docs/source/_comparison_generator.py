@@ -130,9 +130,7 @@ def generate():
             'test',
             'Tester',
         ], footnotes={
-            'Bytes0': _deprecated,  # NumPy 1.20
             'Datetime64': _deprecated,  # NumPy 1.20
-            'Str0': _deprecated,  # NumPy 1.20
             'Uint64': _deprecated,  # NumPy 1.20
             'mafromtxt': _deprecated,  # NumPy 1.17
 
@@ -141,6 +139,7 @@ def generate():
             'mat': _np_matrix,
             'matrix': _np_matrix,
 
+            'Bytes0': _dtype_na,  # also deprecated in NumPy 1.20
             'bytes0': _dtype_na,
             'bytes_': _dtype_na,
             'character': _dtype_na,
@@ -149,6 +148,7 @@ def generate():
             'flexible': _dtype_na,
             'object0': _dtype_na,
             'object_': _dtype_na,
+            'Str0': _dtype_na,  # also deprecated in NumPy 1.20
             'str0': _dtype_na,
             'str_': _dtype_na,
             'string_': _dtype_na,
