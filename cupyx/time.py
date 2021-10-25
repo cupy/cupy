@@ -54,7 +54,7 @@ def repeat(
         :class:`_PerfCaseResult`: an object collecting all test results.
 
     .. warning::
-        This API is moved to :func:`cupyx.profiler.repeat` since CuPy v10.
+        This API is moved to :func:`cupyx.profiler.benchmark` since CuPy v10.
         Access through ``cupyx.time`` is deprecated.
     """
 
