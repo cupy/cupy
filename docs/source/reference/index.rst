@@ -27,7 +27,6 @@ API Reference
    ext
    cuda
    kernel
-   prof
    environment
    comparison
    array_api
