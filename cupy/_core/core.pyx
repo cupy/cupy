@@ -2353,7 +2353,8 @@ cdef ndarray _array_from_nested_cupy_sequence(obj, dtype, shape, order):
 
 cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
-        if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+        if isinstance(obj, numpy.ndarray) and \
+           obj.flags.f_contiguous and not obj.flags.c_contiguous:
             order = 'F'
         else:
             order = 'C'
