@@ -1,17 +1,115 @@
 # flake8: NOQA
 # "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+import numpy
+
+import cupy
+
+def asarray(a, dtype=None, order=None):
+    """Converts an object to array.
+
+    This is equivalent to ``array(a, dtype, copy=False)``.
+    This function currently does not support the ``order`` option.
+
+    Args:
+        a: The source object.
+        dtype: Data type specifier. It is inferred from the input by default.
+        order ({'C', 'F'}):
+            Whether to use row-major (C-style) or column-major (Fortran-style)
+            memory representation. Defaults to ``'C'``. ``order`` is ignored
+            for objects that are not :class:`cupy.ndarray`, but have the
+            ``__cuda_array_interface__`` attribute.
+
+    Returns:
+        cupy.ndarray: An array on the current device. If ``a`` is already on
+        the device, no copy is performed.
+
+    .. seealso:: :func:`numpy.asarray`
+
+    """
+    return _core.array(a, dtype, False, order)
 
 
-# TODO(okuta): Implement loadtxt
+def loadtxt(*args, **kwargs):
+    """Load data from a text file.
+
+    .. note::
+        Uses NumPy's ``loadtxt`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.loadtxt`
+    """
+    return asarray(numpy.loadtxt(*args, **kwargs))
 
 
-# TODO(okuta): Implement savetxt
+def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
+            footer='', comments='# ', encoding=None):
+    """Save an array to a text file.
+    Args:
+        fname : filename or file handle
+        If the filename ends in ``.gz``, the file is automatically saved in
+        compressed gzip format.  `loadtxt` understands gzipped files
+        transparently.
+        X : 1D or 2D array_like
+            Data to be saved to a text file.
+        fmt : str or sequence of strs, optional
+            A single format (%10.5f), a sequence of formats, or a
+            multi-format string, e.g. 'Iteration %d -- %10.5f', in which
+            case `delimiter` is ignored. For complex `X`, the legal options
+            for `fmt` are:
+            * a single specifier, `fmt='%.4e'`, resulting in numbers formatted
+            like `' (%s+%sj)' % (fmt, fmt)`
+            * a full string specifying every real and imaginary part, e.g.
+            `' %.4e %+.4ej %.4e %+.4ej %.4e %+.4ej'` for 3 columns
+            * a list of specifiers, one per column - in this case, the real
+            and imaginary part must have separate specifiers,
+            e.g. `['%.3e + %.3ej', '(%.15e%+.15ej)']` for 2 columns
+        delimiter : str, optional
+            String or character separating columns.
+        newline : str, optional
+            String or character separating lines.
+            .. versionadded:: 1.5.0
+        header : str, optional
+            String that will be written at the beginning of the file.
+            .. versionadded:: 1.7.0
+        footer : str, optional
+            String that will be written at the end of the file.
+            .. versionadded:: 1.7.0
+        comments : str, optional
+            String that will be prepended to the ``header`` and ``footer`` strings,
+            to mark them as comments. Default: '# ',  as expected by e.g.
+            ``numpy.loadtxt``.
+            .. versionadded:: 1.7.0
+        encoding : {None, str}, optional
+            Encoding used to encode the outputfile. Does not apply to output
+            streams. If the encoding is something other than 'bytes' or 'latin1'
+            you will not be able to load the file in NumPy versions < 1.14. Default
+            is 'latin1'.
+            .. versionadded:: 1.14.0
+    """
+    numpy.savetxt(fname, cupy.asnumpy(X), fmt, delimiter, newline, header,
+                  footer, comments, encoding)
 
 
 # TODO(okuta): Implement genfromtxt
 
 
-# TODO(okuta): Implement fromregex
+def fromstring(*args, **kwargs):
+    """A new 1-D array initialized from text data in a string.
+
+    .. note::
+        Uses NumPy's ``fromstring`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromstring`
+    """
+    return asarray(numpy.fromstring(*args, **kwargs))
 
 
-# TODO(okuta): Implement fromstring
+def fromregex(*args, **kwargs):
+    """Construct an array from a text file, using regular expression parsing.
+
+    .. note::
+        Uses NumPy's ``fromregex`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromregex`
+    """
+    return asarray(numpy.fromregex(*args, **kwargs))
+

@@ -178,36 +178,3 @@ def fromiter(*args, **kwargs):
     .. seealso:: :func:`numpy.fromiter`
     """
     return asarray(numpy.fromiter(*args, **kwargs))
-
-
-def fromstring(*args, **kwargs):
-    """A new 1-D array initialized from text data in a string.
-
-    .. note::
-        Uses NumPy's ``fromstring`` and coerces the result to a CuPy array.
-
-    .. seealso:: :func:`numpy.fromstring`
-    """
-    return asarray(numpy.fromstring(*args, **kwargs))
-
-
-def fromregex(*args, **kwargs):
-    """Construct an array from a text file, using regular expression parsing.
-
-    .. note::
-        Uses NumPy's ``fromregex`` and coerces the result to a CuPy array.
-
-    .. seealso:: :func:`numpy.fromregex`
-    """
-    return asarray(numpy.fromregex(*args, **kwargs))
-
-
-def loadtxt(*args, **kwargs):
-    """Load data from a text file.
-
-    .. note::
-        Uses NumPy's ``loadtxt`` and coerces the result to a CuPy array.
-
-    .. seealso:: :func:`numpy.loadtxt`
-    """
-    return asarray(numpy.loadtxt(*args, **kwargs))
