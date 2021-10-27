@@ -457,6 +457,7 @@ from cupy._io.npz import savez_compressed  # NOQA
 
 from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
+from cupy._io.formatting import array2string  # NOQA
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
