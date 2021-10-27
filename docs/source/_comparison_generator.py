@@ -104,8 +104,7 @@ def _section(
 _deprecated = 'Not supported as it has been deprecated in NumPy.'
 _np_matrix = (
     'Use of :class:`numpy.matrix` is discouraged in NumPy and thus'
-    ' we have no plan to add it to CuPy. Consider using'
-    ' :class:`cupyx.scipy.sparse` instead.')
+    ' we have no plan to add it to CuPy.')
 _dtype_na = (
     '`object` and string dtypes are not supported in GPU and thus'
     ' left unimplemented in CuPy.')
