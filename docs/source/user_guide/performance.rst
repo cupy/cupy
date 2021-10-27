@@ -54,9 +54,9 @@ Under construction. To mark with NVTX/rocTX ranges, you can use the :func:`cupyx
 Use CUB/cuTENSOR backends for reduction and other routines
 ----------------------------------------------------------
 
-For reduction operations (such as :func:`cupy.sum`, :func:`cupy.prod`, :func:`~cupy.amin`, :func:`~cupy.amax`, :func:`~cupy.argmin`, :func:`~cupy.argmax`) and many more routines built upon them, CuPy ships with our own implementations so that things just work out of box. However, there are dedicated efforts to further accelerate these routines, such as `CUB <https://github.com/NVIDIA/cub>`_ and `cuTENSOR <https://developer.nvidia.com/cutensor>`_.
+For reduction operations (such as :func:`~cupy.sum`, :func:`~cupy.prod`, :func:`~cupy.amin`, :func:`~cupy.amax`, :func:`~cupy.argmin`, :func:`~cupy.argmax`) and many more routines built upon them, CuPy ships with our own implementations so that things just work out of box. However, there are dedicated efforts to further accelerate these routines, such as `CUB <https://github.com/NVIDIA/cub>`_ and `cuTENSOR <https://developer.nvidia.com/cutensor>`_.
 
-In order to support more performant backends wherever applicable, starting v8 CuPy uses an environment variable :envvar:`CUPY_ACCELERATORS` to allow users to specify the desired backends (and in what order they are tried). For example, consider summing over a 256-cube array:
+In order to support more performant backends wherever applicable, starting v8 CuPy introduces an environment variable :envvar:`CUPY_ACCELERATORS` to allow users to specify the desired backends (and in what order they are tried). For example, consider summing over a 256-cube array:
 
 .. doctest::
 
@@ -65,7 +65,7 @@ In order to support more performant backends wherever applicable, starting v8 Cu
     >>> print(benchmark(a.sum, (), n_repeat=100))  # doctest: +SKIP
     sum                 :    CPU:   12.101 us   +/- 0.694 (min:   11.081 / max:   17.649) us     GPU-0:10174.898 us   +/-180.551 (min:10084.576 / max:10595.936) us
 
-We can see that it takes about 10 ms to run (on this machine). However, if we launch the Python session using ``CUPY_ACCELERATORS=cub python``, we get a ~100x speedup for free (only ~0.1 ms):
+We can see that it takes about 10 ms to run (on this GPU). However, if we launch the Python session using ``CUPY_ACCELERATORS=cub python``, we get a ~100x speedup for free (only ~0.1 ms):
 
 .. doctest::
 
@@ -75,7 +75,7 @@ We can see that it takes about 10 ms to run (on this machine). However, if we la
 CUB is a backend that is shipped with CuPy.
 It also accelerates other routines, such as inclusive scans (ex: :func:`~cupy.cumsum`), histograms,
 sparse matrix-vector multiplications (not applicable in CUDA 11), and :class:`cupy.ReductionKernel`.
-If cuTENSOR is installed, setting ``CUPY_ACCELERATORS=cub,cutensor``, for example, would try CUB first, and then try cuTENSOR next if CUB does not provide the needed support. In the case of both backends are not applicable, it falls back to CuPy's default implementation.
+If cuTENSOR is installed, setting ``CUPY_ACCELERATORS=cub,cutensor``, for example, would try CUB first and then cuTENSOR next, if CUB does not provide the needed support. In the case that both backends are not applicable, it falls back to CuPy's default implementation.
 
 Note that while in general the accelerated reductions are faster, there could be exceptions
 depending on the data layout. In particular, the CUB reduction only supports reduction over
