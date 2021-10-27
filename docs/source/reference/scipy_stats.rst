@@ -12,4 +12,5 @@ Summary statistics
 .. autosummary::
    :toctree: generated/
 
+   trim_mean
    entropy

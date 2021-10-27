@@ -40,8 +40,6 @@ Choose the right package for your platform.
 
 | Platform      | Command                       |
 | ------------- | ----------------------------- |
-| CUDA 10.0     | `pip install cupy-cuda100`    |
-| CUDA 10.1     | `pip install cupy-cuda101`    |
 | CUDA 10.2     | `pip install cupy-cuda102`    |
 | CUDA 11.0     | `pip install cupy-cuda110`    |
 | CUDA 11.1     | `pip install cupy-cuda111`    |

@@ -1,8 +1,7 @@
 import contextlib
-import functools
+import warnings
 
-from cupy import cuda
-from cupy_backends.cuda.api import runtime
+from cupyx.profiler import time_range as _time_range
 
 
 @contextlib.contextmanager
@@ -24,30 +23,20 @@ def time_range(message, color_id=None, argb_color=None, sync=False):
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
+
+    .. warning:: This context manager is deprecated. Please use
+        :class:`cupyx.profiler.time_range` instead.
     """
-    if not cuda.nvtx.available:
-        raise RuntimeError('nvtx is not installed')
+    warnings.warn(
+        'cupy.prof.time_range has been deprecated since CuPy v10 '
+        'and will be removed in the future. Use cupyx.profiler.time_range '
+        'instead.')
 
-    if color_id is not None and argb_color is not None:
-        raise ValueError('Only either color_id or argb_color can be specified')
-
-    if sync:
-        runtime.deviceSynchronize()
-    if argb_color is not None:
-        cuda.nvtx.RangePushC(message, argb_color)
-    else:
-        if color_id is None:
-            color_id = -1
-        cuda.nvtx.RangePush(message, color_id)
-    try:
+    with _time_range(message, color_id, argb_color, sync):
         yield
-    finally:
-        if sync:
-            runtime.deviceSynchronize()
-        cuda.nvtx.RangePop()
 
 
-class TimeRangeDecorator(object):
+class TimeRangeDecorator:
     """Decorator to mark function calls with range in NVIDIA profiler
 
     Decorated function calls are marked as ranges in NVIDIA profiler timeline.
@@ -67,44 +56,23 @@ class TimeRangeDecorator(object):
 
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
+
+    .. warning:: This decorator is deprecated. Please use
+        :class:`cupyx.profiler.time_range` instead.
     """
+
+    _init = _time_range.__init__
+    __enter__ = _time_range.__enter__
+    __exit__ = _time_range.__exit__
+    __call__ = _time_range.__call__
+    _recreate_cm = _time_range._recreate_cm
 
     def __init__(self, message=None, color_id=None, argb_color=None,
                  sync=False):
-        if not cuda.nvtx.available:
-            raise RuntimeError('nvtx is not installed')
 
-        if color_id is not None and argb_color is not None:
-            raise ValueError(
-                'Only either color_id or argb_color can be specified'
-            )
-        self.message = message
-        self.color_id = color_id if color_id is not None else -1
-        self.argb_color = argb_color
-        self.sync = sync
+        warnings.warn(
+            'cupy.prof.TimeRangeDecorator has been deprecated since CuPy v10 '
+            'and will be removed in the future. Use cupyx.profiler.time_range '
+            'instead.')
 
-    def __enter__(self):
-        if self.sync:
-            runtime.deviceSynchronize()
-        if self.argb_color is not None:
-            cuda.nvtx.RangePushC(self.message, self.argb_color)
-        else:
-            cuda.nvtx.RangePush(self.message, self.color_id)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.sync:
-            runtime.deviceSynchronize()
-        cuda.nvtx.RangePop()
-
-    def _recreate_cm(self, message):
-        if self.message is None:
-            self.message = message
-        return self
-
-    def __call__(self, func):
-        @functools.wraps(func)
-        def inner(*args, **kwargs):
-            with self._recreate_cm(func.__name__):
-                return func(*args, **kwargs)
-        return inner
+        self._init(message, color_id, argb_color, sync)
