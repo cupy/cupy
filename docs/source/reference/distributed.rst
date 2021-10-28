@@ -12,5 +12,4 @@ between different processes in CuPy.
    :toctree: generated/
 
    init_process_group
-   Backend
    NCCLBackend

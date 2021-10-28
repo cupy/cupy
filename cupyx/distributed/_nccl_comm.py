@@ -4,6 +4,8 @@ from cupyx.distributed import _store
 from cupyx.distributed._comm import Backend
 
 
+# types are not compliant with windows on long/int32 issue
+# but nccl does not support windows so we don't care
 _nccl_dtypes = {'b': nccl.NCCL_INT8,
                 'B': nccl.NCCL_UINT8,
                 'i': nccl.NCCL_INT32,
@@ -46,6 +48,9 @@ class NCCLBackend(Backend):
         if rank == 0:
             self._store.run(host, port)
             nccl_id = nccl.get_unique_id()
+            # get_unique_id return negative values due to cython issues
+            # with bytes && c strings. We shift them by 128 to
+            # avoid issues
             nccl_id = bytes([b + 128 for b in nccl_id])
             self._store_proxy['nccl_id'] = nccl_id
             self._store_proxy.barrier()
@@ -58,7 +63,8 @@ class NCCLBackend(Backend):
 
     def _check_contiguous(self, array):
         if not array.flags.c_contiguous and not array.flags.f_contiguous:
-            raise RuntimeError('NCCL requires arrays to be c-contiguous')
+            raise RuntimeError(
+                'NCCL requires arrays to be either c- or f-contiguous')
 
     def _get_nccl_dtype_and_count(self, array, count=None):
         dtype = array.dtype.char
@@ -129,11 +135,11 @@ class NCCLBackend(Backend):
             in_array.data.ptr, out_array.data.ptr,
             count, dtype, op, root, stream)
 
-    def broadcast(self, in_array, root=0, stream=None):
+    def broadcast(self, in_out_array, root=0, stream=None):
         """Performs a broadcast operation.
 
         Args:
-            in_array (cupy.ndarray): array to be sent for `root` rank.
+            in_out_array (cupy.ndarray): array to be sent for `root` rank.
                 Other ranks will receive the broadcast data here.
             root (int, optional): rank of the process that will send the
                 broadcast. Defaults to `0`.
@@ -141,11 +147,12 @@ class NCCLBackend(Backend):
                 perform the communication.
         """
         # in_array for root !=0 will be used as output
-        self._check_contiguous(in_array)
+        self._check_contiguous(in_out_array)
         stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array)
+        dtype, count = self._get_nccl_dtype_and_count(in_out_array)
         self._comm.broadcast(
-            in_array.data.ptr, in_array.data.ptr, count, dtype, root, stream)
+            in_out_array.data.ptr, in_out_array.data.ptr,
+            count, dtype, root, stream)
 
     def reduce_scatter(
             self, in_array, out_array, count, op='sum', stream=None):

@@ -122,8 +122,6 @@ class Get:
         return bytes(action)
 
     def __call__(self, store):
-        # TODO - return in KLV too
-        # wrap into GetResult class with klv, from_klv_methods
         return Get.GetResult(store.storage[self.key])
 
     def decode_result(self, data):
