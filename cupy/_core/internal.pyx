@@ -403,7 +403,7 @@ cpdef Py_ssize_t _normalize_axis_index(
     return axis
 
 
-cdef void _convert_multi_axis(axes, Py_ssize_t ndim, axis_flags_t& out) except *:
+cdef _convert_multi_axis(axes, Py_ssize_t ndim, vector.vector[bint]& out):
     cdef Py_ssize_t axis
     if axes is None:
         out.assign(ndim, True)
@@ -433,14 +433,14 @@ cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
 
     Returns:
         tuple of int:
-            The tuple of normalized axis indices.
+            The sorted tuple of normalized axis indices.
     """
-    cdef axis_flags_t flags
-    res = []
+    cdef vector.vector[bint] flags
+    cdef vector.vector[Py_ssize_t] res
     _convert_multi_axis(axes, ndim, flags)
     for axis in range(ndim):
         if flags[axis]:
-            res.append(axis)
+            res.push_back(axis)
     return tuple(res)
 
 

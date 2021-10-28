@@ -125,19 +125,16 @@ extern "C" __global__ void ${name}(${params}) {
 
 
 cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
-    cdef Py_ssize_t dim
-    if axis is None:
-        return (tuple(range(ndim)), ())
-    elif sequence.PySequence_Check(axis):
-        axis = tuple(axis)
-    else:
-        axis = axis,
-
-    # TODO(kataoka): detect duplicate value
-    reduce_axis = tuple(sorted(
-        [internal._normalize_axis_index(dim, ndim) for dim in axis]))
-    out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
-    return reduce_axis, out_axis
+    cdef vector.vector[bint] flags
+    cdef vector.vector[Py_ssize_t] reduce_axis, out_axis
+    cdef Py_ssize_t ax
+    internal._convert_multi_axis(axis, ndim, flags)
+    for ax in range(ndim):
+        if flags[ax]:
+            reduce_axis.push_back(ax)
+        else:
+            out_axis.push_back(ax)
+    return tuple(reduce_axis), tuple(out_axis)
 
 
 cpdef shape_t _get_out_shape(

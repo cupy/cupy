@@ -5,8 +5,6 @@ from libc.stdint cimport uint16_t
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
 
-ctypedef vector.vector[bint] axis_flags_t
-
 
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 
@@ -57,6 +55,7 @@ cpdef bint _contig_axes(tuple axes)
 cpdef Py_ssize_t _normalize_axis_index(
     Py_ssize_t axis, Py_ssize_t ndim) except -1
 
+cdef _convert_multi_axis(axes, Py_ssize_t ndim, vector.vector[bint]& out)
 cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim)
 cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret)
 cpdef tuple normalize_axis_tuple(axis, Py_ssize_t ndim)
