@@ -16,6 +16,8 @@ from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport core
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy._core._kernel cimport _check_peer_access
+
 from cupy.cuda import device
 
 
@@ -767,12 +769,8 @@ cdef ndarray _concatenate_single_kernel(
 
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
+        _check_peer_access(a, device_id)
         ptrs[i] = a.data.ptr
-        if a.data.device_id != device_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (a.data.device_id, device_id))
     x = core.array(ptrs)
 
     if same_shape_and_contiguous:

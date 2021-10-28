@@ -9,7 +9,6 @@ from cupy import testing
 import numpy
 
 
-@testing.gpu
 class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
@@ -321,6 +320,26 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_from_big_endian(self, xp, dtype):
+        dtype = numpy.dtype(dtype).newbyteorder('>')
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        b = xp.array(a)
+        # Make a computation here as just moving big-endian data back and forth
+        # happens to work before the change in #5828
+        return b + b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_array_from_list_of_numpy_big_endian(self, xp, dtype):
+        dtype = numpy.dtype(dtype).newbyteorder('>')
+        a = [testing.shaped_arange((3, 4), numpy, dtype) for i in range(2)]
+        b = xp.array(a)
+        # Make a computation here as just moving big-endian data back and forth
+        # happens to work before the change in #5828
+        return b + b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_asarray(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.asarray(a)
@@ -367,6 +386,16 @@ class TestFromData(unittest.TestCase):
             assert b.flags.c_contiguous
         return b
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asanyarray_from_big_endian(self, xp, dtype):
+        dtype = numpy.dtype(dtype).newbyteorder('>')
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        b = xp.asanyarray(a)
+        # Make a computation here as just moving big-endian data back and forth
+        # happens to work before the change in #5828
+        return b + b
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -409,6 +438,16 @@ class TestFromData(unittest.TestCase):
     def test_asarray_cuda_array_zero_dim_dtype(self, xp):
         a = xp.ones((), dtype=numpy.float64)
         return xp.ascontiguousarray(a, dtype=numpy.int64)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_from_big_endian(self, xp, dtype):
+        dtype = numpy.dtype(dtype).newbyteorder('>')
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        b = xp.asarray(a)
+        # Make a computation here as just moving big-endian data back and forth
+        # happens to work before the change in #5828
+        return b + b
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -458,6 +497,7 @@ class TestFromData(unittest.TestCase):
             return xp.fromfile(fh, dtype="u1")
 
     @testing.numpy_cupy_array_equal()
+
     def test_fromfunction(self, xp):
         def function(i, j): return i == j
         return xp.fromfunction(function, shape=(3, 3), dtype=int)
@@ -492,11 +532,21 @@ class TestFromData(unittest.TestCase):
             fh.seek(0)
             return xp.loadtxt(fh, dtype="u1")
 
+    def test_fromfile_big_endian(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"\x00\x00\x00\x01")
+            fh.flush()
+            fh.seek(0)
+            a = xp.fromfile(fh, dtype='>u4')
+            # Make a computation here as just moving big-endian data back and
+            # forth happens to work before the change in #5828
+            return a + a
+
+
 
 max_cuda_array_interface_version = 3
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'ver': tuple(range(max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
@@ -554,8 +604,19 @@ class TestCudaArrayInterface(unittest.TestCase):
         b_cpu = cupy.asnumpy(b)
         testing.assert_array_equal(a_cpu, b_cpu)
 
+    def test_big_endian(self):
+        a = cupy.array([0x1, 0x0, 0x0, 0x0], dtype=numpy.int8)
+        dtype = numpy.dtype('>i4')
+        shape = 1,
+        strides = 4,
+        data = a.data.ptr
+        b = DummyObjectWithCudaArrayInterface(
+            (shape, strides, dtype.str, dtype.descr, data),
+            self.ver, self.strides)
+        with pytest.raises(ValueError):
+            cupy.asarray(b)
 
-@testing.gpu
+
 @testing.parameterize(*testing.product({
     'ver': tuple(range(1, max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
@@ -576,7 +637,6 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
 
 # marked slow as either numpy or cupy could go OOM in this test
 @testing.slow
-@testing.gpu
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterfaceBigArray(unittest.TestCase):
@@ -593,7 +653,11 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
 class DummyObjectWithCudaArrayInterface(object):
     def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
-        self.a = a
+        self.a = None
+        if isinstance(a, cupy.ndarray):
+            self.a = a
+        else:
+            self.shape, self.strides, self.typestr, self.descr, self.data = a
         self.ver = ver
         self.include_strides = include_strides
         self.mask = mask
@@ -601,22 +665,37 @@ class DummyObjectWithCudaArrayInterface(object):
 
     @property
     def __cuda_array_interface__(self):
-        desc = {
-            'shape': self.a.shape,
-            'typestr': self.a.dtype.str,
-            'descr': self.a.dtype.descr,
-            'data': (self.a.data.ptr, False),
-            'version': self.ver,
-        }
-        if self.a.flags.c_contiguous:
-            if self.include_strides is True:
+        if self.a is not None:
+            desc = {
+                'shape': self.a.shape,
+                'typestr': self.a.dtype.str,
+                'descr': self.a.dtype.descr,
+                'data': (self.a.data.ptr, False),
+                'version': self.ver,
+            }
+            if self.a.flags.c_contiguous:
+                if self.include_strides is True:
+                    desc['strides'] = self.a.strides
+                elif self.include_strides is None:
+                    desc['strides'] = None
+                else:  # self.include_strides is False
+                    pass
+            else:  # F contiguous or neither
                 desc['strides'] = self.a.strides
+        else:
+            desc = {
+                'shape': self.shape,
+                'typestr': self.typestr,
+                'descr': self.descr,
+                'data': (self.data, False),
+                'version': self.ver,
+            }
+            if self.include_strides is True:
+                desc['strides'] = self.strides
             elif self.include_strides is None:
                 desc['strides'] = None
             else:  # self.include_strides is False
                 pass
-        else:  # F contiguous or neither
-            desc['strides'] = self.a.strides
         if self.mask is not None:
             desc['mask'] = self.mask
         # The stream field is kept here for compliance. However, since the

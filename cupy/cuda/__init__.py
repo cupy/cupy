@@ -167,7 +167,14 @@ def profile():
         When starting ``nvprof`` from the command line, manually setting
         ``--profile-from-start off`` may be required for the desired behavior.
 
+    .. warning:: This context manager is deprecated. Please use
+        :class:`cupyx.profiler.profile` instead.
     """
+    warnings.warn(
+        'cupy.cuda.profile has been deprecated since CuPy v10 '
+        'and will be removed in the future. Use cupyx.profiler.profile '
+        'instead.')
+
     profiler.start()
     try:
         yield

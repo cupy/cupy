@@ -9,7 +9,7 @@ from cupy._core cimport _cub_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
-from cupy._core._kernel cimport _check_array_device_id
+from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
 from cupy._core._kernel cimport _get_kernel_params
 from cupy._core._kernel cimport _get_out_args
@@ -209,6 +209,9 @@ cdef Py_ssize_t _get_contiguous_size(
 
 cdef Py_ssize_t _default_block_size = (
     256 if runtime._is_hip_environment else 512)
+cdef Py_ssize_t _min_block_size_log = 5
+cdef Py_ssize_t _max_block_size_log = (
+    8 if runtime._is_hip_environment else 9)
 
 
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
@@ -418,7 +421,8 @@ cdef class _AbstractReductionKernel:
                 post_map_expr, reduce_type, stream, self._params)
 
         def suggest_func(trial):
-            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size_log = trial.suggest_int(
+                'block_size_log', _min_block_size_log, _max_block_size_log)
             block_size = 2 ** block_size_log
             block_stride_log = trial.suggest_int(
                 'block_stride_log', 0, block_size_log)
@@ -548,12 +552,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         in_args = [arr]
 
         dev_id = device.get_device_id()
-        _check_array_device_id(arr, dev_id)
+        _check_peer_access(arr, dev_id)
 
         if out is None:
             out_args = []
         else:
-            _check_array_device_id(out, dev_id)
+            _check_peer_access(out, dev_id)
             out_args = [out]
 
         reduce_dims = True

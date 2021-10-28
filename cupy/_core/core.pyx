@@ -2284,7 +2284,7 @@ cdef ndarray _array_from_nested_sequence(
         concat_shape = (1,) * (ndmin - ndim) + concat_shape
 
     if dtype is None:
-        dtype = concat_dtype
+        dtype = concat_dtype.newbyteorder('<')
 
     if concat_type is numpy.ndarray:
         return _array_from_nested_numpy_sequence(
@@ -2359,9 +2359,10 @@ cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
             order = 'C'
     a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                         ndmin=ndmin)
-    a_dtype = a_cpu.dtype  # converted to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
-        raise ValueError('Unsupported dtype %s' % a_dtype)
+    if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
+    a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
+    a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
     cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
@@ -2577,6 +2578,8 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
+    if dtype.byteorder == '>':
+        raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')
     if mask is not None:
         raise ValueError('CuPy currently does not support masked arrays.')

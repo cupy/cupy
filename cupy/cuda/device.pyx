@@ -90,6 +90,26 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
+cdef bint _enable_peer_access(int device, int peer) except -1:
+    """Enable accessing memory allocated on `peer` from `device`."""
+    if device == peer:
+        return True
+
+    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+    if can_access == 0:
+        return False
+
+    cdef int current = runtime.getDevice()
+    runtime.setDevice(device)
+    try:
+        # Note: external libraries may disable the peer access, so we need to
+        # call this everytime. See #5496.
+        runtime._deviceEnsurePeerAccess(peer)
+    finally:
+        runtime.setDevice(current)
+    return True
+
+
 @_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""

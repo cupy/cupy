@@ -248,9 +248,6 @@ cdef class ManagedMemory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef set _peer_access_checked = set()
-
-
 @cython.final
 cdef class _Chunk:
 
@@ -410,7 +407,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -430,7 +427,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -589,26 +586,6 @@ cdef class MemoryPointer:
             stream_ptr = stream.ptr
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
-
-    @staticmethod
-    cdef _set_peer_access(int device_id, int peer_id):
-        device_pair = device_id, peer_id
-
-        if device_pair in _peer_access_checked:
-            return
-        cdef int can_access = runtime.deviceCanAccessPeer(device_id, peer_id)
-        _peer_access_checked.add(device_pair)
-        if not can_access:
-            return
-
-        with device.Device(device_id):
-            try:
-                runtime.deviceEnablePeerAccess(peer_id)
-            # peer access could already be set by external libraries at this
-            # point
-            except CUDARuntimeError as e:
-                if e.status != runtime.errorPeerAccessAlreadyEnabled:
-                    raise
 
 
 # cpdef because unit-tested

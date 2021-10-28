@@ -217,7 +217,7 @@ cpdef unicode getProgramLog(intptr_t prog):
     return log_ptr[:logSizeRet-1].decode('UTF-8')
 
 
-cpdef addAddNameExpression(intptr_t prog, str name):
+cpdef addNameExpression(intptr_t prog, str name):
     cdef bytes b_name = name.encode()
     cdef const char* c_name = b_name
     with nogil:
