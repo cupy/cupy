@@ -421,27 +421,8 @@ cdef _convert_multi_axis(axes, Py_ssize_t ndim, vector.vector[bint]& out):
         out[axis] = True
 
 
-cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
-    """Normalize axis indices.
-
-    Args:
-        axis (int, tuple of int or None):
-            The un-normalized indices of the axis. Can be negative.
-        ndim (int):
-            The number of dimensions of the array that ``axis`` should be
-            normalized against
-
-    Returns:
-        tuple of int:
-            The sorted tuple of normalized axis indices.
-    """
-    cdef vector.vector[bint] flags
-    cdef vector.vector[Py_ssize_t] res
-    _convert_multi_axis(axes, ndim, flags)
-    for axis in range(ndim):
-        if flags[axis]:
-            res.push_back(axis)
-    return tuple(res)
+# `_normalize_axis_indices` has been removed.
+# Use `_convert_multi_axis` or `normalize_axis_tuple`
 
 
 cdef _normalize_axis_tuple(
@@ -461,12 +442,44 @@ cdef _normalize_axis_tuple(
 
 cpdef tuple normalize_axis_tuple(
         axis, Py_ssize_t ndim, argname=None, bint allow_duplicate=False):
-    """Normalizes an axis argument into a tuple of non-negative integer axes.
-
-    The returned axes tuple is not necessarily sorted.
-    Arguments `argname` and `allow_duplicate` are not supported.
-
     """
+    Normalizes an axis argument into a tuple of non-negative integer axes.
+    
+    This handles shorthands such as ``1`` and converts them to ``(1,)``,
+    as well as performing the handling of negative indices covered by
+    `normalize_axis_index`.
+    
+    By default, this forbids axes from being specified multiple times.
+    
+    Used internally by multi-axis-checking logic.
+    
+    Parameters
+    ----------
+    axis : int, iterable of int
+        The un-normalized index or indices of the axis.
+    ndim : int
+        The number of dimensions of the array that `axis` should be normalized
+        against.
+    allow_duplicate : bool, optional
+        If False, the default, disallow an axis from being specified twice.
+    
+    Returns
+    -------
+    normalized_axes : tuple of int
+        The normalized axis index, such that `0 <= normalized_axis < ndim`
+    
+    Raises
+    ------
+    AxisError
+        If any axis provided is out of range
+    ValueError
+        If an axis is repeated
+    
+    See also
+    --------
+    normalize_axis_index : normalizing a single scalar axis
+    """
+    # argname is not yet supported
     cdef shape_t ret
     _normalize_axis_tuple(axis, ndim, ret, allow_duplicate)
     return tuple(ret)

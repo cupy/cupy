@@ -56,7 +56,6 @@ cpdef Py_ssize_t _normalize_axis_index(
     Py_ssize_t axis, Py_ssize_t ndim) except -1
 
 cdef _convert_multi_axis(axes, Py_ssize_t ndim, vector.vector[bint]& out)
-cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim)
 cdef _normalize_axis_tuple(
     axis, Py_ssize_t ndim, shape_t &ret, bint allow_duplicate=*)
 cpdef tuple normalize_axis_tuple(
