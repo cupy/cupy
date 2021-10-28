@@ -322,7 +322,7 @@ cpdef ndarray _T(ndarray self):
     return ret
 
 
-cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
+cdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
     cdef vector.vector[Py_ssize_t] a_axes
     cdef vector.vector[char] axis_flags
     cdef Py_ssize_t i, ndim, axis, axes_size

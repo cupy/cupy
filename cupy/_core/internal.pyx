@@ -403,6 +403,24 @@ cpdef Py_ssize_t _normalize_axis_index(
     return axis
 
 
+cdef void _convert_multi_axis(axes, Py_ssize_t ndim, axis_flags_t& out) except *:
+    cdef Py_ssize_t axis
+    if axes is None:
+        out.assign(ndim, True)
+        return
+    elif not isinstance(axes, tuple):
+        # list is not supported by `PyArray_ConvertMultiAxis`
+        axes = axes,
+
+    out.assign(ndim, False)
+    for axis in axes:
+        axis = _normalize_axis_index(axis, ndim)
+        if out[axis]:
+            # the message in `numpy/core/src/multiarray/conversion_utils.c`
+            raise ValueError('duplicate value in \'axis\'')
+        out[axis] = True
+
+
 cpdef tuple _normalize_axis_indices(
         axes, Py_ssize_t ndim, cpp_bool sort_axes=True):
     """Normalize axis indices.
@@ -421,20 +439,27 @@ cpdef tuple _normalize_axis_indices(
         tuple of int:
             The tuple of normalized axis indices.
     """
-    if axes is None:
-        axes = tuple(range(ndim))
-    elif not isinstance(axes, tuple):
-        axes = axes,
-
+    cdef axis_flags_t flags
     res = []
-    for axis in axes:
-        axis = _normalize_axis_index(axis, ndim)
-        if axis in res:
-            # the message in `numpy/core/src/multiarray/conversion_utils.c`
-            raise ValueError('duplicate value in \'axis\'')
-        res.append(axis)
+    if sort_axes:
+        _convert_multi_axis(axes, ndim, flags)
+        for axis in range(ndim):
+            if flags[axis]:
+                res.append(axis)
+    else:
+        # TODO(kataoka): deprecate sort_axes=False
+        if axes is None:
+            axes = tuple(range(ndim))
+        elif not isinstance(axes, tuple):
+            axes = axes,
 
-    return tuple(sorted(res) if sort_axes else res)
+        for axis in axes:
+            axis = _normalize_axis_index(axis, ndim)
+            if axis in res:
+                # the message in `numpy/core/src/multiarray/conversion_utils.c`
+                raise ValueError('duplicate value in \'axis\'')
+            res.append(axis)
+    return tuple(res)
 
 
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):

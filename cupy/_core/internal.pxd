@@ -5,6 +5,8 @@ from libc.stdint cimport uint16_t
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
 
+ctypedef vector.vector[bint] axis_flags_t
+
 
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 

@@ -31,7 +31,7 @@ cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=*)
 cpdef ndarray broadcast_to(ndarray array, shape)
 cpdef ndarray _reshape(ndarray self, const shape_t &shape_spec)
 cpdef ndarray _T(ndarray self)
-cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes)
+cdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes)
 cpdef ndarray _concatenate(
     list arrays, Py_ssize_t axis, tuple shape, ndarray out, str casting)
 cpdef ndarray concatenate_method(
