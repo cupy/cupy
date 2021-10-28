@@ -462,7 +462,6 @@ from cupy._io.formatting import array2string  # NOQA
 from cupy._io.text import savetxt  # NOQA
 
 
-
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
     """Return a string representation of a number in the given base system.
 
