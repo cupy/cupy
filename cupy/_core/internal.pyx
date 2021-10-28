@@ -466,7 +466,7 @@ cpdef tuple normalize_axis_tuple(axis, Py_ssize_t ndim):
     """
     cdef shape_t ret
     _normalize_axis_tuple(axis, ndim, ret)
-    return ret
+    return tuple(ret)
 
 
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
