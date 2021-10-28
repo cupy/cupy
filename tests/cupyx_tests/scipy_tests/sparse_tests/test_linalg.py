@@ -216,7 +216,7 @@ class TestEigsh:
 @testing.with_requires('scipy')
 class TestSvds:
     density = 0.33
-    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-12}
+    tol = {numpy.float32: 1e-4, numpy.complex64: 2e-4, 'default': 1e-12}
 
     def _make_matrix(self, dtype, xp):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
