@@ -30,7 +30,9 @@ def flip(a, axis=None):
     if a_ndim < 1:
         raise numpy.AxisError('Input must be >= 1-d')
 
-    axes = internal._normalize_axis_indices(axis, a_ndim)
+    axes = (
+        tuple(range(a_ndim)) if axis is None
+        else internal.normalize_axis_tuple(axis, a_ndim))
     return _flip(a, axes)
 
 

@@ -419,7 +419,7 @@ class TraceImpl:
             raise NotImplementedError(
                 'Reduction for scalar arguments is not supported.')
 
-        axes = internal._normalize_axis_indices(axis, in_param.ndim)
+        axes, out_axes = _reduction._get_axis(axis, in_param.ndim)
 
         if dtype is not None:
             dtype = numpy.dtype(dtype)
@@ -428,10 +428,8 @@ class TraceImpl:
             raise NotImplementedError('keepdims is not supported.')
 
         # Determine the shape of out_param.
-        out_ashape = tuple([
-            d for axis, d in enumerate(in_param.ashape) if axis not in axes])
-        out_rshape = tuple([
-            d for axis, d in enumerate(in_param.rshape) if axis not in axes])
+        out_ashape = tuple([in_param.ashape[axis] for axis in out_axes])
+        out_rshape = tuple([in_param.rshape[axis] for axis in out_axes])
 
         # Rotate axes.
         # This condition is only for performance improvement,
