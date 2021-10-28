@@ -497,7 +497,6 @@ class TestFromData(unittest.TestCase):
             return xp.fromfile(fh, dtype="u1")
 
     @testing.numpy_cupy_array_equal()
-
     def test_fromfunction(self, xp):
         def function(i, j): return i == j
         return xp.fromfunction(function, shape=(3, 3), dtype=int)
@@ -541,7 +540,6 @@ class TestFromData(unittest.TestCase):
             # Make a computation here as just moving big-endian data back and
             # forth happens to work before the change in #5828
             return a + a
-
 
 
 max_cuda_array_interface_version = 3

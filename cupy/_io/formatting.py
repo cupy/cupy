@@ -70,20 +70,24 @@ def array2string(a, max_line_width=None, precision=None,
             Inserted between elements.
         prefix : str, optional
         suffix : str, optional
-            The length of the prefix and suffix strings are used to respectively
+            The length of the prefix and suffix strings are used to
+            respectively
             align and wrap the output. An array is typically printed as::
             prefix + array2string(a) + suffix
             The output is left-padded by the length of the prefix string, and
             wrapping is forced at the column ``max_line_width - len(suffix)``.
-            It should be noted that the content of prefix and suffix strings are
+            It should be noted that the content of prefix and suffix strings
+            are
             not included in the output.
         style : _NoValue, optional
             Has no effect, do not use.
             .. deprecated:: 1.14.0
         formatter : dict of callables, optional
-            If not None, the keys should indicate the type(s) that the respective
+            If not None, the keys should indicate the type(s) that the
+            respective
             formatting function applies to.  Callables should return a string.
-            Types that are not specified (by their corresponding keys) are handled
+            Types that are not specified (by their corresponding keys) are
+            handled
             by the default formatters.  Individual types for which a formatter
             can be set are:
             - 'bool'
@@ -111,7 +115,8 @@ def array2string(a, max_line_width=None, precision=None,
             each dimension.
             Defaults to ``numpy.get_printoptions()['edgeitems']``.
         sign : string, either '-', '+', or ' ', optional
-            Controls printing of the sign of floating-point types. If '+', always
+            Controls printing of the sign of floating-point types. If '+',
+            always
             print the sign of positive values. If ' ', always prints a space
             (whitespace character) in the sign position of positive values.  If
             '-', omit the sign character of positive values.
@@ -136,8 +141,10 @@ def array2string(a, max_line_width=None, precision=None,
             represented with an equal number of fewer digits, use that
             many digits for all elements.
         legacy : string or `False`, optional
-            If set to the string `'1.13'` enables 1.13 legacy printing mode. This
-            approximates numpy 1.13 print output by including a space in the sign
+            If set to the string `'1.13'` enables 1.13 legacy printing mode.
+            This
+            approximates numpy 1.13 print output by including a space in the
+            sign
             position of floats and different behavior for 0d arrays. If set to
             `False`, disables legacy mode. Unrecognized strings will be ignored
             with a warning for forward compatibility.
