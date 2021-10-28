@@ -334,17 +334,17 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
 
     ndim = self._shape.size()
     if axes_size != ndim:
-        raise ValueError('Invalid axes value: %s' % str(axes))
+        raise ValueError("axes don't match array")
 
     axis_flags.resize(ndim, 0)
     for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
-            raise IndexError('Axes overrun')
+            raise numpy.AxisError(axis, ndim)
         axis %= ndim
         a_axes.push_back(axis)
         if axis_flags[axis]:
-            raise ValueError('Invalid axes value: %s' % str(axes))
+            raise ValueError('repeated axis in transpose')
         axis_flags[axis] = 1
         is_normal &= i == axis
         is_trans &= ndim - 1 - i == axis
