@@ -4,28 +4,32 @@ from cupyx.distributed import _store
 from cupyx.distributed._comm import _Backend
 
 
-# types are not compliant with windows on long/int32 issue
-# but nccl does not support windows so we don't care
-_nccl_dtypes = {'b': nccl.NCCL_INT8,
-                'B': nccl.NCCL_UINT8,
-                'i': nccl.NCCL_INT32,
-                'I': nccl.NCCL_UINT32,
-                'l': nccl.NCCL_INT64,
-                'L': nccl.NCCL_UINT64,
-                'q': nccl.NCCL_INT64,
-                'Q': nccl.NCCL_UINT64,
-                'e': nccl.NCCL_FLOAT16,
-                'f': nccl.NCCL_FLOAT32,
-                'd': nccl.NCCL_FLOAT64,
-                # Size of array will be doubled
-                'F': nccl.NCCL_FLOAT32,
-                'D': nccl.NCCL_FLOAT64}
+if nccl.available:
+    # types are not compliant with windows on long/int32 issue
+    # but nccl does not support windows so we don't care
+    _nccl_dtypes = {'b': nccl.NCCL_INT8,
+                    'B': nccl.NCCL_UINT8,
+                    'i': nccl.NCCL_INT32,
+                    'I': nccl.NCCL_UINT32,
+                    'l': nccl.NCCL_INT64,
+                    'L': nccl.NCCL_UINT64,
+                    'q': nccl.NCCL_INT64,
+                    'Q': nccl.NCCL_UINT64,
+                    'e': nccl.NCCL_FLOAT16,
+                    'f': nccl.NCCL_FLOAT32,
+                    'd': nccl.NCCL_FLOAT64,
+                    # Size of array will be doubled
+                    'F': nccl.NCCL_FLOAT32,
+                    'D': nccl.NCCL_FLOAT64}
 
+    _nccl_ops = {'sum': nccl.NCCL_SUM,
+                 'prod': nccl.NCCL_PROD,
+                 'max': nccl.NCCL_MAX,
+                 'min': nccl.NCCL_MIN}
+else:
+    _nccl_dtypes = {}
 
-_nccl_ops = {'sum': nccl.NCCL_SUM,
-             'prod': nccl.NCCL_PROD,
-             'max': nccl.NCCL_MAX,
-             'min': nccl.NCCL_MIN}
+    _nccl_ops = {}
 
 
 class NCCLBackend(_Backend):
