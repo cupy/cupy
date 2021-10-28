@@ -444,15 +444,15 @@ cpdef tuple normalize_axis_tuple(
         axis, Py_ssize_t ndim, argname=None, bint allow_duplicate=False):
     """
     Normalizes an axis argument into a tuple of non-negative integer axes.
-    
+
     This handles shorthands such as ``1`` and converts them to ``(1,)``,
     as well as performing the handling of negative indices covered by
     `normalize_axis_index`.
-    
+
     By default, this forbids axes from being specified multiple times.
-    
+
     Used internally by multi-axis-checking logic.
-    
+
     Parameters
     ----------
     axis : int, iterable of int
@@ -462,19 +462,19 @@ cpdef tuple normalize_axis_tuple(
         against.
     allow_duplicate : bool, optional
         If False, the default, disallow an axis from being specified twice.
-    
+
     Returns
     -------
     normalized_axes : tuple of int
         The normalized axis index, such that `0 <= normalized_axis < ndim`
-    
+
     Raises
     ------
     AxisError
         If any axis provided is out of range
     ValueError
         If an axis is repeated
-    
+
     See also
     --------
     normalize_axis_index : normalizing a single scalar axis
