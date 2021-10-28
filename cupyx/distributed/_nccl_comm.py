@@ -1,7 +1,7 @@
 import cupy
 from cupy.cuda import nccl
 from cupyx.distributed import _store
-from cupyx.distributed._comm import Backend
+from cupyx.distributed._comm import _Backend
 
 
 # types are not compliant with windows on long/int32 issue
@@ -28,7 +28,7 @@ _nccl_ops = {'sum': nccl.NCCL_SUM,
              'min': nccl.NCCL_MIN}
 
 
-class NCCLBackend(Backend):
+class NCCLBackend(_Backend):
     """Interface that uses NVIDIA's NCCL to perform communications.
 
     Args:
