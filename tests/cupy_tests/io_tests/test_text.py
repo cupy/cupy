@@ -19,4 +19,3 @@ class TestText(unittest.TestCase):
             cupy.savetxt(tmp_cupy.name, cupy.array(array))
             numpy.savetxt(tmp_numpy.name, numpy.array(array))
             assert filecmp.cmp(tmp_cupy.name, tmp_numpy.name)
-    pass
