@@ -214,7 +214,7 @@ cpdef ndarray _expand_dims(ndarray a, tuple axis):
     cdef vector.vector[Py_ssize_t] normalized_axis
     cdef out_ndim = a.ndim + len(axis)
     cdef shape_t a_shape = a.shape, out_shape
-    _normalize_axis_tuple(axis, out_ndim, normalized_axis)
+    internal._normalize_axis_tuple(axis, out_ndim, normalized_axis)
     out_shape.assign(out_ndim, 0)
     cdef Py_ssize_t i, j
     for i in normalized_axis:
@@ -231,8 +231,8 @@ cpdef ndarray _expand_dims(ndarray a, tuple axis):
 cpdef ndarray moveaxis(ndarray a, source, destination):
     cdef shape_t src, dest
     cdef Py_ssize_t ndim = a.ndim
-    _normalize_axis_tuple(source, ndim, src)
-    _normalize_axis_tuple(destination, ndim, dest)
+    internal._normalize_axis_tuple(source, ndim, src)
+    internal._normalize_axis_tuple(destination, ndim, dest)
 
     if src.size() != dest.size():
         raise ValueError('`source` and `destination` arguments must have '
@@ -241,7 +241,7 @@ cpdef ndarray moveaxis(ndarray a, source, destination):
     cdef vector.vector[Py_ssize_t] order
     cdef Py_ssize_t i
     for i in range(ndim):
-        if not _has_element(src, i):
+        if not internal.is_in(src, i):
             order.push_back(i)
 
     cdef Py_ssize_t d, s
@@ -691,14 +691,6 @@ cdef bint _can_cast(d1, d2, casting):
         return True
     return _numpy_can_cast(d1, d2, casting=casting)
 
-
-cdef bint _has_element(const shape_t &source, Py_ssize_t n):
-    for i in range(source.size()):
-        if source[i] == n:
-            return True
-    return False
-
-
 cdef _get_strides_for_nocopy_reshape(
         ndarray a, const shape_t &newshape, strides_t &newstrides):
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
@@ -736,23 +728,6 @@ cdef _get_strides_for_nocopy_reshape(
         newstrides.push_back(last_stride)
         if shape[dim] == 1:
             dim += 1
-
-
-cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
-    """Normalizes an axis argument into a tuple of non-negative integer axes.
-
-    Arguments `argname` and `allow_duplicate` are not supported.
-
-    """
-    if numpy.isscalar(axis):
-        axis = (axis,)
-
-    for ax in axis:
-        ax = internal._normalize_axis_index(ax, ndim)
-        if _has_element(ret, ax):
-            # the message in `numpy.core.numeric.normalize_axis_tuple`
-            raise ValueError('repeated axis')
-        ret.push_back(ax)
 
 
 cdef ndarray _concatenate_single_kernel(

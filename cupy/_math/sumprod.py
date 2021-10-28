@@ -337,7 +337,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
     """
     f = cupy.asanyarray(f)
     ndim = f.ndim  # number of dimensions
-    axes = internal._normalize_axis_indices(axis, ndim, sort_axes=False)
+    axes = internal.normalize_axis_tuple(axis, ndim)
 
     len_axes = len(axes)
     n = len(varargs)

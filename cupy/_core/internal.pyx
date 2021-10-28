@@ -421,8 +421,7 @@ cdef void _convert_multi_axis(axes, Py_ssize_t ndim, axis_flags_t& out) except *
         out[axis] = True
 
 
-cpdef tuple _normalize_axis_indices(
-        axes, Py_ssize_t ndim, cpp_bool sort_axes=True):
+cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
     """Normalize axis indices.
 
     Args:
@@ -431,9 +430,6 @@ cpdef tuple _normalize_axis_indices(
         ndim (int):
             The number of dimensions of the array that ``axis`` should be
             normalized against
-        sort_axes (bool):
-            If provided as False will not sort the axes, default is to return
-            the sorted values.
 
     Returns:
         tuple of int:
@@ -441,25 +437,36 @@ cpdef tuple _normalize_axis_indices(
     """
     cdef axis_flags_t flags
     res = []
-    if sort_axes:
-        _convert_multi_axis(axes, ndim, flags)
-        for axis in range(ndim):
-            if flags[axis]:
-                res.append(axis)
-    else:
-        # TODO(kataoka): deprecate sort_axes=False
-        if axes is None:
-            axes = tuple(range(ndim))
-        elif not isinstance(axes, tuple):
-            axes = axes,
-
-        for axis in axes:
-            axis = _normalize_axis_index(axis, ndim)
-            if axis in res:
-                # the message in `numpy/core/src/multiarray/conversion_utils.c`
-                raise ValueError('duplicate value in \'axis\'')
+    _convert_multi_axis(axes, ndim, flags)
+    for axis in range(ndim):
+        if flags[axis]:
             res.append(axis)
     return tuple(res)
+
+
+cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
+    ret.clear()
+    if numpy.isscalar(axis):
+        axis = (axis,)
+
+    for ax in axis:
+        ax = _normalize_axis_index(ax, ndim)
+        if is_in(ret, ax):
+            # the message in `numpy.core.numeric.normalize_axis_tuple`
+            raise ValueError('repeated axis')
+        ret.push_back(ax)
+
+
+cpdef tuple normalize_axis_tuple(axis, Py_ssize_t ndim):
+    """Normalizes an axis argument into a tuple of non-negative integer axes.
+
+    The returned axes tuple is not necessarily sorted.
+    Arguments `argname` and `allow_duplicate` are not supported.
+
+    """
+    cdef shape_t ret
+    _normalize_axis_tuple(axis, ndim, ret)
+    return ret
 
 
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
