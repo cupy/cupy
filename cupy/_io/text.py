@@ -1,8 +1,8 @@
 # flake8: NOQA
 # "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
 import numpy
-
 import cupy
+
 
 def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
             footer='', comments='# ', encoding=None):
@@ -38,14 +38,17 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
             String that will be written at the end of the file.
             .. versionadded:: 1.7.0
         comments : str, optional
-            String that will be prepended to the ``header`` and ``footer`` strings,
+            String that will be prepended to the ``header`` and ``footer``
+            strings,
             to mark them as comments. Default: '# ',  as expected by e.g.
             ``numpy.loadtxt``.
             .. versionadded:: 1.7.0
         encoding : {None, str}, optional
             Encoding used to encode the outputfile. Does not apply to output
-            streams. If the encoding is something other than 'bytes' or 'latin1'
-            you will not be able to load the file in NumPy versions < 1.14. Default
+            streams. If the encoding is something other than 'bytes' or
+            'latin1'
+            you will not be able to load the file in NumPy versions < 1.14.
+            Default
             is 'latin1'.
             .. versionadded:: 1.14.0
     """
@@ -54,5 +57,3 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
 
 
 # TODO(okuta): Implement genfromtxt
-
-
