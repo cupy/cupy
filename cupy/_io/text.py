@@ -4,42 +4,6 @@ import numpy
 
 import cupy
 
-def asarray(a, dtype=None, order=None):
-    """Converts an object to array.
-
-    This is equivalent to ``array(a, dtype, copy=False)``.
-    This function currently does not support the ``order`` option.
-
-    Args:
-        a: The source object.
-        dtype: Data type specifier. It is inferred from the input by default.
-        order ({'C', 'F'}):
-            Whether to use row-major (C-style) or column-major (Fortran-style)
-            memory representation. Defaults to ``'C'``. ``order`` is ignored
-            for objects that are not :class:`cupy.ndarray`, but have the
-            ``__cuda_array_interface__`` attribute.
-
-    Returns:
-        cupy.ndarray: An array on the current device. If ``a`` is already on
-        the device, no copy is performed.
-
-    .. seealso:: :func:`numpy.asarray`
-
-    """
-    return _core.array(a, dtype, False, order)
-
-
-def loadtxt(*args, **kwargs):
-    """Load data from a text file.
-
-    .. note::
-        Uses NumPy's ``loadtxt`` and coerces the result to a CuPy array.
-
-    .. seealso:: :func:`numpy.loadtxt`
-    """
-    return asarray(numpy.loadtxt(*args, **kwargs))
-
-
 def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
             footer='', comments='# ', encoding=None):
     """Save an array to a text file.
@@ -91,25 +55,4 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
 
 # TODO(okuta): Implement genfromtxt
 
-
-def fromstring(*args, **kwargs):
-    """A new 1-D array initialized from text data in a string.
-
-    .. note::
-        Uses NumPy's ``fromstring`` and coerces the result to a CuPy array.
-
-    .. seealso:: :func:`numpy.fromstring`
-    """
-    return asarray(numpy.fromstring(*args, **kwargs))
-
-
-def fromregex(*args, **kwargs):
-    """Construct an array from a text file, using regular expression parsing.
-
-    .. note::
-        Uses NumPy's ``fromregex`` and coerces the result to a CuPy array.
-
-    .. seealso:: :func:`numpy.fromregex`
-    """
-    return asarray(numpy.fromregex(*args, **kwargs))
 

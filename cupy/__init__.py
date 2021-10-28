@@ -243,6 +243,9 @@ from cupy._creation.from_data import fromfile  # NOQA
 from cupy._creation.from_data import fromfunction  # NOQA
 from cupy._creation.from_data import fromiter  # NOQA
 from cupy._creation.from_data import frombuffer  # NOQA
+from cupy._creation.from_data import fromstring  # NOQA
+from cupy._creation.from_data import loadtxt  # NOQA
+from cupy._creation.from_data import fromregex  # NOQA
 
 from cupy._creation.ranges import arange  # NOQA
 from cupy._creation.ranges import linspace  # NOQA
@@ -456,10 +459,9 @@ from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
 from cupy._io.formatting import array2string  # NOQA
 
-from cupy._io.text import fromstring  # NOQA
-from cupy._io.text import loadtxt  # NOQA
+
 from cupy._io.text import savetxt  # NOQA
-from cupy._io.text import fromregex  # NOQA
+
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)

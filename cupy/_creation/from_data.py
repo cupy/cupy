@@ -4,7 +4,7 @@ from cupy import _core
 from cupy._core import fusion
 
 
-def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
+def array(obj, dtype=None, copy=True, order="K", subok=False, ndmin=0):
     """Creates an array on the current device.
 
     This function currently does not support the ``subok`` option.
@@ -110,7 +110,7 @@ def ascontiguousarray(a, dtype=None):
 # TODO(okuta): Implement asmatrix
 
 
-def copy(a, order='K'):
+def copy(a, order="K"):
     """Creates a copy of a given array on the current device.
 
     This function allocates the new array on the current device. If the given
@@ -133,9 +133,10 @@ def copy(a, order='K'):
 
     """
     if fusion._is_fusing():
-        if order != 'K':
+        if order != "K":
             raise NotImplementedError(
-                'cupy.copy does not support `order` in fusion yet.')
+                "cupy.copy does not support `order` in fusion yet."
+            )
         return fusion._call_ufunc(_core.elementwise_copy, a)
 
     # If the current device is different from the device of ``a``, then this
@@ -193,3 +194,36 @@ def fromiter(*args, **kwargs):
     .. seealso:: :func:`numpy.fromiter`
     """
     return asarray(numpy.fromiter(*args, **kwargs))
+
+
+def fromstring(*args, **kwargs):
+    """A new 1-D array initialized from text data in a string.
+
+    .. note::
+        Uses NumPy's ``fromstring`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromstring`
+    """
+    return asarray(numpy.fromstring(*args, **kwargs))
+
+
+def fromregex(*args, **kwargs):
+    """Construct an array from a text file, using regular expression parsing.
+
+    .. note::
+        Uses NumPy's ``fromregex`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromregex`
+    """
+    return asarray(numpy.fromregex(*args, **kwargs))
+
+
+def loadtxt(*args, **kwargs):
+    """Load data from a text file.
+
+    .. note::
+        Uses NumPy's ``loadtxt`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.loadtxt`
+    """
+    return asarray(numpy.loadtxt(*args, **kwargs))
