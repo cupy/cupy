@@ -444,20 +444,23 @@ cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
     return tuple(res)
 
 
-cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
+cdef _normalize_axis_tuple(
+        axis, Py_ssize_t ndim, shape_t &ret, bint allow_duplicate=False):
+    cdef bint deny_duplicate = not allow_duplicate
     ret.clear()
     if numpy.isscalar(axis):
         axis = (axis,)
 
     for ax in axis:
         ax = _normalize_axis_index(ax, ndim)
-        if is_in(ret, ax):
+        if deny_duplicate and is_in(ret, ax):
             # the message in `numpy.core.numeric.normalize_axis_tuple`
             raise ValueError('repeated axis')
         ret.push_back(ax)
 
 
-cpdef tuple normalize_axis_tuple(axis, Py_ssize_t ndim):
+cpdef tuple normalize_axis_tuple(
+        axis, Py_ssize_t ndim, argname=None, bint allow_duplicate=False):
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
     The returned axes tuple is not necessarily sorted.
@@ -465,7 +468,7 @@ cpdef tuple normalize_axis_tuple(axis, Py_ssize_t ndim):
 
     """
     cdef shape_t ret
-    _normalize_axis_tuple(axis, ndim, ret)
+    _normalize_axis_tuple(axis, ndim, ret, allow_duplicate)
     return tuple(ret)
 
 

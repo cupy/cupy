@@ -3,7 +3,6 @@ import itertools
 import numpy
 
 import cupy
-from cupy._core import _reduction
 from cupy._core import internal
 
 
@@ -101,7 +100,7 @@ def roll(a, shift, axis=None):
         return roll(a.ravel(), shift, 0).reshape(a.shape)
     elif isinstance(shift, cupy.ndarray):
         shift = shift.ravel()
-        axes = _reduction._get_axis(axis, a.ndim)[0]
+        axes = internal.normalize_axis_tuple(axis, a.ndim, allow_duplicate=True)
         n_axes = max(len(axes), shift.size)
         axes = numpy.broadcast_to(axes, (n_axes,))
         shift = cupy.broadcast_to(shift, (n_axes,))
@@ -122,7 +121,7 @@ def roll(a, shift, axis=None):
 
         return a[tuple(indices)]
     else:
-        axis = _reduction._get_axis(axis, a.ndim)[0]
+        axis = internal.normalize_axis_tuple(axis, a.ndim, allow_duplicate=True)
 
         broadcasted = numpy.broadcast(shift, axis)
         if broadcasted.nd > 1:
