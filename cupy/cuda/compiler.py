@@ -11,6 +11,7 @@ import warnings
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
@@ -807,6 +808,12 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     #   are accepted, see ROCm-Developer-Tools/HIP#2182 and
     #   ROCm-Developer-Tools/HIP#2248
     options += ('-fcuda-flush-denormals-to-zero',)
+
+    # Workaround ROCm 4.3 LLVM_PATH issue in hipRTC #5689
+    rocm_build_version = driver.get_build_version()
+    if rocm_build_version >= 40300000 and rocm_build_version < 40500000:
+        options += (
+            '-I' + get_rocm_path() + '/llvm/lib/clang/13.0.0/include/',)
 
     if cache_dir is None:
         cache_dir = get_cache_dir()
