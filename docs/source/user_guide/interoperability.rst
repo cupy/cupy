@@ -296,7 +296,7 @@ Be aware that in TensorFlow all tensors are immutable, so in the latter case any
 Note that as of DLPack v0.5 for correctness the above approach (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams.
 
 DLPack data exchange protocol
-=============================
+*****************************
 
 To obviate user-managed streams and DLPack tensor objects, the `DLPack data exchange protocol <https://data-apis.org/array-api/latest/design_topics/data_interchange.html>`_ provides a mechanism to shift the responsibility from users to libraries. Any compliant objects (such as :class:`cupy.ndarray`) must implement a pair of methods ``__dlpack__`` and ``__dlpack_device__``. The function :func:`cupy.from_dlpack` accepts such object and returns a :class:`cupy.ndarray` that is safely accessible on CuPy's current stream. Likewise, :class:`cupy.ndarray` can be exported via any compliant library's ``from_dlpack()`` function.
 
