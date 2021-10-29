@@ -305,6 +305,7 @@ numpy: {numpy_r.shape}''')
             if contiguous_check:
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result):
                     if isinstance(numpy_r, numpy.ndarray):
+                        assert cupy_r.strides == numpy_r.strides
                         if (numpy_r.flags.c_contiguous
                                 and not cupy_r.flags.c_contiguous):
                             raise AssertionError(
