@@ -293,6 +293,14 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 cupy: {}
 numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
 
+            # Check shapes
+            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
+                if cupy_r.shape != numpy_r.shape:
+                    raise AssertionError(
+                        f'''ndarrays of different shapes are returned.
+cupy: {cupy_r.shape}
+numpy: {numpy_r.shape}''')
+
             # Check contiguities
             if contiguous_check:
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result):
@@ -311,10 +319,6 @@ numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
                                 '(cupy_result:{} numpy_result:{})'.format(
                                     cupy_r.flags.f_contiguous,
                                     numpy_r.flags.f_contiguous))
-
-            # Check shapes
-            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
-                assert cupy_r.shape == numpy_r.shape
 
             masks = [None] * len(cupy_result)
             if _contains_signed_and_unsigned(kw):
