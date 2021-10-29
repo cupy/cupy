@@ -4,7 +4,10 @@ import inspect
 import numpy
 
 
-def _get_functions(obj, exclude=[]):
+_footnotes = {}
+
+
+def _get_functions(obj, exclude=None):
     return set([
         n for n, target in [(n, getattr(obj, n)) for n in dir(obj)]
         if (
@@ -34,7 +37,8 @@ def _import(mod, klass):
 
 
 def _generate_comparison_rst(
-        base_mod, cupy_mod, base_type, klass, exclude_mod, exclude):
+        base_mod, cupy_mod, base_type, klass, exclude_mod, exclude,
+        footnotes=None):
     base_obj, base_fmt = _import(base_mod, klass)
     base_funcs = _get_functions(base_obj, exclude)
     cp_obj, cp_fmt = _import(cupy_mod, klass)
@@ -53,12 +57,19 @@ def _generate_comparison_rst(
         '',
     ]
     for f in sorted(base_funcs):
+        footnote_id = None
+        if footnotes is not None and f in footnotes:
+            footnote_id = _footnotes.setdefault(
+                footnotes[f], f'f{len(_footnotes)}')
+
         base_cell = base_fmt.format(f)
         cp_cell = r'\-'
         if f in cp_funcs:
             cp_cell = cp_fmt.format(f)
             if getattr(base_obj, f) is getattr(cp_obj, f):
                 cp_cell = '{} (*alias of* {})'.format(cp_cell, base_cell)
+        if footnote_id is not None:
+            cp_cell += f' [#{footnote_id}]_'
         line = '   {}, {}'.format(base_cell, cp_cell)
         buf.append(line)
 
@@ -77,16 +88,26 @@ def _generate_comparison_rst(
 
 def _section(
         header, base_mod, cupy_mod,
-        base_type='NumPy', klass=None, exclude_mod=None, exclude=None):
+        base_type='NumPy', klass=None, exclude_mod=None, exclude=None,
+        footnotes=None):
     return [
         header,
         '~' * len(header),
         '',
     ] + _generate_comparison_rst(
-        base_mod, cupy_mod, base_type, klass, exclude_mod, exclude
+        base_mod, cupy_mod, base_type, klass, exclude_mod, exclude, footnotes
     ) + [
         '',
     ]
+
+
+_deprecated = 'Not supported as it has been deprecated in NumPy.'
+_np_matrix = (
+    'Use of :class:`numpy.matrix` is discouraged in NumPy and thus'
+    ' we have no plan to add it to CuPy.')
+_dtype_na = (
+    '`object` and string dtypes are not supported in GPU and thus'
+    ' left unimplemented in CuPy.')
 
 
 def generate():
@@ -107,7 +128,33 @@ def generate():
             'fastCopyAndTranspose',
             'test',
             'Tester',
-        ])
+        ], footnotes={
+            'Datetime64': _deprecated,  # NumPy 1.20
+            'Uint64': _deprecated,  # NumPy 1.20
+            'mafromtxt': _deprecated,  # NumPy 1.17
+
+            'asmatrix': _np_matrix,
+            'bmat': _np_matrix,
+            'mat': _np_matrix,
+            'matrix': _np_matrix,
+
+            'Bytes0': _dtype_na,  # also deprecated in NumPy 1.20
+            'bytes0': _dtype_na,
+            'bytes_': _dtype_na,
+            'character': _dtype_na,
+            'chararray': _dtype_na,
+            'compare_chararrays': _dtype_na,
+            'flexible': _dtype_na,
+            'object0': _dtype_na,
+            'object_': _dtype_na,
+            'Str0': _dtype_na,  # also deprecated in NumPy 1.20
+            'str0': _dtype_na,
+            'str_': _dtype_na,
+            'string_': _dtype_na,
+            'unicode_': _dtype_na,
+            'void': _dtype_na,
+            'void0': _dtype_na,
+        })
     buf += _section(
         'Multi-Dimensional Array',
         'numpy', 'cupy', klass='ndarray')
@@ -161,5 +208,14 @@ def generate():
         'Statistical Functions',
         'scipy.stats', 'cupyx.scipy.stats', 'SciPy',
         exclude=['test'])
+
+    buf += [
+        '',
+        '.. rubric:: Footnotes',
+        '',
+    ] + [
+        f'.. [#{footnote_id}] {footnote}'
+        for footnote, footnote_id in _footnotes.items()
+    ]
 
     return '\n'.join(buf)
