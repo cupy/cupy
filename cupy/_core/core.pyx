@@ -1,5 +1,6 @@
 # distutils: language = c++
 
+import contextlib
 import functools
 import os
 import pickle
@@ -88,6 +89,8 @@ cdef inline _should_use_rop(x, y):
 
 cdef tuple _HANDLED_TYPES
 
+cdef object _null_context = contextlib.nullcontext()
+
 
 cdef class ndarray:
 
@@ -137,6 +140,10 @@ cdef class ndarray:
             raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
+        if len(s) > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {len(s)}'
+            raise ValueError(msg)
         self._shape.reserve(len(s))
         for x in s:
             if x < 0:
@@ -171,6 +178,10 @@ cdef class ndarray:
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
         cdef Py_ssize_t itemsize
+        if shape.size() > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
+            raise ValueError(msg)
         self._shape = shape
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
         self._set_contiguous_strides(itemsize, c_order)
@@ -253,8 +264,14 @@ cdef class ndarray:
 
     def __dlpack_device__(self):
         if not runtime._is_hip_environment:
-            # TODO(leofang): support kDLCUDAManaged
-            device_type = dlpack.device_CUDA
+            attrs = runtime.pointerGetAttributes(self.data.ptr)
+            is_managed = (
+                attrs.type == runtime.memoryTypeManaged
+                and _util.CUPY_DLPACK_EXPORT_VERSION >= (0, 6))
+            if is_managed:
+                device_type = dlpack.managed_CUDA
+            else:
+                device_type = dlpack.device_CUDA
         else:
             device_type = dlpack.device_ROCM
         return (device_type, self.device)
@@ -535,11 +552,9 @@ cdef class ndarray:
             return self.astype(self.dtype, order=order)
 
         # It need to make a contiguous copy for copying from another device
-        runtime.setDevice(self.data.device_id)
-        try:
+        with self.device:
             x = self.astype(self.dtype, order=order, copy=False)
-        finally:
-            runtime.setDevice(dev_id)
+
         newarray = _ndarray_init(x._shape, x.dtype)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
@@ -548,17 +563,16 @@ cdef class ndarray:
         newarray._strides = x._strides
         newarray._c_contiguous = x._c_contiguous
         newarray._f_contiguous = x._f_contiguous
+
+        copy_context = _null_context
         if runtime._is_hip_environment:
             # HIP requires changing the active device to the one where
             # src data is before the copy. From the docs:
             # it is recommended to set the current device to the device
             # where the src data is physically located.
-            runtime.setDevice(self.data.device_id)
-        try:
+            copy_context = self.device
+        with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
-        finally:
-            if runtime._is_hip_environment:
-                runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):
@@ -951,15 +965,15 @@ cdef class ndarray:
         """
         return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
-    cpdef ndarray clip(self, a_min=None, a_max=None, out=None):
-        """Returns an array with values limited to [a_min, a_max].
+    cpdef ndarray clip(self, min=None, max=None, out=None):
+        """Returns an array with values limited to [min, max].
 
         .. seealso::
            :func:`cupy.clip` for full documentation,
            :meth:`numpy.ndarray.clip`
 
         """
-        return _math._ndarray_clip(self, a_min, a_max, out)
+        return _math._ndarray_clip(self, min, max, out)
 
     cpdef ndarray round(self, decimals=0, out=None):
         """Returns an array with values rounded to the given number of decimals.
@@ -1122,7 +1136,12 @@ cdef class ndarray:
         return _math._negative(self)
 
     def __pos__(self):
-        return self
+        if self.dtype == numpy.bool_:
+            msg = ("Applying '+' to a non-numerical array is ill-defined. "
+                   'Returning a copy, but in the future this will error.')
+            warnings.warn(msg, DeprecationWarning)
+            return self.copy()
+        return _math._positive(self)
 
     def __abs__(self):
         return _math._absolute(self)
@@ -1799,6 +1818,10 @@ cdef class ndarray:
                                  bint update_f_contiguity):
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
+        if shape.size() > _carray.MAX_NDIM:
+            msg = f'maximum supported dimension for an ndarray is '
+            msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
+            raise ValueError(msg)
         self._shape = shape
         self._strides = strides
         self.size = internal.prod(shape)
@@ -2029,13 +2052,7 @@ cpdef function.Module compile_with_cache(
             _cuda_path = cuda.get_rocm_path()
 
     if not _is_hip:
-        if 9020 <= _cuda_runtime_version < 9030:
-            bundled_include = 'cuda-9.2'
-        elif 10000 <= _cuda_runtime_version < 10010:
-            bundled_include = 'cuda-10.0'
-        elif 10010 <= _cuda_runtime_version < 10020:
-            bundled_include = 'cuda-10.1'
-        elif 10020 <= _cuda_runtime_version < 10030:
+        if 10020 <= _cuda_runtime_version < 10030:
             bundled_include = 'cuda-10.2'
         elif 11000 <= _cuda_runtime_version < 11010:
             bundled_include = 'cuda-11.0'
@@ -2069,7 +2086,7 @@ cpdef function.Module compile_with_cache(
     if _cuda_path is not None:
         options += ('-I' + os.path.join(_cuda_path, 'include'),)
 
-    return cuda.compile_with_cache(
+    return cuda.compiler._compile_module_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
@@ -2197,185 +2214,91 @@ _round_ufunc = create_ufunc(
 cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
                     bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
-    cdef Py_ssize_t ndim
-    cdef ndarray a, src
-    cdef size_t nbytes
-
     if subok:
         raise NotImplementedError
     if order is None:
         order = 'K'
 
     if isinstance(obj, ndarray):
-        src = obj
-        if dtype is None:
-            dtype = src.dtype
-        if src.data.device_id == device.get_device_id():
-            a = src.astype(dtype, order=order, copy=copy)
-        else:
-            a = src.copy(order=order).astype(dtype, copy=False)
-
-        ndim = a._shape.size()
-        if ndmin > ndim:
-            if a is obj:
-                # When `copy` is False, `a` is same as `obj`.
-                a = a.view()
-            a.shape = (1,) * (ndmin - ndim) + a.shape
-        return a
+        return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
 
     if hasattr(obj, '__cuda_array_interface__'):
-        return array(_convert_object_with_cuda_array_interface(obj),
-                     dtype, copy, order, subok, ndmin)
+        return _array_from_cuda_array_interface(
+            obj, dtype, copy, order, subok, ndmin)
 
-    # obj is sequence, numpy array, scalar or the other type of object
-    shape, elem_type, elem_dtype = _get_concat_shape(obj)
-    if shape is not None and shape[-1] != 0:
-        # obj is a non-empty sequence of ndarrays which share same shape
-        # and dtype
+    concat_shape, concat_type, concat_dtype = (
+        _array_info_from_nested_sequence(obj))
+    if concat_shape is not None:
+        return _array_from_nested_sequence(
+            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype)
 
-        # resulting array is C order unless 'F' is explicitly specified
-        # (i.e., it ignores order of element arrays in the sequence)
-        order = (
-            'F'
-            if order is not None and len(order) >= 1 and order[0] in 'Ff'
-            else 'C')
-        ndim = len(shape)
-        if ndmin > ndim:
-            shape = (1,) * (ndmin - ndim) + shape
-
-        if dtype is None:
-            dtype = elem_dtype
-        # Note: dtype might not be numpy.dtype in this place
-
-        if issubclass(elem_type, numpy.ndarray):
-            # obj is Seq[numpy.ndarray]
-            return _send_numpy_array_list_to_gpu(
-                obj, elem_dtype, dtype, shape, order, ndmin)
-
-        # obj is Seq[cupy.ndarray]
-        assert issubclass(elem_type, ndarray), elem_type
-        lst = _flatten_list(obj)
-
-        # convert each scalar (0-dim) ndarray to 1-dim
-        lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
-
-        a =_manipulation.concatenate_method(lst, 0)
-        a = a.reshape(shape)
-        a = a.astype(dtype, order=order, copy=False)
-        return a
-
-    # obj is:
-    # - numpy array
-    # - scalar or sequence of scalar
-    # - empty sequence or sequence with elements whose shapes or
-    #   dtypes are unmatched
-    # - other types
-
-    # fallback to numpy array and send it to GPU
-    # Note: dtype might not be numpy.dtype in this place
-    return _send_object_to_gpu(obj, dtype, order, ndmin)
+    return _array_default(obj, dtype, order, ndmin)
 
 
-cdef tuple _get_concat_shape(object obj):
-    # Returns a tuple of the following:
-    # 1. concatenated shape if it can be converted to a single CuPy array by
-    #    just concatenating it (i.e., the object is a (nested) sequence only
-    #    which contains NumPy/CuPy array(s) with same shape and dtype).
-    #    Returns None otherwise.
-    # 2. type of the first item in the object
-    # 3. dtype if the object is an array
-    if isinstance(obj, (list, tuple)):
-        return _get_concat_shape_impl(obj)
-    return (None, None, None)
+cdef ndarray _array_from_cupy_ndarray(
+        obj, dtype, bint copy, order, Py_ssize_t ndmin):
+    cdef Py_ssize_t ndim
+    cdef ndarray a, src
 
+    src = obj
 
-cdef tuple _get_concat_shape_impl(object obj):
-    cdef obj_type = type(obj)
-    if issubclass(obj_type, (numpy.ndarray, ndarray)):
-        # obj.shape is () when obj.ndim == 0
-        return (obj.shape, obj_type, obj.dtype)
-    if isinstance(obj, (list, tuple)):
-        shape = None
-        typ = None
-        dtype = None
-        for elem in obj:
-            # Find the head recursively if obj is a nested built-in list
-            elem_shape, elem_type, elem_dtype = _get_concat_shape_impl(elem)
+    if dtype is None:
+        dtype = src.dtype
 
-            # Use shape of the first element as the common shape.
-            if shape is None:
-                shape = elem_shape
-                typ = elem_type
-                dtype = elem_dtype
-
-            # `elem` is not concatable or the shape and dtype does not match
-            # with siblings.
-            if elem_shape is None or shape != elem_shape:
-                return (None, obj_type, None)
-
-            if dtype != elem_dtype:
-                dtype = numpy.promote_types(dtype, elem_dtype)
-
-        if shape is None:
-            shape = ()
-        return (
-            (len(obj),) + shape,
-            typ,
-            dtype)
-    # scalar or object
-    return (None, obj_type, None)
-
-
-cdef list _flatten_list(object obj):
-    ret = []
-    if isinstance(obj, (list, tuple)):
-        for elem in obj:
-            ret += _flatten_list(elem)
-        return ret
-    return [obj]
-
-
-cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
-    if order is not None and len(order) >= 1 and order[0] in 'KAka':
-        if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
-            order = 'F'
-        else:
-            order = 'C'
-    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
-                        ndmin=ndmin)
-    a_dtype = a_cpu.dtype  # converted to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
-        raise ValueError('Unsupported dtype %s' % a_dtype)
-    cdef shape_t a_shape = a_cpu.shape
-    cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
-    if a_cpu.ndim == 0:
-        a.fill(a_cpu)
-        return a
-    cdef Py_ssize_t nbytes = a.nbytes
-
-    stream = stream_module.get_current_stream()
-    # Note: even if obj is already backed by pinned memory, we still need to
-    # allocate an extra buffer and copy from it to avoid potential data race,
-    # see the discussion here:
-    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
-    cdef pinned_memory.PinnedMemoryPointer mem = (
-        _alloc_async_transfer_buffer(nbytes))
-    if mem is not None:
-        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-        src_cpu[:] = a_cpu.ravel(order)
-        a.data.copy_from_host_async(mem.ptr, nbytes)
-        pinned_memory._add_to_watch_list(stream.record(), mem)
+    if src.data.device_id == device.get_device_id():
+        a = src.astype(dtype, order=order, copy=copy)
     else:
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
+        a = src.copy(order=order).astype(dtype, copy=False)
+
+    ndim = a._shape.size()
+    if ndmin > ndim:
+        if a is obj:
+            # When `copy` is False, `a` is same as `obj`.
+            a = a.view()
+        a.shape = (1,) * (ndmin - ndim) + a.shape
 
     return a
 
 
-cdef ndarray _send_numpy_array_list_to_gpu(
-        list arrays, src_dtype, dst_dtype,
-        const shape_t& shape,
-        order, Py_ssize_t ndmin):
+cdef ndarray _array_from_cuda_array_interface(
+        obj, dtype, bint copy, order, bint subok, Py_ssize_t ndmin):
+    return array(
+        _convert_object_with_cuda_array_interface(obj),
+        dtype, copy, order, subok, ndmin)
 
+
+cdef ndarray _array_from_nested_sequence(
+        obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
+        concat_dtype):
+    cdef Py_ssize_t ndim
+
+    # resulting array is C order unless 'F' is explicitly specified
+    # (i.e., it ignores order of element arrays in the sequence)
+    order = (
+        'F'
+        if order is not None and len(order) >= 1 and order[0] in 'Ff'
+        else 'C')
+
+    ndim = len(concat_shape)
+    if ndmin > ndim:
+        concat_shape = (1,) * (ndmin - ndim) + concat_shape
+
+    if dtype is None:
+        dtype = concat_dtype.newbyteorder('<')
+
+    if concat_type is numpy.ndarray:
+        return _array_from_nested_numpy_sequence(
+            obj, concat_dtype, dtype, concat_shape, order, ndmin)
+    elif concat_type is ndarray:
+        return _array_from_nested_cupy_sequence(
+            obj, dtype, concat_shape, order)
+    else:
+        assert False
+
+
+cdef ndarray _array_from_nested_numpy_sequence(
+        arrays, src_dtype, dst_dtype, const shape_t& shape, order,
+        Py_ssize_t ndmin):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2414,6 +2337,112 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
+
+
+cdef ndarray _array_from_nested_cupy_sequence(obj, dtype, shape, order):
+    lst = _flatten_list(obj)
+
+    # convert each scalar (0-dim) ndarray to 1-dim
+    lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
+
+    a = _manipulation.concatenate_method(lst, 0)
+    a = a.reshape(shape)
+    a = a.astype(dtype, order=order, copy=False)
+    return a
+
+
+cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
+    if order is not None and len(order) >= 1 and order[0] in 'KAka':
+        if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+            order = 'F'
+        else:
+            order = 'C'
+    a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
+                        ndmin=ndmin)
+    if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
+        raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
+    a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
+    a_dtype = a_cpu.dtype
+    cdef shape_t a_shape = a_cpu.shape
+    cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
+    if a_cpu.ndim == 0:
+        a.fill(a_cpu)
+        return a
+    cdef Py_ssize_t nbytes = a.nbytes
+
+    stream = stream_module.get_current_stream()
+    # Note: even if obj is already backed by pinned memory, we still need to
+    # allocate an extra buffer and copy from it to avoid potential data race,
+    # see the discussion here:
+    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
+    cdef pinned_memory.PinnedMemoryPointer mem = (
+        _alloc_async_transfer_buffer(nbytes))
+    if mem is not None:
+        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+        src_cpu[:] = a_cpu.ravel(order)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
+        pinned_memory._add_to_watch_list(stream.record(), mem)
+    else:
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
+
+    return a
+
+
+cdef tuple _array_info_from_nested_sequence(obj):
+    # Returns a tuple containing information if we can simply concatenate the
+    # input to make a CuPy array (i.e., a (nested) sequence that only contains
+    # NumPy/CuPy arrays with the same shape and dtype). `(None, None, None)`
+    # means we do not concatenate the input.
+    # 1. A concatenated shape
+    # 2. The type of the arrays to concatenate (numpy.ndarray or cupy.ndarray)
+    # 3. The dtype of the arrays to concatenate
+    if isinstance(obj, (list, tuple)):
+        return _compute_concat_info_impl(obj)
+    else:
+        return None, None, None
+
+
+cdef tuple _compute_concat_info_impl(obj):
+    cdef Py_ssize_t dim
+
+    if isinstance(obj, (numpy.ndarray, ndarray)):
+        return obj.shape, type(obj), obj.dtype
+
+    if isinstance(obj, (list, tuple)):
+        dim = len(obj)
+        if dim == 0:
+            return None, None, None
+
+        concat_shape, concat_type, concat_dtype = (
+            _compute_concat_info_impl(obj[0]))
+        if concat_shape is None:
+            return None, None, None
+
+        for elem in obj[1:]:
+            concat_shape1, concat_type1, concat_dtype1 = (
+                _compute_concat_info_impl(elem))
+            if concat_shape1 is None:
+                return None, None, None
+
+            if concat_shape != concat_shape1:
+                return None, None, None
+            if concat_type is not concat_type1:
+                return None, None, None
+            if concat_dtype != concat_dtype1:
+                concat_dtype = numpy.promote_types(concat_dtype, concat_dtype1)
+
+        return (dim,) + concat_shape, concat_type, concat_dtype
+
+    return None, None, None
+
+
+cdef list _flatten_list(object obj):
+    ret = []
+    if isinstance(obj, (list, tuple)):
+        for elem in obj:
+            ret += _flatten_list(elem)
+        return ret
+    return [obj]
 
 
 cdef bint _numpy_concatenate_has_out_argument = (
@@ -2549,6 +2578,8 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
+    if dtype.byteorder == '>':
+        raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')
     if mask is not None:
         raise ValueError('CuPy currently does not support masked arrays.')

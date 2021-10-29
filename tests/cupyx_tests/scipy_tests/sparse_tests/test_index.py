@@ -1,6 +1,5 @@
 import functools
 import itertools
-import unittest
 
 import numpy
 import pytest
@@ -40,7 +39,7 @@ def _check_shares_memory(xp, sp, x, y):
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
-class TestSetitemIndexing(unittest.TestCase):
+class TestSetitemIndexing:
 
     def _run(self, maj, min=None, data=5):
 
@@ -318,7 +317,7 @@ class TestSetitemIndexing(unittest.TestCase):
             self._run(maj, min, data)
 
 
-class IndexingTestBase(unittest.TestCase):
+class IndexingTestBase:
 
     def _make_matrix(self, sp, dtype):
         shape = self.n_rows, self.n_cols
@@ -409,7 +408,20 @@ def skip_HIP_0_size_matrix():
     return decorator
 
 
-@testing.parameterize(*testing.product({
+def _check_bounds(indices, n_rows, n_cols, **kwargs):
+    if not isinstance(indices, tuple):
+        indices = (indices,)
+    for index, size in zip(indices, [n_rows, n_cols]):
+        if isinstance(index, list):
+            for ind in index:
+                if not (0 <= ind < size):
+                    # CuPy does not check boundaries.
+                    # pytest.skip('Out of bounds')
+                    return False
+    return True
+
+
+@testing.parameterize(*[params for params in testing.product({
     'format': ['csr', 'csc'],
     'density': [0.0, 0.5],
     'n_rows': [1, 25],
@@ -435,21 +447,10 @@ def skip_HIP_0_size_matrix():
             ([2, 0, 2], [2, 1, 2]),
         ]
     )
-}))
+}) if _check_bounds(**params)])
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestArrayIndexing(IndexingTestBase):
-
-    def setUp(self):
-        indices = self.indices
-        if not isinstance(indices, tuple):
-            indices = (indices,)
-        for index, size in zip(indices, [self.n_rows, self.n_cols]):
-            if isinstance(index, list):
-                for ind in index:
-                    if not (0 <= ind < size):
-                        # CuPy does not check boundaries.
-                        pytest.skip('Out of bounds')
 
     @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')

@@ -163,6 +163,8 @@ class ndarray(object):
     gets initialized with a cupy ndarray.
     """
 
+    __doc__ = np.ndarray.__doc__
+
     def __new__(cls, *args, **kwargs):
         """
         If `_initial_array` and `_supports_cupy` are arguments,
@@ -360,6 +362,7 @@ def _create_magic_methods():
             if self._supports_cupy:
                 return _call_cupy(_method, args, kwargs)
             return _call_numpy(_method, args, kwargs)
+        method.__doc__ = getattr(np.ndarray, name).__doc__
         return method
 
     for method in (
@@ -406,6 +409,8 @@ _create_magic_methods()
 
 class vectorize(object):
 
+    __doc__ = np.vectorize.__doc__
+
     def __init__(self, *args, **kwargs):
         # NumPy will raise error if pyfunc is a cupy method
         self.__dict__['_is_numpy_pyfunc'] = False
@@ -417,16 +422,13 @@ class vectorize(object):
             args = (args[0]._numpy_object,) + args[1:]
         notification._dispatch_notification(np.vectorize)
         self.__dict__['vec_obj'] = np.vectorize(*args, **kwargs)
+        self.__dict__['__doc__'] = self.__dict__['vec_obj'].__doc__
 
     def __getattr__(self, attr):
         return getattr(self.__dict__['vec_obj'], attr)
 
     def __setattr__(self, name, value):
         return setattr(self.vec_obj, name, value)
-
-    @property
-    def __doc__(self):
-        return self.vec_obj.__doc__
 
     def __call__(self, *args, **kwargs):
         if self._is_numpy_pyfunc:

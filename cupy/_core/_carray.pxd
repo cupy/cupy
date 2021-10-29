@@ -7,7 +7,9 @@ from cupy.cuda cimport function
 ctypedef vector.vector[Py_ssize_t] shape_t
 ctypedef vector.vector[Py_ssize_t] strides_t
 
-DEF MAX_NDIM = 25
+# this matches NPY_MAXDIMS
+# Note: we make it an enum to work around cython/cython#4369
+cdef enum: MAX_NDIM = 32
 
 
 cdef struct _CArray:
@@ -24,7 +26,7 @@ cdef class CArray(function.CPointer):
 
     cdef void init(
         self, void* data_ptr, Py_ssize_t data_size,
-        const shape_t& shape, const strides_t& strides)
+        const shape_t& shape, const strides_t& strides) except*
 
 
 cdef struct _CIndexer:
@@ -36,7 +38,7 @@ cdef class CIndexer(function.CPointer):
     cdef:
         _CIndexer val
 
-    cdef void init(self, Py_ssize_t size, const shape_t &shape)
+    cdef void init(self, Py_ssize_t size, const shape_t &shape) except*
 
 
 cdef class Indexer:

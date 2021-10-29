@@ -243,9 +243,9 @@ __device__ double loggam(double x) {
     return gl;
 }
 
-__device__ int64_t rk_hypergeometric_hyp(rk_state *state, double good, double bad, double sample) {
-    int64_t Z;
-    double K, d1, d2, U, Y;
+__device__ int64_t rk_hypergeometric_hyp(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+    int64_t d1, K, Z;
+    double d2, U, Y;
 
     d1 = bad + good - sample;
     d2 = min(bad, good);
@@ -260,27 +260,30 @@ __device__ int64_t rk_hypergeometric_hyp(rk_state *state, double good, double ba
         if (K == 0) break;
     }
     Z = (int64_t)(d2 - Y);
-    if (good > bad) Z = (int64_t)sample - Z;
+    if (good > bad) Z = sample - Z;
     return Z;
 }
 
 
-__device__ int64_t rk_hypergeometric_hrua(rk_state *state, double good, double bad, double sample) {
+__device__ int64_t rk_hypergeometric_hrua(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+
+    int64_t mingoodbad, maxgoodbad, popsize, m, d9;
     int64_t Z;
-    double m, mingoodbad, maxgoodbad, popsize, d4, d5, d6, d7, d8, d9, d10, d11, T, W, X, Y;
+    double d4, d5, d6, d7, d8, d10, d11, T, W, X, Y;
     double D1=1.7155277699214135, D2=0.8989161620588988;
 
     mingoodbad = min(good, bad);
     popsize = good + bad;
     maxgoodbad = max(good, bad);
     m = min(sample, popsize - sample);
-    d4 = mingoodbad / popsize;
+    d4 = ((double)mingoodbad) / popsize;
     d5 = 1.0 - d4;
     d6 = m*d4 + 0.5;
-    d7 = sqrt((popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
+    d7 = sqrt((double)(popsize - m) * sample * d4 * d5 / (popsize - 1) + 0.5);
     d8 = D1*d7 + D2;
-    d9 = floor((m + 1) * (mingoodbad + 1) / (popsize + 2));
-    d10 = loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) + loggam(maxgoodbad-m+d9+1);
+    d9 = (int64_t)floor((double)(m + 1) * (mingoodbad + 1) / (popsize + 2));
+    d10 = (loggam(d9+1) + loggam(mingoodbad-d9+1) + loggam(m-d9+1) +
+	   loggam(maxgoodbad-m+d9+1));
     d11 = min(min(m, mingoodbad)+1.0, floor(d6+16*d7));
     /* 16 for 16-decimal-digit precision in D1 and D2 */
 
@@ -302,13 +305,13 @@ __device__ int64_t rk_hypergeometric_hrua(rk_state *state, double good, double b
         if (2.0*log(X) <= T) break;
     }
 
-    if (good > bad) Z = (int64_t)m - Z;
-    if (m < sample) Z = (int64_t)good - Z;
+    if (good > bad) Z = m - Z;
+    if (m < sample) Z = good - Z;
 
     return Z;
 }
 
-__device__ int64_t rk_hypergeometric(rk_state *state, double good, double bad, double sample) {
+__device__ int64_t rk_hypergeometric(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
     if (sample > 10) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
@@ -430,6 +433,178 @@ __device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask)
     return sampled;
 }
 
+__device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p, rk_binomial_state *binomial_state) {
+    double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
+    double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
+    int m,y,k,i;
+
+    if (!(binomial_state->initialized) ||
+         (binomial_state->nsave != n) ||
+         (binomial_state->psave != p)) {
+        /* initialize */
+        binomial_state->nsave = n;
+        binomial_state->psave = p;
+        binomial_state->initialized = 1;
+        binomial_state->r = r = min(p, 1.0-p);
+        binomial_state->q = q = 1.0 - r;
+        binomial_state->fm = fm = n*r+r;
+        binomial_state->m = m = (long)floor(binomial_state->fm);
+        binomial_state->p1 = p1 = floor(2.195*sqrt(n*r*q)-4.6*q) + 0.5;
+        binomial_state->xm = xm = m + 0.5;
+        binomial_state->xl = xl = xm - p1;
+        binomial_state->xr = xr = xm + p1;
+        binomial_state->c = c = 0.134 + 20.5/(15.3 + m);
+        a = (fm - xl)/(fm-xl*r);
+        binomial_state->laml = laml = a*(1.0 + a/2.0);
+        a = (xr - fm)/(xr*q);
+        binomial_state->lamr = lamr = a*(1.0 + a/2.0);
+        binomial_state->p2 = p2 = p1*(1.0 + 2.0*c);
+        binomial_state->p3 = p3 = p2 + c/laml;
+        binomial_state->p4 = p4 = p3 + c/lamr;
+    } else {
+        r = binomial_state->r;
+        q = binomial_state->q;
+        fm = binomial_state->fm;
+        m = binomial_state->m;
+        p1 = binomial_state->p1;
+        xm = binomial_state->xm;
+        xl = binomial_state->xl;
+        xr = binomial_state->xr;
+        c = binomial_state->c;
+        laml = binomial_state->laml;
+        lamr = binomial_state->lamr;
+        p2 = binomial_state->p2;
+        p3 = binomial_state->p3;
+        p4 = binomial_state->p4;
+    }
+  /* sigh ... */
+  Step10:
+    nrq = n*r*q;
+    u = state->rk_double()*p4;
+    v = state->rk_double();
+    if (u > p1) goto Step20;
+    y = (long)floor(xm - p1*v + u);
+    goto Step60;
+  Step20:
+    if (u > p2) goto Step30;
+    x = xl + (u - p1)/c;
+    v = v*c + 1.0 - fabs(m - x + 0.5)/p1;
+    if (v > 1.0) goto Step10;
+    y = (long)floor(x);
+    goto Step50;
+  Step30:
+    if (u > p3) goto Step40;
+    y = (long)floor(xl + log(v)/laml);
+    if (y < 0) goto Step10;
+    v = v*(u-p2)*laml;
+    goto Step50;
+  Step40:
+    y = (long)floor(xr - log(v)/lamr);
+    if (y > n) goto Step10;
+    v = v*(u-p3)*lamr;
+  Step50:
+    k = labs(y - m);
+    if ((k > 20) && (k < ((nrq)/2.0 - 1))) goto Step52;
+    s = r/q;
+    a = s*(n+1);
+    F = 1.0;
+    if (m < y) {
+        for (i=m+1; i<=y; i++) {
+            F *= (a/i - s);
+        }
+    } else if (m > y) {
+        for (i=y+1; i<=m; i++) {
+            F /= (a/i - s);
+        }
+    }
+    if (v > F) goto Step10;
+    goto Step60;
+    Step52:
+    rho = (k/(nrq))*((k*(k/3.0 + 0.625) + 0.16666666666666666)/nrq + 0.5);
+    t = -k*k/(2*nrq);
+    A = log(v);
+    if (A < (t - rho)) goto Step60;
+    if (A > (t + rho)) goto Step10;
+    x1 = y+1;
+    f1 = m+1;
+    z = n+1-m;
+    w = n-y+1;
+    x2 = x1*x1;
+    f2 = f1*f1;
+    z2 = z*z;
+    w2 = w*w;
+    if (A > (xm*log(f1/x1)
+           + (n-m+0.5)*log(z/w)
+           + (y-m)*log(w*r/(x1*q))
+           + (13680.-(462.-(132.-(99.-140./f2)/f2)/f2)/f2)/f1/166320.
+           + (13680.-(462.-(132.-(99.-140./z2)/z2)/z2)/z2)/z/166320.
+           + (13680.-(462.-(132.-(99.-140./x2)/x2)/x2)/x2)/x1/166320.
+           + (13680.-(462.-(132.-(99.-140./w2)/w2)/w2)/w2)/w/166320.)) {
+        goto Step10;
+    }
+  Step60:
+    if (p > 0.5) {
+        y = n - y;
+    }
+    return y;
+}
+
+__device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p, rk_binomial_state *binomial_state) {
+    double q, qn, np, px, U;
+    int X, bound;
+
+    if (!(binomial_state->initialized) ||
+         (binomial_state->nsave != n) ||
+         (binomial_state->psave != p)) {
+        binomial_state->nsave = n;
+        binomial_state->psave = p;
+        binomial_state->initialized = 1;
+        binomial_state->q = q = 1.0 - p;
+        binomial_state->r = qn = exp(n * log(q));
+        binomial_state->c = np = n*p;
+        binomial_state->m = bound = min((double)n, np + 10.0*sqrt(np*q + 1));
+    } else {
+        q = binomial_state->q;
+        qn = binomial_state->r;
+        np = binomial_state->c;
+        bound = binomial_state->m;
+    }
+    X = 0;
+    px = qn;
+    U = state->rk_double();
+    while (U > px) {
+        X++;
+        if (X > bound) {
+            X = 0;
+            px = qn;
+            U = state->rk_double();
+        } else {
+            U -= px;
+            px  = ((n-X+1) * p * px)/(X*q);
+        }
+    }
+    return X;
+}
+
+__device__ int64_t rk_binomial(rk_state *state, int n, double p, rk_binomial_state *binomial_state) {
+    double q;
+
+    if (p <= 0.5) {
+        if (p*n <= 30.0) {
+            return rk_binomial_inversion(state, n, p, binomial_state);
+        } else {
+            return rk_binomial_btpe(state, n, p, binomial_state);
+        }
+    } else {
+        q = 1.0-p;
+        if (q*n <= 30.0) {
+            return n - rk_binomial_inversion(state, n, q, binomial_state);
+        } else {
+            return n - rk_binomial_btpe(state, n, q, binomial_state);
+        }
+    }
+}
+
 
 struct raw_functor {
     template<typename... Args>
@@ -526,25 +701,41 @@ struct standard_gamma_functor {
     }
 };
 
+struct binomial_functor {
+    template<typename... Args>
+    __device__ int64_t operator () (Args&&... args) {
+        return rk_binomial(args...);
+    }
+};
+
 // The following templates are used to unwrap arrays into an elementwise
 // approach, the array is `_array_data` in `cupy/random/_generator_api.pyx`.
-// When a pointer is present in the variadic Args, it will be replaced by
-// the value of pointer[thread_id]
+// When a pointer to `array_data<T>` is present in the variadic Args, it will
+// be replaced by the value of pointer[thread_id]
+
 template<typename T>
-__device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
-    intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
-    int ndim = value[1];
+struct array_data {};  // opaque type always used as a pointer type
+
+template<typename T>
+__device__ T get_index(array_data<T> *value, int id) {
+    int64_t* data = reinterpret_cast<int64_t*>(value);
+    intptr_t ptr = reinterpret_cast<intptr_t>(data[0]);
+    int ndim = data[1];
     ptrdiff_t offset = 0;
     for (int dim = ndim; --dim >= 0; ) {
-        offset += value[ndim + dim + 2] * (id % value[dim + 2]);
-        id /= value[dim + 2];
+        offset += data[ndim + dim + 2] * (id % data[dim + 2]);
+        id /= data[dim + 2];
     }
-    return *reinterpret_cast<double*>(ptr + offset);
+    return *reinterpret_cast<T*>(ptr + offset);
 }
 
 template<typename T>
 __device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
     return value;
+}
+
+__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
+    return value + id;
 }
 
 template<typename F, typename T, typename R, typename... Args>
@@ -597,7 +788,7 @@ void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
     kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(a), reinterpret_cast<int64_t*>(b));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(a), reinterpret_cast<array_data<double>*>(b));
 }
 
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
@@ -607,22 +798,22 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
     kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
 void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
     kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(ngood), reinterpret_cast<int64_t*>(nbad), reinterpret_cast<int64_t*>(nsample));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int64_t>*>(ngood), reinterpret_cast<array_data<int64_t>*>(nbad), reinterpret_cast<array_data<int64_t>*>(nsample));
 }
 
 void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
     kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
     kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(lam));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(lam));
 }
 
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
@@ -637,5 +828,10 @@ void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t 
 
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
     kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(shape));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(shape));
+}
+
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
+    kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
 }

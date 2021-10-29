@@ -5,6 +5,7 @@
 #include <hipsparse.h>
 #include <hip/hip_version.h>    // for HIP_VERSION
 #include <hip/library_types.h>  // for hipDataType
+#include <stdexcept>  // for gcc 10.0
 
 #if HIP_VERSION >= 402
 static hipDataType convert_hipDatatype(cudaDataType type) {

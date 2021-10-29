@@ -36,7 +36,25 @@ class TestDLPackConversion(unittest.TestCase):
         testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
 
 
+@testing.parameterize(*testing.product({
+    'memory': ('device', 'managed')
+}))
 class TestNewDLPackConversion(unittest.TestCase):
+
+    old_pool = None
+    new_pool = None
+
+    def setUp(self):
+        if self.memory == 'managed':
+            if cuda.runtime.is_hip:
+                pytest.skip('HIP does not support managed memory')
+            self.old_pool = cupy.get_default_memory_pool()
+            self.new_pool = cuda.MemoryPool(cuda.malloc_managed)
+            cuda.set_allocator(self.new_pool.malloc)
+
+    def tearDown(self):
+        if self.old_pool is not None:
+            cuda.set_allocator(self.old_pool.malloc)
 
     def _get_stream(self, stream_name):
         if stream_name == 'null':

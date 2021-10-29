@@ -16,6 +16,16 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.zeros_pinned
    cupyx.zeros_like_pinned
 
+Profiling utilities
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupyx.profiler.benchmark
+   cupyx.profiler.time_range
+   cupyx.profiler.profile
+
 DLPack utilities
 ----------------
 

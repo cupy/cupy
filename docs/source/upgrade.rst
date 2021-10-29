@@ -7,16 +7,21 @@ This is a list of changes introduced in each release that users should be aware 
 CuPy v10
 ========
 
-Dropping CUDA 9.2 Support
-----------------------------
+Dropping CUDA 9.2 / 10.0 / 10.1 Support
+---------------------------------------
 
-CUDA 9.2 is no longer supported.
-Use CUDA 10.0 or later.
+CUDA 10.1 or earlier is no longer supported.
+Use CUDA 10.2 or later.
 
 Dropping NCCL v2.4 Support
 -----------------------------
 
 NCCL v2.4 is no longer supported.
+
+Dropping Python 3.6 Support
+---------------------------
+
+Python 3.6 is no longer supported.
 
 Changes in :class:`cupy.cuda.Stream` Behavior
 ---------------------------------------------
@@ -71,7 +76,20 @@ To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if
 API Changes
 -----------
 
-Device synchronize detection APIs (``cupyx.allow_synchronize`` and ``cupyx.DeviceSynchronized``), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+
+*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+
+The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
+
+A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module:
+
+    * :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
+    * :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
+    * :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
+    * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
+
+The old routines are deprecated.
 
 Deprecated APIs may be removed in the future CuPy releases.
 
@@ -105,6 +123,17 @@ NCCL and cuDNN No Longer Included in Wheels
 
 NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
+
+cuTENSOR Enabled in Wheels
+--------------------------
+
+cuTENSOR can now be used when installing CuPy via wheels.
+
+``cupy.cuda.{nccl,cudnn}`` Modules Needs Explicit Import
+--------------------------------------------------------
+
+Previously ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules were automatically imported.
+Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
 
 Baseline API Changes
 --------------------

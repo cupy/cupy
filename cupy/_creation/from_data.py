@@ -35,6 +35,11 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     .. note::
        This method currently does not support ``subok`` argument.
 
+    .. note::
+       If ``obj`` is an `numpy.ndarray` instance that contains big-endian data,
+       this function automatically swaps its byte order to little-endian,
+       which is the NVIDIA and AMD GPU architecture's native use.
+
     .. seealso:: :func:`numpy.array`
 
     """
@@ -59,6 +64,11 @@ def asarray(a, dtype=None, order=None):
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
         the device, no copy is performed.
+
+    .. note::
+       If ``a`` is an `numpy.ndarray` instance that contains big-endian data,
+       this function automatically swaps its byte order to little-endian,
+       which is the NVIDIA and AMD GPU architecture's native use.
 
     .. seealso:: :func:`numpy.asarray`
 
@@ -142,6 +152,11 @@ def fromfile(*args, **kwargs):
 
     .. note::
         Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
+
+    .. note::
+       If you let NumPy's ``fromfile`` read the file in big-endian, CuPy
+       automatically swaps its byte order to little-endian, which is the NVIDIA
+       and AMD GPU architecture's native use.
 
     .. seealso:: :func:`numpy.fromfile`
 

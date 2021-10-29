@@ -413,7 +413,7 @@ class TestCubHistogram(unittest.TestCase):
         'right': [True, False],
         'shape': [(), (10,), (6, 3, 3)]})
 )
-class TestDigitize(unittest.TestCase):
+class TestDigitize:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -530,7 +530,7 @@ class TestDigitizeInvalid(unittest.TestCase):
     )
 )
 @testing.gpu
-class TestHistogramdd(unittest.TestCase):
+class TestHistogramdd:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-7, rtol=1e-7)
@@ -606,7 +606,7 @@ class TestHistogramddErrors(unittest.TestCase):
     )
 )
 @testing.gpu
-class TestHistogram2d(unittest.TestCase):
+class TestHistogram2d:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-7, rtol=1e-7)

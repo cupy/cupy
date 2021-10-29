@@ -78,9 +78,12 @@ cpdef tuple getVersion():
 cpdef tuple getSupportedArchs():
     cdef int status, num_archs
     cdef vector.vector[int] archs
-    if CUDA_VERSION < 11020 or runtime._is_hip_environment:
+    if runtime._is_hip_environment:
+        raise RuntimeError("HIP does not support getSupportedArchs")
+    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
-
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
     with nogil:
         status = nvrtcGetNumSupportedArchs(&num_archs)
         if status == 0:
@@ -171,7 +174,11 @@ cpdef bytes getCUBIN(intptr_t prog):
     cdef size_t cubinSizeRet = 0
     cdef vector.vector[char] cubin
     cdef char* cubin_ptr = NULL
-    if CUDA_VERSION < 11010 or runtime._is_hip_environment:
+    if runtime._is_hip_environment:
+        raise RuntimeError("HIP does not support getCUBIN")
+    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11010:
+        raise RuntimeError("getCUBIN is supported since CUDA 11.1")
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11010:
         raise RuntimeError("getCUBIN is supported since CUDA 11.1")
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
@@ -210,7 +217,7 @@ cpdef unicode getProgramLog(intptr_t prog):
     return log_ptr[:logSizeRet-1].decode('UTF-8')
 
 
-cpdef addAddNameExpression(intptr_t prog, str name):
+cpdef addNameExpression(intptr_t prog, str name):
     cdef bytes b_name = name.encode()
     cdef const char* c_name = b_name
     with nogil:

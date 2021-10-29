@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 
 from cupy import testing
@@ -34,7 +32,7 @@ def _calc_out_shape(shape, axis, keepdims):
          'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
          'keepdims': [False, True]}))
 @testing.gpu
-class TestAllAny(unittest.TestCase):
+class TestAllAny:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -62,7 +60,7 @@ class TestAllAny(unittest.TestCase):
          'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
          'keepdims': [False, True]}))
 @testing.gpu
-class TestAllAnyWithNaN(unittest.TestCase):
+class TestAllAnyWithNaN:
 
     @testing.for_dtypes(
         (numpy.float64, numpy.float32, numpy.float16, numpy.bool_))
@@ -104,7 +102,7 @@ class TestAllAnyWithNaN(unittest.TestCase):
             'assume_unique': [False, True],
             'invert': [False, True]}))
 @testing.gpu
-class TestIn1DIsIn(unittest.TestCase):
+class TestIn1DIsIn:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

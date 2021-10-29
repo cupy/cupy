@@ -1,6 +1,5 @@
 from libc.stdint cimport intptr_t
 
-from cupy_backends.cuda.api.driver cimport get_build_version
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy._core.core cimport ndarray
 from cupy.cuda.device cimport get_compute_capability
@@ -90,7 +89,7 @@ cdef inline void _set_vars() except*:
         if not os.path.isfile(_nvprune):
             _nvprune = None
 
-    _build_ver = str(get_build_version())
+    _build_ver = str(CUPY_CUDA_VERSION)
     _cufft_ver = get_cufft_version()
     _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
@@ -170,8 +169,8 @@ cdef inline void _cythonize(str tempdir, str mod_name) except*:
     shutil.copyfile(os.path.join(_source_dir, 'cufft.pyx'),
                     os.path.join(tempdir, mod_name + '.pyx'))
     p = subprocess.run(['cython', '-3', '--cplus',
-                        '-E', 'HIP_VERSION=0',
-                        '-E', 'CUDA_VERSION=' + _build_ver,
+                        '-E', 'CUPY_HIP_VERSION=0',
+                        '-E', 'CUPY_CUDA_VERSION=' + _build_ver,
                         '-E', 'CUPY_CUFFT_STATIC=True',
                         os.path.join(tempdir, mod_name + '.pyx'),
                         '-o', os.path.join(tempdir, mod_name + '.cpp')],

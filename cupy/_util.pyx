@@ -12,7 +12,7 @@ import cupy
 from cupy.cuda cimport device
 
 
-DEF CYTHON_BUILD_VER = cython_version
+DEF CYTHON_BUILD_VER = CUPY_CYTHON_VERSION
 cython_build_ver = CYTHON_BUILD_VER
 
 
@@ -24,6 +24,14 @@ CUDA_ARRAY_INTERFACE_SYNC = bool(
     int(os.environ.get('CUPY_CUDA_ARRAY_INTERFACE_SYNC', 1)))
 CUDA_ARRAY_INTERFACE_EXPORT_VERSION = int(
     os.environ.get('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION', 3))
+
+
+CUPY_DLPACK_EXPORT_VERSION = tuple(
+    [
+        int(x)
+        for x in os.environ.get("CUPY_DLPACK_EXPORT_VERSION", "0.6").split(".")
+    ]
+)
 
 
 cdef list _memos = []

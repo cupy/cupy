@@ -268,7 +268,14 @@ class _RuntimeInfo:
             ('cuSPARSELt Build Version', self.cusparselt_version),
         ]
 
-        for device_id in range(cupy.cuda.runtime.getDeviceCount()):
+        device_count = 0
+        try:
+            device_count = cupy.cuda.runtime.getDeviceCount()
+        except cupy.cuda.runtime.CUDARuntimeError as e:
+            if 'ErrorNoDevice' not in e.args[0]:
+                raise
+            # No GPU devices available.
+        for device_id in range(device_count):
             with cupy.cuda.Device(device_id) as device:
                 props = cupy.cuda.runtime.getDeviceProperties(device_id)
                 name = ('Device {} Name'.format(device_id),

@@ -12,7 +12,7 @@ except ImportError:
 
 
 from cupy._core import _optimize_config
-from cupyx import time
+from cupyx import profiler
 
 
 def _optimize(
@@ -26,7 +26,8 @@ def _optimize(
         args = suggest_func(trial)
         max_total_time = optimize_config.max_total_time_per_trial
         try:
-            perf = time.repeat(target_func, args, max_duration=max_total_time)
+            perf = profiler.benchmark(
+                target_func, args, max_duration=max_total_time)
             return perf.gpu_times.mean()
         except Exception as e:
             if isinstance(e, ignore_error):
@@ -101,7 +102,8 @@ The optimization results will never be stored.
 
     try:
         yield context
-        if path is not None and not readonly and context._is_dirty():
-            context.save(path)
+        if path is not None and not readonly:
+            if context._is_dirty() or not os.path.exists(path):
+                context.save(path)
     finally:
         _optimize_config.set_current_context(old_context)
