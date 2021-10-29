@@ -282,7 +282,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "ROCM_REPO" value: "debian" }
+    environment_variables { key: "ROCM_REPO" value: "4.3.1" }
     environment_variables { key: "ROCM_PACKAGES" value: "rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl" }
     command: "bash .pfnci/linux/main-flexci-rocm-build.sh"
   }
