@@ -811,10 +811,7 @@ def _try_reduction_routine(
 
 def _all_strides_positive(ndarray a):
     # cuTENSOR requires each stride > 0.
-    for s in a._strides:
-        if s <= 0:
-            return False
-    return True
+    return all(s > 0 for s in a._strides)
 
 
 def _try_elementwise_binary_routine(
