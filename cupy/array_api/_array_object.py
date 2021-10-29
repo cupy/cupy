@@ -36,9 +36,9 @@ if TYPE_CHECKING:
 
 import cupy as np
 from cupy.cuda import Device as _Device
+from cupy_backends.cuda.api import runtime
 
 from cupy import array_api
-from cupy import runtime
 
 
 class Array:

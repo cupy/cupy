@@ -4,7 +4,7 @@ import time as _time
 import numpy as _numpy
 
 import cupy as _cupy
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
 
 
 class _PerfCaseResult:

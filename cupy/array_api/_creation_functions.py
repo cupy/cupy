@@ -17,7 +17,7 @@ from ._dtypes import _all_dtypes
 
 import cupy as np
 from cupy.cuda import Device as _Device
-from cupy import runtime
+from cupy_backends.cuda.api import runtime
 
 
 def _check_valid_dtype(dtype):
