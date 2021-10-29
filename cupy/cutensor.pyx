@@ -835,7 +835,8 @@ def _try_elementwise_binary_routine(
         return None
 
     if out is None:
-        out = core._create_ndarray_from_shape_strides(c._shape, c._strides, dtype)
+        out = core._create_ndarray_from_shape_strides(
+            c._shape, c._strides, dtype)
     elif out.dtype != dtype:
         return None
     elif not internal.vector_equal(c._shape, out._shape):
