@@ -5,7 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.testing._helper import _wraps_partial
+from cupy.testing._loops import _wraps_partial
 import cupyx
 
 
