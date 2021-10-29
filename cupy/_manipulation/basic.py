@@ -1,7 +1,7 @@
 import numpy
 
 from cupy import _core
-from cupy import runtime
+from cupy.cuda import runtime
 from cupy._core import _fusion_interface
 from cupy._core import fusion
 from cupy._sorting import search

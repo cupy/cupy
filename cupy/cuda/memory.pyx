@@ -1730,7 +1730,7 @@ cdef class MemoryAsyncPool:
 
         When `fraction` is specified, its value will become a fraction of the
         amount of GPU memory that is available for allocation.
-        For example, if you have a GPU                     runtime.setDevice(dev_id)with 2 GiB memory, you can either use
+        For example, if you have a GPU with 2 GiB memory, you can either use
         ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
         the memory size to 1 GiB.
 
