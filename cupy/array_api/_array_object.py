@@ -38,6 +38,7 @@ import cupy as np
 from cupy.cuda import Device as _Device
 
 from cupy import array_api
+from cupy import runtime
 
 
 class Array:
@@ -1001,8 +1002,12 @@ class Array:
         else:
             # TODO(leofang): we currently do a blocking copy; after data-apis/array-api#256
             # is addressed we can do a nonblocking copy
-            with device:
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(device.id)
                 arr = self._array.copy()
+            finally:
+                runtime.setDevice(prev_device)
             return Array._new(arr)
 
     @property

@@ -17,6 +17,7 @@ from ._dtypes import _all_dtypes
 
 import cupy as np
 from cupy.cuda import Device as _Device
+from cupy import runtime
 
 
 def _check_valid_dtype(dtype):
@@ -73,8 +74,12 @@ def asarray(
         # Give a better error message in this case. NumPy would convert this
         # to an object array. TODO: This won't handle large integers in lists.
         raise OverflowError("Integer out of bounds for array dtypes")
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         res = np.asarray(obj, dtype=dtype)
+    finally:
+        runtime.setDevice(prev_device)
     return Array._new(res)
 
 
@@ -99,8 +104,12 @@ def arange(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.arange(start, stop=stop, step=step, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def empty(
@@ -121,8 +130,12 @@ def empty(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.empty(shape, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def empty_like(
@@ -140,8 +153,12 @@ def empty_like(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.empty_like(x._array, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def eye(
@@ -165,8 +182,12 @@ def eye(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.eye(n_rows, M=n_cols, k=k, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def from_dlpack(x: object, /) -> Array:
@@ -200,8 +221,12 @@ def full(
         device = _Device()  # current device
     if isinstance(fill_value, Array) and fill_value.ndim == 0:
         fill_value = fill_value._array
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         res = np.full(shape, fill_value, dtype=dtype)
+    finally:
+        runtime.setDevice(prev_device)
     if res.dtype not in _all_dtypes:
         # This will happen if the fill value is not something that NumPy
         # coerces to one of the acceptable dtypes.
@@ -231,8 +256,12 @@ def full_like(
         device = _Device()  # current device
     if isinstance(fill_value, Array) and fill_value.ndim == 0:
         fill_value = fill_value._array
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         res = np.full_like(x._array, fill_value, dtype=dtype)
+    finally:
+        runtime.setDevice(prev_device)
     if res.dtype not in _all_dtypes:
         # This will happen if the fill value is not something that NumPy
         # coerces to one of the acceptable dtypes.
@@ -262,8 +291,12 @@ def linspace(
         device = _Device()  # current device
     if device is not None and not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.linspace(start, stop, num, dtype=dtype, endpoint=endpoint))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def meshgrid(*arrays: Array, indexing: str = "xy") -> List[Array]:
@@ -298,8 +331,12 @@ def ones(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.ones(shape, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def ones_like(
@@ -317,8 +354,12 @@ def ones_like(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.ones_like(x._array, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def tril(x: Array, /, *, k: int = 0) -> Array:
@@ -367,8 +408,12 @@ def zeros(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.zeros(shape, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def zeros_like(
@@ -386,5 +431,9 @@ def zeros_like(
         raise ValueError(f"Unsupported device {device!r}")
     if device is None:
         device = _Device()  # current device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         return Array._new(np.zeros_like(x._array, dtype=dtype))
+    finally:
+        runtime.setDevice(prev_device)

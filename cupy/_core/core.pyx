@@ -552,9 +552,12 @@ cdef class ndarray:
             return self.astype(self.dtype, order=order)
 
         # It need to make a contiguous copy for copying from another device
-        with self.device:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             x = self.astype(self.dtype, order=order, copy=False)
-
+        finally:
+            runtime.setDevice(prev_device)
         newarray = _ndarray_init(x._shape, x.dtype)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
@@ -1342,8 +1345,13 @@ cdef class ndarray:
         return self.copy()
 
     def __deepcopy__(self, memo):
-        with self.device:
+        # It need to make a contiguous copy for copying from another device
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             return self.copy()
+        finally:
+            runtime.setDevice(prev_device)
 
     def __reduce__(self):
         return array, (self.get(),)
@@ -1657,7 +1665,9 @@ cdef class ndarray:
                     'actual shape: {}'.format(self.shape, out.shape))
             if not (out.flags.c_contiguous and self._c_contiguous or
                     out.flags.f_contiguous and self._f_contiguous):
-                with self.device:
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(self.device.id)
                     if out.flags.c_contiguous:
                         a_gpu = _internal_ascontiguousarray(self)
                     elif out.flags.f_contiguous:
@@ -1666,6 +1676,8 @@ cdef class ndarray:
                         raise RuntimeError(
                             '`out` cannot be specified when copying to '
                             'non-contiguous ndarray')
+                finally:
+                    runtime.setDevice(prev_device)
             else:
                 a_gpu = self
             a_cpu = out
@@ -1681,20 +1693,26 @@ cdef class ndarray:
                     order = 'C'
             if not (order == 'C' and self._c_contiguous or
                     order == 'F' and self._f_contiguous):
-                with self.device:
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(self.device.id)
                     if order == 'C':
                         a_gpu = _internal_ascontiguousarray(self)
                     elif order == 'F':
                         a_gpu = _internal_asfortranarray(self)
                     else:
                         raise ValueError('unsupported order: {}'.format(order))
+                finally:
+                    runtime.setDevice(prev_device)
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
         syncdetect._declare_synchronize()
         ptr = a_cpu.ctypes.data
-        with self.device:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             if stream is not None:
                 a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
             else:
@@ -1703,6 +1721,8 @@ cdef class ndarray:
                     a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
                 else:
                     a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
+        finally:
+            runtime.setDevice(prev_device)
         return a_cpu
 
     cpdef set(self, arr, stream=None):
@@ -1732,7 +1752,9 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = arr.ctypes.data
-        with self.device:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             if stream is not None:
                 self.data.copy_from_host_async(ptr, self.nbytes, stream)
             else:
@@ -1741,6 +1763,8 @@ cdef class ndarray:
                     self.data.copy_from_host(ptr, self.nbytes)
                 else:
                     self.data.copy_from_host_async(ptr, self.nbytes)
+        finally:
+            runtime.setDevice(prev_device)
 
     cpdef ndarray reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.

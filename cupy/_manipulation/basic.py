@@ -1,6 +1,7 @@
 import numpy
 
 from cupy import _core
+from cupy import runtime
 from cupy._core import _fusion_interface
 from cupy._core import fusion
 from cupy._sorting import search
@@ -62,10 +63,14 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     device = dst.device
-    with device:
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
         if src.device != device:
             src = src.copy()
         _core.elementwise_copy(src, dst)
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def _can_memcpy(dst, src):
