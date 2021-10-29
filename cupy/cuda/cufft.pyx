@@ -448,7 +448,7 @@ cdef class Plan1d:
 
         assert curr_device in self.gpus
         prev_device = runtime.getDevice()
-        runtime.setDevice(curr_device.id)
+        runtime.setDevice(curr_device)
         try:
             for i in self.gpus:
                 scatter_streams.append(stream.Stream())
