@@ -486,4 +486,5 @@ cdef class NcclCommunicator:
         # not block so far.
         with nogil:
             result = ncclCommGetAsyncError(self._comm, &asyncError)
+        check_status(asyncError)
         check_status(result)

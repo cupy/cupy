@@ -1,5 +1,5 @@
 import cupy
-from cupy.cuda import nccl
+from cupy_backends.cuda.libs import nccl
 from cupyx.distributed import _store
 from cupyx.distributed._comm import _Backend
 
@@ -43,7 +43,7 @@ class NCCLBackend(_Backend):
         host (str, optional): host address for the process rendezvous on
             initialization. Defaults to `"127.0.0.1"`.
         port (int, optional): port used for the process rendezvous on
-            initialization. Defaults to `12345`.
+            initialization. Defaults to `13333`.
     """
 
     def __init__(self, n_devices, rank,
@@ -150,7 +150,7 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        # in_array for root !=0 will be used as output
+        # in_out_array for rank !=0 will be used as output
         self._check_contiguous(in_out_array)
         stream = self._get_stream(stream)
         dtype, count = self._get_nccl_dtype_and_count(in_out_array)

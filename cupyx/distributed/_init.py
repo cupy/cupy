@@ -1,6 +1,6 @@
 import os
 
-import cupy.cuda.nccl
+from cupy_backends.cuda.libs import nccl
 
 from cupyx.distributed import _store
 from cupyx.distributed._nccl_comm import NCCLBackend
@@ -28,8 +28,11 @@ def init_process_group(
     subprocess that listens in the port indicated by
     the env var `CUPYX_DISTRIBUTED_PORT`, the rank 0 must be executed
     in the host determined by the env var `CUPYX_DISTRIBUTED_HOST`.
-    In case their values are not specified, `'127.0.0.1'` and `12345` will be
+    In case their values are not specified, `'127.0.0.1'` and `13333` will be
     used by default.
+
+    Note that this feature is expected to be used within a trusted cluster
+    environment.
 
     Example:
 
@@ -74,7 +77,7 @@ def init_process_group(
         raise ValueError(f'Invalid number of rank {rank} {n_devices}')
     if backend not in _backends:
         raise ValueError(f'{backend} is not supported')
-    if not cupy.cuda.nccl.available:
+    if backend == 'nccl' and not nccl.available:
         raise RuntimeError('NCCL is not available')
     if host is None:
         host = os.environ.get('CUPYX_DISTRIBUTED_HOST', _store._DEFAULT_HOST)

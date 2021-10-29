@@ -9,7 +9,7 @@ from cupyx.distributed import _store_actions
 
 
 _DEFAULT_HOST = '127.0.0.1'
-_DEFAULT_PORT = 12345
+_DEFAULT_PORT = 13333
 
 
 class ExceptionAwareProcess(multiprocessing.Process):
@@ -40,7 +40,7 @@ class TCPStore:
         self.storage = {}
         self._process = None
         self._world_size = world_size
-        self._run = multiprocessing.Value('b', True)
+        self._run = multiprocessing.Value('b', 1)
         # For implementing a barrier
         self._lock = threading.Lock()
         self._current_barrier = None
