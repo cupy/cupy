@@ -1181,7 +1181,7 @@ cdef class ufunc:
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
-        if (cuda_cutensor is not None and self._cutensor_op is not None and
+        if (self._cutensor_op is not None and
             _accelerator.ACCELERATOR_CUTENSOR
                     in _accelerator._elementwise_accelerators):
                 if self.nin == 2 and self.nout == 1:
