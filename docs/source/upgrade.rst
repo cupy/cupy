@@ -84,14 +84,14 @@ CUB Support and Compiler Requirement
 ------------------------------------
 
 CUB module is now built by default.
-You can enable the use of CUB by setting ``CUPY_ACCELERATORS="cub"`` (see :doc:`reference/environment` for details).
+You can enable the use of CUB by setting ``CUPY_ACCELERATORS="cub"`` (see :envvar:`CUPY_ACCELERATORS` for details).
 
 Due to this change, g++-6 or later is required when building CuPy from the source.
 See :doc:`install` for details.
 
 The following environment variables are no longer effective:
 
-* ``CUB_DISABLED``: Use ``CUPY_ACCELERATORS`` as aforementioned.
+* ``CUB_DISABLED``: Use :envvar:`CUPY_ACCELERATORS` as aforementioned.
 * ``CUB_PATH``: No longer required as CuPy uses either the CUB source bundled with CUDA (only when using CUDA 11.0 or later) or the one in the CuPy distribution.
 
 API Changes
