@@ -20,11 +20,23 @@ jobs:
         # cupyx.array_api uses Python 3.8 syntaxes
         python-version: '3.8'
 
+    - name: Setup ccache
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y ccache
+        echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
+
+    - name: Load ccache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ccache
+
     - name: Build
       run: |
         pip install -U pip wheel
         pip install cython
-        READTHEDOCS=True pip install -U -e .[stylecheck]
+        READTHEDOCS=True pip install -v -e .[stylecheck]
 
     - name: Coding Style (flake8)
       run: |
