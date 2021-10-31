@@ -1184,7 +1184,9 @@ cdef class ufunc:
         if (self._cutensor_op is not None
                 and _accelerator.ACCELERATOR_CUTENSOR in
                 _accelerator._elementwise_accelerators):
-            if self.nin == 2 and self.nout == 1:
+            if (self.nin == 2 and self.nout == 1 and
+                    isinstance(in_args[0], ndarray) and
+                    isinstance(in_args[1], ndarray)):
                 ret = cupy.cutensor._try_elementwise_binary_routine(
                     in_args[0], in_args[1], dtype, None, self._cutensor_op,
                     self._cutensor_alpha, self._cutensor_gamma)
