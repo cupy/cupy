@@ -835,6 +835,18 @@ def _try_elementwise_binary_routine(
         return None
 
     if out is None:
+        if c._c_contiguous:
+            pass
+        elif a._c_contiguous:
+            a, c = c, a
+            alpha, gamma = gamma, alpha
+        elif c._f_contiguous:
+            pass
+        elif a._f_contiguous:
+            a, c = c, a
+            alpha, gamma = gamma, alpha
+        else:
+            return None
         out = core._create_ndarray_from_shape_strides(
             c._shape, c._strides, dtype)
     elif out.dtype != dtype:
