@@ -838,8 +838,8 @@ def _try_elementwise_binary_routine(
 
     compute_dtype = a.dtype
 
-    if (op == cutensor.OP_MAX or op == cutensor.OP_MIN) and \
-           compute_dtype.kind == 'c':
+    if compute_dtype.kind == 'c' and (
+            op == cutensor.OP_MAX or op == cutensor.OP_MIN):
         return None
 
     if out is None:
