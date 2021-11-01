@@ -238,10 +238,10 @@ cdef class ndarray:
         if not runtime._is_hip_environment:  # CUDA
             if stream is None:
                 stream = runtime.streamLegacy
-            elif not isinstance(stream, int) or stream < -1 or stream == 0:
+            elif not isinstance(stream, int) or stream < -1:
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
-                    f' 1, 2, or any larger value, but {stream} was provided')
+                    f' 0, 1, 2, or any larger value, but {stream} was provided')
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
@@ -274,7 +274,7 @@ cdef class ndarray:
                 device_type = dlpack.device_CUDA
         else:
             device_type = dlpack.device_ROCM
-        return (device_type, self.device)
+        return (device_type, self.device.id)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
