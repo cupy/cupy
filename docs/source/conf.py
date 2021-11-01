@@ -150,6 +150,21 @@ todo_include_todos = False
 napoleon_use_ivar = True
 napoleon_include_special_with_doc = True
 
+# -- Copybutton settings --------------------------------------------------
+
+# Only copy lines starting with the input prompts,
+# valid prompt styles: [
+#     Python Repl + continuation (e.g., '>>> ', '... '),
+#     Bash (e.g., '$ '),
+#     ipython and qtconsole + continuation (e.g., 'In [29]: ', '  ...: '),
+#     jupyter-console + continuation (e.g., 'In [29]: ', '     ...: ')
+# ]
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
+# Continue copying lines as long as they end with this character
+copybutton_line_continuation_character = "\\"
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
