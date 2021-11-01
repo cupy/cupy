@@ -159,6 +159,7 @@ napoleon_include_special_with_doc = True
 #     ipython and qtconsole + continuation (e.g., 'In [29]: ', '  ...: '),
 #     jupyter-console + continuation (e.g., 'In [29]: ', '     ...: ')
 # ]
+# regex taken from https://sphinx-copybutton.readthedocs.io/en/latest/#using-regexp-prompt-identifiers
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
 
