@@ -239,9 +239,13 @@ cdef class ndarray:
             if stream is None:
                 stream = runtime.streamLegacy
             elif not isinstance(stream, int) or stream < -1:
+                # DLPack does not accept 0 as a valid stream, but there is a
+                # bug in PyTorch that exports the default stream as 0, which
+                # renders the protocol unusable, we will accept a 0 value
+                # meanwhile.
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
-                    f' 0, 1, 2, or any larger value, but {stream} was provided')
+                    f' 1, 2, or any larger value, but {stream} was provided')
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
