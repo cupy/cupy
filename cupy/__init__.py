@@ -246,6 +246,7 @@ from cupy._creation.from_data import frombuffer  # NOQA
 from cupy._creation.from_data import fromstring  # NOQA
 from cupy._creation.from_data import loadtxt  # NOQA
 from cupy._creation.from_data import fromregex  # NOQA
+from cupy._creation.from_data import genfromtxt  # NOQA
 
 from cupy._creation.ranges import arange  # NOQA
 from cupy._creation.ranges import linspace  # NOQA

@@ -41,6 +41,7 @@ From existing data
    frombuffer
    fromiter
    fromfunction
+   genfromtxt
 
 
 Numerical ranges

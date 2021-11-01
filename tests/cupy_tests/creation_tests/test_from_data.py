@@ -531,6 +531,14 @@ class TestFromData(unittest.TestCase):
             fh.seek(0)
             return xp.loadtxt(fh, dtype="u1")
 
+    @testing.numpy_cupy_array_equal()
+    def test_genfromtxt(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"0 1\n2 3")
+            fh.flush()
+            fh.seek(0)
+            return xp.genfromtxt(fh, dtype="u1")
+
     def test_fromfile_big_endian(self, xp):
         with tempfile.TemporaryFile() as fh:
             fh.write(b"\x00\x00\x00\x01")

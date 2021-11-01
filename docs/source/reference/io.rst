@@ -28,7 +28,7 @@ Text files
    genfortext
    fromregex
    fromstring
-   
+   genfromtxt
 
 String formatting
 -----------------
