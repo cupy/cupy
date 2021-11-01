@@ -61,7 +61,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
-              'sphinx.ext.linkcode']
+              'sphinx.ext.linkcode',
+              'sphinx_copybutton']
 
 try:
     import sphinxcontrib.spelling  # noqa
@@ -148,6 +149,22 @@ todo_include_todos = False
 # Napoleon settings
 napoleon_use_ivar = True
 napoleon_include_special_with_doc = True
+
+# -- Copybutton settings --------------------------------------------------
+
+# Only copy lines starting with the input prompts,
+# valid prompt styles: [
+#     Python Repl + continuation (e.g., '>>> ', '... '),
+#     Bash (e.g., '$ '),
+#     ipython and qtconsole + continuation (e.g., 'In [29]: ', '  ...: '),
+#     jupyter-console + continuation (e.g., 'In [29]: ', '     ...: ')
+# ]
+# regex taken from https://sphinx-copybutton.readthedocs.io/en/latest/#using-regexp-prompt-identifiers
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
+# Continue copying lines as long as they end with this character
+copybutton_line_continuation_character = "\\"
 
 # -- Options for HTML output ----------------------------------------------
 
