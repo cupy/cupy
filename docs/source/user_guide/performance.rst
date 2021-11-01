@@ -60,16 +60,16 @@ In order to support more performant backends wherever applicable, starting v8 Cu
 
 .. doctest::
 
-    >>> from cupyx.profiler import benchmark
+    >>> from cupyx.time import repeat
     >>> a = cp.random.random((256, 256, 256), dtype=cp.float32)
-    >>> print(benchmark(a.sum, (), n_repeat=100))  # doctest: +SKIP
+    >>> print(repeat(a.sum, (), n_repeat=100))  # doctest: +SKIP
     sum                 :    CPU:   12.101 us   +/- 0.694 (min:   11.081 / max:   17.649) us     GPU-0:10174.898 us   +/-180.551 (min:10084.576 / max:10595.936) us
 
 We can see that it takes about 10 ms to run (on this GPU). However, if we launch the Python session using ``CUPY_ACCELERATORS=cub python``, we get a ~100x speedup for free (only ~0.1 ms):
 
 .. doctest::
 
-    >>> print(benchmark(a.sum, (), n_repeat=100))  # doctest: +SKIP
+    >>> print(repeat(a.sum, (), n_repeat=100))  # doctest: +SKIP
     sum                 :    CPU:   20.569 us   +/- 5.418 (min:   13.400 / max:   28.439) us     GPU-0:  114.740 us   +/- 4.130 (min:  108.832 / max:  122.752) us
 
 CUB is a backend shipped together with CuPy.
