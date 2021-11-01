@@ -25,7 +25,6 @@ Text files
 
    savetxt
    loadtxt
-   genfortext
    fromregex
    fromstring
    genfromtxt
