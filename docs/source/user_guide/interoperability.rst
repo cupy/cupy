@@ -198,6 +198,66 @@ PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpa
    ...     ...
 
 
+Using custom kernels in PyTorch
+-------------------------------
+
+With the DLPack protocol, it becomes very simple to implement functions in pytorch using CuPy user-defined kernels. Below is the example of a PyTorch autograd function
+that computes the forward and backward pass of the logarithm using `cupy.RawKernel` s.
+
+.. code:: python
+
+    import cupy
+    import torch
+    
+    
+    cupy_custom_kernel_fwd = cupy.RawKernel(
+        r"""
+    extern "C" __global__
+    void cupy_custom_kernel_fwd(const float* x, float* y, int size) {
+        int tid = blockDim.x * blockIdx.x + threadIdx.x;
+        if (tid < size)
+            y[tid] = log(x[tid]);
+    }
+    """,
+        "cupy_custom_kernel_fwd",
+    )
+    
+    
+    cupy_custom_kernel_bwd = cupy.RawKernel(
+        r"""
+    extern "C" __global__
+    void cupy_custom_kernel_bwd(const float* x, float* gy, float* gx, int size) {
+        int tid = blockDim.x * blockIdx.x + threadIdx.x;
+        if (tid < size)
+            gx[tid] = gy[tid] / x[tid];
+    }
+    """,
+        "cupy_custom_kernel_bwd",
+    )
+    
+    
+    class CuPyLog(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, x):
+            ctx.input = x
+            # Enforce contiguous arrays to simplify RawKernel indexing.
+            cupy_x = cupy.ascontiguousarray(cupy.from_dlpack(x.detach()))
+            cupy_y = cupy.empty(cupy_x.shape, dtype=cupy_x.dtype)
+            x_size = cupy_x.size
+            bs = 128
+            cupy_custom_kernel_fwd(
+                (bs,), ((x_size + bs - 1) // bs,), (cupy_x, cupy_y, x_size)
+            )
+            torch_y = torch.from_dlpack(cupy_y)
+            return torch_y
+    
+        @staticmethod
+        def backward(ctx, grad_y):
+            # Enforce contiguous arrays to simplify RawKernel indexing.
+            cupy_input = cupy.ascontiguousarray(cupy.from_dlpack(ctx.input.detach()))
+            cupy_grad_y = cupy.ascontiguousarray(cupy.from_dlpack(grad_y.detach()))
+
+
 RMM
 ---
 
