@@ -248,6 +248,9 @@ that computes the forward and backward pass of the logarithm using `cupy.RawKern
             cupy_custom_kernel_fwd(
                 (bs,), ((x_size + bs - 1) // bs,), (cupy_x, cupy_y, x_size)
             )
+            # the ownership of the device memory backing cupy_y is implicitly
+            # transferred to torch_y, so this operation is safe even after
+            # going out of scope of this function.
             torch_y = torch.from_dlpack(cupy_y)
             return torch_y
     
@@ -264,6 +267,9 @@ that computes the forward and backward pass of the logarithm using `cupy.RawKern
                 ((gy_size + bs - 1) // bs,),
                 (cupy_input, cupy_grad_y, cupy_grad_x, gy_size),
             )
+            # the ownership of the device memory backing cupy_grad_x is implicitly
+            # transferred to torch_y, so this operation is safe even after
+            # going out of scope of this function.
             torch_grad_x = torch.from_dlpack(cupy_grad_x)
             return torch_grad_x
 
