@@ -5,6 +5,8 @@ import cupy as _cupy
 from cupy import _util
 from cupy.cuda import device as _device
 
+cimport cython
+from libcpp cimport vector
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
 from cupy._core._carray cimport shape_t
 from cupy._core.core cimport ndarray
@@ -809,9 +811,13 @@ def _try_reduction_routine(
     return out
 
 
-def _all_strides_positive(ndarray a):
+@cython.profile(False)
+cdef inline bint _all_positive(const vector.vector[Py_ssize_t]& args):
     # cuTENSOR requires each stride > 0.
-    return all(s > 0 for s in a._strides)
+    for i in range(<Py_ssize_t>args.size()):
+        if args[i] <= 0:
+            return False
+    return True
 
 
 def _try_elementwise_binary_routine(
@@ -833,7 +839,7 @@ def _try_elementwise_binary_routine(
         return None
     if a.size == 0:
         return None
-    if not (_all_strides_positive(a) and _all_strides_positive(c)):
+    if not (_all_positive(a._strides) and _all_positive(c._strides)):
         return None
 
     compute_dtype = a.dtype
@@ -863,7 +869,7 @@ def _try_elementwise_binary_routine(
         return None
     elif not internal.vector_equal(c._strides, out._strides):
         return None
-    elif not _all_strides_positive(out):
+    elif not _all_positive(out._strides):
         return None
 
     handle = _get_handle()
