@@ -199,10 +199,10 @@ PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpa
 
 
 Using custom kernels in PyTorch
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With the DLPack protocol, it becomes very simple to implement functions in pytorch using CuPy user-defined kernels. Below is the example of a PyTorch autograd function
-that computes the forward and backward pass of the logarithm using `cupy.RawKernel` s.
+With the DLPack protocol, it becomes very simple to implement functions in PyTorch using CuPy user-defined kernels. Below is the example of a PyTorch autograd function
+that computes the forward and backward pass of the logarithm using :class:`cupy.RawKernel` s.
 
 .. code:: python
 
