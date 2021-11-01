@@ -188,7 +188,7 @@ library_records['nccl'] = _nccl_records
 
 
 def install_lib(cuda, prefix, library):
-    if os.uname().machine != 'x86_64':
+    if platform.uname().machine != 'x86_64':
         raise RuntimeError('''
 Currently this tool only supports x86_64 architecture.''')
     record = None
