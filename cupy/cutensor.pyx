@@ -831,8 +831,12 @@ def _try_elementwise_binary_routine(
         return None
     if not internal.vector_equal(a._shape, c._shape):
         return None
+    if a.size == 0:
+        return None
     if not (_all_strides_positive(a) and _all_strides_positive(c)):
         return None
+
+    compute_dtype = a.dtype
 
     if out is None:
         if c._c_contiguous:
@@ -848,8 +852,8 @@ def _try_elementwise_binary_routine(
         else:
             return None
         out = core._create_ndarray_from_shape_strides(
-            c._shape, c._strides, dtype)
-    elif out.dtype != dtype:
+            c._shape, c._strides, compute_dtype)
+    elif out.dtype != compute_dtype:
         return None
     elif not internal.vector_equal(c._shape, out._shape):
         return None
@@ -862,14 +866,14 @@ def _try_elementwise_binary_routine(
 
     return _elementwise_binary_impl(
         handle,
-        _create_scalar(alpha, dtype),
+        _create_scalar(alpha, compute_dtype),
         a,
         create_tensor_descriptor(a, handle=handle),
         _create_mode_with_cache(a._shape.size()),
-        _create_scalar(gamma, dtype),
+        _create_scalar(gamma, compute_dtype),
         c,
         create_tensor_descriptor(c, handle=handle),
         _create_mode_with_cache(c._shape.size()),
         out,
         op,
-        _dtype.to_cuda_dtype(dtype, is_half_allowed=True))
+        _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
