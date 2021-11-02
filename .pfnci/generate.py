@@ -223,6 +223,8 @@ class LinuxGenerator:
             ]
         elif matrix.rocm is not None:
             lines += [
+                '# TODO(kmaehashi): Tentatively sparsen parameterization to make test run complete.',  # NOQA
+                'export CUPY_TEST_FULL_COMBINATION="0"',
                 'export CUPY_INSTALL_USE_HIP=1',
                 '',
             ]

@@ -244,8 +244,12 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
 
     xtArr_desc.nGPUs = nGPUs
     for i, (gpu, size) in enumerate(zip(gpus, sizes)):
-        with device.Device(gpu):
+        prev_device = runtime.getDevice()
+        runtime.setDevice(gpu)
+        try:
             buf = memory.alloc(size)
+        finally:
+            runtime.setDevice(prev_device)
         assert gpu == buf.device_id
         xtArr_buffer.append(buf)
         xtArr_desc.GPUs[i] = gpu
@@ -407,10 +411,14 @@ cdef class Plan1d:
         check_result(result)
 
         for i in range(nGPUs):
-            with device.Device(gpus[i]):
+            prev_device = runtime.getDevice()
+            runtime.setDevice(gpus[i])
+            try:
                 buf = memory.alloc(work_size[i])
                 s = stream.Stream()
                 e = stream.Event()
+            finally:
+                runtime.setDevice(prev_device)
             work_area.append(buf)
             work_area_ptr.push_back(<void*><intptr_t>(buf.ptr))
             gather_streams.append(s)
@@ -439,12 +447,14 @@ cdef class Plan1d:
         cdef list scatter_events = []
 
         assert curr_device in self.gpus
-
-        with device.Device(curr_device):
+        prev_device = runtime.getDevice()
+        runtime.setDevice(curr_device)
+        try:
             for i in self.gpus:
                 scatter_streams.append(stream.Stream())
                 scatter_events.append(stream.Event())
-
+        finally:
+            runtime.setDevice(prev_device)
         self.scatter_streams[curr_device] = scatter_streams
         self.scatter_events[curr_device] = scatter_events
 

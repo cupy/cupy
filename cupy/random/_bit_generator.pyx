@@ -9,6 +9,7 @@ import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy.random._generator_api import init_curand, random_raw
+from cupy_backends.cuda.api import runtime
 
 # We need access to the sizes here, so this is why we have this header
 # in here instead of cupy backends
@@ -41,6 +42,9 @@ class BitGenerator:
             state. One may also pass in a `SeedSequence` instance.
     """
     def __init__(self, seed=None):
+        if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
+            raise RuntimeError('Generator API not supported in ROCm<4.3, '
+                               'please use the legacy one or update ROCm.')
         self.lock = threading.Lock()
         # TODO(ecastill) port SeedSequence
         if isinstance(seed, numpy.random.SeedSequence):

@@ -6,6 +6,7 @@ annotations in the function signatures. The functions in the module are only
 valid for inputs that match the given type annotations.
 """
 
+from __future__ import annotations
 from cupy.cuda import Device as _Device
 
 
@@ -19,7 +20,16 @@ __all__ = [
 ]
 
 import sys
-from typing import Any, Literal, Sequence, Type, Union, TYPE_CHECKING, TypeVar
+from typing import (
+    Any,
+    Literal,
+    Sequence,
+    Type,
+    Union,
+    TYPE_CHECKING,
+    TypeVar,
+    Protocol,
+)
 
 from ._array_object import Array
 from numpy import (
@@ -36,10 +46,11 @@ from numpy import (
     float64,
 )
 
-# This should really be recursive, but that isn't supported yet. See the
-# similar comment in numpy/typing/_array_like.py
-_T = TypeVar("_T")
-NestedSequence = Sequence[Sequence[_T]]
+_T_co = TypeVar("_T_co", covariant=True)
+
+class NestedSequence(Protocol[_T_co]):
+    def __getitem__(self, key: int, /) -> _T_co | NestedSequence[_T_co]: ...
+    def __len__(self, /) -> int: ...
 
 Device = _Device
 if TYPE_CHECKING or sys.version_info >= (3, 9):
@@ -58,6 +69,8 @@ if TYPE_CHECKING or sys.version_info >= (3, 9):
 else:
     Dtype = dtype
 
-SupportsDLPack = Any
 SupportsBufferProtocol = Any
 PyCapsule = Any
+
+class SupportsDLPack(Protocol):
+    def __dlpack__(self, /, *, stream: None = ...) -> PyCapsule: ...
