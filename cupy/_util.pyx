@@ -29,7 +29,7 @@ CUDA_ARRAY_INTERFACE_EXPORT_VERSION = int(
 CUPY_DLPACK_EXPORT_VERSION = tuple(
     [
         int(x)
-        for x in os.environ.get('CUPY_DLPACK_EXPORT_VERSION', '0.6').split('.')
+        for x in os.environ.get("CUPY_DLPACK_EXPORT_VERSION", "0.6").split(".")
     ]
 )
 

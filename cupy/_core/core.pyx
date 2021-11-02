@@ -278,7 +278,7 @@ cdef class ndarray:
             attrs = runtime.pointerGetAttributes(self.data.ptr)
             is_managed = (
                 attrs.type == runtime.memoryTypeManaged
-                and _util.DLPACK_EXPORT_VERSION >= (0, 6))
+                and _util.CUPY_DLPACK_EXPORT_VERSION >= (0, 6))
             if is_managed:
                 device_type = dlpack.managed_CUDA
             else:
