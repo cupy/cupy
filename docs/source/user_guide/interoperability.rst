@@ -277,6 +277,7 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
 
    Directly feeding a ``torch.Tensor`` to :func:`cupy.from_dlpack` is only supported in the (new) DLPack data exchange protocol added in CuPy v10+ and PyTorch 1.10+.
    For earlier versions, you will need to wrap the ``Tensor`` with ``torch.utils.dlpack.to_dlpack()`` as shown in the above examples.
+
 RMM
 ---
 
