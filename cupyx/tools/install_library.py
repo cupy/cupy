@@ -227,13 +227,13 @@ The current platform ({}) is not supported.'''.format(target_platform))
         try:
             shutil.unpack_archive(f.name, outdir)
         except shutil.ReadError:
-            print("'xztar' archive format is not supported in your Python "
-                  'environment. Try extracting by a shell command...')
+            print('The archive format is not supported in your Python '
+                  'environment. Falling back to "tar" command...')
             try:
                 os.makedirs(outdir, exist_ok=True)
                 subprocess.run(['tar', 'xf', f.name, '-C', outdir], check=True)
             except subprocess.CalledProcessError:
-                msg = "Failed to extract from the xz'ed tar-file."
+                msg = 'Failed to extract the archive using "tar" command.'
                 raise RuntimeError(msg)
         print('Installing...')
         if library == 'cudnn':
