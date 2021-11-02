@@ -5,10 +5,12 @@
 #include <stdint.h>
 #include <type_traits>
 
-#include <curand_kernel.h>
 
 #include "cupy_distributions.cuh"
 
+
+// avoid explicit compilation for hip<4.3
+#if !defined(CUPY_USE_HIP) || defined(COMPILE_FOR_HIP)
 
 struct rk_state {
 
@@ -100,20 +102,24 @@ void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssi
     generator_dispatcher(generator, launcher, state_ptr, seed, size);
 }
 
-__device__ double rk_standard_exponential(rk_state* state) {
+template<typename T>
+__device__ double rk_standard_exponential(T state) {
     /* We use -log(1-U) since U is [0, 1) */
-    return -log(1.0 - state->rk_double());
+    return -log(1.0 - state.rk_double());
 }
 
-__device__ double rk_standard_normal(rk_state* state) {
-    return state->rk_normal();
+template<typename T>
+__device__ double rk_standard_normal(T state) {
+    return state.rk_normal();
 }
 
-__device__ float rk_standard_normal_float(rk_state* state) {
-    return state->rk_normal_float();
+template<typename T>
+__device__ float rk_standard_normal_float(T state) {
+    return state.rk_normal_float();
 }
 
-__device__ double rk_standard_gamma(rk_state* state, double shape) {
+template<typename T>
+__device__ double rk_standard_gamma(T state, double shape) {
     double b, c;
     double U, V, X, Y;
     if (shape == 1.0) {
@@ -122,7 +128,7 @@ __device__ double rk_standard_gamma(rk_state* state, double shape) {
         return 0.0;
     } else if (shape < 1.0) {
         for (;;) {
-            U = state->rk_double();
+            U = state.rk_double();
             V = rk_standard_exponential(state);
             if (U <= 1.0 - shape) {
                 X = pow(U, 1./shape);
@@ -142,25 +148,26 @@ __device__ double rk_standard_gamma(rk_state* state, double shape) {
         c = 1./sqrt(9*b);
         for (;;) {
             do {
-                X = state->rk_normal();
+                X = state.rk_normal();
                 V = 1.0 + c*X;
             } while (V <= 0.0);
             V = V*V*V;
-            U = state->rk_double();
+            U = state.rk_double();
             if (U < 1.0 - 0.0331*(X*X)*(X*X)) return (b*V);
             if (log(U) < 0.5*X*X + b*(1. - V + log(V))) return (b*V);
         }
     }
 }
 
-__device__ double rk_beta(rk_state* state, double a, double b) {
+template<typename T>
+__device__ double rk_beta(T state, double a, double b) {
     double Ga, Gb;
     if ((a <= 1.0) && (b <= 1.0)) {
         double U, V, X, Y;
         /* Use Johnk's algorithm */
         while (1) {
-            U = state->rk_double();
-            V = state->rk_double();
+            U = state.rk_double();
+            V = state.rk_double();
             X = pow(U, 1.0/a);
             Y = pow(V, 1.0/b);
             if ((X + Y) <= 1.0) {
@@ -183,13 +190,14 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
     }
 }
 
-__device__ int64_t rk_geometric_search(rk_state *state, double p) {
+template<typename T>
+__device__ int64_t rk_geometric_search(T state, double p) {
     double U, sum, prod, q;
     int64_t X;
     X = 1;
     sum = prod = p;
     q = 1.0 - p;
-    U = state->rk_double();
+    U = state.rk_double();
     while (U > sum) {
         prod *= q;
         sum += prod;
@@ -198,11 +206,13 @@ __device__ int64_t rk_geometric_search(rk_state *state, double p) {
     return X;
 }
 
-__device__ int64_t rk_geometric_inversion(rk_state *state, double p) {
-    return ceil(log(1.0-state->rk_double())/log(1.0-p));
+template<typename T>
+__device__ int64_t rk_geometric_inversion(T state, double p) {
+    return ceil(log(1.0-state.rk_double())/log(1.0-p));
 }
 
-__device__ int64_t rk_geometric(rk_state *state, double p) {
+template<typename T>
+__device__ int64_t rk_geometric(T state, double p) {
     if (p >= 0.333333333333333333333333) {
         return rk_geometric_search(state, p);
     } else {
@@ -243,7 +253,8 @@ __device__ double loggam(double x) {
     return gl;
 }
 
-__device__ int64_t rk_hypergeometric_hyp(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+template<typename T>
+__device__ int64_t rk_hypergeometric_hyp(T state, int64_t good, int64_t bad, int64_t sample) {
     int64_t d1, K, Z;
     double d2, U, Y;
 
@@ -254,7 +265,7 @@ __device__ int64_t rk_hypergeometric_hyp(rk_state *state, int64_t good, int64_t 
     K = sample;
     while (Y > 0.0)
     {
-        U = state->rk_double();
+        U = state.rk_double();
         Y -= (int64_t)floor(U + Y/(d1 + K));
         K--;
         if (K == 0) break;
@@ -265,11 +276,12 @@ __device__ int64_t rk_hypergeometric_hyp(rk_state *state, int64_t good, int64_t 
 }
 
 
-__device__ int64_t rk_hypergeometric_hrua(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+template<typename T>
+__device__ int64_t rk_hypergeometric_hrua(T state, int64_t good, int64_t bad, int64_t sample) {
 
     int64_t mingoodbad, maxgoodbad, popsize, m, d9;
     int64_t Z;
-    double d4, d5, d6, d7, d8, d10, d11, T, W, X, Y;
+    double d4, d5, d6, d7, d8, d10, d11, U, W, X, Y;
     double D1=1.7155277699214135, D2=0.8989161620588988;
 
     mingoodbad = min(good, bad);
@@ -288,21 +300,21 @@ __device__ int64_t rk_hypergeometric_hrua(rk_state *state, int64_t good, int64_t
     /* 16 for 16-decimal-digit precision in D1 and D2 */
 
     while (1) {
-        X = state->rk_double();
-        Y = state->rk_double();
+        X = state.rk_double();
+        Y = state.rk_double();
         W = d6 + d8*(Y- 0.5)/X;
 
         if ((W < 0.0) || (W >= d11)) continue;
 
         Z = (int64_t)floor(W);
-        T = d10 - (loggam(Z+1) + loggam(mingoodbad-Z+1) + loggam(m-Z+1) +
+        U = d10 - (loggam(Z+1) + loggam(mingoodbad-Z+1) + loggam(m-Z+1) +
                    loggam(maxgoodbad-m+Z+1));
 
-        if ((X*(4.0-X)-3.0) <= T) break;
+        if ((X*(4.0-X)-3.0) <= U) break;
 
-        if (X*(X-T) >= 1) continue;
+        if (X*(X-U) >= 1) continue;
 
-        if (2.0*log(X) <= T) break;
+        if (2.0*log(X) <= U) break;
     }
 
     if (good > bad) Z = m - Z;
@@ -311,7 +323,8 @@ __device__ int64_t rk_hypergeometric_hrua(rk_state *state, int64_t good, int64_t
     return Z;
 }
 
-__device__ int64_t rk_hypergeometric(rk_state *state, int64_t good, int64_t bad, int64_t sample) {
+template<typename T>
+__device__ int64_t rk_hypergeometric(T state, int64_t good, int64_t bad, int64_t sample) {
     if (sample > 10) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
@@ -320,7 +333,8 @@ __device__ int64_t rk_hypergeometric(rk_state *state, int64_t good, int64_t bad,
     }
 }
 
-__device__ int64_t rk_logseries(rk_state *state, double p)
+template<typename T>
+__device__ int64_t rk_logseries(T state, double p)
 {
     double q, r, U, V;
     int64_t result;
@@ -328,11 +342,11 @@ __device__ int64_t rk_logseries(rk_state *state, double p)
     r = log(1.0 - p);
 
     while (1) {
-        V = state->rk_double();
+        V = state.rk_double();
         if (V >= p) {
             return 1;
         }
-        U = state->rk_double();
+        U = state.rk_double();
         q = 1.0 - exp(r*U);
         if (V <= q*q) {
             result = floor(1 + log(V)/log(q));
@@ -350,14 +364,15 @@ __device__ int64_t rk_logseries(rk_state *state, double p)
     }
 }
 
-__device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
+template<typename T>
+__device__ int64_t rk_poisson_mult(T state, double lam) {
     int64_t X;
     double prod, U, enlam;
     enlam = exp(-lam);
     X = 0;
     prod = 1.0;
     while (1) {
-        U = state->rk_double();
+        U = state.rk_double();
         prod *= U;
         if (prod > enlam) {
             X += 1;
@@ -367,7 +382,8 @@ __device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
     }
 }
 
-__device__ int64_t rk_poisson_ptrs(rk_state *state, double lam) {
+template<typename T>
+__device__ int64_t rk_poisson_ptrs(T state, double lam) {
     int64_t k;
     double U, V, slam, loglam, a, b, invalpha, vr, us;
     slam = sqrt(lam);
@@ -377,8 +393,8 @@ __device__ int64_t rk_poisson_ptrs(rk_state *state, double lam) {
     invalpha = 1.1239 + 1.1328/(b-3.4);
     vr = 0.9277 - 3.6224/(b-2);
     while (1) {
-        U = state->rk_double() - 0.5;
-        V = state->rk_double();
+        U = state.rk_double() - 0.5;
+        V = state.rk_double();
         us = 0.5 - fabs(U);
         k = (int64_t)floor((2*a/us + b)*U + lam + 0.43);
         if ((us >= 0.07) && (V <= vr)) {
@@ -395,7 +411,8 @@ __device__ int64_t rk_poisson_ptrs(rk_state *state, double lam) {
     }
 }
 
-__device__ int64_t rk_poisson(rk_state *state, double lam) {
+template<typename T>
+__device__ int64_t rk_poisson(T state, double lam) {
     if (lam >= 10) {
         return rk_poisson_ptrs(state, lam);
     } else if (lam == 0) {
@@ -405,35 +422,40 @@ __device__ int64_t rk_poisson(rk_state *state, double lam) {
     }
 }
 
-__device__ uint32_t rk_raw(rk_state* state) {
-    return state->rk_int();
+template<typename T>
+__device__ uint32_t rk_raw(T state) {
+    return state.rk_int();
 }
 
-__device__ double rk_random_uniform(rk_state* state) {
-    return state->rk_double();
+template<typename T>
+__device__ double rk_random_uniform(T state) {
+    return state.rk_double();
 }
 
-__device__ uint32_t rk_interval_32(rk_state* state, uint32_t mx, uint32_t mask) {
-    uint32_t sampled = state->rk_int() & mask;
+template<typename T>
+__device__ uint32_t rk_interval_32(T state, uint32_t mx, uint32_t mask) {
+    uint32_t sampled = state.rk_int() & mask;
     while(sampled > mx)  {
-        sampled = state->rk_int() & mask;
+        sampled = state.rk_int() & mask;
     }
     return sampled;
 }
 
-__device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask) {
-    uint32_t hi= state->rk_int();
-    uint32_t lo= state->rk_int();
+template<typename T>
+__device__ uint64_t rk_interval_64(T state, uint64_t  mx, uint64_t mask) {
+    uint32_t hi= state.rk_int();
+    uint32_t lo= state.rk_int();
     uint64_t sampled = (static_cast<uint64_t>(hi) << 32 | lo)  & mask;
     while(sampled > mx)  {
-        hi= state->rk_int();
-        lo= state->rk_int();
+        hi= state.rk_int();
+        lo= state.rk_int();
         sampled = (static_cast<uint64_t>(hi) << 32 | lo) & mask;
     }
     return sampled;
 }
 
-__device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p, rk_binomial_state *binomial_state) {
+template<typename T>
+__device__ int64_t rk_binomial_btpe(T state, long n, double p, rk_binomial_state *binomial_state) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
     int m,y,k,i;
@@ -480,8 +502,8 @@ __device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p, rk_binomi
   /* sigh ... */
   Step10:
     nrq = n*r*q;
-    u = state->rk_double()*p4;
-    v = state->rk_double();
+    u = state.rk_double()*p4;
+    v = state.rk_double();
     if (u > p1) goto Step20;
     y = (long)floor(xm - p1*v + u);
     goto Step60;
@@ -549,7 +571,8 @@ __device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p, rk_binomi
     return y;
 }
 
-__device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p, rk_binomial_state *binomial_state) {
+template<typename T>
+__device__ int64_t rk_binomial_inversion(T state, int n, double p, rk_binomial_state *binomial_state) {
     double q, qn, np, px, U;
     int X, bound;
 
@@ -571,13 +594,13 @@ __device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p, rk_bi
     }
     X = 0;
     px = qn;
-    U = state->rk_double();
+    U = state.rk_double();
     while (U > px) {
         X++;
         if (X > bound) {
             X = 0;
             px = qn;
-            U = state->rk_double();
+            U = state.rk_double();
         } else {
             U -= px;
             px  = ((n-X+1) * p * px)/(X*q);
@@ -586,7 +609,8 @@ __device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p, rk_bi
     return X;
 }
 
-__device__ int64_t rk_binomial(rk_state *state, int n, double p, rk_binomial_state *binomial_state) {
+template<typename T>
+__device__ int64_t rk_binomial(T state, int n, double p, rk_binomial_state *binomial_state) {
     double q;
 
     if (p <= 0.5) {
@@ -745,7 +769,8 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     if (id < size) {
         T random(id, state);
         F func;
-        out_ptr[id] = func(&random, (get_index(args, id))...);
+        // need to pass it by copy due to hip issues with templating
+        out_ptr[id] = func(random, (get_index(args, id))...);
     }
     return;
 }
@@ -835,3 +860,24 @@ void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_
     kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
 }
+
+#else
+// the stubs need to be redeclared here for HIP versions less than 4.3 to avoid redeclarations in cython when importing the headers
+// No cuda will not compile the .cu file, so the definition needs to be done here explicitly
+void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {}
+void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
+void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
+void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
+void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
+void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {}
+void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
+void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
+void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {}
+
+#endif

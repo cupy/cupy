@@ -4,6 +4,7 @@ import time as _time
 import numpy as _numpy
 
 import cupy as _cupy
+from cupy_backends.cuda.api import runtime
 
 
 class _PerfCaseResult:
@@ -141,9 +142,13 @@ def _repeat(
     events_2 = []
 
     for i in devices:
-        with _cupy.cuda.Device(i):
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(i)
             events_1.append(_cupy.cuda.stream.Event())
             events_2.append(_cupy.cuda.stream.Event())
+        finally:
+            runtime.setDevice(prev_device)
 
     ev1 = _cupy.cuda.stream.Event()
     ev2 = _cupy.cuda.stream.Event()
@@ -152,8 +157,12 @@ def _repeat(
         func(*args, **kwargs)
 
     for event, device in zip(events_1, devices):
-        with _cupy.cuda.Device(device):
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(device)
             event.record()
+        finally:
+            runtime.setDevice(prev_device)
         event.synchronize()
 
     cpu_times = []
@@ -161,8 +170,12 @@ def _repeat(
     duration = 0
     for i in range(n_repeat):
         for event, device in zip(events_1, devices):
-            with _cupy.cuda.Device(device):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(device)
                 event.record()
+            finally:
+                runtime.setDevice(prev_device)
 
         t1 = _time.perf_counter()
 
@@ -173,11 +186,19 @@ def _repeat(
         cpu_times.append(cpu_time)
 
         for event, device in zip(events_2, devices):
-            with _cupy.cuda.Device(device):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(device)
                 event.record()
+            finally:
+                runtime.setDevice(prev_device)
         for event, device in zip(events_2, devices):
-            with _cupy.cuda.Device(device):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(device)
                 event.synchronize()
+            finally:
+                runtime.setDevice(prev_device)
         for i, (ev1, ev2) in enumerate(zip(events_1, events_2)):
             gpu_time = _cupy.cuda.get_elapsed_time(ev1, ev2) * 1e-3
             gpu_times[i].append(gpu_time)

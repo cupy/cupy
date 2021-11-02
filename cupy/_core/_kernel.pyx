@@ -3,6 +3,7 @@ import warnings
 
 import numpy
 
+import cupy
 from cupy.cuda import compiler
 from cupy import _util
 
@@ -15,6 +16,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy.cuda cimport texture
+from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._dtype cimport get_dtype
@@ -25,6 +27,11 @@ from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+
+try:
+    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+except ImportError:
+    cuda_cutensor = None
 
 from cupy._core import _fusion_thread_local
 
@@ -1026,6 +1033,9 @@ cdef class ufunc:
         readonly object _preamble
         readonly object _loop_prep
         readonly object _default_casting
+        readonly object _cutensor_op
+        readonly int _cutensor_alpha
+        readonly int _cutensor_gamma
         readonly tuple _params
         readonly tuple _params_with_where
         readonly dict _routine_cache
@@ -1036,7 +1046,7 @@ cdef class ufunc:
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
-            default_casting=None, *, _Ops out_ops=None):
+            default_casting=None, *, _Ops out_ops=None, cutensor_op=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1051,6 +1061,10 @@ cdef class ufunc:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
+        if cutensor_op is not None and cuda_cutensor is not None:
+            self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
+                getattr(cuda_cutensor, cutensor_op[0]),
+                cutensor_op[1], cutensor_op[2])
         _in_params = tuple(
             ParameterInfo('T in%d' % i, True)
             for i in range(nin))
@@ -1166,6 +1180,22 @@ cdef class ufunc:
         broad_values = in_args + where_args + out_args
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
+
+        if (self._cutensor_op is not None
+                and _accelerator.ACCELERATOR_CUTENSOR in
+                _accelerator._elementwise_accelerators):
+            if (self.nin == 2 and self.nout == 1 and
+                    isinstance(in_args[0], ndarray) and
+                    isinstance(in_args[1], ndarray)):
+                ret = cupy.cutensor._try_elementwise_binary_routine(
+                    in_args[0], in_args[1], dtype,
+                    out_args[0] if len(out_args) == 1 else None,
+                    self._cutensor_op,
+                    self._cutensor_alpha,
+                    self._cutensor_gamma,
+                )
+                if ret is not None:
+                    return ret
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
@@ -1373,9 +1403,11 @@ cdef class _Ops:
 
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
-                   default_casting=None, loop_prep='', out_ops=None):
+                   default_casting=None, loop_prep='', out_ops=None,
+                   cutensor_op=None):
     ops_ = _Ops.from_tuples(ops, routine)
     _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
-        loop_prep, doc, default_casting=default_casting, out_ops=_out_ops)
+        loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
+        cutensor_op=cutensor_op)
