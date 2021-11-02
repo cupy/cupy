@@ -34,14 +34,12 @@ From existing data
    asanyarray
    ascontiguousarray
    copy
-   fromfile
-   fromregex
-   loadtxt
-   fromstring
    frombuffer
-   fromiter
+   fromfile
    fromfunction
-   genfromtxt
+   fromiter
+   fromstring
+   loadtxt
 
 
 Numerical ranges

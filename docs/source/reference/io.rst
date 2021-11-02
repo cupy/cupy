@@ -23,11 +23,10 @@ Text files
 .. autosummary::
    :toctree: generated/
 
-   savetxt
    loadtxt
-   fromregex
-   fromstring
+   savetxt
    genfromtxt
+   fromstring
 
 String formatting
 -----------------
