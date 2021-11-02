@@ -178,6 +178,8 @@ cdef class Device:
         return self.id
 
     def __enter__(self):
+        # N.B. for maintainers: do not use this context manager in CuPy
+        # codebase. See #5943 and #5963.
         if self.id != runtime.getDevice():
             runtime.setDevice(self.id)
         _ThreadLocalStack.get().push_device(self.id)
@@ -217,8 +219,6 @@ cdef class Device:
             # The current device still remains 0.
 
         """
-        # N.B. for maintainers: use of this method or `setDevice` in CuPy
-        # codebase needs careful consideration. See #5913.
         runtime.setDevice(self.id)
         return self
 
