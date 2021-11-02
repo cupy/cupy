@@ -2,7 +2,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
 from cupy.random import _distributions
 from cupy import testing
 
@@ -194,8 +193,11 @@ class TestDistributionsGamma:
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['shape_dtype', 'scale_dtype'])
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_gamma_generator(self, shape_dtype, scale_dtype):
         self.check_distribution(cupy.random.default_rng().gamma,
                                 shape_dtype, scale_dtype)
@@ -549,8 +551,11 @@ class TestDistributionsPoisson:
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
 
     @cupy.testing.for_float_dtypes('lam_dtype')
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_poisson_generator(self, lam_dtype):
         self.check_distribution(cupy.random.default_rng(0).poisson,
                                 lam_dtype)
@@ -559,8 +564,11 @@ class TestDistributionsPoisson:
 @testing.gpu
 class TestDistributionsPoissonInvalid:
 
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_none_lam_generator(self):
         with pytest.raises(TypeError):
             cupy.random.default_rng(0).poisson(None)
@@ -666,8 +674,11 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('shape_dtype')
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_standard_gamma_generator(self, shape_dtype, dtype):
         shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
         self.check_generator_distribution('standard_gamma',
@@ -678,8 +689,11 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 @testing.gpu
 class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
 
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_none_shape_generator(self):
         with pytest.raises(TypeError):
             cupy.random.default_rng(0).standard_gamma(None)
