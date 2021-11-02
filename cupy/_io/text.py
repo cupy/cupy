@@ -1,5 +1,3 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
 import numpy
 import cupy
 
@@ -54,6 +52,3 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
     """
     numpy.savetxt(fname, cupy.asnumpy(X), fmt, delimiter, newline, header,
                   footer, comments, encoding)
-
-
-# TODO(okuta): Implement genfromtxt
