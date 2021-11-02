@@ -219,11 +219,11 @@ def loadtxt(*args, **kwargs):
 
 
 def genfromtxt(*args, **kwargs):
-    """Load data from a text file.
+    """Load data from text file, with missing values handled as specified.
 
     .. note::
-        Uses NumPy's ``loadtxt`` and coerces the result to a CuPy array.
+        Uses NumPy's ``genfromtxt`` and coerces the result to a CuPy array.
 
-    .. seealso:: :func:`numpy.loadtxt`
+    .. seealso:: :func:`numpy.genfromtxt`
     """
     return asarray(numpy.genfromtxt(*args, **kwargs))
