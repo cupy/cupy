@@ -14,14 +14,16 @@ from cupy.testing import _parameterized
 import cupyx
 import cupyx.scipy.sparse
 
-try:
+from cupy.testing._pytest_impl import is_available
+
+
+if is_available():
     import _pytest.outcomes
-except ImportError:
-    _is_pytest_available = False
-    _skip_classes = unittest.SkipTest,
-else:
     _is_pytest_available = True
     _skip_classes = unittest.SkipTest, _pytest.outcomes.Skipped
+else:
+    _is_pytest_available = False
+    _skip_classes = unittest.SkipTest,
 
 
 def _format_exception(exc):
