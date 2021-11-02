@@ -514,7 +514,6 @@ class TestFromData(unittest.TestCase):
     def test_frombuffer(self, xp):
         return xp.frombuffer(b'\x01\x02', dtype=numpy.uint8)
 
-
     @testing.numpy_cupy_array_equal()
     def test_loadtxt(self, xp):
         with tempfile.TemporaryFile() as fh:
