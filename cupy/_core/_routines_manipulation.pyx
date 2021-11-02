@@ -334,17 +334,17 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
 
     ndim = self._shape.size()
     if axes_size != ndim:
-        raise ValueError('Invalid axes value: %s' % str(axes))
+        raise ValueError("axes don't match array")
 
     axis_flags.resize(ndim, 0)
     for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
-            raise IndexError('Axes overrun')
+            raise numpy.AxisError(axis, ndim)
         axis %= ndim
         a_axes.push_back(axis)
         if axis_flags[axis]:
-            raise ValueError('Invalid axes value: %s' % str(axes))
+            raise ValueError('repeated axis in transpose')
         axis_flags[axis] = 1
         is_normal &= i == axis
         is_trans &= ndim - 1 - i == axis
@@ -741,7 +741,7 @@ cdef _get_strides_for_nocopy_reshape(
 cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
-    Arguments `allow_duplicate` and `axis_name` are not supported.
+    Arguments `argname` and `allow_duplicate` are not supported.
 
     """
     if numpy.isscalar(axis):
@@ -750,7 +750,8 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
     for ax in axis:
         ax = internal._normalize_axis_index(ax, ndim)
         if _has_element(ret, ax):
-            raise numpy.AxisError('repeated axis')
+            # the message in `numpy.core.numeric.normalize_axis_tuple`
+            raise ValueError('repeated axis')
         ret.push_back(ax)
 
 
