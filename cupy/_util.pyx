@@ -29,9 +29,12 @@ CUDA_ARRAY_INTERFACE_EXPORT_VERSION = int(
 CUPY_DLPACK_EXPORT_VERSION = tuple(
     [
         int(x)
-        for x in os.environ.get("CUPY_DLPACK_EXPORT_VERSION", "0.6").split(".")
+        for x in os.environ.get('CUPY_DLPACK_EXPORT_VERSION', '0.6').split('.')
     ]
 )
+
+DLPACK_ACCEPT_STREAM_ZERO = bool(
+    int(os.environ.get('CUPY_DLPACK_ACCEPT_STREAM_ZERO', '0')))
 
 
 cdef list _memos = []

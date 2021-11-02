@@ -104,6 +104,13 @@ Here are the environment variables that CuPy uses at runtime.
 
   This controls CuPy's DLPack support. Currently, setting a value smaller than 0.6 would disguise managed memory as normal device memory, which enables data exchanges with libraries that have not updated their DLPack support, whereas starting 0.6 CUDA managed memory can be correctly recognized as a valid device type.
 
+.. envvar:: CUPY_DLPACK_ACCEPT_STREAM_ZERO
+
+  Default: ``0``
+
+  This controls CuPy's DLPack protocol interoperability. Some external libraries may pass a current stream value of 0, which is not accepted as per the DLPack protocol specification in the `Array API standard <https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none>`_
+  This environment variable allows to use the 0 stream when enabled.
+
 .. envvar:: NVCC
 
   Default: ``nvcc``

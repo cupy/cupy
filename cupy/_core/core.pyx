@@ -247,6 +247,13 @@ cdef class ndarray:
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
                     f' 1, 2, or any larger value, but {stream} was provided')
             if curr_stream_ptr == 0:
+                if not _util.DLPACK_ACCEPT_STREAM_ZERO:
+                    raise ValueError(
+                        'stream 0 is passed by library XXX, which is not '
+                        'accepted per the DLPack protocol. Please report this '
+                        'problem to the upstream library, and in the meantime '
+                        'work around this by setting the env var '
+                        'CUPY_DLPACK_ACCEPT_STREAM_ZERO=1')
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
             if stream is None:
@@ -271,7 +278,7 @@ cdef class ndarray:
             attrs = runtime.pointerGetAttributes(self.data.ptr)
             is_managed = (
                 attrs.type == runtime.memoryTypeManaged
-                and _util.CUPY_DLPACK_EXPORT_VERSION >= (0, 6))
+                and _util.DLPACK_EXPORT_VERSION >= (0, 6))
             if is_managed:
                 device_type = dlpack.managed_CUDA
             else:
