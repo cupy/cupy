@@ -1,3 +1,5 @@
+cdef list _elementwise_accelerators
+
 cdef list _reduction_accelerators
 
 cdef list _routine_accelerators

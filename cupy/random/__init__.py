@@ -32,9 +32,9 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     Returns:
         Generator: The initialized generator object.
     """  # NOQA, list of types need to be in one line for sphinx
-    if runtime.is_hip:
-        raise RuntimeError('Generator API not supported in HIP,'
-                           ' please use the legacy one.')
+    if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
+        raise RuntimeError('Generator API not supported in ROCm<4.3,'
+                           ' please use the legacy one or update ROCm.')
     if isinstance(seed, BitGenerator):
         return Generator(seed)
     elif isinstance(seed, Generator):
@@ -94,12 +94,8 @@ from cupy.random._sample import random_sample  # NOQA
 from cupy.random._sample import random_sample as random  # NOQA
 from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
-if not runtime.is_hip:
-    # This is disabled for HIP due to a problem when using
-    # dynamic dispatching of kernels
-    # see https://github.com/ROCm-Developer-Tools/HIP/issues/2186
-    from cupy.random._bit_generator import BitGenerator  # NOQA
-    from cupy.random._bit_generator import XORWOW  # NOQA
-    from cupy.random._bit_generator import MRG32k3a  # NOQA
-    from cupy.random._bit_generator import Philox4x3210  # NOQA
-    from cupy.random._generator_api import Generator  # NOQA
+from cupy.random._bit_generator import BitGenerator  # NOQA
+from cupy.random._bit_generator import XORWOW  # NOQA
+from cupy.random._bit_generator import MRG32k3a  # NOQA
+from cupy.random._bit_generator import Philox4x3210  # NOQA
+from cupy.random._generator_api import Generator  # NOQA

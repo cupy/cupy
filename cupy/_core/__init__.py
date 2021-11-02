@@ -4,8 +4,10 @@ from cupy._core import internal  # NOQA
 
 
 # internal APIs for testing and developement
+from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
 from cupy._core._accelerator import set_routine_accelerators  # NOQA
+from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import get_reduction_accelerators  # NOQA
 from cupy._core._accelerator import get_routine_accelerators  # NOQA
 

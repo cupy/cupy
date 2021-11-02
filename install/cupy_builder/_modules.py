@@ -258,6 +258,25 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
             'curand',
         ],
     }
+    HIP_random = {
+        'name': 'random',
+        'required': True,
+        'file': [
+            'cupy.random._bit_generator',
+            ('cupy.random._generator_api',
+             ['cupy/random/cupy_distributions.cu']),
+        ],
+        'include': [
+            'hiprand/hiprand.h',
+        ],
+        'libraries': [
+            # Dependency from cuRAND header files
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
+            'hiprand',
+        ],
+        'check_method': build.check_hip_version,
+        'version_method': build.get_hip_version,
+    }
     CUDA_cusparselt = {
         'name': 'cusparselt',
         'file': [
@@ -349,6 +368,7 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
             HIP_cuda_nvtx_cusolver,
             HIP_cub,
             HIP_nccl,
+            HIP_random,
             COMMON_dlpack,
         ] + [HIP_thrust] if context.enable_thrust else []
 

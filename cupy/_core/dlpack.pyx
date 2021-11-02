@@ -368,17 +368,25 @@ cpdef from_dlpack(array):
 
     # CuPy is the consumer, so we provide our current stream to the producer
     if dev_type == <int>kDLCUDA or dev_type == <int>kDLCUDAManaged:
-        with device.Device(dev_id):
+        prev_device = cupy.cuda.runtime.getDevice()
+        try:
+            cupy.cuda.runtime.setDevice(dev_id)
             assert not runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
             if stream == 0:
                 stream = stream_module.get_default_stream_ptr()
             dltensor = array.__dlpack__(stream=stream)
+        finally:
+            cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLROCM:
-        with device.Device(dev_id):
+        prev_device = cupy.cuda.runtime.getDevice()
+        try:
+            cupy.cuda.runtime.setDevice(dev_id)
             assert runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
             dltensor = array.__dlpack__(stream=stream)
+        finally:
+            cupy.cuda.runtime.setDevice(prev_device)
     else:
         # TODO(leofang): support kDLCUDAPinned etc
         dltensor = None

@@ -7,6 +7,7 @@ import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy_backends.cuda.api import runtime
 
 
 _UINT32_MAX = 0xffffffff
@@ -93,6 +94,9 @@ class Generator:
 
     """
     def __init__(self, bit_generator):
+        if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
+            raise RuntimeError('Generator API not supported in ROCm<4.3,'
+                               ' please use the legacy one or update ROCm.')
         self.bit_generator = bit_generator
         self._binomial_state = None
 
