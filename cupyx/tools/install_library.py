@@ -226,7 +226,7 @@ The current platform ({}) is not supported.'''.format(target_platform))
         outdir = os.path.join(tmpdir, 'extract')
         try:
             shutil.unpack_archive(f.name, outdir)
-        except ValueError:
+        except shutil.ReadError:
             print("'xztar' archive format is not supported in your Python "
                   'environment. Try extracting by a shell command...')
             try:
