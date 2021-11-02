@@ -115,15 +115,13 @@ This may affect the dtype of its output, depending on the values of the "scalar"
   dtype('float64')
 
 
-Matrix type
------------
+Matrix type (:class:`numpy.matrix`)
+-----------------------------------
 
-CuPy does not have the ``matrix`` subclass of :class:`cupy.ndarray`.
-:class:`numpy.matrix` is discouraged and will be removed in the future.
+SciPy returns :class:`numpy.matrix` (a subclass of :class:`numpy.ndarray`) when dense matrices are computed from sparse matrices (e.g., ``coo_matrix + ndarray``). However, CuPy returns :class:`cupy.ndarray` for such operations.
 
-Because `sparse ndarray class <https://github.com/scipy/scipy/issues/8162>`_ has not been introduced to SciPy,
-the sparse matrix classes in :mod:`cupyx.scipy.sparse` often behave like :class:`numpy.matrix`, too.
-The classes in CuPy, however, return :class:`cupy.ndarray`\s when dense matrices are computed from sparse matrices.
+There is no plan to provide :class:`numpy.matrix` equivalent in CuPy.
+This is because the use of :class:`numpy.matrix` is no longer recommended since NumPy 1.15.
 
 
 Data types
