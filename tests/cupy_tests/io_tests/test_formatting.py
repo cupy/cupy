@@ -19,7 +19,7 @@ class TestFormatting(unittest.TestCase):
         b = testing.shaped_arange((2, 3, 4), numpy)
         assert cupy.array_str(a) == numpy.array_str(b)
 
-    @testing.numpy_cupy_array_equal()
     def test_array2string(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        return cupy.array2string(a)
+        b = testing.shaped_arange((2, 3, 4), numpy)
+        return cupy.array2string(a) == numpy.array2string(b)
