@@ -99,12 +99,31 @@
   test: "unit"
 
 # CUDA 11.4 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda114"
   target: "cuda114"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.4"
+  rocm: null
+  nccl: "2.11"
+  cutensor: "1.3"
+  cusparselt: "0.1.0"
+  cudnn: "8.2"
+  python: "3.9"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.5 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda115"
+  target: "cuda115"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.5"
   rocm: null
   nccl: "2.11"
   cutensor: "1.3"
