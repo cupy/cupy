@@ -135,8 +135,7 @@ def copy(a, order='K'):
     if fusion._is_fusing():
         if order != 'K':
             raise NotImplementedError(
-                'cupy.copy does not support `order` in fusion yet.'
-            )
+                'cupy.copy does not support `order` in fusion yet.')
         return fusion._call_ufunc(_core.elementwise_copy, a)
 
     # If the current device is different from the device of ``a``, then this

@@ -34,6 +34,7 @@ String formatting
 .. autosummary::
    :toctree: generated/
 
+   array2string
    array_repr
    array_str
 
