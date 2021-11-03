@@ -1,5 +1,6 @@
 import unittest
 import tempfile
+import os
 import filecmp
 
 
@@ -12,9 +13,15 @@ import numpy
 class TestText(unittest.TestCase):
 
     def test_savetxt(self):
-        with tempfile.NamedTemporaryFile() as tmp_cupy, \
-                tempfile.NamedTemporaryFile() as tmp_numpy:
+        tmp_cupy = tempfile.NamedTemporaryFile(delete=False)
+        tmp_numpy = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            tmp_cupy.close()
+            tmp_numpy.close()
             array = [[1, 2, 3], [2, 3, 4]]
             cupy.savetxt(tmp_cupy.name, cupy.array(array))
             numpy.savetxt(tmp_numpy.name, numpy.array(array))
             assert filecmp.cmp(tmp_cupy.name, tmp_numpy.name)
+        finally:
+            os.remove(tmp_cupy.name)
+            os.remove(tmp_numpy.name)
