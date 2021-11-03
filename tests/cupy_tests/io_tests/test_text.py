@@ -1,12 +1,12 @@
-import unittest
-import tempfile
-import os
 import filecmp
+import os
+import tempfile
+import unittest
 
+import numpy
 
 from cupy import testing
 import cupy
-import numpy
 
 
 @testing.gpu
