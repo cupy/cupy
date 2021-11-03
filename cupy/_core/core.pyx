@@ -2082,12 +2082,9 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.0'
         elif 11010 <= _cuda_runtime_version < 11020:
             bundled_include = 'cuda-11.1'
-        elif 11020 <= _cuda_runtime_version < 11030:
-            bundled_include = 'cuda-11.2'
-        elif 11030 <= _cuda_runtime_version < 11040:
-            bundled_include = 'cuda-11.3'
-        elif 11040 <= _cuda_runtime_version < 11050:
-            bundled_include = 'cuda-11.4'
+        elif 11020 <= _cuda_runtime_version < 12000:
+            # use the headers from the latest CTK for CUDA Enhanced Compatibility
+            bundled_include = 'cuda-11'
         else:
             # CUDA versions not yet supported.
             bundled_include = None
