@@ -13,18 +13,23 @@ Dropping CUDA 9.2 / 10.0 / 10.1 Support
 CUDA 10.1 or earlier is no longer supported.
 Use CUDA 10.2 or later.
 
-Dropping NCCL v2.4 Support
------------------------------
+Dropping NCCL v2.4 / v2.6 / v2.7 Support
+----------------------------------------
 
-NCCL v2.4 is no longer supported.
+NCCL v2.4, v2.6, and v2.7 are no longer supported.
 
 Dropping Python 3.6 Support
 ---------------------------
 
 Python 3.6 is no longer supported.
 
-Changes in :class:`cupy.cuda.Stream` Behavior
----------------------------------------------
+Dropping NumPy 1.17 Support
+---------------------------
+
+NumPy 1.17 is not longer supported.
+
+Changes in :class:`cupy.cuda.Stream` and :class:`cupy.cuda.Device` Behavior
+---------------------------------------------------------------------------
 
 Stream is now managed per-device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,6 +71,19 @@ An existing code mixing ``with stream:`` block and ``stream.use()`` may get diff
            pass
        cupy.cuda.get_current_stream()  # -> CuPy v10 returns `s1` instead of `s2`.
 
+Current device set via ``use()`` will not be restored when exiting ``with`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Samely as :class:`cupy.cuda.Stream`, the current device set via :func:`cupy.cuda.Device.use` will not be reactivated when exiting a device context manager. Mix of ``with device:`` block and ``device.use()`` may varingly behave between CuPy v10 and v9.
+
+.. code-block:: py
+
+   with cupy.cuda.Device(1) as d1:
+       d2 = cupy.cuda.Device(0).use()
+       with d1:
+           pass
+       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
+
 Streams can now be shared between threads
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -78,7 +96,7 @@ API Changes
 
 Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
 
-*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
 
 The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
 
@@ -91,8 +109,16 @@ A new module :mod:`cupyx.profiler` is added to host all profiling related APIs i
 
 The old routines are deprecated.
 
+:func:`cupy.cuda.Device.use` now returns ``self`` to get aligned with :func:`cupy.cuda.Stream.use()`.
+
+:func:`cupy.ndarray.__pos__` behaves samely as :func:`cupy.positive` instead of returning ``self``.
+
 Deprecated APIs may be removed in the future CuPy releases.
 
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.4 and ROCm 4.3.
 
 CuPy v9
 =======
