@@ -728,7 +728,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        return _manipulation._ndarray_ravel(self, order)
+        return _internal_ascontiguousarray(
+            _manipulation._ndarray_ravel(self, order))
 
     cpdef ndarray squeeze(self, axis=None):
         """Returns a view with size-one axes removed.
