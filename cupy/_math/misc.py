@@ -253,7 +253,8 @@ maximum = _core.create_ufunc(
 
     .. seealso:: :data:`numpy.maximum`
 
-    ''')
+    ''',
+    cutensor_op=('OP_MAX', 1, 1))
 
 
 _float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
@@ -275,7 +276,8 @@ minimum = _core.create_ufunc(
 
     .. seealso:: :data:`numpy.minimum`
 
-    ''')
+    ''',
+    cutensor_op=('OP_MIN', 1, 1))
 
 
 fmax = _core.create_ufunc(
@@ -349,7 +351,7 @@ _nan_to_num = _core.create_ufunc(
       'out0 = nan_to_num(in0, in1, in2, in3)')),
     'out0 = in0',
     preamble=_nan_to_num_preamble,
-    doc=''' Elementwise nan_to_num function.
+    doc='''Elementwise nan_to_num function.
 
     .. seealso:: :func:`numpy.nan_to_num`
 
@@ -370,19 +372,20 @@ def _check_nan_inf(x, dtype, neg=None):
     return cupy.asanyarray(x, dtype)
 
 
-def nan_to_num(x, out=None, *, nan=0.0, posinf=None, neginf=None, **kwds):
-    """ Elementwise nan_to_num function.
+def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
+    """Replace NaN with zero and infinity with large finite numbers (default
+    behaviour) or with the numbers defined by the user using the `nan`,
+    `posinf` and/or `neginf` keywords.
 
     .. seealso:: :func:`numpy.nan_to_num`
 
     """
-
-    kwds.setdefault('out', out)
-    dtype = cupy.asanyarray(x).dtype
+    dtype = x.dtype
     nan = _check_nan_inf(nan, dtype)
     posinf = _check_nan_inf(posinf, dtype, False)
     neginf = _check_nan_inf(neginf, dtype, True)
-    return _nan_to_num(x, nan, posinf, neginf, **kwds)
+    out = None if copy else x
+    return _nan_to_num(x, nan, posinf, neginf, out=out)
 
 
 # TODO(okuta): Implement real_if_close

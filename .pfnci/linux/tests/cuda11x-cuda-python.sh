@@ -2,12 +2,16 @@
 
 set -uex
 
-export NVCC="ccache nvcc"
-export CUPY_USE_CUDA_PYTHON="1"
+ACTIONS="$(dirname $0)/actions"
+. "$ACTIONS/_environment.sh"
 
-. "$(dirname $0)/_environment.sh"
+export NVCC="ccache nvcc"
+
+export CUPY_USE_CUDA_PYTHON="1"
 
 python3 -m pip install --user Cython
 python3 -m pip install --user https://github.com/NVIDIA/cuda-python/archive/refs/heads/main.tar.gz
 
-bash "$(dirname $0)/_build_and_test.sh" "not slow"
+"$ACTIONS/build.sh"
+"$ACTIONS/unittest.sh" "not slow"
+"$ACTIONS/cleanup.sh"

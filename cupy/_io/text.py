@@ -1,17 +1,13 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+import numpy
+import cupy
 
 
-# TODO(okuta): Implement loadtxt
+def savetxt(fname, X, *args, **kwargs):
+    """Save an array to a text file.
 
+    .. note::
+        Uses NumPy's ``savetxt``.
 
-# TODO(okuta): Implement savetxt
-
-
-# TODO(okuta): Implement genfromtxt
-
-
-# TODO(okuta): Implement fromregex
-
-
-# TODO(okuta): Implement fromstring
+    .. seealso:: :func:`numpy.savetxt`
+    """
+    numpy.savetxt(fname, cupy.asnumpy(X), *args, **kwargs)

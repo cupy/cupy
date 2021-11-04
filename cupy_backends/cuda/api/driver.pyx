@@ -74,6 +74,17 @@ cdef inline void check_attribute_status(int status, int* pi) except *:
 ###############################################################################
 
 cpdef get_build_version():
+    """Returns the CUDA_VERSION / HIP_VERSION constant.
+
+    Note that when built with CUDA Python support, CUDA_VERSION will become a
+    constant:
+
+    https://github.com/NVIDIA/cuda-python/blob/v11.4.0/cuda/ccuda.pxd#L2268
+
+    In CuPy codebase, use CUPY_CUDA_VERSION compile-time constant instead of
+    this function to change the behavior based on the target CUDA version.
+    """
+
     # The versions are mutually exclusive
     if CUPY_CUDA_VERSION > 0:
         return CUDA_VERSION
@@ -276,8 +287,6 @@ cpdef int funcGetAttribute(int attribute, intptr_t f) except? -2:
 
 
 cpdef funcSetAttribute(intptr_t f, int attribute, int value):
-    if CUPY_CUDA_VERSION < 9000:
-        raise RuntimeError("Your CUDA does not support cuFuncSetAttribute.")
     with nogil:
         status = cuFuncSetAttribute(
             <Function> f,

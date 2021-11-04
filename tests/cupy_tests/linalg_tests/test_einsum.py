@@ -7,6 +7,9 @@ import cupy
 from cupy import testing
 
 
+rng = numpy.random.default_rng(seed=0)
+
+
 def _dec_shape(shape, dec):
     # Test smaller shape
     return tuple(1 if s == 1 else max(0, s - dec) for s in shape)
@@ -15,12 +18,12 @@ def _dec_shape(shape, dec):
 def _rand1_shape(shape, prob):
     # Test broadcast
     # If diagonals are "broadcasted" we can simply:
-    # return tuple(1 if numpy.random.rand() < prob else s for s in shape)
+    # return tuple(1 if rng.uniform() < prob else s for s in shape)
     table = {}
     new_shape = []
     for s in shape:
         if s not in table:
-            table[s] = 1 if numpy.random.rand() < prob else s
+            table[s] = 1 if rng.uniform() < prob else s
         new_shape.append(table[s])
     return tuple(new_shape)
 
@@ -46,7 +49,7 @@ def augment_einsum_testcases(*params):
                     if k.startswith('shape_'):
                         new_shape = _dec_shape(param[k], dec)
                         if drop:
-                            prob = numpy.random.rand()
+                            prob = rng.uniform()
                             new_shape = _rand1_shape(new_shape, prob)
                         param_new[k] = new_shape
                 param_new['_raw_params'] = {

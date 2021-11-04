@@ -480,7 +480,7 @@ void shift(const double* in, ptrdiff_t in_length,
     testing.product_dict(
         testing.product({
             'filter': ['generic_filter1d'],
-            'func_or_kernel': [(shift_raw, shift_pyfunc)],
+            'func_or_kernel': [('shift_raw', 'shift_pyfunc')],
             'axis': [0, 1, -1],
         }),
 
@@ -507,11 +507,20 @@ void shift(const double* in, ptrdiff_t in_length,
 @testing.gpu
 @testing.with_requires('scipy')
 class TestGeneric1DFilter(FilterTestCaseBase):
+    _func_or_kernels = {
+        'shift_raw': shift_raw,
+        'shift_pyfunc': shift_pyfunc,
+    }
+
+    def get_func_or_kernel(self, xp):
+        return self._func_or_kernels[
+            self.func_or_kernel[1 if xp == numpy else 0]]
+
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         # Need to deal with the different versions of the functions given to
         # numpy vs cupy
-        self.function = self.func_or_kernel[int(xp == numpy)]
+        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 

@@ -66,15 +66,7 @@ In such a case, the following code would create an array ``x_on_gpu0`` on GPU 0.
 
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
 
-The current device can be changed using :class:`cupy.cuda.Device.use()` as follows:
-
-.. doctest::
-
-   >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
-   >>> cp.cuda.Device(1).use()
-   >>> x_on_gpu1 = cp.array([1, 2, 3, 4, 5])
-
-To temporarily switch to another GPU device, use ``with`` context manager:
+To switch to another GPU device, use the :class:`~cupy.cuda.Device` context manager:
 
 .. doctest::
 
@@ -82,18 +74,15 @@ To temporarily switch to another GPU device, use ``with`` context manager:
    ...    x_on_gpu1 = cp.array([1, 2, 3, 4, 5])
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
 
-Most CuPy operations are performed on the currently active device and
-attempts to process an array stored on a different device will result in an error:
+All CuPy operations (except for multi-GPU features and device-to-device copy) are performed on the currently active device.
 
-.. doctest::
+In general, CuPy functions expect that the array is on the same device as the current one.
+Passing an array stored on a non-current device may work depending on the hardware configuration but is generally discouraged as it may not be performant.
 
-   >>> with cp.cuda.Device(0):
-   ...    x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
-   >>> with cp.cuda.Device(1):
-   ...    x_on_gpu0 * 2  # raises error
-   Traceback (most recent call last):
-   ...
-   ValueError: Array device must be same as the current device: array device = 0 while current = 1
+.. note::
+  If the array's device and the current device mismatch, CuPy functions try to establish `peer-to-peer memory access <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#peer-to-peer-memory-access>`_ (P2P) between them so that the current device can directly read the array from another device.
+  Note that P2P is available only when the topology permits it.
+  If P2P is unavailable, such an attempt will fail with ``ValueError``.
 
 ``cupy.ndarray.device`` attribute indicates the device on which the array is allocated.
 

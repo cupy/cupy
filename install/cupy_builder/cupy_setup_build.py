@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import copy
 from distutils import ccompiler
 from distutils import errors
@@ -155,16 +157,6 @@ def preconfigure_modules(MODULES, compiler, settings):
                 if os.path.exists(lib_path):
                     settings['library_dirs'].append(lib_path)
                     break
-
-        if module['name'] == 'cugraph':
-            cugraph_path = os.environ.get('CUGRAPH_PATH', '')
-            for i in 'include', 'include/cugraph':
-                inc_path = os.path.join(cugraph_path, i)
-                if os.path.exists(inc_path):
-                    settings['include_dirs'].append(inc_path)
-            lib_path = os.path.join(cugraph_path, 'lib')
-            if os.path.exists(lib_path):
-                settings['library_dirs'].append(lib_path)
 
         # In ROCm 4.1 and later, we need to use the independent version of
         # hipfft as well as rocfft. We configure the lists of include

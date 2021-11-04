@@ -156,7 +156,46 @@ class TestDeviceFromPointer(unittest.TestCase):
 
 
 @testing.multi_gpu(2)
-class TestDeviceContextManager(unittest.TestCase):
+class TestDeviceSwitch(unittest.TestCase):
+
+    def setUp(self):
+        self._prev_device = cuda.Device()
+
+    def tearDown(self):
+        self._prev_device.use()
+
+    def test_use(self):
+        dev0 = cuda.Device(0)
+        dev1 = cuda.Device(1)
+
+        assert dev1.use() is dev1
+        assert 1 == cuda.Device().id
+        assert dev0.use() is dev0
+        assert 0 == cuda.Device().id
+
+    def test_context(self):
+        dev0 = cuda.Device(0)
+        dev1 = cuda.Device(1)
+
+        with dev0:
+            assert 0 == cuda.Device().id
+            with dev1:
+                assert 1 == cuda.Device().id
+            assert 0 == cuda.Device().id
+
+    def test_context_and_use(self):
+        dev0 = cuda.Device(0)
+        dev1 = cuda.Device(1)
+
+        dev1.use()
+        with dev0:
+            assert 0 == cuda.Device().id
+            dev1.use()
+            with dev1:
+                assert 1 == cuda.Device().id
+            assert 0 == cuda.Device().id
+        assert 0 == cuda.Device().id
+
     def test_thread_safe(self):
         dev0 = cuda.Device(0)
         dev1 = cuda.Device(1)
@@ -190,3 +229,13 @@ class TestDeviceContextManager(unittest.TestCase):
         t1.join()
         assert t0_exit_device[0] == 0
         assert t1_exit_device[0] == 1
+
+    def test_invalid(self):
+        d = cuda.Device(100)
+        with pytest.raises(cuda.runtime.CUDARuntimeError):
+            d.use()
+        with pytest.raises(cuda.runtime.CUDARuntimeError):
+            with d:
+                pass
+        with cuda.Device(0):
+            pass

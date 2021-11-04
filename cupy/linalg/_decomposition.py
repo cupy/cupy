@@ -158,10 +158,10 @@ def cholesky(a):
     transpose operator.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(N, N)``
+        a (cupy.ndarray): The input matrix with dimension ``(..., M, M)``
 
     Returns:
-        cupy.ndarray: The lower-triangular matrix.
+        cupy.ndarray: The lower-triangular matrix of shape ``(..., M, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield

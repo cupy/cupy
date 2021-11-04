@@ -21,13 +21,22 @@ class TestIsScalar(testing.NumpyAliasBasicTestBase):
             numpy.int32(1), numpy.array([1, 2], numpy.int32),
             numpy.complex128(1), numpy.complex128(1j),
             numpy.complex128(1 + 1j),
-            None, object(), 'abc', '', int, numpy.int32]}))
+            None, 'abc', '', int, numpy.int32]}))
 class TestIsScalarValues(testing.NumpyAliasValuesTestBase):
 
     func = 'isscalar'
 
     def setUp(self):
         self.args = (self.value,)
+
+
+class TestIsScalarValues2(testing.NumpyAliasValuesTestBase):
+
+    func = 'isscalar'
+
+    def setUp(self):
+        value = object()
+        self.args = (value,)
 
 
 @testing.parameterize(

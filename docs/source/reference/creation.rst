@@ -34,7 +34,12 @@ From existing data
    asanyarray
    ascontiguousarray
    copy
+   frombuffer
    fromfile
+   fromfunction
+   fromiter
+   fromstring
+   loadtxt
 
 
 Numerical ranges

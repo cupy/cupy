@@ -110,6 +110,7 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (0, 3), 'indexes': (slice(None), [1])},
     # TODO(niboshi): pass the following commented out tests
     # {'shape': (0,), 'indexes': (False, True, True)},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized:
@@ -324,6 +325,7 @@ class TestArrayInvalidIndexAdvGetitem:
      'indexes': (slice(None), numpy.random.choice([False, True], (3, 1)))},
     {'shape': (2, 3, 4),
      'indexes': numpy.random.choice([False, True], (1, 3))},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem2:
@@ -462,6 +464,7 @@ class TestArrayInvalidValueAdvGetitem:
     {'shape': (0,), 'indexes': (), 'value': 1},
     # TODO(niboshi): pass the following commented out tests
     # {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue:
@@ -579,6 +582,7 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
     # list indexes
     {'shape': (2, 3, 4), 'indexes': [1],
      'value': numpy.arange(3 * 4).reshape(3, 4)},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestArrayAdvancedIndexingVectorValue:

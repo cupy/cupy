@@ -107,6 +107,7 @@ from cupy import testing
     {'shape': (2, 3, 4), 'slices': ([1, 1], 1), 'value': 1},
     {'shape': (2, 3, 4), 'slices': ([1], slice(1, 2)), 'value': 1},
     {'shape': (2, 3, 4), 'slices': ([[1]], slice(1, 2)), 'value': 1},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
 class TestScatterParametrized:

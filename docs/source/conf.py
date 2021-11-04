@@ -61,7 +61,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
-              'sphinx.ext.linkcode']
+              'sphinx.ext.linkcode',
+              'sphinx_copybutton']
 
 try:
     import sphinxcontrib.spelling  # noqa
@@ -149,6 +150,22 @@ todo_include_todos = False
 napoleon_use_ivar = True
 napoleon_include_special_with_doc = True
 
+# -- Copybutton settings --------------------------------------------------
+
+# Only copy lines starting with the input prompts,
+# valid prompt styles: [
+#     Python Repl + continuation (e.g., '>>> ', '... '),
+#     Bash (e.g., '$ '),
+#     ipython and qtconsole + continuation (e.g., 'In [29]: ', '  ...: '),
+#     jupyter-console + continuation (e.g., 'In [29]: ', '     ...: ')
+# ]
+# regex taken from https://sphinx-copybutton.readthedocs.io/en/latest/#using-regexp-prompt-identifiers
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
+# Continue copying lines as long as they end with this character
+copybutton_line_continuation_character = "\\"
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -193,12 +210,12 @@ html_theme_options = {
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = '_static/favicon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -437,3 +454,22 @@ def linkcode_resolve(domain, info):
 
     return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
         tag, relpath, linenum)
+
+
+# Python Array API methods have type hints, which do not render
+# nicely by default. This option moves the type hints to the
+# doc content so as to make the function signatures shorter and
+# look nicer.
+autodoc_typehints = 'description'
+
+
+def remove_array_api_module_docstring(app, what, name, obj, options, lines):
+    # We don't want to take the docstring in cupyx.array_api because:
+    #   1. It's not how we document module-level stuff
+    #   2. The docstring is taken from numpy.array_api, which requires rewriting
+    # Here we remove the docstring and will add our own description in array_api.rst
+    if what == "module" and 'array_api' in name:
+        del lines[:]
+
+def setup(app):
+    app.connect("autodoc-process-docstring", remove_array_api_module_docstring)

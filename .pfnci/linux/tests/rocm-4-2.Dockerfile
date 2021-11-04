@@ -1,21 +1,35 @@
-FROM rocm/dev-ubuntu-20.04:4.2
+# AUTO GENERATED: DO NOT EDIT!
+ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:4.2"
+FROM ${BASE_IMAGE}
 
-RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ( apt-get -qqy update || true ) && \
+    apt-get -qqy install ca-certificates && \
+    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
-    apt-get -qqy install rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl && \
-    apt-get -qqy install ccache
+    apt-get -qqy install \
+       make build-essential libssl-dev zlib1g-dev \
+       libbz2-dev libreadline-dev libsqlite3-dev wget \
+       curl llvm libncursesw5-dev xz-utils tk-dev \
+       libxml2-dev libxmlsec1-dev libffi-dev \
+       liblzma-dev && \
+    apt-get -qqy install ccache git curl && \
+    apt-get -qqy --allow-change-held-packages \
+            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
 
-ENV PATH="/usr/lib/ccache:${PATH}"
-ENV ROCM_HOME="/opt/rocm"
-ENV LD_LIBRARY_PATH="${ROCM_HOME}/lib"
-ENV CPATH="${ROCM_HOME}/include"
-ENV LDFLAGS="-L${ROCM_HOME}/lib"
+ENV PATH "/usr/lib/ccache:${PATH}"
 
-# Python 3.8
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get -qqy install python3 python3-dev python3-pip python3-setuptools && \
-    python3 -m pip install -U pip setuptools && \
-    apt-get -qqy purge python3-pip python3-setuptools
+ENV ROCM_HOME "/opt/rocm"
+ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
+ENV CPATH "${ROCM_HOME}/include"
+ENV LDFLAGS "-L${ROCM_HOME}/lib"
 
-RUN python3 -m pip install cython numpy scipy
+RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
+ENV PYENV_ROOT "/opt/pyenv"
+ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
+RUN pyenv install 3.8.11 && \
+    pyenv global 3.8.11 && \
+    pip install -U setuptools pip
+
+RUN pip install -U numpy==1.20.* scipy==1.6.* optuna==2.* cython==0.29.*

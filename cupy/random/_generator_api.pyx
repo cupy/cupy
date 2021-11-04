@@ -7,6 +7,7 @@ import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy_backends.cuda.api import runtime
 
 
 _UINT32_MAX = 0xffffffff
@@ -93,6 +94,9 @@ class Generator:
 
     """
     def __init__(self, bit_generator):
+        if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
+            raise RuntimeError('Generator API not supported in ROCm<4.3,'
+                               ' please use the legacy one or update ROCm.')
         self.bit_generator = bit_generator
         self._binomial_state = None
 
@@ -525,42 +529,41 @@ class Generator:
 
         if not isinstance(ngood, ndarray):
             if type(ngood) in (float, int):
-                ngood_a = ndarray((), numpy.float64)
+                ngood_a = ndarray((), numpy.int64)
                 ngood_a.fill(ngood)
                 ngood = ngood_a
             else:
                 raise TypeError('ngood is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            ngood = ngood.astype('d', copy=False)
+            ngood = ngood.astype(numpy.int64, copy=False)
 
         if not isinstance(nbad, ndarray):
             if type(nbad) in (float, int):
-                nbad_a = ndarray((), numpy.float64)
+                nbad_a = ndarray((), numpy.int64)
                 nbad_a.fill(nbad)
                 nbad = nbad_a
             else:
                 raise TypeError('nbad is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            nbad = nbad.astype('d', copy=False)
+            nbad = nbad.astype(numpy.int64, copy=False)
 
         if not isinstance(nsample, ndarray):
             if type(nsample) in (float, int):
-                nsample_a = ndarray((), numpy.float64)
+                nsample_a = ndarray((), numpy.int64)
                 nsample_a.fill(nsample)
                 nsample = nsample_a
             else:
                 raise TypeError('nsample is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            nsample = nsample.astype('d', copy=False)
+            nsample = nsample.astype(numpy.int64, copy=False)
 
         if size is not None and not isinstance(size, tuple):
             size = (size,)
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
-
         y = ndarray(size, numpy.int64)
 
         ngood = cupy.broadcast_to(ngood, y.shape)

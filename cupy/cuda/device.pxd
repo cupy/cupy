@@ -7,6 +7,7 @@ cpdef intptr_t get_cusolver_handle() except? 0
 cpdef intptr_t get_cusolver_sp_handle() except? 0
 cpdef intptr_t get_cusparse_handle() except? 0
 cpdef str get_compute_capability()
+cdef bint _enable_peer_access(int device, int peer) except -1
 
 cdef class Handle:
     cdef:

@@ -20,25 +20,19 @@ import cupy
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
-    '''
-    // stringification is currently needed as the version is "030"...
-    #define _stringify_(s) #s
-    #define _xstringify_(s) _stringify_(s)
-    const char* DLPACK_VER_STR = _xstringify_(DLPACK_VERSION);
-    #undef _xstringify_
-    #undef _stringify_
-    '''
-    const char* DLPACK_VER_STR
+    cdef int DLPACK_VERSION
 
     cdef enum DLDeviceType:
         kDLCPU
-        kDLGPU
-        kDLCPUPinned
+        kDLCUDA
+        kDLCUDAHost
+        kDLCUDAManaged
+        kDLROCM
+        kDLROCMHost
         kDLOpenCL
         kDLVulkan
         kDLMetal
         kDLVPI
-        kDLROCM
 
     ctypedef struct DLDevice:
         DLDeviceType device_type
@@ -72,7 +66,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
 
 
 def get_build_version():
-    return DLPACK_VER_STR.decode()
+    return str(DLPACK_VERSION)
 
 
 cdef void pycapsule_deleter(object dltensor):
@@ -101,7 +95,8 @@ cpdef object toDlpack(ndarray array) except +:
 
     cdef size_t ndim = array._shape.size()
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
-    dl_tensor.data = <void*>array.data.ptr
+    cdef intptr_t data_ptr = array.data.ptr
+    dl_tensor.data = <void*>data_ptr
     dl_tensor.ndim = ndim
 
     cdef int64_t* shape_strides = \
@@ -116,13 +111,19 @@ cpdef object toDlpack(ndarray array) except +:
     dl_tensor.byte_offset = 0
 
     cdef DLDevice* device = &dl_tensor.device
-    # TODO(leofang): if the CuPy array is backed by managed memory, we should
-    # switch to kDLCUDAManaged
+    cdef bint is_managed
+    cdef int dev_id = array.data.device_id
     if not runtime._is_hip_environment:
-        device.device_type = kDLGPU
+        attrs = runtime.pointerGetAttributes(data_ptr)
+        is_managed = (attrs.type == runtime.memoryTypeManaged)
+        if is_managed:
+            device.device_type = kDLCUDAManaged
+            dev_id = 0  # make it accessible on CPU too
+        else:
+            device.device_type = kDLCUDA
     else:
         device.device_type = kDLROCM
-    device.device_id = array.data.device_id
+    device.device_id = dev_id
 
     cdef DLDataType* dtype = &dl_tensor.dtype
     if array.dtype.kind == 'u':
@@ -145,7 +146,7 @@ cpdef object toDlpack(ndarray array) except +:
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
-# TODO(leofang): Support kDLCUDAPinned, kDLCUDAManaged, and kDLROCMPinned
+# TODO(leofang): Support kDLCUDAPinned and kDLROCMPinned
 cdef class DLPackMemory(memory.BaseMemory):
 
     """Memory object for a dlpack tensor.
@@ -172,15 +173,23 @@ cdef class DLPackMemory(memory.BaseMemory):
                                    'from the backend that backs the incoming '
                                    'DLPack tensor')
         else:
-            if dlm_tensor.dl_tensor.device.device_type != kDLGPU:
+            if dlm_tensor.dl_tensor.device.device_type not in (
+                    kDLCUDA, kDLCUDAManaged):
                 raise RuntimeError('CuPy is built against CUDA, different '
                                    'from the backend that backs the incoming '
                                    'DLPack tensor')
 
         self.dltensor = dltensor
         self.dlm_tensor = dlm_tensor
-        self.device_id = dlm_tensor.dl_tensor.device.device_id
         self.ptr = <intptr_t>dlm_tensor.dl_tensor.data
+        if dlm_tensor.dl_tensor.device.device_type == kDLCUDAManaged:
+            # look up the actual physical device as the id from
+            # dl_tensor could be 0
+            attrs = runtime.pointerGetAttributes(self.ptr)
+            self.device_id = attrs.device
+        else:
+            self.device_id = dlm_tensor.dl_tensor.device.device_id
+
         cdef int n = 0, s = 0
         cdef int ndim = dlm_tensor.dl_tensor.ndim
         cdef int64_t* shape = dlm_tensor.dl_tensor.shape
@@ -358,20 +367,28 @@ cpdef from_dlpack(array):
         dev_type, dev_id = array.__dlpack_device__()
 
     # CuPy is the consumer, so we provide our current stream to the producer
-    if dev_type == <int>kDLGPU:
-        with device.Device(dev_id):
+    if dev_type == <int>kDLCUDA or dev_type == <int>kDLCUDAManaged:
+        prev_device = cupy.cuda.runtime.getDevice()
+        try:
+            cupy.cuda.runtime.setDevice(dev_id)
             assert not runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
             if stream == 0:
                 stream = stream_module.get_default_stream_ptr()
             dltensor = array.__dlpack__(stream=stream)
+        finally:
+            cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLROCM:
-        with device.Device(dev_id):
+        prev_device = cupy.cuda.runtime.getDevice()
+        try:
+            cupy.cuda.runtime.setDevice(dev_id)
             assert runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
             dltensor = array.__dlpack__(stream=stream)
+        finally:
+            cupy.cuda.runtime.setDevice(prev_device)
     else:
-        # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
+        # TODO(leofang): support kDLCUDAPinned etc
         dltensor = None
         raise ValueError
 

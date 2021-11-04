@@ -122,6 +122,30 @@ class TestReshape(unittest.TestCase):
         a = xp.zeros((8,), dtype=xp.float32)
         return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
 
+    def _test_ndim_limit(self, xp, ndim, dtype, order):
+        idx = [1]*ndim
+        idx[-1] = ndim
+        a = xp.ones(ndim, dtype=dtype)
+        a = a.reshape(idx, order=order)
+        assert a.ndim == ndim
+        return a
+
+    @testing.for_orders('CFA')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ndim_limit1(self, xp, dtype, order):
+        # from cupy/cupy#4193
+        a = self._test_ndim_limit(xp, 32, dtype, order)
+        return a
+
+    @testing.for_orders('CFA')
+    @testing.for_all_dtypes()
+    def test_ndim_limit2(self, dtype, order):
+        # from cupy/cupy#4193
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                self._test_ndim_limit(xp, 33, dtype, order)
+
 
 @testing.gpu
 class TestRavel(unittest.TestCase):
@@ -145,6 +169,25 @@ class TestRavel(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = xp.asfortranarray(a)
         return a.ravel(order)
+
+    @testing.for_orders('CFA')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel_non_contiguous(self, xp, order):
+        a = xp.arange(10)[::2]
+        assert not a.flags.c_contiguous and not a.flags.f_contiguous
+        b = a.ravel(order)
+        assert b.flags.c_contiguous
+        return b
+
+    @testing.for_orders('CFA')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel_broadcasted(self, xp, order):
+        a = xp.array([1])
+        b = xp.broadcast_to(a, (10,))
+        assert not b.flags.c_contiguous and not b.flags.f_contiguous
+        b = b.ravel(order)
+        assert b.flags.c_contiguous
+        return b
 
     @testing.numpy_cupy_array_equal()
     def test_external_ravel(self, xp):

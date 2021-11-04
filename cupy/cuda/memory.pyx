@@ -108,10 +108,12 @@ cdef class Memory(BaseMemory):
 
 
 cdef inline void check_async_alloc_supported(int device_id) except*:
-    if CUPY_CUDA_VERSION < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
+    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
     cdef list support
     try:
@@ -210,8 +212,11 @@ cdef class ManagedMemory(BaseMemory):
     """
 
     def __init__(self, size_t size):
-        if runtime._is_hip_environment:
-            raise RuntimeError('HIP does not support managed memory')
+        if (
+            runtime._is_hip_environment and
+            driver.get_build_version() < 40300000
+        ):
+            raise RuntimeError('Managed memory requires ROCm 4.3+')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
@@ -241,9 +246,6 @@ cdef class ManagedMemory(BaseMemory):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
             runtime.free(self.ptr)
-
-
-cdef set _peer_access_checked = set()
 
 
 @cython.final
@@ -405,7 +407,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -425,7 +427,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -584,28 +586,6 @@ cdef class MemoryPointer:
             stream_ptr = stream.ptr
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
-
-    @staticmethod
-    cdef _set_peer_access(int device, int peer):
-        device_pair = device, peer
-
-        if device_pair in _peer_access_checked:
-            return
-        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
-        _peer_access_checked.add(device_pair)
-        if not can_access:
-            return
-
-        cdef int current = runtime.getDevice()
-        runtime.setDevice(device)
-        try:
-            runtime.deviceEnablePeerAccess(peer)
-        # peer access could already be set by external libraries at this point
-        except CUDARuntimeError as e:
-            if e.status != runtime.errorPeerAccessAlreadyEnabled:
-                raise
-        finally:
-            runtime.setDevice(current)
 
 
 # cpdef because unit-tested
@@ -1583,16 +1563,24 @@ cdef class MemoryAsyncPool:
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool

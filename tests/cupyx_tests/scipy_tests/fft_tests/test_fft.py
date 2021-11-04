@@ -15,6 +15,11 @@ from cupy.fft._fft import _default_fft_func, _fftn
 import cupyx.scipy.fft as cp_fft
 
 
+_irfft_skip_condition = (
+    int(cp.cuda.device.get_compute_capability()) < 70 and
+    10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010)
+
+
 def _fft_module(xp):
     if xp is not np:
         return cp_fft
@@ -1141,8 +1146,7 @@ class TestRfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
-                        10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
+    @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1156,8 +1160,7 @@ class TestRfft2:
 
         return _correct_np_dtype(xp, dtype, out)
 
-    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
-                        10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
+    @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1252,8 +1255,7 @@ class TestRfft2:
 
         return _correct_np_dtype(xp, dtype, out)
 
-    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
-                        10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
+    @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
@@ -1402,8 +1404,7 @@ class TestRfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
-                        10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
+    @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1417,8 +1418,7 @@ class TestRfftn:
 
         return _correct_np_dtype(xp, dtype, out)
 
-    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
-                        10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
+    @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1513,8 +1513,7 @@ class TestRfftn:
 
         return _correct_np_dtype(xp, dtype, out)
 
-    @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
-                        10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
+    @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
@@ -1651,6 +1650,8 @@ class TestHfft2:
     def setUp(self):
         _skip_forward_backward(self.norm)
 
+    @pytest.mark.skipif(_irfft_skip_condition,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1662,6 +1663,8 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.skipif(_irfft_skip_condition,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1723,6 +1726,8 @@ class TestHfftn:
     def setUp(self):
         _skip_forward_backward(self.norm)
 
+    @pytest.mark.skipif(_irfft_skip_condition,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1734,6 +1739,8 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.skipif(_irfft_skip_condition,
+                        reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)

@@ -35,6 +35,11 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     .. note::
        This method currently does not support ``subok`` argument.
 
+    .. note::
+       If ``obj`` is an `numpy.ndarray` instance that contains big-endian data,
+       this function automatically swaps its byte order to little-endian,
+       which is the NVIDIA and AMD GPU architecture's native use.
+
     .. seealso:: :func:`numpy.array`
 
     """
@@ -59,6 +64,11 @@ def asarray(a, dtype=None, order=None):
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
         the device, no copy is performed.
+
+    .. note::
+       If ``a`` is an `numpy.ndarray` instance that contains big-endian data,
+       this function automatically swaps its byte order to little-endian,
+       which is the NVIDIA and AMD GPU architecture's native use.
 
     .. seealso:: :func:`numpy.asarray`
 
@@ -134,7 +144,16 @@ def copy(a, order='K'):
     return a.copy(order=order)
 
 
-# TODO(okuta): Implement frombuffer
+def frombuffer(*args, **kwargs):
+    """Interpret a buffer as a 1-dimensional array.
+
+    .. note::
+        Uses NumPy's ``frombuffer`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.frombuffer`
+
+    """
+    return asarray(numpy.frombuffer(*args, **kwargs))
 
 
 def fromfile(*args, **kwargs):
@@ -143,19 +162,67 @@ def fromfile(*args, **kwargs):
     .. note::
         Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
 
+    .. note::
+       If you let NumPy's ``fromfile`` read the file in big-endian, CuPy
+       automatically swaps its byte order to little-endian, which is the NVIDIA
+       and AMD GPU architecture's native use.
+
     .. seealso:: :func:`numpy.fromfile`
 
     """
     return asarray(numpy.fromfile(*args, **kwargs))
 
 
-# TODO(okuta): Implement fromfunction
+def fromfunction(*args, **kwargs):
+    """Construct an array by executing a function over each coordinate.
+
+    .. note::
+        Uses NumPy's ``fromfunction`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromfunction`
+    """
+    return asarray(numpy.fromfunction(*args, **kwargs))
 
 
-# TODO(okuta): Implement fromiter
+def fromiter(*args, **kwargs):
+    """Create a new 1-dimensional array from an iterable object.
+
+    .. note::
+        Uses NumPy's ``fromiter`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromiter`
+    """
+    return asarray(numpy.fromiter(*args, **kwargs))
 
 
-# TODO(okuta): Implement fromstring
+def fromstring(*args, **kwargs):
+    """A new 1-D array initialized from text data in a string.
+
+    .. note::
+        Uses NumPy's ``fromstring`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.fromstring`
+    """
+    return asarray(numpy.fromstring(*args, **kwargs))
 
 
-# TODO(okuta): Implement loadtxt
+def loadtxt(*args, **kwargs):
+    """Load data from a text file.
+
+    .. note::
+        Uses NumPy's ``loadtxt`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.loadtxt`
+    """
+    return asarray(numpy.loadtxt(*args, **kwargs))
+
+
+def genfromtxt(*args, **kwargs):
+    """Load data from text file, with missing values handled as specified.
+
+    .. note::
+        Uses NumPy's ``genfromtxt`` and coerces the result to a CuPy array.
+
+    .. seealso:: :func:`numpy.genfromtxt`
+    """
+    return asarray(numpy.genfromtxt(*args, **kwargs))

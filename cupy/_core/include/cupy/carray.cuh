@@ -325,12 +325,12 @@ public:
 
   template <typename Int>
   __device__ const T& operator[](const Int (&idx)[ndim]) const {
-    const char* ptr = reinterpret_cast<const char*>(data_);
+    index_t diff = 0;
     for (int dim = 0; dim < ndim; ++dim) {
-      index_t i = static_cast<index_t>(idx[dim]);
-      ptr += static_cast<index_t>(strides_[dim]) * i;
+      diff += static_cast<index_t>(strides_[dim]) * static_cast<index_t>(idx[dim]);
     }
-    return *reinterpret_cast<const T*>(ptr);
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    return *reinterpret_cast<const T*>(ptr + diff);
   }
 
   __device__ T& operator[](ptrdiff_t i) {
@@ -370,15 +370,16 @@ public:
     } else {
       // 64-bit mults and divs are pretty expensive and can lead to severe
       // performance degradation in computation bound kernels
-      const char* ptr = reinterpret_cast<const char*>(data_);
+      index_t diff = 0;
       index_t i = static_cast<index_t>(idx);
       for (int dim = ndim; --dim > 0; ) {
           index_t shape_dim = static_cast<index_t>(shape_[dim]);
-          ptr += static_cast<index_t>(strides_[dim]) * (i % shape_dim);
+          diff += static_cast<index_t>(strides_[dim]) * (i % shape_dim);
           i /= shape_dim;
       }
-      ptr += static_cast<index_t>(strides_[0]) * i;
-      return *reinterpret_cast<const T*>(ptr);
+      diff += static_cast<index_t>(strides_[0]) * i;
+      const char* ptr = reinterpret_cast<const char*>(data_);
+      return *reinterpret_cast<const T*>(ptr + diff);
     }
   }
 };
