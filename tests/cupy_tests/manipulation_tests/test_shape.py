@@ -176,10 +176,7 @@ class TestRavel(unittest.TestCase):
         a = xp.arange(10)[::2]
         assert not a.flags.c_contiguous and not a.flags.f_contiguous
         b = a.ravel(order)
-        if order == 'C':
-            assert b.flags.c_contiguous
-        else:
-            assert b.flags.f_contiguous
+        assert b.flags.c_contiguous
         return b
 
     @testing.for_orders('CFA')
