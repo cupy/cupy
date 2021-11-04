@@ -186,10 +186,7 @@ class TestRavel(unittest.TestCase):
         b = xp.broadcast_to(a, (10,))
         assert not b.flags.c_contiguous and not b.flags.f_contiguous
         b = b.ravel(order)
-        if order == 'C':
-            assert b.flags.c_contiguous
-        else:
-            assert b.flags.f_contiguous
+        assert b.flags.c_contiguous
         return b
 
     @testing.numpy_cupy_array_equal()
