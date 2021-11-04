@@ -209,6 +209,8 @@ class _BaseStream:
         return self.ptr == other.ptr
 
     def __enter__(self):
+        # N.B. for maintainers: do not use this context manager in CuPy
+        # codebase. See #5943 and #5963.
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
         device_id = check_stream_device_match(device_id)
