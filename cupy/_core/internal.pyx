@@ -430,7 +430,8 @@ cpdef tuple _normalize_axis_indices(
     for axis in axes:
         axis = _normalize_axis_index(axis, ndim)
         if axis in res:
-            raise ValueError('Duplicate value in \'axis\'')
+            # the message in `numpy/core/src/multiarray/conversion_utils.c`
+            raise ValueError('duplicate value in \'axis\'')
         res.append(axis)
 
     return tuple(sorted(res) if sort_axes else res)
