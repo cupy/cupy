@@ -17,6 +17,16 @@ NumPy binary files (NPY, NPZ)
    savez
    savez_compressed
 
+Text files
+-----------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   loadtxt
+   savetxt
+   genfromtxt
+   fromstring
 
 String formatting
 -----------------
@@ -24,6 +34,7 @@ String formatting
 .. autosummary::
    :toctree: generated/
 
+   array2string
    array_repr
    array_str
 
