@@ -42,6 +42,7 @@ def multi_gpu(gpu_num):
     # at this point we know pytest is available for sure
 
     assert 1 < gpu_num
+
     def _wrapper(f):
         return pytest.mark.skipif(
             0 <= _gpu_limit < gpu_num,
