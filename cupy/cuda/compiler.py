@@ -260,6 +260,17 @@ def _jitify_prep(source, options, cu_path):
     return options, headers, include_names
 
 
+_has_usedforsecurity = (sys.version_info >= (3, 9))
+
+
+def _hash_hexdigest(value):
+    if _has_usedforsecurity:
+        hashobj = hashlib.sha1(value, usedforsecurity=False)
+    else:
+        hashobj = hashlib.sha1(value)
+    return hashobj.hexdigest()
+
+
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
@@ -517,7 +528,7 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.cubin'
 
     mod = function.Module()
 
@@ -536,7 +547,7 @@ def _compile_with_cache_cuda(
             if len(data) >= 32:
                 hash = data[:32]
                 cubin = data[32:]
-                cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
                     return mod
@@ -571,10 +582,10 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to disk cache
-        cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
@@ -841,7 +852,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.hsaco'
 
     mod = function.Module()
 
@@ -860,7 +871,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
             if len(data) >= 32:
                 hash_value = data[:32]
                 binary = data[32:]
-                binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+                binary_hash = _hash_hexdigest(binary).encode('ascii')
                 if hash_value == binary_hash:
                     mod.load(binary)
                     return mod
@@ -880,10 +891,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         # Write to disk cache
-        binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+        binary_hash = _hash_hexdigest(binary).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
