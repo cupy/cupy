@@ -26,7 +26,7 @@ Python 3.6 is no longer supported.
 Dropping NumPy 1.17 Support
 ---------------------------
 
-NumPy 1.17 is not longer supported.
+NumPy 1.17 is no longer supported.
 
 Changes in :class:`cupy.cuda.Stream` and :class:`cupy.cuda.Device` Behavior
 ---------------------------------------------------------------------------
