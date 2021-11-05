@@ -28,8 +28,24 @@ Dropping NumPy 1.17 Support
 
 NumPy 1.17 is no longer supported.
 
-Changes in :class:`cupy.cuda.Stream` and :class:`cupy.cuda.Device` Behavior
----------------------------------------------------------------------------
+Change in :class:`cupy.cuda.Device` Behavior
+--------------------------------------------
+
+Current device set via ``use()`` will not be restored when exiting ``with`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The current device set via :func:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
+
+.. code-block:: py
+
+   with cupy.cuda.Device(1) as d1:
+       d2 = cupy.cuda.Device(0).use()
+       with d1:
+           pass
+       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
+
+Changes in :class:`cupy.cuda.Stream` Behavior
+---------------------------------------------
 
 Stream is now managed per-device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -57,7 +73,7 @@ In early versions, trying to use `s0` in device 1 raises an error because `s0` i
 Current stream set via ``use()`` will not be restored when exiting ``with`` block
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The current stream set via :func:`cupy.cuda.Stream.use` will not be reactivated when exiting a stream context manager.
+Samely as the change of :class:`cupy.cuda.Device` above, the current stream set via :func:`cupy.cuda.Stream.use` will not be reactivated when exiting a stream context manager.
 An existing code mixing ``with stream:`` block and ``stream.use()`` may get different results between CuPy v10 and v9.
 
 .. code-block:: py
@@ -70,19 +86,6 @@ An existing code mixing ``with stream:`` block and ``stream.use()`` may get diff
        with s3:
            pass
        cupy.cuda.get_current_stream()  # -> CuPy v10 returns `s1` instead of `s2`.
-
-Current device set via ``use()`` will not be restored when exiting ``with`` block
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Samely as :class:`cupy.cuda.Stream`, the current device set via :func:`cupy.cuda.Device.use` will not be reactivated when exiting a device context manager. Mix of ``with device:`` block and ``device.use()`` may varingly behave between CuPy v10 and v9.
-
-.. code-block:: py
-
-   with cupy.cuda.Device(1) as d1:
-       d2 = cupy.cuda.Device(0).use()
-       with d1:
-           pass
-       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
 
 Streams can now be shared between threads
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,8 +111,6 @@ A new module :mod:`cupyx.profiler` is added to host all profiling related APIs i
     * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
 
 The old routines are deprecated.
-
-:func:`cupy.cuda.Device.use` now returns ``self`` to get aligned with :func:`cupy.cuda.Stream.use()`.
 
 :func:`cupy.ndarray.__pos__` behaves samely as :func:`cupy.positive` instead of returning ``self``.
 
