@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -244,7 +245,8 @@ The current platform ({}) is not supported.'''.format(target_platform))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
-            dir_name = os.path.basename(url)[:-7]  # remove '.tar.xz'
+            dir_name = re.sub(
+                r'(\.tar\.xz|\.zip)$', '', os.path.basename(url))
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
