@@ -194,7 +194,8 @@ cdef class _ArgInfo:
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
-            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True, arg._index_32_bits)
+            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True,
+            arg._index_32_bits)
         return ret
 
     @staticmethod
