@@ -112,7 +112,7 @@ A new module :mod:`cupyx.profiler` is added to host all profiling related APIs i
 
 The old routines are deprecated.
 
-:func:`cupy.ndarray.__pos__` behaves samely as :func:`cupy.positive` instead of returning ``self``.
+:func:`cupy.ndarray.__pos__` now returns the copy (samely as :func:`cupy.positive`) instead of returning ``self``.
 
 Deprecated APIs may be removed in the future CuPy releases.
 
