@@ -14,6 +14,7 @@ if [[ "${PULL_REQUEST:-}" == "" ]]; then
 else
     # When testing pull-requests, make test combinations sparse.
     export CUPY_TEST_FULL_COMBINATION="0"
+    export CUPY_NVCC_GENERATE_CODE="current"
 fi
 
 # For compatibility with Jenkins with docker wrapper
