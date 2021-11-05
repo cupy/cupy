@@ -441,7 +441,7 @@ public:
   }
 };
 
-template <int _ndim>
+template <int _ndim, bool _use_32bit_indexing=false>
 class CIndexer {
 public:
   static const int ndim = _ndim;
@@ -515,7 +515,7 @@ public:
     // ndim == 0 case uses partial template specialization
     if (ndim == 1) {
       index_[0] = i;
-    } else if (size_ > 1LL << 31) {
+    } else if (!_use_32bit_indexing && size_ > 1LL << 31) {
       // 64-bit division is very slow on GPU
       this->_set(static_cast<unsigned long long int>(i));
     } else {
@@ -545,8 +545,8 @@ private:
   static unsigned long long int __device__ _log2(unsigned long long int x) { return __popcll(x-1); }
 };
 
-template <>
-class CIndexer<0> {
+template <bool _use_32bit_indexing>
+class CIndexer<0, _use_32bit_indexing> {
 private:
   ptrdiff_t size_;
 
