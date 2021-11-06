@@ -112,21 +112,7 @@ typedef hipIpcEventHandle_st cudaIpcEventHandle_t;
 // TODO(leofang): investigate if we should just remove the hipBLAS layer and use
 // rocBLAS directly, since we need to expose its handle anyway
 
-
-typedef hipblasHandle_t cublasHandle_t;
-
-typedef hipblasDiagType_t cublasDiagType_t;
-typedef hipblasFillMode_t cublasFillMode_t;
-typedef hipblasOperation_t cublasOperation_t;
-typedef hipblasPointerMode_t cublasPointerMode_t;
-typedef hipblasSideMode_t cublasSideMode_t;
-typedef enum {} cublasGemmAlgo_t;
-typedef enum {} cublasMath_t;
-typedef int cudaDataType_t;
-typedef hipblasStatus_t cublasStatus_t;
-
-// TODO(leofang): as of ROCm 3.5.0 this does not exist yet
-typedef enum {} cublasComputeType_t;
+typedef cudaDataType cudaDataType_t;
 
 typedef rocblas_status cusolverStatus_t;
 typedef rocblas_handle cusolverDnHandle_t;

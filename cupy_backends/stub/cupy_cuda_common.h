@@ -210,23 +210,6 @@ typedef enum libraryPropertyType_t {
 } libraryPropertyType;
 
 
-///////////////////////////////////////////////////////////////////////////////
-// cublas_v2.h
-///////////////////////////////////////////////////////////////////////////////
-
-typedef void* cublasHandle_t;
-
-typedef enum {} cublasDiagType_t;
-typedef enum {} cublasFillMode_t;
-typedef enum {} cublasOperation_t;
-typedef enum {} cublasPointerMode_t;
-typedef enum {} cublasSideMode_t;
-typedef enum {} cublasGemmAlgo_t;
-typedef enum {} cublasMath_t;
-typedef enum {
-    CUBLAS_STATUS_SUCCESS=0,
-} cublasStatus_t;
-
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUDA_COMMON_H

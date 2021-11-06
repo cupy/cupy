@@ -4,6 +4,7 @@
 #define INCLUDE_GUARD_STUB_CUPY_CUSOLVER_H
 
 #include "cupy_cuda_common.h"
+#include "cupy_cublas.h"
 
 extern "C" {
 
