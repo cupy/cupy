@@ -255,7 +255,14 @@ The current platform ({}) is not supported.'''.format(target_platform))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
-            dir_name = os.path.basename(url)[:-7]  # remove '.tar.xz'
+            if target_platform == 'Linux':
+                ext = '.tar.xz'
+            elif target_platform == 'Windows':
+                ext = '.zip'
+            else:
+                assert False
+            assert url.endswith(ext)
+            dir_name = os.path.basename(url)[:-len(ext)]
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
