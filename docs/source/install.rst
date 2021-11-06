@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -90,6 +90,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda113``
    * - v11.4
      - ``$ pip install cupy-cuda114``
+   * - v11.5
+     - ``$ pip install cupy-cuda115``
 
 .. note::
 
@@ -458,6 +460,7 @@ The following features are not available due to the limitation of ROCm or becaus
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
 * Per-thread default stream
+* Random generation API (``cupy.random.Generator``) for ROCm versions older than 4.3
 
 The following features are not yet supported:
 

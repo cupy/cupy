@@ -90,6 +90,26 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
+cdef bint _enable_peer_access(int device, int peer) except -1:
+    """Enable accessing memory allocated on `peer` from `device`."""
+    if device == peer:
+        return True
+
+    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+    if can_access == 0:
+        return False
+
+    cdef int current = runtime.getDevice()
+    runtime.setDevice(device)
+    try:
+        # Note: external libraries may disable the peer access, so we need to
+        # call this everytime. See #5496.
+        runtime._deviceEnsurePeerAccess(peer)
+    finally:
+        runtime.setDevice(current)
+    return True
+
+
 @_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
@@ -158,9 +178,11 @@ cdef class Device:
         return self.id
 
     def __enter__(self):
-        _ThreadLocalStack.get().push_device(self.id)
+        # N.B. for maintainers: do not use this context manager in CuPy
+        # codebase. See #5943 and #5963.
         if self.id != runtime.getDevice():
             runtime.setDevice(self.id)
+        _ThreadLocalStack.get().push_device(self.id)
         return self
 
     def __exit__(self, *args):
@@ -203,8 +225,12 @@ cdef class Device:
     cpdef synchronize(self):
         """Synchronizes the current thread to the device."""
         syncdetect._declare_synchronize()
-        with self:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.id)
             runtime.deviceSynchronize()
+        finally:
+            runtime.setDevice(prev_device)
 
     @property
     def compute_capability(self):
@@ -217,7 +243,9 @@ cdef class Device:
         """
         if self.id in _compute_capabilities:
             return _compute_capabilities[self.id]
-        with self:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.id)
             major = runtime.deviceGetAttribute(
                 runtime.deviceAttributeComputeCapabilityMajor, self.id)
             minor = runtime.deviceGetAttribute(
@@ -225,6 +253,8 @@ cdef class Device:
             cc = '%d%d' % (major, minor)
             _compute_capabilities[self.id] = cc
             return cc
+        finally:
+            runtime.setDevice(prev_device)
 
     def _get_handle(self, name, create_func, destroy_func):
         handles = getattr(_thread_local, name, None)
@@ -234,10 +264,14 @@ cdef class Device:
         handle = handles.get(self.id, None)
         if handle is not None:
             return handle.handle
-        with self:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.id)
             handle = create_func()
             handles[self.id] = Handle(handle, destroy_func)
             return handle
+        finally:
+            runtime.setDevice(prev_device)
 
     @property
     def cublas_handle(self):
@@ -291,8 +325,12 @@ cdef class Device:
             free: The amount of free memory, in bytes.
             total: The total amount of memory, in bytes.
         """
-        with self:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.id)
             return runtime.memGetInfo()
+        finally:
+            runtime.setDevice(prev_device)
 
     @property
     def attributes(self):

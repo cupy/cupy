@@ -229,3 +229,13 @@ class TestDeviceSwitch(unittest.TestCase):
         t1.join()
         assert t0_exit_device[0] == 0
         assert t1_exit_device[0] == 1
+
+    def test_invalid(self):
+        d = cuda.Device(100)
+        with pytest.raises(cuda.runtime.CUDARuntimeError):
+            d.use()
+        with pytest.raises(cuda.runtime.CUDARuntimeError):
+            with d:
+                pass
+        with cuda.Device(0):
+            pass

@@ -9,6 +9,7 @@ export CUPY_DUMP_CUDA_SOURCE_ON_ERROR="1"
 
 if [[ "${PULL_REQUEST:-}" == "" ]]; then
     # When testing branches, test full matrix to generate caches for all combinations.
+    # Note: this may be overridden by individual test scripts.
     export CUPY_TEST_FULL_COMBINATION="1"
 else
     # When testing pull-requests, make test combinations sparse.
@@ -29,3 +30,11 @@ export PATH="${HOME}/.local/bin:${PATH}"
 
 # Show environment variables
 env
+
+# Switch to a temporary directory to run tests
+if ! touch .; then
+    _src_dir="$(mktemp -d)"
+    echo "Source directory ($(pwd)) is read-only; copying the source tree to ${_src_dir} and changing the current directory"
+    cp -a . "${_src_dir}"
+    pushd "${_src_dir}"
+fi

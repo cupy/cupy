@@ -5,6 +5,8 @@ import cupy as _cupy
 from cupy import _util
 from cupy.cuda import device as _device
 
+cimport cython
+from libcpp cimport vector
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
 from cupy._core._carray cimport shape_t
 from cupy._core.core cimport ndarray
@@ -92,6 +94,7 @@ cdef dict _dict_compute_type_v10200 = {
 cdef dict _available_compute_capability = {
     'contraction': 60,
     'reduction': 60,
+    'elementwise': 60,
 }
 
 
@@ -104,7 +107,7 @@ def check_availability(name):
     return True
 
 
-cdef class Mode(object):
+cdef class Mode:
 
     cdef:
         object _array
@@ -118,10 +121,10 @@ cdef class Mode(object):
         self.data = self._array.ctypes.data
 
     def __repr__(self):
-        return 'mode([' + ', '.join(self._array) + '])'
+        return 'mode(' + ', '.join([str(x) for x in self._array]) + ')'
 
 
-cdef class _Scalar(object):
+cdef class _Scalar:
 
     cdef:
         object _array
@@ -132,7 +135,9 @@ cdef class _Scalar(object):
         self.ptr = self._array.ctypes.data
 
     def __repr__(self):
-        return self._array.item()
+        return (
+            'scalar(' + str(self._array.item()) +
+            ', dtype=' + str(self._array.dtype) + ')')
 
 
 cdef Handle _get_handle():
@@ -382,7 +387,7 @@ def elementwise_binary(
         _create_scalar(alpha, compute_dtype),
         A, desc_A, _auto_create_mode(A, mode_A),
         _create_scalar(gamma, compute_dtype),
-        C, desc_C, _auto_create_mode(A, mode_C),
+        C, desc_C, _auto_create_mode(C, mode_C),
         out, op_AC, _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
@@ -391,6 +396,7 @@ cdef inline ndarray _elementwise_binary_impl(
         _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
         _Scalar gamma, ndarray C, TensorDescriptor desc_C, Mode mode_C,
         ndarray out, int op_AC, int compute_type):
+    # stride and mode of `out` and `C` must be the same.
     cutensor.elementwiseBinary(
         handle,
         alpha.ptr, A.data.ptr, desc_A, mode_A.data,
@@ -777,6 +783,8 @@ def _try_reduction_routine(
     else:
         out_arg = out
 
+    # TODO(kmaeahshi): need to zero out when beta != 0
+
     # TODO(asi1024): Remove temporary fix
     in_arg._set_contiguous_strides(in_arg.itemsize, True)
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
@@ -801,3 +809,81 @@ def _try_reduction_routine(
         reduce_op, _get_cutensor_compute_type(compute_dtype))
 
     return out
+
+
+@cython.profile(False)
+cdef inline bint _all_positive(const vector.vector[Py_ssize_t]& args):
+    # cuTENSOR requires each stride > 0.
+    for i in range(<Py_ssize_t>args.size()):
+        if args[i] <= 0:
+            return False
+    return True
+
+
+def _try_elementwise_binary_routine(
+        ndarray a, ndarray c, dtype, ndarray out, op, alpha, gamma):
+    cdef Handle handle
+    cdef TensorDescriptor desc_a, desc_c, desc_out
+
+    if not check_availability('elementwise'):
+        return None
+
+    if dtype is None:
+        dtype = a.dtype
+    if dtype not in _cutensor_dtypes:
+        return None
+
+    if not (a.dtype == c.dtype == dtype):
+        return None
+    if not internal.vector_equal(a._shape, c._shape):
+        return None
+    if a.size == 0:
+        return None
+    if not (_all_positive(a._strides) and _all_positive(c._strides)):
+        return None
+
+    compute_dtype = a.dtype
+
+    if compute_dtype.kind == 'c' and (
+            op == cutensor.OP_MAX or op == cutensor.OP_MIN):
+        return None
+
+    if out is None:
+        if c._c_contiguous:
+            pass
+        elif a._c_contiguous:
+            a, c = c, a
+            alpha, gamma = gamma, alpha
+        elif c._f_contiguous:
+            pass
+        elif a._f_contiguous:
+            a, c = c, a
+            alpha, gamma = gamma, alpha
+        else:
+            return None
+        out = core._create_ndarray_from_shape_strides(
+            c._shape, c._strides, compute_dtype)
+    elif out.dtype != compute_dtype:
+        return None
+    elif not internal.vector_equal(c._shape, out._shape):
+        return None
+    elif not internal.vector_equal(c._strides, out._strides):
+        return None
+    elif not _all_positive(out._strides):
+        return None
+
+    handle = _get_handle()
+
+    return _elementwise_binary_impl(
+        handle,
+        _create_scalar(alpha, compute_dtype),
+        a,
+        create_tensor_descriptor(a, handle=handle),
+        _create_mode_with_cache(a._shape.size()),
+        _create_scalar(gamma, compute_dtype),
+        c,
+        create_tensor_descriptor(c, handle=handle),
+        _create_mode_with_cache(c._shape.size()),
+        out,
+        op,
+        _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))

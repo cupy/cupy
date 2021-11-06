@@ -13,15 +13,36 @@ Dropping CUDA 9.2 / 10.0 / 10.1 Support
 CUDA 10.1 or earlier is no longer supported.
 Use CUDA 10.2 or later.
 
-Dropping NCCL v2.4 Support
------------------------------
+Dropping NCCL v2.4 / v2.6 / v2.7 Support
+----------------------------------------
 
-NCCL v2.4 is no longer supported.
+NCCL v2.4, v2.6, and v2.7 are no longer supported.
 
 Dropping Python 3.6 Support
 ---------------------------
 
 Python 3.6 is no longer supported.
+
+Dropping NumPy 1.17 Support
+---------------------------
+
+NumPy 1.17 is no longer supported.
+
+Change in :class:`cupy.cuda.Device` Behavior
+--------------------------------------------
+
+Current device set via ``use()`` will not be restored when exiting ``with`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The current device set via :func:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
+
+.. code-block:: py
+
+   with cupy.cuda.Device(1) as d1:
+       d2 = cupy.cuda.Device(0).use()
+       with d1:
+           pass
+       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
 
 Changes in :class:`cupy.cuda.Stream` Behavior
 ---------------------------------------------
@@ -52,7 +73,7 @@ In early versions, trying to use `s0` in device 1 raises an error because `s0` i
 Current stream set via ``use()`` will not be restored when exiting ``with`` block
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The current stream set via :func:`cupy.cuda.Stream.use` will not be reactivated when exiting a stream context manager.
+Samely as the change of :class:`cupy.cuda.Device` above, the current stream set via :func:`cupy.cuda.Stream.use` will not be reactivated when exiting a stream context manager.
 An existing code mixing ``with stream:`` block and ``stream.use()`` may get different results between CuPy v10 and v9.
 
 .. code-block:: py
@@ -78,10 +99,27 @@ API Changes
 
 Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
 
-*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+
+The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
+
+A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module:
+
+    * :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
+    * :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
+    * :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
+    * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
+
+The old routines are deprecated.
+
+:func:`cupy.ndarray.__pos__` now returns the copy (samely as :func:`cupy.positive`) instead of returning ``self``.
 
 Deprecated APIs may be removed in the future CuPy releases.
 
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.4 and ROCm 4.3.
 
 CuPy v9
 =======
@@ -163,14 +201,14 @@ CUB Support and Compiler Requirement
 ------------------------------------
 
 CUB module is now built by default.
-You can enable the use of CUB by setting ``CUPY_ACCELERATORS="cub"`` (see :doc:`reference/environment` for details).
+You can enable the use of CUB by setting ``CUPY_ACCELERATORS="cub"`` (see :envvar:`CUPY_ACCELERATORS` for details).
 
 Due to this change, g++-6 or later is required when building CuPy from the source.
 See :doc:`install` for details.
 
 The following environment variables are no longer effective:
 
-* ``CUB_DISABLED``: Use ``CUPY_ACCELERATORS`` as aforementioned.
+* ``CUB_DISABLED``: Use :envvar:`CUPY_ACCELERATORS` as aforementioned.
 * ``CUB_PATH``: No longer required as CuPy uses either the CUB source bundled with CUDA (only when using CUDA 11.0 or later) or the one in the CuPy distribution.
 
 API Changes

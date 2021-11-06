@@ -8,7 +8,7 @@ from cupy.fft import config
 from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
                            _size_last_transform_axis)
 from cupy import testing
-from cupy.testing._helper import _wraps_partial
+from cupy.testing._loops import _wraps_partial
 
 
 @pytest.fixture
@@ -174,7 +174,7 @@ def _skip_multi_gpu_bug(shape, gpus):
     # avoid CUDA 11.0 (will be fixed by CUDA 11.2) bug triggered by
     # - batch = 1
     # - gpus = [1, 0]
-    if (11000 <= cupy.cuda.runtime.runtimeGetVersion() < 11200
+    if (11000 <= cupy.cuda.runtime.runtimeGetVersion() < 11020
             and len(shape) == 1
             and gpus == [1, 0]):
         pytest.skip('avoid CUDA 11 bug')

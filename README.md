@@ -40,14 +40,13 @@ Choose the right package for your platform.
 
 | Platform      | Command                       |
 | ------------- | ----------------------------- |
-| CUDA 10.0     | `pip install cupy-cuda100`    |
-| CUDA 10.1     | `pip install cupy-cuda101`    |
 | CUDA 10.2     | `pip install cupy-cuda102`    |
 | CUDA 11.0     | `pip install cupy-cuda110`    |
 | CUDA 11.1     | `pip install cupy-cuda111`    |
 | CUDA 11.2     | `pip install cupy-cuda112`    |
 | CUDA 11.3     | `pip install cupy-cuda113`    |
 | CUDA 11.4     | `pip install cupy-cuda114`    |
+| CUDA 11.5     | `pip install cupy-cuda115`    |
 | ROCm 4.0 (*)  | `pip install cupy-rocm-4-0`   |
 | ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
 | ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |

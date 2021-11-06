@@ -1,30 +1,12 @@
 import os
 
 
-try:
+from cupy.testing._pytest_impl import is_available, check_available
+
+
+if is_available():
     import pytest
-    _error = None
-except ImportError as e:
-    _error = e
 
-
-def is_available():
-    return _error is None
-
-
-def check_available():
-    if _error is not None:
-        raise RuntimeError('''\
-{} is not available.
-
-Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
-
-
-def get_error():
-    return _error
-
-
-if _error is None:
     _gpu_limit = int(os.getenv('CUPY_TEST_GPU_LIMIT', '-1'))
 
     def cudnn(*args, **kwargs):
@@ -35,7 +17,7 @@ if _error is None:
 
 else:
     def _dummy_callable(*args, **kwargs):
-        check_available()
+        check_available('pytest attributes')
         assert False  # Not reachable
 
     cudnn = _dummy_callable
@@ -52,7 +34,7 @@ def multi_gpu(gpu_num):
     be skipped.
     """
 
-    check_available()
+    check_available('multi_gpu attribute')
     # at this point we know pytest is available for sure
     return pytest.mark.skipif(
         0 <= _gpu_limit < gpu_num,
@@ -66,5 +48,5 @@ def gpu(f):
     declare that one GPU is required to run.
     """
 
-    check_available()
+    check_available('gpu attribute')
     return multi_gpu(1)(pytest.mark.gpu(f))

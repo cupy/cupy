@@ -248,9 +248,6 @@ cdef class ManagedMemory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef set _peer_access_checked = set()
-
-
 @cython.final
 cdef class _Chunk:
 
@@ -410,7 +407,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -430,7 +427,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -589,28 +586,6 @@ cdef class MemoryPointer:
             stream_ptr = stream.ptr
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
-
-    @staticmethod
-    cdef _set_peer_access(int device, int peer):
-        device_pair = device, peer
-
-        if device_pair in _peer_access_checked:
-            return
-        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
-        _peer_access_checked.add(device_pair)
-        if not can_access:
-            return
-
-        cdef int current = runtime.getDevice()
-        runtime.setDevice(device)
-        try:
-            runtime.deviceEnablePeerAccess(peer)
-        # peer access could already be set by external libraries at this point
-        except CUDARuntimeError as e:
-            if e.status != runtime.errorPeerAccessAlreadyEnabled:
-                raise
-        finally:
-            runtime.setDevice(current)
 
 
 # cpdef because unit-tested
@@ -1588,16 +1563,24 @@ cdef class MemoryAsyncPool:
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool

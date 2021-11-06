@@ -16,6 +16,8 @@ from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport core
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy._core._kernel cimport _check_peer_access
+
 from cupy.cuda import device
 
 
@@ -332,17 +334,17 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
 
     ndim = self._shape.size()
     if axes_size != ndim:
-        raise ValueError('Invalid axes value: %s' % str(axes))
+        raise ValueError("axes don't match array")
 
     axis_flags.resize(ndim, 0)
     for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
-            raise IndexError('Axes overrun')
+            raise numpy.AxisError(axis, ndim)
         axis %= ndim
         a_axes.push_back(axis)
         if axis_flags[axis]:
-            raise ValueError('Invalid axes value: %s' % str(axes))
+            raise ValueError('repeated axis in transpose')
         axis_flags[axis] = 1
         is_normal &= i == axis
         is_trans &= ndim - 1 - i == axis
@@ -739,7 +741,7 @@ cdef _get_strides_for_nocopy_reshape(
 cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
-    Arguments `allow_duplicate` and `axis_name` are not supported.
+    Arguments `argname` and `allow_duplicate` are not supported.
 
     """
     if numpy.isscalar(axis):
@@ -748,7 +750,8 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
     for ax in axis:
         ax = internal._normalize_axis_index(ax, ndim)
         if _has_element(ret, ax):
-            raise numpy.AxisError('repeated axis')
+            # the message in `numpy.core.numeric.normalize_axis_tuple`
+            raise ValueError('repeated axis')
         ret.push_back(ax)
 
 
@@ -767,12 +770,8 @@ cdef ndarray _concatenate_single_kernel(
 
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
+        _check_peer_access(a, device_id)
         ptrs[i] = a.data.ptr
-        if a.data.device_id != device_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (a.data.device_id, device_id))
     x = core.array(ptrs)
 
     if same_shape_and_contiguous:

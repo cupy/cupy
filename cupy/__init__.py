@@ -240,6 +240,12 @@ from cupy._creation.from_data import asanyarray  # NOQA
 from cupy._creation.from_data import asarray  # NOQA
 from cupy._creation.from_data import ascontiguousarray  # NOQA
 from cupy._creation.from_data import fromfile  # NOQA
+from cupy._creation.from_data import fromfunction  # NOQA
+from cupy._creation.from_data import fromiter  # NOQA
+from cupy._creation.from_data import frombuffer  # NOQA
+from cupy._creation.from_data import fromstring  # NOQA
+from cupy._creation.from_data import loadtxt  # NOQA
+from cupy._creation.from_data import genfromtxt  # NOQA
 
 from cupy._creation.ranges import arange  # NOQA
 from cupy._creation.ranges import linspace  # NOQA
@@ -451,6 +457,9 @@ from cupy._io.npz import savez_compressed  # NOQA
 
 from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
+from cupy._io.formatting import array2string  # NOQA
+
+from cupy._io.text import savetxt  # NOQA
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
