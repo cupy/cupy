@@ -33,9 +33,6 @@ CUPY_DLPACK_EXPORT_VERSION = tuple(
     ]
 )
 
-DLPACK_ACCEPT_STREAM_ZERO = bool(
-    int(os.environ.get('CUPY_DLPACK_ACCEPT_STREAM_ZERO', '0')))
-
 
 cdef list _memos = []
 

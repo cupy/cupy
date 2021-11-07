@@ -247,13 +247,11 @@ cdef class ndarray:
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
                     f' 1, 2, or any larger value, but {stream} was provided')
             if curr_stream_ptr == 0:
-                if not _util.DLPACK_ACCEPT_STREAM_ZERO:
-                    raise ValueError(
-                        'stream 0 is passed by library XXX, which is not '
-                        'accepted per the DLPack protocol. Please report this '
-                        'problem to the upstream library, and in the meantime '
-                        'work around this by setting the env var '
-                        'CUPY_DLPACK_ACCEPT_STREAM_ZERO=1')
+                warnings.warn(
+                   'Stream 0 is passed from a library that owns a tensor you '
+                   'are converting from; CuPy assumes it as a legacy default '
+                   'stream. Please report this problem to the library as this '
+                   'violates the DLPack protocol.')
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
             if stream is None:
