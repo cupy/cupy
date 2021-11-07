@@ -242,8 +242,6 @@ class LinuxGenerator:
             # pytest marker
             spec = 'not slow' if matrix.test == 'unit' else 'slow'
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
-        elif matrix.test == 'doctest':
-            lines += ['"$ACTIONS/doctest.sh"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
         else:

@@ -2,6 +2,19 @@
 
 set -uex
 
+###
+### Doctest
+###
+
+pushd docs
+python3 -m pip install --user -r requirements.txt
+SPHINXOPTS=-W make doctest
+popd
+
+###
+### Examples
+###
+
 # TODO: support coverage reporting
 python3 -m pip install --user matplotlib
 
