@@ -272,6 +272,9 @@ def _hash_hexdigest(value):
     return hashobj.hexdigest()
 
 
+_hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
+
+
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
@@ -545,9 +548,9 @@ def _compile_with_cache_cuda(
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as file:
                 data = file.read()
-            if len(data) >= 32:
-                hash = data[:32]
-                cubin = data[32:]
+            if len(data) >= _hash_length:
+                hash = data[:_hash_length]
+                cubin = data[_hash_length:]
                 cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
@@ -869,9 +872,9 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as f:
                 data = f.read()
-            if len(data) >= 32:
-                hash_value = data[:32]
-                binary = data[32:]
+            if len(data) >= _hash_length:
+                hash_value = data[:_hash_length]
+                binary = data[_hash_length:]
                 binary_hash = _hash_hexdigest(binary).encode('ascii')
                 if hash_value == binary_hash:
                     mod.load(binary)
