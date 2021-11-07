@@ -151,6 +151,7 @@ def _get_arch():
         return min(arch, nvrtc_max_compute_capability)
 
 
+@_util.memoize(for_each_device=True)
 def _get_arch_for_options_for_nvrtc(arch=None):
     # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
     # version than the one included in the used CUDA version, as
@@ -162,7 +163,7 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         arch = _get_arch()
     if (
         not _use_ptx and _cuda_hip_version >= 11010
-        and arch < _get_max_compute_capability()
+        and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
