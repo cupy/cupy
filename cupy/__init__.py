@@ -16,26 +16,14 @@ _environment._preload_libraries()  # NOQA
 try:
     from cupy import _core  # NOQA
 except ImportError as e:
-    # _core is a c-extension module.
-    # When a user cannot import _core, it represents that CuPy is not correctly
-    # built.
-    _exc_info = _sys.exc_info()
-    _msg = ('''\
-CuPy is not correctly installed.
+    raise ImportError(f'''
+================================================================
+{_environment._diagnose_import_error()}
 
-If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
-Also, confirm that only one CuPy package is installed:
-  $ pip freeze
-
-If you are building CuPy from source, please check your environment, uninstall CuPy and reinstall it with:
-  $ pip install cupy --no-cache-dir -vvvv
-
-Check the Installation Guide for details:
-  https://docs.cupy.dev/en/latest/install.html
-
-original error: {}'''.format(_exc_info[1]))  # NOQA
-
-    raise ImportError(_msg) from e
+Original error:
+  {type(e).__name__}: {e}
+================================================================
+''') from e
 
 
 from cupy import cuda  # NOQA

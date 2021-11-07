@@ -437,3 +437,17 @@ def _detect_duplicate_installation():
 
 --------------------------------------------------------------------------------
 ''')
+
+
+def _diagnose_import_error() -> str:
+    # TODO(kmaehashi): provide better diagnostics.
+    return '''\
+Failed to import CuPy.
+
+If you installed CuPy via wheels (cupy-cudaXXX or cupy-rocm-X-X), make sure that the package matches with the version of CUDA or ROCm installed.
+
+On Linux, you may need to set LD_LIBRARY_PATH environment variable depending on how you installed CUDA/ROCm.
+On Windows, try setting CUDA_PATH environment variable.
+
+Check the Installation Guide for details:
+  https://docs.cupy.dev/en/latest/install.html'''
