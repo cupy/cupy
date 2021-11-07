@@ -186,6 +186,7 @@
 # ROCm 4.0 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-0"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-0,label=mnj-mi50/"
   target: "rocm-4-0"
   system: "linux"
   os: "ubuntu:20.04"
@@ -205,6 +206,7 @@
 
 # ROCm 4.2 | Linux
 - project: "cupy.linux.rocm-4-2"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-2,label=mnj-mi50/"
   target: "rocm-4-2"
   system: "linux"
   os: "ubuntu:20.04"
@@ -225,6 +227,7 @@
 # ROCm 4.3 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-4-3"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
   target: "rocm-4-3"
   system: "linux"
   os: "ubuntu:20.04"
