@@ -450,4 +450,4 @@ On Linux, you may need to set LD_LIBRARY_PATH environment variable depending on 
 On Windows, try setting CUDA_PATH environment variable.
 
 Check the Installation Guide for details:
-  https://docs.cupy.dev/en/latest/install.html'''
+  https://docs.cupy.dev/en/latest/install.html'''  # NOQA
