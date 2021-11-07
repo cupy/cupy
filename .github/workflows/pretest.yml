@@ -3,7 +3,7 @@ name: "Pre-review Tests"
 on: [push, pull_request]
 
 jobs:
-  pretest:
+  test:
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub
@@ -57,4 +57,49 @@ jobs:
         pushd .pfnci
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
+        popd
+
+  rocm-build:
+    runs-on: ubuntu-18.04
+    env:
+      CUPY_CI: "GitHub"
+      ROCM_REPO: "4.3.1"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - name: Setup ROCm
+      run: |
+        wget -qO - https://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
+        echo "deb [arch=amd64] http://repo.radeon.com/rocm/apt/${ROCM_REPO}/ ubuntu main" | sudo tee /etc/apt/sources.list.d/rocm.list
+        sudo apt-get -qqy update
+        sudo apt-get -qqy install rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
+
+        echo "ROCM_HOME=/opt/rocm" >> "${GITHUB_ENV}"
+        echo "PATH=${ROCM_HOME}/bin:${PATH}" >> "${GITHUB_ENV}"
+        echo "LD_LIBRARY_PATH=${ROCM_HOME}/lib:${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
+
+        hipconfig
+
+    - name: Build
+      run: |
+        pip install -U pip wheel
+        pip install cython
+
+        export HCC_AMDGPU_TARGET=gfx900
+        export CUPY_INSTALL_USE_HIP=1
+        pip install -U -e .
+
+    - name: Test Import
+      run: |
+        pushd /
+        python -c "import cupy; cupy.show_config()"
         popd
