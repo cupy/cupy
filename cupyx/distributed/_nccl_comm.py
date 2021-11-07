@@ -1,5 +1,5 @@
 import cupy
-from cupy_backends.cuda.libs import nccl
+from cupy.cuda import nccl
 from cupyx.distributed import _store
 from cupyx.distributed._comm import _Backend
 
