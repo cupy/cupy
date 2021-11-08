@@ -85,8 +85,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'CuPy'
-copyright = u'2015, Preferred Networks, inc. and Preferred Infrastructure, inc.'
-author = u'Preferred Networks, inc. and Preferred Infrastructure, inc.'
+copyright = u'2015, Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
+author = u'Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
