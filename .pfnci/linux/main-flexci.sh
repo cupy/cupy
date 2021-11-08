@@ -17,7 +17,7 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 
     pip install pygithub
-    TO_EXECUTE=$(./.pfnci/flexci_test_tag.py "${TAGS}")
+    TO_EXECUTE=$(./.pfnci/flexci_test_tag.py "${TAGS:-}")
     if [[ "${TO_EXECUTE}" == "no" ]]; then
         exit 0
     fi

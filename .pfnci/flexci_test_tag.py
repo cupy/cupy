@@ -35,8 +35,8 @@ def get_requested_tags(github_token, description):
         match = re.fullmatch(r'/test\s+([\w,\-]+)', line)
         if match is not None:
             return set(match.group(1).split(','))
-    _log('No test tags specified, assumes "all"')
-    return set(('all',))
+    _log('No test tags specified in comment')
+    return None
 
 
 def main(argv):
@@ -52,6 +52,12 @@ def main(argv):
 
     _log(f'Test tags: {tags}')
     _log(f'Requested tags: {req_tags}')
+
+    if req_tags is None:
+        # No tags requested; run all tests.
+        print('yes')
+        return
+
     for req_tag in req_tags:
         if req_tag in tags:
             print('yes')
