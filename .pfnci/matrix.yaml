@@ -234,7 +234,10 @@
 # Example
 ###############################################################################
 
-# Example | Linux
+# Example (with Doctest) | Linux
+# Notes for doctests:
+# - Library versions may be overridden by docs/requirements.txt
+# - Accelerators are disabled as doctests expect it (#5891)
 - project: "cupy.linux.cuda-example"
   target: "cuda-example"
   system: "linux"

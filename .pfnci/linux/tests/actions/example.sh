@@ -3,15 +3,6 @@
 set -uex
 
 ###
-### Doctest
-###
-
-pushd docs
-python3 -m pip install --user -r requirements.txt
-SPHINXOPTS=-W make doctest
-popd
-
-###
 ### Examples
 ###
 
@@ -52,4 +43,14 @@ python3 stream/cusparse.py
 python3 stream/map_reduce.py
 python3 stream/thrust.py
 
+popd
+
+
+###
+### Doctest
+###
+
+pushd docs
+python3 -m pip install --user -r requirements.txt
+SPHINXOPTS=-W make doctest
 popd
