@@ -30,7 +30,7 @@ def _launch_workers(n_workers, func, args=()):
 
 
 def broadcast(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_broadcast(rank, n_workers, root, dtype):
@@ -50,7 +50,7 @@ def broadcast(dtype):
 
 
 def reduce(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_reduce(rank, n_workers, root, dtype):
@@ -68,7 +68,7 @@ def reduce(dtype):
 
 
 def all_reduce(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_all_reduce(rank, n_workers, dtype):
@@ -85,7 +85,7 @@ def all_reduce(dtype):
 
 
 def reduce_scatter(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_reduce_scatter(rank, n_workers, dtype):
@@ -103,7 +103,7 @@ def reduce_scatter(dtype):
 
 
 def all_gather(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_all_gather(rank, n_workers, dtype):
@@ -123,7 +123,7 @@ def all_gather(dtype):
 
 
 def send_and_recv(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_send_and_recv(rank, n_workers, dtype):
@@ -142,7 +142,7 @@ def send_and_recv(dtype):
 
 
 def send_recv(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_send_recv(rank, n_workers, dtype):
@@ -159,7 +159,7 @@ def send_recv(dtype):
 
 
 def scatter(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_scatter(rank, n_workers, root, dtype):
@@ -179,7 +179,7 @@ def scatter(dtype):
 
 
 def gather(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_gather(rank, n_workers, root, dtype):
@@ -200,7 +200,7 @@ def gather(dtype):
 
 
 def all_to_all(dtype):
-    if dtype in (cupy.int16, cupy.uint16):
+    if dtype in 'hH':
         return  # nccl does not support int16
 
     def run_all_to_all(rank, n_workers, dtype):
