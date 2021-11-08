@@ -37,4 +37,5 @@ if ! touch .; then
     echo "Source directory ($(pwd)) is read-only; copying the source tree to ${_src_dir} and changing the current directory"
     cp -a . "${_src_dir}"
     pushd "${_src_dir}"
+    export CCACHE_BASEDIR="${_src_dir}"
 fi
