@@ -72,6 +72,13 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
     elif output.dtype != out_dtype:
         raise ValueError('out has wrong dtype')
 
+    # Check input dtypes
+    # Internally, the kernel accumulates in in2's type, so if in2 has lower
+    # precision (can_cast = True!) we hit overflow easier
+    # TODO(leofang): this is a band-aid fix for cupy/cupy#6047
+    if cupy.can_cast(in2, in1):
+        in2 = in2.astype(out_dtype)  # make a copy while upcasting
+
     # Get and run the CuPy kernel
     int_type = _util._get_inttype(in1)
     kernel = filters._get_correlate_kernel(
