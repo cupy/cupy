@@ -106,7 +106,7 @@ class _RuntimeInfo:
             self.nvcc_path = cupy._environment.get_hipcc_path()
 
         # CUDA Driver
-        self.cuda_build_version = cupy.cuda.driver.get_build_version()
+        self.cuda_build_version = str(cupy.cuda.driver.get_build_version())
         if cupy.cuda.driver._is_cuda_python():
             import cuda
             self.cuda_build_version += f' (CUDA Python: {cuda.__version__})'
