@@ -256,6 +256,21 @@ Remove the directory first if you want to reinstall.'''.format(destination))
         raise RuntimeError('''
 The current platform ({}) is not supported.'''.format(target_platform))
 
+    if library == 'cudnn':
+        print('By downloading and using cuDNN, you accept the terms and'
+              ' conditions of the NVIDIA cuDNN Software License Agreement:')
+        print('  https://docs.nvidia.com/deeplearning/cudnn/sla/index.html')
+        print()
+    elif library == 'cutensor':
+        print('By downloading and using cuTENSOR, you accept the terms and'
+              ' conditions of the NVIDIA cuTENSOR Software License Agreement:')
+        print('  https://docs.nvidia.com/cuda/cutensor/license.html')
+        print()
+    elif library == 'nccl':
+        pass  # BSD
+    else:
+        assert False
+
     print('Installing {} {} for CUDA {} to: {}'.format(
         library, record[library], record['cuda'], destination))
 
