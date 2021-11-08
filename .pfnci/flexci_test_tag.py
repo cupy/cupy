@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Note: keep this script runnable Python 3.6 until FlexCI Python update
+
 import os
 import re
 import sys
@@ -23,14 +25,15 @@ def get_requested_tags(github_token, description):
     match = re.search(r'/pull/(\d+)#issuecomment-(\d+)', description)
     if match is None:
         raise RuntimeError(
-            'Cannot detect information from FLEXCI_DESCRIPTION:'
-            f' {description}')
-    pull_request = int(match.group(1))
+            'Cannot detect information from FLEXCI_DESCRIPTION: {}'.format(
+                description))
+    pr_id = int(match.group(1))
     comment_id = int(match.group(2))
-    _log(f'Pull-Request: #{pull_request} (comment {comment_id})')
+    _log('Triggered by pull-request: #{} (comment {})'.format(
+        pr_id, comment_id))
 
     repo = github.Github(github_token).get_repo(GITHUB_REPOSITORY)
-    comment = repo.get_issue(pull_request).get_comment(comment_id)
+    comment = repo.get_issue(pr_id).get_comment(comment_id)
     for line in comment.body.splitlines():
         match = re.fullmatch(r'/test\s+([\w,\-]+)', line)
         if match is not None:
@@ -50,8 +53,8 @@ def main(argv):
     description = os.environ.get('FLEXCI_DESCRIPTION', '')
     req_tags = get_requested_tags(github_token, description)
 
-    _log(f'Test tags: {tags}')
-    _log(f'Requested tags: {req_tags}')
+    _log('Test tags: {}'.format(tags))
+    _log('Requested tags: {}'.format(req_tags))
 
     if req_tags is None:
         # No tags requested; run all tests.
