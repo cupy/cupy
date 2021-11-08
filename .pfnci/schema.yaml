@@ -326,5 +326,6 @@ env:CUPY_ACCELERATORS:
 ###############################################################################
 test:
   "unit":
-  "slow":
+  "unit-multi":
+  "unit-slow":
   "example":

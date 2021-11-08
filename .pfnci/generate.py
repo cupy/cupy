@@ -252,9 +252,16 @@ class LinuxGenerator:
             ]
 
         lines += ['"$ACTIONS/build.sh"']
-        if matrix.test in ('unit', 'slow'):
-            # pytest marker
-            spec = 'not slow' if matrix.test == 'unit' else 'slow'
+        if matrix.test.startswith('unit'):
+            if matrix.test == 'unit':
+                spec = 'not slow and not multi_gpu'
+            elif matrix.test == 'unit-multi':
+                spec = 'not slow and multi_gpu'
+            elif matrix.test == 'unit-slow':
+                # Slow tests may use multiple GPUs.
+                spec = 'slow'
+            else:
+                assert False
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
