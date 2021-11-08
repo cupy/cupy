@@ -1,7 +1,7 @@
 from ctypes import Structure, c_int, c_byte
 
 
-_VALUE_BUFFER_SIZE = 256
+_VALUE_BUFFER_SIZE = 512
 
 
 class action_t(Structure):
@@ -24,7 +24,7 @@ def get_action_t(action, value):
     value = bytearray(value) + bytearray(
         b'\x00' * (_VALUE_BUFFER_SIZE - len(value)))
     value = (c_byte * _VALUE_BUFFER_SIZE).from_buffer(value)
-    assert _VALUE_BUFFER_SIZE - len(value) > 0
+    assert (_VALUE_BUFFER_SIZE - len(value)) > 0
     return action_t(action, l_v, value)
 
 
@@ -33,7 +33,7 @@ def get_result_action_t(status, value):
     value = bytearray(value) + bytearray(
         b'\x00' * (_VALUE_BUFFER_SIZE - len(value)))
     value = (c_byte * _VALUE_BUFFER_SIZE).from_buffer(value)
-    assert _VALUE_BUFFER_SIZE - len(value) > 0
+    assert (_VALUE_BUFFER_SIZE - len(value)) > 0
     return result_action_t(status, l_v, value)
 
 
