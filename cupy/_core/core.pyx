@@ -252,6 +252,7 @@ cdef class ndarray:
                     'are converting from; CuPy assumes it as a legacy default '
                     'stream. Please report this problem to the library as this'
                     ' violates the DLPack protocol.')
+                stream = runtime.streamLegacy
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
