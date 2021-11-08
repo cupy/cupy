@@ -3,7 +3,7 @@ name: "Pre-review Tests"
 on: [push, pull_request]
 
 jobs:
-  pretest:
+  test:
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub
@@ -71,3 +71,16 @@ jobs:
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
         popd
+
+  rocm-build:
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Build & Test
+      run: |
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:4.3.1-complete" bash .github/workflows/pretest-rocm-test.sh
