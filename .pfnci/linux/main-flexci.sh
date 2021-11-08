@@ -43,7 +43,7 @@ if [[ "${pull_req}" == "" ]]; then
 
     # Notify.
     if [[ ${test_retval} != 0 ]]; then
-        pip install -q slack-sdk gitterpy
+        pip3 install -q slack-sdk gitterpy
         ./.pfnci/flexci_notify.py "Test failed."
     fi
 fi
