@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Note: keep this script runnable Python 3.6 until FlexCI Python update
 
