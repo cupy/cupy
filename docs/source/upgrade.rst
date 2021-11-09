@@ -369,7 +369,7 @@ Compatibility Matrix
    :header-rows: 1
 
    * - CuPy
-     - CC (*1)
+     - CC [1]_
      - CUDA
      - ROCm 
      - cuTENSOR
