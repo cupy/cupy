@@ -360,3 +360,110 @@ Changed Behavior of count_nonzero Function
 
 For performance reasons, :func:`cupy.count_nonzero` has been changed to return zero-dimensional :class:`ndarray` instead of `int` when `axis=None`.
 See the discussion in `#154 <https://github.com/cupy/cupy/pull/154>`_ for more details.
+
+
+Compatibility Matrix
+====================
+
+.. list-table::
+   :header-rows: 1
+
+   * - CuPy
+     - CC [1]_
+     - CUDA
+     - ROCm 
+     - cuTENSOR
+     - NCCL
+     - cuDNN
+     - Python
+     - NumPy
+     - SciPy
+     - Baseline API Spec.
+     - Docs
+   * - v10
+     - 3.0~
+     - 10.2~
+     - 4.0~
+     - 1.3~
+     - 2.8~
+     - 7.6~
+     - 3.7~
+     - 1.18~
+     - 1.4~
+     - NumPy 1.21 & SciPy 1.7
+     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
+   * - v9
+     - 3.0~8.x
+     - 9.2~11.5
+     - 3.5~4.3
+     - 1.2~1.3
+     - 2.4 & 2.6~2.11
+     - 7.6~8.2
+     - 3.6~3.9
+     - 1.17~1.21
+     - 1.4~1.7
+     - NumPy 1.20 & SciPy 1.6
+     - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+   * - v8
+     - 3.0~8.x
+     - 9.0 & 9.2~11.2
+     - 3.x [2]_
+     - 1.2
+     - 2.0~2.8
+     - 7.0~8.1
+     - 3.5~3.9
+     - 1.16~1.20
+     - 1.3~1.6
+     - NumPy 1.19 & SciPy 1.5
+     - `v8.6.0 <https://docs.cupy.dev/en/v8.6.0/install.html>`__
+   * - v7
+     - 3.0~8.x
+     - 8.0~11.0
+     - 2.x [2]_
+     - 1.0
+     - 1.3~2.7
+     - 5.0~8.0
+     - 3.5~3.8
+     - 1.9~1.19
+     - (not specified)
+     - (not specified)
+     - `v7.8.0 <https://docs.cupy.dev/en/v7.8.0/install.html>`__
+   * - v6
+     - 3.0~7.x
+     - 8.0~10.1
+     - n/a
+     - n/a
+     - 1.3~2.4
+     - 5.0~7.5
+     - 2.7 & 3.4~3.8
+     - 1.9~1.17
+     - (not specified)
+     - (not specified)
+     - `v6.7.0 <https://docs.cupy.dev/en/v6.7.0/install.html>`__
+   * - v5
+     - 3.0~7.x
+     - 8.0~10.1
+     - n/a
+     - n/a
+     - 1.3~2.4
+     - 5.0~7.5
+     - 2.7 & 3.4~3.7
+     - 1.9~1.16
+     - (not specified)
+     - (not specified)
+     - `v5.4.0 <https://docs.cupy.dev/en/v5.4.0/install.html>`__
+   * - v4
+     - 3.0~7.x
+     - 7.0~9.2
+     - n/a
+     - n/a
+     - 1.3~2.2
+     - 4.0~7.1
+     - 2.7 & 3.4~3.6
+     - 1.9~1.14
+     - (not specified)
+     - (not specified)
+     - `v4.5.0 <https://docs.cupy.dev/en/v4.5.0/install.html>`__
+
+.. [1] CUDA Compute Capability
+.. [2] Highly experimental support with limited features.
