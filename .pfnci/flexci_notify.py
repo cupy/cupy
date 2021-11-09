@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+# Note: keep this script runnable Python 3.6 until FlexCI Python update
 
 import sys
 import os
@@ -15,7 +17,7 @@ def main(argv):
     subdesc = os.environ.get('FLEXCI_SUB_DESCRIPTION', '')
     url = os.environ.get('FLEXCI_JOB_URL', '')
     msg = argv[1]
-    body = f'{desc}\n{subdesc}\n{msg}\n{url}'
+    body = '{}\n{}\n{}\n{}'.format(desc, subdesc, msg, url)
 
     if slack_config is not None:
         from slack_sdk.webhook import WebhookClient
