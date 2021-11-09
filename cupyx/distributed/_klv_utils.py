@@ -1,7 +1,7 @@
 from ctypes import Structure, c_int, c_byte
 
 
-_VALUE_BUFFER_SIZE = 2048
+_VALUE_BUFFER_SIZE = 256
 
 
 class action_t(Structure):

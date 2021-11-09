@@ -46,10 +46,7 @@ class TCPStore:
         self._current_barrier = None
 
     def __del__(self):
-        if self._process is not None:
-            with self._run.get_lock():
-                self._run.value = 0
-            self._process.join()
+        self.stop()
 
     def _set_process(self, process):
         self._process = process
@@ -92,6 +89,12 @@ class TCPStore:
             target=self._server_loop, args=(host, port))
         p.start()
         self._process = p
+
+    def stop(self):
+        if self._process is not None:
+            with self._run.get_lock():
+                self._run.value = 0
+            self._process.join()
 
 
 class TCPStoreProxy:
