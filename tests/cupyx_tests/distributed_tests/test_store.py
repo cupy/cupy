@@ -2,10 +2,15 @@ import unittest
 
 import pytest
 
+from cupy.cuda import nccl
 from cupy.testing import _condition
 from cupyx.distributed import _store
 
 
+nccl_available = nccl.available
+
+
+@pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
 class TestTCPStore(unittest.TestCase):
 
     @_condition.retry(10)
