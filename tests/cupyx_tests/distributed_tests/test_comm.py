@@ -1,4 +1,3 @@
-import os
 import pathlib
 import subprocess
 import sys
@@ -25,19 +24,10 @@ def _run_test(test_name, dtype=None):
     # of this file
     temp_dir = tempfile.mkdtemp()
     try:
-        script_path = os.path.join(temp_dir, 'script.py')
-        template_path = pathlib.Path(__file__)
-        with open(
-                template_path.parent / 'test_comm_template.py.txt', 'r') as f:
-            if dtype is None:
-                dtype = ''
-            else:
-                dtype = '"{}"'.format(numpy.dtype(dtype).char)
-            template = f.read().format(name=test_name, dtype=dtype)
-        with open(script_path, 'w') as f:
-            f.write(template)
+        runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
+        dtype = numpy.dtype(dtype).char if dtype is not None else ''
         proc = subprocess.Popen(
-            [sys.executable, script_path],
+            [sys.executable, runner_path, test_name, dtype],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdoutdata, stderrdata = proc.communicate()

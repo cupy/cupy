@@ -1,3 +1,4 @@
+import sys
 import time
 
 import cupy
@@ -251,4 +252,7 @@ def init():
 
 if __name__ == '__main__':
     # Run the templatized test
-    {name}({dtype})
+    func = globals()[sys.argv[1]]
+    # dtype is the char representation
+    dtype = sys.argv[2] if len(sys.argv) == 3 else ''
+    func(dtype)
