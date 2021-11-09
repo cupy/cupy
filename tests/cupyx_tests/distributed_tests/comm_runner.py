@@ -254,5 +254,8 @@ if __name__ == '__main__':
     # Run the templatized test
     func = globals()[sys.argv[1]]
     # dtype is the char representation
-    dtype = sys.argv[2] if len(sys.argv) == 3 else ''
-    func(dtype)
+    dtype = sys.argv[2] if len(sys.argv) == 3 else None
+    if dtype is not None:
+        func(dtype)
+    else:
+        func()

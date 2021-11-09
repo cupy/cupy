@@ -22,9 +22,11 @@ def _run_test(test_name, dtype=None):
     # of this file
     try:
         runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
-        dtype = numpy.dtype(dtype).char if dtype is not None else ''
+        args = [sys.executable, runner_path, test_name]
+        if dtype is not None:
+            args.append(numpy.dtype(dtype).char)
         proc = subprocess.Popen(
-            [sys.executable, runner_path, test_name, dtype],
+            args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdoutdata, stderrdata = proc.communicate()
