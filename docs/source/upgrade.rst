@@ -403,7 +403,7 @@ Compatibility Matrix
      - 1.17~1.21
      - 1.4~1.7
      - NumPy 1.20 & SciPy 1.6
-     - stable
+     - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v8
      - 3.0~8.x
      - 9.0 & 9.2~11.2
@@ -415,7 +415,7 @@ Compatibility Matrix
      - 1.16~1.20
      - 1.3~1.6
      - NumPy 1.19 & SciPy 1.5
-     - v8.6.0
+     - `v8.6.0 https://docs.cupy.dev/en/v8.6.0/install.html>`__
    * - v7
      - 3.0~8.x
      - 8.0~11.0
@@ -427,7 +427,7 @@ Compatibility Matrix
      - 1.9~1.19
      - (not specified)
      - (not specified)
-     - v7.8.0
+     - `v7.8.0 <https://docs.cupy.dev/en/v7.8.0/install.html>`__
    * - v6
      - 3.0~7.x
      - 8.0~10.1
@@ -439,7 +439,7 @@ Compatibility Matrix
      - 1.9~1.17
      - (not specified)
      - (not specified)
-     - v6.7.0
+     - `v6.7.0 <https://docs.cupy.dev/en/v6.7.0/install.html>`__
    * - v5
      - 3.0~7.x
      - 8.0~10.1
@@ -451,7 +451,7 @@ Compatibility Matrix
      - 1.9~1.16
      - (not specified)
      - (not specified)
-     - v5.4.0
+     - `v5.4.0 <https://docs.cupy.dev/en/v5.4.0/install.html>`__
    * - v4
      - 3.0~7.x
      - 7.0~9.2
@@ -463,7 +463,7 @@ Compatibility Matrix
      - 1.9~1.14
      - (not specified)
      - (not specified)
-     - v4.5.0
+     - `v4.5.0 <https://docs.cupy.dev/en/v4.5.0/install.html>`__
 
 .. [1] CUDA Compute Capability
 .. [2] Highly experimental support with limited features.
