@@ -39,22 +39,20 @@ def init_process_group(
         Process 0:
 
         >>> import cupy
-        >>> import cupyx.distributed
-        >>> cupy.cuda.Device(0).use()
-        >>> comm = cupyx.distributed.init_process_group(2, 0)
-        >>> array = cupy.ones(1)
-        >>> comm.broadcast(array, 0)
-
-        Process 1:
-
-        >>> import cupy
-        >>> import cupyx.distributed
-        >>> cupy.cuda.Device(1).use()
-        >>> comm = cupyx.distributed.init_process_group(2, 1)
-        >>> array = cupy.zeros(1)
-        >>> comm.broadcast(array, 0)
-        >>> cupy.equal(array, cupy.ones(1))
-        array([ True])
+        >>> def process_0():
+        ... import cupyx.distributed
+        ... cupy.cuda.Device(0).use()
+        ... comm = cupyx.distributed.init_process_group(2, 0)
+        ... array = cupy.ones(1)
+        ... comm.broadcast(array, 0)
+        ...
+        >>> def process_1():
+        ... import cupyx.distributed
+        ... cupy.cuda.Device(1).use()
+        ... comm = cupyx.distributed.init_process_group(2, 1)
+        ... array = cupy.zeros(1)
+        ... comm.broadcast(array, 0)
+        ... cupy.equal(array, cupy.ones(1))
 
     Args:
         n_devices (int): Total number of devices that will be used in the
