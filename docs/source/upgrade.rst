@@ -391,7 +391,7 @@ Compatibility Matrix
      - 1.18~
      - 1.4~
      - NumPy 1.21 & SciPy 1.7
-     - latest
+     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v9
      - 3.0~8.x
      - 9.2~11.5
