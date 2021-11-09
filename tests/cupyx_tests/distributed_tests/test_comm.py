@@ -1,8 +1,6 @@
 import pathlib
 import subprocess
 import sys
-import shutil
-import tempfile
 import unittest
 
 import numpy
@@ -22,7 +20,6 @@ N_WORKERS = 2
 def _run_test(test_name, dtype=None):
     # subprocess is required not to interfere with cupy module imported in top
     # of this file
-    temp_dir = tempfile.mkdtemp()
     try:
         runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
         dtype = numpy.dtype(dtype).char if dtype is not None else ''
@@ -32,7 +29,6 @@ def _run_test(test_name, dtype=None):
             stderr=subprocess.PIPE)
         stdoutdata, stderrdata = proc.communicate()
     finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
         assert stderrdata.decode() == ''
         assert proc.returncode == 0
 
