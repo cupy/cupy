@@ -415,7 +415,7 @@ Compatibility Matrix
      - 1.16~1.20
      - 1.3~1.6
      - NumPy 1.19 & SciPy 1.5
-     - `v8.6.0 https://docs.cupy.dev/en/v8.6.0/install.html>`__
+     - `v8.6.0 <https://docs.cupy.dev/en/v8.6.0/install.html>`__
    * - v7
      - 3.0~8.x
      - 8.0~11.0
