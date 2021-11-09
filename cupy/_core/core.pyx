@@ -248,8 +248,8 @@ cdef class ndarray:
                     f' 1, 2, or any larger value, but {stream} was provided')
             if stream == 0:
                 warnings.warn(
-                    'Stream 0 is passed from a library that owns a tensor you '
-                    'are converting from; CuPy assumes it as a legacy default '
+                    'Stream 0 is passed from a library that you are converting to;'
+                    ' CuPy assumes 0 as a legacy default '
                     'stream. Please report this problem to the library as this'
                     ' violates the DLPack protocol.')
                 stream = runtime.streamLegacy
