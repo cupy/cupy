@@ -465,5 +465,5 @@ Compatibility Matrix
      - (not specified)
      - v4.5.0
 
-.. [*] (*1) CUDA Compute Capability
-.. [*] (*2) Hightly experimental support with limited features
+.. [1] CUDA Compute Capability
+.. [2] Highly experimental support with limited features.
