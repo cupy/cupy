@@ -95,27 +95,31 @@ The same :class:`cupy.cuda.Stream` instance can now safely be shared between mul
 
 To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if the stream is the current stream of any thread.
 
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.20 and SciPy 1.6 to NumPy 1.21 and SciPy 1.7.
+CuPy v10 will follow the upstream products’ specifications of these baseline versions.
+
 API Changes
 -----------
 
-Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+* Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
 
-*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+* An *Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
 
-The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
+* The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
 
-A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module:
+* A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module as follows. The old routines are deprecated.
 
     * :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
     * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
 
-The old routines are deprecated.
+* :func:`cupy.ndarray.__pos__` now returns the copy (samely as :func:`cupy.positive`) instead of returning ``self``.
 
-:func:`cupy.ndarray.__pos__` now returns the copy (samely as :func:`cupy.positive`) instead of returning ``self``.
-
-Deprecated APIs may be removed in the future CuPy releases.
+Note that deprecated APIs may be removed in the future CuPy releases.
 
 Update of Docker Images
 -----------------------
@@ -163,8 +167,8 @@ cuTENSOR can now be used when installing CuPy via wheels.
 Previously ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules were automatically imported.
 Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
 
-Baseline API Changes
---------------------
+Baseline API Update
+-------------------
 
 Baseline API has been bumped from NumPy 1.19 and SciPy 1.5 to NumPy 1.20 and SciPy 1.6.
 CuPy v9 will follow the upstream products' specifications of these baseline versions.
