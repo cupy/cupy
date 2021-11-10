@@ -30,11 +30,13 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
     # TODO(beam2d): Support the advanced indexing of NumPy.
     cdef Py_ssize_t mask_i
     cdef list slice_list, adv_mask, adv_slices
-    cdef bint advanced, mask_exists
+    # cdef bint advanced, mask_exists
     cdef ndarray a, mask
 
-    slice_list, advanced, mask_exists = _prepare_slice_list(
-        slices, self._shape.size())
+    slice_list = _prepare_slice_list(slices)
+    a, slice_list, adv_axis = _view_getitem(self, slice_list)
+    if adv_axis is None:
+        return a
 
     if mask_exists:
         a, mask, mask_i = _get_mask(self, slice_list)
@@ -46,8 +48,6 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
             axis = adv_mask.index(True)
             return a.take(adv_slices[axis], axis)
         return _getitem_multiple(a, adv_slices)
-
-    return _simple_getitem(self, slice_list)
 
 
 cdef _ndarray_setitem(ndarray self, slices, value):
@@ -221,11 +221,11 @@ cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
 # private/internal
 
 
-cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
-    cdef Py_ssize_t i, n_newaxes, axis
+cpdef list _prepare_slice_list(slices):
+    # cdef Py_ssize_t i, n_newaxes, axis
     cdef list slice_list
-    cdef char kind
-    cdef bint advanced, mask_exists
+    # cdef char kind
+    # cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
         slice_list = list(slices)
@@ -246,40 +246,42 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
     else:
         slice_list = [slices]
 
-    slice_list, n_newaxes = internal.complete_slice_list(slice_list, ndim)
+    return slice_list
 
-    # Check if advanced is true,
-    # and convert list/NumPy arrays to cupy.ndarray
-    advanced = False
-    mask_exists = False
-    for i, s in enumerate(slice_list):
-        to_gpu = True
-        if isinstance(s, list):
-            # handle the case when s is an empty list
-            s = numpy.array(s)
-            if s.size == 0:
-                s = s.astype(numpy.int32)
-        elif isinstance(s, bool):
-            s = numpy.array(s)
-        elif isinstance(s, ndarray):
-            to_gpu = False
-        elif not isinstance(s, numpy.ndarray):
-            continue
-        kind = ord(s.dtype.kind)
-        if kind == b'i' or kind == b'u':
-            advanced = True
-        elif kind == b'b':
-            mask_exists = True
-        else:
-            raise IndexError(
-                'arrays used as indices must be of integer or boolean '
-                'type. (actual: {})'.format(s.dtype.type))
-        if to_gpu:
-            slice_list[i] = core.array(s)
+    # slice_list, n_newaxes = internal.complete_slice_list(slice_list, ndim)
 
-    if not mask_exists and len(slice_list) > ndim + n_newaxes:
-        raise IndexError('too many indices for array')
-    return slice_list, advanced, mask_exists
+    # # Check if advanced is true,
+    # # and convert list/NumPy arrays to cupy.ndarray
+    # advanced = False
+    # mask_exists = False
+    # for i, s in enumerate(slice_list):
+    #     to_gpu = True
+    #     if isinstance(s, list):
+    #         # handle the case when s is an empty list
+    #         s = numpy.array(s)
+    #         if s.size == 0:
+    #             s = s.astype(numpy.int32)
+    #     elif isinstance(s, bool):
+    #         s = numpy.array(s)
+    #     elif isinstance(s, ndarray):
+    #         to_gpu = False
+    #     elif not isinstance(s, numpy.ndarray):
+    #         continue
+    #     kind = ord(s.dtype.kind)
+    #     if kind == b'i' or kind == b'u':
+    #         advanced = True
+    #     elif kind == b'b':
+    #         mask_exists = True
+    #     else:
+    #         raise IndexError(
+    #             'arrays used as indices must be of integer or boolean '
+    #             'type. (actual: {})'.format(s.dtype.type))
+    #     if to_gpu:
+    #         slice_list[i] = core.array(s)
+
+    # if not mask_exists and len(slice_list) > ndim + n_newaxes:
+    #     raise IndexError('too many indices for array')
+    # return slice_list, advanced, mask_exists
 
 
 cdef tuple _get_mask(ndarray a, list slice_list):
@@ -366,7 +368,9 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
 
     return a, adv_slices, adv_mask
 
-cdef ndarray _simple_getitem(ndarray a, list slice_list):
+cdef ndarray _view_getitem(ndarray a, list slice_list):
+    # Process scalar/slice/ellipsis indices
+    # Returns a tuple (view of a, remaining indices)
     cdef shape_t shape
     cdef strides_t strides
     cdef ndarray v
