@@ -22,7 +22,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         pass
     ctypedef struct cusparseLtMatDescriptor_t 'cusparseLtMatDescriptor_t':
         pass
-    ctypedef struct cusparseLtMatmulDescriptor_t 'cusparseLtMatmulDescriptor_t':
+    ctypedef struct cusparseLtMatmulDescriptor_t 'cusparseLtMatmulDescriptor_t':  # NOQA
         pass
     ctypedef struct cusparseLtMatmulAlgSelection_t 'cusparseLtMatmulAlgSelection_t':  # NOQA
         pass
