@@ -79,8 +79,8 @@ class TCPStore:
                     continue
 
                 t = threading.Thread(
-                    target=self._process_request, args=(c_socket,))
-                t.setDaemon(True)
+                    target=self._process_request,
+                    args=(c_socket,), daemon=True)
                 t.start()
 
     def run(self, host=_DEFAULT_HOST, port=_DEFAULT_PORT):
