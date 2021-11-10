@@ -19,15 +19,15 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
 
     # Opaque Data Structures
     ctypedef struct cusparseLtHandle_t 'cusparseLtHandle_t':
-        uint8_t data[11024]
+        pass
     ctypedef struct cusparseLtMatDescriptor_t 'cusparseLtMatDescriptor_t':
-        uint8_t data[11024]
+        pass
     ctypedef struct cusparseLtMatmulDescriptor_t 'cusparseLtMatmulDescriptor_t':
-        uint8_t data[11024]
+        pass
     ctypedef struct cusparseLtMatmulAlgSelection_t 'cusparseLtMatmulAlgSelection_t':  # NOQA
-        uint8_t data[11024]
+        pass
     ctypedef struct cusparseLtMatmulPlan_t 'cusparseLtMatmulPlan_t':
-        uint8_t data[11024]
+        pass
 
     # Enumerators
     ctypedef int cusparseLtSparsity_t 'cusparseLtSparsity_t'
