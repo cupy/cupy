@@ -327,5 +327,4 @@ env:CUPY_ACCELERATORS:
 test:
   "unit":
   "slow":
-  "doctest":
   "example":

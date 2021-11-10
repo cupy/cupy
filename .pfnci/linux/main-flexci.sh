@@ -15,6 +15,12 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     # Extract pull-request ID
     pull_req="$(echo "${FLEXCI_BRANCH}" | cut -d/ -f3)"
     echo "Testing Pull-Request: #${pull_req}"
+
+    pip3 install -q pygithub
+    TO_EXECUTE=$(./.pfnci/flexci_test_tag.py "${TAGS:-}")
+    if [[ "${TO_EXECUTE}" == "no" ]]; then
+        exit 0
+    fi
 fi
 
 # TODO(kmaehashi): Hack for CUDA 11.5 until FlexCI base image update
@@ -40,6 +46,12 @@ if [[ "${pull_req}" == "" ]]; then
     echo "Uploading cache and Docker image..."
     CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put push | tee --append "${LOG_FILE}"
     echo "Upload exit with status ${PIPESTATUS[0]}"
+
+    # Notify.
+    if [[ ${test_retval} != 0 ]]; then
+        pip3 install -q slack-sdk gitterpy
+        ./.pfnci/flexci_notify.py "Test failed."
+    fi
 fi
 
 echo "Uploading the log..."
@@ -49,7 +61,5 @@ echo "**************************************************************************
 echo "Full log is available at:"
 echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/log.txt"
 echo "****************************************************************************************************"
-
-# TODO: implement gitter notification
 
 exit ${test_retval}
