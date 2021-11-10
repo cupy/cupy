@@ -99,14 +99,14 @@ Baseline API Update
 -------------------
 
 Baseline API has been bumped from NumPy 1.20 and SciPy 1.6 to NumPy 1.21 and SciPy 1.7.
-CuPy v10 will follow the upstream products’ specifications of these baseline versions.
+CuPy v10 will follow the upstream products' specifications of these baseline versions.
 
 API Changes
 -----------
 
 * Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
 
-* An *Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+* An *internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
 
 * The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
 
@@ -117,7 +117,7 @@ API Changes
     * :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
     * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
 
-* :func:`cupy.ndarray.__pos__` now returns the copy (samely as :func:`cupy.positive`) instead of returning ``self``.
+* :func:`cupy.ndarray.__pos__` now returns a copy (samely as :func:`cupy.positive`) instead of returning ``self``.
 
 Note that deprecated APIs may be removed in the future CuPy releases.
 
