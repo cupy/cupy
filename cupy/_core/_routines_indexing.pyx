@@ -404,6 +404,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
         return v, None
 
     # non-consecutive array-like indices => batch dims go first in output
+    # consecutive array-like indices => start batch dims there
     do_transpose = False
     k = 0
     for i, flag in enumerate(array_like_flags):
@@ -413,7 +414,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
         elif k == 1:
             if not flag:
                 k = 2
-        else:
+        else:  # k == 2
             if flag:
                 do_transpose = True
                 break
@@ -432,19 +433,24 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             continue
 
         slice_list.append(s)
-        if do_transpose:
             k = array_ndims[i]
             i += 1
+        if do_transpose:
             for _ in range(k):
                 axes_batch.append(j)
                 j += 1
         else:
             if start == -1:
                 start = j
+            j += k
 
     if do_transpose:
-        start = 0
+        if not has_ellipsis:
+            for _ in range(ndim_ellipsis):
+                axes_other.append(j)
+                j += 1
         v = _manipulation._transpose(v, axes_batch + axes_other)
+        start = 0
 
     return v, start
 
