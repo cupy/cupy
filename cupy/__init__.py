@@ -459,6 +459,14 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
     return _numpy.base_repr(number, base, padding)
 
 
+# Borrowed from NumPy
+from numpy import DataSource  # NOQA
+from numpy import get_printoptions  # NOQA
+from numpy import set_printoptions  # NOQA
+from numpy import printoptions  # NOQA
+from numpy import set_string_function  # NOQA
+
+
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
@@ -647,6 +655,11 @@ from cupy._math.misc import convolve  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
+
+# Borrowed from NumPy
+from numpy import disp  # NOQA
+from numpy import iterable  # NOQA
+from numpy import safe_eval  # NOQA
 
 
 # -----------------------------------------------------------------------------
