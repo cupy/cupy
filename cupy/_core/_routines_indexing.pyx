@@ -222,10 +222,8 @@ cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
 
 
 cpdef list _prepare_slice_list(slices):
-    # cdef Py_ssize_t i, n_newaxes, axis
+    cdef Py_ssize_t i
     cdef list slice_list
-    # cdef char kind
-    # cdef bint advanced, mask_exists
 
     if isinstance(slices, tuple):
         slice_list = list(slices)
@@ -355,38 +353,45 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
 
 cdef ndarray _view_getitem(ndarray a, list slice_list):
     # Process scalar/slice/ellipsis indices
-    # Returns a tuple (view of a, remaining indices)
+    # Returns a 2-tuple
+    # - [0] (ndarray): view of a
+    # - [1] (int or None): start axis for remaining indices
     # slice_list will be overwritten.
     #     input should contain:
     #         None, Ellipsis, slice (start:stop:step), scalar int, or
     #         cupy.ndarray
     #     output will contain:
-    #         None (**to represent slice(None)**, for performance) or cupy.ndarray
+    #         cupy.ndarray
     cdef shape_t shape
     cdef strides_t strides
     cdef ndarray v
-    cdef Py_ssize_t i, j, offset, ndim
-    cdef Py_ssize_t i_ellipsis, ndim_ellipsis
+    cdef Py_ssize_t i, j, k, offset, ndim, start
+    cdef Py_ssize_t ndim_ellipsis, ndim_batch
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
     cdef slice ss
-    cdef list index_list
+    cdef list index_list, axes_from, axes_to
+    cdef vector.vector[bint] array_like_flags
+    cdef bint has_ellipsis, flag
     cdef char kind
 
     j = 0
-    i_ellipsis = -1
-    for i, s in enumerate(slice_list):
+    has_ellipsis = False
+    ndim_batch = 0
+    for s in slice_list:
         if s is None:
             continue
         elif s is Ellipsis:
-            if i_ellipsis != -1:
+            if has_ellipsis:
                 raise IndexError("an index can only have a single ellipsis ('...')")
-            i_ellipsis = i
+            has_ellipsis = True
         elif isinstance(s, ndarray):
             kind = ord(s.dtype.kind)
             if kind == b'b':
                 j += s.ndim
+                ndim_batch = max(ndim_batch, 1)
             elif kind == b'i' or kind == b'u':
                 j += 1
+                ndim_batch = max(ndim_batch, s.ndim)
             else:
                 raise IndexError(
                     'arrays used as indices must be of integer or boolean '
@@ -406,20 +411,26 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
     j = 0
     offset = 0
     ndim = a._shape.size()
-    index_list = []  # remaining indices to be processed
-    for i, s in enumerate(slice_list):
+    # index_list: remaining indices to be processed.
+    # Use None to represent slice(None), for performance.
+    index_list = []
+    array_like_flags = []
+    for s in slice_list:
         if s is None:
             shape.push_back(1)
             strides.push_back(0)
             index_list.append(None)
+            array_like_flags.push_back(False)
         elif isinstance(s, ndarray):
             index_list.append(s)
+            array_like_flags.push_back(True)
         elif s is Ellipsis:
             for _ in range(ndim_ellipsis):
                 shape.push_back(a._shape[j])
                 strides.push_back(a._strides[j])
                 j += 1
                 index_list.append(None)
+            array_like_flags.push_back(False)
         elif isinstance(s, slice):
             ss = internal.complete_slice(s, a._shape[j])
             s_start = ss.start
@@ -440,6 +451,7 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
             shape.push_back(dim)
             j += 1
             index_list.append(None)
+            array_like_flags.push_back(False)
         else:
             # numpy.isscalar(s)
             ind = int(s)
@@ -451,14 +463,65 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
                 raise IndexError(msg)
             offset += ind * a._strides[j]
             j += 1
+            array_like_flags.push_back(True)
 
     v = a.view()
     if a.size != 0:
         v.data = a.data + offset
     v._set_shape_and_strides(shape, strides, True, True)
+    del slice_list[:]
 
-    slice_list[:] = index_list
-    return v
+    if ndim_batch == 0 or not any(array_like_flags):
+        # no advanced indexing. no mask.
+        # indexing with `array(scalar)` is fine, too.
+        return v, None
+
+    # non-consecutive array-like indices => batch dims go first in output
+    do_transpose = False
+    k = 0
+    for i, flag in enumerate(array_like_flags):
+        if k == 0:
+            if flag:
+                k = 1
+        elif k == 1:
+            if not flag:
+                k = 2
+        else:
+            if flag:
+                do_transpose = True
+                break
+
+    # compute transpose arg if do_transpose
+    axes_batch = []
+    axes_other = []
+    j = 0
+    k = 0
+    start = -1
+    for i, s in enumerate(index_list):
+        if s is None:
+            if do_transpose:
+                axes_other.append(j)
+            j += 1
+            continue
+
+        slice_list.append(s)
+        if do_transpose:
+            if s.dtype.kind == 'b':
+                for _ in range(s.ndim):
+                    axes_batch.append(j)
+                    j += 1
+            else:
+                axes_batch.append(j)
+                j += 1
+        else:
+            if start == -1:
+                start = j
+
+    if do_transpose:
+        start = 0
+        v = _manipulation._transpose(v, axes_batch + axes_other)
+
+    return v, start
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -1051,8 +1114,9 @@ _prepare_array_indexing = ElementwiseKernel(
     'cupy_prepare_array_indexing')
 
 
-cdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
-    # slices consist of either slice(None) or ndarray
+# TODO: mask
+cdef tuple _prepare_multiple_array_indexing(ndarray a, Py_ssize_t start, list slices):
+    # slices consist of ndarray
     cdef Py_ssize_t i, p, li, ri, stride, prev_arr_i
     cdef ndarray reduced_idx
     cdef bint do_transpose
@@ -1063,38 +1127,8 @@ cdef tuple _prepare_multiple_array_indexing(ndarray a, list slices):
     # check if transpose is necessasry
     # li:  index of the leftmost array in slices
     # ri:  index of the rightmost array in slices
-    do_transpose = False
-    prev_arr_i = -1
-    li = 0
-    ri = 0
-    for i, s in enumerate(slices):
-        if isinstance(s, ndarray):
-            if prev_arr_i == -1:
-                prev_arr_i = i
-                li = i
-            elif i - prev_arr_i > 1:
-                do_transpose = True
-            else:
-                prev_arr_i = i
-                ri = i
-
-    if do_transpose:
-        transp_a = []
-        transp_b = []
-        slices_a = []
-        slices_b = []
-
-        for i, s in enumerate(slices):
-            if isinstance(s, ndarray):
-                transp_a.append(i)
-                slices_a.append(s)
-            else:
-                transp_b.append(i)
-                slices_b.append(s)
-        a = _manipulation._transpose(a, transp_a + transp_b)
-        slices = slices_a + slices_b
-        li = 0
-        ri = len(transp_a) - 1
+    li = start
+    ri = start + len(slices) - 1
 
     reduced_idx = ndarray(br.shape, dtype=numpy.int64)
     reduced_idx.fill(0)
