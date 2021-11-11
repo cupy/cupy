@@ -111,6 +111,7 @@ from numpy import intc  # NOQA
 from numpy import int_  # NOQA
 from numpy import longlong  # NOQA
 from numpy import intp  # NOQA
+from numpy import int0  # NOQA
 from numpy import int8  # NOQA
 from numpy import int16  # NOQA
 from numpy import int32  # NOQA
@@ -125,6 +126,7 @@ from numpy import uintc  # NOQA
 from numpy import uint  # NOQA
 from numpy import ulonglong  # NOQA
 from numpy import uintp  # NOQA
+from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
 from numpy import uint16  # NOQA
 from numpy import uint32  # NOQA
@@ -150,6 +152,9 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
+from numpy import singlecomplex  # NOQA
+from numpy import cdouble  # NOQA
+from numpy import cfloat  # NOQA
 from numpy import complex_  # NOQA
 from numpy import complex64  # NOQA
 from numpy import complex128  # NOQA
@@ -369,6 +374,11 @@ from numpy import issubsctype  # NOQA
 from numpy import mintypecode  # NOQA
 from numpy import sctype2char  # NOQA
 from numpy import typename  # NOQA
+from numpy import maximum_sctype  # NOQA
+from numpy import typecodes  # NOQA
+from numpy import sctypeDict  # NOQA
+from numpy import sctypes  # NOQA
+from numpy import nbytes  # NOQA
 
 # -----------------------------------------------------------------------------
 # Optionally Scipy-accelerated routines
