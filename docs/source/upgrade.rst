@@ -380,6 +380,18 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
+   * - v11
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     - `latest <https://docs.cupy.dev/en/stable/install.html>`__
    * - v10
      - 3.0~
      - 10.2~
@@ -391,7 +403,7 @@ Compatibility Matrix
      - 1.18~
      - 1.4~
      - NumPy 1.21 & SciPy 1.7
-     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
+     - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v9
      - 3.0~8.x
      - 9.2~11.5
@@ -403,7 +415,7 @@ Compatibility Matrix
      - 1.17~1.21
      - 1.4~1.7
      - NumPy 1.20 & SciPy 1.6
-     - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+     - `v9.6.0 <https://docs.cupy.dev/en/v9.6.0/install.html>`__
    * - v8
      - 3.0~8.x
      - 9.0 & 9.2~11.2
