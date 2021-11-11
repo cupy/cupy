@@ -309,6 +309,10 @@ from cupy._manipulation.rearrange import flipud  # NOQA
 from cupy._manipulation.rearrange import roll  # NOQA
 from cupy._manipulation.rearrange import rot90  # NOQA
 
+# Borrowed from NumPy
+if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+    from numpy import broadcast_shapes  # NOQA
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
