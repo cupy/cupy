@@ -222,6 +222,7 @@ cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
 cpdef list _prepare_slice_list(slices):
     cdef Py_ssize_t i
     cdef list slice_list
+    cdef bint fix_empty_dtype
 
     if isinstance(slices, tuple):
         slice_list = list(slices)
@@ -244,22 +245,35 @@ cpdef list _prepare_slice_list(slices):
 
     # Convert list/NumPy/CUDA-Array-Interface arrays to cupy.ndarray.
     # - Scalar int in indices returns a view.
-    # - Other array-likes (maybe ()-shaped) in indices forces to
+    # - Other array-like (including ()-shaped array) in indices forces to
     #   return a new array.
     for i, s in enumerate(slice_list):
         if s is None or s is Ellipsis or isinstance(s, (slice, ndarray)):
             continue
-        if isinstance(s, list):
-            s = core.array(s)
-            if s.size == 0:
-                # An empty list means empty indices, not empty mask.
-                # Fix default dtype (float64).
-                s = s.astype(numpy.int32)
+
+        fix_empty_dtype = False
+        if isinstance(s, (list, tuple)):
+            # This condition looks inaccurate, but so is NumPy.
+            # a[1, [np.empty(0, float)]] is allowed, while
+            # a[1, np.empty((1, 0), float)] raises IndexError.
+            fix_empty_dtype = True
         elif numpy.isscalar(s):
-            if isinstance(s, (bool, numpy.bool_)):
-                s = core.array(s)
-        else:
+            if not isinstance(s, (bool, numpy.bool_)):
+                # keep scalar int
+                continue
+
+        try:
             s = core.array(s, dtype=None, copy=False)
+        except ValueError:
+            # "Unsupported dtype"
+            raise IndexError(
+                'only integers, slices (`:`), ellipsis (`...`),'
+                'numpy.newaxis (`None`) and integer or '
+                'boolean arrays are valid indices')
+        if fix_empty_dtype and s.size == 0:
+            # An empty list means empty indices, not empty mask.
+            # Fix default dtype (float64).
+            s = s.astype(numpy.int32)
         slice_list[i] = s
 
     return slice_list
@@ -433,8 +447,8 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             continue
 
         slice_list.append(s)
-            k = array_ndims[i]
-            i += 1
+        k = array_ndims[i]
+        i += 1
         if do_transpose:
             for _ in range(k):
                 axes_batch.append(j)
@@ -1061,9 +1075,8 @@ cdef tuple _prepare_multiple_array_indexing(ndarray a, Py_ssize_t start, list sl
     reduced_idx = ndarray(br.shape, dtype=numpy.int64)
     reduced_idx.fill(0)
     stride = 1
-    for i in range(ri, li - 1, -1):
-        s = slices[i]
-        a_shape_i = a._shape[i]
+    for i, s in enumerate(reversed(slices)):
+        a_shape_i = a._shape[ri - i]
         # wrap all out-of-bound indices
         if a_shape_i != 0:
             _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
