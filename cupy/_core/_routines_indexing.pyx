@@ -246,42 +246,27 @@ cpdef list _prepare_slice_list(slices):
     else:
         slice_list = [slices]
 
+    # Convert list/NumPy/CUDA-Array-Interface arrays to cupy.ndarray.
+    # - Scalar int in indices returns a view.
+    # - Other array-likes (maybe ()-shaped) in indices forces to
+    #   return a new array.
+    for i, s in enumerate(slice_list):
+        if s is None or s is Ellipsis or isinstance(s, (slice, ndarray)):
+            continue
+        if isinstance(s, list):
+            s = core.array(s)
+            if s.ssize == 0:
+                # An empty list means empty indices, not empty mask.
+                # Fix default dtype (float64).
+                s = s.astype(numpy.int32)
+        elif numpy.isscalar(s):
+            if isinstance(s, (bool, numpy.bool_)):
+                s = core.array(s)
+        else:
+            s = core.array(s, copy=False)
+        slice_list[i] = s
+
     return slice_list
-
-    # slice_list, n_newaxes = internal.complete_slice_list(slice_list, ndim)
-
-    # # Check if advanced is true,
-    # # and convert list/NumPy arrays to cupy.ndarray
-    # advanced = False
-    # mask_exists = False
-    # for i, s in enumerate(slice_list):
-    #     to_gpu = True
-    #     if isinstance(s, list):
-    #         # handle the case when s is an empty list
-    #         s = numpy.array(s)
-    #         if s.size == 0:
-    #             s = s.astype(numpy.int32)
-    #     elif isinstance(s, bool):
-    #         s = numpy.array(s)
-    #     elif isinstance(s, ndarray):
-    #         to_gpu = False
-    #     elif not isinstance(s, numpy.ndarray):
-    #         continue
-    #     kind = ord(s.dtype.kind)
-    #     if kind == b'i' or kind == b'u':
-    #         advanced = True
-    #     elif kind == b'b':
-    #         mask_exists = True
-    #     else:
-    #         raise IndexError(
-    #             'arrays used as indices must be of integer or boolean '
-    #             'type. (actual: {})'.format(s.dtype.type))
-    #     if to_gpu:
-    #         slice_list[i] = core.array(s)
-
-    # if not mask_exists and len(slice_list) > ndim + n_newaxes:
-    #     raise IndexError('too many indices for array')
-    # return slice_list, advanced, mask_exists
 
 
 cdef tuple _get_mask(ndarray a, list slice_list):
@@ -371,28 +356,70 @@ cdef tuple _prepare_advanced_indexing(ndarray a, list slice_list):
 cdef ndarray _view_getitem(ndarray a, list slice_list):
     # Process scalar/slice/ellipsis indices
     # Returns a tuple (view of a, remaining indices)
+    # slice_list will be overwritten.
+    #     input should contain:
+    #         None, Ellipsis, slice (start:stop:step), scalar int, or
+    #         cupy.ndarray
+    #     output will contain:
+    #         None (**to represent slice(None)**, for performance) or cupy.ndarray
     cdef shape_t shape
     cdef strides_t strides
     cdef ndarray v
     cdef Py_ssize_t i, j, offset, ndim
+    cdef Py_ssize_t i_ellipsis, ndim_ellipsis
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
     cdef slice ss
+    cdef list index_list
+    cdef char kind
+
+    j = 0
+    i_ellipsis = -1
+    for i, s in enumerate(slice_list):
+        if s is None:
+            continue
+        elif s is Ellipsis:
+            if i_ellipsis != -1:
+                raise IndexError("an index can only have a single ellipsis ('...')")
+            i_ellipsis = i
+        elif isinstance(s, ndarray):
+            kind = ord(s.dtype.kind)
+            if kind == b'b':
+                j += s.ndim
+            elif kind == b'i' or kind == b'u':
+                j += 1
+            else:
+                raise IndexError(
+                    'arrays used as indices must be of integer or boolean '
+                    'type. (actual: {})'.format(s.dtype.type))
+        else:
+            # isinstance(s, slice) or numpy.isscalar(s)
+            j += 1
+
+    ndim = a._shape.size()
+    if j > ndim:
+        raise IndexError(
+            'too many indices for array: '
+            f'array is {ndim}-dimensional, but {j} were indexed')
+    ndim_ellipsis = ndim - j
 
     # Create new shape and stride
     j = 0
     offset = 0
     ndim = a._shape.size()
+    index_list = []  # remaining indices to be processed
     for i, s in enumerate(slice_list):
         if s is None:
             shape.push_back(1)
-            if j < ndim:
+            strides.push_back(0)
+            index_list.append(None)
+        elif isinstance(s, ndarray):
+            index_list.append(s)
+        elif s is Ellipsis:
+            for _ in range(ndim_ellipsis):
+                shape.push_back(a._shape[j])
                 strides.push_back(a._strides[j])
-            elif ndim > 0:
-                strides.push_back(a._strides[ndim - 1])
-            else:
-                strides.push_back(a.itemsize)
-        elif ndim <= j:
-            raise IndexError('too many indices for array')
+                j += 1
+                index_list.append(None)
         elif isinstance(s, slice):
             ss = internal.complete_slice(s, a._shape[j])
             s_start = ss.start
@@ -412,7 +439,9 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
                 offset += a._strides[j] * s_start
             shape.push_back(dim)
             j += 1
-        elif numpy.isscalar(s):
+            index_list.append(None)
+        else:
+            # numpy.isscalar(s)
             ind = int(s)
             if ind < 0:
                 ind += a._shape[j]
@@ -422,14 +451,13 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
                 raise IndexError(msg)
             offset += ind * a._strides[j]
             j += 1
-        else:
-            raise TypeError('Invalid index type: %s' % type(slice_list[i]))
 
     v = a.view()
     if a.size != 0:
         v.data = a.data + offset
-    # TODO(niboshi): Confirm update_x_contiguity flags
     v._set_shape_and_strides(shape, strides, True, True)
+
+    slice_list[:] = index_list
     return v
 
 
