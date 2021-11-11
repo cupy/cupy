@@ -38,16 +38,14 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
     if adv_axis is None:
         return a
 
-    if mask_exists:
-        a, mask, mask_i = _get_mask(self, slice_list)
-        return _getitem_mask_single(a, mask, mask_i)
-    if advanced:
-        a, adv_slices, adv_mask = _prepare_advanced_indexing(
-            self, slice_list)
-        if sum(adv_mask) == 1:
-            axis = adv_mask.index(True)
-            return a.take(adv_slices[axis], axis)
-        return _getitem_multiple(a, adv_slices)
+    if len(slice_list) == 1:
+        s = slice_list[0]
+        if s.kind == 'b':
+            return _getitem_mask_single(a, s, adv_axis)
+        else:
+            return a.take(s, adv_axis)
+
+    return _getitem_multiple(a, adv_axis, adv_slices)
 
 
 cdef _ndarray_setitem(ndarray self, slices, value):
@@ -1009,33 +1007,30 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
 
 
 cdef _scatter_op(ndarray a, slices, value, op):
-    cdef Py_ssize_t i, li, ri
+    cdef Py_ssize_t i, li, ri, axis
     cdef ndarray v, x, y, a_interm, reduced_idx, mask
     cdef list slice_list, adv_mask, adv_slices
     cdef bint advanced, mask_exists
 
-    slice_list, advanced, mask_exists = _prepare_slice_list(
-        slices, a._shape.size())
-
-    if mask_exists:
-        a, mask, mask_i = _get_mask(a, slice_list)
-        _scatter_op_mask_single(a, mask, value, mask_i, op)
+    slice_list = _prepare_slice_list(slices)
+    a, axis = _view_getitem(a, slice_list)
+    if axis is not None:
+        if len(slice_list) == 1:
+            s = slice_list[0]
+            if s.kind == 'b':
+                _scatter_op_mask_single(a, s, value, axis, op)
+            else:
+                _scatter_op_single(a, s, value, axis, axis, op)
+        else:
+            # scatter_op with multiple integer arrays
+            # TODO: detect mask
+            reduced_idx, li, ri =\
+                _prepare_multiple_array_indexing(a, axis, adv_slices)
+            _scatter_op_single(a, reduced_idx, value, li, ri, op)
         return
 
-    if advanced:
-        a, adv_slices, adv_mask = _prepare_advanced_indexing(a, slice_list)
-        if sum(adv_mask) == 1:
-            axis = adv_mask.index(True)
-            _scatter_op_single(a, adv_slices[axis], value, axis, axis, op)
-            return
+    y = a
 
-        # scatter_op with multiple integer arrays
-        a_interm, reduced_idx, li, ri =\
-            _prepare_multiple_array_indexing(a, adv_slices)
-        _scatter_op_single(a_interm, reduced_idx, value, li, ri, op)
-        return
-
-    y = _simple_getitem(a, slice_list)
     if op == 'update':
         if not isinstance(value, ndarray):
             y.fill(value)
@@ -1141,6 +1136,6 @@ cdef tuple _prepare_multiple_array_indexing(ndarray a, Py_ssize_t start, list sl
     return a, reduced_idx, li, ri
 
 
-cdef ndarray _getitem_multiple(ndarray a, list slices):
-    a, reduced_idx, li, ri = _prepare_multiple_array_indexing(a, slices)
+cdef ndarray _getitem_multiple(ndarray a, Py_ssize_t start, list slices):
+    reduced_idx, li, ri = _prepare_multiple_array_indexing(a, start, slices)
     return _take(a, reduced_idx, li, ri)
