@@ -34,7 +34,7 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
     cdef ndarray a, mask
 
     slice_list = _prepare_slice_list(slices)
-    a, slice_list, adv_axis = _view_getitem(self, slice_list)
+    a, adv_axis = _view_getitem(self, slice_list)
     if adv_axis is None:
         return a
 
@@ -366,7 +366,7 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
     cdef strides_t strides
     cdef ndarray v
     cdef Py_ssize_t i, j, k, offset, ndim, start
-    cdef Py_ssize_t ndim_ellipsis, ndim_batch
+    cdef Py_ssize_t ndim_ellipsis
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
     cdef slice ss
     cdef list index_list, axes_from, axes_to
@@ -376,7 +376,6 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
 
     j = 0
     has_ellipsis = False
-    ndim_batch = 0
     for s in slice_list:
         if s is None:
             continue
@@ -388,10 +387,8 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
             kind = ord(s.dtype.kind)
             if kind == b'b':
                 j += s.ndim
-                ndim_batch = max(ndim_batch, 1)
             elif kind == b'i' or kind == b'u':
                 j += 1
-                ndim_batch = max(ndim_batch, s.ndim)
             else:
                 raise IndexError(
                     'arrays used as indices must be of integer or boolean '
@@ -471,11 +468,6 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
     v._set_shape_and_strides(shape, strides, True, True)
     del slice_list[:]
 
-    if ndim_batch == 0 or not any(array_like_flags):
-        # no advanced indexing. no mask.
-        # indexing with `array(scalar)` is fine, too.
-        return v, None
-
     # non-consecutive array-like indices => batch dims go first in output
     do_transpose = False
     k = 0
@@ -490,6 +482,11 @@ cdef ndarray _view_getitem(ndarray a, list slice_list):
             if flag:
                 do_transpose = True
                 break
+
+    if k == 0:
+        # i.e. not any(array_like_flags):
+        # no advanced indexing. no mask.
+        return v, None
 
     # compute transpose arg if do_transpose
     axes_batch = []
