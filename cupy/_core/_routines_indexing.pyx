@@ -285,6 +285,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     cdef slice ss
     cdef list index_list, axes_batch, axes_other
     cdef vector.vector[bint] array_like_flags
+    cdef vector.vector[Py_ssize_t] array_ndims
     cdef bint has_ellipsis, has_array, flag
     cdef char kind
 
@@ -300,13 +301,15 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
         elif isinstance(s, ndarray):
             kind = ord(s.dtype.kind)
             if kind == b'b':
-                j += s.ndim
+                k = s.ndim
             elif kind == b'i' or kind == b'u':
-                j += 1
+                k = 1
             else:
                 raise IndexError(
                     'arrays used as indices must be of integer or boolean '
                     'type. (actual: {})'.format(s.dtype.type))
+            array_ndims.push_back(k)
+            j += k
         else:
             # isinstance(s, slice) or numpy.isscalar(s)
             j += 1
@@ -319,6 +322,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     ndim_ellipsis = ndim - j
 
     # Create new shape and stride
+    i = 0
     j = 0
     offset = 0
     ndim = a._shape.size()
@@ -326,7 +330,6 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     # Use None to represent slice(None), for performance.
     index_list = []
     array_like_flags = []
-    has_array = False
     for s in slice_list:
         if s is None:
             shape.push_back(1)
@@ -334,8 +337,13 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             index_list.append(None)
             array_like_flags.push_back(False)
         elif isinstance(s, ndarray):
+            k = array_ndims[i]
+            i += 1
+            for _ in range(k):
+                shape.push_back(a._shape[j])
+                strides.push_back(a._strides[j])
+                j += 1
             index_list.append(s)
-            has_array = True
             array_like_flags.push_back(True)
         elif s is Ellipsis:
             for _ in range(ndim_ellipsis):
@@ -391,8 +399,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     v._set_shape_and_strides(shape, strides, True, True)
     del slice_list[:]
 
-    if not has_array:
-        # i.e. not any(array_like_flags):
+    if array_ndims.empty():
         # no advanced indexing. no mask.
         return v, None
 
@@ -414,9 +421,10 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     # compute transpose arg if do_transpose
     axes_batch = []
     axes_other = []
+    i = 0
     j = 0
     start = -1
-    for i, s in enumerate(index_list):
+    for s in index_list:
         if s is None:
             if do_transpose:
                 axes_other.append(j)
@@ -425,11 +433,9 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
 
         slice_list.append(s)
         if do_transpose:
-            if s.dtype.kind == 'b':
-                for _ in range(s.ndim):
-                    axes_batch.append(j)
-                    j += 1
-            else:
+            k = array_ndims[i]
+            i += 1
+            for _ in range(k):
                 axes_batch.append(j)
                 j += 1
         else:
