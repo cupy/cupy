@@ -649,8 +649,7 @@ cpdef ndarray _concatenate(
     for a in arrays:
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
-        b, _ = _indexing._view_getitem(out, slice_list)
-        # TODO(kataoka): Should we `assert _ is None` here?
+        b = out[tuple(slice_list)]
         elementwise_copy(a, b, casting=casting)
         i += aw
     return out
