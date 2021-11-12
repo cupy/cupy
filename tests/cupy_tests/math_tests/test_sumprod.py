@@ -202,6 +202,11 @@ class TestSumprod:
         a = testing.shaped_arange((2, 3), xp, src_dtype)
         return a.prod(dtype=dst_dtype)
 
+    @testing.numpy_cupy_allclose()
+    def test_product_alias(self, xp):
+        a = testing.shaped_arange((2, 3), xp, xp.float32)
+        return xp.product(a)
+
 
 # This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product({
@@ -773,6 +778,11 @@ class TestCumprod:
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
+
+    @testing.numpy_cupy_allclose()
+    def test_cumproduct_alias(self, xp):
+        a = testing.shaped_arange((2, 3), xp, xp.float32)
+        return xp.cumproduct(a)
 
 
 @testing.parameterize(*testing.product({
