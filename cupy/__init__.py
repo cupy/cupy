@@ -520,7 +520,9 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
+from cupy._logic.truth import all as alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
+from cupy._logic.truth import any as sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -567,8 +569,10 @@ from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
+from cupy._math.sumprod import prod as product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
+from cupy._math.sumprod import cumprod as cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA
