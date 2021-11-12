@@ -293,8 +293,8 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     cdef shape_t shape
     cdef strides_t strides
     cdef ndarray v
-    cdef Py_ssize_t i, j, k, offset, ndim, start
-    cdef Py_ssize_t ndim_ellipsis
+    cdef Py_ssize_t ndim_a, axis_a, axis_v, ndim_ellipsis
+    cdef Py_ssize_t i, k, offset, start
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
     cdef slice ss
     cdef list index_list, axes_batch, axes_other
@@ -303,7 +303,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     cdef bint has_ellipsis, has_array, flag
     cdef char kind
 
-    j = 0
+    axis_a = 0
     has_ellipsis = False
     for s in slice_list:
         if s is None:
@@ -323,27 +323,25 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
                     'arrays used as indices must be of integer or boolean '
                     'type. (actual: {})'.format(s.dtype.type))
             array_ndims.push_back(k)
-            j += k
+            axis_a += k
         else:
             # isinstance(s, slice) or numpy.isscalar(s)
-            j += 1
+            axis_a += 1
 
-    ndim = a._shape.size()
-    if j > ndim:
+    ndim_a = a._shape.size()
+    if axis_a > ndim_a:
         raise IndexError(
             'too many indices for array: '
-            f'array is {ndim}-dimensional, but {j} were indexed')
-    ndim_ellipsis = ndim - j
+            f'array is {ndim_a}-dimensional, but {axis_a} were indexed')
+    ndim_ellipsis = ndim_a - axis_a
 
     # Create new shape and stride
     i = 0
-    j = 0
+    axis_a = 0
     offset = 0
-    ndim = a._shape.size()
     # index_list: remaining indices to be processed.
     # Use None to represent slice(None), for performance.
     index_list = []
-    array_like_flags = []
     for s in slice_list:
         if s is None:
             shape.push_back(1)
@@ -354,20 +352,20 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             k = array_ndims[i]
             i += 1
             for _ in range(k):
-                shape.push_back(a._shape[j])
-                strides.push_back(a._strides[j])
-                j += 1
+                shape.push_back(a._shape[axis_a])
+                strides.push_back(a._strides[axis_a])
+                axis_a += 1
             index_list.append(s)
             array_like_flags.push_back(True)
         elif s is Ellipsis:
             for _ in range(ndim_ellipsis):
-                shape.push_back(a._shape[j])
-                strides.push_back(a._strides[j])
-                j += 1
+                shape.push_back(a._shape[axis_a])
+                strides.push_back(a._strides[axis_a])
+                axis_a += 1
                 index_list.append(None)
             array_like_flags.push_back(False)
         elif isinstance(s, slice):
-            ss = internal.complete_slice(s, a._shape[j])
+            ss = internal.complete_slice(s, a._shape[axis_a])
             s_start = ss.start
             s_stop = ss.stop
             s_step = ss.step
@@ -377,35 +375,35 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
                 dim = (s_stop - s_start + 1) // s_step + 1
 
             if dim == 0:
-                strides.push_back(a._strides[j])
+                strides.push_back(a._strides[axis_a])
             else:
-                strides.push_back(a._strides[j] * s_step)
+                strides.push_back(a._strides[axis_a] * s_step)
 
             if s_start > 0:
-                offset += a._strides[j] * s_start
+                offset += a._strides[axis_a] * s_start
             shape.push_back(dim)
-            j += 1
+            axis_a += 1
             index_list.append(None)
             array_like_flags.push_back(False)
         else:
             # numpy.isscalar(s)
             ind = int(s)
             if ind < 0:
-                ind += a._shape[j]
-            if not (0 <= ind < a._shape[j]):
+                ind += a._shape[axis_a]
+            if not (0 <= ind < a._shape[axis_a]):
                 msg = ('Index %s is out of bounds for axis %s with '
-                       'size %s' % (s, j, a._shape[j]))
+                       'size %s' % (s, axis_a, a._shape[axis_a]))
                 raise IndexError(msg)
-            offset += ind * a._strides[j]
-            j += 1
+            offset += ind * a._strides[axis_a]
+            axis_a += 1
             # array-like but not array
             array_like_flags.push_back(True)
 
     if not has_ellipsis:
         for _ in range(ndim_ellipsis):
-            shape.push_back(a._shape[j])
-            strides.push_back(a._strides[j])
-            j += 1
+            shape.push_back(a._shape[axis_a])
+            strides.push_back(a._strides[axis_a])
+            axis_a += 1
 
     v = a.view()
     if a.size != 0:
@@ -437,13 +435,13 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     axes_batch = []
     axes_other = []
     i = 0
-    j = 0
+    axis_v = 0
     start = -1
     for s in index_list:
         if s is None:
             if do_transpose:
-                axes_other.append(j)
-            j += 1
+                axes_other.append(axis_v)
+            axis_v += 1
             continue
 
         slice_list.append(s)
@@ -451,18 +449,18 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
         i += 1
         if do_transpose:
             for _ in range(k):
-                axes_batch.append(j)
-                j += 1
+                axes_batch.append(axis_v)
+                axis_v += 1
         else:
             if start == -1:
-                start = j
-            j += k
+                start = axis_v
+            axis_v += k
 
     if do_transpose:
         if not has_ellipsis:
             for _ in range(ndim_ellipsis):
-                axes_other.append(j)
-                j += 1
+                axes_other.append(axis_v)
+                axis_v += 1
         v = _manipulation._transpose(v, axes_batch + axes_other)
         start = 0
 
