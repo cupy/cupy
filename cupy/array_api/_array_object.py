@@ -422,7 +422,7 @@ class Array:
         res = self._array.__bool__()
         return res
 
-    def __dlpack__(self: Array, /, *, stream: None = None) -> PyCapsule:
+    def __dlpack__(self: Array, /, *, stream=None) -> PyCapsule:
         """
         Performs the operation __dlpack__.
         """
@@ -1011,20 +1011,32 @@ class Array:
         res = self._array.__rxor__(other._array)
         return self.__class__._new(res)
 
-    def to_device(self: Array, device: Device, /) -> Array:
+    def to_device(self: Array, device: Device, /, stream=None) -> Array:
         if device == self.device:
             return self
         elif not isinstance(device, _Device):
             raise ValueError(f"Unsupported device {device!r}")
         else:
-            # TODO(leofang): we currently do a blocking copy; after data-apis/array-api#256
-            # is addressed we can do a nonblocking copy
+            # see cupy/cupy#5985 for the reason how we handle device/stream here
             prev_device = runtime.getDevice()
+            prev_stream = None
+            if stream is not None:
+                prev_stream = stream_module.get_current_stream()
+                # stream can be an int as specified in __dlpack__, or a CuPy stream
+                if isinstance(stream, int):
+                    stream = np.cuda.ExternalStream(stream)
+                elif isinstance(stream, np.cuda.Stream):
+                    pass
+                else:
+                    raise ValueError('the input stream is not recognized')
+                stream.use()
             try:
                 runtime.setDevice(device.id)
                 arr = self._array.copy()
             finally:
                 runtime.setDevice(prev_device)
+                if stream is not None:
+                    prev_stream.use()
             return Array._new(arr)
 
     @property

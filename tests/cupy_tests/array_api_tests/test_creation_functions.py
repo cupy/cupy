@@ -13,11 +13,13 @@ from cupy.array_api._creation_functions import (
     full,
     full_like,
     linspace,
+    meshgrid,
     ones,
     ones_like,
     zeros,
     zeros_like,
 )
+from cupy.array_api._dtypes import float32, float64
 from cupy.array_api._array_object import Array
 
 
