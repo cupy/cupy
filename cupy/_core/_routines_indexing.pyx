@@ -310,7 +310,8 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             continue
         elif s is Ellipsis:
             if has_ellipsis:
-                raise IndexError("an index can only have a single ellipsis ('...')")
+                raise IndexError(
+                    "an index can only have a single ellipsis ('...')")
             has_ellipsis = True
         elif isinstance(s, ndarray):
             kind = ord(s.dtype.kind)
@@ -1031,7 +1032,9 @@ _prepare_array_indexing = ElementwiseKernel(
 
 
 # TODO: mask
-cdef tuple _prepare_multiple_array_indexing(ndarray a, Py_ssize_t start, list slices):
+cdef tuple _prepare_multiple_array_indexing(
+    ndarray a, Py_ssize_t start, list slices
+):
     # slices consist of ndarray
     cdef Py_ssize_t i, p, li, ri, stride, prev_arr_i
     cdef ndarray reduced_idx
