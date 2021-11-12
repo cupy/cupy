@@ -8,9 +8,8 @@ _footnotes = {}
 
 
 def _get_functions(obj, exclude=None):
-    children = obj.__all__ if hasattr(obj, '__all__') else dir(obj)
     return set([
-        n for n, target in [(n, getattr(obj, n)) for n in children]
+        n for n, target in [(n, getattr(obj, n)) for n in dir(obj)]
         if (
             # not in exclude list
             (exclude is None or n not in exclude)
@@ -127,6 +126,7 @@ def generate():
             'add_newdoc_ufunc',
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
+            'kernel_version',
             'test',
             'Tester',
         ], footnotes={
