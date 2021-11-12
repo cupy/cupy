@@ -105,6 +105,9 @@ _deprecated = 'Not supported as it has been deprecated in NumPy.'
 _np_matrix = (
     'Use of :class:`numpy.matrix` is discouraged in NumPy and thus'
     ' we have no plan to add it to CuPy.')
+_np_poly1d = (
+    'Use of :class:`numpy.poly1d` is discouraged in NumPy and thus'
+    ' we have stopped adding functions with the interface.')
 _dtype_na = (
     '`object` and string dtypes are not supported in GPU and thus'
     ' left unimplemented in CuPy.')
@@ -146,6 +149,11 @@ def generate():
             'bmat': _np_matrix,
             'mat': _np_matrix,
             'matrix': _np_matrix,
+
+            'poly': _np_poly1d,
+            'polyder': _np_poly1d,
+            'polydiv': _np_poly1d,
+            'polyint': _np_poly1d,
 
             'Bytes0': _dtype_na,  # also deprecated in NumPy 1.20
             'bytes0': _dtype_na,
