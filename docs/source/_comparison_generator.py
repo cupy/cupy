@@ -89,10 +89,10 @@ def _generate_comparison_rst(
 def _section(
         header, base_mod, cupy_mod,
         base_type='NumPy', klass=None, exclude_mod=None, exclude=None,
-        footnotes=None):
+        footnotes=None, header_char='~'):
     return [
         header,
-        '~' * len(header),
+        header_char * len(header),
         '',
     ] + _generate_comparison_rst(
         base_mod, cupy_mod, base_type, klass, exclude_mod, exclude, footnotes
@@ -200,6 +200,17 @@ def generate():
     buf += _section(
         'Random Sampling',
         'numpy.random', 'cupy.random', exclude=['test'])
+    buf += _section(
+        'Polynomials',
+        'numpy.polynomial', 'cupy.polynomial', exclude=['test'])
+    buf += _section(
+        'Power Series',
+        'numpy.polynomial.polynomial', 'cupy.polynomial.polynomial',
+        header_char='"')
+    buf += _section(
+        'Polyutils',
+        'numpy.polynomial.polyutils', 'cupy.polynomial.polyutils',
+        header_char='"')
 
     buf += [
         'SciPy / CuPy APIs',
