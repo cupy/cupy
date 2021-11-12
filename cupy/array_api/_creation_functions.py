@@ -9,7 +9,6 @@ if TYPE_CHECKING:
         Device,
         Dtype,
         NestedSequence,
-        SupportsDLPack,
         SupportsBufferProtocol,
     )
     from collections.abc import Sequence
@@ -38,7 +37,6 @@ def asarray(
         int,
         float,
         NestedSequence[bool | int | float],
-        SupportsDLPack,
         SupportsBufferProtocol,
     ],
     /,
@@ -306,6 +304,12 @@ def meshgrid(*arrays: Array, indexing: str = "xy") -> List[Array]:
     See its docstring for more information.
     """
     from ._array_object import Array
+
+    # Note: unlike np.meshgrid, only inputs with all the same dtype are
+    # allowed
+
+    if len({a.dtype for a in arrays}) > 1:
+        raise ValueError("meshgrid inputs must all have the same dtype")
 
     return [
         Array._new(array)
