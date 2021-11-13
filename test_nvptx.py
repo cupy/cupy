@@ -37,13 +37,19 @@ code = """
 """
 print(nvPTXCompiler.getVersion())
 handle = nvPTXCompiler.create(code)
-nvPTXCompiler.compile(handle, ['--gpu-name=sm_86', '--verbose'])
+try:
+    nvPTXCompiler.compile(handle, ['--gpu-name=sm_86', '--verbose'])
+except nvPTXCompiler.nvPTXCompilerError as e:
+    error = nvPTXCompiler.getErrorLog(handle)
+    print(error)
+    raise
+else:
+    error = nvPTXCompiler.getErrorLog(handle)
+    assert error == ''
 cubin = nvPTXCompiler.getCompiledProgram(handle)
 info = nvPTXCompiler.getInfoLog(handle)
-error = nvPTXCompiler.getErrorLog(handle)
 nvPTXCompiler.destroy(handle)
 print(info)
-assert error == ''
 
 a = cp.arange(10, dtype=cp.float32)
 b = a[::-1].copy()
