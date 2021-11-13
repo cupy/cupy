@@ -133,6 +133,7 @@ def generate():
             'add_newdoc_ufunc',
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
+            'kernel_version',
             'test',
             'Tester',
         ], footnotes={
