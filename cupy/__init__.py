@@ -493,6 +493,8 @@ from cupy._logic.truth import isin  # NOQA
 from cupy._logic.type_test import iscomplex  # NOQA
 from cupy._logic.type_test import iscomplexobj  # NOQA
 from cupy._logic.type_test import isfortran  # NOQA
+from cupy._logic.type_test import isneginf  # NOQA
+from cupy._logic.type_test import isposinf  # NOQA
 from cupy._logic.type_test import isreal  # NOQA
 from cupy._logic.type_test import isrealobj  # NOQA
 

@@ -124,6 +124,61 @@ def isfortran(a):
     return a.flags.f_contiguous and not a.flags.c_contiguous
 
 
+def isneginf(x):
+    """Returns a bool array, where True if input element is negative infinity.
+
+    Args:
+        x (cupy.ndarray): Input array.
+
+    Returns:
+        cupy.ndarray: Boolean array of same shape as ``x``.
+
+    Examples
+    --------
+    >>> cupy.isneginf(0)
+    False
+    >>> cupy.isneginf([0, -0])
+    [False, False]
+
+    """
+    is_inf = cupy.isinf()
+    try:
+        signbit = cupy.signbit(x)
+    except TypeError as e:
+        dtype = cupy.asanyarray(x).dtype
+        raise TypeError(f'This operation is not supported for {dtype} values '
+                'as it would be uncertain.') from e
+    else:
+        return cupy.logical_and(is_inf, signbit, out)
+
+def isposinf(x):
+    """Returns a bool array, where True if input element is positive infinity.
+
+    Args:
+        x (cupy.ndarray): Input array.
+
+    Returns:
+        cupy.ndarray: Boolean array of same shape as ``x``.
+
+    Examples
+    --------
+    >>> cupy.isposinf(0)
+    False
+    >>> cupy.isposinf([0, -0])
+    [False, False]
+
+    """
+    is_inf = cupy.isinf()
+    try:
+        signbit = ~cupy.signbit(x)
+    except TypeError as e:
+        dtype = nx.asanyarray(x).dtype
+        raise TypeError(f'This operation is not supported for {dtype} values '
+                        'as it would be uncertain.') from e
+    else:
+        return nx.logical_and(is_inf, signbit, out)
+
+
 def isreal(x):
     """Returns a bool array, where True if input element is real.
 
