@@ -1,20 +1,17 @@
 # distutils: language = c++
 
-"""Thin wrapper of nvPTXCompiler API.
+"""
+Thin wrapper of nvPTXCompiler API.
 
-There are four differences compared to the original C API.
+There are 3 differences compared to the original C API.
 
-1. Not all functions are ported.
-2. Errors are translated into nvPTXCompilerError exceptions.
-3. The 'nvrtc' prefix of each API is omitted and the next character is set to
-   lower case.
-4. The resulting values are returned directly instead of references.
-
+1. Errors are translated into nvPTXCompilerError exceptions.
+2. The 'nvPTXCompiler' prefix of each API is omitted and the next character
+   is set to lower case.
+3. The resulting values are returned directly instead of references.
 """
 cimport cython  # NOQA
 from libcpp cimport vector
-
-from cupy_backends.cuda.api cimport runtime
 
 
 ###############################################################################
@@ -40,13 +37,25 @@ cdef extern from '../../cupy_nvptx.h' nogil:
 # Error handling
 ###############################################################################
 
+cdef dict result_mapping = {
+    0: 'NVPTXCOMPILE_SUCCESS',
+    1: 'NVPTXCOMPILE_ERROR_INVALID_COMPILER_HANDLE',
+    2: 'NVPTXCOMPILE_ERROR_INVALID_INPUT',
+    3: 'NVPTXCOMPILE_ERROR_COMPILATION_FAILURE',
+    4: 'NVPTXCOMPILE_ERROR_INTERNAL',
+    5: 'NVPTXCOMPILE_ERROR_OUT_OF_MEMORY',
+    6: 'NVPTXCOMPILE_ERROR_COMPILER_INVOCATION_INCOMPLETE',
+    7: 'NVPTXCOMPILE_ERROR_UNSUPPORTED_PTX_VERSION',
+}
+
+
 class nvPTXCompilerError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        cdef bytes msg = b''  # TODO: use error log? or custom error dict?
+        cdef str err = result_mapping[status]
         super().__init__(
-            '{} ({})'.format(msg.decode(), status))
+            '{} ({})'.format(err, status))
 
     def __reduce__(self):
         return (type(self), (self.status,))
