@@ -362,6 +362,20 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         ],
         'libraries': [],
     }
+    CUDA_nvptx = {
+        'name': 'nvPTXCompiler',
+        'file': [
+            'cupy_backends.cuda.libs.nvPTXCompiler',
+        ],
+        'include': [
+            'nvPTXCompiler.h',
+        ],
+        'libraries': [
+            'nvptxcompiler_static',
+        ],
+        #'check_method': build.check_cusparselt_version,
+        #'version_method': build.get_cusparselt_version,
+    }
 
     if context.use_hip:
         return [
@@ -383,5 +397,6 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         CUDA_jitify,
         CUDA_random,
         CUDA_cusparselt,
+        CUDA_nvptx,
         COMMON_dlpack,
     ] + [CUDA_thrust] if context.enable_thrust else []
