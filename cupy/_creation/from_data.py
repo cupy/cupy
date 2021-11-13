@@ -107,22 +107,6 @@ def ascontiguousarray(a, dtype=None):
     return _core.ascontiguousarray(a, dtype)
 
 
-def asfarray(a, dtype=None):
-    """Converts array elements to float type.
-
-    Args:
-        a (cupy.ndarray): Source array.
-        dtype: str or dtype object, optional
-
-    Returns:
-        cupy.ndarray: The input array ``a`` as a float ndarray.
-
-    .. seealso:: :func`numpy.asfarray`, :meth:`cupy.ndarray.asfarray`
-
-    """
-    return asarray(a, dtype=float)
-
-
 # TODO(okuta): Implement asmatrix
 
 

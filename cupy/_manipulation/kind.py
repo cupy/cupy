@@ -2,7 +2,22 @@ import cupy
 from cupy import _core
 
 
-# TODO(okuta): Implement asfarray
+def asfarray(a, dtype=cupy.float_):
+    """Converts array elements to float type.
+
+    Args:
+        a (cupy.ndarray): Source array.
+        dtype: str or dtype object, optional
+    
+    Returns:
+        cupy.ndarray: The input array ``a`` as a float ndarray.
+    
+    .. seealso:: :func`numpy.asfarray`, :meth:`cupy.ndarray.asfarray`
+    
+    """
+    if not cupy.issubdtype(dtype, cupy.inexact):
+        dtype = cupy.float_
+    return asarray(a, dtype=dtype)
 
 
 def asfortranarray(a, dtype=None):
