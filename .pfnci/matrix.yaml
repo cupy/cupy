@@ -186,14 +186,14 @@
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
-# ROCm 4.3 | Linux
+# ROCm 4.5 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-4-3"
-  target: "rocm-4-3"
+- project: "cupy.linux.rocm-4-5"
+  target: "rocm-4-5"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: null
-  rocm: '4.3'
+  rocm: '4.5'
   nccl: null
   cutensor: null
   cusparselt: null
