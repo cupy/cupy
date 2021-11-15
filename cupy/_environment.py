@@ -425,6 +425,7 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-1',
         'cupy-rocm-4-2',
         'cupy-rocm-4-3',
+        'cupy-rocm-4-5',
     ]
     cupy_installed = [
         name for name in known
