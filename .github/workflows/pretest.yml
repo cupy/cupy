@@ -83,4 +83,4 @@ jobs:
 
     - name: Build & Test
       run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:4.3.1-complete" bash .github/workflows/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:4.5-complete" bash .github/workflows/pretest-rocm-test.sh
