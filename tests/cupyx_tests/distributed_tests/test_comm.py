@@ -14,9 +14,6 @@ from cupyx.distributed import init_process_group
 nccl_available = nccl.available
 
 
-N_WORKERS = 2
-
-
 def _run_test(test_name, dtype=None):
     # subprocess is required not to interfere with cupy module imported in top
     # of this file
@@ -36,6 +33,7 @@ def _run_test(test_name, dtype=None):
 
 
 @pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
+@testing.multi_gpu(2)
 class TestNCCLBackend:
     @testing.for_all_dtypes(no_bool=True)
     def test_broadcast(self, dtype):
@@ -84,6 +82,7 @@ class TestNCCLBackend:
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestInitDistributed(unittest.TestCase):
 
+    @testing.multi_gpu(2)
     def test_init(self):
         _run_test('init')
 
