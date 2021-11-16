@@ -1563,16 +1563,24 @@ cdef class MemoryAsyncPool:
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool

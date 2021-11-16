@@ -8,7 +8,7 @@ from cupy.fft import config
 from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
                            _size_last_transform_axis)
 from cupy import testing
-from cupy.testing._helper import _wraps_partial
+from cupy.testing._loops import _wraps_partial
 
 
 @pytest.fixture

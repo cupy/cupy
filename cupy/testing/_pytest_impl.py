@@ -4,21 +4,24 @@ import cupy.testing._parameterized
 
 try:
     import pytest
+    import _pytest
     _error = None
 except ImportError as e:
+    pytest = None
+    _pytest = None
     _error = e
 
 
 def is_available():
-    return _error is None
+    return _error is None and hasattr(pytest, 'fixture')
 
 
-def check_available():
-    if _error is not None:
+def check_available(feature):
+    if not is_available():
         raise RuntimeError('''\
-{} is not available.
+cupy.testing: {} is not available.
 
-Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
+Reason: {}: {}'''.format(feature, type(_error).__name__, _error))
 
 
 if is_available():
@@ -39,7 +42,7 @@ if is_available():
 
 
 def parameterize(*params, _ids=True):
-    check_available()
+    check_available('parameterize')
     if _ids:
         param_name = cupy.testing._parameterized._make_class_name
     else:

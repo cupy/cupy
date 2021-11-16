@@ -3,7 +3,7 @@ name: "Pre-review Tests"
 on: [push, pull_request]
 
 jobs:
-  pretest:
+  test:
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub
@@ -20,11 +20,24 @@ jobs:
         # cupyx.array_api uses Python 3.8 syntaxes
         python-version: '3.8'
 
+    - name: Setup ccache
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y ccache
+        echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
+        which gcc g++
+
+    - name: Load ccache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ccache
+
     - name: Build
       run: |
         pip install -U pip wheel
         pip install cython
-        READTHEDOCS=True pip install -U -e .[stylecheck]
+        READTHEDOCS=True pip install -v -e .[stylecheck]
 
     - name: Coding Style (flake8)
       run: |
@@ -58,3 +71,16 @@ jobs:
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
         popd
+
+  rocm-build:
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Build & Test
+      run: |
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:4.3.1-complete" bash .github/workflows/pretest-rocm-test.sh

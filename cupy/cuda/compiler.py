@@ -11,6 +11,7 @@ import warnings
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
@@ -149,6 +150,7 @@ def _get_arch():
         return min(arch, nvrtc_max_compute_capability)
 
 
+@_util.memoize(for_each_device=True)
 def _get_arch_for_options_for_nvrtc(arch=None):
     # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
     # version than the one included in the used CUDA version, as
@@ -164,7 +166,7 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         version = _cuda_hip_version
     if (
         not _use_ptx and version >= 11010
-        and arch < _get_max_compute_capability()
+        and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
@@ -257,6 +259,20 @@ def _jitify_prep(source, options, cu_path):
     assert name == cu_path
 
     return options, headers, include_names
+
+
+_has_usedforsecurity = (sys.version_info >= (3, 9))
+
+
+def _hash_hexdigest(value):
+    if _has_usedforsecurity:
+        hashobj = hashlib.sha1(value, usedforsecurity=False)
+    else:
+        hashobj = hashlib.sha1(value)
+    return hashobj.hexdigest()
+
+
+_hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
@@ -516,7 +532,7 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.cubin'
 
     mod = function.Module()
 
@@ -532,10 +548,10 @@ def _compile_with_cache_cuda(
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as file:
                 data = file.read()
-            if len(data) >= 32:
-                hash = data[:32]
-                cubin = data[32:]
-                cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+            if len(data) >= _hash_length:
+                hash = data[:_hash_length]
+                cubin = data[_hash_length:]
+                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
                     return mod
@@ -570,10 +586,10 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to disk cache
-        cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
@@ -808,6 +824,12 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     #   ROCm-Developer-Tools/HIP#2248
     options += ('-fcuda-flush-denormals-to-zero',)
 
+    # Workaround ROCm 4.3 LLVM_PATH issue in hipRTC #5689
+    rocm_build_version = driver.get_build_version()
+    if rocm_build_version >= 40300000 and rocm_build_version < 40500000:
+        options += (
+            '-I' + get_rocm_path() + '/llvm/lib/clang/13.0.0/include/',)
+
     if cache_dir is None:
         cache_dir = get_cache_dir()
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
@@ -834,7 +856,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.hsaco'
 
     mod = function.Module()
 
@@ -850,10 +872,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as f:
                 data = f.read()
-            if len(data) >= 32:
-                hash_value = data[:32]
-                binary = data[32:]
-                binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+            if len(data) >= _hash_length:
+                hash_value = data[:_hash_length]
+                binary = data[_hash_length:]
+                binary_hash = _hash_hexdigest(binary).encode('ascii')
                 if hash_value == binary_hash:
                     mod.load(binary)
                     return mod
@@ -873,10 +895,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         # Write to disk cache
-        binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+        binary_hash = _hash_hexdigest(binary).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:

@@ -108,6 +108,13 @@ _np_matrix = (
 _dtype_na = (
     '`object` and string dtypes are not supported in GPU and thus'
     ' left unimplemented in CuPy.')
+_dtype_time = (
+    '`datetime64` and `timedelta64` dtypes are currently unsupported.')
+_dtype_rec = (
+    'Structured arrays and record arrays are currently unsupported.')
+_float_error_state = (
+    'Floating point error handling depends on CPU-specific features'
+    ' which is not available in GPU.')
 
 
 def generate():
@@ -126,12 +133,15 @@ def generate():
             'add_newdoc_ufunc',
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
+            'kernel_version',
             'test',
             'Tester',
         ], footnotes={
             'Datetime64': _deprecated,  # NumPy 1.20
             'Uint64': _deprecated,  # NumPy 1.20
             'mafromtxt': _deprecated,  # NumPy 1.17
+            'alen': _deprecated,  # NumPy 1.18
+            'asscalar': _deprecated,  # NumPy 1.16
 
             'asmatrix': _np_matrix,
             'bmat': _np_matrix,
@@ -154,6 +164,30 @@ def generate():
             'unicode_': _dtype_na,
             'void': _dtype_na,
             'void0': _dtype_na,
+
+            'busday_count': _dtype_time,
+            'busday_offset': _dtype_time,
+            'busdaycalendar': _dtype_time,
+            'is_busday': _dtype_time,
+            'isnat': _dtype_time,
+            'datetime64': _dtype_time,
+            'datetime_as_string': _dtype_time,
+            'datetime_data': _dtype_time,
+            'timedelta64': _dtype_time,
+
+            'fromregex': _dtype_rec,
+            'recarray': _dtype_rec,
+            'recfromcsv': _dtype_rec,
+            'recfromtxt': _dtype_rec,
+            'record': _dtype_rec,
+
+            'errstate': _float_error_state,
+            'geterr': _float_error_state,
+            'geterrcall': _float_error_state,
+            'geterrobj': _float_error_state,
+            'seterr': _float_error_state,
+            'seterrcall': _float_error_state,
+            'seterrobj': _float_error_state,
         })
     buf += _section(
         'Multi-Dimensional Array',

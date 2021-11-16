@@ -122,11 +122,6 @@ class LinuxGenerator:
                 'ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"',
                 'ENV CPATH "${ROCM_HOME}/include"',
                 'ENV LDFLAGS "-L${ROCM_HOME}/lib"',
-
-                # In ROCm 4.3, hiprtc has a problem that it can not find a
-                # header file related to LLVM/clang. As a workaround, we
-                # temporarily give LLVM_PATH here. See #5592.
-                'ENV LLVM_PATH "${ROCM_HOME}/llvm"',
                 '',
             ]
 
@@ -181,14 +176,20 @@ class LinuxGenerator:
                     packages.append(f'libnccl-devel-{spec}-*+cuda{cuda}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
-                packages.append(
-                    f'libcutensor-dev={spec}' if apt else
-                    f'libcutensor-devel-{spec}')
+                major = cutensor.split('.')[0]
+                if apt:
+                    packages.append(f'libcutensor{major}={spec}')
+                    packages.append(f'libcutensor-dev={spec}')
+                else:
+                    packages.append(f'libcutensor-devel-{spec}')
             if cusparselt is not None:
                 spec = self.schema['cusparselt'][cusparselt]['spec']
-                packages.append(
-                    f'libcusparselt-dev={spec}' if apt else
-                    f'libcusparselt-devel-{spec}')
+                major = cusparselt.split('.')[0]
+                if apt:
+                    packages.append(f'libcusparselt{major}={spec}')
+                    packages.append(f'libcusparselt-dev={spec}')
+                else:
+                    packages.append(f'libcusparselt-devel-{spec}')
             if cudnn is not None:
                 spec = self.schema['cudnn'][cudnn]['spec']
                 cudnn_cuda_schema = self.schema['cudnn'][cudnn]['cuda'][cuda]
@@ -228,6 +229,8 @@ class LinuxGenerator:
             ]
         elif matrix.rocm is not None:
             lines += [
+                '# TODO(kmaehashi): Tentatively sparsen parameterization to make test run complete.',  # NOQA
+                'export CUPY_TEST_FULL_COMBINATION="0"',
                 'export CUPY_INSTALL_USE_HIP=1',
                 '',
             ]
@@ -245,8 +248,6 @@ class LinuxGenerator:
             # pytest marker
             spec = 'not slow' if matrix.test == 'unit' else 'slow'
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
-        elif matrix.test == 'doctest':
-            lines += ['"$ACTIONS/doctest.sh"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
         else:

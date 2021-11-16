@@ -61,7 +61,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
-              'sphinx.ext.linkcode']
+              'sphinx.ext.linkcode',
+              'sphinx_copybutton']
 
 try:
     import sphinxcontrib.spelling  # noqa
@@ -85,8 +86,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'CuPy'
-copyright = u'2015, Preferred Networks, inc. and Preferred Infrastructure, inc.'
-author = u'Preferred Networks, inc. and Preferred Infrastructure, inc.'
+copyright = u'2015, Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
+author = u'Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -149,6 +150,22 @@ todo_include_todos = False
 napoleon_use_ivar = True
 napoleon_include_special_with_doc = True
 
+# -- Copybutton settings --------------------------------------------------
+
+# Only copy lines starting with the input prompts,
+# valid prompt styles: [
+#     Python Repl + continuation (e.g., '>>> ', '... '),
+#     Bash (e.g., '$ '),
+#     ipython and qtconsole + continuation (e.g., 'In [29]: ', '  ...: '),
+#     jupyter-console + continuation (e.g., 'In [29]: ', '     ...: ')
+# ]
+# regex taken from https://sphinx-copybutton.readthedocs.io/en/latest/#using-regexp-prompt-identifiers
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
+# Continue copying lines as long as they end with this character
+copybutton_line_continuation_character = "\\"
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -193,12 +210,12 @@ html_theme_options = {
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = '_static/favicon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

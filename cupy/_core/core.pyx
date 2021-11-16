@@ -238,10 +238,21 @@ cdef class ndarray:
         if not runtime._is_hip_environment:  # CUDA
             if stream is None:
                 stream = runtime.streamLegacy
-            elif not isinstance(stream, int) or stream < -1 or stream == 0:
+            elif not isinstance(stream, int) or stream < -1:
+                # DLPack does not accept 0 as a valid stream, but there is a
+                # bug in PyTorch that exports the default stream as 0, which
+                # renders the protocol unusable, we will accept a 0 value
+                # meanwhile.
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
                     f' 1, 2, or any larger value, but {stream} was provided')
+            if stream == 0:
+                warnings.warn(
+                    'Stream 0 is passed from a library that you are'
+                    ' converting to; CuPy assumes 0 as a legacy default '
+                    'stream. Please report this problem to the library as this'
+                    ' violates the DLPack protocol.')
+                stream = runtime.streamLegacy
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
@@ -267,14 +278,14 @@ cdef class ndarray:
             attrs = runtime.pointerGetAttributes(self.data.ptr)
             is_managed = (
                 attrs.type == runtime.memoryTypeManaged
-                and _util.CUPY_DLPACK_EXPORT_VERSION >= (0, 6))
+                and _util.DLPACK_EXPORT_VERSION >= (0, 6))
             if is_managed:
                 device_type = dlpack.managed_CUDA
             else:
                 device_type = dlpack.device_CUDA
         else:
             device_type = dlpack.device_ROCM
-        return (device_type, self.device)
+        return (device_type, self.device.id)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
@@ -552,9 +563,12 @@ cdef class ndarray:
             return self.astype(self.dtype, order=order)
 
         # It need to make a contiguous copy for copying from another device
-        with self.device:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             x = self.astype(self.dtype, order=order, copy=False)
-
+        finally:
+            runtime.setDevice(prev_device)
         newarray = _ndarray_init(x._shape, x.dtype)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
@@ -725,7 +739,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        return _manipulation._ndarray_ravel(self, order)
+        return _internal_ascontiguousarray(
+            _manipulation._ndarray_ravel(self, order))
 
     cpdef ndarray squeeze(self, axis=None):
         """Returns a view with size-one axes removed.
@@ -1342,8 +1357,13 @@ cdef class ndarray:
         return self.copy()
 
     def __deepcopy__(self, memo):
-        with self.device:
+        # It need to make a contiguous copy for copying from another device
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             return self.copy()
+        finally:
+            runtime.setDevice(prev_device)
 
     def __reduce__(self):
         return array, (self.get(),)
@@ -1657,7 +1677,9 @@ cdef class ndarray:
                     'actual shape: {}'.format(self.shape, out.shape))
             if not (out.flags.c_contiguous and self._c_contiguous or
                     out.flags.f_contiguous and self._f_contiguous):
-                with self.device:
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(self.device.id)
                     if out.flags.c_contiguous:
                         a_gpu = _internal_ascontiguousarray(self)
                     elif out.flags.f_contiguous:
@@ -1666,6 +1688,8 @@ cdef class ndarray:
                         raise RuntimeError(
                             '`out` cannot be specified when copying to '
                             'non-contiguous ndarray')
+                finally:
+                    runtime.setDevice(prev_device)
             else:
                 a_gpu = self
             a_cpu = out
@@ -1681,20 +1705,26 @@ cdef class ndarray:
                     order = 'C'
             if not (order == 'C' and self._c_contiguous or
                     order == 'F' and self._f_contiguous):
-                with self.device:
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(self.device.id)
                     if order == 'C':
                         a_gpu = _internal_ascontiguousarray(self)
                     elif order == 'F':
                         a_gpu = _internal_asfortranarray(self)
                     else:
                         raise ValueError('unsupported order: {}'.format(order))
+                finally:
+                    runtime.setDevice(prev_device)
             else:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
         syncdetect._declare_synchronize()
         ptr = a_cpu.ctypes.data
-        with self.device:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             if stream is not None:
                 a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
             else:
@@ -1703,6 +1733,8 @@ cdef class ndarray:
                     a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
                 else:
                     a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
+        finally:
+            runtime.setDevice(prev_device)
         return a_cpu
 
     cpdef set(self, arr, stream=None):
@@ -1732,7 +1764,9 @@ cdef class ndarray:
             raise RuntimeError('Cannot set to non-contiguous array')
 
         ptr = arr.ctypes.data
-        with self.device:
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(self.device.id)
             if stream is not None:
                 self.data.copy_from_host_async(ptr, self.nbytes, stream)
             else:
@@ -1741,6 +1775,8 @@ cdef class ndarray:
                     self.data.copy_from_host(ptr, self.nbytes)
                 else:
                     self.data.copy_from_host_async(ptr, self.nbytes)
+        finally:
+            runtime.setDevice(prev_device)
 
     cpdef ndarray reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.
@@ -2058,12 +2094,9 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.0'
         elif 11010 <= _cuda_runtime_version < 11020:
             bundled_include = 'cuda-11.1'
-        elif 11020 <= _cuda_runtime_version < 11030:
-            bundled_include = 'cuda-11.2'
-        elif 11030 <= _cuda_runtime_version < 11040:
-            bundled_include = 'cuda-11.3'
-        elif 11040 <= _cuda_runtime_version < 11050:
-            bundled_include = 'cuda-11.4'
+        elif 11020 <= _cuda_runtime_version < 12000:
+            # for CUDA Enhanced Compatibility
+            bundled_include = 'cuda-11'
         else:
             # CUDA versions not yet supported.
             bundled_include = None

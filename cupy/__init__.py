@@ -10,32 +10,21 @@ from cupy import _version
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA
-_environment._preload_libraries()  # NOQA
+_environment._preload_library('cutensor')  # NOQA
+_environment._preload_library('nccl')  # NOQA
 
 
 try:
     from cupy import _core  # NOQA
 except ImportError as e:
-    # _core is a c-extension module.
-    # When a user cannot import _core, it represents that CuPy is not correctly
-    # built.
-    _exc_info = _sys.exc_info()
-    _msg = ('''\
-CuPy is not correctly installed.
+    raise ImportError(f'''
+================================================================
+{_environment._diagnose_import_error()}
 
-If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
-Also, confirm that only one CuPy package is installed:
-  $ pip freeze
-
-If you are building CuPy from source, please check your environment, uninstall CuPy and reinstall it with:
-  $ pip install cupy --no-cache-dir -vvvv
-
-Check the Installation Guide for details:
-  https://docs.cupy.dev/en/latest/install.html
-
-original error: {}'''.format(_exc_info[1]))  # NOQA
-
-    raise ImportError(_msg) from e
+Original error:
+  {type(e).__name__}: {e}
+================================================================
+''') from e
 
 
 from cupy import cuda  # NOQA
@@ -240,6 +229,12 @@ from cupy._creation.from_data import asanyarray  # NOQA
 from cupy._creation.from_data import asarray  # NOQA
 from cupy._creation.from_data import ascontiguousarray  # NOQA
 from cupy._creation.from_data import fromfile  # NOQA
+from cupy._creation.from_data import fromfunction  # NOQA
+from cupy._creation.from_data import fromiter  # NOQA
+from cupy._creation.from_data import frombuffer  # NOQA
+from cupy._creation.from_data import fromstring  # NOQA
+from cupy._creation.from_data import loadtxt  # NOQA
+from cupy._creation.from_data import genfromtxt  # NOQA
 
 from cupy._creation.ranges import arange  # NOQA
 from cupy._creation.ranges import linspace  # NOQA
@@ -451,6 +446,9 @@ from cupy._io.npz import savez_compressed  # NOQA
 
 from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
+from cupy._io.formatting import array2string  # NOQA
+
+from cupy._io.text import savetxt  # NOQA
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
@@ -522,7 +520,9 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
+from cupy._logic.truth import all as alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
+from cupy._logic.truth import any as sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -569,8 +569,10 @@ from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
+from cupy._math.sumprod import prod as product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
+from cupy._math.sumprod import cumprod as cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA

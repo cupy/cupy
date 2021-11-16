@@ -198,6 +198,86 @@ PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpa
    ...     ...
 
 
+Using custom kernels in PyTorch
+*******************************
+
+With the DLPack protocol, it becomes very simple to implement functions in PyTorch using CuPy user-defined kernels. Below is the example of a PyTorch autograd function
+that computes the forward and backward pass of the logarithm using :class:`cupy.RawKernel` s.
+
+.. code:: python
+
+    import cupy
+    import torch
+    
+    
+    cupy_custom_kernel_fwd = cupy.RawKernel(
+        r"""
+    extern "C" __global__
+    void cupy_custom_kernel_fwd(const float* x, float* y, int size) {
+        int tid = blockDim.x * blockIdx.x + threadIdx.x;
+        if (tid < size)
+            y[tid] = log(x[tid]);
+    }
+    """,
+        "cupy_custom_kernel_fwd",
+    )
+    
+    
+    cupy_custom_kernel_bwd = cupy.RawKernel(
+        r"""
+    extern "C" __global__
+    void cupy_custom_kernel_bwd(const float* x, float* gy, float* gx, int size) {
+        int tid = blockDim.x * blockIdx.x + threadIdx.x;
+        if (tid < size)
+            gx[tid] = gy[tid] / x[tid];
+    }
+    """,
+        "cupy_custom_kernel_bwd",
+    )
+    
+    
+    class CuPyLog(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, x):
+            ctx.input = x
+            # Enforce contiguous arrays to simplify RawKernel indexing.
+            cupy_x = cupy.ascontiguousarray(cupy.from_dlpack(x.detach()))
+            cupy_y = cupy.empty(cupy_x.shape, dtype=cupy_x.dtype)
+            x_size = cupy_x.size
+            bs = 128
+            cupy_custom_kernel_fwd(
+                (bs,), ((x_size + bs - 1) // bs,), (cupy_x, cupy_y, x_size)
+            )
+            # the ownership of the device memory backing cupy_y is implicitly
+            # transferred to torch_y, so this operation is safe even after
+            # going out of scope of this function.
+            torch_y = torch.from_dlpack(cupy_y)
+            return torch_y
+    
+        @staticmethod
+        def backward(ctx, grad_y):
+            # Enforce contiguous arrays to simplify RawKernel indexing.
+            cupy_input = cupy.from_dlpack(ctx.input.detach()).ravel()
+            cupy_grad_y = cupy.from_dlpack(grad_y.detach()).ravel()
+            cupy_grad_x = cupy.zeros(cupy_grad_y.shape, dtype=cupy_grad_y.dtype)
+            gy_size = cupy_grad_y.size
+            bs = 128
+            cupy_custom_kernel_bwd(
+                (bs,),
+                ((gy_size + bs - 1) // bs,),
+                (cupy_input, cupy_grad_y, cupy_grad_x, gy_size),
+            )
+            # the ownership of the device memory backing cupy_grad_x is implicitly
+            # transferred to torch_y, so this operation is safe even after
+            # going out of scope of this function.
+            torch_grad_x = torch.from_dlpack(cupy_grad_x)
+            return torch_grad_x
+
+.. note::
+
+   Directly feeding a ``torch.Tensor`` to :func:`cupy.from_dlpack` is only supported in the (new) DLPack data exchange protocol added in CuPy v10+ and PyTorch 1.10+.
+   For earlier versions, you will need to wrap the ``Tensor`` with ``torch.utils.dlpack.to_dlpack()`` as shown in the above examples.
+
 RMM
 ---
 
@@ -296,7 +376,7 @@ Be aware that in TensorFlow all tensors are immutable, so in the latter case any
 Note that as of DLPack v0.5 for correctness the above approach (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams.
 
 DLPack data exchange protocol
-=============================
+*****************************
 
 To obviate user-managed streams and DLPack tensor objects, the `DLPack data exchange protocol <https://data-apis.org/array-api/latest/design_topics/data_interchange.html>`_ provides a mechanism to shift the responsibility from users to libraries. Any compliant objects (such as :class:`cupy.ndarray`) must implement a pair of methods ``__dlpack__`` and ``__dlpack_device__``. The function :func:`cupy.from_dlpack` accepts such object and returns a :class:`cupy.ndarray` that is safely accessible on CuPy's current stream. Likewise, :class:`cupy.ndarray` can be exported via any compliant library's ``from_dlpack()`` function.
 
