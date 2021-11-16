@@ -47,11 +47,13 @@ cdef function.Function _get_simple_elementwise_kernel(
         tuple params, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
         tuple options=()):
+    # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
     ${typedef_preamble}
     ${preamble}
     extern "C" __global__ void ${name}(${params}) {
       ${loop_prep};
+      #pragma unroll 1
       CUPY_FOR(i, _ind.size()) {
         _ind.set(i);
         ${operation};
@@ -192,7 +194,8 @@ cdef class _ArgInfo:
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
-            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True, True)
+            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True,
+            arg._index_32_bits)
         return ret
 
     @staticmethod
@@ -261,7 +264,7 @@ cdef class _ArgInfo:
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
-            return 'CIndexer<%d>' % self.ndim
+            return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits)
         if self.arg_kind == ARG_KIND_TEXTURE:
             return 'cudaTextureObject_t'
         assert False
