@@ -100,10 +100,10 @@ def roll(a, shift, axis=None):
     """
     if axis is None:
         return roll(a.ravel(), shift, 0).reshape(a.shape)
-    elif isinstance(shift, cupy.ndarray):
+
+    axes = internal.normalize_axis_tuple(axis, a.ndim, allow_duplicate=True)
+    if isinstance(shift, cupy.ndarray):
         shift = shift.ravel()
-        axes = internal.normalize_axis_tuple(
-            axis, a.ndim, allow_duplicate=True)
         n_axes = max(len(axes), shift.size)
         axes = numpy.broadcast_to(axes, (n_axes,))
         shift = cupy.broadcast_to(shift, (n_axes,))
@@ -124,10 +124,7 @@ def roll(a, shift, axis=None):
 
         return a[tuple(indices)]
     else:
-        axis = internal.normalize_axis_tuple(
-            axis, a.ndim, allow_duplicate=True)
-
-        broadcasted = numpy.broadcast(shift, axis)
+        broadcasted = numpy.broadcast(shift, axes)
         if broadcasted.nd > 1:
             raise ValueError(
                 '\'shift\' and \'axis\' should be scalars or 1D sequences')

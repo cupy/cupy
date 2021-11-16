@@ -27,6 +27,7 @@ API Reference
    ext
    cuda
    kernel
+   distributed
    environment
    comparison
    array_api

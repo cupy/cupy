@@ -11,12 +11,14 @@ from cupy._core import internal
 import cupyx
 import cupyx.scipy.sparse
 
-try:
+from cupy.testing._pytest_impl import is_available
+
+
+if is_available():
     import pytest
-except ImportError:
-    _skipif = unittest.skipIf
-else:
     _skipif = pytest.mark.skipif
+else:
+    _skipif = unittest.skipIf
 
 
 def with_requires(*requirements):

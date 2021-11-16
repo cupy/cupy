@@ -74,7 +74,8 @@ We can see that it takes about 10 ms to run (on this GPU). However, if we launch
 
 CUB is a backend shipped together with CuPy.
 It also accelerates other routines, such as inclusive scans (ex: :func:`~cupy.cumsum`), histograms,
-sparse matrix-vector multiplications (not applicable in CUDA 11), and :class:`cupy.ReductionKernel`.
+sparse matrix-vector multiplications (not applicable in CUDA 11), and :class:`~cupy.ReductionKernel`.
+cuTENSOR offers optimized performance for binary elementwise ufuncs, reduction and tensor contraction.
 If cuTENSOR is installed, setting ``CUPY_ACCELERATORS=cub,cutensor``, for example, would try CUB first and fall back to cuTENSOR if CUB does not provide the needed support. In the case that both backends are not applicable, it falls back to CuPy's default implementation.
 
 Note that while in general the accelerated reductions are faster, there could be exceptions

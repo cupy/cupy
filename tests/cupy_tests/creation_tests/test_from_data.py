@@ -497,6 +497,40 @@ class TestFromData(unittest.TestCase):
             return xp.fromfile(fh, dtype="u1")
 
     @testing.numpy_cupy_array_equal()
+    def test_fromfunction(self, xp):
+        def function(i, j): return i == j
+        return xp.fromfunction(function, shape=(3, 3), dtype=int)
+
+    @testing.numpy_cupy_array_equal()
+    def test_fromiter(self, xp):
+        iterable = (x*x for x in range(5))
+        return xp.fromiter(iterable, float)
+
+    @testing.numpy_cupy_array_equal()
+    def test_fromstring(self, xp):
+        return xp.fromstring('1 2', dtype=int, sep=' ')
+
+    @testing.numpy_cupy_array_equal()
+    def test_frombuffer(self, xp):
+        return xp.frombuffer(b'\x01\x02', dtype=numpy.uint8)
+
+    @testing.numpy_cupy_array_equal()
+    def test_loadtxt(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"0 1\n2 3")
+            fh.flush()
+            fh.seek(0)
+            return xp.loadtxt(fh, dtype="u1")
+
+    @testing.numpy_cupy_array_equal()
+    def test_genfromtxt(self, xp):
+        with tempfile.TemporaryFile() as fh:
+            fh.write(b"0 1\n2 3")
+            fh.flush()
+            fh.seek(0)
+            return xp.genfromtxt(fh, dtype="u1")
+
+    @testing.numpy_cupy_array_equal()
     def test_fromfile_big_endian(self, xp):
         with tempfile.TemporaryFile() as fh:
             fh.write(b"\x00\x00\x00\x01")

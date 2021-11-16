@@ -238,10 +238,21 @@ cdef class ndarray:
         if not runtime._is_hip_environment:  # CUDA
             if stream is None:
                 stream = runtime.streamLegacy
-            elif not isinstance(stream, int) or stream < -1 or stream == 0:
+            elif not isinstance(stream, int) or stream < -1:
+                # DLPack does not accept 0 as a valid stream, but there is a
+                # bug in PyTorch that exports the default stream as 0, which
+                # renders the protocol unusable, we will accept a 0 value
+                # meanwhile.
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
                     f' 1, 2, or any larger value, but {stream} was provided')
+            if stream == 0:
+                warnings.warn(
+                    'Stream 0 is passed from a library that you are'
+                    ' converting to; CuPy assumes 0 as a legacy default '
+                    'stream. Please report this problem to the library as this'
+                    ' violates the DLPack protocol.')
+                stream = runtime.streamLegacy
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
@@ -274,7 +285,7 @@ cdef class ndarray:
                 device_type = dlpack.device_CUDA
         else:
             device_type = dlpack.device_ROCM
-        return (device_type, self.device)
+        return (device_type, self.device.id)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
@@ -728,7 +739,8 @@ cdef class ndarray:
            :meth:`numpy.ndarray.ravel`
 
         """
-        return _manipulation._ndarray_ravel(self, order)
+        return _internal_ascontiguousarray(
+            _manipulation._ndarray_ravel(self, order))
 
     cpdef ndarray squeeze(self, axis=None):
         """Returns a view with size-one axes removed.
@@ -2082,12 +2094,9 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.0'
         elif 11010 <= _cuda_runtime_version < 11020:
             bundled_include = 'cuda-11.1'
-        elif 11020 <= _cuda_runtime_version < 11030:
-            bundled_include = 'cuda-11.2'
-        elif 11030 <= _cuda_runtime_version < 11040:
-            bundled_include = 'cuda-11.3'
-        elif 11040 <= _cuda_runtime_version < 11050:
-            bundled_include = 'cuda-11.4'
+        elif 11020 <= _cuda_runtime_version < 12000:
+            # for CUDA Enhanced Compatibility
+            bundled_include = 'cuda-11'
         else:
             # CUDA versions not yet supported.
             bundled_include = None

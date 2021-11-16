@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.7.0+ / v3.8.0+ / v3.9.0+
+* `Python <https://python.org/>`_: v3.7.0+ / v3.8.0+ / v3.9.0+ / v3.10.0+
 
 .. note::
 
@@ -90,6 +90,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda113``
    * - v11.4
      - ``$ pip install cupy-cuda114``
+   * - v11.5
+     - ``$ pip install cupy-cuda115``
 
 .. note::
 
@@ -385,9 +387,6 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
-
-.. note::
-   ROCm 4.3 is known to have an issue related to clang/HIP. If you experienced an error like ``fatal error: '__clang_hip_runtime_wrapper.h' file not found``, please try setting an environment variable ``LLVM_PATH`` (e.g., ``export LLVM_PATH="${ROCM_HOME}/llvm"``). See `#5592 <https://github.com/cupy/cupy/issues/5592#issuecomment-901136342>`_ for details.
 
 Environment Variables
 ---------------------

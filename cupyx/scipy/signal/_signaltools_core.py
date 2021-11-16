@@ -61,10 +61,23 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
                             for x1, x2 in zip(in1.shape, in2.shape))
 
     # Check the output
+    # In SciPy, the output dtype is determined by inputs' dtypes
+    out_dtype = cupy.promote_types(in1, in2)
     if not isinstance(output, cupy.ndarray):
-        output = cupy.empty(out_shape, output)
+        if not cupy.can_cast(output, out_dtype):
+            raise ValueError('not available for this type')
+        output = cupy.empty(out_shape, out_dtype)
     elif output.shape != out_shape:
         raise ValueError('out has wrong shape')
+    elif output.dtype != out_dtype:
+        raise ValueError('out has wrong dtype')
+
+    # Check input dtypes
+    # Internally, the kernel accumulates in in2's type, so if in2 has lower
+    # precision (can_cast = True!) we hit overflow easier
+    # TODO(leofang): this is a band-aid fix for cupy/cupy#6047
+    if cupy.can_cast(in2, in1):
+        in2 = in2.astype(out_dtype)  # make a copy while upcasting
 
     # Get and run the CuPy kernel
     int_type = _util._get_inttype(in1)

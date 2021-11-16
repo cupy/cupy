@@ -45,6 +45,8 @@ cuda:
     full_version: "11.3.1"
   "11.4":
     full_version: "11.4.0"
+  "11.5":
+    full_version: "11.5.0"
 rocm:
   null:
     full_version: null
@@ -103,6 +105,7 @@ nccl:
       "10.2":
       "11.0":
       "11.4":
+      "11.5":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -117,6 +120,7 @@ cutensor:
       "11.2":
       "11.3":
       "11.4":
+      "11.5":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -128,6 +132,7 @@ cusparselt:
       "11.2":
       "11.3":
       "11.4":
+      "11.5":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -171,6 +176,8 @@ cudnn:
         alias: "11.4"
       "11.4":
         alias: "11.4"
+      "11.5":
+        alias: "11.4"
 
 ###############################################################################
 # Python
@@ -186,8 +193,10 @@ python:
     spec: "3.8.11"
   "3.9":
     spec: "3.9.6"
+  "3.10":
+    spec: "3.10.0"
   "pre":
-    spec: "3.10.0b3"  # note that dependency python libraies may not work
+    spec: "3.11.0a1"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -223,6 +232,7 @@ numpy:
       - "3.7"
       - "3.8"
       - "3.9"
+      - "3.10"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -278,6 +288,7 @@ scipy:
       - "3.7"
       - "3.8"
       - "3.9"
+      - "3.10"
     numpy:
       # - "1.16"
       # - "1.17"
@@ -316,5 +327,4 @@ env:CUPY_ACCELERATORS:
 test:
   "unit":
   "slow":
-  "doctest":
   "example":

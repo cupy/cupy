@@ -238,6 +238,12 @@ def preconfigure_modules(MODULES, compiler, settings):
         else:
             lines = [
                 'ERROR: CUDA could not be found on your system.',
+                '',
+                'HINT: You are trying to build CuPy from source, '
+                'which is NOT recommended for general use.',
+                '      Please consider using binary packages instead.',
+                '',
+
             ]
         summary += [
             '',
