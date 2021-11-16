@@ -513,49 +513,25 @@ def gradient(f, *varargs, axis=None, edge_order=1):
 # TODO(okuta): Implement cross
 
 
-# TODO(okuta): Implement trapz
-
 def trapz(y, x=None, dx=1.0, axis=-1):
-    """
-Line too long (110 > 79 characters) …
-    Lifted from `numpy <https://github.com/numpy/numpy/blob/v1.15.1/numpy/lib/function_base.py#L3804-L3891>`_.
+    """Calculate the n-th discrete difference along the given axis.
     Integrate along the given axis using the composite trapezoidal rule.
     Integrate `y` (`x`) along given axis.
-    Parameters
-    ==========
-    y : array_like
-        Input array to integrate.
-    x : array_like, optional
-        The sample points corresponding to the `y` values. If `x` is None,
-        the sample points are assumed to be evenly spaced `dx` apart. The
-        default is None.
-    dx : scalar, optional
-        The spacing between sample points when `x` is None. The default is 1.
-    axis : int, optional
-        The axis along which to integrate.
-    Returns
-    =======
-    trapz : float
-        Definite integral as approximated by trapezoidal rule.
-    References
-    ==========
-    .. [1] Wikipedia page: http://en.wikipedia.org/wiki/Trapezoidal_rule
-    Examples
-    ========
-    >>> trapz([1,2,3])
-    4.0
-    >>> trapz([1,2,3], x=[4,6,8])
-    8.0
-    >>> trapz([1,2,3], dx=2)
-    8.0
-    >>> a = cupy.arange(6).reshape(2, 3)
-    >>> a
-    array([[0, 1, 2],
-           [3, 4, 5]])
-    >>> trapz(a, axis=0)
-    array([ 1.5,  2.5,  3.5])
-    >>> trapz(a, axis=1)
-    array([ 2.,  8.])
+
+    Args:
+        y (cupy.ndarray): Input array to integrate.
+        x (cupy.ndarray): Sample points over which to integrate. If None equal
+            spacing `dx` is assumed.
+        dx (float): Spacing between sample points, used if `x` is None, default
+            is None.
+        axis (int): The axis along which the integral is taken, default is
+            the last axis.
+
+    Returns:
+        cupy.ndarray: Definite integral as approximated by the trapezoidal
+            rule.
+
+    .. seealso:: :func:`numpy.trapz`
     """
     y = cupy.asanyarray(y)
     if x is None:
