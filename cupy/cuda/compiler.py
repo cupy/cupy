@@ -759,12 +759,20 @@ def _preprocess_hipcc(source, options):
 
 def _preprocess_hiprtc(source, options):
     # source is ignored
-    prog = _NVRTCProgram(
+    if _cuda_hip_version >= 40400000:
+        # HIP runtime headers can be no longer explicitly included on ROCm 4.5+
+        code = '''
+        // hiprtc segfaults if the input code is empty
+        __global__ void _cupy_preprocess_dummy_kernel_() { }
         '''
+    else:
+        code = '''
         // hiprtc segfaults if the input code is empty
         #include <hip/hip_runtime.h>
         __global__ void _cupy_preprocess_dummy_kernel_() { }
-        ''')
+        '''
+
+    prog = _NVRTCProgram(code)
     try:
         result, _ = prog.compile(options)
     except CompileException as e:
@@ -781,7 +789,12 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    if (not is_hiprtc) or (is_hiprtc and _cuda_hip_version >= 402):
+    if not is_hiprtc:
+        return '#include <hip/hip_runtime.h>\n' + source
+    if _cuda_hip_version >= 40400000:
+        # HIP runtime headers can be no longer explicitly included on ROCm 4.5+
+        return source
+    if _cuda_hip_version >= 402:
         # "-I" is fixed on ROCm 4.2.0+
         return '#include <hip/hip_runtime.h>\n' + source
 

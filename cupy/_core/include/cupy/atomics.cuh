@@ -25,7 +25,7 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
   do {
     assumed = old;
     old_as_us = (unsigned short)((size_t)address & 2 ? old >> 16 : old & 0xffff);
-#if __CUDACC_VER_MAJOR__ >= 9
+#if __CUDACC_VER_MAJOR__ >= 9 || defined(__HIPCC__)
     half sum = __float2half_rn(__half2float(__ushort_as_half(old_as_us)) + float(val));
     unsigned short sum_as_us = __half_as_ushort(sum);
 #else
@@ -46,6 +46,9 @@ __device__ long long atomicAdd(long long *address, long long val) {
                      static_cast<unsigned long long>(val));
 }
 
+
+// Skip if ROCm 4.5+ as it implements the following atomic functions.
+#if !defined(__HIPCC__) || HIP_VERSION < 40400000
 
 __device__ float atomicMax(float* address, float val) {
   int* address_as_i = reinterpret_cast<int*>(address);
@@ -103,3 +106,5 @@ __device__ double atomicMin(double* address, double val) {
   } while (assumed != old);
   return __longlong_as_double(reinterpret_cast<long long&>(old));
 }
+
+#endif  // !defined(__HIPCC__) || HIP_VERSION < 40400000

@@ -32,7 +32,13 @@ namespace cupy {
 
 #ifdef __HIPCC__
 
+// HIP runtime headers can be no longer explicitly included since ROCm 4.5
+#if defined(__HIPCC_RTC__) && HIP_VERSION >= 40400000
+#include <cassert>
+#include <cstddef>
+#else
 #include <hip/hip_fp16.h>
+#endif  // #if defined(__HIPCC_RTC__) && HIP_VERSION >= 40400000
 
 #elif __CUDACC_VER_MAJOR__ >= 9
 
@@ -83,7 +89,7 @@ public:
   explicit __device__ float16(const half &v): data_(v) {}
   explicit __device__ float16(const __half_raw &v): data_(v) {}
 
-  __device__ operator float() const {return float(data_);}
+  __device__ operator float() const {return __half2float(data_);}
 
   static const unsigned short nan = 0x7e00u;
 
