@@ -1078,13 +1078,13 @@ class TestTrapz:
     def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
-        return xp.diff(a, x=x, axis=1)
+        return xp.trapz(a, x=x, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.diff(a, dx=0.1, axis=1)
+        return xp.trapz(a, dx=0.1, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
