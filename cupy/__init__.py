@@ -436,6 +436,12 @@ from cupy._indexing.insert import diag_indices_from  # NOQA
 
 from cupy._indexing.iterate import flatiter  # NOQA
 
+# Borrowed from NumPy
+from numpy import get_array_wrap  # NOQA
+from numpy import index_exp  # NOQA
+from numpy import ndindex  # NOQA
+from numpy import s_  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
