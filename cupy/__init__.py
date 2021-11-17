@@ -441,8 +441,6 @@ from numpy import get_array_wrap  # NOQA
 from numpy import index_exp  # NOQA
 from numpy import ndindex
 from numpy import s_  # NOQA
-from numpy import mask_indices  # NOQA
-from numpy import tril_indices  # NOQA
 
 # -----------------------------------------------------------------------------
 # Input and output
