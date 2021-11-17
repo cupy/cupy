@@ -72,6 +72,7 @@ Sums, products, differences
    diff
    gradient
    cross
+   trapz
 
 
 Exponents and logarithms
