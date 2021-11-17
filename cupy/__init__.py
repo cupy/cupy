@@ -100,72 +100,48 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-
 from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
 # -----------------------------------------------------------------------------
 from numpy import byte  # NOQA
-
 from numpy import short  # NOQA
-
 from numpy import intc  # NOQA
-
 from numpy import int_  # NOQA
-
 from numpy import longlong  # NOQA
-
 from numpy import intp  # NOQA
-
+from numpy import int0  # NOQA
 from numpy import int8  # NOQA
-
 from numpy import int16  # NOQA
-
 from numpy import int32  # NOQA
-
 from numpy import int64  # NOQA
 
 # -----------------------------------------------------------------------------
 # Unsigned integers
 # -----------------------------------------------------------------------------
 from numpy import ubyte  # NOQA
-
 from numpy import ushort  # NOQA
-
 from numpy import uintc  # NOQA
-
 from numpy import uint  # NOQA
-
 from numpy import ulonglong  # NOQA
-
 from numpy import uintp  # NOQA
-
+from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
-
 from numpy import uint16  # NOQA
-
 from numpy import uint32  # NOQA
-
 from numpy import uint64  # NOQA
 
 # -----------------------------------------------------------------------------
 # Floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import half  # NOQA
-
 from numpy import single  # NOQA
-
 from numpy import double  # NOQA
-
 from numpy import float_  # NOQA
-
 from numpy import longfloat  # NOQA
-
 from numpy import float16  # NOQA
-
 from numpy import float32  # NOQA
-
 from numpy import float64  # NOQA
 
 # Not supported by CuPy:
@@ -176,11 +152,11 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-
+from numpy import singlecomplex  # NOQA
+from numpy import cdouble  # NOQA
+from numpy import cfloat  # NOQA
 from numpy import complex_  # NOQA
-
 from numpy import complex64  # NOQA
-
 from numpy import complex128  # NOQA
 
 # Not supported by CuPy:
