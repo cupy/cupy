@@ -650,6 +650,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             postargs += [f'-t{num_threads}']
         else:
             postargs += ['--std=c++11']
+        postargs += ['-Xcompiler=-fno-gnu-unique']
         print('NVCC options:', postargs)
         try:
             self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
