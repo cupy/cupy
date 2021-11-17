@@ -1039,7 +1039,6 @@ class TestGradientErrors:
                 xp.gradient(x)
 
 
-@testing.gpu
 class TestTrapz:
 
     @testing.for_all_dtypes()

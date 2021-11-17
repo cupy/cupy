@@ -514,7 +514,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
 
 
 def trapz(y, x=None, dx=1.0, axis=-1):
-    """Calculate the n-th discrete difference along the given axis.
+    """
     Integrate along the given axis using the composite trapezoidal rule.
     Integrate `y` (`x`) along given axis.
 
@@ -533,11 +533,14 @@ def trapz(y, x=None, dx=1.0, axis=-1):
 
     .. seealso:: :func:`numpy.trapz`
     """
-    y = cupy.asanyarray(y)
+    if not isinstance(y, cupy.ndarray):
+        raise TypeError('`y` should be of type cupy.ndarray')
+
     if x is None:
         d = dx
     else:
-        x = cupy.asanyarray(x)
+        if not isinstance(x, cupy.ndarray):
+            raise TypeError('`x` should be of type cupy.ndarray')
         if x.ndim == 1:
             d = diff(x)
             # reshape to correct shape
