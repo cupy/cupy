@@ -309,6 +309,10 @@ from cupy._manipulation.rearrange import flipud  # NOQA
 from cupy._manipulation.rearrange import roll  # NOQA
 from cupy._manipulation.rearrange import rot90  # NOQA
 
+# Borrowed from NumPy
+if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+    from numpy import broadcast_shapes  # NOQA
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
@@ -457,6 +461,14 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
     .. seealso:: :func:`numpy.base_repr`
     """
     return _numpy.base_repr(number, base, padding)
+
+
+# Borrowed from NumPy
+from numpy import DataSource  # NOQA
+from numpy import get_printoptions  # NOQA
+from numpy import set_printoptions  # NOQA
+from numpy import printoptions  # NOQA
+from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -651,6 +663,11 @@ from cupy._math.misc import convolve  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
+
+# Borrowed from NumPy
+from numpy import disp  # NOQA
+from numpy import iterable  # NOQA
+from numpy import safe_eval  # NOQA
 
 
 # -----------------------------------------------------------------------------
