@@ -73,9 +73,8 @@ class TestArrayAdvancedIndexingGetitemPerm:
      'indexes': (slice(None), numpy.random.choice([False, True], (3, 4)))},
     {'shape': (2, 3, 4),
      'indexes': numpy.random.choice([False, True], (2, 3))},
-    # TODO(okuta): pass the following commented out tests
-    # {'shape': (2, 3, 4),
-    #  'indexes': (1, None, numpy.array([True, False, True]))},
+    {'shape': (2, 3, 4),
+     'indexes': (1, None, numpy.array([True, False, True]))},
     # empty arrays
     {'shape': (2, 3, 4), 'indexes': []},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
@@ -110,6 +109,16 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (0, 3), 'indexes': (slice(None), [1])},
     # TODO(niboshi): pass the following commented out tests
     # {'shape': (0,), 'indexes': (False, True, True)},
+    # ellipsis
+    {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2)},
+    # issue #1512
+    {'shape': (2, 3, 4), 'indexes': (Ellipsis, numpy.array(False))},
+    {'shape': (2, 3, 4), 'indexes': (Ellipsis, numpy.ones((3, 4), bool))},
+    # issue #4799
+    {'shape': (3, 4, 5),
+     'indexes': (slice(None), [0, 1], Ellipsis, [0, 1])},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
@@ -405,6 +414,8 @@ class TestArrayInvalidValueAdvGetitem:
      'value': 1},
     {'shape': (2, 3, 4),
      'indexes': (numpy.random.choice([False, True], (2, 3, 4)),), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (1, None, numpy.array([True, False, True])), 'value': 1},
     # multiple arrays
     {'shape': (2, 3, 4), 'indexes': ([0, -1], [1, -1]), 'value': 1},
     {'shape': (2, 3, 4),
@@ -464,6 +475,19 @@ class TestArrayInvalidValueAdvGetitem:
     {'shape': (0,), 'indexes': (), 'value': 1},
     # TODO(niboshi): pass the following commented out tests
     # {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
+    # ellipsis
+    {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2), 'value': 1},
+    # issue #1512
+    {'shape': (2, 3, 4),
+     'indexes': (Ellipsis, numpy.array(False)), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (Ellipsis, numpy.ones((3, 4), bool)), 'value': 1},
+    # issue #4799
+    {'shape': (3, 4, 5),
+     'indexes': (slice(None), [0, 1], Ellipsis, [0, 1]), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int)),
+     'value': 1},
     _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu

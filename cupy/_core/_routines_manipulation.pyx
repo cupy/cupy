@@ -617,7 +617,7 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None, dtype=None,
 
 cpdef ndarray _concatenate(
         list arrays, Py_ssize_t axis, tuple shape, ndarray out, str casting):
-    cdef ndarray a
+    cdef ndarray a, b
     cdef Py_ssize_t i, aw, itemsize, axis_size
     cdef bint all_same_type, same_shape_and_contiguous
     # If arrays are large, Issuing each copy method is efficient.
@@ -649,8 +649,8 @@ cpdef ndarray _concatenate(
     for a in arrays:
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
-        elementwise_copy(
-            a, _indexing._simple_getitem(out, slice_list), casting=casting)
+        b = out[tuple(slice_list)]
+        elementwise_copy(a, b, casting=casting)
         i += aw
     return out
 
