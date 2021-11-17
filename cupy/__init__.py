@@ -374,11 +374,6 @@ from numpy import issubsctype  # NOQA
 from numpy import mintypecode  # NOQA
 from numpy import sctype2char  # NOQA
 from numpy import typename  # NOQA
-from numpy import maximum_sctype  # NOQA
-from numpy import typecodes  # NOQA
-from numpy import sctypeDict  # NOQA
-from numpy import sctypes  # NOQA
-from numpy import nbytes  # NOQA
 
 # -----------------------------------------------------------------------------
 # Optionally Scipy-accelerated routines
