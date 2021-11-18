@@ -86,12 +86,15 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool_))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_)},
+    # multiple masks
     {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
     {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
     {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2))},
     {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2))},
     {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True)},
     {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False)},
+    {'shape': (2, 3, 4),
+     'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True])},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis},
     {'shape': (), 'indexes': ()},
@@ -458,6 +461,16 @@ class TestArrayInvalidValueAdvGetitem:
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_),
      'value': numpy.random.uniform(size=(4,))},
+    # multiple masks
+    {'shape': (2, 3, 4), 'indexes': (True, [True, False]), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (False, [True, False]), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2)), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2)), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True]),
+     'value': [[1, 2, 3], [4, 5, 6]]},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis, 'value': 1},
     {'shape': (), 'indexes': (), 'value': 1},
