@@ -54,8 +54,8 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
             # but this is not true in general Windows environment unless
             # running inside the SDK Tools command prompt.
             # To mitigate the situation CuPy automatically adds a path to
-            # the VC++ compiler used to build Python / CuPy to the PATH, if
-            # VC++ is not available in PATH.
+            # the VC++ compiler (cl.exe) found via setuptools, if it is not
+            # on the PATH.
             extra_path = _get_extra_path_for_msvc()
             if extra_path is not None:
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
