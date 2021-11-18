@@ -16,8 +16,8 @@ class TestTCPStore(unittest.TestCase):
     @_condition.retry(10)
     def test_store_get_set(self):
         store = _store.TCPStore(1)
+        store.run()
         try:
-            store.run()
             proxy = _store.TCPStoreProxy()
             proxy['test-value'] = 1234
             assert proxy['test-value'] == 1234
