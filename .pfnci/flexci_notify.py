@@ -13,11 +13,16 @@ def main(argv):
     # Gitter config: "TOKEN:ROOM1,ROOM2,ROOM3,..."
     gitter_config = os.environ.get('CUPY_CI_GITTER_CONFIG', None)
 
-    desc = os.environ.get('FLEXCI_DESCRIPTION', '<no description>')
-    subdesc = os.environ.get('FLEXCI_SUB_DESCRIPTION', '')
-    url = os.environ.get('FLEXCI_JOB_URL', '')
+    subdesc = os.environ.get('FLEXCI_SUB_DESCRIPTION', '(no description)')
+    url = os.environ.get('FLEXCI_JOB_URL', '<no url>')
     msg = argv[1]
-    body = '{}\n{}\n{}\n{}'.format(desc, subdesc, msg, url)
+    body = '''\
+*{}:* {}
+
+```
+{}
+```
+'''.format(msg, url, subdesc)
 
     if slack_config is not None:
         from slack_sdk.webhook import WebhookClient
