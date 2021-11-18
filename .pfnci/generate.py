@@ -153,6 +153,12 @@ class LinuxGenerator:
             '',
         ]
 
+        # Setup HOME
+        lines += [
+            'ENV HOME /tmp',
+            '',
+        ]
+
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> List[str]:

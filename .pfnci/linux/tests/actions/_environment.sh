@@ -16,11 +16,6 @@ else
     export CUPY_TEST_FULL_COMBINATION="0"
 fi
 
-# For compatibility with Jenkins with docker wrapper
-if [[ "${UID}" != "0" && "${HOME:-/}" == "/" ]]; then
-    export HOME=/tmp
-fi
-
 # Add PATH for commands installed via `pip install --user`
 export PATH="${HOME}/.local/bin:${PATH}"
 
