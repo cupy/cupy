@@ -24,3 +24,5 @@ RUN pyenv install 3.10.0 && \
     pip install -U setuptools pip
 
 RUN pip install -U numpy==1.21.* scipy==1.7.* optuna==2.* cython==0.29.*
+
+ENV HOME /tmp
