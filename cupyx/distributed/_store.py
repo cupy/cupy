@@ -29,8 +29,8 @@ class ExceptionAwareProcess(multiprocessing.Process):
         super().join()
         if self._parent_p.poll():
             exception = self._parent_p.recv()
-        if exception is not None:
-            raise exception
+            if exception is not None:
+                raise exception
 
 
 class TCPStore:
