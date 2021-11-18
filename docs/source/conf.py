@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import importlib
 import inspect
 import os
 import pkg_resources
@@ -451,17 +452,24 @@ def linkcode_resolve(domain, info):
 
     # inspect can return None for cython objects
     if filename is None:
-        return None
-
-    # Get the source line number
-    _, linenum = inspect.getsourcelines(obj)
-    assert isinstance(linenum, int)
+        filename = inspect.getfile(obj)
+        for ext in importlib.machinery.EXTENSION_SUFFIXES:
+            if filename.endswith(ext):
+                filename = filename[:-len(ext)] + '.pyx'
+                break
+        else:
+            return None
+        linenum = None
+    else:
+        # Get the source line number
+        _, linenum = inspect.getsourcelines(obj)
+        assert isinstance(linenum, int)
 
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)
 
-    return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
-        tag, relpath, linenum)
+    return 'https://github.com/cupy/cupy/blob/{}/{}'.format(
+        tag, relpath if linenum is None else f'{relpath}#L{linenum}')
 
 
 # Python Array API methods have type hints, which do not render
