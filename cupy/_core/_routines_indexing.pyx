@@ -25,9 +25,6 @@ from cupy._core cimport internal
 
 
 cdef ndarray _ndarray_getitem(ndarray self, slices):
-    # supports basic indexing (by slices, ints or Ellipsis) and
-    # some parts of advanced indexing by integer or boolean arrays.
-    # TODO(beam2d): Support the advanced indexing of NumPy.
     cdef Py_ssize_t axis
     cdef list slice_list
     cdef ndarray a, mask
@@ -136,6 +133,10 @@ cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
         return _take(self, indices, 0, ndim, out)
+    elif ndim == 0:
+        # check axis after atleast_1d
+        internal._normalize_axis_index(axis, 1)
+        return _take(self, indices, 0, 0, out)
     else:
         axis = internal._normalize_axis_index(axis, ndim)
         return _take(self, indices, axis, axis + 1, out)
@@ -209,8 +210,10 @@ cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
         if condition.ndim != 1:
             raise ValueError('condition must be a 1-d array')
 
+    # do not test condition.shape
     res = _ndarray_nonzero(condition)  # synchronize
 
+    # the `take` method/function also make the input atleast_1d
     return _ndarray_take(a, res[0], axis, out)
 
 
