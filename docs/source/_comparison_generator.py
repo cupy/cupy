@@ -89,10 +89,10 @@ def _generate_comparison_rst(
 def _section(
         header, base_mod, cupy_mod,
         base_type='NumPy', klass=None, exclude_mod=None, exclude=None,
-        footnotes=None):
+        footnotes=None, header_char='~'):
     return [
         header,
-        '~' * len(header),
+        header_char * len(header),
         '',
     ] + _generate_comparison_rst(
         base_mod, cupy_mod, base_type, klass, exclude_mod, exclude, footnotes
@@ -105,6 +105,9 @@ _deprecated = 'Not supported as it has been deprecated in NumPy.'
 _np_matrix = (
     'Use of :class:`numpy.matrix` is discouraged in NumPy and thus'
     ' we have no plan to add it to CuPy.')
+_np_poly1d = (
+    'Use of :class:`numpy.poly1d` is discouraged in NumPy and thus'
+    ' we have stopped adding functions with the interface.')
 _dtype_na = (
     '`object` and string dtypes are not supported in GPU and thus'
     ' left unimplemented in CuPy.')
@@ -147,6 +150,11 @@ def generate():
             'bmat': _np_matrix,
             'mat': _np_matrix,
             'matrix': _np_matrix,
+
+            'poly': _np_poly1d,
+            'polyder': _np_poly1d,
+            'polydiv': _np_poly1d,
+            'polyint': _np_poly1d,
 
             'Bytes0': _dtype_na,  # also deprecated in NumPy 1.20
             'bytes0': _dtype_na,
@@ -201,6 +209,17 @@ def generate():
     buf += _section(
         'Random Sampling',
         'numpy.random', 'cupy.random', exclude=['test'])
+    buf += _section(
+        'Polynomials',
+        'numpy.polynomial', 'cupy.polynomial', exclude=['test'])
+    buf += _section(
+        'Power Series',
+        'numpy.polynomial.polynomial', 'cupy.polynomial.polynomial',
+        header_char='"')
+    buf += _section(
+        'Polyutils',
+        'numpy.polynomial.polyutils', 'cupy.polynomial.polyutils',
+        header_char='"')
 
     buf += [
         'SciPy / CuPy APIs',
