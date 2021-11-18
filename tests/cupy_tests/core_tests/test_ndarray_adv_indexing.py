@@ -86,29 +86,26 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool_))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_)},
-    # TODO(okuta): pass the following commented out tests
-    # {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
-    # {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
-    # {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2))},
-    # {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2))},
-    # {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True)},
-    # {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False)},
+    {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
+    {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
+    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2))},
+    {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2))},
+    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True)},
+    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False)},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis},
     {'shape': (), 'indexes': ()},
     {'shape': (), 'indexes': None},
     {'shape': (), 'indexes': True},
     {'shape': (), 'indexes': (True,)},
-    # TODO(niboshi): pass the following commented out tests
-    # {'shape': (), 'indexes': (False, True, True)},
+    {'shape': (), 'indexes': (False, True, True)},
     {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_)},
     {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
     {'shape': (0,), 'indexes': None},
     {'shape': (0,), 'indexes': ()},
     {'shape': (2, 0), 'indexes': ([1],)},
     {'shape': (0, 3), 'indexes': (slice(None), [1])},
-    # TODO(niboshi): pass the following commented out tests
-    # {'shape': (0,), 'indexes': (False, True, True)},
+    {'shape': (0,), 'indexes': (False, True, True)},
     # ellipsis
     {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2)},
     # issue #1512
@@ -467,14 +464,12 @@ class TestArrayInvalidValueAdvGetitem:
     {'shape': (), 'indexes': None, 'value': 1},
     {'shape': (), 'indexes': True, 'value': 1},
     {'shape': (), 'indexes': (True,), 'value': 1},
-    # TODO(niboshi): pass the following commented out tests
-    # {'shape': (), 'indexes': (False, True, True), 'value': 1},
+    {'shape': (), 'indexes': (False, True, True), 'value': 1},
     {'shape': (), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
     {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
     {'shape': (0,), 'indexes': None, 'value': 1},
     {'shape': (0,), 'indexes': (), 'value': 1},
-    # TODO(niboshi): pass the following commented out tests
-    # {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
+    {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
     # ellipsis
     {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2), 'value': 1},
     # issue #1512
