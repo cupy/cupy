@@ -65,12 +65,6 @@ main() {
     =====================================================================
   "
 
-  if which gcloud &> /dev/null; then
-    gcloud auth configure-docker || echo "Failed to configure access to GCR"
-  else
-    echo "Skipping GCR configuration"
-  fi
-
   set -x
   for stage in ${STAGES}; do case "${stage}" in
     build )
@@ -88,7 +82,7 @@ main() {
       ;;
 
     push )
-      docker push "${docker_image}"
+      docker push --quiet "${docker_image}"
       ;;
 
     cache_get )
@@ -98,7 +92,8 @@ main() {
         exit 1
       fi
       mkdir -p "${CACHE_DIR}"
-      gsutil -m -o 'GSUtil:sliced_object_download_threshold=0' -q cp "${cache_gcs_dir}/${cache_archive}" . &&
+      gsutil_with_retry -m -q cp "${cache_gcs_dir}/${cache_archive}" . &&
+        du -h "${cache_archive}" &&
         tar -x -f "${cache_archive}" -C "${CACHE_DIR}" &&
         rm -f "${cache_archive}" || echo "WARNING: Remote cache could not be retrieved."
       ;;
@@ -110,6 +105,7 @@ main() {
         exit 1
       fi
       tar -c -f "${cache_archive}" -C "${CACHE_DIR}" .
+      du -h "${cache_archive}"
       gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}/"
       rm -f "${cache_archive}"
       ;;
@@ -161,6 +157,10 @@ main() {
       exit 1
       ;;
   esac; done
+}
+
+gsutil_with_retry() {
+    gsutil "$@" || gsutil "$@" || gsutil "$@"
 }
 
 
