@@ -100,72 +100,48 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-
 from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
 # -----------------------------------------------------------------------------
 from numpy import byte  # NOQA
-
 from numpy import short  # NOQA
-
 from numpy import intc  # NOQA
-
 from numpy import int_  # NOQA
-
 from numpy import longlong  # NOQA
-
 from numpy import intp  # NOQA
-
+from numpy import int0  # NOQA
 from numpy import int8  # NOQA
-
 from numpy import int16  # NOQA
-
 from numpy import int32  # NOQA
-
 from numpy import int64  # NOQA
 
 # -----------------------------------------------------------------------------
 # Unsigned integers
 # -----------------------------------------------------------------------------
 from numpy import ubyte  # NOQA
-
 from numpy import ushort  # NOQA
-
 from numpy import uintc  # NOQA
-
 from numpy import uint  # NOQA
-
 from numpy import ulonglong  # NOQA
-
 from numpy import uintp  # NOQA
-
+from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
-
 from numpy import uint16  # NOQA
-
 from numpy import uint32  # NOQA
-
 from numpy import uint64  # NOQA
 
 # -----------------------------------------------------------------------------
 # Floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import half  # NOQA
-
 from numpy import single  # NOQA
-
 from numpy import double  # NOQA
-
 from numpy import float_  # NOQA
-
 from numpy import longfloat  # NOQA
-
 from numpy import float16  # NOQA
-
 from numpy import float32  # NOQA
-
 from numpy import float64  # NOQA
 
 # Not supported by CuPy:
@@ -176,11 +152,11 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-
+from numpy import singlecomplex  # NOQA
+from numpy import cdouble  # NOQA
+from numpy import cfloat  # NOQA
 from numpy import complex_  # NOQA
-
 from numpy import complex64  # NOQA
-
 from numpy import complex128  # NOQA
 
 # Not supported by CuPy:
@@ -309,6 +285,10 @@ from cupy._manipulation.rearrange import flipud  # NOQA
 from cupy._manipulation.rearrange import roll  # NOQA
 from cupy._manipulation.rearrange import rot90  # NOQA
 
+# Borrowed from NumPy
+if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+    from numpy import broadcast_shapes  # NOQA
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
@@ -436,6 +416,12 @@ from cupy._indexing.insert import diag_indices_from  # NOQA
 
 from cupy._indexing.iterate import flatiter  # NOQA
 
+# Borrowed from NumPy
+from numpy import get_array_wrap  # NOQA
+from numpy import index_exp  # NOQA
+from numpy import ndindex  # NOQA
+from numpy import s_  # NOQA
+
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -457,6 +443,14 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
     .. seealso:: :func:`numpy.base_repr`
     """
     return _numpy.base_repr(number, base, padding)
+
+
+# Borrowed from NumPy
+from numpy import DataSource  # NOQA
+from numpy import get_printoptions  # NOQA
+from numpy import set_printoptions  # NOQA
+from numpy import printoptions  # NOQA
+from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -580,6 +574,7 @@ from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
 from cupy._math.sumprod import gradient  # NOQA
+from cupy._math.sumprod import trapz  # NOQA
 from cupy._math.window import bartlett  # NOQA
 from cupy._math.window import blackman  # NOQA
 from cupy._math.window import hamming  # NOQA
@@ -651,6 +646,11 @@ from cupy._math.misc import convolve  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
+
+# Borrowed from NumPy
+from numpy import disp  # NOQA
+from numpy import iterable  # NOQA
+from numpy import safe_eval  # NOQA
 
 
 # -----------------------------------------------------------------------------

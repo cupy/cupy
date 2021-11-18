@@ -45,6 +45,7 @@ cdef class Indexer:
     cdef:
         readonly Py_ssize_t size
         readonly shape_t shape
+        readonly bint _index_32_bits
 
     cdef void init(self, const shape_t& shape)
 

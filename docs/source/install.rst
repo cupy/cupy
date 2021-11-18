@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate deep neural network computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.1.0
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.2.0
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -387,9 +387,6 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
-
-.. note::
-   ROCm 4.3 is known to have an issue related to clang/HIP. If you experienced an error like ``fatal error: '__clang_hip_runtime_wrapper.h' file not found``, please try setting an environment variable ``LLVM_PATH`` (e.g., ``export LLVM_PATH="${ROCM_HOME}/llvm"``). See `#5592 <https://github.com/cupy/cupy/issues/5592#issuecomment-901136342>`_ for details.
 
 Environment Variables
 ---------------------
