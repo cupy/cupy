@@ -19,18 +19,20 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
 
     # Opaque Data Structures
     ctypedef struct cusparseLtHandle_t 'cusparseLtHandle_t':
-        uint8_t data[1024]
+        pass
     ctypedef struct cusparseLtMatDescriptor_t 'cusparseLtMatDescriptor_t':
-        uint8_t data[1024]
+        pass
     ctypedef struct cusparseLtMatmulDescriptor_t 'cusparseLtMatmulDescriptor_t':  # NOQA
-        uint8_t data[1024]
+        pass
     ctypedef struct cusparseLtMatmulAlgSelection_t 'cusparseLtMatmulAlgSelection_t':  # NOQA
-        uint8_t data[1024]
+        pass
     ctypedef struct cusparseLtMatmulPlan_t 'cusparseLtMatmulPlan_t':
-        uint8_t data[1024]
+        pass
 
     # Enumerators
     ctypedef int cusparseLtSparsity_t 'cusparseLtSparsity_t'
+    ctypedef int cusparseLtMatDescAttribute_t 'cusparseLtMatDescAttribute_t'
+    ctypedef int cusparseLtMatmulDescAttribute_t 'cusparseLtMatmulDescAttribute_t'  # NOQA
     ctypedef int cusparseOperation_t 'cusparseOperation_t'
     ctypedef int cusparseLtMatmulAlg_t 'cusparseLtMatmulAlg_t'
     ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
@@ -54,6 +56,16 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         cusparseLtSparsity_t sparsity)
     cusparseStatus_t cusparseLtMatDescriptorDestroy(
         const cusparseLtMatDescriptor_t* matDescr)
+    cusparseStatus_t cusparseLtMatDescSetAttribute(
+        const cusparseLtHandle_t* handle,
+        cusparseLtMatDescriptor_t* matDescr,
+        cusparseLtMatDescAttribute_t matAttribute,
+        const void* data, size_t dataSize)
+    cusparseStatus_t cusparseLtMatDescGetAttribute(
+        const cusparseLtHandle_t* handle,
+        const cusparseLtMatDescriptor_t* matDescr,
+        cusparseLtMatDescAttribute_t matAttribute,
+        void* data, size_t dataSize)
     cusparseStatus_t cusparseLtMatmulDescriptorInit(
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulDescriptor_t* matMulDescr,
@@ -64,6 +76,16 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const cusparseLtMatDescriptor_t* matC,
         const cusparseLtMatDescriptor_t* matD,
         cusparseComputeType computeType)
+    cusparseStatus_t cusparseLtMatmulDescSetAttribute(
+        const cusparseLtHandle_t* handle,
+        cusparseLtMatmulDescriptor_t* matmulDescr,
+        cusparseLtMatmulDescAttribute_t matmulAttribute,
+        const void* data, size_t dataSize)
+    cusparseStatus_t cusparseLtMatmulDescGetAttribute(
+        const cusparseLtHandle_t* handle,
+        const cusparseLtMatmulDescriptor_t* matmulDescr,
+        cusparseLtMatmulDescAttribute_t matmulAttribute,
+        void* data, size_t dataSize)
     cusparseStatus_t cusparseLtMatmulAlgSelectionInit(
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulAlgSelection_t* algSelection,
@@ -263,11 +285,28 @@ cpdef structuredDescriptorInit(Handle handle, MatDescriptor matDescr,
 
 cpdef matDescriptorDestroy(MatDescriptor matDescr):
     """Releases the resources used by an instance of a matrix descriptor."""
-    if CUSPARSELT_VERSION < 100:
-        raise RuntimeError(
-            'matDescriptorDestroy is supported since cuSPARSELt 0.1.0')
     status = cusparseLtMatDescriptorDestroy(
         <const cusparseLtMatDescriptor_t*> matDescr._ptr)
+    check_status(status)
+
+cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
+                          matAttribute, size_t data, size_t dataSize):
+    """Sets the attribute related to matrix descriptor."""
+    status = cusparseLtMatDescSetAttribute(
+        <const cusparseLtHandle_t*> handle._ptr,
+        <cusparseLtMatDescriptor_t*> matDescr._ptr,
+        <cusparseLtMatDescAttribute_t> matAttribute,
+        <const void*> data, dataSize)
+    check_status(status)
+
+cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
+                          matAttribute, size_t data, size_t dataSize):
+    """Gets the attribute related to matrix descriptor."""
+    status = cusparseLtMatDescGetAttribute(
+        <const cusparseLtHandle_t*> handle._ptr,
+        <const cusparseLtMatDescriptor_t*> matDescr._ptr,
+        <cusparseLtMatDescAttribute_t> matAttribute,
+        <void*> data, dataSize)
     check_status(status)
 
 cpdef matmulDescriptorInit(Handle handle,
@@ -289,6 +328,26 @@ cpdef matmulDescriptorInit(Handle handle,
         <const cusparseLtMatDescriptor_t*> matC._ptr,
         <const cusparseLtMatDescriptor_t*> matD._ptr,
         <cusparseComputeType> computeType)
+    check_status(status)
+
+cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
+                             matmulAttribute, size_t data, size_t dataSize):
+    """Sets the attribute related to matmul descriptor."""
+    status = cusparseLtMatmulDescSetAttribute(
+        <const cusparseLtHandle_t*> handle._ptr,
+        <cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
+        <cusparseLtMatmulDescAttribute_t> matmulAttribute,
+        <const void*> data, dataSize)
+    check_status(status)
+
+cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
+                             matmulAttribute, size_t data, size_t dataSize):
+    """Gets the attribute related to matmul descriptor."""
+    status = cusparseLtMatmulDescGetAttribute(
+        <const cusparseLtHandle_t*> handle._ptr,
+        <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
+        <cusparseLtMatmulDescAttribute_t> matmulAttribute,
+        <void*> data, dataSize)
     check_status(status)
 
 cpdef matmulAlgSelectionInit(Handle handle, MatmulAlgSelection algSelection,
