@@ -1,3 +1,5 @@
+import itertools
+
 import numpy
 
 from cupy import _core
@@ -41,14 +43,23 @@ def copyto(dst, src, casting='same_kind', where=None):
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
 
-    if not src_is_python_scalar and src.ndim > dst.ndim:
+    if not src_is_python_scalar:
+        # Check broadcast condition
+        # - for fast-paths and
+        # - for a better error message (than ufunc's).
         # NumPy allows stripping leading unit dimensions.
-        try:
-            src = src.squeeze(tuple(range(src.ndim - dst.ndim)))
-        except ValueError:
-            # "cannot select an axis to squeeze out
-            # which has size not equal to one"
-            pass  # raise an error later
+        if not all([
+            s in (d, 1)
+            for s, d in itertools.zip_longest(
+                reversed(src.shape), reversed(dst.shape), fillvalue=1)
+        ]):
+            raise ValueError(
+                "could not broadcast input array "
+                f"from shape {src.shape} into shape {dst.shape}")
+        squeeze_ndim = src.ndim - dst.ndim
+        if squeeze_ndim > 0:
+            # always succeeds because broadcast conition is checked.
+            src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if fusion._is_fusing():
         if where is None:
