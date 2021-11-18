@@ -69,7 +69,7 @@
   rocm: null
   nccl: "2.8"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.1"
   python: "3.7"
   numpy: "1.18"
@@ -107,7 +107,7 @@
   rocm: null
   nccl: "2.11"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.2"
   python: "3.10"
   numpy: "1.21"
@@ -127,7 +127,7 @@
 #   rocm: null
 #   nccl: "2.11"
 #   cutensor: "1.3"
-#   cusparselt: "0.1.0"
+#   cusparselt: "0.2.0"
 #   cudnn: "8.2"
 #   python: "3.9"
 #   numpy: "1.21"
@@ -220,7 +220,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.2"
   python: "3.9"
   numpy: "1.21"
@@ -248,7 +248,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.2"
   python: "3.8"
   numpy: "1.20"
@@ -272,7 +272,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.2"
   python: "3.9"
   numpy: "pre"
