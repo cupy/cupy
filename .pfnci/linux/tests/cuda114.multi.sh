@@ -12,5 +12,5 @@ export NVCC="ccache nvcc"
 export CUPY_ACCELERATORS="cutensor,cub"
 
 "$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
+"$ACTIONS/unittest.sh" "not slow and multi_gpu"
 "$ACTIONS/cleanup.sh"
