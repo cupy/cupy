@@ -10,5 +10,5 @@ ACTIONS="$(dirname $0)/actions"
 export NVCC="ccache nvcc"
 
 "$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow"
+"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
 "$ACTIONS/cleanup.sh"
