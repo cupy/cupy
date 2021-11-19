@@ -9,7 +9,8 @@ cdef _create_bit_op(name, op, no_bool, doc=''):
         types + ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
                  'LL->L', 'qq->q', 'QQ->Q'),
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc,
+        embed_signature=name)
 
 
 cdef _bitwise_and = _create_bit_op(

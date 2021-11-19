@@ -1049,7 +1049,8 @@ cdef class ufunc:
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
-            default_casting=None, *, _Ops out_ops=None, cutensor_op=None):
+            default_casting=None, *, _Ops out_ops=None, cutensor_op=None,
+            embed_signature=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1059,11 +1060,20 @@ cdef class ufunc:
         self._out_ops = out_ops
         self._preamble = preamble
         self._loop_prep = loop_prep
-        self.__doc__ = doc
+
         if default_casting is None:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
+
+        if embed_signature is None:
+            self.__doc__ = doc
+        else:
+            self.__doc__ = (
+                _ufunc_doc_signature_formatter(self, embed_signature) +
+                '\n\n' + doc
+            )
+
         if cutensor_op is not None and cuda_cutensor is not None:
             self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
                 getattr(cuda_cutensor, cutensor_op[0]),
@@ -1260,6 +1270,42 @@ cdef class ufunc:
         return kern
 
 
+def _ufunc_doc_signature_formatter(ufunc, name):
+    # Based on implementation in NumPy (numpy/core/_internal.py)
+
+    # input arguments are simple
+    if ufunc.nin == 1:
+        in_args = 'x'
+    else:
+        in_args = ', '.join(f'x{i+1}' for i in range(ufunc.nin))
+
+    # output arguments are both keyword or positional
+    if ufunc.nout == 0:
+        out_args = ', /, out=()'
+    elif ufunc.nout == 1:
+        out_args = ', /, out=None'
+    else:
+        out_args = '[, {positional}], / [, out={default}]'.format(
+            positional=', '.join(
+                'out{}'.format(i+1) for i in range(ufunc.nout)),
+            default=repr((None,)*ufunc.nout)
+        )
+
+    # keyword only args depend on whether this is a gufunc
+    kwargs = (
+        f", casting='{ufunc._default_casting}'"
+        ", dtype=None"
+    )
+
+    # join all the parts together
+    return '{name}({in_args}{out_args}, *{kwargs})'.format(
+        name=name,
+        in_args=in_args,
+        out_args=out_args,
+        kwargs=kwargs
+    )
+
+
 cdef class _Op:
 
     def __init__(
@@ -1407,10 +1453,10 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                    default_casting=None, loop_prep='', out_ops=None,
-                   cutensor_op=None):
+                   cutensor_op=None, embed_signature=None):
     ops_ = _Ops.from_tuples(ops, routine)
     _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
-        cutensor_op=cutensor_op)
+        cutensor_op=cutensor_op, embed_signature=embed_signature)

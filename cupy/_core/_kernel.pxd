@@ -146,7 +146,8 @@ cdef class _Ops:
 
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
-                   default_casting=*, loop_prep=*, out_ops=*, cutensor_op=*)
+                   default_casting=*, loop_prep=*, out_ops=*, cutensor_op=*,
+                   embed_signature=*)
 
 cdef tuple _get_arginfos(list args)
 
