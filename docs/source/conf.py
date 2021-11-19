@@ -18,6 +18,9 @@ import os
 import pkg_resources
 import sys
 
+import sphinx
+import cupy
+
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import _comparison_generator
@@ -487,5 +490,20 @@ def remove_array_api_module_docstring(app, what, name, obj, options, lines):
     if what == "module" and 'array_api' in name:
         del lines[:]
 
+
+def _patch_function_documenter():
+    # Monkeypatch FunctionDocumenter to let autosummary document ufuncs with
+    # `autofunction` instead of `autodata` so that signatures are documented.
+    documenter = sphinx.ext.autodoc.FunctionDocumenter
+    orig = documenter.can_document_member
+    def _can_document_member(member, *args, **kwargs):
+        if isinstance(member, cupy.ufunc):
+            return True
+        return orig(member, *args, **kwargs)
+    documenter.can_document_member = _can_document_member
+
+
 def setup(app):
+    _patch_function_documenter()
+
     app.connect("autodoc-process-docstring", remove_array_api_module_docstring)
