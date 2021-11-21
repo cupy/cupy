@@ -34,18 +34,20 @@ if [[ "${TARGET}" == "cuda115" ]]; then
     fi
 fi
 
+gcloud auth configure-docker
+
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
 CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_get build test 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 echo "****************************************************************************************************"
-echo "Exit with status ${test_retval}"
+echo "Build & Test: Exit with status ${test_retval}"
 
 if [[ "${pull_req}" == "" ]]; then
     # Upload cache when testing a branch, even when test failed.
     echo "Uploading cache and Docker image..."
     CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put push | tee --append "${LOG_FILE}"
-    echo "Upload exit with status ${PIPESTATUS[0]}"
+    echo "Upload: Exit with status ${PIPESTATUS[0]}"
 
     # Notify.
     if [[ ${test_retval} != 0 ]]; then
