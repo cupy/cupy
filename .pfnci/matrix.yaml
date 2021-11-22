@@ -87,7 +87,7 @@
   rocm: null
   nccl: "2.8"
   cutensor: "1.3"
-  cusparselt: "0.2.0"
+  cusparselt: "0.1.0"
   cudnn: "8.1"
   python: "3.7"
   numpy: "1.18"
@@ -137,7 +137,7 @@
   rocm: null
   nccl: "2.11"
   cutensor: "1.3"
-  cusparselt: "0.2.0"
+  cusparselt: "0.1.0"
   cudnn: "8.3"
   python: "3.10"
   numpy: "1.21"
@@ -163,7 +163,7 @@
 #   rocm: null
 #   nccl: "2.11"
 #   cutensor: "1.3"
-#   cusparselt: "0.2.0"
+#   cusparselt: "0.1.0"
 #   cudnn: "8.3"
 #   python: "3.9"
 #   numpy: "1.21"
@@ -186,6 +186,7 @@
 # ROCm 4.0 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-0"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-0,label=mnj-mi50/"
   target: "rocm-4-0"
   system: "linux"
   os: "ubuntu:20.04"
@@ -205,6 +206,7 @@
 
 # ROCm 4.2 | Linux
 - project: "cupy.linux.rocm-4-2"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-2,label=mnj-mi50/"
   target: "rocm-4-2"
   system: "linux"
   os: "ubuntu:20.04"
@@ -225,6 +227,7 @@
 # ROCm 4.3 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-4-3"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
   target: "rocm-4-3"
   system: "linux"
   os: "ubuntu:20.04"
@@ -256,7 +259,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.2.0"
+  cusparselt: "0.1.0"
   cudnn: "8.3"
   python: "3.9"
   numpy: "1.21"
@@ -284,7 +287,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.2.0"
+  cusparselt: "0.1.0"
   cudnn: "8.3"
   python: "3.8"
   numpy: "1.20"
@@ -308,7 +311,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.2.0"
+  cusparselt: "0.1.0"
   cudnn: "8.3"
   python: "3.9"
   numpy: "pre"

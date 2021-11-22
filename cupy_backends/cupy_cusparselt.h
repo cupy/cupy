@@ -7,7 +7,7 @@
 
 #elif !defined(CUPY_NO_CUDA)
 
-#include <cusparseLt.h>
+#include "cuda/cupy_cusparselt.h"
 
 #else
 
