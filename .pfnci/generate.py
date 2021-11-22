@@ -25,7 +25,15 @@ class Matrix:
         return envvars
 
     def __getattr__(self, key):
-        return self._rec[key]
+        if key in self._rec:
+            return self._rec[key]
+        raise AttributeError
+
+    def copy(self):
+        return Matrix(self._rec.copy())
+
+    def update(self, matrix: 'Matrix'):
+        self._rec.update(matrix._rec)
 
 
 class LinuxGenerator:
@@ -244,9 +252,16 @@ class LinuxGenerator:
             ]
 
         lines += ['"$ACTIONS/build.sh"']
-        if matrix.test in ('unit', 'slow'):
-            # pytest marker
-            spec = 'not slow' if matrix.test == 'unit' else 'slow'
+        if matrix.test.startswith('unit'):
+            if matrix.test == 'unit':
+                spec = 'not slow and not multi_gpu'
+            elif matrix.test == 'unit-multi':
+                spec = 'not slow and multi_gpu'
+            elif matrix.test == 'unit-slow':
+                # Slow tests may use multiple GPUs.
+                spec = 'slow'
+            else:
+                assert False
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
@@ -371,7 +386,7 @@ def validate_schema(schema: SchemaType):
                             f'while parsing schema {key}:{value}')
 
 
-def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]):
+def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
     # Validate overall consistency
     project_seen = set()
     system_target_seen = set()
@@ -431,6 +446,18 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]):
                         f'not supported by {key} {value}')
 
 
+def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
+    prj2mat = {m.project: m for m in matrixes}
+    for matrix in [m for m in matrixes if hasattr(m, '_inherits')]:
+        parent = prj2mat[matrix._inherits]
+        log(f'Project {matrix.project} inherits from {parent.project}')
+        assert not hasattr(parent, '_inherits'), 'no nested inheritance'
+        # Fill values missing in the matrix with parent's values
+        inherited = parent.copy()
+        inherited.update(matrix)
+        matrix.update(inherited)
+
+
 def log(msg: str) -> None:
     print(msg)
 
@@ -457,6 +484,7 @@ def main(argv: List[str]) -> int:
     with open(options.matrix) as f:
         for matrix_record in yaml.load(f, Loader=yaml.Loader):
             matrixes.append(Matrix(matrix_record))
+    expand_inherited_matrixes(matrixes)
     validate_matrixes(schema, matrixes)
 
     output = {}

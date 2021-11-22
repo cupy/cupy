@@ -9,8 +9,8 @@ ACTIONS="$(dirname $0)/actions"
 
 export NVCC="ccache nvcc"
 
-export CUPY_ACCELERATORS="cutensor,cub"
+export CUPY_ACCELERATORS="cub,cutensor"
 
 "$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
+"$ACTIONS/unittest.sh" "not slow and multi_gpu"
 "$ACTIONS/cleanup.sh"
