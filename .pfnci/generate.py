@@ -346,8 +346,11 @@ class CoverageGenerator:
         # Add links to FlexCI projects.
         lines += ['']
         for i, m in enumerate(self.matrixes):
+            url = f'https://ci.preferred.jp/{m.project}/'
+            if hasattr(m, '_url'):
+                url = m._url
             lines += [
-                f'[t{i}]:https://ci.preferred.jp/{m.project}/',
+                f'[t{i}]:{url}',
                 f'[d{i}]:{m.system}/tests/{m.target}.Dockerfile',
                 f'[s{i}]:{m.system}/tests/{m.target}.sh',
             ]
