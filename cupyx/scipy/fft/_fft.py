@@ -13,12 +13,6 @@ from cupy.fft import fftshift, ifftshift, fftfreq, rfftfreq
 
 from cupyx.scipy.fftpack import get_fft_plan
 
-__all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
-           'rfft', 'irfft', 'rfft2', 'irfft2', 'rfftn', 'irfftn',
-           'hfft', 'ihfft', 'hfft2', 'ihfft2', 'hfftn', 'ihfftn',
-           'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq',
-           'get_fft_plan']
-
 _scipy_150 = False
 try:
     import scipy
