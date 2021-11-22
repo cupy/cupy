@@ -22,6 +22,12 @@
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
+# CUDA 10.2 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda102.multi"
+  _inherits: "cupy.linux.cuda102"
+  target: "cuda102.multi"
+  test: "unit-multi"
+
 # CUDA 11.0 | Linux
 - project: "cupy.linux.cuda110"
   target: "cuda110"
@@ -40,6 +46,12 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
+
+# CUDA 11.0 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda110.multi"
+  _inherits: "cupy.linux.cuda110"
+  target: "cuda110.multi"
+  test: "unit-multi"
 
 # CUDA 11.1 | Linux
 - project: "cupy.linux.cuda111"
@@ -60,6 +72,12 @@
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
+# CUDA 11.1 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda111.multi"
+  _inherits: "cupy.linux.cuda111"
+  target: "cuda111.multi"
+  test: "unit-multi"
+
 # CUDA 11.2 | Linux
 - project: "cupy.linux.cuda112"
   target: "cuda112"
@@ -69,7 +87,7 @@
   rocm: null
   nccl: "2.8"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.1"
   python: "3.7"
   numpy: "1.18"
@@ -78,6 +96,12 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: null
   test: "unit"
+
+# CUDA 11.2 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda112.multi"
+  _inherits: "cupy.linux.cuda112"
+  target: "cuda112.multi"
+  test: "unit-multi"
 
 # CUDA 11.3 | Linux
 - project: "cupy.linux.cuda113"
@@ -98,6 +122,12 @@
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
+# CUDA 11.3 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda113.multi"
+  _inherits: "cupy.linux.cuda113"
+  target: "cuda113.multi"
+  test: "unit-multi"
+
 # CUDA 11.4 | Linux
 - project: "cupy.linux.cuda114"
   target: "cuda114"
@@ -107,7 +137,7 @@
   rocm: null
   nccl: "2.11"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"
   numpy: "1.21"
@@ -116,6 +146,12 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
+
+# CUDA 11.4 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda114.multi"
+  _inherits: "cupy.linux.cuda114"
+  target: "cuda114.multi"
+  test: "unit-multi"
 
 # CUDA 11.5 | Linux
 # The latest CUDA version matrix is intended to cover the highest supported combination.
@@ -127,7 +163,7 @@
 #   rocm: null
 #   nccl: "2.11"
 #   cutensor: "1.3"
-#   cusparselt: "0.1.0"
+#   cusparselt: "0.2.0"
 #   cudnn: "8.3"
 #   python: "3.9"
 #   numpy: "1.21"
@@ -220,7 +256,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.9"
   numpy: "1.21"
@@ -228,7 +264,7 @@
   optuna: "2"
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cutensor,cub"
-  test: "slow"
+  test: "unit-slow"
 
 ###############################################################################
 # Example
@@ -248,7 +284,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.8"
   numpy: "1.20"
@@ -272,7 +308,7 @@
   rocm: null
   nccl: "2.10"
   cutensor: "1.3"
-  cusparselt: "0.1.0"
+  cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.9"
   numpy: "pre"
