@@ -951,8 +951,8 @@ cdef _scatter_op(ndarray a, slices, value, op):
                 _scatter_op_single(a, s, value, axis, axis + 1, op)
         else:
             # scatter_op with multiple integer arrays
-            reduced_idx, start, stop =\
-                _prepare_multiple_array_indexing(a, axis, slice_list)
+            reduced_idx, start, stop = _prepare_multiple_array_indexing(
+                a, axis, slice_list)
             _scatter_op_single(a, reduced_idx, value, start, stop, op)
         return
 
@@ -1072,5 +1072,6 @@ cdef tuple _prepare_multiple_array_indexing(
 
 
 cdef ndarray _getitem_multiple(ndarray a, Py_ssize_t start, list slices):
-    reduced_idx, start, stop = _prepare_multiple_array_indexing(a, start, slices)
+    reduced_idx, start, stop = _prepare_multiple_array_indexing(
+        a, start, slices)
     return _take(a, reduced_idx, start, stop)
