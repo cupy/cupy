@@ -86,6 +86,7 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool_))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_)},
+    {'shape': (2, 3, 4), 'indexes': numpy.empty((0, 0, 4), bool)},
     # multiple masks
     {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
     {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
@@ -96,6 +97,8 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (2, 3, 4),
      'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True])
      },
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.empty((0, 3), bool), numpy.empty(0, bool))},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis},
     {'shape': (), 'indexes': ()},
@@ -323,6 +326,9 @@ class TestArrayAdvancedIndexingOverflow:
      'indexes': ([True, True], [[True, True, False, False]])},
     {'shape': (2, 3, 4),
      'indexes': ([True, True], [[True], [True], [False]])},
+    {'shape': (2, 3, 4), 'indexes': numpy.empty((0, 1), bool)},
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.empty(0, bool), numpy.empty((0, 2), bool))},
 )
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem:
@@ -467,6 +473,7 @@ class TestArrayInvalidValueAdvGetitem:
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_),
      'value': numpy.random.uniform(size=(4,))},
+    {'shape': (2, 3, 4), 'indexes': numpy.empty((0, 0, 4), bool), 'value': 1},
     # multiple masks
     {'shape': (2, 3, 4), 'indexes': (True, [True, False]), 'value': 1},
     {'shape': (2, 3, 4), 'indexes': (False, [True, False]), 'value': 1},
@@ -479,6 +486,9 @@ class TestArrayInvalidValueAdvGetitem:
     {'shape': (2, 3, 4),
      'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True]),
      'value': [[1, 2, 3], [4, 5, 6]]},
+    {'shape': (2, 3, 4),
+     'indexes': (numpy.empty((0, 3), bool), numpy.empty(0, bool)),
+     'value': 1},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis, 'value': 1},
     {'shape': (), 'indexes': (), 'value': 1},

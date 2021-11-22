@@ -362,13 +362,8 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             index_list.append((s, axis_v, k))
             i += 1
             kind = ord(s.dtype.kind)
-            if kind == b'b' and s.shape != a.shape[axis_a:axis_a + k]:
-                raise IndexError(
-                    'boolean index did not match indexed array '
-                    f'along dimension {tuple(range(axis_a, axis_a + k))}; '
-                    f'dimension is {a.shape[axis_a:axis_a + k]} '
-                    f'but corresponding boolean dimension is {s.shape}'
-                )
+            if kind == b'b':
+                _check_mask_shape(a, s, axis_a)
             for _ in range(k):
                 shape.push_back(a._shape[axis_a])
                 strides.push_back(a._strides[axis_a])
@@ -695,6 +690,18 @@ _getitem_mask_kernel = ElementwiseKernel(
     'cupy_getitem_mask')
 
 
+cdef _check_mask_shape(ndarray a, ndarray mask, Py_ssize_t axis):
+    cdef Py_ssize_t i, a_sh, m_sh
+    for i, m_sh in enumerate(mask._shape):
+        a_sh = a._shape[axis + i]
+        if m_sh not in (0, a_sh):
+            raise IndexError(
+                'boolean index did not match indexed array along dimension '
+                f'{axis + i}; dimension is {a_sh} '
+                f'but corresponding boolean dimension is {m_sh}'
+            )
+
+
 cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
@@ -711,10 +718,6 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         masked_shape = lshape + (0,) + rshape
         mask_br = _manipulation._reshape(mask, masked_shape)
         return mask_br, mask_br, masked_shape
-
-    for i, s in enumerate(mask._shape):
-        if a_shape[axis + i] != s:
-            raise IndexError('boolean index did not match')
 
     # Get number of True in the mask to determine the shape of the array
     # after masking.
