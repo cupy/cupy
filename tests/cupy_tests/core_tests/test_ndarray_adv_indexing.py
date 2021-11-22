@@ -94,7 +94,8 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True)},
     {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False)},
     {'shape': (2, 3, 4),
-     'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True])},
+     'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True])
+     },
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis},
     {'shape': (), 'indexes': ()},
@@ -466,8 +467,10 @@ class TestArrayInvalidValueAdvGetitem:
     {'shape': (2, 3, 4), 'indexes': (False, [True, False]), 'value': 1},
     {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2)), 'value': 1},
     {'shape': (2, 3, 4), 'indexes': (False, [[1]], slice(1, 2)), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), True), 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': (True, [[1]], slice(1, 2), False), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (True, [[1]], slice(1, 2), True), 'value': 1},
+    {'shape': (2, 3, 4),
+     'indexes': (True, [[1]], slice(1, 2), False), 'value': 1},
     {'shape': (2, 3, 4),
      'indexes': (Ellipsis, [[1, 1, -3], [0, 2, 2]], [True, False, True, True]),
      'value': [[1, 2, 3], [4, 5, 6]]},
