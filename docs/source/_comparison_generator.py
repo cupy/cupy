@@ -118,7 +118,7 @@ _dtype_rec = (
 _float_error_state = (
     'Floating point error handling depends on CPU-specific features'
     ' which is not available in GPU.')
-_byte_order = 'Not supported as GPUs only support little-endian computations.'
+_byte_order = 'Not supported as GPUs only support little-endian byte-encoding.'
 
 
 def generate():
