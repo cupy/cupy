@@ -181,6 +181,7 @@ class LinuxGenerator:
                     packages.append(f'libnccl{major}={spec}+cuda{cuda}')
                     packages.append(f'libnccl-dev={spec}+cuda{cuda}')
                 else:
+                    packages.append(f'libnccl-{spec}-*+cuda{cuda}')
                     packages.append(f'libnccl-devel-{spec}-*+cuda{cuda}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
@@ -189,6 +190,7 @@ class LinuxGenerator:
                     packages.append(f'libcutensor{major}={spec}')
                     packages.append(f'libcutensor-dev={spec}')
                 else:
+                    packages.append(f'libcutensor{major}-{spec}')
                     packages.append(f'libcutensor-devel-{spec}')
             if cusparselt is not None:
                 spec = self.schema['cusparselt'][cusparselt]['spec']
@@ -197,6 +199,7 @@ class LinuxGenerator:
                     packages.append(f'libcusparselt{major}={spec}')
                     packages.append(f'libcusparselt-dev={spec}')
                 else:
+                    packages.append(f'libcusparselt{major}-{spec}')
                     packages.append(f'libcusparselt-devel-{spec}')
             if cudnn is not None:
                 spec = self.schema['cudnn'][cudnn]['spec']
@@ -209,6 +212,8 @@ class LinuxGenerator:
                     packages.append(f'libcudnn{major}={spec}+cuda{alias}')
                     packages.append(f'libcudnn{major}-dev={spec}+cuda{alias}')
                 else:
+                    packages.append(
+                        f'libcudnn{major}-{spec}-*.cuda{alias}')
                     packages.append(
                         f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
