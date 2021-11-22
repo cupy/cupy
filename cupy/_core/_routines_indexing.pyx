@@ -361,6 +361,14 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             k = array_ndims[i]
             index_list.append((s, axis_v, k))
             i += 1
+            kind = ord(s.dtype.kind)
+            if kind == b'b' and s.shape != a.shape[axis_a:axis_a + k]:
+                raise IndexError(
+                    'boolean index did not match indexed array '
+                    f'along dimension {tuple(range(axis_a, axis_a + k))}; '
+                    f'dimension is {a.shape[axis_a:axis_a + k]} '
+                    f'but corresponding boolean dimension is {s.shape}'
+                )
             for _ in range(k):
                 shape.push_back(a._shape[axis_a])
                 strides.push_back(a._strides[axis_a])

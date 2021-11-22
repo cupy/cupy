@@ -318,6 +318,11 @@ class TestArrayAdvancedIndexingOverflow:
     {'shape': (0, 1), 'indexes': (0, Ellipsis)},
     {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
     {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float64)},
+    {'shape': (3, 4), 'indexes': ([1, 0], [True, True])},
+    {'shape': (2, 3, 4),
+     'indexes': ([True, True], [[True, True, False, False]])},
+    {'shape': (2, 3, 4),
+     'indexes': ([True, True], [[True], [True], [False]])},
 )
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem:
