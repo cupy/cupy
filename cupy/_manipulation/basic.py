@@ -40,6 +40,16 @@ def copyto(dst, src, casting='same_kind', where=None):
     if not can_cast:
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
+
+    if not src_is_python_scalar and src.ndim > dst.ndim:
+        # NumPy allows stripping leading unit dimensions.
+        try:
+            src = src.squeeze(tuple(range(src.ndim - dst.ndim)))
+        except ValueError:
+            # "cannot select an axis to squeeze out
+            # which has size not equal to one"
+            pass  # raise an error later
+
     if fusion._is_fusing():
         if where is None:
             _core.elementwise_copy(src, dst)

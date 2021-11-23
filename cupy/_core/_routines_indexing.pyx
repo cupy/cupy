@@ -49,6 +49,8 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
 
 
 cdef _ndarray_setitem(ndarray self, slices, value):
+    if isinstance(value, ndarray):
+        value = _squeeze_leading_unit_dims(value)
     _scatter_op(self, slices, value, 'update')
 
 
@@ -217,6 +219,28 @@ cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
 
 
 # private/internal
+
+
+cdef ndarray _squeeze_leading_unit_dims(ndarray src):
+    # remove leading 1s from the shape greedily.
+    # TODO(kataoka): compute requested ndim and do not remove too much for
+    # printing correct shape in error message.
+    cdef Py_ssize_t i
+    for i in range(src.ndim):
+        if src._shape[i] != 1:
+            break
+    else:
+        i = src.ndim
+
+    if i == 0:
+        return src
+
+    src = src.view()
+    # del src._shape[:i]
+    # del src._strides[:i]
+    src._shape.erase(src._shape.begin(), src._shape.begin()+i)
+    src._strides.erase(src._strides.begin(), src._strides.begin()+i)
+    return src
 
 
 cpdef list _prepare_slice_list(slices):
