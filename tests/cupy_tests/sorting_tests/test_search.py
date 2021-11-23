@@ -743,3 +743,16 @@ class TestSearchSortedWithSorter:
             sorter = xp.array([], dtype=xp.float64)
             with pytest.raises(TypeError):
                 xp.searchsorted(bins, x, sorter=sorter)
+
+@testing.gpu
+class TestMaskIndices:
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices(self, xp):
+        arr = testing.shaped_sparse_random((10, 10), density=0.5).todense()
+        if xp is numpy:
+            arr = cupy.asnumpy(arr)
+        return xp.mask_indices(
+            10,
+            lambda n, k=None: arr
+        )
