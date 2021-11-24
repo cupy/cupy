@@ -412,6 +412,4 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
     return y
 
 
-
-
 # TODO(okuta): Implement extract
