@@ -298,11 +298,16 @@ def _solve(a, b):
     _assert_stacked_square(a)
     _, result_t = _commonType(a, b)
 
-    # (M,) -> (M, 1)
     if b.ndim == 1:
+        # (M,) -> (M, 1)
         old_shape = b.shape
         b = b.reshape(-1, 1)
+    elif b.ndim == a.ndim - 1:
+        # x1 has shape (M, M) or (..., M, M)
+        raise ValueError('x2 must have shape (M,) or (..., M, K); '
+                         '(..., M) is not allowed')
     else:
+        # (..., M, K) => no change
         old_shape = None
 
     r = np.linalg.solve(a, b).astype(result_t, copy=False)
