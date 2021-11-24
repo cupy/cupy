@@ -1037,3 +1037,57 @@ class TestGradientErrors:
             x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
             with pytest.raises(TypeError):
                 xp.gradient(x)
+
+
+class TestTrapz:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_1dim(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_1dim_with_x(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        x = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, x=x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_1dim_with_dx(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, dx=0.1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_2dim_without_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.trapz(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.trapz(a, axis=-2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        x = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, x=x, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.trapz(a, dx=0.1, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    def test_trapz_1dim_with_x_and_dx(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        x = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, x=x, dx=0.1)

@@ -2,7 +2,8 @@
 Upgrade Guide
 =============
 
-This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
+This page covers changes introduced in each major version that users should know when migrating from older releases.
+Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
 CuPy v10
 ========
@@ -362,6 +363,8 @@ For performance reasons, :func:`cupy.count_nonzero` has been changed to return z
 See the discussion in `#154 <https://github.com/cupy/cupy/pull/154>`_ for more details.
 
 
+.. _compatibility_matrix:
+
 Compatibility Matrix
 ====================
 
@@ -371,7 +374,7 @@ Compatibility Matrix
    * - CuPy
      - CC [1]_
      - CUDA
-     - ROCm 
+     - ROCm
      - cuTENSOR
      - NCCL
      - cuDNN

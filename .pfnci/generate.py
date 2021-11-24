@@ -25,7 +25,15 @@ class Matrix:
         return envvars
 
     def __getattr__(self, key):
-        return self._rec[key]
+        if key in self._rec:
+            return self._rec[key]
+        raise AttributeError
+
+    def copy(self):
+        return Matrix(self._rec.copy())
+
+    def update(self, matrix: 'Matrix'):
+        self._rec.update(matrix._rec)
 
 
 class LinuxGenerator:
@@ -173,6 +181,7 @@ class LinuxGenerator:
                     packages.append(f'libnccl{major}={spec}+cuda{cuda}')
                     packages.append(f'libnccl-dev={spec}+cuda{cuda}')
                 else:
+                    packages.append(f'libnccl-{spec}-*+cuda{cuda}')
                     packages.append(f'libnccl-devel-{spec}-*+cuda{cuda}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
@@ -181,6 +190,7 @@ class LinuxGenerator:
                     packages.append(f'libcutensor{major}={spec}')
                     packages.append(f'libcutensor-dev={spec}')
                 else:
+                    packages.append(f'libcutensor{major}-{spec}')
                     packages.append(f'libcutensor-devel-{spec}')
             if cusparselt is not None:
                 spec = self.schema['cusparselt'][cusparselt]['spec']
@@ -189,6 +199,7 @@ class LinuxGenerator:
                     packages.append(f'libcusparselt{major}={spec}')
                     packages.append(f'libcusparselt-dev={spec}')
                 else:
+                    packages.append(f'libcusparselt{major}-{spec}')
                     packages.append(f'libcusparselt-devel-{spec}')
             if cudnn is not None:
                 spec = self.schema['cudnn'][cudnn]['spec']
@@ -201,6 +212,8 @@ class LinuxGenerator:
                     packages.append(f'libcudnn{major}={spec}+cuda{alias}')
                     packages.append(f'libcudnn{major}-dev={spec}+cuda{alias}')
                 else:
+                    packages.append(
+                        f'libcudnn{major}-{spec}-*.cuda{alias}')
                     packages.append(
                         f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
@@ -244,9 +257,16 @@ class LinuxGenerator:
             ]
 
         lines += ['"$ACTIONS/build.sh"']
-        if matrix.test in ('unit', 'slow'):
-            # pytest marker
-            spec = 'not slow' if matrix.test == 'unit' else 'slow'
+        if matrix.test.startswith('unit'):
+            if matrix.test == 'unit':
+                spec = 'not slow and not multi_gpu'
+            elif matrix.test == 'unit-multi':
+                spec = 'not slow and multi_gpu'
+            elif matrix.test == 'unit-slow':
+                # Slow tests may use multiple GPUs.
+                spec = 'slow'
+            else:
+                assert False
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
@@ -326,8 +346,11 @@ class CoverageGenerator:
         # Add links to FlexCI projects.
         lines += ['']
         for i, m in enumerate(self.matrixes):
+            url = f'https://ci.preferred.jp/{m.project}/'
+            if hasattr(m, '_url'):
+                url = m._url
             lines += [
-                f'[t{i}]:https://ci.preferred.jp/{m.project}/',
+                f'[t{i}]:{url}',
                 f'[d{i}]:{m.system}/tests/{m.target}.Dockerfile',
                 f'[s{i}]:{m.system}/tests/{m.target}.sh',
             ]
@@ -371,7 +394,7 @@ def validate_schema(schema: SchemaType):
                             f'while parsing schema {key}:{value}')
 
 
-def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]):
+def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
     # Validate overall consistency
     project_seen = set()
     system_target_seen = set()
@@ -431,6 +454,18 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]):
                         f'not supported by {key} {value}')
 
 
+def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
+    prj2mat = {m.project: m for m in matrixes}
+    for matrix in [m for m in matrixes if hasattr(m, '_inherits')]:
+        parent = prj2mat[matrix._inherits]
+        log(f'Project {matrix.project} inherits from {parent.project}')
+        assert not hasattr(parent, '_inherits'), 'no nested inheritance'
+        # Fill values missing in the matrix with parent's values
+        inherited = parent.copy()
+        inherited.update(matrix)
+        matrix.update(inherited)
+
+
 def log(msg: str) -> None:
     print(msg)
 
@@ -457,6 +492,7 @@ def main(argv: List[str]) -> int:
     with open(options.matrix) as f:
         for matrix_record in yaml.load(f, Loader=yaml.Loader):
             matrixes.append(Matrix(matrix_record))
+    expand_inherited_matrixes(matrixes)
     validate_matrixes(schema, matrixes)
 
     output = {}
