@@ -204,3 +204,33 @@ class TestArrayIndex(unittest.TestCase):
     def test_T_vector(self, xp):
         a = testing.shaped_arange((4,), xp)
         return a.T
+
+
+class TestSetItemCompatBroadcast:
+    @testing.numpy_cupy_array_equal()
+    def test_simple(self, xp):
+        dtype = int
+        a = xp.zeros(4, dtype)
+        a[:] = testing.shaped_arange((1, 4), xp, dtype)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_other1(self, xp):
+        dtype = int
+        a = xp.zeros((2, 1, 3), dtype)
+        a[:] = testing.shaped_arange((1, 2, 1, 3), xp, dtype)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_0d(self, xp):
+        dtype = int
+        a = xp.zeros((), dtype)
+        a[...] = testing.shaped_arange((1, 1), xp, dtype)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_remain0d(self, xp):
+        dtype = int
+        a = xp.zeros((2, 3, 4), dtype)
+        a[0, 1, 2] = testing.shaped_arange((1, 1, 1), xp, dtype)
+        return a
