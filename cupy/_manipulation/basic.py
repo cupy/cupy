@@ -44,15 +44,9 @@ def copyto(dst, src, casting='same_kind', where=None):
                         (src_dtype, dst.dtype, casting))
 
     if fusion._is_fusing():
-        # NumPy allows stripping leading unit dimensions.
-        if src.ndim > dst.ndim:
-            # Fusion array proxy does not currently support `.shape`
-            try:
-                src = src.squeeze(tuple(range(src.ndim - dst.ndim)))
-            except ValueError:
-                # "cannot select an axis to squeeze out
-                # which has size not equal to one"
-                pass  # raise an error later
+        # TODO(kataoka): NumPy allows stripping leading unit dimensions.
+        # But fusion array proxy does not currently support
+        # `shape` and `squeeze`.
 
         if where is None:
             _core.elementwise_copy(src, dst)
