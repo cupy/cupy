@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools
+
 from ._dtypes import _floating_dtypes, _numeric_dtypes
 from ._array_object import Array
 
@@ -9,8 +11,7 @@ if TYPE_CHECKING:
 
 from typing import NamedTuple
 
-import numpy.linalg
-import numpy as np
+import cupy as np
 
 class EighResult(NamedTuple):
     eigenvalues: Array
@@ -286,34 +287,27 @@ def slogdet(x: Array, /) -> SlogdetResult:
 # https://github.com/numpy/numpy/issues/15349 and
 # https://github.com/data-apis/array-api/issues/285.
 
-# To workaround this, the below is the code from np.linalg.solve except
-# only calling solve1 in the exactly 1D case.
+# Note: The impl below is deviated from numpy.array_api's.
 def _solve(a, b):
-    from ..linalg.linalg import (_makearray, _assert_stacked_2d,
-                                 _assert_stacked_square, _commonType,
-                                 isComplexType, get_linalg_error_extobj,
-                                 _raise_linalgerror_singular)
-    from ..linalg import _umath_linalg
+    from cupy.linalg._util import (
+        _assert_stacked_2d, _assert_stacked_square, linalg_common_type)
 
-    a, _ = _makearray(a)
+    _commonType = functools.partial(linalg_common_type, reject_float16=False)
+
     _assert_stacked_2d(a)
     _assert_stacked_square(a)
-    b, wrap = _makearray(b)
-    t, result_t = _commonType(a, b)
+    _, result_t = _commonType(a, b)
 
-    # This part is different from np.linalg.solve
+    # (M,) -> (M, 1)
     if b.ndim == 1:
-        gufunc = _umath_linalg.solve1
+        old_shape = b.shape
+        b = b.reshape(-1, 1)
     else:
-        gufunc = _umath_linalg.solve
+        old_shape = None
 
-    # This does nothing currently but is left in because it will be relevant
-    # when complex dtype support is added to the spec in 2022.
-    signature = 'DD->D' if isComplexType(t) else 'dd->d'
-    extobj = get_linalg_error_extobj(_raise_linalgerror_singular)
-    r = gufunc(a, b, signature=signature, extobj=extobj)
-
-    return wrap(r.astype(result_t, copy=False))
+    r = np.linalg.solve(a, b).astype(result_t, copy=False)
+    r = r.reshape(old_shape) if old_shape else r
+    return r
 
 def solve(x1: Array, x2: Array, /) -> Array:
     """
