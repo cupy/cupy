@@ -354,17 +354,13 @@ class CachedCudaModule:
 
         mod = function.Module()
 
-        if backend == 'nvcc':
-            pass
-        elif backend == 'nvrtc':
+        if (name_expressions is not None) and len(name_expressions) > 0:
             mapping = cached_kernel.mapping
             if (mapping is None):
                 return None
             if set(name_expressions).difference(mapping.keys()):
                 return None
             mod._set_mapping(mapping)
-        else:
-            raise NotImplementedError(backend)
 
         mod.load(cached_kernel.cubin)
         return mod
