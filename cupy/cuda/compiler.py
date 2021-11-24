@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 import warnings
+import io
+import pickle
 
 from cupy.cuda import device
 from cupy.cuda import function
@@ -277,6 +279,97 @@ def _hash_hexdigest(value):
 _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 
+class RestrictedUnpickler(pickle.Unpickler):
+    """An unpickler that only allow some safe classes."""
+
+    def find_class(self, module, name):
+        """Only allow a restricted set of classes."""
+        if module == __name__ and name == 'CachedCudaModule':
+            return CachedCudaModule
+        msg = "'{}.{}' is forbidden and cannot be unpickled."
+        raise pickle.UnpicklingError(msg.format(module, name))
+
+    @classmethod
+    def loads(cls, s):
+        """Helper function analogous to pickle.loads()."""
+        return cls(io.BytesIO(s)).load()
+
+
+class CachedCudaModule:
+    __slots__ = ['backend', 'cubin', 'mapping']
+
+    _pickle_protocol = 4  # first introduced in Python 3.4
+
+    def __init__(self, backend, cubin, mapping):
+        self.backend = backend
+        self.cubin = cubin
+        self.mapping = mapping
+
+    @classmethod
+    def dump_module(cls, path, backend, cubin, mapping):
+        """Build and dumps a CachedCudaModule object and checksum to path."""
+        python_obj = cls(backend, cubin, mapping)
+
+        data_bytes = pickle.dumps(python_obj, protocol=cls._pickle_protocol)
+        data_hash = _hash_hexdigest(data_bytes).encode('ascii')
+        assert len(data_hash) == _hash_length
+
+        directory = os.path.dirname(path)
+        if not os.path.isdir(directory):
+            os.makedirs(directory, exist_ok=True)
+
+        with open(path, 'wb') as f:
+            f.write(data_hash)
+            f.write(data_bytes)
+
+    @classmethod
+    def load_module(cls, path, backend, name_expressions):
+        """Try to load a cached module, return None on failure."""
+        if not os.path.exists(path):
+            return None
+
+        with open(path, 'rb') as file:
+            data = file.read()
+
+        if len(data) < _hash_length:
+            return None
+
+        data_hash = data[:_hash_length]
+        data_bytes = data[_hash_length:]
+
+        actual_hash = _hash_hexdigest(data_bytes).encode('ascii')
+        if actual_hash != data_hash:
+            return None
+
+        try:
+            cached_kernel = RestrictedUnpickler.loads(data_bytes)
+        except pickle.UnpicklingError:
+            return None
+
+        if not isinstance(cached_kernel, cls):
+            return None
+
+        if cached_kernel.backend != backend:
+            return None
+
+        mod = function.Module()
+
+        if backend == 'nvcc':
+            pass
+        elif backend == 'nvrtc':
+            mapping = cached_kernel.mapping
+            if (mapping is None):
+                return None
+            if set(name_expressions).difference(mapping.keys()):
+                return None
+            mod._set_mapping(mapping)
+        else:
+            raise NotImplementedError(backend)
+
+        mod.load(cached_kernel.cubin)
+        return mod
+
+
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
@@ -540,34 +633,24 @@ def _compile_with_cache_cuda(
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
+    if name_expressions is not None:
+        key_src += ' ' + ','.join(sorted(map(str, set(name_expressions))))
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.cubin'
 
-    mod = function.Module()
-
     if not cache_in_memory:
-        # Read from disk cache
-        if not os.path.isdir(cache_dir):
-            os.makedirs(cache_dir, exist_ok=True)
-
         # To handle conflicts in concurrent situation, we adopt lock-free
-        # method to avoid performance degradation.
-        # We force recompiling to retrieve C++ mangled names if so desired.
+        # method using a checksum to avoid performance degradation.
         path = os.path.join(cache_dir, name)
-        if os.path.exists(path) and not name_expressions:
-            with open(path, 'rb') as file:
-                data = file.read()
-            if len(data) >= _hash_length:
-                hash = data[:_hash_length]
-                cubin = data[_hash_length:]
-                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
-                if hash == cubin_hash:
-                    mod.load(cubin)
-                    return mod
+        mod = CachedCudaModule.load_module(path, backend, name_expressions)
+        if (mod is not None):
+            return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
         pass
+
+    mod = function.Module()
 
     if backend == 'nvrtc':
         cu_name = '' if cache_in_memory else name + '.cu'
@@ -590,22 +673,12 @@ def _compile_with_cache_cuda(
                                    name + '.cu', code_type='cubin',
                                    separate_compilation=rdc,
                                    log_stream=log_stream)
+        mapping = None
     else:
         raise ValueError('Invalid backend %s' % backend)
 
     if not cache_in_memory:
-        # Write to disk cache
-        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
-
-        # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending a hash at the beginning
-        # of each cache file. If the file is corrupted, it will be ignored
-        # next time it is read.
-        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
-            tf.write(cubin_hash)
-            tf.write(cubin)
-            temp_path = tf.name
-        shutil.move(temp_path, path)
+        CachedCudaModule.dump_module(path, backend, cubin, mapping)
 
         # Save .cu source file along with .cubin
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
