@@ -375,6 +375,77 @@ class RestrictedUnpickler(pickle.Unpickler):
         return cls(io.BytesIO(s)).load()
 
 
+class CachedCudaModule:
+    __slots__ = ['backend', 'cubin', 'mapping']
+
+    _pickle_protocol = 4  # first introduced in Python 3.4
+
+    def __init__(self, backend, cubin, mapping):
+        self.backend = backend
+        self.cubin = cubin
+        self.mapping = mapping
+
+    @classmethod
+    def dump_module(cls, path, backend, cubin, mapping):
+        """Build and dumps a CachedCudaModule object and checksum to path."""
+        python_obj = cls(backend, cubin, mapping)
+
+        data_bytes = pickle.dumps(python_obj, protocol=cls._pickle_protocol)
+        data_hash = _hash_hexdigest(data_bytes).encode('ascii')
+        assert len(data_hash) == _hash_length
+
+        directory = os.path.dirname(path)
+        if not os.path.isdir(directory):
+            os.makedirs(directory, exist_ok=True)
+
+        with open(path, 'wb') as f:
+            f.write(data_hash)
+            f.write(data_bytes)
+
+    @classmethod
+    def load_module(cls, path, backend, name_expressions):
+        """Try to load a cached module, return None on failure."""
+        if not os.path.exists(path):
+            return None
+
+        with open(path, 'rb') as file:
+            data = file.read()
+
+        if len(data) < _hash_length:
+            return None
+
+        data_hash = data[:_hash_length]
+        data_bytes = data[_hash_length:]
+
+        actual_hash = _hash_hexdigest(data_bytes).encode('ascii')
+        if actual_hash != data_hash:
+            return None
+
+        try:
+            cached_kernel = RestrictedUnpickler.loads(data_bytes)
+        except pickle.UnpicklingError:
+            return None
+
+        if not isinstance(cached_kernel, cls):
+            return None
+
+        if cached_kernel.backend != backend:
+            return None
+
+        mod = function.Module()
+
+        if (name_expressions is not None) and len(name_expressions) > 0:
+            mapping = cached_kernel.mapping
+            if (mapping is None):
+                return None
+            if set(name_expressions).difference(mapping.keys()):
+                return None
+            mod._set_mapping(mapping)
+
+        mod.load(cached_kernel.cubin)
+        return mod
+
+
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
