@@ -289,3 +289,22 @@ class TestRavelMultiIndex(unittest.TestCase):
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
             with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, mode='invalid')
+
+
+@testing.gpu
+class TestMaskIndices:
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices(self, xp):
+        arr = testing.shaped_sparse_random((10, 10), density=0.5).todense()
+        if xp is numpy:
+            arr = cupy.asnumpy(arr)
+        return xp.mask_indices(10, lambda n, k=None: arr)
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices_k(self, xp):
+        return xp.mask_indices(10, xp.triu, k=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_empty(self, xp):
+        return xp.mask_indices(0, xp.triu)

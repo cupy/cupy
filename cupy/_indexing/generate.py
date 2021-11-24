@@ -426,6 +426,43 @@ def unravel_index(indices, dims, order='C'):
     return tuple(unraveled_coords)
 
 
+def mask_indices(n, mask_func, k=0):
+    """
+    Return the indices to access (n, n) arrays, given a masking function.
+
+    Assume `mask_func` is a function that, for a square array a of
+    size ``(n, n)`` with a possible offset argument `k`, when called
+    as ``mask_func(a, k)`` returns a new array with zeros in certain
+    locations (functions like `triu` or `tril` do precisely
+    this). Then this function returns the indices where the non-zero
+    values would be located.
+
+    Args:
+        n (int): The returned indices will be valid to access arrays
+            of shape (n, n).
+        mask_func (callable): A function whose call signature is
+            similar to that of `triu`, `tril`.  That is,
+            ``mask_func(x, k)`` returns a boolean array, shaped like
+            `x`.  `k` is an optional argument to the function.
+        k (scalar): An optional argument which is passed through to
+            `mask_func`. Functions like `triu`, `tril` take a second
+            argument that is interpreted as an offset.
+
+    Returns:
+        tuple of arrays: The `n` arrays of indices corresponding to
+        the locations where ``mask_func(np.ones((n, n)), k)`` is
+        True.
+
+    .. warning::
+
+        This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.mask_indices`
+    """
+    a = cupy.ones((n, n))  # TODO what dtype to use here?
+    return mask_func(a, k).nonzero()
+
+
 # TODO(okuta): Implement diag_indices
 
 
