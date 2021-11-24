@@ -43,6 +43,23 @@ def copyto(dst, src, casting='same_kind', where=None):
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
 
+    if fusion._is_fusing():
+        # NumPy allows stripping leading unit dimensions.
+        if src.ndim > dst.ndim:
+            # Fusion array proxy does not currently support `.shape`
+            try:
+                src = src.squeeze(tuple(range(src.ndim - dst.ndim)))
+            except ValueError:
+                # "cannot select an axis to squeeze out
+                # which has size not equal to one"
+                pass  # raise an error later
+
+        if where is None:
+            _core.elementwise_copy(src, dst)
+        else:
+            fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
+        return
+
     if not src_is_python_scalar:
         # Check broadcast condition
         # - for fast-paths and
@@ -60,13 +77,6 @@ def copyto(dst, src, casting='same_kind', where=None):
         if squeeze_ndim > 0:
             # always succeeds because broadcast conition is checked.
             src = src.squeeze(tuple(range(squeeze_ndim)))
-
-    if fusion._is_fusing():
-        if where is None:
-            _core.elementwise_copy(src, dst)
-        else:
-            fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
-        return
 
     if where is not None:
         _core.elementwise_copy(src, dst, _where=where)
