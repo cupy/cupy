@@ -43,6 +43,19 @@ class TestBasic:
         xp.copyto(b, a)
         return b
 
+    @pytest.mark.parametrize(('dst_shape', 'src_shape'), [
+        ((), (2,)),
+        ((2, 0, 5, 4), (2, 0, 3, 4)),
+        ((6,), (2, 3)),
+        ((2, 3), (6,)),
+    ])
+    def test_copyto_raises_shape(self, dst_shape, src_shape):
+        for xp in (numpy, cupy):
+            dst = xp.zeros(dst_shape, int)
+            src = xp.zeros(src_shape, int)
+            with pytest.raises(ValueError):
+                xp.copyto(dst, src)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_copyto_squeeze(self, xp, dtype):

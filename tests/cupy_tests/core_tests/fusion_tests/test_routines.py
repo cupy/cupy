@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
@@ -393,6 +394,14 @@ class TestFusionManipulation(unittest.TestCase):
     @fusion_utils.check_fusion(accept_error=(TypeError,))
     def test_copyto(self, xp, dtype1, dtype2):
         return lambda cond, x, y: xp.copyto(x, y)
+
+    # TODO(imanishi): Supoort complex dtypes
+    @pytest.mark.xfail(reason='Issue #5848')
+    @testing.for_all_dtypes_combination(
+        names=('dtype1', 'dtype2'), no_complex=True)
+    @fusion_utils.check_fusion(accept_error=(TypeError,))
+    def test_copyto_compat_broadcast(self, xp, dtype1, dtype2):
+        return lambda cond, x, y: xp.copyto(x, y[None])
 
     # TODO(imanishi): Supoort complex dtypes
     @testing.for_all_dtypes_combination(
