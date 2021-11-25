@@ -123,6 +123,8 @@ def _potrf_batched(a):
         raise RuntimeError('potrfBatched is not available')
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -181,6 +183,8 @@ def cholesky(a):
         return _potrf_batched(a)
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
