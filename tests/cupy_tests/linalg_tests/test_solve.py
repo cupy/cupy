@@ -49,6 +49,10 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 5, 5), (2, 5, 2))
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
+        self.check_x((0, 0), (0,))
+        self.check_x((0, 0), (0, 2))
+        self.check_x((0, 2, 2), (0, 2,))
+        self.check_x((0, 2, 2), (0, 2, 3))
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):
@@ -56,6 +60,13 @@ class TestSolve(unittest.TestCase):
             b = xp.random.rand(*b_shape)
             with pytest.raises(error_type):
                 xp.linalg.solve(a, b)
+
+    @testing.numpy_cupy_allclose()
+    def test_solve_singular_empty(self, xp):
+        a = xp.zeros((3, 3))  # singular
+        b = xp.empty((3, 0))  # nrhs = 0
+        # LinAlgError("Singular matrix") is not raised
+        return xp.linalg.solve(a, b)
 
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)

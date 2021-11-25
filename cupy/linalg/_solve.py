@@ -22,7 +22,7 @@ def solve(a, b):
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(..., M, M)``.
-        b (cupy.ndarray): The matrix with dimension ``(...,M)`` or
+        b (cupy.ndarray): The matrix with dimension ``(..., M)`` or
             ``(..., M, K)``.
 
     Returns:
@@ -48,13 +48,19 @@ def solve(a, b):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
-            a.shape[:-1] == b.shape[:a.ndim - 1]):
+    # TODO(kataoka): Support broadcast
+    if not (
+        (a.ndim == b.ndim or a.ndim == b.ndim + 1)
+        and a.shape[:-1] == b.shape[:a.ndim - 1]
+    ):
         raise ValueError(
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
+    if b.size == 0:
+        return cupy.empty(b.shape, out_dtype)
+
     if a.ndim == 2:
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
