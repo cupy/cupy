@@ -153,12 +153,13 @@ def _potrf_batched(a):
 def cholesky(a):
     """Cholesky decomposition.
 
-    Decompose a given two-dimensional square matrix into ``L * L.T``,
-    where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
+    Decompose a given two-dimensional square matrix into ``L * L.H``,
+    where ``L`` is a lower-triangular matrix and ``.H`` is a conjugate
     transpose operator.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(..., M, M)``
+        a (cupy.ndarray): Hermitian (symmetric if all elements are real),
+            positive-definite input matrix with dimension ``(..., M, M)``.
 
     Returns:
         cupy.ndarray: The lower-triangular matrix of shape ``(..., M, M)``.
