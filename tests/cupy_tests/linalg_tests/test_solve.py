@@ -114,6 +114,9 @@ class TestInv(unittest.TestCase):
         self.check_x((2, 5, 5))
         self.check_x((3, 4, 4))
         self.check_x((4, 2, 3, 3))
+        self.check_x((0, 0))
+        self.check_x((3, 0, 0))
+        self.check_x((2, 0, 3, 4, 4))
 
     def test_invalid_shape(self):
         self.check_shape((2, 3))
