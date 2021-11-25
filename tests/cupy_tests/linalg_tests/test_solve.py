@@ -74,6 +74,8 @@ class TestSolve(unittest.TestCase):
         self.check_shape((3, 3), (2, 2), ValueError)
         self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
         self.check_shape((2, 3, 3), (3,), ValueError)
+        self.check_shape((3, 3), (0,), ValueError)
+        self.check_shape((0, 3, 4), (3,), numpy.linalg.LinAlgError)
 
 
 @testing.parameterize(*testing.product({
@@ -134,6 +136,8 @@ class TestInv(unittest.TestCase):
         self.check_shape((4, 1))
         self.check_shape((4, 3, 2))
         self.check_shape((2, 4, 3))
+        self.check_shape((2, 0))
+        self.check_shape((0, 2, 3))
 
 
 @testing.gpu
