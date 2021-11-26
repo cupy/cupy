@@ -17,6 +17,7 @@ from cupyx.jit import _internal_types
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
+from cupyx.jit import _preprocess
 
 
 _is_debug_mode = False
@@ -67,11 +68,16 @@ def transpile(func, attributes, mode, in_types, ret_type):
     if not callable(func):
         raise ValueError('`func` must be a callable object.')
 
-    if func.__name__ == '<lambda>':
-        raise NotImplementedError('Lambda function is not supported.')
-
+    func_name = func.__name__
     attributes = ' '.join(attributes)
     source = jit._getsource_func(func)
+
+    if func_name == '<lambda>':
+        # Program transformation from lambda function to normal function
+        func_name = '_lambda_func'
+        args, source = _preprocess._strip_lambda(source)
+        source = _preprocess._make_function_str(func_name, args, source)
+
     lines = source.split('\n')
     num_indent = len(lines[0]) - len(lines[0].lstrip())
     source = '\n'.join([
@@ -88,7 +94,7 @@ def transpile(func, attributes, mode, in_types, ret_type):
     )
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
-        func_name=func.__name__,
+        func_name=func_name,
         code=cuda_code,
         return_type=env.ret_type,
     )
