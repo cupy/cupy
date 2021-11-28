@@ -364,8 +364,8 @@ class RestrictedUnpickler(pickle.Unpickler):
 
     def find_class(self, module, name):
         """Only allow a restricted set of classes."""
-        if module == __name__ and name == 'CachedCudaModule':
-            return CachedCudaModule
+        if module == __name__ and name == 'CachedModule':
+            return CachedModule
         msg = "'{}.{}' is forbidden and cannot be unpickled."
         raise pickle.UnpicklingError(msg.format(module, name))
 
@@ -375,22 +375,20 @@ class RestrictedUnpickler(pickle.Unpickler):
         return cls(io.BytesIO(s)).load()
 
 
-class CachedCudaModule:
-    __slots__ = ['backend', 'cubin', 'mapping']
+class CachedModule:
+    __slots__ = ['backend', 'binary', 'mapping']
 
-    _pickle_protocol = 4  # first introduced in Python 3.4
-
-    def __init__(self, backend, cubin, mapping):
+    def __init__(self, backend, binary, mapping):
         self.backend = backend
-        self.cubin = cubin
+        self.binary = binary
         self.mapping = mapping
 
     @classmethod
-    def dump_module(cls, path, backend, cubin, mapping):
-        """Build and dumps a CachedCudaModule object and checksum to path."""
-        python_obj = cls(backend, cubin, mapping)
+    def dump_module(cls, path, backend, binary, mapping):
+        """Build and dumps a CachedModule object and checksum to path."""
+        python_obj = cls(backend, binary, mapping)
 
-        data_bytes = pickle.dumps(python_obj, protocol=cls._pickle_protocol)
+        data_bytes = pickle.dumps(python_obj, protocol=_pickle_protocol)
         data_hash = _hash_hexdigest(data_bytes).encode('ascii')
         assert len(data_hash) == _hash_length
 
@@ -398,9 +396,19 @@ class CachedCudaModule:
         if not os.path.isdir(directory):
             os.makedirs(directory, exist_ok=True)
 
-        with open(path, 'wb') as f:
-            f.write(data_hash)
-            f.write(data_bytes)
+        # We use a temp file to handle concurrent processes caching
+        # to the same path at the same time.
+        with tempfile.NamedTemporaryFile(
+                dir=directory, delete=False, mode='wb') as tf:
+            tf.write(data_hash)
+            tf.write(data_bytes)
+            temp_path = tf.name
+
+        # os.replace is not atomic operation, so it could result in a
+        # corrupted file. We detect it by appending a hash at the beginning
+        # of the cached binary. If the file is corrupted, it will be ignored
+        # next time it is read (see CachedModule.load_module).
+        os.replace(src=temp_path, dst=path)
 
     @classmethod
     def load_module(cls, path, backend, name_expressions):
@@ -442,7 +450,7 @@ class CachedCudaModule:
                 return None
             mod._set_mapping(mapping)
 
-        mod.load(cached_kernel.cubin)
+        mod.load(cached_kernel.binary)
         return mod
 
 
@@ -717,9 +725,9 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # To handle conflicts in concurrent situation, we adopt lock-free
-        # method using a checksum to avoid performance degradation.
+        # method using a checksum and os.replace to avoid perf. degradation.
         path = os.path.join(cache_dir, name)
-        mod = CachedCudaModule.load_module(path, backend, name_expressions)
+        mod = CachedModule.load_module(path, backend, name_expressions)
         if (mod is not None):
             return mod
     else:
@@ -755,7 +763,7 @@ def _compile_with_cache_cuda(
         raise ValueError('Invalid backend %s' % backend)
 
     if not cache_in_memory:
-        CachedCudaModule.dump_module(path, backend, cubin, mapping)
+        CachedModule.dump_module(path, backend, cubin, mapping)
 
         # Save .cu source file along with .cubin
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
@@ -1036,8 +1044,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     name = _hash_hexdigest(key_str) + '.hsaco'
 
     if not cache_in_memory:
+        # To handle conflicts in concurrent situation, we adopt lock-free
+        # method using a checksum and os.replace to avoid perf. degradation.
         path = os.path.join(cache_dir, name)
-        mod = CachedCudaModule.load_module(path, backend, name_expressions)
+        mod = CachedModule.load_module(path, backend, name_expressions)
         if (mod is not None):
             return mod
     else:
