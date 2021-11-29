@@ -12,7 +12,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install "libnccl2=2.8.*+cuda10.2" "libnccl-dev=2.8.*+cuda10.2" "libcudnn7=7.6.*+cuda10.2" "libcudnn7-dev=7.6.*+cuda10.2"
+            --allow-downgrades install 'libnccl2=2.8.*+cuda10.2' 'libnccl-dev=2.8.*+cuda10.2' 'libcudnn7=7.6.*+cuda10.2' 'libcudnn7-dev=7.6.*+cuda10.2'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -23,4 +23,4 @@ RUN pyenv install 3.7.11 && \
     pyenv global 3.7.11 && \
     pip install -U setuptools pip
 
-RUN pip install -U "numpy==1.18.*" "scipy==1.4.*" "optuna==2.*" "cython==0.29.*"
+RUN pip install -U 'numpy==1.18.*' 'scipy==1.4.*' 'optuna==2.*' 'cython==0.29.*'
