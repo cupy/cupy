@@ -88,7 +88,7 @@ class LinuxGenerator:
                 '    apt-get -qqy install ccache git curl && \\',
                 '    apt-get -qqy --allow-change-held-packages \\',
                 '            --allow-downgrades install {}'.format(
-                    ' '.join(self._additional_packages('apt'))
+                    ' '.join([f'"{p}"' for p in self._additional_packages('apt')])  # NOQA
                 ),
                 '',
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
@@ -114,7 +114,7 @@ class LinuxGenerator:
                 '    yum -y install epel-release && \\',
                 '    yum -y install "@Development Tools" ccache git curl && \\',  # NOQA
                 '    yum -y install {}'.format(
-                    ' '.join(self._additional_packages('yum'))
+                    ' '.join([f'"{p}"' for p in self._additional_packages('yum')])  # NOQA
                 ),
                 '',
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
