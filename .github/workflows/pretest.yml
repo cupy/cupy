@@ -64,12 +64,15 @@ jobs:
         pushd install
         mypy cupy_builder
 
-    - name: Test - CI Generator
+    - name: Test - CI Tools
       run: |
         pip install PyYAML types-PyYAML mypy
         pushd .pfnci
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
+        popd
+        pushd .github/workflows
+        mypy flexci_dispatcher.py
         popd
 
   rocm-build:
