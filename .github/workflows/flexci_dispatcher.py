@@ -57,7 +57,7 @@ def _forward_to_flexci(
 
 
 def _complement_commit_status(
-        repo: str, pull_req: int, token: Optional[str],
+        repo: str, pull_req: int, token: str,
         projects: Set[str], context_prefix: str) -> None:
     gh_repo = github.Github(token).get_repo(repo)
     gh_commit = gh_repo.get_commit(gh_repo.get_pull(pull_req).head.sha)
@@ -104,8 +104,8 @@ def parse_args(argv: Any) -> Any:
 
 def main(argv: Any) -> int:
     options = parse_args(argv)
-    webhook_secret = str(os.environ.get('FLEXCI_WEBHOOK_SECRET'))
-    github_token = str(os.environ.get('GITHUB_TOKEN'))
+    webhook_secret = str(os.environ['FLEXCI_WEBHOOK_SECRET'])
+    github_token = str(os.environ['GITHUB_TOKEN'])
 
     with open(options.webhook, 'rb') as f:
         payload = f.read()
