@@ -1,6 +1,7 @@
 import ast
 import collections
 import inspect
+import math
 import numbers
 import re
 import sys
@@ -17,7 +18,6 @@ from cupyx.jit import _internal_types
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
-from cupyx.jit import _preprocess
 
 
 _is_debug_mode = False
@@ -55,6 +55,53 @@ def transpile_function_wrapper(func):
     return new_func
 
 
+def _parse_function_object(func):
+    # Parses function object into ast.FunctionDef object.
+    if not callable(func):
+        raise ValueError('`func` must be a callable object.')
+
+    if jit._getsource_func is not None:
+        full_source = jit._getsource_func(func)
+        start_line, end_line = 0, math.inf
+        source = full_source
+    else:
+        filename = inspect.getsourcefile(func)
+        with open(filename) as f:
+            full_source = f.read()
+        source, start_line = inspect.getsourcelines(func)
+        end_line = start_line + len(source)
+        source = ''.join(source)
+
+    tree = ast.parse(full_source)
+
+    def search(node, instance):
+        if isinstance(node, instance) and start_line <= node.lineno < end_line:
+            yield node
+        elif isinstance(node, list):
+            for child in node:
+                yield from search(child, instance)
+        elif hasattr(node, '_fields'):
+            for child_name in dir(node):
+                if not child_name.startswith('_'):
+                    yield from search(getattr(node, child_name), instance)
+
+    if func.__name__ == '<lambda>':
+        nodes = list(search(tree, ast.Lambda))
+        if len(nodes) > 1:
+            raise RuntimeError('Parse error: multiple function is found.')
+        node = nodes[0]
+        return ast.FunctionDef(
+            name='_lambda_kernel', args=node.args,
+            body=[ast.Return(node.body)],
+            decorator_list=[], returns=None, type_comment=None,
+        ), source
+    else:
+        nodes = list(search(tree, ast.FunctionDef))
+        if len(nodes) > 1:
+            raise RuntimeError('Parse error: multiple function is found.')
+        return nodes[0], source
+
+
 def transpile(func, attributes, mode, in_types, ret_type):
     """Transpile the target function
     Args:
@@ -64,37 +111,15 @@ def transpile(func, attributes, mode, in_types, ret_type):
         in_types (list of _cuda_types.TypeBase): Types of the arguments.
         ret_type (_cuda_types.TypeBase or None): Type of the return value.
     """
-
-    if not callable(func):
-        raise ValueError('`func` must be a callable object.')
-
-    func_name = func.__name__
-    attributes = ' '.join(attributes)
-    source = jit._getsource_func(func)
-
-    if func_name == '<lambda>':
-        # Program transformation from lambda function to normal function
-        func_name = '_lambda_func'
-        args, source = _preprocess._strip_lambda(source)
-        source = _preprocess._make_function_str(func_name, args, source)
-
-    lines = source.split('\n')
-    num_indent = len(lines[0]) - len(lines[0].lstrip())
-    source = '\n'.join([
-        line.replace(' ' * num_indent, '', 1) for line in lines])
-
     cvars = inspect.getclosurevars(func)
     consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
-    tree = ast.parse(source)
-    assert isinstance(tree, ast.Module)
-    assert len(tree.body) == 1
+    attributes = ' '.join(attributes)
+    tree, source = _parse_function_object(func)
     cuda_code, env = _transpile_function(
-        tree.body[0], attributes, mode, consts, in_types, ret_type,
-        source=source
-    )
+        tree, attributes, mode, consts, in_types, ret_type, source=source)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
-        func_name=func_name,
+        func_name=tree.name,
         code=cuda_code,
         return_type=env.ret_type,
     )

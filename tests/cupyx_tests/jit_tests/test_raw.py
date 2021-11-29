@@ -621,9 +621,9 @@ class TestRaw(unittest.TestCase):
         import re
         mes = re.escape('''Unbound name: unknown_var
 
-  @jit.rawkernel()
-  def f(x):
->     return unknown_var  # NOQA
+          @jit.rawkernel()
+          def f(x):
+              return unknown_var  # NOQA
 ''')
         x = cupy.zeros((10,), dtype=numpy.float32)
         with pytest.raises(NameError, match=mes):
