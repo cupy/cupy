@@ -155,7 +155,7 @@ class LinuxGenerator:
             if pylib_ver is None:
                 continue
             pip_spec = self.schema[pylib][pylib_ver]['spec']
-            pip_args.append(f'{pylib}{pip_spec}')
+            pip_args.append(f'"{pylib}{pip_spec}"')
         lines += [
             f'RUN pip install -U {" ".join(pip_args)}',
             '',
