@@ -898,6 +898,12 @@ cusolverStatus_t cusolverDnSHgesv(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 // Functions added in CUDA 11.0
+cusolverStatus_t cusolverDnCreateParams(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDestroyParams(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
 cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -976,6 +982,15 @@ cusolverStatus_t cusolverSpCcsreigvsi(...) {
 }
 
 cusolverStatus_t cusolverSpZcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+// Functions added in CUDA 11.2
+cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
