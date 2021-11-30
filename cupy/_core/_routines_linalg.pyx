@@ -449,7 +449,7 @@ cpdef ndarray tensordot_core(
         out = _ndarray_init(ret_shape, dtype)
     else:
         if out.dtype != dtype:
-            out = _ndarray_init(ret_shape, dtype)
+            raise NotImplementedError("The out array dtype is mismatched")
     cdef int ace
     if m == 1 and n == 1:
         for ace in _accelerator._routine_accelerators:
@@ -712,10 +712,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     """
 
-    if out is not None:
-        raise NotImplementedError('The out array as input is currently not '
-                                  'supported')
-
     cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
@@ -817,10 +813,26 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 ','.join([str(_) for _ in orig_a.shape]),
                 ','.join([str(_) for _ in orig_b.shape])))
 
-    if a.size == 0 or b.size == 0:
-        return cupy.zeros(out_shape, ret_dtype)
+    if out is not None and out.shape != tuple(out_shape):
+        raise ValueError('Output array has an invalid size')
 
-    out = ndarray(out_shape, dtype=dtype)
+    if a.size == 0 or b.size == 0:
+        if out is None:
+            return cupy.zeros(out_shape, ret_dtype)
+        else:
+            out.fill(0)
+            return out
+
+    ret = None
+    if out is None:
+        out = ndarray(out_shape, dtype=dtype)
+    elif not out.flags.c_contiguous:
+        raise ValueError('Output array must be C-contiguous')
+    elif out.dtype != ret_dtype:
+        raise ValueError('Output array has incorrect dtype')
+    elif dtype != ret_dtype:
+        ret = out
+        out = ndarray(out_shape, dtype=dtype)
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
         out_view = out.view()
@@ -933,9 +945,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
 
-    if dtype == ret_dtype:
+    if ret is None:
         return out
-    else:
-        ret = ndarray(out_shape, ret_dtype)
-        elementwise_copy(out, ret)
-        return ret
+    elementwise_copy(out, ret)
+    return ret
