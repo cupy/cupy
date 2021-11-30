@@ -11,6 +11,7 @@ typedef enum {
     CUSOLVER_STATUS_SUCCESS = 0,
 } cusolverStatus_t;
 
+typedef enum{} cusolverDnParams_t;
 typedef enum{} cusolverEigType_t;
 typedef enum{} cusolverEigMode_t;
 

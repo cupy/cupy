@@ -68,6 +68,9 @@ cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* val) {
     return rocblas_status_success;
 }
 
+
+typedef enum cusolverDnParams_t {};
+
 cusolverStatus_t cusolverDnCreateParams(...) {
     return rocblas_status_not_implemented;
 }

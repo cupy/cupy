@@ -107,6 +107,9 @@ cusolverStatus_t cusolverDnSHgesv(...) {
 #endif // #if CUDA_VERSION < 10020
 
 #if CUDA_VERSION < 11000
+
+typedef enum cusolverDnParams_t {};
+
 // Functions added in CUDA 11.0
 cusolverStatus_t cusolverDnCreateParams(...) {
     return CUSOLVER_STATUS_SUCCESS;
