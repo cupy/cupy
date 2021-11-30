@@ -824,15 +824,13 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             out.fill(0)
             return out
 
-    ret = None
-    if out is None:
-        out = ndarray(out_shape, dtype=dtype)
-    elif not out.flags.c_contiguous:
-        raise NotImplementedError('Output array must be C-contiguous')
-    elif out.dtype != ret_dtype:
-        raise NotImplementedError('Output array has incorrect dtype')
-    elif dtype != ret_dtype:
-        ret = out
+    if out is not None and out.dtype == dtype and out.flags.c_contiguous:
+        ret = None
+    else:
+        if out is None and dtype != ret_dtype:
+            ret = ndarray(out_shape, dtype=ret_dtype)
+        else:
+            ret = out
         out = ndarray(out_shape, dtype=dtype)
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
