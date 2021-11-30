@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import shlex  # requires Python 3.8
 import sys
 
 import yaml
@@ -88,7 +89,7 @@ class LinuxGenerator:
                 '    apt-get -qqy install ccache git curl && \\',
                 '    apt-get -qqy --allow-change-held-packages \\',
                 '            --allow-downgrades install {}'.format(
-                    ' '.join(self._additional_packages('apt'))
+                    shlex.join(self._additional_packages('apt'))
                 ),
                 '',
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
@@ -114,7 +115,7 @@ class LinuxGenerator:
                 '    yum -y install epel-release && \\',
                 '    yum -y install "@Development Tools" ccache git curl && \\',  # NOQA
                 '    yum -y install {}'.format(
-                    ' '.join(self._additional_packages('yum'))
+                    shlex.join(self._additional_packages('yum'))
                 ),
                 '',
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
@@ -157,7 +158,7 @@ class LinuxGenerator:
             pip_spec = self.schema[pylib][pylib_ver]['spec']
             pip_args.append(f'{pylib}{pip_spec}')
         lines += [
-            f'RUN pip install -U {" ".join(pip_args)}',
+            f'RUN pip install -U {shlex.join(pip_args)}',
             '',
         ]
 
