@@ -49,6 +49,10 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 5, 5), (2, 5, 2))
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
+        self.check_x((0, 0), (0,))
+        self.check_x((0, 0), (0, 2))
+        self.check_x((0, 2, 2), (0, 2,))
+        self.check_x((0, 2, 2), (0, 2, 3))
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):
@@ -57,12 +61,21 @@ class TestSolve(unittest.TestCase):
             with pytest.raises(error_type):
                 xp.linalg.solve(a, b)
 
+    @testing.numpy_cupy_allclose()
+    def test_solve_singular_empty(self, xp):
+        a = xp.zeros((3, 3))  # singular
+        b = xp.empty((3, 0))  # nrhs = 0
+        # LinAlgError("Singular matrix") is not raised
+        return xp.linalg.solve(a, b)
+
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
         self.check_shape((3, 3), (2,), ValueError)
         self.check_shape((3, 3), (2, 2), ValueError)
         self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
         self.check_shape((2, 3, 3), (3,), ValueError)
+        self.check_shape((3, 3), (0,), ValueError)
+        self.check_shape((0, 3, 4), (3,), numpy.linalg.LinAlgError)
 
 
 @testing.parameterize(*testing.product({
@@ -114,12 +127,17 @@ class TestInv(unittest.TestCase):
         self.check_x((2, 5, 5))
         self.check_x((3, 4, 4))
         self.check_x((4, 2, 3, 3))
+        self.check_x((0, 0))
+        self.check_x((3, 0, 0))
+        self.check_x((2, 0, 3, 4, 4))
 
     def test_invalid_shape(self):
         self.check_shape((2, 3))
         self.check_shape((4, 1))
         self.check_shape((4, 3, 2))
         self.check_shape((2, 4, 3))
+        self.check_shape((2, 0))
+        self.check_shape((0, 2, 3))
 
 
 @testing.gpu
