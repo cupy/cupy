@@ -713,10 +713,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     """
 
-    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
+    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
-    cdef ndarray ap, bp, outp, out_view
+    cdef ndarray ap, bp, cp, c_view
     cdef bint use_broadcast
 
     orig_a_ndim = a._shape.size()
@@ -738,10 +738,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         a_part_outshape = a._shape[orig_a_ndim - 2]
     if orig_b_ndim == 1:
         b = _manipulation._reshape(b, (b.size, 1))
-        ldout = 1
+        ldc = 1
     else:
         b = b.view()
-        b_part_outshape = ldout = b._shape[orig_b_ndim - 1]
+        b_part_outshape = ldc = b._shape[orig_b_ndim - 1]
 
     # expand dims
     a_ndim = a._shape.size()
