@@ -449,6 +449,7 @@ cpdef ndarray tensordot_core(
         out = _ndarray_init(ret_shape, dtype)
     else:
         if out.dtype != dtype:
+            # TODO: Fix to write to out.
             raise NotImplementedError("The out array dtype is mismatched")
     cdef int ace
     if m == 1 and n == 1:
@@ -827,9 +828,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if out is None:
         out = ndarray(out_shape, dtype=dtype)
     elif not out.flags.c_contiguous:
-        raise ValueError('Output array must be C-contiguous')
+        raise NotImplementedError('Output array must be C-contiguous')
     elif out.dtype != ret_dtype:
-        raise ValueError('Output array has incorrect dtype')
+        raise NotImplementedError('Output array has incorrect dtype')
     elif dtype != ret_dtype:
         ret = out
         out = ndarray(out_shape, dtype=dtype)
