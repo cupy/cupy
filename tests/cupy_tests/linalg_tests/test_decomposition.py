@@ -49,8 +49,7 @@ def random_matrix(shape, dtype, scale, sym=False):
     return new_a.astype(dtype)
 
 
-@testing.gpu
-class TestCholeskyDecomposition(unittest.TestCase):
+class TestCholeskyDecomposition:
 
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_L(self, array, xp):
@@ -77,6 +76,21 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(Ab1)
         Ab2 = random_matrix((2, 2, 5, 5), dtype, scale=(10, 10000), sym=True)
         self.check_L(Ab2)
+
+    @pytest.mark.parametrize('shape', [
+        # empty square
+        (0, 0),
+        (3, 0, 0),
+        # empty batch
+        (2, 0, 3, 4, 4),
+    ])
+    @testing.for_dtypes([
+        numpy.int32, numpy.uint16,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
+    @testing.numpy_cupy_allclose()
+    def test_empty(self, shape, xp, dtype):
+        a = xp.empty(shape, dtype)
+        return xp.linalg.cholesky(a)
 
 
 @testing.gpu
