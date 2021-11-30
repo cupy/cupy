@@ -4,6 +4,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy import _core
 
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _util
@@ -257,7 +258,7 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
                 break
         output = tmp_out
     if temp_needed:
-        temp[...] = output
+        _core.elemntwise_copy(output, temp)
         output = temp
     return output
 

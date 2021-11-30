@@ -574,7 +574,7 @@ cpdef ndarray tensordot_core(
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
     if not use_sgemmEx:
-        out[...] = c
+        elementwise_copy(c, out)
     return out
 
 

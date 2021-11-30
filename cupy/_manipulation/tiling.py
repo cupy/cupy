@@ -1,4 +1,5 @@
 import cupy
+from cupy import _core
 
 
 def tile(A, reps):
@@ -48,7 +49,7 @@ def tile(A, reps):
             ret_shape.append(dim_in)
     ret = cupy.empty(ret_shape, dtype=c.dtype)
     if ret.size:
-        ret[...] = c.reshape(c_shape)
+        _core.elementwise_copy(c.reshape(c_shape), ret)
     return ret.reshape(shape_out)
 
 

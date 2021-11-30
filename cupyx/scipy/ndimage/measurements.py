@@ -62,7 +62,7 @@ def label(input, structure=None, output=None):
     elif input.ndim == 0:
         # 0-dim array
         maxlabel = 0 if input.item() == 0 else 1
-        output[...] = maxlabel
+        output.fill(maxlabel)
     else:
         if output.dtype != numpy.int32:
             y = cupy.empty(input.shape, numpy.int32)
@@ -70,7 +70,7 @@ def label(input, structure=None, output=None):
             y = output
         maxlabel = _label(input, structure, y)
         if output.dtype != numpy.int32:
-            output[...] = y[...]
+            _core.elementwise_copy(y, output)
 
     if caller_provided_output:
         return maxlabel
