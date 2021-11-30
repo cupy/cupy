@@ -666,16 +666,16 @@ cpdef zheevjBatched(
     int batchSize)
 
 # dense eigenvalue solver (64bit)
-cpdef (size_t, size_t) xsyevd_bufferSize(
-        intptr_t handle, intptr_t params, int jobz, int uplo,
-        int64_t n, int dataTypeA, intptr_t A, int64_t lda,
-        int dataTypeW, intptr_t W, int computeType) except *
+cpdef (size_t, size_t) xsyevd_bufferSize(  # noqa
+    intptr_t handle, intptr_t params, int jobz, int uplo,
+    int64_t n, int dataTypeA, intptr_t A, int64_t lda,
+    int dataTypeW, intptr_t W, int computeType) except *
 cpdef xsyevd(
-        intptr_t handle, intptr_t params, int jobz, int uplo,
-        int64_t n, int dataTypeA, intptr_t A, int64_t lda,
-        int dataTypeW, intptr_t W, int computeType, intptr_t bufferOnDevice,
-        size_t workspaceInBytesOnDevice, intptr_t bufferOnHost,
-        size_t workspaceInBytesOnHost, intptr_t info)
+    intptr_t handle, intptr_t params, int jobz, int uplo,
+    int64_t n, int dataTypeA, intptr_t A, int64_t lda,
+    int dataTypeW, intptr_t W, int computeType, intptr_t bufferOnDevice,
+    size_t workspaceInBytesOnDevice, intptr_t bufferOnHost,
+    size_t workspaceInBytesOnHost, intptr_t info)
 
 ###############################################################################
 # Sparse LAPACK Functions

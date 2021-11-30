@@ -3450,7 +3450,7 @@ cpdef zheevjBatched(intptr_t handle, int jobz, int uplo, int n,
     check_status(status)
 
 # dense eigenvalue solver (64bit)
-cpdef (size_t, size_t) xsyevd_bufferSize(
+cpdef (size_t, size_t) xsyevd_bufferSize(  # noqa
         intptr_t handle, intptr_t params, int jobz, int uplo,
         int64_t n, int dataTypeA, intptr_t A, int64_t lda,
         int dataTypeW, intptr_t W, int computeType) except *:
