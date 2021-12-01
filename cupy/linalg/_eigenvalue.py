@@ -45,8 +45,8 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
 
     if (not runtime.is_hip and _cuda_runtime_version >= 11020):
         if dtype.char not in 'fdFD':
-            raise RuntimeError('Only float and double and cuComplex and '
-                               + 'cuDoubleComplex are supported')
+            raise RuntimeError('Only float32, float64, complex64, and '
+                               'complex128 are supported')
         type_v = _dtype.to_cuda_dtype(dtype)
         type_w = _dtype.to_cuda_dtype(real_dtype)
         params = cusolver.createParams()
