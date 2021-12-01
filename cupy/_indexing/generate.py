@@ -459,7 +459,7 @@ def mask_indices(n, mask_func, k=0):
 
     .. seealso:: :func:`numpy.mask_indices`
     """
-    a = cupy.ones((n, n))  # TODO what dtype to use here?
+    a = cupy.ones((n, n), dtype=cupy.int8)
     return mask_func(a, k).nonzero()
 
 
