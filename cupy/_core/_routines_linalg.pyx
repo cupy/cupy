@@ -726,7 +726,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     ndim = max(orig_a_ndim, orig_b_ndim)
     if ndim <= 2:
-        if out is None or out._c_contiguous:
+        if out is None:
             return dot(a, b, out)
         ret_dtype = numpy.promote_types(a.dtype, b.dtype)
         if out._c_contiguous and ret_dtype == out.dtype:
