@@ -291,7 +291,6 @@ class TestRavelMultiIndex(unittest.TestCase):
                 xp.ravel_multi_index(a, dims, mode='invalid')
 
 
-@testing.gpu
 class TestMaskIndices:
 
     @testing.numpy_cupy_array_equal()
