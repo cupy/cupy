@@ -25,9 +25,6 @@ from cupy._core cimport internal
 
 
 cdef ndarray _ndarray_getitem(ndarray self, slices):
-    # supports basic indexing (by slices, ints or Ellipsis) and
-    # some parts of advanced indexing by integer or boolean arrays.
-    # TODO(beam2d): Support the advanced indexing of NumPy.
     cdef Py_ssize_t axis
     cdef list slice_list
     cdef ndarray a, mask
@@ -135,10 +132,16 @@ cdef _ndarray_scatter_min(ndarray self, slices, value):
 
 
 cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
+    cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
-        return _take(self, indices, 0, self._shape.size() - 1, out)
+        return _take(self, indices, 0, ndim, out)
+    elif ndim == 0:
+        # check axis after atleast_1d
+        internal._normalize_axis_index(axis, 1)
+        return _take(self, indices, 0, 0, out)
     else:
-        return _take(self, indices, axis, axis, out)
+        axis = internal._normalize_axis_index(axis, ndim)
+        return _take(self, indices, axis, axis + 1, out)
 
 
 cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
@@ -209,8 +212,10 @@ cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
         if condition.ndim != 1:
             raise ValueError('condition must be a 1-d array')
 
+    # do not test condition.shape
     res = _ndarray_nonzero(condition)  # synchronize
 
+    # the `take` method/function also make the input atleast_1d
     return _ndarray_take(a, res[0], axis, out)
 
 
@@ -380,6 +385,9 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             k = array_ndims[i]
             index_list.append((s, axis_v, k))
             i += 1
+            kind = ord(s.dtype.kind)
+            if kind == b'b':
+                _check_mask_shape(a, s, axis_a)
             for _ in range(k):
                 shape.push_back(a._shape[axis_a])
                 strides.push_back(a._strides[axis_a])
@@ -706,6 +714,18 @@ _getitem_mask_kernel = ElementwiseKernel(
     'cupy_getitem_mask')
 
 
+cdef _check_mask_shape(ndarray a, ndarray mask, Py_ssize_t axis):
+    cdef Py_ssize_t i, a_sh, m_sh
+    for i, m_sh in enumerate(mask._shape):
+        a_sh = a._shape[axis + i]
+        if m_sh not in (0, a_sh):
+            raise IndexError(
+                'boolean index did not match indexed array along dimension '
+                f'{axis + i}; dimension is {a_sh} '
+                f'but corresponding boolean dimension is {m_sh}'
+            )
+
+
 cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     cdef ndarray mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
@@ -722,10 +742,6 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
         masked_shape = lshape + (0,) + rshape
         mask_br = _manipulation._reshape(mask, masked_shape)
         return mask_br, mask_br, masked_shape
-
-    for i, s in enumerate(mask._shape):
-        if a_shape[axis + i] != s:
-            raise IndexError('boolean index did not match')
 
     # Get number of True in the mask to determine the shape of the array
     # after masking.
@@ -777,21 +793,14 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
-cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
-    # Take along (flattened) axes from li to ri *inclusive*.
-    # When li == ri this function behaves similarly to np.take
-    # TODO(kataoka): Use half-open interval [li, ri)
+cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
+    # Take along (flattened) axes from start to stop.
+    # When start + 1 == stop this function behaves similarly to np.take
     cdef tuple out_shape, ind_shape, indices_shape
     cdef int i, ndim = a._shape.size()
     cdef Py_ssize_t ldim, cdim, rdim, index_range
-    if ndim == 0:
-        a = a.ravel()
-        ndim = 1
 
-    li = internal._normalize_axis_index(li, ndim)
-    ri = internal._normalize_axis_index(ri, ndim)
-
-    assert li <= ri
+    assert start <= stop
 
     if numpy.isscalar(indices):
         indices_shape = ()
@@ -803,22 +812,22 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         cdim = indices.size
 
     ldim = rdim = 1
-    if ndim == 1:
+    if start == 0 and stop == ndim:
         out_shape = indices_shape
         index_range = a.size
     else:
         a_shape = a.shape
-        out_shape = a_shape[:li] + indices_shape + a_shape[ri + 1:]
+        out_shape = a_shape[:start] + indices_shape + a_shape[stop:]
         if len(indices_shape) != 0:
             indices = _manipulation._reshape(
                 indices,
-                (1,) * li + indices_shape + (1,) * (ndim - (ri + 1)))
-        for i in range(li):
+                (1,) * start + indices_shape + (1,) * (ndim - stop))
+        for i in range(start):
             ldim *= a._shape[i]
-        for i in range(ri + 1, ndim):
+        for i in range(stop, ndim):
             rdim *= a._shape[i]
         index_range = 1
-        for i in range(li, ri + 1):
+        for i in range(start, stop):
             index_range *= a._shape[i]
 
     if out is None:
@@ -840,40 +849,34 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
 
 
 cdef _scatter_op_single(
-        ndarray a, ndarray indices, v, Py_ssize_t li=0, Py_ssize_t ri=0,
+        ndarray a, ndarray indices, value, Py_ssize_t start, Py_ssize_t stop,
         op=''):
     # When op == 'update', this function behaves similarly to
     # a code below using NumPy under the condition that a = a._reshape(shape)
     # does not invoke copy.
     #
-    # shape = a[:li] +\
-    #     (numpy.prod(a[li:ri+1]),) + a[ri+1:]
+    # shape = a[:start] +\
+    #     (numpy.prod(a[start:stop]),) + a[stop:]
     # a = a._reshape(shape)
-    # slices = (slice(None),) * li + indices +\
-    #     (slice(None),) * (a.ndim - indices.ndim - ri)
-    # a[slices] = v
+    # slices = (slice(None),) * start + indices +\
+    #     (slice(None),) * (a.ndim - stop)
+    # a[slices] = value
     cdef Py_ssize_t ndim, adim, cdim, rdim
     cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
+    cdef ndarray v
 
     ndim = a._shape.size()
 
-    if ndim == 0:
-        raise ValueError('requires a.ndim >= 1')
-    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise ValueError('Axis overrun')
-
-    if not isinstance(v, ndarray):
-        v = core.array(v, dtype=a.dtype)
+    if not isinstance(value, ndarray):
+        v = core.array(value, dtype=a.dtype)
     else:
-        v = v.astype(a.dtype, copy=False)
+        v = value.astype(a.dtype, copy=False)
 
     a_shape = a.shape
-    li %= ndim
-    ri %= ndim
 
-    lshape = a_shape[:li]
-    rshape = a_shape[ri + 1:]
-    adim = internal.prod_sequence(a_shape[li:ri + 1])
+    lshape = a_shape[:start]
+    rshape = a_shape[stop:]
+    adim = internal.prod_sequence(a_shape[start:stop])
 
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
@@ -956,7 +959,7 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
 
 
 cdef _scatter_op(ndarray a, slices, value, op):
-    cdef Py_ssize_t i, li, ri, axis
+    cdef Py_ssize_t i, start, stop, axis
     cdef ndarray v, x, y, reduced_idx, mask
     cdef list slice_list
 
@@ -969,13 +972,12 @@ cdef _scatter_op(ndarray a, slices, value, op):
             if s.dtype.kind == 'b':
                 _scatter_op_mask_single(a, s, value, axis, op)
             else:
-                _scatter_op_single(a, s, value, axis, axis, op)
+                _scatter_op_single(a, s, value, axis, axis + 1, op)
         else:
             # scatter_op with multiple integer arrays
-            # TODO: detect mask
-            reduced_idx, li, ri =\
-                _prepare_multiple_array_indexing(a, axis, slice_list)
-            _scatter_op_single(a, reduced_idx, value, li, ri, op)
+            reduced_idx, start, stop = _prepare_multiple_array_indexing(
+                a, axis, slice_list)
+            _scatter_op_single(a, reduced_idx, value, start, stop, op)
         return
 
     y = a
@@ -1055,35 +1057,45 @@ _prepare_array_indexing = ElementwiseKernel(
     'cupy_prepare_array_indexing')
 
 
-# TODO: mask
 cdef tuple _prepare_multiple_array_indexing(
     ndarray a, Py_ssize_t start, list slices
 ):
     # slices consist of ndarray
-    cdef Py_ssize_t i, p, li, ri, stride, prev_arr_i
-    cdef ndarray reduced_idx
+    cdef list indices = [], shapes = []  # int ndarrays
+    cdef Py_ssize_t i, stop, stride
+    cdef ndarray reduced_idx, s
 
-    br = _manipulation.broadcast(*slices)
-    slices = list(br.values)
+    for s in slices:
+        if s.dtype.kind == 'b':
+            s = _ndarray_argwhere(s).T
+            indices.extend(s)
+            shapes.append(s.shape[1:])
+        else:
+            indices.append(s)
+            shapes.append(s.shape)
 
-    # li:  index of the leftmost array in slices
-    # ri:  index of the rightmost array in slices
-    li = start
-    ri = start + len(slices) - 1
+    stop = start + len(indices)
 
-    reduced_idx = ndarray(br.shape, dtype=numpy.int64)
+    # br = _manipulation.broadcast(*indices)
+    # indices = list(br.values)
+
+    reduced_idx = ndarray(
+        internal._broadcast_shapes(shapes), dtype=numpy.int64)
     reduced_idx.fill(0)
     stride = 1
-    for i, s in enumerate(reversed(slices)):
-        a_shape_i = a._shape[ri - i]
+    i = stop
+    for s in reversed(indices):
+        i -= 1
+        a_shape_i = a._shape[i]
         # wrap all out-of-bound indices
         if a_shape_i != 0:
             _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
         stride *= a_shape_i
 
-    return reduced_idx, li, ri
+    return reduced_idx, start, stop
 
 
 cdef ndarray _getitem_multiple(ndarray a, Py_ssize_t start, list slices):
-    reduced_idx, li, ri = _prepare_multiple_array_indexing(a, start, slices)
-    return _take(a, reduced_idx, li, ri)
+    reduced_idx, start, stop = _prepare_multiple_array_indexing(
+        a, start, slices)
+    return _take(a, reduced_idx, start, stop)
