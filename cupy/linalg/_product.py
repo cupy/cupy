@@ -268,20 +268,7 @@ def outer(a, b, out=None):
     .. seealso:: :func:`numpy.outer`
 
     """
-    n = a.size
-    m = b.size
-    ret_shape = (n, m)
-
-    if out is None:
-        return _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
-
-    if out.size != n * m:
-        raise ValueError('Output array has an invalid size')
-    if out.flags.c_contiguous:
-        return _core.tensordot_core(a, b, out, n, m, 1, ret_shape)
-    else:
-        out[:] = _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
-        return out
+    return cupy.multiply(a.ravel()[:, None], b.ravel()[None, :], out=out)
 
 
 def tensordot(a, b, axes=2):
