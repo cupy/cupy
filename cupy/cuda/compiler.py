@@ -385,12 +385,10 @@ class CachedModule:
 
     @classmethod
     def dump_module(cls, path, backend, binary, mapping):
-        """Build and dumps a CachedModule object and checksum to path."""
-        python_obj = cls(backend, binary, mapping)
+        """Build and dumps a CachedModule object to path."""
+        cached_module = cls(backend, binary, mapping)
 
-        data_bytes = pickle.dumps(python_obj, protocol=_pickle_protocol)
-        data_hash = _hash_hexdigest(data_bytes).encode('ascii')
-        assert len(data_hash) == _hash_length
+        data = pickle.dumps(cached_module, protocol=_pickle_protocol)
 
         directory = os.path.dirname(path)
         if not os.path.isdir(directory):
@@ -400,14 +398,10 @@ class CachedModule:
         # to the same path at the same time.
         with tempfile.NamedTemporaryFile(
                 dir=directory, delete=False, mode='wb') as tf:
-            tf.write(data_hash)
-            tf.write(data_bytes)
+            tf.write(data)
             temp_path = tf.name
 
-        # os.replace is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending a hash at the beginning
-        # of the cached binary. If the file is corrupted, it will be ignored
-        # next time it is read (see CachedModule.load_module).
+        # os.replace is an atomic operation
         os.replace(src=temp_path, dst=path)
 
     @classmethod
@@ -419,38 +413,28 @@ class CachedModule:
         with open(path, 'rb') as file:
             data = file.read()
 
-        if len(data) < _hash_length:
-            return None
-
-        data_hash = data[:_hash_length]
-        data_bytes = data[_hash_length:]
-
-        actual_hash = _hash_hexdigest(data_bytes).encode('ascii')
-        if actual_hash != data_hash:
-            return None
-
         try:
-            cached_kernel = RestrictedUnpickler.loads(data_bytes)
+            cached_module = RestrictedUnpickler.loads(data)
         except pickle.UnpicklingError:
             return None
 
-        if not isinstance(cached_kernel, cls):
+        if not isinstance(cached_module, cls):
             return None
 
-        if cached_kernel.backend != backend:
+        if cached_module.backend != backend:
             return None
 
         mod = function.Module()
 
         if (name_expressions is not None) and len(name_expressions) > 0:
-            mapping = cached_kernel.mapping
+            mapping = cached_module.mapping
             if (mapping is None):
                 return None
             if set(name_expressions).difference(mapping.keys()):
                 return None
             mod._set_mapping(mapping)
 
-        mod.load(cached_kernel.binary)
+        mod.load(cached_module.binary)
         return mod
 
 
@@ -716,16 +700,14 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
-    key = (env, base, source, extra_source, str(_pickle_protocol))
-    key_str = ' '.join(key)
+    key = (env, base, source, extra_source, _pickle_protocol)
+    key_str = ' '.join(str(x) for x in key)
     if name_expressions is not None:
         key_str += ' ' + ','.join(sorted({str(x) for x in name_expressions}))
     key_str = key_str.encode('utf-8')
     name = _hash_hexdigest(key_str) + '.cubin'
 
     if not cache_in_memory:
-        # To handle conflicts in concurrent situation, we adopt lock-free
-        # method using a checksum and os.replace to avoid perf. degradation.
         path = os.path.join(cache_dir, name)
         mod = CachedModule.load_module(path, backend, name_expressions)
         if (mod is not None):
@@ -1036,16 +1018,14 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
             base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
-    key = (env, base, source, extra_source, str(_pickle_protocol))
-    key_str = ' '.join(key)
+    key = (env, base, source, extra_source, _pickle_protocol)
+    key_str = ' '.join(str(x) for x in key)
     if name_expressions is not None:
         key_str += ' ' + ','.join(sorted({str(x) for x in name_expressions}))
     key_str = key_str.encode('utf-8')
     name = _hash_hexdigest(key_str) + '.hsaco'
 
     if not cache_in_memory:
-        # To handle conflicts in concurrent situation, we adopt lock-free
-        # method using a checksum and os.replace to avoid perf. degradation.
         path = os.path.join(cache_dir, name)
         mod = CachedModule.load_module(path, backend, name_expressions)
         if (mod is not None):
