@@ -986,7 +986,7 @@ cusolverStatus_t cusolverSpZcsreigvsi(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-// Functions added in CUDA 11.2
+// Functions added in CUDA 11.1
 cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
