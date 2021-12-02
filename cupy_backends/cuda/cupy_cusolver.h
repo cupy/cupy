@@ -229,7 +229,7 @@ cusolverStatus_t cusolverDnSHgels(...) {
 }
 #endif // #if CUDA_VERSION < 11000
 
-#if CUDA_VERSION < 11020
+#if CUDA_VERSION < 11010
 // Functions added in CUDA 11.2
 cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
