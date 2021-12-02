@@ -336,14 +336,20 @@ class _GUFunc:
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self.__name__ = kwargs.get('name', func.__name__)
+        self.__name__ = kwargs.pop('name', func.__name__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
         # stuff internally due to CUDA libraries requirements
-        self._supports_batched = kwargs.get('supports_batched', False)
-        self._supports_out = kwargs.get('supports_out', False)
-        signatures = kwargs.get('signatures', [])
+        self._supports_batched = kwargs.pop('supports_batched', False)
+        self._supports_out = kwargs.pop('supports_out', False)
+        signatures = kwargs.pop('signatures', [])
+
+        if kwargs:
+            raise TypeError(
+                'got unexpected keyword arguments: '
+                + ', '.join([repr(k) for k in kwargs])
+            )
 
         # Preprocess the signature here
         input_coredimss, output_coredimss = _parse_gufunc_signature(
