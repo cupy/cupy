@@ -287,7 +287,7 @@ class RestrictedUnpickler(pickle.Unpickler):
         """Only allow a restricted set of classes."""
         if module == __name__ and name == 'CachedModule':
             return CachedModule
-        msg = "'{}.{}' is forbidden and cannot be unpickled."
+        msg = "unpickling '{}.{}' is forbidden"
         raise pickle.UnpicklingError(msg.format(module, name))
 
     @classmethod
@@ -637,10 +637,10 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
-    key = (env, base, source, extra_source, _pickle_protocol)
-    key_str = ('{} '*len(key)).format(*key)
+    key = (env, base, source, extra_source, str(_pickle_protocol))
+    key_str = ' '.join(key)
     if name_expressions is not None:
-        key_str += ','.join(sorted(set(map(str, name_expressions))))
+        key_str += ' ' + ','.join(sorted({str(x) for x in name_expressions}))
     key_str = key_str.encode('utf-8')
     name = _hash_hexdigest(key_str) + '.cubin'
 
@@ -957,10 +957,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
             base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
-    key = (env, base, source, extra_source, _pickle_protocol)
-    key_str = ('{} '*len(key)).format(*key)
+    key = (env, base, source, extra_source, str(_pickle_protocol))
+    key_str = ' '.join(key)
     if name_expressions is not None:
-        key_str += ','.join(sorted(set(map(str, name_expressions))))
+        key_str += ' ' + ','.join(sorted({str(x) for x in name_expressions}))
     key_str = key_str.encode('utf-8')
     name = _hash_hexdigest(key_str) + '.hsaco'
 
