@@ -1,4 +1,3 @@
-import functools
 import re
 
 import numpy
@@ -380,7 +379,6 @@ class _GUFunc:
             if not isinstance(input_coredimss, list)
             else len(input_coredimss)
         )
-        functools.update_wrapper(self, func)
         # Determines the function that will be run depending on the datatypes
         # Pass a list of signatures that are either the types in format
         # ii->o or a tuple with the string and a function other than func to be
