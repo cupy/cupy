@@ -141,7 +141,7 @@ However, if for any reason you need to force-install a particular CUDA version (
 
         $ conda install -c conda-forge cupy cudnn cutensor nccl
 
-    Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.2+.
+    Each of them can also be installed separately as needed.
 
 .. note::
 
