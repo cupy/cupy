@@ -367,7 +367,6 @@ from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
-from numpy import MachAr  # NOQA
 
 from numpy import find_common_type  # NOQA
 from numpy import issctype  # NOQA
@@ -574,6 +573,7 @@ from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
 from cupy._math.sumprod import gradient  # NOQA
+from cupy._math.sumprod import trapz  # NOQA
 from cupy._math.window import bartlett  # NOQA
 from cupy._math.window import blackman  # NOQA
 from cupy._math.window import hamming  # NOQA
@@ -872,19 +872,21 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
-if _sys.version_info >= (3, 7):
-    _deprecated_attrs = {
-        'int': (int, 'cupy.int_'),
-        'bool': (bool, 'cupy.bool_'),
-        'float': (float, 'cupy.float_'),
-        'complex': (complex, 'cupy.complex_'),
-    }
+_deprecated_apis = [
+    'MachAr',  # NumPy 1.22
+]
 
-    def __getattr__(name):
-        value = _deprecated_attrs.get(name)
-        if value is None:
-            raise AttributeError(
-                f"module 'cupy' has no attribute {name!r}")
+_deprecated_scalar_aliases = {  # NumPy 1.20
+    'int': (int, 'cupy.int_'),
+    'bool': (bool, 'cupy.bool_'),
+    'float': (float, 'cupy.float_'),
+    'complex': (complex, 'cupy.complex_'),
+}
+
+
+def __getattr__(name):
+    value = _deprecated_scalar_aliases.get(name)
+    if value is not None:
         attr, eq_attr = value
         _warnings.warn(
             f'`cupy.{name}` is a deprecated alias for the Python scalar type '
@@ -893,9 +895,8 @@ if _sys.version_info >= (3, 7):
             DeprecationWarning, stacklevel=2
         )
         return attr
-else:
-    # Does not emit warnings.
-    from builtins import int
-    from builtins import bool
-    from builtins import float
-    from builtins import complex
+
+    if name in _deprecated_apis:
+        return getattr(_numpy, name)
+
+    raise AttributeError(f"module 'cupy' has no attribute {name!r}")
