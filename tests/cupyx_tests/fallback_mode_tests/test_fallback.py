@@ -127,7 +127,8 @@ def enable_slice_copy(func):
 
 
 def get_numpy_version():
-    return tuple(map(int, numpy.__version__.split('.')))
+    v = numpy.lib.NumpyVersion(numpy.__version__)
+    return (v.major, v.minor, v.bugfix)
 
 
 @ignore_fallback_warnings
