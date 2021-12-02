@@ -95,6 +95,15 @@ The same :class:`cupy.cuda.Stream` instance can now safely be shared between mul
 
 To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if the stream is the current stream of any thread.
 
+Big-Endian Arrays Automatically Converted to Little-Endian
+----------------------------------------------------------
+
+:func:`cupy.array`, :func:`cupy.asarray` and its variants now always transfer the data to GPU in little-endian byte order.
+
+Previously CuPy was copying the given :class:`numpy.ndarray` to GPU as-is, regardless of the endianness.
+In CuPy v10, big-endian arrays are converted to little-endian before the transfer, which is the native byte order on GPUs.
+This change eliminates the need to manually change the array endianness before creating the CuPy array.
+
 Baseline API Update
 -------------------
 
