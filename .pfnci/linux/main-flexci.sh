@@ -15,12 +15,6 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     # Extract pull-request ID
     pull_req="$(echo "${FLEXCI_BRANCH}" | cut -d/ -f3)"
     echo "Testing Pull-Request: #${pull_req}"
-
-    pip3 install -q pygithub
-    TO_EXECUTE=$(./.pfnci/flexci_test_tag.py "${TAGS:-}")
-    if [[ "${TO_EXECUTE}" == "no" ]]; then
-        exit 0
-    fi
 fi
 
 # TODO(kmaehashi): Hack for CUDA 11.5 until FlexCI base image update
