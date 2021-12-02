@@ -329,6 +329,9 @@ class _GUFunc:
         name (str, optional):
             Name for the GUFunc object. If not specified, ``func``'s name
             is used.
+        doc (str, optional):
+            Docstring for the GUFunc object. If not specified, ``func.__doc__``
+            is used.
     '''
 
     def __init__(self, func, signature, **kwargs):
@@ -337,6 +340,7 @@ class _GUFunc:
         self._func = func
         self._signature = signature
         self.__name__ = kwargs.pop('name', func.__name__)
+        self.__doc__ = kwargs.pop('doc', func.__doc__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc

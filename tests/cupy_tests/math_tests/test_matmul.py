@@ -104,19 +104,18 @@ class TestMatmulOut(unittest.TestCase):
         assert xp.allclose(ret, out)
         return ret
 
-    # TODO: fix GUFunc bug
-    # @testing.for_all_dtypes(name='dtype1')
-    # @testing.for_all_dtypes(name='dtype2')
-    # @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
-    # def test_cupy_matmul_out_cast(self, xp, dtype1, dtype2):
-    #     x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
-    #     x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
-    #     out = xp.zeros(self.shape_pair[2], bool)
-    #     ret = xp.matmul(x1, x2, out=out, casting='unsafe')
-    #     # TODO: Fix GUFunc bug
-    #     # assert ret is out
-    #     assert xp.allclose(ret, out)
-    #     return ret
+    @testing.for_all_dtypes(name='dtype1')
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_cupy_matmul_out_cast(self, xp, dtype1, dtype2):
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        out = xp.zeros(self.shape_pair[2], bool)
+        ret = xp.matmul(x1, x2, out=out, casting='unsafe')
+        # TODO: Fix GUFunc bug
+        # assert ret is out
+        assert xp.allclose(ret, out)
+        return ret
 
 
 class TestMatmulStrides:
