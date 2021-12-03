@@ -8,12 +8,12 @@ def asfarray(a, dtype=cupy.float_):
     Args:
         a (cupy.ndarray): Source array.
         dtype: str or dtype object, optional
-    
+
     Returns:
         cupy.ndarray: The input array ``a`` as a float ndarray.
-    
+
     .. seealso:: :func`numpy.asfarray`, :meth:`cupy.ndarray.asfarray`
-    
+
     """
     if not cupy.issubdtype(dtype, cupy.inexact):
         dtype = cupy.float_
