@@ -449,7 +449,8 @@ cpdef ndarray tensordot_core(
         out = _ndarray_init(ret_shape, dtype)
     else:
         if out.dtype != dtype:
-            out = _ndarray_init(ret_shape, dtype)
+            # TODO: Fix to write to out.
+            raise NotImplementedError("The out array dtype is mismatched")
     cdef int ace
     if m == 1 and n == 1:
         for ace in _accelerator._routine_accelerators:
@@ -712,14 +713,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     """
 
-    if out is not None:
-        raise NotImplementedError('The out array as input is currently not '
-                                  'supported')
-
-    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
+    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
-    cdef ndarray ap, bp, outp, out_view
+    cdef ndarray ap, bp, cp, c_view
     cdef bint use_broadcast
 
     orig_a_ndim = a._shape.size()
@@ -729,7 +726,15 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     ndim = max(orig_a_ndim, orig_b_ndim)
     if ndim <= 2:
-        return dot(a, b, out)
+        if out is None:
+            return dot(a, b, out)
+        ret_dtype = numpy.promote_types(a.dtype, b.dtype)
+        if out._c_contiguous and ret_dtype == out.dtype:
+            return dot(a, b, out)
+        c = _ndarray_init(out._shape, dtype=ret_dtype)
+        dot(a, b, c)
+        elementwise_copy(c, out)
+        return out
 
     orig_a = a
     orig_b = b
@@ -741,10 +746,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         a_part_outshape = a._shape[orig_a_ndim - 2]
     if orig_b_ndim == 1:
         b = _manipulation._reshape(b, (b.size, 1))
-        ldout = 1
+        ldc = 1
     else:
         b = b.view()
-        b_part_outshape = ldout = b._shape[orig_b_ndim - 1]
+        b_part_outshape = ldc = b._shape[orig_b_ndim - 1]
 
     # expand dims
     a_ndim = a._shape.size()
@@ -817,23 +822,38 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 ','.join([str(_) for _ in orig_a.shape]),
                 ','.join([str(_) for _ in orig_b.shape])))
 
-    if a.size == 0 or b.size == 0:
-        return cupy.zeros(out_shape, ret_dtype)
+    if out is not None and out.shape != tuple(out_shape):
+        raise ValueError('Output array has an invalid size')
 
-    out = ndarray(out_shape, dtype=dtype)
+    if a.size == 0 or b.size == 0:
+        if out is None:
+            return cupy.zeros(out_shape, ret_dtype)
+        else:
+            out.fill(0)
+            return out
+
+    if out is not None and out.dtype == dtype and out.flags.c_contiguous:
+        c = out
+    else:
+        c = ndarray(out_shape, dtype=dtype)
+        if out is None:
+            if dtype == ret_dtype:
+                out = c
+            else:
+                out = ndarray(out_shape, dtype=ret_dtype)
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
-        out_view = out.view()
+        c_view = c.view()
         if orig_b_ndim == 1:
-            out_view._shape.push_back(1)
-            out_view._strides.push_back(0)
+            c_view._shape.push_back(1)
+            c_view._strides.push_back(0)
         if orig_a_ndim == 1:
-            out_view._shape.insert(out_view._shape.end() - 1, 1)
-            out_view._strides.insert(out_view._strides.end() - 1, 0)
-        assert out_view._c_contiguous
-        out_view._update_f_contiguity()
+            c_view._shape.insert(c_view._shape.end() - 1, 1)
+            c_view._strides.insert(c_view._strides.end() - 1, 0)
+        assert c_view._c_contiguous
+        c_view._update_f_contiguity()
     else:
-        out_view = out
+        c_view = c
 
     global _cuda_runtime_version
     if _cuda_runtime_version < 0:
@@ -847,7 +867,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
-        strideC = _get_stride_for_strided_batched_gemm(out_view)
+        strideC = _get_stride_for_strided_batched_gemm(c_view)
         if dtype == numpy.float32:
             cublas.sgemmStridedBatched(
                 handle,
@@ -856,7 +876,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
                 batchCount)
         elif dtype == numpy.float64:
             cublas.dgemmStridedBatched(
@@ -866,7 +886,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
                 batchCount)
         elif dtype == numpy.complex64:
             cublas.cgemmStridedBatched(
@@ -876,7 +896,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
                 batchCount)
         elif dtype == numpy.complex128:
             cublas.zgemmStridedBatched(
@@ -886,14 +906,14 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
                 batchCount)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:
         ap = _mat_ptrs(a)
         bp = _mat_ptrs(b)
-        outp = _mat_ptrs(out_view)
+        cp = _mat_ptrs(c_view)
         if dtype == numpy.float32:
             cublas.sgemmBatched(
                 handle,
@@ -902,7 +922,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
         elif dtype == numpy.float64:
             cublas.dgemmBatched(
                 handle,
@@ -911,7 +931,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
         elif dtype == numpy.complex64:
             cublas.cgemmBatched(
                 handle,
@@ -920,7 +940,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
         elif dtype == numpy.complex128:
             cublas.zgemmBatched(
                 handle,
@@ -929,13 +949,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
 
-    if dtype == ret_dtype:
-        return out
-    else:
-        ret = ndarray(out_shape, ret_dtype)
-        elementwise_copy(out, ret)
-        return ret
+    if out is not c:
+        elementwise_copy(c, out)
+    return out

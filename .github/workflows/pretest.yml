@@ -20,18 +20,18 @@ jobs:
         # cupyx.array_api uses Python 3.8 syntaxes
         python-version: '3.8'
 
-    - name: Setup ccache
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y ccache
-        echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
-        which gcc g++
-
     - name: Load ccache
       uses: actions/cache@v2
       with:
         path: ~/.ccache
         key: ccache
+
+    - name: Setup ccache
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y ccache
+        echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
+        ccache --max-size 0.5Gi --cleanup --show-stats
 
     - name: Build
       run: |
@@ -64,12 +64,15 @@ jobs:
         pushd install
         mypy cupy_builder
 
-    - name: Test - CI Generator
+    - name: Test - CI Tools
       run: |
-        pip install PyYAML types-PyYAML mypy
+        pip install PyYAML types-PyYAML pygithub mypy
         pushd .pfnci
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
+        popd
+        pushd .github/workflows
+        mypy flexci_dispatcher.py
         popd
 
   rocm-build:

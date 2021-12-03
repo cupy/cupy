@@ -11,6 +11,7 @@ typedef enum {
     CUSOLVER_STATUS_SUCCESS = 0,
 } cusolverStatus_t;
 
+typedef enum{} cusolverDnParams_t;
 typedef enum{} cusolverEigType_t;
 typedef enum{} cusolverEigMode_t;
 
@@ -898,6 +899,12 @@ cusolverStatus_t cusolverDnSHgesv(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 // Functions added in CUDA 11.0
+cusolverStatus_t cusolverDnCreateParams(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDestroyParams(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
 cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -976,6 +983,15 @@ cusolverStatus_t cusolverSpCcsreigvsi(...) {
 }
 
 cusolverStatus_t cusolverSpZcsreigvsi(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+// Functions added in CUDA 11.1
+cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXsyevd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

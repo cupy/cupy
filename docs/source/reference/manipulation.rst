@@ -63,6 +63,7 @@ Changing kind of array
 
    asarray
    asanyarray
+   asfarray
    asfortranarray
    ascontiguousarray
    require

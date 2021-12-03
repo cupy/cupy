@@ -39,18 +39,18 @@ def test_validate_index():
     assert_raises(IndexError, lambda: a[:-4])
     assert_raises(IndexError, lambda: a[:3:-1])
     assert_raises(IndexError, lambda: a[:-5:-1])
-    assert_raises(IndexError, lambda: a[3:])
+    assert_raises(IndexError, lambda: a[4:])
     assert_raises(IndexError, lambda: a[-4:])
-    assert_raises(IndexError, lambda: a[3::-1])
+    assert_raises(IndexError, lambda: a[4::-1])
     assert_raises(IndexError, lambda: a[-4::-1])
 
     assert_raises(IndexError, lambda: a[...,:5])
     assert_raises(IndexError, lambda: a[...,:-5])
-    assert_raises(IndexError, lambda: a[...,:4:-1])
+    assert_raises(IndexError, lambda: a[...,:5:-1])
     assert_raises(IndexError, lambda: a[...,:-6:-1])
-    assert_raises(IndexError, lambda: a[...,4:])
+    assert_raises(IndexError, lambda: a[...,5:])
     assert_raises(IndexError, lambda: a[...,-5:])
-    assert_raises(IndexError, lambda: a[...,4::-1])
+    assert_raises(IndexError, lambda: a[...,5::-1])
     assert_raises(IndexError, lambda: a[...,-5::-1])
 
     # Boolean indices cannot be part of a larger tuple index
@@ -74,6 +74,11 @@ def test_validate_index():
     assert_raises(IndexError, lambda: a[None, ...])
     assert_raises(IndexError, lambda: a[..., None])
 
+    # Multiaxis indices must contain exactly as many indices as dimensions
+    assert_raises(IndexError, lambda: a[()])
+    assert_raises(IndexError, lambda: a[0,])
+    assert_raises(IndexError, lambda: a[0])
+    assert_raises(IndexError, lambda: a[:])
 
 def test_operators():
     # For every operator, we test that it works for the required type

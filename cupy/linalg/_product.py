@@ -10,7 +10,8 @@ from cupy.linalg import _solve
 from cupy.linalg import _util
 
 _gu_func_matmul = _GUFunc(
-    _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
+    _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True,
+    supports_out=True)
 
 
 def matmul(x1, x2, out=None, *, axes=None):

@@ -16,6 +16,7 @@ Generating index arrays
    nonzero
    where
    indices
+   mask_indices
    ix_
    ravel_multi_index
    unravel_index

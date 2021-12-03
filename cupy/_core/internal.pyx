@@ -236,6 +236,10 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
 
 @cython.profile(False)
 cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
+    warnings.warn(
+        'complete_slice_list is deprecated because the function sometimes '
+        'returns wrong result (#1512, #4799).',
+        DeprecationWarning)
     cdef Py_ssize_t i, n_newaxes, n_ellipses, ellipsis, n
     slice_list = list(slice_list)  # copy list
     # Expand ellipsis into empty slices
