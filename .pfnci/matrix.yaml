@@ -22,6 +22,12 @@
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
+# CUDA 10.2 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda102.multi"
+  _inherits: "cupy.linux.cuda102"
+  target: "cuda102.multi"
+  test: "unit-multi"
+
 # CUDA 11.0 | Linux
 - project: "cupy.linux.cuda110"
   target: "cuda110"
@@ -40,6 +46,12 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
+
+# CUDA 11.0 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda110.multi"
+  _inherits: "cupy.linux.cuda110"
+  target: "cuda110.multi"
+  test: "unit-multi"
 
 # CUDA 11.1 | Linux
 - project: "cupy.linux.cuda111"
@@ -60,6 +72,12 @@
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
+# CUDA 11.1 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda111.multi"
+  _inherits: "cupy.linux.cuda111"
+  target: "cuda111.multi"
+  test: "unit-multi"
+
 # CUDA 11.2 | Linux
 - project: "cupy.linux.cuda112"
   target: "cuda112"
@@ -78,6 +96,12 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: null
   test: "unit"
+
+# CUDA 11.2 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda112.multi"
+  _inherits: "cupy.linux.cuda112"
+  target: "cuda112.multi"
+  test: "unit-multi"
 
 # CUDA 11.3 | Linux
 - project: "cupy.linux.cuda113"
@@ -98,6 +122,12 @@
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
+# CUDA 11.3 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda113.multi"
+  _inherits: "cupy.linux.cuda113"
+  target: "cuda113.multi"
+  test: "unit-multi"
+
 # CUDA 11.4 | Linux
 - project: "cupy.linux.cuda114"
   target: "cuda114"
@@ -108,7 +138,7 @@
   nccl: "2.11"
   cutensor: "1.3"
   cusparselt: "0.1.0"
-  cudnn: "8.2"
+  cudnn: "8.3"
   python: "3.10"
   numpy: "1.21"
   scipy: "1.7"
@@ -116,6 +146,12 @@
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
+
+# CUDA 11.4 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda114.multi"
+  _inherits: "cupy.linux.cuda114"
+  target: "cuda114.multi"
+  test: "unit-multi"
 
 # CUDA 11.5 | Linux
 # The latest CUDA version matrix is intended to cover the highest supported combination.
@@ -128,7 +164,7 @@
 #   nccl: "2.11"
 #   cutensor: "1.3"
 #   cusparselt: "0.1.0"
-#   cudnn: "8.2"
+#   cudnn: "8.3"
 #   python: "3.9"
 #   numpy: "1.21"
 #   scipy: "1.7"
@@ -150,6 +186,7 @@
 # ROCm 4.0 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-0"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-0,label=mnj-mi50/"
   target: "rocm-4-0"
   system: "linux"
   os: "ubuntu:20.04"
@@ -169,6 +206,7 @@
 
 # ROCm 4.2 | Linux
 - project: "cupy.linux.rocm-4-2"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-2,label=mnj-mi50/"
   target: "rocm-4-2"
   system: "linux"
   os: "ubuntu:20.04"
@@ -189,6 +227,7 @@
 # ROCm 4.3 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-4-3"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
   target: "rocm-4-3"
   system: "linux"
   os: "ubuntu:20.04"
@@ -221,14 +260,14 @@
   nccl: "2.10"
   cutensor: "1.3"
   cusparselt: "0.1.0"
-  cudnn: "8.2"
+  cudnn: "8.3"
   python: "3.9"
   numpy: "1.21"
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
   env:CUPY_ACCELERATORS: "cutensor,cub"
-  test: "slow"
+  test: "unit-slow"
 
 ###############################################################################
 # Example
@@ -249,7 +288,7 @@
   nccl: "2.10"
   cutensor: "1.3"
   cusparselt: "0.1.0"
-  cudnn: "8.2"
+  cudnn: "8.3"
   python: "3.8"
   numpy: "1.20"
   scipy: "1.7"
@@ -273,7 +312,7 @@
   nccl: "2.10"
   cutensor: "1.3"
   cusparselt: "0.1.0"
-  cudnn: "8.2"
+  cudnn: "8.3"
   python: "3.9"
   numpy: "pre"
   scipy: "pre"

@@ -113,6 +113,29 @@ class TestSimpleReductionFunctionComplexWarning(unittest.TestCase):
         return out
 
 
+class TestSimpleReductionFunctionInvalidAxis:
+    @pytest.mark.parametrize('axis', [
+        2,
+        (-3,),
+        (0, 7),
+    ])
+    def test_axis_overrun(self, axis):
+        for xp in (numpy, cupy):
+            a = xp.ones((2, 2))
+            with pytest.raises(numpy.AxisError):
+                a.sum(axis=axis)
+
+    @pytest.mark.parametrize('axis', [
+        (1, 1),
+        (0, -2),
+    ])
+    def test_axis_repeated(self, axis):
+        for xp in (numpy, cupy):
+            a = xp.ones((2, 2))
+            with pytest.raises(ValueError):
+                a.sum(axis=axis)
+
+
 class ReductionKernelTestBase(AbstractReductionTestBase):
 
     def get_sum_func(self):

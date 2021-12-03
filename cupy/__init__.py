@@ -100,72 +100,48 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-
 from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
 # -----------------------------------------------------------------------------
 from numpy import byte  # NOQA
-
 from numpy import short  # NOQA
-
 from numpy import intc  # NOQA
-
 from numpy import int_  # NOQA
-
 from numpy import longlong  # NOQA
-
 from numpy import intp  # NOQA
-
+from numpy import int0  # NOQA
 from numpy import int8  # NOQA
-
 from numpy import int16  # NOQA
-
 from numpy import int32  # NOQA
-
 from numpy import int64  # NOQA
 
 # -----------------------------------------------------------------------------
 # Unsigned integers
 # -----------------------------------------------------------------------------
 from numpy import ubyte  # NOQA
-
 from numpy import ushort  # NOQA
-
 from numpy import uintc  # NOQA
-
 from numpy import uint  # NOQA
-
 from numpy import ulonglong  # NOQA
-
 from numpy import uintp  # NOQA
-
+from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
-
 from numpy import uint16  # NOQA
-
 from numpy import uint32  # NOQA
-
 from numpy import uint64  # NOQA
 
 # -----------------------------------------------------------------------------
 # Floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import half  # NOQA
-
 from numpy import single  # NOQA
-
 from numpy import double  # NOQA
-
 from numpy import float_  # NOQA
-
 from numpy import longfloat  # NOQA
-
 from numpy import float16  # NOQA
-
 from numpy import float32  # NOQA
-
 from numpy import float64  # NOQA
 
 # Not supported by CuPy:
@@ -176,11 +152,11 @@ from numpy import float64  # NOQA
 # Complex floating-point numbers
 # -----------------------------------------------------------------------------
 from numpy import csingle  # NOQA
-
+from numpy import singlecomplex  # NOQA
+from numpy import cdouble  # NOQA
+from numpy import cfloat  # NOQA
 from numpy import complex_  # NOQA
-
 from numpy import complex64  # NOQA
-
 from numpy import complex128  # NOQA
 
 # Not supported by CuPy:
@@ -287,6 +263,7 @@ from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
 
+from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
 
@@ -309,6 +286,10 @@ from cupy._manipulation.rearrange import fliplr  # NOQA
 from cupy._manipulation.rearrange import flipud  # NOQA
 from cupy._manipulation.rearrange import roll  # NOQA
 from cupy._manipulation.rearrange import rot90  # NOQA
+
+# Borrowed from NumPy
+if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+    from numpy import broadcast_shapes  # NOQA
 
 # -----------------------------------------------------------------------------
 # Binary operations
@@ -388,7 +369,6 @@ from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
-from numpy import MachAr  # NOQA
 
 from numpy import find_common_type  # NOQA
 from numpy import issctype  # NOQA
@@ -416,6 +396,7 @@ from numpy import typename  # NOQA
 from cupy._indexing.generate import c_  # NOQA
 from cupy._indexing.generate import indices  # NOQA
 from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import mask_indices  # NOQA
 from cupy._indexing.generate import r_  # NOQA
 from cupy._indexing.generate import ravel_multi_index  # NOQA
 from cupy._indexing.generate import unravel_index  # NOQA
@@ -436,6 +417,12 @@ from cupy._indexing.insert import diag_indices  # NOQA
 from cupy._indexing.insert import diag_indices_from  # NOQA
 
 from cupy._indexing.iterate import flatiter  # NOQA
+
+# Borrowed from NumPy
+from numpy import get_array_wrap  # NOQA
+from numpy import index_exp  # NOQA
+from numpy import ndindex  # NOQA
+from numpy import s_  # NOQA
 
 # -----------------------------------------------------------------------------
 # Input and output
@@ -458,6 +445,14 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
     .. seealso:: :func:`numpy.base_repr`
     """
     return _numpy.base_repr(number, base, padding)
+
+
+# Borrowed from NumPy
+from numpy import DataSource  # NOQA
+from numpy import get_printoptions  # NOQA
+from numpy import set_printoptions  # NOQA
+from numpy import printoptions  # NOQA
+from numpy import set_string_function  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -581,6 +576,7 @@ from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
 from cupy._math.sumprod import gradient  # NOQA
+from cupy._math.sumprod import trapz  # NOQA
 from cupy._math.window import bartlett  # NOQA
 from cupy._math.window import blackman  # NOQA
 from cupy._math.window import hamming  # NOQA
@@ -652,6 +648,11 @@ from cupy._math.misc import convolve  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
+
+# Borrowed from NumPy
+from numpy import disp  # NOQA
+from numpy import iterable  # NOQA
+from numpy import safe_eval  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -874,19 +875,21 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
-if _sys.version_info >= (3, 7):
-    _deprecated_attrs = {
-        'int': (int, 'cupy.int_'),
-        'bool': (bool, 'cupy.bool_'),
-        'float': (float, 'cupy.float_'),
-        'complex': (complex, 'cupy.complex_'),
-    }
+_deprecated_apis = [
+    'MachAr',  # NumPy 1.22
+]
 
-    def __getattr__(name):
-        value = _deprecated_attrs.get(name)
-        if value is None:
-            raise AttributeError(
-                f"module 'cupy' has no attribute {name!r}")
+_deprecated_scalar_aliases = {  # NumPy 1.20
+    'int': (int, 'cupy.int_'),
+    'bool': (bool, 'cupy.bool_'),
+    'float': (float, 'cupy.float_'),
+    'complex': (complex, 'cupy.complex_'),
+}
+
+
+def __getattr__(name):
+    value = _deprecated_scalar_aliases.get(name)
+    if value is not None:
         attr, eq_attr = value
         _warnings.warn(
             f'`cupy.{name}` is a deprecated alias for the Python scalar type '
@@ -895,9 +898,8 @@ if _sys.version_info >= (3, 7):
             DeprecationWarning, stacklevel=2
         )
         return attr
-else:
-    # Does not emit warnings.
-    from builtins import int
-    from builtins import bool
-    from builtins import float
-    from builtins import complex
+
+    if name in _deprecated_apis:
+        return getattr(_numpy, name)
+
+    raise AttributeError(f"module 'cupy' has no attribute {name!r}")

@@ -289,3 +289,21 @@ class TestRavelMultiIndex(unittest.TestCase):
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
             with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, mode='invalid')
+
+
+class TestMaskIndices:
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices(self, xp):
+        # arr is a square matrix with 50% density
+        multiplier = testing.shaped_random((10, 10), xp=xp, dtype=xp.bool_)
+        arr = testing.shaped_random((10, 10), xp=xp) * multiplier
+        return xp.mask_indices(10, lambda n, k=None: arr)
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices_k(self, xp):
+        return xp.mask_indices(10, xp.triu, k=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_empty(self, xp):
+        return xp.mask_indices(0, xp.triu)

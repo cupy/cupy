@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2 / v8.3
 
     * The library to accelerate deep neural network computations.
 
@@ -69,6 +69,9 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
 Installing CuPy
 ---------------
+
+Installing CuPy from PyPI
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Package names are different depending on your CUDA Toolkit version.
@@ -115,7 +118,7 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
 .. _install_cupy_from_conda_forge:
 
 Installing CuPy from Conda-Forge
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
 The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
@@ -136,9 +139,9 @@ However, if for any reason you need to force-install a particular CUDA version (
 
     cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cudnn cutensor nccl
 
-    Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.1+.
+    Each of them can also be installed separately as needed.
 
 .. note::
 
@@ -153,15 +156,11 @@ However, if for any reason you need to force-install a particular CUDA version (
     it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
     avoid surprises.
 
-.. note::
-
-   Use ``conda install -c conda-forge/label/cupy_rc cupy`` if you want to install pre-release (development) versions.
-
 
 .. _install_cupy_from_source:
 
 Installing CuPy from Source
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use of wheel packages is recommended whenever possible.
 However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
@@ -387,9 +386,6 @@ The following ROCm libraries are required:
 ::
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
-
-.. note::
-   ROCm 4.3 is known to have an issue related to clang/HIP. If you experienced an error like ``fatal error: '__clang_hip_runtime_wrapper.h' file not found``, please try setting an environment variable ``LLVM_PATH`` (e.g., ``export LLVM_PATH="${ROCM_HOME}/llvm"``). See `#5592 <https://github.com/cupy/cupy/issues/5592#issuecomment-901136342>`_ for details.
 
 Environment Variables
 ---------------------

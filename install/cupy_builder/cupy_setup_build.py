@@ -7,7 +7,6 @@ from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
 import os
-from os import path
 import shutil
 import sys
 
@@ -44,7 +43,7 @@ def module_extension_name(file):
 
 def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
-    base = path.join(*pyx.split('.'))
+    base = os.path.join(*pyx.split('.'))
     pyx = base + ('.pyx' if use_cython else '.cpp')
 
     # If CUDA SDK is not available, remove CUDA C files from extension sources
@@ -281,9 +280,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
     include_dirs = settings['include_dirs']
 
     settings['include_dirs'] = [
-        x for x in include_dirs if path.exists(x)]
+        x for x in include_dirs if os.path.exists(x)]
     settings['library_dirs'] = [
-        x for x in settings['library_dirs'] if path.exists(x)]
+        x for x in settings['library_dirs'] if os.path.exists(x)]
 
     # Adjust rpath to use CUDA libraries in `cupy/.data/lib/*.so`) from CuPy.
     use_wheel_libs_rpath = (
@@ -498,7 +497,7 @@ def cythonize(extensions, ctx: Context):
 def check_extensions(extensions):
     for x in extensions:
         for f in x.sources:
-            if not path.isfile(f):
+            if not os.path.isfile(f):
                 raise RuntimeError('''\
 Missing file: {}
 Please install Cython.
@@ -650,6 +649,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             postargs += [f'-t{num_threads}']
         else:
             postargs += ['--std=c++11']
+        postargs += ['-Xcompiler=-fno-gnu-unique']
         print('NVCC options:', postargs)
         try:
             self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +

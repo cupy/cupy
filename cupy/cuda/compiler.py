@@ -2,6 +2,7 @@ import copy
 import hashlib
 import math
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -53,8 +54,8 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
             # but this is not true in general Windows environment unless
             # running inside the SDK Tools command prompt.
             # To mitigate the situation CuPy automatically adds a path to
-            # the VC++ compiler used to build Python / CuPy to the PATH, if
-            # VC++ is not available in PATH.
+            # the VC++ compiler (cl.exe) found via setuptools, if it is not
+            # on the PATH.
             extra_path = _get_extra_path_for_msvc()
             if extra_path is not None:
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
@@ -90,24 +91,24 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
 
 @_util.memoize()
 def _get_extra_path_for_msvc():
-    import distutils.spawn
-    cl_exe = distutils.spawn.find_executable('cl.exe')
+    cl_exe = shutil.which('cl.exe')
     if cl_exe:
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    from distutils import msvc9compiler
-    vcvarsall_bat = msvc9compiler.find_vcvarsall(
-        msvc9compiler.get_build_version())
-    if not vcvarsall_bat:
-        # Failed to find VC.
+    try:
+        import setuptools
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+    except Exception as e:
+        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
         return None
 
-    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
-    if not distutils.spawn.find_executable('cl.exe', path):
-        # The compiler could not be found.
-        return None
-    return path
+    for path in vctools:
+        cl_exe = os.path.join(path, 'cl.exe')
+        if os.path.exists(cl_exe):
+            return path
+    warnings.warn(f'cl.exe could not be found in {vctools}')
+    return None
 
 
 def _get_nvrtc_version():

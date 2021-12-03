@@ -68,33 +68,33 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
-    '11.5', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.5', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.4', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.4', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.3', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.3', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.2', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.2', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.1', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.1', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.0', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.0', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.2', '8.2.4',
-    'cudnn-10.2-linux-x64-v8.2.4.15.tgz',
-    'cudnn-10.2-windows10-x64-v8.2.4.15.zip'))
+    '10.2', '8.3.0',
+    'cudnn-10.2-linux-x64-v8.3.0.98.tgz',
+    'cudnn-10.2-windows10-x64-v8.3.0.98.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
