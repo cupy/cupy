@@ -74,32 +74,23 @@ def _parse_function_object(func):
 
     tree = ast.parse(full_source)
 
-    def search(node, instance):
-        if isinstance(node, instance) and start_line <= node.lineno < end_line:
-            yield node
-        elif isinstance(node, list):
-            for child in node:
-                yield from search(child, instance)
-        elif hasattr(node, '_fields'):
-            for child_name in dir(node):
-                if not child_name.startswith('_'):
-                    yield from search(getattr(node, child_name), instance)
-
-    if func.__name__ == '<lambda>':
-        nodes = list(search(tree, ast.Lambda))
+    def get_node(instance):
+        nodes = [node for node in ast.walk(tree)
+                 if isinstance(node, instance)
+                 and start_line <= node.lineno < end_line]
         if len(nodes) > 1:
             raise RuntimeError('Parse error: multiple function is found.')
-        node = nodes[0]
+        return nodes[0]
+
+    if func.__name__ == '<lambda>':
+        node = get_node(ast.Lambda)
         return ast.FunctionDef(
             name='_lambda_kernel', args=node.args,
             body=[ast.Return(node.body)],
             decorator_list=[], returns=None, type_comment=None,
         ), source
     else:
-        nodes = list(search(tree, ast.FunctionDef))
-        if len(nodes) > 1:
-            raise RuntimeError('Parse error: multiple function is found.')
-        return nodes[0], source
+        return get_node(ast.FunctionDef), source
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
