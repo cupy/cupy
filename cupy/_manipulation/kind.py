@@ -12,7 +12,7 @@ def asfarray(a, dtype=cupy.float_):
     Returns:
         cupy.ndarray: The input array ``a`` as a float ndarray.
 
-    .. seealso:: :func`numpy.asfarray`, :meth:`cupy.ndarray.asfarray`
+    .. seealso:: :func`numpy.asfarray`
 
     """
     if not cupy.issubdtype(dtype, cupy.inexact):
