@@ -43,7 +43,7 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if (not runtime.is_hip and _cuda_runtime_version >= 11020):
+    if not runtime.is_hip and _cuda_runtime_version >= 11010:
         if dtype.char not in 'fdFD':
             raise RuntimeError('Only float32, float64, complex64, and '
                                'complex128 are supported')
