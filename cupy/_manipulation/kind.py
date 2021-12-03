@@ -17,7 +17,7 @@ def asfarray(a, dtype=cupy.float_):
     """
     if not cupy.issubdtype(dtype, cupy.inexact):
         dtype = cupy.float_
-    return asarray(a, dtype=dtype)
+    return cupy.asarray(a, dtype=dtype)
 
 
 def asfortranarray(a, dtype=None):

@@ -228,7 +228,6 @@ from cupy._creation.from_data import array  # NOQA
 from cupy._creation.from_data import asanyarray  # NOQA
 from cupy._creation.from_data import asarray  # NOQA
 from cupy._creation.from_data import ascontiguousarray  # NOQA
-from cupy._creation.from_data import asfarray  # NOQA
 from cupy._creation.from_data import fromfile  # NOQA
 from cupy._creation.from_data import fromfunction  # NOQA
 from cupy._creation.from_data import fromiter  # NOQA
@@ -287,6 +286,7 @@ from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
 
+from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
 
