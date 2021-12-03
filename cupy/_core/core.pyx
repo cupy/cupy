@@ -1191,10 +1191,12 @@ cdef class ndarray:
             return numpy.multiply(x, y)
 
     def __matmul__(x, y):
-        if not isinstance(y, ndarray) and _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _linalg.matmul(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return cupy.linalg._product.matmul(x, y)
+            return numpy.matmul(x, y)
 
     def __div__(x, y):
         if isinstance(y, ndarray):
