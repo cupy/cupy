@@ -1,4 +1,4 @@
-[Experimental] Installation Guide for ROCm environemt
+[Experimental] Installation Guide for ROCm environment
 =====================================================
 
 .. contents:: :local:
