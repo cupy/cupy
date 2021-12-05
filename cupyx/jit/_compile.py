@@ -65,7 +65,13 @@ def _parse_function_object(func):
         start_line, end_line = 0, math.inf
         source = full_source
     else:
-        filename = inspect.getsourcefile(func)
+        try:
+            filename = inspect.getsourcefile(func)
+        except TypeError:
+            filename = None
+        if filename is None:
+            raise ValueError(f'JIT needs access to Python source for {func}'
+                             'but could not be located')
         with open(filename) as f:
             full_source = f.read()
         source, start_line = inspect.getsourcelines(func)
