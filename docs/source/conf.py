@@ -436,12 +436,7 @@ def linkcode_resolve(domain, info):
         return None
 
     # If it's wrapped (e.g., by `contextlib.contextmanager`), unwrap it
-    for _ in range(10):
-        if not hasattr(obj, '__wrapped__'):
-            break
-        obj = obj.__wrapped__
-    else:
-        raise RuntimeError(f'nested too deep: {info}')
+    obj = inspect.unwrap(obj)
 
     # Get the source file name and line number at which obj is defined.
     try:
