@@ -85,7 +85,9 @@ def _parse_function_object(func):
                  if isinstance(node, instance)
                  and start_line <= node.lineno < end_line]
         if len(nodes) > 1:
-            raise RuntimeError('Parse error: multiple function is found.')
+            raise ValueError('Multiple callables are found near the'
+                             f' definition of {func}, and JIT could not'
+                             ' identify the source code for it.')
         return nodes[0]
 
     if func.__name__ == '<lambda>':

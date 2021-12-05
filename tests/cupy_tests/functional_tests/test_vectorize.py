@@ -629,5 +629,5 @@ class TestVectorize(unittest.TestCase):
         f = cupy.vectorize(functions[0])
         x1 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=1)
         x2 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=2)
-        with pytest.raises(RuntimeError, match='Parse error:'):
+        with pytest.raises(ValueError, match='Multiple callables are found'):
             return f(x1, x2)
