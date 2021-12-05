@@ -463,8 +463,8 @@ def linkcode_resolve(domain, info):
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)
 
-    return 'https://github.com/cupy/cupy/blob/{}/{}'.format(
-        tag, relpath if linenum is None else f'{relpath}#L{linenum}')
+    fragment = '' if linenum is None else f'#L{linenum}'
+    return f'https://github.com/cupy/cupy/blob/{tag}/{relpath}{fragment}'
 
 
 # Python Array API methods have type hints, which do not render
