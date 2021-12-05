@@ -445,7 +445,7 @@ def linkcode_resolve(domain, info):
         # obj is not a module, class, function, ..etc.
         return None
 
-    # inspect can return None for cython objects
+    # `inspect.getsourcefile` returns None for C-extension objects
     if filename is None:
         filename = inspect.getfile(obj)
         for ext in importlib.machinery.EXTENSION_SUFFIXES:
