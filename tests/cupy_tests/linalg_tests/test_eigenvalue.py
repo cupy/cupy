@@ -145,6 +145,32 @@ class TestEigenvalue:
 
 @pytest.mark.parametrize('UPLO', ['U', 'L'])
 @pytest.mark.parametrize('shape', [
+    (0, 0),
+    (2, 0, 0),
+    (0, 3, 3),
+])
+@pytest.mark.skipif(
+    runtime.is_hip and driver.get_build_version() < 402,
+    reason='eigensolver not added until ROCm 4.2.0')
+class TestEigenvalueEmpty:
+
+    @testing.for_dtypes('ifdFD')
+    @testing.numpy_cupy_allclose()
+    def test_eigh(self, xp, dtype, shape, UPLO):
+        a = xp.empty(shape, dtype)
+        assert a.size == 0
+        return xp.linalg.eigh(a, UPLO=UPLO)
+
+    @testing.for_dtypes('ifdFD')
+    @testing.numpy_cupy_allclose()
+    def test_eigvalsh(self, xp, dtype, shape, UPLO):
+        a = xp.empty(shape, dtype)
+        assert a.size == 0
+        return xp.linalg.eigvalsh(a, UPLO=UPLO)
+
+
+@pytest.mark.parametrize('UPLO', ['U', 'L'])
+@pytest.mark.parametrize('shape', [
     (),
     (3,),
     (2, 3),

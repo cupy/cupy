@@ -132,6 +132,13 @@ def eigh(a, UPLO='L'):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
+    if a.size == 0:
+        _, v_dtype = _util.linalg_common_type(a)
+        w_dtype = v_dtype.char.lower()
+        w = cupy.empty(a.shape[:-1], w_dtype)
+        v = cupy.empty(a.shape, v_dtype)
+        return w, v
+
     if a.ndim > 2 or runtime.is_hip:
         w, v = cupy.cusolver.syevj(a, UPLO, True)
         return w, v
@@ -170,6 +177,11 @@ def eigvalsh(a, UPLO='L'):
     """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    if a.size == 0:
+        _, v_dtype = _util.linalg_common_type(a)
+        w_dtype = v_dtype.char.lower()
+        return cupy.empty(a.shape[:-1], w_dtype)
 
     if a.ndim > 2 or runtime.is_hip:
         return cupy.cusolver.syevj(a, UPLO, False)
