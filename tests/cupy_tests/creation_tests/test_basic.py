@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -7,8 +5,7 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
-class TestBasic(unittest.TestCase):
+class TestBasic:
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -172,11 +169,12 @@ class TestBasic(unittest.TestCase):
         b = cupy.empty((1, 0, 2), dtype='d', order=order)
         assert b.strides == a.strides
 
+    @pytest.mark.parametrize('offset', [1, -1, 1<<63, -(1<<63)])
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_eye(self, xp, dtype, order):
-        return xp.eye(5, 4, 1, dtype, order=order)
+    def test_eye(self, xp, dtype, order, offset):
+        return xp.eye(5, 4, offset, dtype, order=order)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -280,8 +278,7 @@ class TestBasic(unittest.TestCase):
         'shape': [4, (4, ), (4, 2), (4, 2, 3), (5, 4, 2, 3)],
     })
 )
-@testing.gpu
-class TestBasicReshape(unittest.TestCase):
+class TestBasicReshape:
 
     @testing.with_requires('numpy>=1.17.0')
     @testing.for_orders('CFAK')
