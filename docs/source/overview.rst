@@ -30,7 +30,7 @@ CuPy provides a ``ndarray``, sparse matrices, and the associated routines for GP
   * :doc:`Advanced Linear Algebra <reference/scipy_linalg>` (``cupyx.scipy.linalg.*``)
   * :doc:`Multidimensional Image Processing <reference/scipy_ndimage>` (``cupyx.scipy.ndimage.*``)
   * :doc:`Sparse Matrices <reference/scipy_sparse>` (``cupyx.scipy.sparse.*``)
-  * :doc:`Sparse Linear Algebra <reference/scipy_linalg>` (``cupyx.scipy.sparse.linalg.*``)
+  * :doc:`Sparse Linear Algebra <reference/scipy_sparse_linalg>` (``cupyx.scipy.sparse.linalg.*``)
   * :doc:`Special Functions <reference/scipy_special>` (``cupyx.scipy.special.*``)
   * :doc:`Signal Processing <reference/scipy_signal>` (``cupyx.scipy.signal.*``)
   * :doc:`Statistical Functions <reference/scipy_stats>` (``cupyx.scipy.stats.*``)
@@ -53,7 +53,7 @@ For users who need more fine-grain control for performance, accessing :doc:`low-
 * **Profiler**: Supports profiling code using CUDA Profiler and NVTX
 * **Host API Binding**: Directly call CUDA libraries, such as NCCL, cuDNN, cuTENSOR, and cuSPARSELt APIs from Python
 
-CuPy implements standard APIs for data exchange and interoperability, such as `DLPack <https://github.com/dmlc/dlpack>`__, `CUDA Array Interface <https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html>`__, ``__array_ufunc__`` (`NEP 13 <https://numpy.org/neps/nep-0013-ufunc-overrides.html>`__), ``_array_function_`` (`NEP 18 <https://numpy.org/neps/nep-0018-array-function-protocol.html>`__), and `Array API Standard <https://data-apis.org/array-api/latest/>`__.
+CuPy implements standard APIs for data exchange and interoperability, such as `DLPack <https://github.com/dmlc/dlpack>`__, `CUDA Array Interface <https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html>`__, ``__array_ufunc__`` (`NEP 13 <https://numpy.org/neps/nep-0013-ufunc-overrides.html>`__), ``__array_function__`` (`NEP 18 <https://numpy.org/neps/nep-0018-array-function-protocol.html>`__), and `Array API Standard <https://data-apis.org/array-api/latest/>`__.
 Thanks to these protocols, CuPy easily :doc:`integrates <user_guide/interoperability>` with NumPy, PyTorch, TensorFlow, MPI4Py, and any other libraries supporting the standard.
 
 Under AMD ROCm environment, CuPy automatically translates all CUDA API calls to ROCm HIP (hipBLAS, hipFFT, hipSPARSE, hipRAND, hipCUB, hipThrust, RCCL, etc.), allowing code written using CuPy to run on both NVIDIA and AMD GPU without any modification.
