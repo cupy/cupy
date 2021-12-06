@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -24,11 +22,10 @@ def _get_hermitian(xp, a, UPLO):
 @testing.parameterize(*testing.product({
     'UPLO': ['U', 'L'],
 }))
-@testing.gpu
 @pytest.mark.skipif(
     runtime.is_hip and driver.get_build_version() < 402,
     reason='eigensolver not added until ROCm 4.2.0')
-class TestEigenvalue(unittest.TestCase):
+class TestEigenvalue:
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
@@ -144,3 +141,30 @@ class TestEigenvalue(unittest.TestCase):
         # NumPy, cuSOLVER, rocSOLVER all sort in ascending order,
         # so they should be directly comparable
         return w
+
+
+@pytest.mark.parametrize('UPLO', ['U', 'L'])
+@pytest.mark.parametrize('shape', [
+    (),
+    (3,),
+    (2, 3),
+    (4, 0),
+    (2, 2, 3),
+    (0, 2, 3),
+])
+@pytest.mark.skipif(
+    runtime.is_hip and driver.get_build_version() < 402,
+    reason='eigensolver not added until ROCm 4.2.0')
+class TestEigenvalueInvalid:
+
+    def test_eigh_shape_error(self, UPLO, shape):
+        for xp in (numpy, cupy):
+            a = xp.zeros(shape)
+            with pytest.raises(numpy.linalg.LinAlgError):
+                xp.linalg.eigh(a, UPLO)
+
+    def test_eigvalsh_shape_error(self, UPLO, shape):
+        for xp in (numpy, cupy):
+            a = xp.zeros(shape)
+            with pytest.raises(numpy.linalg.LinAlgError):
+                xp.linalg.eigvalsh(a, UPLO)

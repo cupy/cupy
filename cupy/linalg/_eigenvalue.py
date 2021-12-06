@@ -129,12 +129,8 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    if a.ndim < 2:
-        raise ValueError('Array must be at least two-dimensional')
-
-    m, n = a.shape[-2:]
-    if m != n:
-        raise ValueError('Last 2 dimensions of the array must be square')
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
     if a.ndim > 2 or runtime.is_hip:
         w, v = cupy.cusolver.syevj(a, UPLO, True)
