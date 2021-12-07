@@ -372,8 +372,11 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     a_ndim = a._shape.size()
     b_ndim = b._shape.size()
 
-    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
-        raise ValueError('Not supported dtype combination.')
+    if out is not None:
+        if numpy.result_type(a.dtype, b.dtype) != out.dtype:
+            raise ValueError('Not supported dtype combination.')
+        if not out._c_contiguous:
+            raise ValueError('Output array must be C-contiguous')
 
     if a_ndim == 0 or b_ndim == 0:
         return _math._multiply(a, b, out=out)
@@ -419,10 +422,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     if not input_b_is_vec:
         ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
     if out is not None:
+        # TODO(kataoka): Make the condition strict
         if k != 0 and out.size != n * m:
             raise ValueError('Output array has an invalid size')
-        if not out._c_contiguous:
-            raise ValueError('Output array must be C-contiguous')
 
     return tensordot_core(a, b, out, n, m, k, ret_shape)
 
@@ -430,6 +432,7 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
 cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
         Py_ssize_t k, const shape_t& ret_shape):
+    # out, if specified, must be C-contiguous and have correct shape.
     cdef shape_t shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode
@@ -448,9 +451,7 @@ cpdef ndarray tensordot_core(
     if out is None:
         out = _ndarray_init(ret_shape, dtype)
     else:
-        if out.dtype != dtype:
-            # TODO: Fix to write to out.
-            raise NotImplementedError("The out array dtype is mismatched")
+        assert out.flags.c_contiguous and out.dtype == dtype
     cdef int ace
     if m == 1 and n == 1:
         for ace in _accelerator._routine_accelerators:
