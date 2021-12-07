@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union, Any
 
 if TYPE_CHECKING:
     from ._typing import Any, PyCapsule, Device, Dtype
+    import numpy.typing as npt
 
 import cupy as np
 from cupy.cuda import Device as _Device
@@ -114,7 +115,7 @@ class Array:
 
     # This function is not required by the spec, but we implement it here for
     # convenience so that np.asarray(np.array_api.Array) will work.
-    def __array__(self, dtype=None):
+    def __array__(self, dtype: Optional[np.dtype[Any]] = None) -> npt.NDArray[Any]:
         """
         Warning: this method is NOT part of the array API spec. Implementers
         of other libraries need not include it, and users should not assume it
