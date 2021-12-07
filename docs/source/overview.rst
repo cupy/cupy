@@ -8,12 +8,12 @@ CuPy acts as a drop-in replacement to run existing NumPy/SciPy code on `NVIDIA C
 
 CuPy provides a ``ndarray``, sparse matrices, and the associated routines for GPU devices, all having the same API as NumPy and SciPy:
 
-* **N-dimensional array** (``ndarray``): :class:`cupy.ndarray`
+* **N-dimensional array** (``ndarray``): :doc:`cupy.ndarray <reference/ndarray>`
 
   * Data types (dtypes): boolean (``bool_``), integer (``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``), float (``float16``, ``float32``, ``float64``), and complex (``complex64``, ``complex128``)
   * Supports the semantics identical to :class:`numpy.ndarray`, including basic / advanced indexing and broadcasting
 
-* **Sparse matrices**: :mod:`cupyx.scipy.sparse`
+* **Sparse matrices**: :doc:`cupyx.scipy.sparse <reference/scipy_sparse>`
 
   * 2-D sparse matrix: ``csr_matrix``, ``coo_matrix``, ``csc_matrix``, and ``dia_matrix``
 
