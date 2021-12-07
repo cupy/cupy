@@ -60,6 +60,19 @@ def _parse_function_object(func):
     if not callable(func):
         raise ValueError('`func` must be a callable object.')
 
+    if func.__name__ != '<lambda>':
+        if jit._getsource_func is None:
+            lines = inspect.getsource(func).split('\n')
+            num_indent = len(lines[0]) - len(lines[0].lstrip())
+            source = '\n'.join([
+                line.replace(' ' * num_indent, '', 1) for line in lines])
+        else:
+            source = jit.getsource(func)
+        tree = ast.parse(source)
+        assert isinstance(tree, ast.Module)
+        assert len(tree.body) == 1
+        return tree.body[0], source
+
     if jit._getsource_func is not None:
         full_source = jit._getsource_func(func)
         start_line, end_line = 0, math.inf
@@ -80,25 +93,19 @@ def _parse_function_object(func):
 
     tree = ast.parse(full_source)
 
-    def get_node(instance):
-        nodes = [node for node in ast.walk(tree)
-                 if isinstance(node, instance)
-                 and start_line <= node.lineno < end_line]
-        if len(nodes) > 1:
-            raise ValueError('Multiple callables are found near the'
-                             f' definition of {func}, and JIT could not'
-                             ' identify the source code for it.')
-        return nodes[0]
-
-    if func.__name__ == '<lambda>':
-        node = get_node(ast.Lambda)
-        return ast.FunctionDef(
-            name='_lambda_kernel', args=node.args,
-            body=[ast.Return(node.body)],
-            decorator_list=[], returns=None, type_comment=None,
-        ), source
-    else:
-        return get_node(ast.FunctionDef), source
+    nodes = [node for node in ast.walk(tree)
+             if isinstance(node, ast.Lambda)
+             and start_line <= node.lineno < end_line]
+    if len(nodes) > 1:
+        raise ValueError('Multiple callables are found near the'
+                         f' definition of {func}, and JIT could not'
+                         ' identify the source code for it.')
+    node = nodes[0]
+    return ast.FunctionDef(
+        name='_lambda_kernel', args=node.args,
+        body=[ast.Return(node.body)],
+        decorator_list=[], returns=None, type_comment=None,
+    ), source
 
 
 def transpile(func, attributes, mode, in_types, ret_type):

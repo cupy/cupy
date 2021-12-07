@@ -618,15 +618,8 @@ class TestRaw(unittest.TestCase):
         def f(x):
             return unknown_var  # NOQA
 
-        import re
-        mes = re.escape('''Unbound name: unknown_var
-
-          @jit.rawkernel()
-          def f(x):
-              return unknown_var  # NOQA
-''')
         x = cupy.zeros((10,), dtype=numpy.float32)
-        with pytest.raises(NameError, match=mes):
+        with pytest.raises(NameError, match='Unbound name: unknown_var'):
             f((1,), (1,), (x,))
 
     def test_laneid(self):
