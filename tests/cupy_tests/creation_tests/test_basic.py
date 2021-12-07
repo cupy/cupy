@@ -169,7 +169,7 @@ class TestBasic:
         b = cupy.empty((1, 0, 2), dtype='d', order=order)
         assert b.strides == a.strides
 
-    @pytest.mark.parametrize('offset', [1, -1, 1<<63, -(1<<63)])
+    @pytest.mark.parametrize('offset', [1, -1, 1 << 63, -(1 << 63)])
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
