@@ -652,6 +652,7 @@ from cupy._misc.who import who  # NOQA
 from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
 from numpy import safe_eval  # NOQA
+from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
