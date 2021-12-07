@@ -67,7 +67,7 @@ def _parse_function_object(func):
             source = '\n'.join([
                 line.replace(' ' * num_indent, '', 1) for line in lines])
         else:
-            source = jit.getsource(func)
+            source = jit._getsource_func(func)
         tree = ast.parse(source)
         assert isinstance(tree, ast.Module)
         assert len(tree.body) == 1
