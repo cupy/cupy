@@ -365,7 +365,7 @@ On CentOS 6 / 7::
   $ sudo yum install centos-release-scl
   $ sudo yum install devtoolset-7-gcc-c++
   $ source /opt/rh/devtoolset-7/enable
-  $ export NVCC="nvcc --compiler-bidir gcc-7"
+  $ export NVCC="nvcc --compiler-bindir gcc"
 
 
 Using CuPy on AMD GPU (experimental)
