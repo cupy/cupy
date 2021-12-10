@@ -283,7 +283,7 @@ def _quantile_is_valid(q):
     return True
 
 
-def percentile(a, q, axis=None, out=None, method='linear', keepdims=False, *,
+def percentile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
                interpolation=None):
     """Computes the q-th percentile of the data along the specified axis.
 
@@ -319,7 +319,7 @@ def percentile(a, q, axis=None, out=None, method='linear', keepdims=False, *,
         a, q, axis=axis, out=out, method=method, keepdims=keepdims)
 
 
-def quantile(a, q, axis=None, out=None, method='linear', keepdims=False, *,
+def quantile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
              interpolation=None):
     """Computes the q-th quantile of the data along the specified axis.
 
@@ -363,7 +363,7 @@ def _check_interpolation_as_method(method, interpolation, fname):
         "Users of the modes 'nearest', 'lower', 'higher', or "
         "'midpoint' are encouraged to review the method they. "
         "(Deprecated NumPy 1.22)",
-        DeprecationWarning, stacklevel=4)
+        DeprecationWarning, stacklevel=3)
     if method != "linear":
         # sanity check, we assume this basically never happens
         raise TypeError(
