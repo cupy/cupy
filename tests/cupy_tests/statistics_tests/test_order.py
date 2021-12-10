@@ -23,7 +23,7 @@ _all_methods = (
     'higher',
     'midpoint',
     # 'nearest',                    # TODO(hvy): Not implemented
-    )
+)
 
 
 def for_all_methods(name='method'):
