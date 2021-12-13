@@ -21,6 +21,7 @@ from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport ascontiguousarray
 from cupy._core.core cimport ndarray
+from cupy._core cimport _memory_range
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
 from cupy.cuda cimport device
@@ -437,7 +438,7 @@ cpdef ndarray tensordot_core(
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode
     cdef intptr_t handle
-    cdef bint use_sgemmEx = True
+    cdef ndarray copy_to_out = None
     cdef str dtype = a.dtype.char
     cdef int compute_capability = int(device.get_compute_capability())
     if dtype != b.dtype.char:
@@ -448,25 +449,21 @@ cpdef ndarray tensordot_core(
         out.fill(0)
         return out
 
-    if out is None:
-        out = _ndarray_init(ret_shape, dtype)
-    else:
+    if out is not None:
         assert out.flags.c_contiguous and out.dtype == dtype
     cdef int ace
     if m == 1 and n == 1:
+        if out is None:
+            out = _ndarray_init(ret_shape, dtype)
+        c = _manipulation._reshape(out, ())
         for ace in _accelerator._routine_accelerators:
-            ret = _ndarray_init(ret_shape, dtype)
             # fast path using CUB or cuTENSOR
             if ace in (_accelerator.ACCELERATOR_CUB,
                        _accelerator.ACCELERATOR_CUTENSOR):
-                ret = (a.ravel() * b.ravel()).sum(
-                    out=_manipulation._reshape(ret, ()))
-                elementwise_copy(ret, out)
+                (a.ravel() * b.ravel()).sum(out=c)
                 break
         else:
-            _tensordot_core_mul_sum(
-                a.ravel(), b.ravel(),
-                out=_manipulation._reshape(out, ()))
+            _tensordot_core_mul_sum(a.ravel(), b.ravel(), out=c)
         return out
 
     a = a.astype(dtype, order='K', casting=None, subok=None, copy=False)
@@ -482,10 +479,6 @@ cpdef ndarray tensordot_core(
         shape.push_back(k)
         shape.push_back(m)
         b = _manipulation._reshape(b, shape)
-    c = out
-    if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
-        c = c.view()
-        c.shape = (n, m)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     # Matrix-Matrix product A^T * B
@@ -494,13 +487,30 @@ cpdef ndarray tensordot_core(
     a, transa, lda = _mat_to_cublas_contiguous(a, 0)
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
 
+    if out is None:
+        out = c = _ndarray_init(ret_shape, dtype)
+    elif (
+        _memory_range.may_share_bounds(out, a)
+        or _memory_range.may_share_bounds(out, b)
+    ):
+        copy_to_out = c = _ndarray_init(ret_shape, dtype)
+    else:
+        c = out
+
+    if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
+        c = c.view()
+        c.shape = (n, m)
+
     if dtype not in 'efdFD':
         if transa:
             a = a.T
             a = _internal_ascontiguousarray(a)
         if transb:
             b = _internal_ascontiguousarray(b)
-        return _integral_tensordot_core(b, a, out, m, n, k, dtype, ret_shape)
+        _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
+        if copy_to_out is not None:
+            out[...] = copy_to_out
+        return out
 
     global _cuda_runtime_version
     if _cuda_runtime_version < 0:
@@ -512,6 +522,8 @@ cpdef ndarray tensordot_core(
         compute_capability >= 50
     ):
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
+        if copy_to_out is not None:
+            out[...] = copy_to_out
         return out
 
     handle = device.get_cublas_handle()
@@ -527,7 +539,7 @@ cpdef ndarray tensordot_core(
         a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
         b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
         c = _ndarray_init(ret_shape, dtype)
-        use_sgemmEx = False
+        copy_to_out = c
         warnings.warn('On ROCm/HIP, there is no specialized API to handle '
                       'half precision floating numbers, so the computation '
                       'will be done by casting to single precision')
@@ -573,8 +585,8 @@ cpdef ndarray tensordot_core(
             zero.ctypes.data, c.data.ptr, <int>m)
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
-    if not use_sgemmEx:
-        out[...] = c
+    if copy_to_out is not None:
+        out[...] = copy_to_out
     return out
 
 
@@ -833,7 +845,11 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             out.fill(0)
             return out
 
-    if out is not None and out.dtype == dtype and out.flags.c_contiguous:
+    if (
+        out is not None and out.dtype == dtype and out.flags.c_contiguous
+        and not _memory_range.may_share_bounds(out, a)
+        and not _memory_range.may_share_bounds(out, b)
+    ):
         c = out
     else:
         c = ndarray(out_shape, dtype=dtype)
