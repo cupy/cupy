@@ -1,8 +1,10 @@
 import math
 import unittest
 
+import numpy
 import pytest
 
+import cupy
 from cupy._core import internal
 from cupy import testing
 
@@ -224,3 +226,49 @@ class TestConvertFloat16Nan(unittest.TestCase):
     def test_conversion(self):
         half = internal.to_float16(float('nan'))
         assert math.isnan(internal.from_float16(half))
+
+
+class TestNormalizeAxisTuple:
+
+    _func = {
+        numpy: numpy.core.numeric.normalize_axis_tuple,
+        cupy: cupy._core.internal.normalize_axis_tuple,
+    }
+
+    @pytest.mark.parametrize(('axis', 'ndim'), [
+        (1, 3),
+        (-2, 7),
+        ((4, 3, 2), 7),
+        ([1, -1, 0], 5),
+    ])
+    @testing.numpy_cupy_equal()
+    def test_normalize_axis_tuple(self, xp, axis, ndim):
+        return self._func[xp](axis, ndim)
+
+    def test_none(self):
+        for xp in (numpy, cupy):
+            f = self._func[xp]
+            with pytest.raises(TypeError):
+                f(None, 3)
+
+    @pytest.mark.parametrize(('axis', 'ndim'), [
+        ((1, 1), 3),
+        ((4, -5, 3, 2), 7),
+    ])
+    @testing.numpy_cupy_equal()
+    def test_repeated(self, xp, axis, ndim):
+        f = self._func[xp]
+        with pytest.raises(ValueError):
+            f(axis, ndim)
+        return f(axis, ndim, allow_duplicate=True)
+
+    @pytest.mark.parametrize(('axis', 'ndim'), [
+        (-5, 4),
+        ((0, 3), 3),
+    ])
+    @pytest.mark.parametrize(('allow_duplicate'), [False, True])
+    def test_overrun(self, axis, ndim, allow_duplicate):
+        for xp in (numpy, cupy):
+            f = self._func[xp]
+            with pytest.raises(numpy.AxisError):
+                f(axis, ndim, allow_duplicate=allow_duplicate)

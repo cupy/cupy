@@ -30,7 +30,9 @@ def flip(a, axis=None):
     if a_ndim < 1:
         raise numpy.AxisError('Input must be >= 1-d')
 
-    axes = internal._normalize_axis_indices(axis, a_ndim)
+    axes = (
+        tuple(range(a_ndim)) if axis is None
+        else internal.normalize_axis_tuple(axis, a_ndim))
     return _flip(a, axes)
 
 
@@ -99,10 +101,7 @@ def roll(a, shift, axis=None):
     if axis is None:
         return roll(a.ravel(), shift, 0).reshape(a.shape)
 
-    axes = (axis,) if numpy.isscalar(axis) else axis
-    axes = tuple([  # allow_duplicate
-        internal._normalize_axis_index(ax, a.ndim) for ax in axes
-    ])
+    axes = internal.normalize_axis_tuple(axis, a.ndim, allow_duplicate=True)
     if isinstance(shift, cupy.ndarray):
         shift = shift.ravel()
         n_axes = max(len(axes), shift.size)

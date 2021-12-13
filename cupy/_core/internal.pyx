@@ -407,38 +407,86 @@ cpdef Py_ssize_t _normalize_axis_index(
     return axis
 
 
-cpdef tuple _normalize_axis_indices(
-        axes, Py_ssize_t ndim, cpp_bool sort_axes=True):
-    """Normalize axis indices.
-
-    Args:
-        axis (int, tuple of int or None):
-            The un-normalized indices of the axis. Can be negative.
-        ndim (int):
-            The number of dimensions of the array that ``axis`` should be
-            normalized against
-        sort_axes (bool):
-            If provided as False will not sort the axes, default is to return
-            the sorted values.
-
-    Returns:
-        tuple of int:
-            The tuple of normalized axis indices.
-    """
+cdef _convert_multi_axis(axes, Py_ssize_t ndim, vector.vector[bint]& out):
+    cdef Py_ssize_t axis
     if axes is None:
-        axes = tuple(range(ndim))
+        out.assign(ndim, True)
+        return
     elif not isinstance(axes, tuple):
+        # list is not supported by `PyArray_ConvertMultiAxis`
         axes = axes,
 
-    res = []
+    out.assign(ndim, False)
     for axis in axes:
         axis = _normalize_axis_index(axis, ndim)
-        if axis in res:
+        if out[axis]:
             # the message in `numpy/core/src/multiarray/conversion_utils.c`
             raise ValueError('duplicate value in \'axis\'')
-        res.append(axis)
+        out[axis] = True
 
-    return tuple(sorted(res) if sort_axes else res)
+
+# `_normalize_axis_indices` has been removed.
+# Use `_convert_multi_axis` or `normalize_axis_tuple`
+
+
+cdef _normalize_axis_tuple(
+        axis, Py_ssize_t ndim, shape_t &ret, bint allow_duplicate=False):
+    cdef bint deny_duplicate = not allow_duplicate
+    ret.clear()
+    if numpy.isscalar(axis):
+        axis = (axis,)
+
+    for ax in axis:
+        ax = _normalize_axis_index(ax, ndim)
+        if deny_duplicate and is_in(ret, ax):
+            # the message in `numpy.core.numeric.normalize_axis_tuple`
+            raise ValueError('repeated axis')
+        ret.push_back(ax)
+
+
+cpdef tuple normalize_axis_tuple(
+        axis, Py_ssize_t ndim, argname=None, bint allow_duplicate=False):
+    """
+    Normalizes an axis argument into a tuple of non-negative integer axes.
+
+    This handles shorthands such as ``1`` and converts them to ``(1,)``,
+    as well as performing the handling of negative indices covered by
+    `normalize_axis_index`.
+
+    By default, this forbids axes from being specified multiple times.
+
+    Used internally by multi-axis-checking logic.
+
+    Parameters
+    ----------
+    axis : int, iterable of int
+        The un-normalized index or indices of the axis.
+    ndim : int
+        The number of dimensions of the array that `axis` should be normalized
+        against.
+    allow_duplicate : bool, optional
+        If False, the default, disallow an axis from being specified twice.
+
+    Returns
+    -------
+    normalized_axes : tuple of int
+        The normalized axis index, such that `0 <= normalized_axis < ndim`
+
+    Raises
+    ------
+    AxisError
+        If any axis provided is out of range
+    ValueError
+        If an axis is repeated
+
+    See also
+    --------
+    normalize_axis_index : normalizing a single scalar axis
+    """
+    # argname is not yet supported
+    cdef shape_t ret
+    _normalize_axis_tuple(axis, ndim, ret, allow_duplicate)
+    return tuple(ret)
 
 
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
