@@ -457,7 +457,7 @@ def compile_with_cache(*args, **kwargs):
         'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
         ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
         ' instead.', DeprecationWarning)
-    _compile_module_with_cache(*args, **kwargs)
+    return _compile_module_with_cache(*args, **kwargs)
 
 
 def _compile_module_with_cache(
