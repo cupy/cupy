@@ -145,7 +145,7 @@ class TestAliases(unittest.TestCase):
 ])
 def test_error_classes(name):
     get = operator.attrgetter(name)
-    assert get(cupy) is get(numpy)
+    assert issubclass(get(cupy), get(numpy))
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in
