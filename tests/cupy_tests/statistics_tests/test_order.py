@@ -80,6 +80,7 @@ class TestQuantile:
                 xp.quantile(a, q, axis=-1, method='deadbeef')
 
 
+@testing.with_requires('numpy>=1.22.0rc1')
 @for_all_methods()
 class TestQuantileMethods:
 
