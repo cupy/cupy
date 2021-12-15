@@ -72,6 +72,7 @@ class TestQuantile:
                 xp.quantile(a, q, axis=-1, interpolation='deadbeef')
 
 
+@testing.with_requires('numpy<1.22')
 @for_all_interpolations()
 class TestQuantileInterpolations:
 
