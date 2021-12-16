@@ -1112,6 +1112,12 @@ cdef class ndarray:
                 return _logic._ndarray_greater(self, other)
             if op == 5:
                 return _logic._ndarray_greater_equal(self, other)
+        elif other is None or other is Ellipsis:
+            if op == 2:
+                return cupy.zeros(self._shape, dtype=cupy.bool_)
+            if op == 3:
+                return cupy.ones(self._shape, dtype=cupy.bool_)
+            return NotImplemented
         elif not _should_use_rop(self, other):
             if isinstance(other, numpy.ndarray) and other.ndim == 0:
                 other = other.item()  # Workaround for numpy<1.13

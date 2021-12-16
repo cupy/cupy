@@ -1,14 +1,13 @@
 import operator
-import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
 
 
-@testing.gpu
-class TestArrayElementwiseOp(unittest.TestCase):
+class TestArrayElementwiseOp:
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
@@ -128,8 +127,30 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_eq_scalar(self):
         self.check_array_scalar_op(operator.eq)
 
+    @pytest.mark.parametrize('swap', [False, True])
+    @pytest.mark.parametrize('value', [None, Ellipsis])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_eq_builtin_constant(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value == a
+        else:
+            return a == value
+
     def test_ne_scalar(self):
         self.check_array_scalar_op(operator.ne)
+
+    @pytest.mark.parametrize('swap', [False, True])
+    @pytest.mark.parametrize('value', [None, Ellipsis])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ne_builtin_constant(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value != a
+        else:
+            return a != value
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
@@ -481,8 +502,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_boolarray_op(operator.iadd)
 
 
-@testing.gpu
-class TestArrayIntElementwiseOp(unittest.TestCase):
+class TestArrayIntElementwiseOp:
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
