@@ -1,4 +1,3 @@
-import unittest
 import warnings
 
 import numpy
@@ -19,7 +18,7 @@ _all_interpolations = (
 
 
 def for_all_interpolations(name='interpolation'):
-    return testing.for_orders(_all_interpolations, name=name)
+    return pytest.mark.parametrize(name, _all_interpolations)
 
 
 @testing.with_requires('numpy<1.22')
@@ -380,9 +379,9 @@ class TestOrder:
     'magic_value': (-29, -53, -207, -16373, -99999,)
 }))
 @testing.gpu
-class TestPercentileMonotonic(unittest.TestCase):
+class TestPercentileMonotonic:
 
-    @testing.with_requires('numpy>=1.20')
+    @testing.with_requires('numpy>=1.20', 'numpy<1.22')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_percentile_monotonic(self, dtype, xp):
