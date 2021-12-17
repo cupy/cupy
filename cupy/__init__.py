@@ -476,6 +476,7 @@ from cupy.linalg._norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._logic.comparison import allclose  # NOQA
 from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import array_equiv  # NOQA
 from cupy._logic.comparison import isclose  # NOQA
 
 from cupy._logic.content import isfinite  # NOQA
