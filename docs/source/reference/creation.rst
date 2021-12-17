@@ -33,7 +33,6 @@ From existing data
    asarray
    asanyarray
    ascontiguousarray
-   asfarray
    copy
    frombuffer
    fromfile

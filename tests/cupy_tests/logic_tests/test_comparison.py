@@ -136,6 +136,7 @@ class TestArrayEqual(unittest.TestCase):
         b = xp.array([1])
         return xp.array_equal(a, b)
 
+
 class TestArrayEquiv(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -184,6 +185,7 @@ class TestArrayEquiv(unittest.TestCase):
         a = xp.array([0, 4], dtype=dtype)
         b = xp.array([[0, 4], [0, 5]], dtype=dtype)
         return xp.array_equiv(a, b)
+
 
 class TestAllclose(unittest.TestCase):
 
