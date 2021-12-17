@@ -132,8 +132,8 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
 
 def array_equiv(a1, a2):
     """
-    Returns True if all elements are equal or shape consistent, 
-    i.e., one input array can be broadcasted to create the same 
+    Returns True if all elements are equal or shape consistent,
+    i.e., one input array can be broadcasted to create the same
     shape as the other.
 
     Args:
