@@ -381,7 +381,7 @@ class TestOrder:
 @testing.gpu
 class TestPercentileMonotonic:
 
-    @testing.with_requires('numpy>=1.20', 'numpy<1.22')
+    @testing.with_requires('numpy>=1.20,<1.22')
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose()
     def test_percentile_monotonic(self, dtype, xp):
