@@ -20,7 +20,7 @@ Here are the environment variables that CuPy uses at runtime.
   Default: ``${HOME}/.cupy/kernel_cache``
 
   Path to the directory to store kernel cache.
-  See :ref:`overview` for details.
+  See :doc:`../user_guide/performance` for details.
 
 .. envvar:: CUPY_CACHE_SAVE_CUDA_SOURCE
 

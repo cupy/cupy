@@ -117,8 +117,11 @@ def _generate_boundary_condition_ops(mode, ix, xsize, int_t="int",
         }}'''.format(ix=ix, xsize=xsize, min=min_func)
     elif mode == 'nearest':
         ops = '''
-        {ix} = {min}({max}({ix}, 0), {xsize} - 1);'''.format(
-            ix=ix, xsize=xsize, min=min_func, max=max_func)
+        {ix} = {min}({max}(({T}){ix}, ({T})0), ({T})({xsize} - 1));'''.format(
+            ix=ix, xsize=xsize, min=min_func, max=max_func,
+            # force using 64-bit signed integer for ptrdiff_t,
+            # see cupy/cupy#6048
+            T=('int' if int_t == 'int' else 'long long'))
     elif mode == 'grid-wrap':
         ops = '''
         {ix} %= {xsize};

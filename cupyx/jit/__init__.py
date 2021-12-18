@@ -28,6 +28,4 @@ from cupyx.jit._builtin_funcs import shfl_up_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_down_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_xor_sync  # NOQA
 
-import inspect as _inspect
-
-_getsource_func = _inspect.getsource  # NOQA
+_getsource_func = None  # NOQA

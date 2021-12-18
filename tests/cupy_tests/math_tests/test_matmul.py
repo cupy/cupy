@@ -94,7 +94,7 @@ class TestMatmulOut(unittest.TestCase):
     @testing.numpy_cupy_allclose(
         rtol=1e-3, atol=1e-3,  # required for uint8
         accept_error=TypeError)
-    def test_cupy_matmul(self, xp, dtype1, dtype2):
+    def test_cupy_matmul_noncontiguous(self, xp, dtype1, dtype2):
         x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         out = xp.zeros(self.shape_pair[2], dtype1)[::-1]
@@ -104,19 +104,31 @@ class TestMatmulOut(unittest.TestCase):
         assert xp.allclose(ret, out)
         return ret
 
-    # TODO: fix GUFunc bug
-    # @testing.for_all_dtypes(name='dtype1')
-    # @testing.for_all_dtypes(name='dtype2')
-    # @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
-    # def test_cupy_matmul_out_cast(self, xp, dtype1, dtype2):
-    #     x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
-    #     x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
-    #     out = xp.zeros(self.shape_pair[2], bool)
-    #     ret = xp.matmul(x1, x2, out=out, casting='unsafe')
-    #     # TODO: Fix GUFunc bug
-    #     # assert ret is out
-    #     assert xp.allclose(ret, out)
-    #     return ret
+    @testing.for_all_dtypes(name='dtype1')
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_cupy_matmul_out_cast(self, xp, dtype1, dtype2):
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        out = xp.zeros(self.shape_pair[2], bool)
+        ret = xp.matmul(x1, x2, out=out, casting='unsafe')
+        # TODO: Fix GUFunc bug
+        # assert ret is out
+        assert xp.allclose(ret, out)
+        return ret
+
+
+class TestMatmulOutOverlap:
+
+    @pytest.mark.parametrize('shape', [
+        (900, 900),
+        (2, 600, 600),
+    ])
+    @testing.for_dtypes([numpy.int32, numpy.float64])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
+    def test_overlap_both(self, xp, dtype, shape):
+        a = xp.ones(shape, dtype)
+        return xp.matmul(a, a, out=a)
 
 
 class TestMatmulStrides:
