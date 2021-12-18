@@ -11,6 +11,13 @@ from cupy import testing
 class TestKind(unittest.TestCase):
 
     @testing.for_all_dtypes()
+    def test_asarray_chkfinite(self, dtype):
+        a = [0, 4, 0, 5]
+        a_gpu = cupy.asarray_chkfinite(a, dtype=dtype)
+        a_cpu = numpy.asarray_chkfinite(a, dtype=dtype)
+        assert a_gpu.dtype == a_cpu.dtype
+
+    @testing.for_all_dtypes()
     def test_asfarray(self, dtype):
         a = cupy.asarray([1, 2, 3])
         a_gpu = cupy.asfarray(a, dtype)

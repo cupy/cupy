@@ -4,12 +4,12 @@ from cupy import _core
 
 def asarray_chkfinite(a, dtype=None, order=None):
     """
-    Convert input to an array, and raises error if input is NaNs or Infs.
+    Convert the given input to an array, and raises an error if input is NaNs or Infs.
 
     Args:
-        a (cupy.ndarray): Input array.
-        dtype: data type
-        order: {'C', 'F'}
+        a: array like.
+        dtype: data type, optional
+        order: {'C', 'F'}, optional
 
     Returns:
         out (cupy.ndarray): Array interpretation of `a`.
@@ -19,7 +19,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
     """
 
     a = cupy.asarray(a, dtype=dtype, order=order)
-    if a.dtype.char in typecodes['AllFloat'] and not in np.finite().all():
+    if not cupy.isfinite(a).all():
         raise ValueError(
                 "Array must not contain infs or nans")
 
