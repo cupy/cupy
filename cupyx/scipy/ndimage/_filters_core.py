@@ -225,7 +225,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                          format(j=j, type=int_type))
         else:
             boundary = _util._generate_boundary_condition_ops(
-                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
+                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j), int_type)
             # CArray: last line of string becomes inds[{j}] = ix_{j};
             loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)

@@ -110,7 +110,9 @@ def eye(N, M=None, k=0, dtype=float, order='C'):
     """
     if M is None:
         M = N
-    ret = zeros((N, M), dtype, order=order)
+    ret = zeros((N, M), dtype=dtype, order=order)
+    if k <= -N or k >= M:
+        return ret
     ret.diagonal(k)[:] = 1
     return ret
 
