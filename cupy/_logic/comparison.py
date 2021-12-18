@@ -132,7 +132,7 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
 
 def array_equiv(a1, a2):
     """
-    Returns True if all elements are equal or shape consistent,
+    Returns ``True`` if all elements are equal or shape consistent,
     i.e., one input array can be broadcasted to create the same
     shape as the other.
 
@@ -141,23 +141,20 @@ def array_equiv(a1, a2):
         a2 (cupy.ndarray): Input array.
 
     Returns:
-        out: bool
-            True if equivalent, otherwise False.
+        cupy.ndarray: A boolean 0-dim array.
+            ``True`` if equivalent, otherwise ``False``.
 
     .. seealso:: :func:`numpy.array_equiv`
 
     """
 
-    try:
-        a1, a2 = cupy.asarray(a1), cupy.asarray(a2)
-    except Exception:
-        return False
+    a1, a2 = cupy.asarray(a1), cupy.asarray(a2)
     try:
         cupy.broadcast(a1, a2)
     except Exception:
-        return False
+        return cupy.array(False)
 
-    return bool(cupy.asarray(a1 == a2).all())
+    return (a1 == a2).all()
 
 
 greater = _core.greater
