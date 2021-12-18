@@ -1,4 +1,3 @@
-import functools
 import re
 
 import numpy
@@ -329,6 +328,9 @@ class _GUFunc:
         name (str, optional):
             Name for the GUFunc object. If not specified, ``func``'s name
             is used.
+        doc (str, optional):
+            Docstring for the GUFunc object. If not specified, ``func.__doc__``
+            is used.
     '''
 
     def __init__(self, func, signature, **kwargs):
@@ -336,14 +338,21 @@ class _GUFunc:
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self.__name__ = kwargs.get('name', func.__name__)
+        self.__name__ = kwargs.pop('name', func.__name__)
+        self.__doc__ = kwargs.pop('doc', func.__doc__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
         # stuff internally due to CUDA libraries requirements
-        self._supports_batched = kwargs.get('supports_batched', False)
-        self._supports_out = kwargs.get('supports_out', False)
-        signatures = kwargs.get('signatures', [])
+        self._supports_batched = kwargs.pop('supports_batched', False)
+        self._supports_out = kwargs.pop('supports_out', False)
+        signatures = kwargs.pop('signatures', [])
+
+        if kwargs:
+            raise TypeError(
+                'got unexpected keyword arguments: '
+                + ', '.join([repr(k) for k in kwargs])
+            )
 
         # Preprocess the signature here
         input_coredimss, output_coredimss = _parse_gufunc_signature(
@@ -370,7 +379,6 @@ class _GUFunc:
             if not isinstance(input_coredimss, list)
             else len(input_coredimss)
         )
-        functools.update_wrapper(self, func)
         # Determines the function that will be run depending on the datatypes
         # Pass a list of signatures that are either the types in format
         # ii->o or a tuple with the string and a function other than func to be

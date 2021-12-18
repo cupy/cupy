@@ -516,20 +516,20 @@ def gradient(f, *varargs, axis=None, edge_order=1):
 def trapz(y, x=None, dx=1.0, axis=-1):
     """
     Integrate along the given axis using the composite trapezoidal rule.
-    Integrate `y` (`x`) along given axis.
+    Integrate `y` (`x`) along the given axis.
 
     Args:
         y (cupy.ndarray): Input array to integrate.
         x (cupy.ndarray): Sample points over which to integrate. If None equal
             spacing `dx` is assumed.
         dx (float): Spacing between sample points, used if `x` is None, default
-            is None.
+            is 1.
         axis (int): The axis along which the integral is taken, default is
             the last axis.
 
     Returns:
         cupy.ndarray: Definite integral as approximated by the trapezoidal
-            rule.
+        rule.
 
     .. seealso:: :func:`numpy.trapz`
     """

@@ -3,12 +3,6 @@ import cupy
 from cupy import _core
 
 
-__all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
-           'hadamard', 'leslie', 'kron', 'block_diag', 'companion',
-           'helmert', 'hilbert', 'dft',
-           'fiedler', 'fiedler_companion', 'convolution_matrix']
-
-
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (``N``, ``M``) matrix filled with ones at and below the
     ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.

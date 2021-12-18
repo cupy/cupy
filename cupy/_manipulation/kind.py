@@ -2,6 +2,30 @@ import cupy
 from cupy import _core
 
 
+def asarray_chkfinite(a, dtype=None, order=None):
+    """
+    Convert input to an array, and raises error if input is NaNs or Infs.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        dtype: data type
+        order: {'C', 'F'}
+
+    Returns:
+        out (cupy.ndarray): Array interpretation of `a`.
+
+    .. seealso:: :func:`numpy.asarray_chkfinite`
+
+    """
+
+    a = cupy.asarray(a, dtype=dtype, order=order)
+    if a.dtype.char in typecodes['AllFloat'] and not in np.finite().all():
+        raise ValueError(
+                "Array must not contain infs or nans")
+
+    return 0
+
+
 def asfarray(a, dtype=cupy.float_):
     """Converts array elements to float type.
 
@@ -35,9 +59,6 @@ def asfortranarray(a, dtype=None):
 
     """
     return _core.asfortranarray(a, dtype)
-
-
-# TODO(okuta): Implement asarray_chkfinite
 
 
 def require(a, dtype=None, requirements=None):

@@ -228,6 +228,17 @@ class TestFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
+@testing.with_requires('scipy')
+class TestNearestFilterEdgeCase:
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        # Use a large input to check any compilation error, see cupy/cupy#6048
+        return scp.ndimage.gaussian_filter(
+            testing.shaped_random((26, 3, 52, 70, 50), xp, xp.float32),
+            [1, 1, 1, 1, 1], mode='nearest')
+
+
 def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
     # For testing generic_laplace and generic_gradient_magnitude. Doesn't test
     # mode, cval, or extra argument but those are tested indirectly with

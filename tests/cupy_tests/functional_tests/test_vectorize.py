@@ -615,3 +615,19 @@ class TestVectorize(unittest.TestCase):
         x2 = testing.shaped_random((20, 30), xp, dtype, seed=2)
         x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
         return f(x1, x2, x3)
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_lambda(self, xp):
+        f = xp.vectorize(lambda a, b, c: a + b * c)
+        x1 = testing.shaped_random((20, 30), xp, numpy.int64, seed=1)
+        x2 = testing.shaped_random((20, 30), xp, numpy.int64, seed=2)
+        x3 = testing.shaped_random((20, 30), xp, numpy.int64, seed=3)
+        return f(x1, x2, x3)
+
+    def test_vectorize_lambda_xfail(self):
+        functions = [lambda a, b: a + b, lambda a, b: a * b]
+        f = cupy.vectorize(functions[0])
+        x1 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=1)
+        x2 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=2)
+        with pytest.raises(ValueError, match='Multiple callables are found'):
+            return f(x1, x2)

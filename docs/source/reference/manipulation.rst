@@ -62,6 +62,7 @@ Changing kind of array
    :toctree: generated/
 
    asarray
+   asarray_chkfinite
    asanyarray
    asfarray
    asfortranarray
