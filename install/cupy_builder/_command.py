@@ -1,3 +1,15 @@
+from distutils import ccompiler
+from distutils import errors
+import os
+
+from setuptools.command import build_ext
+
+import cupy_builder
+from cupy_builder.cupy_setup_build import cythonize, check_extensions, get_ext_modules
+import cupy_builder.install_build as build
+from cupy_builder._compiler import _UnixCCompiler, _MSVCCompiler
+
+
 class custom_build_ext(build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
@@ -10,7 +22,7 @@ class custom_build_ext(build_ext.build_ext):
                     try:
                         return func(*args, **kwargs)
                     except errors.DistutilsPlatformError:
-                        if not PLATFORM_WIN32:
+                        if not build.PLATFORM_WIN32:
                             CCompiler = _UnixCCompiler
                         else:
                             CCompiler = _MSVCCompiler

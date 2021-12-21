@@ -1,3 +1,13 @@
+from distutils import errors
+from distutils import msvccompiler
+from distutils import unixccompiler
+import sys
+import os
+
+import cupy_builder.install_build as build
+from cupy_builder.install_build import use_hip
+
+
 def _nvcc_gencode_options(cuda_version):
     """Returns NVCC GPU code generation options."""
 

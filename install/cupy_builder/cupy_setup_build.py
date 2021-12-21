@@ -2,17 +2,13 @@
 
 import copy
 from distutils import ccompiler
-from distutils import errors
-from distutils import msvccompiler
 from distutils import sysconfig
-from distutils import unixccompiler
 import os
 import shutil
 import sys
 
 import pkg_resources
 import setuptools
-from setuptools.command import build_ext
 
 import cupy_builder
 import cupy_builder.install_build as build
@@ -20,12 +16,6 @@ from cupy_builder._context import Context
 from cupy_builder.install_build import PLATFORM_LINUX
 from cupy_builder.install_build import PLATFORM_WIN32
 
-try:
-    # This is to avoid getting numpy imported inside other modules and
-    # overwritting setuptools compilers (#5476)
-    import numpy.distutils  # NOQA
-except Exception:
-    pass
 
 use_hip = build.use_hip
 

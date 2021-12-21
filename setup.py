@@ -83,7 +83,6 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 ext_modules = cupy_setup_build.get_ext_modules(False, ctx)
-build_ext = cupy_setup_build.custom_build_ext
 
 # Get __version__ variable
 with open(os.path.join(source_root, 'cupy', '_version.py')) as f:
@@ -140,5 +139,5 @@ setup(
     tests_require=tests_require,
     extras_require=extras_require,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext},
+    cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
 )
