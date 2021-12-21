@@ -5,7 +5,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
 from cupy import testing
 
 
