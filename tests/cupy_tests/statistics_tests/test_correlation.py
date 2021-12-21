@@ -108,35 +108,29 @@ class TestCorrelateShapeCombination(unittest.TestCase):
         return xp.correlate(a, b, mode=self.mode)
 
 
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'mode': ['valid', 'full', 'same']
-}))
-class TestCorrelate(unittest.TestCase):
+@pytest.mark.parametrize('mode', ['valid', 'full', 'same'])
+class TestCorrelate:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-5)
-    def test_correlate_non_contiguous(self, xp, dtype):
-        if runtime.is_hip and self.mode == 'full':
-            pytest.xfail(reason='ROCm/HIP may have a bug')
+    def test_correlate_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((300,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
-        return xp.correlate(a[::200], b[10::70], mode=self.mode)
+        return xp.correlate(a[::200], b[10::70], mode=mode)
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4)
-    def test_correlate_large_non_contiguous(self, xp, dtype):
+    def test_correlate_large_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((1000,), xp, dtype)
-        return xp.correlate(a[200::], b[10::700], mode=self.mode)
+        return xp.correlate(a[200::], b[10::700], mode=mode)
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-2)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
-    def test_correlate_diff_types(self, xp, dtype1, dtype2):
+    def test_correlate_diff_types(self, xp, dtype1, dtype2, mode):
         a = testing.shaped_random((200,), xp, dtype1)
         b = testing.shaped_random((100,), xp, dtype2)
-        return xp.correlate(a, b, mode=self.mode)
+        return xp.correlate(a, b, mode=mode)
 
 
 @testing.gpu

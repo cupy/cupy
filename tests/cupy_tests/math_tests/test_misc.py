@@ -376,34 +376,29 @@ class TestConvolveShapeCombination(unittest.TestCase):
         return xp.convolve(a, b, mode=self.mode)
 
 
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
-}))
-class TestConvolve(unittest.TestCase):
+@pytest.mark.parametrize('mode', ['valid', 'same', 'full'])
+class TestConvolve:
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_convolve_non_contiguous(self, xp, dtype):
+    def test_convolve_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((300,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
-        return xp.convolve(a[::200], b[10::70], mode=self.mode)
+        return xp.convolve(a[::200], b[10::70], mode=mode)
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4)
-    def test_convolve_large_non_contiguous(self, xp, dtype):
+    def test_convolve_large_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
-        return xp.convolve(a[200::], b[10::70], mode=self.mode)
+        return xp.convolve(a[200::], b[10::70], mode=mode)
 
-    @pytest.mark.xfail(runtime.is_hip,
-                       reason='HIP/ROCm may have a bug with larger `b`')
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-2)
-    def test_convolve_diff_types(self, xp, dtype1, dtype2):
+    def test_convolve_diff_types(self, xp, dtype1, dtype2, mode):
         a = testing.shaped_random((200,), xp, dtype1)
         b = testing.shaped_random((100,), xp, dtype2)
-        return xp.convolve(a, b, mode=self.mode)
+        return xp.convolve(a, b, mode=mode)
 
 
 @testing.gpu
