@@ -1,11 +1,13 @@
-from distutils import errors
-from distutils import msvccompiler
-from distutils import unixccompiler
-import sys
+import distutils.ccompiler
 import os
+import sys
+import subprocess
+from typing import List
 
+from setuptools import Extension
+
+from cupy_builder._context import Context
 import cupy_builder.install_build as build
-from cupy_builder.install_build import use_hip
 
 
 def _nvcc_gencode_options(cuda_version):
@@ -111,25 +113,39 @@ def _nvcc_gencode_options(cuda_version):
     return options
 
 
-class _UnixCCompiler(unixccompiler.UnixCCompiler):
-    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)  # type: ignore # NOQA
-    src_extensions.append('.cu')
+class DeviceCompilerBase:
+    """A class that invokes NVCC or HIPCC."""
 
-    def _compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
-        # For sources other than CUDA C ones, just call the super class method.
-        if os.path.splitext(src)[1] != '.cu':
-            return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, cc_args, extra_postargs, pp_opts)
+    def __init__(self, ctx: Context):
+        self._context = ctx
 
-        if use_hip:
+    def _get_preprocess_options(self, ext: Extension):
+        # https://setuptools.pypa.io/en/latest/deprecated/distutils/apiref.html#distutils.core.Extension
+        # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/command/build_ext.py#L524-L526
+        incdirs = ext.include_dirs[:]
+        macros = ext.define_macros[:]
+        for undef in ext.undef_macros:
+            macros.append((undef,))
+        return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
+
+    def spawn(self, commands: List[str]):
+        print('Command:', commands)
+        subprocess.check_call(commands)
+
+
+class DeviceCompilerUnix(DeviceCompilerBase):
+
+    def compile(self, obj: str, src: str, ext: Extension):
+        if self._context.use_hip:
             return self._compile_unix_hipcc(
-                obj, src, ext, cc_args, extra_postargs, pp_opts)
+                obj, src, ext)
         else:
             return self._compile_unix_nvcc(
-                obj, src, ext, cc_args, extra_postargs, pp_opts)
+                obj, src, ext)
 
-    def _compile_unix_nvcc(self,
-                           obj, src, ext, cc_args, extra_postargs, pp_opts):
+    def _compile_unix_nvcc(self, obj: str, src: str, ext: Extension):
+        cc_args = self._get_preprocess_options(ext) + ['-c']
+
         # For CUDA C source files, compile them with NVCC.
         nvcc_path = build.get_nvcc_path()
         base_opts = build.get_compiler_base_options(nvcc_path)
@@ -146,14 +162,12 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             postargs += ['--std=c++11']
         postargs += ['-Xcompiler=-fno-gnu-unique']
         print('NVCC options:', postargs)
-        try:
-            self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
-                       postargs)
-        except errors.DistutilsExecError as e:
-            raise errors.CompileError(str(e))
+        self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                   postargs)
 
-    def _compile_unix_hipcc(self,
-                            obj, src, ext, cc_args, extra_postargs, pp_opts):
+    def _compile_unix_hipcc(self, obj: str, src: str, ext: Extension):
+        cc_args = self._get_preprocess_options(ext) + ['-c']
+
         # For CUDA C source files, compile them with HIPCC.
         rocm_path = build.get_hipcc_path()
         base_opts = build.get_compiler_base_options(rocm_path)
@@ -166,49 +180,18 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         else:
             postargs += ['--std=c++11']
         print('HIPCC options:', postargs)
-        try:
-            self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
-                       postargs)
-        except errors.DistutilsExecError as e:
-            raise errors.CompileError(str(e))
-
-    def link(self, target_desc, objects, output_filename, *args):
-        use_hipcc = False
-        if use_hip:
-            for i in objects:
-                if any(obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')):
-                    use_hipcc = True
-        if use_hipcc:
-            _compiler_cxx = self.compiler_cxx
-            try:
-                rocm_path = build.get_hipcc_path()
-                self.set_executable('compiler_cxx', rocm_path)
-
-                return unixccompiler.UnixCCompiler.link(
-                    self, target_desc, objects, output_filename, *args)
-            finally:
-                self.compiler_cxx = _compiler_cxx
-        else:
-            return unixccompiler.UnixCCompiler.link(
-                self, target_desc, objects, output_filename, *args)
+        self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                   postargs)
 
 
-class _MSVCCompiler(msvccompiler.MSVCCompiler):
-    _cu_extensions = ['.cu']
+class DeviceCompilerWin32(DeviceCompilerBase):
 
-    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)  # type: ignore # NOQA
-    src_extensions.extend(_cu_extensions)
-
-    def _compile_cu(self, sources, output_dir=None, macros=None,
-                    include_dirs=None, debug=0, extra_preargs=None,
-                    extra_postargs=None, depends=None):
-        # Compile CUDA C files, mainly derived from UnixCCompiler._compile().
-        macros, objects, extra_postargs, pp_opts, _build = \
-            self._setup_compile(output_dir, macros, include_dirs, sources,
-                                depends, extra_postargs)
+    def compile(self, obj: str, src: str, ext: Extension):
+        if self._context.use_hip:
+            raise RuntimeError('ROCm is not supported on Windows')
 
         compiler_so = build.get_nvcc_path()
-        cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
+        cc_args = self._get_preprocess_options(ext) + ['-c']
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
         if cuda_version >= 11020:
@@ -223,38 +206,4 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
             postargs += [f'-t{num_threads}']
         print('NVCC options:', postargs)
-
-        for obj in objects:
-            try:
-                src, ext = _build[obj]
-            except KeyError:
-                continue
-            try:
-                self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
-            except errors.DistutilsExecError as e:
-                raise errors.CompileError(str(e))
-
-        return objects
-
-    def compile(self, sources, **kwargs):
-        # Split CUDA C sources and others.
-        if use_hip:
-            raise RuntimeError('ROCm is not supported on Windows')
-
-        cu_sources = []
-        other_sources = []
-        for source in sources:
-            if os.path.splitext(source)[1] == '.cu':
-                cu_sources.append(source)
-            else:
-                other_sources.append(source)
-
-        # Compile source files other than CUDA C ones.
-        other_objects = msvccompiler.MSVCCompiler.compile(
-            self, other_sources, **kwargs)
-
-        # Compile CUDA C sources.
-        cu_objects = self._compile_cu(cu_sources, **kwargs)
-
-        # Return compiled object filenames.
-        return other_objects + cu_objects
+        self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)

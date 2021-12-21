@@ -1,12 +1,5 @@
 import typing as _typing
 
-# This is to avoid getting numpy imported inside other modules and
-# overwritting setuptools compilers (#5476).
-try:
-    import numpy.distutils  # NOQA
-except Exception:
-    pass
-
 # Legacy modules
 from cupy_builder import cupy_setup_build  # NOQA
 from cupy_builder import install_build  # NOQA
