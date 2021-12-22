@@ -874,9 +874,6 @@ cpdef _geqrf_orgqr_batched(a, mode):
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _cupy.linalg._util.linalg_common_type(a)
-    if mode == 'raw':
-        # compatibility with numpy.linalg.qr
-        out_dtype = _numpy.promote_types(out_dtype, 'd')
 
     batch_size, m, n = a.shape
     mn = min(m, n)
