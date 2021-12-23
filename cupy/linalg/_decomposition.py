@@ -226,6 +226,9 @@ def _qr_batched(a, mode):
     if batch_size == 0 or m == 0 or n == 0:
         # support float32, float64, complex64, and complex128
         dtype, out_dtype = _util.linalg_common_type(a)
+        if mode == 'raw':
+            # compatibility with numpy.linalg.qr
+            out_dtype = numpy.promote_types(out_dtype, 'd')
 
         if mode == 'reduced':
             return (cupy.empty(batch_shape + (m, 0), out_dtype),
@@ -295,6 +298,9 @@ def qr(a, mode='reduced'):
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _util.linalg_common_type(a)
+    if mode == 'raw':
+        # compatibility with numpy.linalg.qr
+        out_dtype = numpy.promote_types(out_dtype, 'd')
 
     m, n = a.shape
     mn = min(m, n)
