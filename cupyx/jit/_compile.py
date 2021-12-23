@@ -123,7 +123,8 @@ def transpile(func, attributes, mode, in_types, ret_type, *, name_suffix=''):
     tree, source = _parse_function_object(func)
     name = tree.name + name_suffix
     cuda_code, env = _transpile_function(
-        tree, name, attributes, mode, consts, in_types, ret_type, source=source)
+        tree, name, attributes, mode, consts,
+        in_types, ret_type, source=source)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
         func_name=name,
@@ -164,7 +165,9 @@ class Environment:
         self.params = params
         self.locals = {}
         self.ret_type = ret_type
-        self.preambles = set()
+        self.preambles = set()  # set of str
+        # function => (in_types => Result)
+        self.device_functions_cache = collections.defaultdict(dict)
         self.count = 0
 
     def __getitem__(self, key):
@@ -545,8 +548,7 @@ def _transpile_expr_internal(expr, env):
             return func.call(env, *args, **kwargs)
 
         if not is_constants(func):
-            raise NotImplementedError(
-                'device function call is not implemented.')
+            raise TypeError(f"'{func}' is not callable.")
 
         func = func.obj
 
@@ -573,8 +575,18 @@ def _transpile_expr_internal(expr, env):
             ctype = _cuda_types.Scalar(func)
             return _astype_scalar(args[0], ctype, 'unsafe', env)
 
-        raise NotImplementedError(
-            f'function call of `{func.__name__}` is not implemented')
+        cache = env.device_functions_cache[func]
+        args = [Data.init(x, env) for x in args]
+        in_types = tuple([x.ctype for x in args])
+        if in_types not in cache:
+            name_suffix = '_' + str(len(cache))
+            cache[in_types] = transpile(
+                func, ['__device__'], env.mode, in_types, None,
+                name_suffix=name_suffix)
+            env.preambles.add(cache[in_types].code)
+        result = cache[in_types]
+        in_params = ', '.join([x.code for x in args])
+        return Data(f'{result.func_name}({in_params})', result.return_type)
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
