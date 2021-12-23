@@ -108,7 +108,7 @@ def _parse_function_object(func):
     ), source
 
 
-def transpile(func, attributes, mode, in_types, ret_type):
+def transpile(func, attributes, mode, in_types, ret_type, *, name_suffix=''):
     """Transpile the target function
     Args:
         func (function): Target function.
@@ -121,11 +121,12 @@ def transpile(func, attributes, mode, in_types, ret_type):
     consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
     attributes = ' '.join(attributes)
     tree, source = _parse_function_object(func)
+    name = tree.name + name_suffix
     cuda_code, env = _transpile_function(
-        tree, attributes, mode, consts, in_types, ret_type, source=source)
+        tree, name, attributes, mode, consts, in_types, ret_type, source=source)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
-        func_name=tree.name,
+        func_name=name,
         code=cuda_code,
         return_type=env.ret_type,
     )
@@ -184,10 +185,11 @@ class Environment:
 
 
 def _transpile_function(
-        func, attributes, mode, consts, in_types, ret_type, *, source):
+        func, name, attributes, mode, consts, in_types, ret_type, *, source):
     """Transpile the function
     Args:
         func (ast.FunctionDef): Target function.
+        name (str): Function name.
         attributes (str): The attributes of target function.
         mode ('numpy' or 'cuda'): The rule for typecast.
         consts (dict): The dictionary with keys as variable names and
@@ -202,7 +204,7 @@ def _transpile_function(
     """
     try:
         return _transpile_function_internal(
-            func, attributes, mode, consts, in_types, ret_type)
+            func, name, attributes, mode, consts, in_types, ret_type)
     except _JitCompileError as e:
         exc = e
         if _is_debug_mode:
@@ -214,7 +216,7 @@ def _transpile_function(
 
 
 def _transpile_function_internal(
-        func, attributes, mode, consts, in_types, ret_type):
+        func, name, attributes, mode, consts, in_types, ret_type):
     consts = dict([(k, Constant(v)) for k, v, in consts.items()])
 
     if not isinstance(func, ast.FunctionDef):
@@ -245,7 +247,7 @@ def _transpile_function_internal(
     args = [arg.arg for arg in arguments.args]
     if len(args) != len(in_types):
         raise TypeError(
-            f'{func.name}() takes {len(args)} positional arguments '
+            f'{name}() takes {len(args)} positional arguments '
             f'but {len(in_types)} were given.')
     params = dict([(x, Data(x, t)) for x, t in zip(args, in_types)])
     env = Environment(mode, consts, params, ret_type)
@@ -256,7 +258,7 @@ def _transpile_function_internal(
     if env.ret_type is None:
         env.ret_type = _cuda_types.void
 
-    head = f'{attributes} {env.ret_type} {func.name}({params})'
+    head = f'{attributes} {env.ret_type} {name}({params})'
     code = CodeBlock(head, local_vars + body)
     return str(code), env
 
