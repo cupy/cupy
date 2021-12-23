@@ -13,7 +13,9 @@ from cupyx.scipy.sparse.linalg import _interface
 
 def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
           return_eigenvectors=True):
-    """Finds ``k`` eigenvalues and eigenvectors of the real symmetric matrix.
+    """
+    Find ``k`` eigenvalues and eigenvectors of the real symmetric square
+    matrix or complex Hermitian matrix ``A``.
 
     Solves ``Ax = wx``, the standard eigenvalue problem for ``w`` eigenvalues
     with corresponding eigenvectors ``x``.
