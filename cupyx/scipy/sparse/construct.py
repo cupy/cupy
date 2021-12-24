@@ -365,7 +365,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
         data_rvs = random_state.rand
 
     ind = random_state.choice(mn, size=k, replace=False)
-    j = ind//m
+    j = ind // m
     i = ind - j * m
     vals = data_rvs(k).astype(dtype)
     return coo.coo_matrix(
