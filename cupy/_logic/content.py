@@ -50,7 +50,7 @@ def isneginf(x, out=None):
     --------
     >>> cupy.isneginf(0)
     False
-    >>> cupy.isneginf([0, -0])
+    >>> cupy.isneginf([4, -4])
     [False, False]
 
     .. seealso:: :func:`numpy.isneginf`
@@ -65,7 +65,7 @@ def isneginf(x, out=None):
         raise TypeError(f'This operation is not supported for {dtype} values '
                 'as it would be uncertain.') from e
     else:
-        return cupy.logical_and(is_inf, signbit, out)
+        return cupy.logical_and(is_inf, signbit, out=None)
 
 
 def isposinf(x, out=None):
@@ -78,7 +78,7 @@ def isposinf(x, out=None):
     --------
     >>> cupy.isposinf(0)
     False
-    >>> cupy.isposinf([0, -0])
+    >>> cupy.isposinf([4, -4])
     [False, False]
 
     .. seealso:: :func:`numpy.isposinf`
@@ -89,8 +89,8 @@ def isposinf(x, out=None):
     try:
         signbit = ~cupy.signbit(x)
     except TypeError as e:
-        dtype = nx.asanyarray(x).dtype
+        dtype = cupy.asanyarray(x).dtype
         raise TypeError(f'This operation is not supported for {dtype} values '
                         'as it would be uncertain.') from e
     else:
-        return nx.logical_and(is_inf, signbit, out)
+        return cupy.logical_and(is_inf, signbit, out=None)
