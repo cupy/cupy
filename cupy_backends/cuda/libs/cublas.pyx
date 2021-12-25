@@ -138,6 +138,12 @@ cdef extern from '../../cupy_blas.h' nogil:
         Handle handle, int m, int n, cuDoubleComplex* alpha,
         cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
         cuDoubleComplex* A, int lda)
+    int cublasSsbmv(Handle handle, FillMode uplo, int n, int k,
+        const float* alpha, const float* A, int lda,
+        const float* x, int incx, const float* beta, float* y, int incy)
+    int cublasDsbmv(Handle handle, FillMode uplo, int n, int k,
+        const double* alpha, const double* A, int lda,
+        const double* x, int incx, const double* beta, double* y, int incy)
 
     # BLAS Level 3
     int cublasSgemm(
@@ -224,6 +230,16 @@ cdef extern from '../../cupy_blas.h' nogil:
         Handle handle, SideMode size, FillMode uplo, Operation trans,
         DiagType diag, int m, int n, const cuDoubleComplex* alpha,
         const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb)
+    int cublasSsyrk(
+        Handle handle, FillMode uplo, Operation trans,
+            int n, int k,
+            float* alpha, float* A, int lda,
+            float* beta, float* C, int ldc)
+    int cublasDsyrk(
+        Handle handle, FillMode uplo, Operation trans,
+            int n, int k,
+            double* alpha, double* A, int lda,
+            double* beta, double* C, int ldc)
 
     # BLAS extension
     int cublasSgeam(
@@ -837,6 +853,28 @@ cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
     check_status(status)
 
 
+cpdef ssbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int lda,
+            size_t x, int incx, size_t beta, size_t y, int incy):
+    _setStream(handle)
+    with nogil:
+        status = cublasSsbmv(
+            <Handle>handle, <FillMode>uplo, n, k,
+            <float*>alpha, <float*>A, lda,
+            <float*>x, incx, <float*>beta, <float*>y, incy)
+    check_status(status)
+
+
+cpdef dsbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int lda,
+            size_t x, int incx, size_t beta, size_t y, int incy):
+    _setStream(handle)
+    with nogil:
+        status = cublasDsbmv(
+            <Handle>handle, <FillMode>uplo, n, k,
+            <double*>alpha, <double*>A, lda,
+            <double*>x, incx, <double*>beta, <double*>y, incy)
+    check_status(status)
+
+
 ###############################################################################
 # BLAS Level 3
 ###############################################################################
@@ -1041,6 +1079,7 @@ cpdef dtrsm(
             lda, <double*>Barray, ldb)
     check_status(status)
 
+
 cpdef ctrsm(
         intptr_t handle, int side, int uplo, int trans, int diag,
         int m, int n, size_t alpha, size_t Aarray, int lda,
@@ -1065,6 +1104,35 @@ cpdef ztrsm(
             <DiagType>diag, m, n, <const cuDoubleComplex*>alpha,
             <const cuDoubleComplex*>Aarray, lda, <cuDoubleComplex*>Barray, ldb)
     check_status(status)
+
+
+cpdef ssyrk(intptr_t handle, int uplo, int trans,
+            int n, int k,
+            size_t alpha, size_t A, int lda,
+            size_t beta, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasSsyrk(
+            <Handle>handle, <FillMode>uplo, <Operation>trans,
+            n, k,
+            <float*>alpha, <float*>A, lda, 
+            <float*>beta, <float*>C, ldc)
+    check_status(status)
+
+
+cpdef dsyrk(intptr_t handle, int uplo, int trans,
+            int n, int k,
+            size_t alpha, size_t A, int lda,
+            size_t beta, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasDsyrk(
+            <Handle>handle, <FillMode>uplo, <Operation>trans,
+            n, k,
+            <double*>alpha, <double*>A, lda,
+            <double*>beta, <double*>C, ldc)
+    check_status(status)
+
 
 ###############################################################################
 # BLAS extension

@@ -231,6 +231,61 @@ class TestGemv:
 
 
 @testing.parameterize(*testing.product({
+    'dtype': ['float32', 'float64'],
+    'rank': [5, 9],
+    'band': [0, 1, 3],
+    'lower': [0, 1],
+    'order': ['C', 'F'],
+    'mode': [None, numpy, cupy],
+}))
+@_attr.gpu
+class TestSbmv:
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        self.dtype = numpy.dtype(self.dtype)
+        self.tol = self._tol[self.dtype.char.lower()]
+
+    def _gen2band(self, A, ku=0, kl=0, order='C'):
+        # oneAPI doc: https://spec.oneapi.io/versions/0.7/elements/oneMKL/source/domains/matrix-storage.html
+        # cublas doc: https://docs.nvidia.com/cuda/cublas/index.html
+        assert A.ndim == 2
+        n, m = A.shape
+        ldm, lda = n, 1 + ku + kl
+        B = numpy.zeros(lda*ldm).reshape((lda, ldm), order=order).astype(A.dtype)
+        for j in range(n):
+            k = ku - j
+            for i in range(max(0, j-ku), min(m, j + kl + 1)):
+                B[(k + i), j] = A[i, j]
+        return B
+
+    def test_sbmv(self):
+        alpha, beta = 3.0, 2.0
+        n, k, l = self.rank, self.band, self.lower
+        a = numpy.eye(n, dtype=self.dtype) * (numpy.arange(n) + 1)
+        for i in range(1, k+1):
+            band = numpy.random.randint(20, size=n-i)
+            a += numpy.diag(band, k= i)
+            a += numpy.diag(band, k=-i)
+        x = numpy.random.randint(20, size=n).astype(a.dtype)
+        y = numpy.random.randint(20, size=n).astype(a.dtype)
+        ku, kl = k, 0
+        if l == 1:
+            ku, kl = kl, ku
+        b = self._gen2band(a, ku, kl, self.order)
+        a, b = cupy.asarray(a), cupy.asarray(b)
+        x, y = cupy.asarray(x), cupy.asarray(y)
+        ref = alpha * a.dot(x) + beta * y
+        if self.mode is not None:
+            alpha = self.mode.array(alpha)
+            beta = self.mode.array(beta)
+        y_ret = cupy.cublas.sbmv(k, alpha, b, x, beta, y, lower=l)
+        cupy.testing.assert_allclose(y, ref, rtol=self.tol, atol=self.tol)
+        cupy.testing.assert_allclose(y_ret, ref, rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'shape': [(10, 9), (9, 10)],
     'order': ['C', 'F'],
@@ -278,6 +333,86 @@ class TestGer:
             self.alpha = self.mode.array(self.alpha)
         cublas.gerc(self.alpha, self.x, self.y, self.a)
         cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'nk': [(5, 9), (9, 5)],
+    'transa': ['N', 'T'],  # 'C'
+    'ordera': ['F', 'C'],
+    'orderc': ['F', 'C'],
+    'lower': [0, 1],
+    'mode': [None, numpy, cupy]
+}))
+@_attr.gpu
+class TestSyrk:
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, m, n, trans, order, dtype):
+        if trans == 'N':
+            shape = (m, n)
+        else:
+            shape = (n, m)
+        return testing.shaped_random(shape, cupy, dtype=dtype, order=order,
+                                     scale=1.0)
+
+    def _trans_matrix(self, a, trans):
+        if trans == 'T':
+            a = a.T
+        elif trans == 'H':
+            a = a.T.conj()
+        return a
+
+    @testing.for_dtypes('fd') # FD
+    def test_syrk(self, dtype):
+        alpha, beta = 3.0, 2.0
+        if not (self.mode is None and self.orderc == 'C'):
+            pytest.skip()
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        n, k = self.nk
+        a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
+        aa = self._trans_matrix(a, self.transa)
+        ref = alpha * aa.dot(aa.T)  # beta is used as a placeholder only
+        c = cublas.syrk(self.transa, a, alpha=alpha, beta=beta, lower=self.lower)
+        rr, cc = cupy.asnumpy(ref), cupy.asnumpy(c)
+        if self.lower:
+            rr[numpy.triu_indices_from(rr, 1)] = 0
+        else:
+            rr[numpy.tril_indices_from(rr, -1)] = 0
+        rru = rr[numpy.triu_indices_from(rr)]
+        ccu = cc[numpy.triu_indices_from(cc)]
+        rrl = rr[numpy.tril_indices_from(rr)]
+        ccl = cc[numpy.tril_indices_from(cc)]
+        cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
+        cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fd') # FD
+    def test_syrk_out(self, dtype):
+        alpha, beta = 2.3, 1.7
+        if not (self.mode is None and self.orderc == 'C'):
+            pytest.skip()
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        n, k = self.nk
+        a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
+        aa = self._trans_matrix(a, self.transa)
+        m = aa.shape[0]
+        c = self._make_matrix(m, m, 'N', self.orderc, dtype)
+        c0 = cupy.array(c)
+        ref = alpha * aa.dot(aa.T) + beta * c
+        cublas.syrk(self.transa, a, out=c, alpha=alpha, beta=beta, lower=self.lower)
+        rr, c0, cc = cupy.asnumpy(ref), cupy.asnumpy(c0), cupy.asnumpy(c)
+        if self.lower:
+            trii = numpy.triu_indices_from(rr, 1)
+        else:
+            trii = numpy.tril_indices_from(rr, -1)
+        rr[trii] = c0[trii]
+        rru = rr[numpy.triu_indices_from(rr)]
+        ccu = cc[numpy.triu_indices_from(cc)]
+        rrl = rr[numpy.tril_indices_from(rr)]
+        ccl = cc[numpy.tril_indices_from(cc)]
+        cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
+        cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
 
 
 @testing.parameterize(*testing.product({
