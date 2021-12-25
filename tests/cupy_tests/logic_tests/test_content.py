@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import cupy
 
 from cupy import testing
 
@@ -31,3 +32,9 @@ class TestContent(unittest.TestCase):
 
     def test_isnan(self):
         self.check_unary_nan('isnan')
+
+    def test_isneginf(self):
+        self.check_unary_inf('isneginf')
+
+    def test_isposinf(self):
+        self.check_unary_inf('isposinf')

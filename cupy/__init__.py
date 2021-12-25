@@ -480,6 +480,8 @@ from cupy._logic.comparison import isclose  # NOQA
 from cupy._logic.content import isfinite  # NOQA
 from cupy._logic.content import isinf  # NOQA
 from cupy._logic.content import isnan  # NOQA
+from cupy._logic.content import isneginf  # NOQA
+from cupy._logic.content import isposinf  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
@@ -487,8 +489,6 @@ from cupy._logic.truth import isin  # NOQA
 from cupy._logic.type_test import iscomplex  # NOQA
 from cupy._logic.type_test import iscomplexobj  # NOQA
 from cupy._logic.type_test import isfortran  # NOQA
-from cupy._logic.type_test import isneginf  # NOQA
-from cupy._logic.type_test import isposinf  # NOQA
 from cupy._logic.type_test import isreal  # NOQA
 from cupy._logic.type_test import isrealobj  # NOQA
 

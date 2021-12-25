@@ -24,6 +24,8 @@ Array contents
    isfinite
    isinf
    isnan
+   isneginf
+   isposinf
 
 
 Array type testing
@@ -35,8 +37,6 @@ Array type testing
    iscomplex
    iscomplexobj
    isfortran
-   isneginf
-   isposinf
    isreal
    isrealobj
    isscalar
