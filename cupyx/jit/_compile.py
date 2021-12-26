@@ -116,9 +116,11 @@ class Generated:
         # (function, in_types) => Optional(function_name, return_type)
         self.device_function = {}
 
-    def add_code(self, code):
+    def add_code(self, code: str) -> None:
         if code not in self.codes:
-            return self.codes.append(code)
+            self.codes.append(code)
+            if len(self.codes) > jit._n_functions_upperlimit:
+                raise ValueError("Number of functions exceeds upper limit.")
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
