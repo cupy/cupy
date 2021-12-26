@@ -108,7 +108,20 @@ def _parse_function_object(func):
     ), source
 
 
-def transpile(func, attributes, mode, in_types, ret_type, *, name_suffix=''):
+class Generated:
+
+    def __init__(self):
+        # list of str
+        self.codes = []
+        # (function, in_types) => Optional(function_name, return_type)
+        self.device_function = {}
+
+    def add_code(self, code):
+        if code not in self.codes:
+            return self.codes.append(code)
+
+
+def transpile(func, attributes, mode, in_types, ret_type):
     """Transpile the target function
     Args:
         func (function): Target function.
@@ -117,20 +130,38 @@ def transpile(func, attributes, mode, in_types, ret_type, *, name_suffix=''):
         in_types (list of _cuda_types.TypeBase): Types of the arguments.
         ret_type (_cuda_types.TypeBase or None): Type of the return value.
     """
+    generated = Generated()
+    in_types = tuple(in_types)
+    name, return_type = _transpile_func_obj(
+        func, attributes, mode, in_types, ret_type, generated)
+    func_name, _ = generated.device_function[(func, in_types)]
+    code = '\n'.join(generated.codes)
+    return Result(func_name=func_name, code=code, return_type=return_type)
+
+
+def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
+    if (func, in_types) in generated.device_function:
+        result = generated.device_function[(func, in_types)]
+        if result is None:
+            raise ValueError("Recursive function is not supported.")
+        return result
+
     cvars = inspect.getclosurevars(func)
     consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
     attributes = ' '.join(attributes)
     tree, source = _parse_function_object(func)
-    name = tree.name + name_suffix
+    name = tree.name
+    if len(generated.device_function) > 0:
+        name += '_' + str(len(generated.device_function))
+    generated.device_function[(func, in_types)] = None
+
     cuda_code, env = _transpile_function(
         tree, name, attributes, mode, consts,
-        in_types, ret_type, source=source)
-    cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
-    return Result(
-        func_name=name,
-        code=cuda_code,
-        return_type=env.ret_type,
-    )
+        in_types, ret_type, generated, source=source)
+
+    generated.device_function[(func, in_types)] = (name, env.ret_type)
+    generated.add_code(cuda_code)
+    return name, env.ret_type
 
 
 def _indent(lines, spaces='  '):
@@ -157,17 +188,16 @@ class Environment:
             The type of return value of the function.
             If it is initialized to be ``None``, the return type must be
             inferred until the end of transpilation of the function.
+        generated (Generated): Generated CUDA functions.
     """
 
-    def __init__(self, mode, consts, params, ret_type):
+    def __init__(self, mode, consts, params, ret_type, generated):
         self.mode = mode
         self.consts = consts
         self.params = params
         self.locals = {}
         self.ret_type = ret_type
-        self.preambles = set()  # set of str
-        # function => (in_types => Result)
-        self.device_functions_cache = collections.defaultdict(dict)
+        self.generated = generated
         self.count = 0
 
     def __getitem__(self, key):
@@ -188,7 +218,8 @@ class Environment:
 
 
 def _transpile_function(
-        func, name, attributes, mode, consts, in_types, ret_type, *, source):
+        func, name, attributes, mode, consts,
+        in_types, ret_type, generated, *, source):
     """Transpile the function
     Args:
         func (ast.FunctionDef): Target function.
@@ -207,7 +238,8 @@ def _transpile_function(
     """
     try:
         return _transpile_function_internal(
-            func, name, attributes, mode, consts, in_types, ret_type)
+            func, name, attributes, mode, consts,
+            in_types, ret_type, generated)
     except _JitCompileError as e:
         exc = e
         if _is_debug_mode:
@@ -219,7 +251,7 @@ def _transpile_function(
 
 
 def _transpile_function_internal(
-        func, name, attributes, mode, consts, in_types, ret_type):
+        func, name, attributes, mode, consts, in_types, ret_type, generated):
     consts = dict([(k, Constant(v)) for k, v, in consts.items()])
 
     if not isinstance(func, ast.FunctionDef):
@@ -253,7 +285,7 @@ def _transpile_function_internal(
             f'{name}() takes {len(args)} positional arguments '
             f'but {len(in_types)} were given.')
     params = dict([(x, Data(x, t)) for x, t in zip(args, in_types)])
-    env = Environment(mode, consts, params, ret_type)
+    env = Environment(mode, consts, params, ret_type, generated)
     body = _transpile_stmts(func.body, True, env)
     params = ', '.join([env[a].ctype.declvar(a) for a in args])
     local_vars = [v.ctype.declvar(n) + ';' for n, v in env.locals.items()]
@@ -316,7 +348,7 @@ def _call_ufunc(ufunc, args, dtype, env):
             for i, x in enumerate(in_params):
                 expr = expr.replace(f'in{i}', x.code)
             expr = '(' + expr.replace('out0_type', str(out_type)) + ')'
-            env.preambles.add(ufunc._preamble)
+            env.generated.add_code(ufunc._preamble)
         else:
             template_typenames = ', '.join([
                 f'typename T{i}' for i in range(ufunc.nin)])
@@ -327,7 +359,7 @@ __device__ {out_type} {ufunc_name}({params}) {{
     return {expr};
 }}
 """
-            env.preambles.add(ufunc_code)
+            env.generated.add_code(ufunc_code)
             in_params = ', '.join([a.code for a in in_params])
             expr = f'{ufunc_name}({in_params})'
         return Data(expr, out_type)
@@ -575,18 +607,13 @@ def _transpile_expr_internal(expr, env):
             ctype = _cuda_types.Scalar(func)
             return _astype_scalar(args[0], ctype, 'unsafe', env)
 
-        cache = env.device_functions_cache[func]
+        # cache = env.device_functions_cache[func]
         args = [Data.init(x, env) for x in args]
         in_types = tuple([x.ctype for x in args])
-        if in_types not in cache:
-            name_suffix = '_' + str(len(cache))
-            cache[in_types] = transpile(
-                func, ['__device__'], env.mode, in_types, None,
-                name_suffix=name_suffix)
-            env.preambles.add(cache[in_types].code)
-        result = cache[in_types]
+        fname, return_type = _transpile_func_obj(
+            func, ['__device__'], env.mode, in_types, None, env.generated)
         in_params = ', '.join([x.code for x in args])
-        return Data(f'{result.func_name}({in_params})', result.return_type)
+        return Data(f'{fname}({in_params})', return_type)
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
