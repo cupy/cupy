@@ -19,7 +19,7 @@ class TestDeviceFunction(unittest.TestCase):
             x += 1
             y += 1
             return x + y
-        
+
         x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
         y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
         z = testing.shaped_random((30,), dtype=numpy.int32, seed=2)
