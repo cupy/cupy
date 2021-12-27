@@ -4,7 +4,8 @@ from cupy import _core
 
 def asarray_chkfinite(a, dtype=None, order=None):
     """
-    Convert the given input to an array, and raises an error if input is NaNs or Infs.
+    Convert the given input to an array, 
+    and raises an error if the input is NaNs or Infs.
 
     Args:
         a: array like.
