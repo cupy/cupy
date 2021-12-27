@@ -23,7 +23,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
         raise ValueError(
                 "Array must not contain infs or nans")
 
-    return 0
+    return a
 
 
 def asfarray(a, dtype=cupy.float_):
