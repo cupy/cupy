@@ -59,6 +59,7 @@ Math operations
    log10
    expm1
    log1p
+   positive
    sqrt
    square
    cbrt
