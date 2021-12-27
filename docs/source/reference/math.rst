@@ -179,3 +179,4 @@ Miscellaneous
    fmin
    nan_to_num
    interp
+   positive
