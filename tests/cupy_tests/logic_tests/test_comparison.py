@@ -181,9 +181,16 @@ class TestArrayEquiv(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
-    def test_array_equiv_broadcast_not_equal(self, xp, dtype):
+    def test_array_equiv_non_broadcastable(self, xp, dtype):
         a = xp.array([0, 4], dtype=dtype)
         b = xp.array([[0, 4], [0, 5]], dtype=dtype)
+        return xp.array_equiv(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_non_broadcastable_check2(self, xp, dtype):
+        a = xp.array([0, 4], dtype=dtype)
+        b = xp.array([[0, 4, 0, 4], [0, 4, 0, 4]], dtype=dtype)
         return xp.array_equiv(a, b)
 
 

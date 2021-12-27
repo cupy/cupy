@@ -148,7 +148,6 @@ def array_equiv(a1, a2):
 
     """
 
-    a1, a2 = cupy.asarray(a1), cupy.asarray(a2)
     try:
         cupy.broadcast(a1, a2)
     except Exception:
