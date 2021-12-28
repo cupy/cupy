@@ -133,6 +133,7 @@ Arithmetic operations
 
    add
    reciprocal
+   positive
    negative
    multiply
    divide
@@ -179,4 +180,3 @@ Miscellaneous
    fmin
    nan_to_num
    interp
-   positive
