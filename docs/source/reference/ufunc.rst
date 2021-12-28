@@ -43,6 +43,7 @@ Math operations
    true_divide
    floor_divide
    negative
+   positive
    power
    remainder
    mod
@@ -59,7 +60,6 @@ Math operations
    log10
    expm1
    log1p
-   positive
    sqrt
    square
    cbrt
