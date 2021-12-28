@@ -108,7 +108,7 @@ def _nvcc_gencode_options(cuda_version):
 
 
 class _UnixCCompiler(unixccompiler.UnixCCompiler):
-    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)
+    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)  # type: ignore # NOQA
     src_extensions.append('.cu')
 
     def _compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
@@ -192,7 +192,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 class _MSVCCompiler(msvccompiler.MSVCCompiler):
     _cu_extensions = ['.cu']
 
-    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)
+    src_extensions = list(unixccompiler.UnixCCompiler.src_extensions)  # type: ignore # NOQA
     src_extensions.extend(_cu_extensions)
 
     def _compile_cu(self, sources, output_dir=None, macros=None,
