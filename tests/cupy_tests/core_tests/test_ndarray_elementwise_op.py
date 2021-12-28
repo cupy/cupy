@@ -720,3 +720,56 @@ class TestArrayObjectComparison:
             return value != a
         else:
             return a != value
+
+
+class HasEq:
+    def __eq__(self, other):
+        return (other == 2) | (other == 4)
+
+
+class HasNe:
+    def __ne__(self, other):
+        return (other == 2) | (other == 4)
+
+
+class HasEqSub(HasEq):
+    pass
+
+
+class CustomInt(int):
+    pass
+
+
+@pytest.mark.parametrize('dtype', ['int32', 'float64'])
+@pytest.mark.parametrize('value', [
+    HasEq(),
+    HasNe(),  # eq test passes because `==` does not fall back to `__ne__`.
+    HasEqSub(),
+    CustomInt(3),
+])
+class TestArrayObjectComparisonDifficult:
+
+    # OK to raise TypeError.
+    # If CuPy returns a result, it should match with NumPy's result.
+
+    def test_eq_object(self, dtype, value):
+        expected = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype) == value
+
+        a = cupy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        try:
+            res = a == value
+        except TypeError:
+            pytest.skip()
+
+        cupy.testing.assert_array_equal(res, expected)
+
+    def test_ne_object(self, dtype, value):
+        expected = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype) != value
+
+        a = cupy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        try:
+            res = a != value
+        except TypeError:
+            pytest.skip()
+
+        cupy.testing.assert_array_equal(res, expected)
