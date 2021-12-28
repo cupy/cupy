@@ -132,6 +132,7 @@ Arithmetic operations
 
    add
    reciprocal
+   positive
    negative
    multiply
    divide
