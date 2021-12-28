@@ -2,6 +2,7 @@ from cupy import _core
 
 import cupy
 
+
 def _create_float_test_ufunc(name, doc):
     return _core.create_ufunc(
         'cupy_' + name,
@@ -50,8 +51,8 @@ def isneginf(x, out=None):
     --------
     >>> cupy.isneginf(0)
     False
-    >>> cupy.isneginf([4, -4])
-    [False, False]
+    >>> cupy.isneginf([4, -4, numpy.inf, -numpy.inf])
+    [False, False, False, True]
 
     .. seealso:: :func:`numpy.isneginf`
 
@@ -63,7 +64,7 @@ def isneginf(x, out=None):
     except TypeError as e:
         dtype = cupy.asanyarray(x).dtype
         raise TypeError(f'This operation is not supported for {dtype} values '
-                'as it would be uncertain.') from e
+                        'as it would be uncertain.') from e
     else:
         return cupy.logical_and(is_inf, signbit, out=None)
 
@@ -78,8 +79,8 @@ def isposinf(x, out=None):
     --------
     >>> cupy.isposinf(0)
     False
-    >>> cupy.isposinf([4, -4])
-    [False, False]
+    >>> cupy.isposinf([4, -4, numpy.inf, -numpy.inf])
+    [False, False, True, False]
 
     .. seealso:: :func:`numpy.isposinf`
 

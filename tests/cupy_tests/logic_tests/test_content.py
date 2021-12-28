@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import cupy
 
 from cupy import testing
 
@@ -40,8 +39,8 @@ class TestUfuncLike(unittest.TestCase):
     @testing.for_dtypes('efd')
     @testing.numpy_cupy_array_equal()
     def check_unary(self, name, xp, dtype):
-        a = xp.array([-3, numpy.inf, -1, -numpy.inf, 0, 1, 2], 
-                dtype=dtype)
+        a = xp.array([-3, numpy.inf, -1, -numpy.inf, 0, 1, 2],
+                    dtype=dtype)
         return getattr(xp, name)(a)
 
     def test_isneginf(self):
