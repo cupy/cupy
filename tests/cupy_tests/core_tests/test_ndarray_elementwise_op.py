@@ -693,13 +693,18 @@ class TestArrayIntElementwiseOp:
             self.check_array_doubly_broadcasted_op(operator.mod)
 
 
+@pytest.mark.parametrize('value', [
+    None,
+    Ellipsis,
+    object(),
+    numpy._NoValue,
+])
 class TestArrayObjectComparison:
 
     @pytest.mark.parametrize('swap', [False, True])
-    @pytest.mark.parametrize('value', [None, Ellipsis])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_eq_builtin_constant(self, xp, dtype, value, swap):
+    def test_eq_object(self, xp, dtype, value, swap):
         a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
         if swap:
             return value == a
@@ -707,10 +712,9 @@ class TestArrayObjectComparison:
             return a == value
 
     @pytest.mark.parametrize('swap', [False, True])
-    @pytest.mark.parametrize('value', [None, Ellipsis])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_ne_builtin_constant(self, xp, dtype, value, swap):
+    def test_ne_object(self, xp, dtype, value, swap):
         a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
         if swap:
             return value != a
