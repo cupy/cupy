@@ -127,30 +127,8 @@ class TestArrayElementwiseOp:
     def test_eq_scalar(self):
         self.check_array_scalar_op(operator.eq)
 
-    @pytest.mark.parametrize('swap', [False, True])
-    @pytest.mark.parametrize('value', [None, Ellipsis])
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_eq_builtin_constant(self, xp, dtype, value, swap):
-        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
-        if swap:
-            return value == a
-        else:
-            return a == value
-
     def test_ne_scalar(self):
         self.check_array_scalar_op(operator.ne)
-
-    @pytest.mark.parametrize('swap', [False, True])
-    @pytest.mark.parametrize('value', [None, Ellipsis])
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_ne_builtin_constant(self, xp, dtype, value, swap):
-        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
-        if swap:
-            return value != a
-        else:
-            return a != value
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
@@ -713,3 +691,28 @@ class TestArrayIntElementwiseOp:
     def test_doubly_broadcasted_mod(self):
         with numpy.errstate(divide='ignore', invalid='ignore'):
             self.check_array_doubly_broadcasted_op(operator.mod)
+
+
+class TestArrayObjectComparison:
+
+    @pytest.mark.parametrize('swap', [False, True])
+    @pytest.mark.parametrize('value', [None, Ellipsis])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_eq_builtin_constant(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value == a
+        else:
+            return a == value
+
+    @pytest.mark.parametrize('swap', [False, True])
+    @pytest.mark.parametrize('value', [None, Ellipsis])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ne_builtin_constant(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value != a
+        else:
+            return a != value
