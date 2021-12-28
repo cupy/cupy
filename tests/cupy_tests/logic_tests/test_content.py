@@ -33,8 +33,19 @@ class TestContent(unittest.TestCase):
     def test_isnan(self):
         self.check_unary_nan('isnan')
 
+
+@testing.gpu
+class TestUfuncLike(unittest.TestCase):
+
+    @testing.for_dtypes('efd')
+    @testing.numpy_cupy_array_equal()
+    def check_unary(self, name, xp, dtype):
+        a = xp.array([-3, numpy.inf, -1, -numpy.inf, 0, 1, 2], 
+                dtype=dtype)
+        return getattr(xp, name)(a)
+
     def test_isneginf(self):
-        self.check_unary_inf('isneginf')
+        self.check_unary('isneginf')
 
     def test_isposinf(self):
-        self.check_unary_inf('isposinf')
+        self.check_unary('isposinf')
