@@ -221,3 +221,13 @@ class TestGraph(unittest.TestCase):
         assert not s2.is_capturing()
         s1.synchronize()
         s2.synchronize()
+
+    def test_stream_capture_failure4(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+        with s:
+            s.begin_capture()
+            # query the stream status is illegal during capturing
+            status = s.done
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                g = s.end_capture()
+            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
