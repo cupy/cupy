@@ -238,14 +238,15 @@ cpdef ctrsm(intptr_t handle, int side, int uplo, int trans, int diag,
 cpdef ztrsm(intptr_t handle, int side, int uplo, int trans, int diag,
             int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
-cpdef ssyrk(intptr_t handle, int uplo, int trans,
-            int n, int k,
-            size_t alpha, size_t A, int lda,
-            size_t beta, size_t C, int ldc)
-cpdef dsyrk(intptr_t handle, int uplo, int trans,
-            int n, int k,
-            size_t alpha, size_t A, int lda,
-            size_t beta, size_t C, int ldc)
+cpdef ssyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+cpdef dsyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+cpdef csyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+cpdef zsyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+
 
 ###############################################################################
 # BLAS extension

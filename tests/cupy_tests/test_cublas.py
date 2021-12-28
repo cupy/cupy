@@ -337,7 +337,7 @@ class TestGer:
 
 @testing.parameterize(*testing.product({
     'nk': [(5, 9), (9, 5)],
-    'transa': ['N', 'T'],  # 'C'
+    'transa': ['N', 'T', 'C'], # 'C' never conjugates in syrk
     'ordera': ['F', 'C'],
     'orderc': ['F', 'C'],
     'lower': [0, 1],
@@ -356,19 +356,18 @@ class TestSyrk:
                                      scale=1.0)
 
     def _trans_matrix(self, a, trans):
-        if trans == 'T':
-            a = a.T
-        elif trans == 'H':
-            a = a.T.conj()
-        return a
+        if trans == 'N':
+            return a
+        return a.T
 
-    @testing.for_dtypes('fd') # FD
+    @testing.for_dtypes('fdFD')
     def test_syrk(self, dtype):
-        alpha, beta = 3.0, 2.0
-        if not (self.mode is None and self.orderc == 'C'):
-            pytest.skip()
         dtype = numpy.dtype(dtype)
         tol = self._tol[dtype.char.lower()]
+        alpha, beta = 3.0, 2.0
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 2.0
+            beta = beta + 1j * 5.0
         n, k = self.nk
         a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
         aa = self._trans_matrix(a, self.transa)
@@ -376,7 +375,7 @@ class TestSyrk:
         c = cublas.syrk(self.transa, a, alpha=alpha, beta=beta, lower=self.lower)
         rr, cc = cupy.asnumpy(ref), cupy.asnumpy(c)
         if self.lower:
-            rr[numpy.triu_indices_from(rr, 1)] = 0
+            rr[numpy.triu_indices_from(rr,  1)] = 0
         else:
             rr[numpy.tril_indices_from(rr, -1)] = 0
         rru = rr[numpy.triu_indices_from(rr)]
@@ -386,13 +385,14 @@ class TestSyrk:
         cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
         cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
 
-    @testing.for_dtypes('fd') # FD
+    @testing.for_dtypes('fdFD')
     def test_syrk_out(self, dtype):
-        alpha, beta = 2.3, 1.7
-        if not (self.mode is None and self.orderc == 'C'):
-            pytest.skip()
         dtype = numpy.dtype(dtype)
         tol = self._tol[dtype.char.lower()]
+        alpha, beta = 2.3, 1.7
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 0.7
+            beta = beta + 1j * 2.3
         n, k = self.nk
         a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
         aa = self._trans_matrix(a, self.transa)
@@ -403,7 +403,7 @@ class TestSyrk:
         cublas.syrk(self.transa, a, out=c, alpha=alpha, beta=beta, lower=self.lower)
         rr, c0, cc = cupy.asnumpy(ref), cupy.asnumpy(c0), cupy.asnumpy(c)
         if self.lower:
-            trii = numpy.triu_indices_from(rr, 1)
+            trii = numpy.triu_indices_from(rr,  1)
         else:
             trii = numpy.tril_indices_from(rr, -1)
         rr[trii] = c0[trii]

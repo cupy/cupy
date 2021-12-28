@@ -935,6 +935,10 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
         func = cublas.ssyrk
     elif dtype == 'd':
         func = cublas.dsyrk
+    elif dtype == 'F':
+        func = cublas.csyrk
+    elif dtype == 'D':
+        func = cublas.zsyrk
     else:
         raise TypeError('invalid dtype')
 

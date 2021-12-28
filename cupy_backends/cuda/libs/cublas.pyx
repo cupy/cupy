@@ -231,15 +231,21 @@ cdef extern from '../../cupy_blas.h' nogil:
         DiagType diag, int m, int n, const cuDoubleComplex* alpha,
         const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb)
     int cublasSsyrk(
-        Handle handle, FillMode uplo, Operation trans,
-            int n, int k,
-            float* alpha, float* A, int lda,
-            float* beta, float* C, int ldc)
+        Handle handle, FillMode uplo, Operation trans, int n, int k,
+        float* alpha, float* A, int lda,
+        float* beta, float* C, int ldc)
     int cublasDsyrk(
-        Handle handle, FillMode uplo, Operation trans,
-            int n, int k,
-            double* alpha, double* A, int lda,
-            double* beta, double* C, int ldc)
+        Handle handle, FillMode uplo, Operation trans, int n, int k,
+        double* alpha, double* A, int lda,
+        double* beta, double* C, int ldc)
+    int cublasCsyrk(
+        Handle handle, FillMode uplo, Operation trans, int n, int k,
+        cuComplex* alpha, cuComplex* A, int lda,
+        cuComplex* beta, cuComplex* C, int ldc)
+    int cublasZsyrk(
+        Handle handle, FillMode uplo, Operation trans, int n, int k,
+        cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
+        cuDoubleComplex* beta, cuDoubleComplex* C, int ldc)
 
     # BLAS extension
     int cublasSgeam(
@@ -1106,31 +1112,47 @@ cpdef ztrsm(
     check_status(status)
 
 
-cpdef ssyrk(intptr_t handle, int uplo, int trans,
-            int n, int k,
-            size_t alpha, size_t A, int lda,
-            size_t beta, size_t C, int ldc):
+cpdef ssyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSsyrk(
-            <Handle>handle, <FillMode>uplo, <Operation>trans,
-            n, k,
-            <float*>alpha, <float*>A, lda, 
-            <float*>beta, <float*>C, ldc)
+            <Handle>handle, <FillMode>uplo, <Operation>trans, n, k,
+            <const float*>alpha, <const float*>A, lda,
+            <const float*>beta, <float*>C, ldc)
     check_status(status)
 
 
-cpdef dsyrk(intptr_t handle, int uplo, int trans,
-            int n, int k,
-            size_t alpha, size_t A, int lda,
-            size_t beta, size_t C, int ldc):
+cpdef dsyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasDsyrk(
-            <Handle>handle, <FillMode>uplo, <Operation>trans,
-            n, k,
-            <double*>alpha, <double*>A, lda,
-            <double*>beta, <double*>C, ldc)
+            <Handle>handle, <FillMode>uplo, <Operation>trans, n, k,
+            <const double*>alpha, <const double*>A, lda,
+            <const double*>beta, <double*>C, ldc)
+    check_status(status)
+
+
+cpdef csyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasCsyrk(
+            <Handle>handle, <FillMode>uplo, <Operation>trans, n, k,
+            <const cuComplex*>alpha, <const cuComplex*>A, lda,
+            <const cuComplex*>beta, <cuComplex*>C, ldc)
+    check_status(status)
+
+
+cpdef zsyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasZsyrk(
+            <Handle>handle, <FillMode>uplo, <Operation>trans, n, k,
+            <const cuDoubleComplex*>alpha, <const cuDoubleComplex*>A, lda,
+            <const cuDoubleComplex*>beta, <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
