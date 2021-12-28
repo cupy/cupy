@@ -5,15 +5,15 @@ from cupy import _core
 def asarray_chkfinite(a, dtype=None, order=None):
     """
     Convert the given input to an array,
-    and raises an error if the input is NaNs or Infs.
+    and raises an error if the input contains NaNs or Infs.
 
     Args:
         a: array like.
         dtype: data type, optional
-        order: {'C', 'F'}, optional
+        order: {'C', 'F', 'A', 'K'}, optional
 
     Returns:
-        out (cupy.ndarray): Array interpretation of `a`.
+        cupy.ndarray: Array interpretation of `a`.
 
     .. seealso:: :func:`numpy.asarray_chkfinite`
 
@@ -22,7 +22,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
     a = cupy.asarray(a, dtype=dtype, order=order)
     if not cupy.isfinite(a).all():
         raise ValueError(
-                "Array must not contain infs or nans")
+            "Array must not contain infs or nans.")
 
     return a
 

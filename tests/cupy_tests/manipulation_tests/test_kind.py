@@ -18,6 +18,13 @@ class TestKind(unittest.TestCase):
         assert a_gpu.dtype == a_cpu.dtype
 
     @testing.for_all_dtypes()
+    def test_asarray_chkfinite_non_finite_vals(self, dtype):
+        a = [-numpy.inf, 0., numpy.inf]
+        a_gpu = cupy.asarray_chkfinite(a, dtype=dtype)
+        a_cpu = numpy.asarray_chkfinite(a, dtype=dtype)
+        assert a_gpu.dtype == a_cpu.dtype
+
+    @testing.for_all_dtypes()
     def test_asfarray(self, dtype):
         a = cupy.asarray([1, 2, 3])
         a_gpu = cupy.asfarray(a, dtype)
