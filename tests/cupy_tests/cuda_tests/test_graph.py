@@ -33,8 +33,7 @@ class TestGraph(unittest.TestCase):
     def _helper4(self, a):
         # this tests a common pattern in CuPy internal in which the host
         # operation depends on intermediate outcome on GPU (and thus requires
-        # synchronization); here, we are protected by some (async) CUDA API
-        # calls as well as launching of custom kernels
+        # synchronization)
         result = cupy.zeros((1,), dtype=cupy.int32)
         if a.sum() > 0:  # synchronize!
             result += 1
@@ -45,7 +44,7 @@ class TestGraph(unittest.TestCase):
     def test_capture_run_on_same_stream(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
-        for n in range(4):
+        for n in range(3):
             func = getattr(self, '_helper{}'.format(n+1))
             a = cupy.random.random((100,))
 
@@ -63,7 +62,7 @@ class TestGraph(unittest.TestCase):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
 
-        for n in range(4):
+        for n in range(3):
             func = getattr(self, '_helper{}'.format(n+1))
             a = cupy.random.random((100,))
 
@@ -210,7 +209,11 @@ class TestGraph(unittest.TestCase):
             e2.record(s1)
             s2.wait_event(e2)
             with s2:
-                b = cupy.where(a > 0.5)  # noqa
+                # internally the function requires synchronization, which is
+                # incompatible with stream capturing and so we raise
+                with pytest.raises(RuntimeError) as e:
+                    b = cupy.where(a > 0.5)  # noqa
+                assert 'is capturing' in str(e.value)
             # invalid operation causes the capture sequence to be invalidated
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s1.end_capture()  # noqa
@@ -231,3 +234,17 @@ class TestGraph(unittest.TestCase):
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 g = s.end_capture()
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+
+    def test_stream_capture_failure5(self):
+        s1 = cupy.cuda.Stream(non_blocking=True)
+        func = self._helper4
+        a = cupy.random.random((100,))
+
+        with s1:
+            s1.begin_capture()
+            # internally the function requires synchronization, which is
+            # incompatible with stream capturing and so we raise
+            with pytest.raises(RuntimeError) as e:
+                out1 = func(a)
+            assert 'is capturing' in str(e.value)
+            g = s1.end_capture()
