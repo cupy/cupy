@@ -239,3 +239,43 @@ class TestGraph(unittest.TestCase):
                 func(a)
             assert 'is capturing' in str(e.value)
             s1.end_capture()
+
+    def test_stream_capture_failure6(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+        with s:
+            s.begin_capture()
+            # synchronize the stream is illegal during capturing
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                s.synchronize()
+            assert 'cudaErrorStreamCaptureUnsupported' in str(e.value)
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                s.end_capture()
+            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+
+    # This test used to fail, but as of CUDA 11.4 it passes...
+    def test_stream_capture_cublas(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.random.random((3, 4))
+        b = cupy.random.random((4, 5))
+        with s:
+            s.begin_capture()
+            c = cupy.matmul(a, b)
+            g = s.end_capture()
+
+        # check the graph integrity
+        g.launch()
+        s.synchronize()
+        testing.assert_array_equal(c, a @ b)
+
+    def test_stream_capture_failure_cusolver(self):
+        from cupy_backends.cuda.libs.cusolver import CUSOLVERError
+        s = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.random.random((8, 8))
+        a += a.T
+        with s:
+            s.begin_capture()
+            with pytest.raises(CUSOLVERError) as e:
+                c = cupy.linalg.svd(a)
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                s.end_capture()
+            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
