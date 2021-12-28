@@ -96,7 +96,6 @@ class TestGraph(unittest.TestCase):
         testing.assert_array_equal(b, 3 * a)
 
     def test_stream_fork_join(self):
-        # TODO(leofang): this is problematic when using nonzero()
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
         e1 = cupy.cuda.Event()
@@ -104,19 +103,16 @@ class TestGraph(unittest.TestCase):
         a = cupy.random.random((100,))
 
         def func(x):
-            #return cupy.nonzero(x)
-            return x+1
+            return 3 * x + 1
 
         with s1:
             s1.begin_capture()
+            out1 = a * 100
             e1.record(s1)
             s2.wait_event(e1)
             with s2:
-                #out1 = cupy.where(a > 0.5)
-                #out1 = a * 100 + 2
-                #out1 = cupy.nonzero(a)
-                out1 = func(a)
-            e2.record(s2)
+                out2 = func(out1)
+                e2.record(s2)
             s1.wait_event(e2)
             g = s1.end_capture()
 
@@ -125,12 +121,7 @@ class TestGraph(unittest.TestCase):
         assert not s2.is_capturing()
         g.launch()
         s1.synchronize()
-        #out2 = cupy.where(a > 0.5)
-        #out2 = a * 100 + 2
-        #out2 = cupy.nonzero(a)
-        out2 = func(a)
-        #testing.assert_array_list_equal(out1, out2)
-        testing.assert_array_equal(out1, out2)
+        testing.assert_array_equal(out2, func(a * 100))
 
     def test_null_stream_cannot_capture(self):
         s = cupy.cuda.Stream(non_blocking=False)
@@ -230,9 +221,9 @@ class TestGraph(unittest.TestCase):
         with s:
             s.begin_capture()
             # query the stream status is illegal during capturing
-            status = s.done
+            s.done
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
-                g = s.end_capture()
+                s.end_capture()
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
 
     def test_stream_capture_failure5(self):
@@ -245,6 +236,6 @@ class TestGraph(unittest.TestCase):
             # internally the function requires synchronization, which is
             # incompatible with stream capturing and so we raise
             with pytest.raises(RuntimeError) as e:
-                out1 = func(a)
+                func(a)
             assert 'is capturing' in str(e.value)
-            g = s1.end_capture()
+            s1.end_capture()
