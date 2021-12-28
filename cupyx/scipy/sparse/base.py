@@ -172,7 +172,7 @@ class spmatrix(object):
 
         Returns:
             cupyx.scipy.sparse.spmatrix: A sparse matrix representing n-th
-                power of this matrix.
+            power of this matrix.
 
         """
         m, n = self.shape
@@ -434,9 +434,28 @@ class spmatrix(object):
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
 
-    def reshape(self, shape, order='C'):
-        """Gives a new shape to a sparse matrix without changing its data."""
-        raise NotImplementedError
+    def reshape(self, *shape, order='C'):
+        """Gives a new shape to a sparse matrix without changing its data.
+
+        Args:
+            shape (tuple):
+                The new shape should be compatible with the original shape.
+            order: {'C', 'F'} (optional)
+                Read the elements using this index order. 'C' means to read and
+                write the elements using C-like index order. 'F' means to read
+                and write the elements using Fortran-like index order. Default:
+                C.
+
+        Returns:
+            cupyx.scipy.sparse.coo_matrix: sparse matrix
+
+        """
+        shape = sputils.check_shape(shape, self.shape)
+
+        if shape == self.shape:
+            return self
+
+        return self.tocoo().reshape(shape, order=order)
 
     def set_shape(self, shape):
         self.reshape(shape)
@@ -549,7 +568,7 @@ def issparse(x):
 
     Returns:
         bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.spmatrix` that is
-            a base class of all sparse matrix classes.
+        a base class of all sparse matrix classes.
 
     """
     return isinstance(x, spmatrix)

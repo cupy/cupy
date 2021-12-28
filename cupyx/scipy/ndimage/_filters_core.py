@@ -225,7 +225,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                          format(j=j, type=int_type))
         else:
             boundary = _util._generate_boundary_condition_ops(
-                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
+                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j), int_type)
             # CArray: last line of string becomes inds[{j}] = ix_{j};
             loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)
@@ -278,7 +278,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
     mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
-    name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
+    name = 'cupyx_scipy_ndimage_{}_{}d_{}_w{}'.format(
         name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
     if all_weights_nonzero:
         name += '_all_nonzero'

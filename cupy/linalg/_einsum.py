@@ -34,8 +34,8 @@ def _transpose_ex(a, axeses):
         axeses (sequence of sequences of ints)
 
     Returns:
-        p: a with its axes permutated. A writeable view is returned whenever
-            possible.
+        ndarray: a with its axes permutated. A writeable view is returned
+        whenever possible.
     """
 
     shape = []
@@ -305,9 +305,6 @@ def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
     if dtype0 not in (cupy.float32, cupy.float64,
                       cupy.complex64, cupy.complex128):
         return False
-    if (len(contract_dims) >= 1 and (sub0[-1] in batch_dims or
-                                     sub1[-1] in batch_dims)):
-        return False
     return True
 
 
@@ -390,7 +387,8 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         return arr0 * arr1, sub_out
 
     for accelerator in _accelerator.get_routine_accelerators():
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
                              batch_dims, contract_dims):
                 if len(sub_out) == len(sub_others):

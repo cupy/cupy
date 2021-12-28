@@ -274,9 +274,9 @@ class _minmax_mixin(object):
 
         Returns:
             (cupy.ndarray or float): Maximum of ``a``. If ``axis`` is
-                ``None``, the result is a scalar value. If ``axis`` is given,
-                the result is an array of dimension ``a.ndim - 1``. This
-                differs from numpy for computational efficiency.
+            ``None``, the result is a scalar value. If ``axis`` is given,
+            the result is an array of dimension ``a.ndim - 1``. This
+            differs from numpy for computational efficiency.
 
         .. seealso:: min : The minimum value of a sparse matrix along a given
           axis.
@@ -310,9 +310,9 @@ class _minmax_mixin(object):
 
         Returns:
             (cupy.ndarray or float): Minimum of ``a``. If ``axis`` is
-                None, the result is a scalar value. If ``axis`` is given, the
-                result is an array of dimension ``a.ndim - 1``. This differs
-                from numpy for computational efficiency.
+            None, the result is a scalar value. If ``axis`` is given, the
+            result is an array of dimension ``a.ndim - 1``. This differs
+            from numpy for computational efficiency.
 
         .. seealso:: max : The maximum value of a sparse matrix along a given
           axis.
@@ -345,7 +345,7 @@ class _minmax_mixin(object):
 
         Returns:
             (cupy.narray or int): Indices of maximum elements. If array,
-                its size along ``axis`` is 1.
+            its size along ``axis`` is 1.
 
         """
         return self._arg_min_or_max(axis, out, cupy.argmax, cupy.greater)
@@ -370,7 +370,7 @@ class _minmax_mixin(object):
 
         Returns:
             (cupy.narray or int): Indices of minimum elements. If matrix,
-                its size along ``axis`` is 1.
+            its size along ``axis`` is 1.
 
         """
         return self._arg_min_or_max(axis, out, cupy.argmin, cupy.less)

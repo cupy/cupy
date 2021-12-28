@@ -6,11 +6,40 @@ import cupy
 from cupy import _core
 from cupy._core import internal
 from cupy._core._gufuncs import _GUFunc
+from cupy.linalg import _solve
+from cupy.linalg import _util
 
-from cupy.linalg._solve import inv
 
 matmul = _GUFunc(
-    _core._matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
+    _core.matmul,
+    '(n?,k),(k,m?)->(n?,m?)',
+    supports_batched=True,
+    supports_out=True,
+    doc="""matmul(x1, x2, /, out=None, \\*\\*kwargs)
+
+    Matrix product of two arrays.
+
+    Returns the matrix product of two arrays and is the implementation of
+    the `@` operator introduced in Python 3.5 following PEP465.
+
+    The main difference against cupy.dot are the handling of arrays with more
+    than 2 dimensions. For more information see :func:`numpy.matmul`.
+
+    .. note::
+        The out array as input is currently not supported.
+
+    Args:
+        x1 (cupy.ndarray): The left argument.
+        x2 (cupy.ndarray): The right argument.
+        out (cupy.ndarray, optional): Output array.
+        \\*\\*kwargs: ufunc keyword arguments.
+
+    Returns:
+        cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.matmul`
+    """
+)
 
 
 def dot(a, b, out=None):
@@ -239,20 +268,7 @@ def outer(a, b, out=None):
     .. seealso:: :func:`numpy.outer`
 
     """
-    n = a.size
-    m = b.size
-    ret_shape = (n, m)
-
-    if out is None:
-        return _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
-
-    if out.size != n * m:
-        raise ValueError('Output array has an invalid size')
-    if out.flags.c_contiguous:
-        return _core.tensordot_core(a, b, out, n, m, 1, ret_shape)
-    else:
-        out[:] = _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
-        return out
+    return cupy.multiply(a.ravel()[:, None], b.ravel()[None, :], out=out)
 
 
 def tensordot(a, b, axes=2):
@@ -320,6 +336,7 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
+# TODO: rename `M` to `a`
 def matrix_power(M, n):
     """Raise a square matrix to the (integer) power `n`.
 
@@ -330,19 +347,18 @@ def matrix_power(M, n):
     Returns:
         ~cupy.ndarray: Output array.
 
-    .. note:: M must be of dtype `float32` or `float64`.
-
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
-    if M.ndim != 2 or M.shape[0] != M.shape[1]:
-        raise ValueError('input must be a square array')
+    _util._assert_cupy_array(M)
+    _util._assert_stacked_2d(M)
+    _util._assert_stacked_square(M)
     if not isinstance(n, int):
         raise TypeError('exponent must be an integer')
 
     if n == 0:
-        return cupy.identity(M.shape[0], dtype=M.dtype)
+        return _util.stacked_identity_like(M)
     elif n < 0:
-        M = inv(M)
+        M = _solve.inv(M)
         n *= -1
 
     # short-cuts

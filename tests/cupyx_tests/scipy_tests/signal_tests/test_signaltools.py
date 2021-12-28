@@ -1,13 +1,11 @@
-import unittest
-
-import pytest
+import sys
 
 import numpy as np
+import pytest
 
 import cupy
 from cupy.cuda import runtime
 from cupy import testing
-
 import cupyx.scipy.signal
 
 try:
@@ -23,7 +21,7 @@ except ImportError:
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveCorrelate(unittest.TestCase):
+class TestConvolveCorrelate:
     def _filter(self, func, dtype, xp, scp):
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
@@ -52,7 +50,7 @@ class TestConvolveCorrelate(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestFFTConvolve(unittest.TestCase):
+class TestFFTConvolve:
     def _filter(self, func, dtype, xp, scp, **kwargs):
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
@@ -92,6 +90,61 @@ class TestFFTConvolve(unittest.TestCase):
         return self._filter('correlate', dtype, xp, scp, method='fft')
 
 
+def tupleid(shape):
+    return ''.join(str(s) for s in shape)
+
+
+@testing.with_requires('scipy')
+class TestFFTConvolveFastShape:
+    @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
+    @pytest.mark.parametrize(('shape1', 'shape2'), [
+        ((1,), (7,)),
+        ((3,), (1,)),
+        ((5, 4), (3, 1)),
+        ((1, 1), (2, 4)),
+        ((), ()),
+        ((5, 1, 1), (1, 4, 1)),
+    ], ids=tupleid)
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_fftconvolve1(self, xp, scp, dtype, shape1, shape2, mode):
+        in1 = testing.shaped_random(shape1, xp, dtype)
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.fftconvolve(in1, in2, mode=mode)
+
+    # SciPy says "For 'valid' mode, one must be at least as large as the
+    # other in every dimension". So 'valid' is excluded from the testcases,
+    # while SciPy fails to reject them.
+    @pytest.mark.parametrize('mode', ['full', 'same'])
+    @pytest.mark.parametrize(('shape1', 'shape2'), [
+        ((5, 1), (1, 4)),
+        ((5, 1, 1), (1, 4, 1)),
+    ], ids=tupleid)
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_fftconvolve1_incomparable_shape(
+            self, xp, scp, dtype, shape1, shape2, mode):
+        in1 = testing.shaped_random(shape1, xp, dtype)
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.fftconvolve(in1, in2, mode=mode)
+
+    @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
+    @pytest.mark.parametrize(('shape1', 'shape2', 'axes'), [
+        ((1, 4), (2, 4), (0,)),
+        # ((3, 3), (3, 3), ()), => ValueError. Only reduced axes can be empty.
+        ((2, 5, 5), (2, 1, 3), (1, 2)),
+        ((2, 5, 5), (2, 1, 1), (1, 2)),
+        ((1, 5, 5), (2, 1, 3), (1, 2)),  # broadcast
+    ], ids=tupleid)
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_fftconvolve1_axes(
+            self, xp, scp, dtype, shape1, shape2, axes, mode):
+        in1 = testing.shaped_random(shape1, xp, dtype)
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.fftconvolve(in1, in2, mode=mode, axes=axes)
+
+
 @testing.parameterize(*testing.product({
     'size1': [(10,), (5, 10), (10, 3), (3, 10, 15)],
     'size2': [3, 4, 5, 10, None],
@@ -99,7 +152,7 @@ class TestFFTConvolve(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestOAConvolve(unittest.TestCase):
+class TestOAConvolve:
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
             np.float16: 1e-3, 'default': 1e-8}
 
@@ -130,11 +183,11 @@ class TestOAConvolve(unittest.TestCase):
 })))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveCorrelate2D(unittest.TestCase):
+class TestConvolveCorrelate2D:
     def _filter(self, func, dtype, xp, scp):
         if self.mode == 'full' and self.boundary != 'fill':
             # See https://github.com/scipy/scipy/issues/12685
-            raise unittest.SkipTest('broken in scipy')
+            pytest.skip('broken in scipy')
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random(self.size2, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
@@ -156,11 +209,43 @@ class TestConvolveCorrelate2D(unittest.TestCase):
         return self._filter('correlate2d', dtype, xp, scp)
 
 
+@testing.with_requires('scipy')
+class TestConvolve2DEdgeCase:
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_convolve2d_1(self, xp, scp):
+        # see cupy/cupy#5989
+        from scipy import misc
+        ascent = misc.ascent()
+        if xp is cupy:
+            ascent = xp.asarray(ascent)
+        scharr = xp.array(
+            [[-3-3j, 0-10j, +3-3j],
+             [-10+0j, 0+0j, +10+0j],
+             [-3+3j, 0+10j, +3+3j]])  # Gx + j*Gy
+        return scp.signal.convolve2d(
+            ascent, scharr, boundary='symm', mode='same')
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_convolve2d_2(self, xp, scp):
+        # see cupy/cupy#6047
+        a = xp.array([[257]], dtype="uint64")
+        b = xp.array([[1]], dtype="uint8")
+        return scp.signal.convolve2d(a, b, mode="same")
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_convolve2d_3(self, xp, scp):
+        # see cupy/cupy#6047
+        a = xp.array([[257]], dtype="uint64")
+        b = xp.array([[1]], dtype="uint8")
+        return scp.signal.convolve2d(b, a, mode="same")
+
+
 @testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
-class TestChooseConvMethod(unittest.TestCase):
+class TestChooseConvMethod:
 
     @testing.for_dtypes('efdFD')
     def test_choose_conv_method1(self, dtype):
@@ -205,7 +290,7 @@ class TestChooseConvMethod(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestWiener(unittest.TestCase):
+class TestWiener:
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
             np.float16: 1e-3, 'default': 1e-10}
 
@@ -234,7 +319,7 @@ class TestWiener(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestOrderFilter(unittest.TestCase):
+class TestOrderFilter:
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
@@ -252,12 +337,14 @@ class TestOrderFilter(unittest.TestCase):
     'kernel_size': [3, 4, (3, 3, 5)],
 }))
 @testing.gpu
-@testing.with_requires('scipy')
-class TestMedFilt(unittest.TestCase):
+@testing.with_requires('scipy>=1.7.0')
+class TestMedFilt:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
+        if sys.platform == 'win32':
+            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
         volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
         if isinstance(kernel_size, tuple):
@@ -270,12 +357,14 @@ class TestMedFilt(unittest.TestCase):
     'kernel_size': [3, 4, (3, 5)],
 }))
 @testing.gpu
-@testing.with_requires('scipy')
-class TestMedFilt2d(unittest.TestCase):
+@testing.with_requires('scipy>=1.7.0')
+class TestMedFilt2d:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
+        if sys.platform == 'win32':
+            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
         input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)

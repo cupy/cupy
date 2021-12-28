@@ -27,7 +27,7 @@ def append(arr, values, axis=None):
             given, both ``arr`` and ``values`` are flattened before use.
 
     Returns:
-        cupy.ndarray
+        cupy.ndarray:
             A copy of ``arr`` with ``values`` appended to ``axis``.  Note that
             ``append`` does not occur in-place: a new array is allocated and
             filled.  If ``axis`` is None, ``out`` is a flattened array.
@@ -46,7 +46,7 @@ def append(arr, values, axis=None):
 _resize_kernel = _core.ElementwiseKernel(
     'raw T x, int64 size', 'T y',
     'y = x[i % size]',
-    'resize',
+    'cupy_resize',
 )
 
 
@@ -179,7 +179,7 @@ def unique(ar, return_index=False, return_inverse=False,
         ar.sort()
         aux = ar
     mask = cupy.empty(aux.shape, dtype=cupy.bool_)
-    mask[0] = True
+    mask[:1] = True
     mask[1:] = aux[1:] != aux[:-1]
 
     ret = aux[mask]

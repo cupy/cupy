@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import _core
@@ -26,8 +27,18 @@ class TestElementwise(unittest.TestCase):
 
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
-    def test_copy_multigpu(self, dtype):
+    def test_copy_multigpu_nopeer(self, dtype):
+        if cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
+            pytest.skip('peer access is available')
         with self.assertRaises(ValueError):
+            self.check_copy(dtype, 0, 1)
+
+    @testing.multi_gpu(2)
+    @testing.for_all_dtypes()
+    def test_copy_multigpu_peer(self, dtype):
+        if cuda.runtime.deviceCanAccessPeer(0, 1) != 1:
+            pytest.skip('peer access is unavailable')
+        with pytest.warns(cupy._util.PerformanceWarning):
             self.check_copy(dtype, 0, 1)
 
     @testing.for_orders('CFAK')

@@ -1,14 +1,13 @@
 import operator
-import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
 
 
-@testing.gpu
-class TestArrayElementwiseOp(unittest.TestCase):
+class TestArrayElementwiseOp:
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
@@ -128,8 +127,30 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_eq_scalar(self):
         self.check_array_scalar_op(operator.eq)
 
+    @pytest.mark.parametrize('swap', [False, True])
+    @pytest.mark.parametrize('value', [None, Ellipsis])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_eq_builtin_constant(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value == a
+        else:
+            return a == value
+
     def test_ne_scalar(self):
         self.check_array_scalar_op(operator.ne)
+
+    @pytest.mark.parametrize('swap', [False, True])
+    @pytest.mark.parametrize('value', [None, Ellipsis])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ne_builtin_constant(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value != a
+        else:
+            return a != value
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
@@ -465,9 +486,23 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_typecast_float2(self):
         self.check_typecast(100000.0)
 
+    # Skip float16 because of NumPy #19514
+    @testing.for_all_dtypes(name='x_type', no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def check_array_boolarray_op(self, op, xp, x_type):
+        a = xp.array([[2, 7, 1], [8, 2, 8]], x_type)
+        # Cast from np.bool8 array should not read bytes
+        b = xp.array([[3, 1, 4], [-1, -5, -9]], numpy.int8).view(bool)
+        return op(a, b)
 
-@testing.gpu
-class TestArrayIntElementwiseOp(unittest.TestCase):
+    def test_add_array_boolarray(self):
+        self.check_array_boolarray_op(operator.add)
+
+    def test_iadd_array_boolarray(self):
+        self.check_array_boolarray_op(operator.iadd)
+
+
+class TestArrayIntElementwiseOp:
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)

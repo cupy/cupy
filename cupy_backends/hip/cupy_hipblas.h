@@ -4,6 +4,7 @@
 #include "cupy_hip_common.h"
 #include <hipblas.h>
 #include <hip/hip_version.h>  // for HIP_VERSION
+#include <stdexcept>  // for gcc 10
 
 
 extern "C" {

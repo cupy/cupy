@@ -130,7 +130,10 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
 beta_params = [
     {'a': 1.0, 'b': 3.0},
     {'a': 3.0, 'b': 3.0},
-    {'a': 3.0, 'b': 1.0}]
+    {'a': 3.0, 'b': 1.0},
+    {'a': [1.0, 3.0, 5.0, 6.0, 9.0], 'b':7.0},
+    {'a': 5.0, 'b': [1.0, 5.0, 8.0, 1.0, 3.0]},
+    {'a': [8.0, 6.0, 2.0, 4.0, 7.0], 'b':[3.0, 1.0, 2.0, 8.0, 1.0]}]
 
 
 class Beta:
@@ -138,13 +141,18 @@ class Beta:
     target_method = 'beta'
 
     def test_beta(self):
-        self.generate(a=self.a, b=self.b, size=(3, 2))
+        a = self.a
+        b = self.b
+        if (isinstance(self.a, list) or isinstance(self.b, list)):
+            a = cupy.array(self.a)
+            b = cupy.array(self.b)
+        self.generate(a, b, size=(3, 5))
 
-    @testing.for_dtypes('fd')
     @_condition.repeat_with_success_at_least(10, 3)
-    def test_beta_ks(self, dtype):
-        self.check_ks(0.05)(
-            a=self.a, b=self.b, size=2000, dtype=dtype)
+    def test_beta_ks(self):
+        if (isinstance(self.a, list) or isinstance(self.b, list)):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(a=self.a, b=self.b, size=2000)
 
 
 class StandardExponential:
@@ -190,6 +198,7 @@ standard_normal_params = [
     {'size': None},
     {'size': (1, 2, 3)},
     {'size': 3},
+    {'size': (1000, 1000)},
     {'size': (3, 3)},
     {'size': ()}]
 
@@ -241,6 +250,9 @@ class Poisson:
         self.check_ks(0.05)(
             lam=self.lam, size=2000)
 
+    def test_poisson_large(self):
+        self.generate(lam=self.lam, size=(1000, 1000))
+
 
 gamma_params = [
     {'shape': 0.5, 'scale': 0.5},
@@ -268,3 +280,214 @@ class Gamma:
     def test_gamma_ks(self):
         self.check_ks(0.05)(
             self.shape, self.scale, size=2000)
+
+
+binomial_params = [
+    {'n': 2, 'p': 0.5},
+    {'n': 5, 'p': 0.5},
+    {'n': 10, 'p': 0.5},
+    {'n': 2, 'p': 0.1},
+    {'n': 5, 'p': 0.1},
+    {'n': 10, 'p': 0.1},
+    {'n': 2, 'p': 1.0},
+    {'n': 2, 'p': 1.0},
+    {'n': 2, 'p': 1.0}]
+
+
+class Binomial:
+
+    target_method = 'binomial'
+
+    def test_binomial(self):
+        self.generate(n=self.n, p=self.p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_binomial_ks(self):
+        self.check_ks(0.05)(self.n, self.p, size=2000)
+
+
+geometric_params = [
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 1.0},
+    {'p': [0.1, 0.5]},
+]
+
+
+class Geometric:
+
+    target_method = 'geometric'
+
+    def test_geometric(self):
+        p = self.p
+        if not isinstance(self.p, float):
+            p = cupy.array(self.p)
+        self.generate(p=p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_geometric_ks(self):
+        if not isinstance(self.p, float):
+            self.skipTest('Statistical checks only for scalar `p`')
+        self.check_ks(0.05)(
+            p=self.p, size=2000)
+
+
+hypergeometric_params = [
+    {'ngood': 5, 'nbad': 5, 'nsample': 5},
+    {'ngood': 10, 'nbad': 10, 'nsample': 10},
+    {'ngood': 100, 'nbad': 2, 'nsample': 10},
+    {'ngood': [0, 5, 8], 'nbad': [5, 0, 3], 'nsample': [2, 1, 8]},
+    {'ngood': [1, 4, 2, 7, 6], 'nbad': 5.0, 'nsample': [2, 7, 4, 6, 5]},
+]
+
+
+class Hypergeometric:
+
+    target_method = 'hypergeometric'
+
+    def test_hypergeometric(self):
+        ngood = self.ngood
+        nbad = self.nbad
+        nsample = self.nsample
+        if (isinstance(self.ngood, list) or isinstance(self.nbad, list)
+                or isinstance(self.nsample, list)):
+            ngood = cupy.array(self.ngood)
+            nbad = cupy.array(self.nbad)
+            nsample = cupy.array(self.nsample)
+        self.generate(ngood, nbad, nsample)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_hypergeometric_ks(self):
+        if (isinstance(self.ngood, list) or isinstance(self.nbad, list)
+                or isinstance(self.nsample, list)):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(self.ngood, self.nbad, self.nsample, size=2000)
+
+
+power_params = [
+    {'a': 0.5},
+    {'a': 1},
+    {'a': 5},
+    {'a': [0.8, 0.7, 1, 2, 5]},
+]
+
+
+class Power:
+
+    target_method = 'power'
+
+    def test_power(self):
+        a = self.a
+        if not isinstance(self.a, float):
+            a = cupy.array(self.a)
+        self.generate(a=a)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_power_ks(self):
+        if not isinstance(self.a, float):
+            self.skipTest('Statistical checks only for scalar `a`')
+        self.check_ks(0.05)(
+            a=self.a, size=2000)
+
+
+logseries_params = [
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 0.9},
+    {'p': [0.8, 0.7]},
+]
+
+
+class Logseries:
+
+    target_method = 'logseries'
+
+    def test_logseries(self):
+        p = self.p
+        if not isinstance(self.p, float):
+            p = cupy.array(self.p)
+        self.generate(p=p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_geometric_ks(self):
+        if not isinstance(self.p, float):
+            self.skipTest('Statistical checks only for scalar `p`')
+        self.check_ks(0.05)(p=self.p, size=2000)
+
+
+chisquare_params = [
+    {'df': 1.0},
+    {'df': 3.0},
+    {'df': 10.0},
+    {'df': [2, 5, 8]},
+]
+
+
+class Chisquare:
+
+    target_method = 'chisquare'
+
+    def test_chisquare(self):
+        df = self.df
+        if not isinstance(self.df, float):
+            df = cupy.array(self.df)
+        self.generate(df=df)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_chisquare_ks(self):
+        if not isinstance(self.df, float):
+            self.skipTest('Statistical checks only for scalar `df`')
+        self.check_ks(0.05)(
+            df=self.df, size=2000)
+
+
+f_params = [
+    {'dfnum': 1.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 3.0},
+    {'dfnum': 3.0, 'dfden': 1.0},
+    {'dfnum': [1.0, 3.0, 3.0], 'dfden': [3.0, 3.0, 1.0]},
+]
+
+
+class F:
+
+    target_method = 'f'
+
+    def test_f(self):
+        dfnum = self.dfnum
+        dfden = self.dfden
+        if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
+            dfnum = cupy.array(self.dfnum)
+            dfden = cupy.array(self.dfden)
+        self.generate(dfnum, dfden)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_f_ks(self):
+        if isinstance(self.dfnum, list) or isinstance(self.dfden, list):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(self.dfnum, self.dfden, size=2000)
+
+
+dirichlet_params = [
+    {'alpha': 5},
+    {'alpha': 1},
+    {'alpha': [2, 5, 8]}
+]
+
+
+class Dirichlet:
+    target_method = 'dirichlet'
+
+    def test_dirichlet(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, float):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=(3, 2))
+
+    def test_dirichlet_int_shape(self):
+        alpha = self.alpha
+        if not isinstance(self.alpha, int):
+            alpha = cupy.array(self.alpha)
+        self.generate(alpha=alpha, size=5)
+
+    # TODO(kataoka): add distribution test

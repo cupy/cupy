@@ -27,9 +27,9 @@ function DownloadCache {
 }
 
 function UploadCache {
-    # Expires in 3 days, maximum 1 GB
+    # Maximum 1 GB
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --expiry 259200 --max-size 1000000000 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 1000000000 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
@@ -67,7 +67,8 @@ function Main {
     # Build
     echo "Setting up test environment"
     RunOrDie python -V
-    RunOrDie python -m pip install Cython scipy optuna
+    RunOrDie python -m pip install -U pip 'setuptools<60'
+    RunOrDie python -m pip install Cython 'scipy<1.7' optuna
     RunOrDie python -m pip freeze
 
     echo "Building..."
@@ -84,6 +85,9 @@ function Main {
         PublishTestResults
         throw "Build failed with status $build_retval"
     }
+
+    $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
+    $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
 
     # Unit test
     if ($test -eq "build") {

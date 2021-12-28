@@ -5,11 +5,9 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
 from cupy import testing
 
 
-@testing.gpu
 class TestArrayBoolOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -31,7 +29,6 @@ class TestArrayBoolOp(unittest.TestCase):
         assert not bool(cupy.array([False], dtype=numpy.bool_))
 
     @testing.for_all_dtypes()
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_bool_one_element(self, dtype):
         assert bool(cupy.array([1], dtype=dtype))
         assert not bool(cupy.array([0], dtype=dtype))
@@ -42,7 +39,6 @@ class TestArrayBoolOp(unittest.TestCase):
             bool(cupy.array([1, 2], dtype=dtype))
 
 
-@testing.gpu
 class TestArrayUnaryOp(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -63,8 +59,18 @@ class TestArrayUnaryOp(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return operator.neg(a)
 
-    def test_pos_array(self):
-        self.check_array_op(operator.pos)
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_pos_array(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        assert a is not +a
+        return +a
+
+    def test_pos_boolarray(self):
+        for xp in (numpy, cupy):
+            a = xp.array(True, dtype=xp.bool_)
+            with pytest.deprecated_call():
+                assert a is not +a
 
     @testing.with_requires('numpy<1.16')
     def test_pos_array_full(self):
@@ -101,7 +107,6 @@ class TestArrayUnaryOp(unittest.TestCase):
         self.check_zerodim_op_full(operator.abs)
 
 
-@testing.gpu
 class TestArrayIntUnaryOp(unittest.TestCase):
 
     @testing.for_int_dtypes()
@@ -127,7 +132,6 @@ class TestArrayIntUnaryOp(unittest.TestCase):
     'xp': [numpy, cupy],
     'shape': [(3, 2), (), (3, 0, 2)]
 }))
-@testing.gpu
 class TestBoolNeg(unittest.TestCase):
 
     def test_bool_neg(self):

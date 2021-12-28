@@ -10,10 +10,10 @@
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
 
 [**Website**](https://cupy.dev/)
-| [**Docs**](https://docs.cupy.dev/en/stable/)
-| [**Install Guide**](https://docs.cupy.dev/en/stable/install.html)
-| [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
+| [**Install**](https://docs.cupy.dev/en/stable/install.html)
+| [**Tutorial**](https://docs.cupy.dev/en/stable/user_guide/basic.html)
 | [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
+| [**Documentation**](https://docs.cupy.dev/en/stable/)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
 | [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
@@ -38,18 +38,22 @@ You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://
 Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Choose the right package for your platform.
 
-| Platform  | Command                        |
-| --------- | ------------------------------ |
-| CUDA 9.0  | `pip install cupy-cuda90`      |
-| CUDA 9.2  | `pip install cupy-cuda92`      |
-| CUDA 10.0 | `pip install cupy-cuda100`     |
-| CUDA 10.1 | `pip install cupy-cuda101`     |
-| CUDA 10.2 | `pip install cupy-cuda102`     |
-| CUDA 11.0 | `pip install cupy-cuda110`     |
-| CUDA 11.1 | `pip install cupy-cuda111`     |
-| CUDA 11.2 | `pip install cupy-cuda112`     |
-| ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
+| Platform      | Command                       |
+| ------------- | ----------------------------- |
+| CUDA 10.2     | `pip install cupy-cuda102`    |
+| CUDA 11.0     | `pip install cupy-cuda110`    |
+| CUDA 11.1     | `pip install cupy-cuda111`    |
+| CUDA 11.2     | `pip install cupy-cuda112`    |
+| CUDA 11.3     | `pip install cupy-cuda113`    |
+| CUDA 11.4     | `pip install cupy-cuda114`    |
+| CUDA 11.5     | `pip install cupy-cuda115`    |
+| ROCm 4.0 (*)  | `pip install cupy-rocm-4-0`   |
+| ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
+| ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |
 
+(\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
+
+Use `-f https://pip.cupy.dev/pre` option to install pre-releases (e.g., `pip install cupy-cuda114 -f https://pip.cupy.dev/pre`).
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 
 ## Run on Docker
@@ -77,11 +81,11 @@ CuPy is being maintained and developed by [Preferred Networks Inc.](https://pref
 ## Reference
 
 Ryosuke Okuta, Yuya Unno, Daisuke Nishino, Shohei Hido and Crissman Loomis.
-CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations.
+**CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations.**
 *Proceedings of Workshop on Machine Learning Systems (LearningSys) in The Thirty-first Annual Conference on Neural Information Processing Systems (NIPS)*, (2017).
-[URL](http://learningsys.org/nips17/assets/papers/paper_16.pdf)
+[[PDF](http://learningsys.org/nips17/assets/papers/paper_16.pdf)]
 
-```
+```bibtex
 @inproceedings{cupy_learningsys2017,
   author       = "Okuta, Ryosuke and Unno, Yuya and Nishino, Daisuke and Hido, Shohei and Loomis, Crissman",
   title        = "CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations",

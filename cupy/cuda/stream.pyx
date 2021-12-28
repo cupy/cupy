@@ -1,6 +1,5 @@
 import os
 import threading
-import weakref
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
@@ -13,24 +12,23 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    # We keep both current_stream_ref and current_stream_stack because the
+    # We keep both current_stream and current_stream_stack because the
     # former is also used when calling stream.use(). This bookkeeping enables
     # correct rewinding when "with" blocks are mixed with ".use()" (though
-    # this is considered an anti-pattern). As the name suggested, stream
-    # lifetime is not tracked in current_stream_ref.
+    # this is considered an anti-pattern).
 
-    cdef list current_stream_ref  # list of object
+    cdef list current_stream  # list of object
     cdef list current_device_id_stack  # list of int
     cdef list current_stream_stack  # list of list
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
-        self.current_stream_ref = []
+        self.current_stream = []
         self.current_device_id_stack = []
         self.current_stream_stack = []
         for i in range(num_devices):
             default_stream = get_default_stream()
-            self.current_stream_ref.append(weakref.ref(default_stream))
+            self.current_stream.append(default_stream)
             self.current_stream_stack.append([default_stream])
 
     @staticmethod
@@ -61,13 +59,13 @@ cdef class _ThreadLocal:
         if device_id == -1:
             device_id = runtime.getDevice()
         backends_stream.set_current_stream_ptr(ptr, device_id)
-        self.current_stream_ref[device_id] = weakref.ref(stream)
+        self.current_stream[device_id] = stream
 
     cdef get_current_stream(self, int device_id=-1):
         if device_id == -1:
             device_id = runtime.getDevice()
-        stream_ref = self.current_stream_ref[device_id]
-        return stream_ref()
+        stream_ref = self.current_stream[device_id]
+        return stream_ref
 
     cdef intptr_t get_current_stream_ptr(self):
         return backends_stream.get_current_stream_ptr()
@@ -185,7 +183,8 @@ cdef int check_stream_device_match(int device_id) except? -1:
         device_id = curr_dev
     if device_id != curr_dev:
         raise RuntimeError(
-            f'This stream was not created on device {curr_dev}')
+            f'The device that the stream is created on ({device_id})'
+            f' does not match with the current device ({curr_dev})')
     return device_id
 
 
@@ -211,6 +210,8 @@ class _BaseStream:
         return self.ptr == other.ptr
 
     def __enter__(self):
+        # N.B. for maintainers: do not use this context manager in CuPy
+        # codebase. See #5943 and #5963.
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
         device_id = check_stream_device_match(device_id)
@@ -390,19 +391,11 @@ class Stream(_BaseStream):
         super().__init__(ptr, device_id)
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
-        cdef intptr_t current_ptr
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
-            current_ptr = tls.get_current_stream_ptr()
-            if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(get_default_stream())
             runtime.streamDestroy(self.ptr)
-        else:
-            current_stream = tls.get_current_stream()
-            if current_stream == self:
-                tls.set_current_stream(get_default_stream())
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 

@@ -1,10 +1,7 @@
-import unittest
-
 import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
 from cupy.random import _distributions
 from cupy import testing
 
@@ -16,7 +13,7 @@ _unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
 _int_dtypes = _signed_dtypes + _unsigned_dtypes
 
 
-class RandomDistributionsTestCase(unittest.TestCase):
+class RandomDistributionsTestCase:
     def check_distribution(self, dist_name, params, dtype):
         cp_params = {k: cupy.asarray(params[k]) for k in params}
         np_out = numpy.asarray(
@@ -72,7 +69,7 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
     @cupy.testing.for_float_dtypes('p_dtype')
     def test_binomial(self, n_dtype, p_dtype):
         if numpy.dtype('l') == numpy.int32 and n_dtype == numpy.int64:
-            self.skipTest('n must be able to cast to long')
+            pytest.skip('n must be able to cast to long')
         n = numpy.full(self.n_shape, 5, dtype=n_dtype)
         p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
         self.check_distribution('binomial',
@@ -85,7 +82,7 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsChisquare(unittest.TestCase):
+class TestDistributionsChisquare:
 
     def check_distribution(self, dist_func, df_dtype, dtype):
         df = cupy.full(self.df_shape, 5, dtype=df_dtype)
@@ -136,7 +133,7 @@ class TestDistributionsExponentialError(RandomDistributionsTestCase):
 
     def test_negative_scale(self):
         scale = cupy.array([2, -1, 3], dtype=numpy.float32)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cupy.random.exponential(scale)
 
 
@@ -148,7 +145,7 @@ class TestDistributionsExponentialError(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsF(unittest.TestCase):
+class TestDistributionsF:
 
     def check_distribution(self, dist_func, dfnum_dtype, dfden_dtype, dtype):
         dfnum = cupy.ones(self.dfnum_shape, dtype=dfnum_dtype)
@@ -172,7 +169,7 @@ class TestDistributionsF(unittest.TestCase):
 })
 )
 @testing.gpu
-class TestDistributionsGamma(unittest.TestCase):
+class TestDistributionsGamma:
 
     def check_distribution(self, dist_func, shape_dtype, scale_dtype,
                            dtype=None):
@@ -196,8 +193,11 @@ class TestDistributionsGamma(unittest.TestCase):
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['shape_dtype', 'scale_dtype'])
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_gamma_generator(self, shape_dtype, scale_dtype):
         self.check_distribution(cupy.random.default_rng().gamma,
                                 shape_dtype, scale_dtype)
@@ -210,7 +210,7 @@ class TestDistributionsGamma(unittest.TestCase):
 })
 )
 @testing.gpu
-class TestDistributionsGeometric(unittest.TestCase):
+class TestDistributionsGeometric:
 
     def check_distribution(self, dist_func, p_dtype, dtype):
         p = 0.5 * cupy.ones(self.p_shape, dtype=p_dtype)
@@ -253,7 +253,7 @@ class TestDistributionsGumbel(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsHyperGeometric(unittest.TestCase):
+class TestDistributionsHyperGeometric:
 
     def check_distribution(self, dist_func, ngood_dtype, nbad_dtype,
                            nsample_dtype, dtype):
@@ -346,10 +346,10 @@ class TestDistributionsLogseries(RandomDistributionsTestCase):
     @cupy.testing.for_dtypes([numpy.int64, numpy.int32], 'dtype')
     @cupy.testing.for_float_dtypes('p_dtype', no_float16=True)
     def test_logseries_for_invalid_p(self, p_dtype, dtype):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cp_params = {'p': cupy.zeros(self.p_shape, dtype=p_dtype)}
             _distributions.logseries(size=self.shape, dtype=dtype, **cp_params)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cp_params = {'p': cupy.ones(self.p_shape, dtype=p_dtype)}
             _distributions.logseries(size=self.shape, dtype=dtype, **cp_params)
 
@@ -360,7 +360,7 @@ class TestDistributionsLogseries(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsMultivariateNormal(unittest.TestCase):
+class TestDistributionsMultivariateNormal:
 
     def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
         mean = cupy.zeros(self.d, dtype=mean_dtype)
@@ -427,13 +427,13 @@ class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
     def test_noncentral_chisquare_for_invalid_params(self, param_dtype):
         df = cupy.full(self.df_shape, -1, dtype=param_dtype)
         nonc = cupy.full(self.nonc_shape, 1, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.noncentral_chisquare(
                 df, nonc, size=self.shape, dtype=self.dtype)
 
         df = cupy.full(self.df_shape, 1, dtype=param_dtype)
         nonc = cupy.full(self.nonc_shape, -1, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.noncentral_chisquare(
                 df, nonc, size=self.shape, dtype=self.dtype)
 
@@ -465,21 +465,21 @@ class TestDistributionsNoncentralF(RandomDistributionsTestCase):
         dfnum = numpy.full(self.dfnum_shape, -1, dtype=param_dtype)
         dfden = numpy.full(self.dfden_shape, 1, dtype=param_dtype)
         nonc = numpy.full(self.nonc_shape, 1, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.noncentral_f(
                 dfnum, dfden, nonc, size=self.shape, dtype=self.dtype)
 
         dfnum = numpy.full(self.dfnum_shape, 1, dtype=param_dtype)
         dfden = numpy.full(self.dfden_shape, -1, dtype=param_dtype)
         nonc = numpy.full(self.nonc_shape, 1, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.noncentral_f(
                 dfnum, dfden, nonc, size=self.shape, dtype=self.dtype)
 
         dfnum = numpy.full(self.dfnum_shape, 1, dtype=param_dtype)
         dfden = numpy.full(self.dfden_shape, 1, dtype=param_dtype)
         nonc = numpy.full(self.nonc_shape, -1, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.noncentral_f(
                 dfnum, dfden, nonc, size=self.shape, dtype=self.dtype)
 
@@ -509,7 +509,7 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsPareto(unittest.TestCase):
+class TestDistributionsPareto:
 
     def check_distribution(self, dist_func, a_dtype, dtype):
         a = cupy.ones(self.a_shape, dtype=a_dtype)
@@ -531,7 +531,7 @@ class TestDistributionsPareto(unittest.TestCase):
 })
 )
 @testing.gpu
-class TestDistributionsPoisson(unittest.TestCase):
+class TestDistributionsPoisson:
 
     def check_distribution(self, dist_func, lam_dtype, dtype=None):
         lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
@@ -551,19 +551,30 @@ class TestDistributionsPoisson(unittest.TestCase):
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
 
     @cupy.testing.for_float_dtypes('lam_dtype')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_poisson_generator(self, lam_dtype):
         self.check_distribution(cupy.random.default_rng(0).poisson,
                                 lam_dtype)
 
 
 @testing.gpu
-class TestDistributionsPoissonInvalid(unittest.TestCase):
+class TestDistributionsPoissonInvalid:
+
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_none_lam_generator(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.random.default_rng(0).poisson(None)
 
     def test_none_lam_legacy(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.poisson(None)
 
 
@@ -585,7 +596,7 @@ class TestDistributionsPower(RandomDistributionsTestCase):
     @cupy.testing.for_float_dtypes('a_dtype')
     def test_power_for_negative_a(self, a_dtype, dtype):
         a = numpy.full(self.a_shape, -0.5, dtype=a_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cp_params = {'a': cupy.asarray(a)}
             getattr(_distributions, 'power')(
                 size=self.shape, dtype=dtype, **cp_params)
@@ -617,7 +628,7 @@ class TestDistributionsRayleigh(RandomDistributionsTestCase):
     @cupy.testing.for_float_dtypes('scale_dtype')
     def test_rayleigh_for_negative_scale(self, scale_dtype, dtype):
         scale = numpy.full(self.scale_shape, -0.5, dtype=scale_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cp_params = {'scale': cupy.asarray(scale)}
             _distributions.rayleigh(size=self.shape, dtype=dtype, **cp_params)
 
@@ -663,8 +674,11 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('shape_dtype')
-    @pytest.mark.xfail(
-        runtime.is_hip, reason='Generator API not supported in HIP')
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_standard_gamma_generator(self, shape_dtype, dtype):
         shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
         self.check_generator_distribution('standard_gamma',
@@ -675,12 +689,17 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 @testing.gpu
 class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
 
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip
+        and (int(str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),
+        reason="HIP<4.3 not supported ",
+    )
     def test_none_shape_generator(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             cupy.random.default_rng(0).standard_gamma(None)
 
     def test_none_shape_legacy(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.standard_gamma(None)
 
 
@@ -702,7 +721,7 @@ class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsStandardT(unittest.TestCase):
+class TestDistributionsStandardT:
 
     def check_distribution(self, dist_func, df_dtype, dtype):
         df = cupy.ones(self.df_shape, dtype=df_dtype)
@@ -743,21 +762,21 @@ class TestDistributionsTriangular(RandomDistributionsTestCase):
         left = cupy.full(self.left_shape, 1, dtype=param_dtype)
         mode = cupy.full(self.mode_shape, 0, dtype=param_dtype)
         right = cupy.full(self.right_shape, 2, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.triangular(
                 left, mode, right, size=self.shape, dtype=self.dtype)
 
         left = cupy.full(self.left_shape, -2, dtype=param_dtype)
         mode = cupy.full(self.mode_shape, 0, dtype=param_dtype)
         right = cupy.full(self.right_shape, -1, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.triangular(
                 left, mode, right, size=self.shape, dtype=self.dtype)
 
         left = cupy.full(self.left_shape, 0, dtype=param_dtype)
         mode = cupy.full(self.mode_shape, 0, dtype=param_dtype)
         right = cupy.full(self.right_shape, 0, dtype=param_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _distributions.triangular(
                 left, mode, right, size=self.shape, dtype=self.dtype)
 
@@ -789,7 +808,7 @@ class TestDistributionsUniform(RandomDistributionsTestCase):
 })
 )
 @testing.gpu
-class TestDistributionsVonmises(unittest.TestCase):
+class TestDistributionsVonmises:
 
     def check_distribution(self, dist_func, mu_dtype, kappa_dtype, dtype):
         mu = cupy.ones(self.mu_shape, dtype=mu_dtype)
@@ -849,7 +868,7 @@ class TestDistributionsWeibull(RandomDistributionsTestCase):
     @cupy.testing.for_float_dtypes('a_dtype')
     def test_weibull_for_negative_a(self, a_dtype, dtype):
         a = numpy.full(self.a_shape, -0.5, dtype=a_dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             cp_params = {'a': cupy.asarray(a)}
             getattr(_distributions, 'weibull')(
                 size=self.shape, dtype=dtype, **cp_params)

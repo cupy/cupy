@@ -42,8 +42,8 @@ Example of `_preload_config` is as follows:
         # cuDNN version string
         'version': '8.0.0',
 
-        # name of the shared library
-        'filename': 'libcudnn.so.X.Y.Z'  # or `cudnn64_X.dll` for Windows
+        # names of the shared library
+        'filenames': ['libcudnn.so.X.Y.Z']  # or `cudnn64_X.dll` for Windows
     }
 }
 
@@ -275,45 +275,66 @@ def get_preload_config():
     return _preload_config
 
 
-def _preload_libraries():
+def _can_attempt_preload(lib: str) -> bool:
+    """Returns if the preload can be attempted."""
+
+    config = get_preload_config()
+    if (config is None) or (config['packaging'] == 'conda'):
+        # We don't do preload if CuPy is installed from Conda-Forge, as we
+        # cannot guarantee the version pinned in _wheel.json, which is
+        # encoded in config[lib]['filenames'], is always available on
+        # Conda-Forge. See here for the configuration files used in
+        # Conda-Forge distributions.
+        # https://github.com/conda-forge/cupy-feedstock/blob/master/recipe/preload_config/
+        _log(f'Cannot preload {lib} as this is not a wheel installation')
+        return False
+
+    if lib not in _preload_libs:
+        raise AssertionError(f'Unknown preload library: {lib}')
+
+    if lib not in config:
+        _log(f'Preload {lib} not configured in wheel')
+        return False
+
+    if _preload_libs[lib] is not None:
+        _log(f'Preload already attempted: {lib}')
+        return False
+
+    return True
+
+
+def _preload_library(lib):
     """Preload dependent shared libraries.
 
     The preload configuration file (cupy/.data/_wheel.json) will be added
     during the wheel build process.
     """
 
-    config = get_preload_config()
-    if (config is None) or (config['packaging'] == 'conda'):
-        # We don't do preload if CuPy is installed from Conda-Forge, as we
-        # cannot guarantee the version pinned in _wheel.json, which is
-        # encoded in config[lib]['filename'], is always available on
-        # Conda-Forge. In fact, in order to accommodate this, the plan is
-        # to set both "version" and "filename" to an emtpy string on CF's
-        # _wheel.json, so if we look them up below an exception would be
-        # raised.
-        _log('Skip preloading as this is not a wheel installation')
-        return
+    _log(f'Preloading triggered for library: {lib}')
 
+    if not _can_attempt_preload(lib):
+        return
+    _preload_libs[lib] = {}
+
+    config = get_preload_config()
     cuda_version = config['cuda']
     _log('CuPy wheel package built for CUDA {}'.format(cuda_version))
 
     cupy_cuda_lib_path = get_cupy_cuda_lib_path()
     _log('CuPy CUDA library directory: {}'.format(cupy_cuda_lib_path))
 
-    for lib in _preload_libs.keys():
-        if lib not in config:
-            _log('Not preloading {}'.format(lib))
-            continue
-        version = config[lib]['version']
-        filename = config[lib]['filename']
-        _log('Looking for {} version {} ({})'.format(lib, version, filename))
+    version = config[lib]['version']
+    filenames = config[lib]['filenames']
+    for filename in filenames:
+        _log(f'Looking for {lib} version {version} ({filename})')
 
         # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
         # "lib64": cuDNN (Linux)
         # "bin": cuDNN (Windows)
         libpath_cands = [
             os.path.join(
-                cupy_cuda_lib_path, config['cuda'], lib, version, x, filename)
+                cupy_cuda_lib_path, config['cuda'], lib, version, x,
+                filename)
             for x in ['lib', 'lib64', 'bin']]
         for libpath in libpath_cands:
             if not os.path.exists(libpath):
@@ -321,20 +342,16 @@ def _preload_libraries():
                 continue
 
             try:
-                if sys.platform == 'win32':
-                    # This is needed to load cuDNN v8 on Windows.
-                    libpath_dir = os.path.dirname(libpath)
-                    _log(f'Adding to PATH: {libpath_dir}')
-                    os.environ['PATH'] = (libpath_dir + os.pathsep +
-                                          os.environ.get('PATH', ''))
                 _log(f'Trying to load {libpath}')
                 # Keep reference to the preloaded module.
-                _preload_libs[lib] = (libpath, ctypes.CDLL(libpath))
+                _preload_libs[lib][libpath] = ctypes.CDLL(libpath)
                 _log('Loaded')
                 break
             except Exception as e:
-                msg = 'CuPy failed to preload library ({}): {} ({})'.format(
-                    libpath, type(e).__name__, str(e))
+                e_type = type(e).__name__  # NOQA
+                msg = (
+                    f'CuPy failed to preload library ({libpath}): '
+                    f'{e_type} ({e})')
                 _log(msg)
                 warnings.warn(msg)
         else:
@@ -342,14 +359,14 @@ def _preload_libraries():
 
             # Lookup library with fully-qualified version (e.g.,
             # `libcudnn.so.X.Y.Z`).
-            _log('Trying to load {} from default search path'.format(filename))
+            _log(f'Trying to load {filename} from default search path')
             try:
-                _preload_libs[lib] = (filename, ctypes.CDLL(filename))
+                _preload_libs[lib][filename] = ctypes.CDLL(filename)
                 _log('Loaded')
             except Exception as e:
                 # Fallback to the standard shared library lookup which only
                 # uses the major version (e.g., `libcudnn.so.X`).
-                _log('Library {} could not be preloaded: {}'.format(lib, e))
+                _log(f'Library {lib} could not be preloaded: {e}')
 
 
 def _get_preload_logs():
@@ -375,7 +392,7 @@ You can install the library by:
   $ conda install -c conda-forge {lib}
 '''
         else:
-            assert False
+            raise AssertionError
         msg = msg.format(
             lib=lib, exc_type=type(exc).__name__, exc=str(exc),
             cuda=config['cuda'])
@@ -402,9 +419,12 @@ def _detect_duplicate_installation():
         'cupy-cuda111',
         'cupy-cuda112',
         'cupy-cuda113',
+        'cupy-cuda114',
+        'cupy-cuda115',
         'cupy-rocm-4-0',
         'cupy-rocm-4-1',
         'cupy-rocm-4-2',
+        'cupy-rocm-4-3',
     ]
     cupy_installed = [
         name for name in known
@@ -437,3 +457,17 @@ def _detect_duplicate_installation():
 
 --------------------------------------------------------------------------------
 ''')
+
+
+def _diagnose_import_error() -> str:
+    # TODO(kmaehashi): provide better diagnostics.
+    return '''\
+Failed to import CuPy.
+
+If you installed CuPy via wheels (cupy-cudaXXX or cupy-rocm-X-X), make sure that the package matches with the version of CUDA or ROCm installed.
+
+On Linux, you may need to set LD_LIBRARY_PATH environment variable depending on how you installed CUDA/ROCm.
+On Windows, try setting CUDA_PATH environment variable.
+
+Check the Installation Guide for details:
+  https://docs.cupy.dev/en/latest/install.html'''  # NOQA

@@ -5,6 +5,8 @@ Discrete Fourier transforms (:mod:`cupyx.scipy.fft`)
 
 .. Hint:: `SciPy API Reference: Discrete Fourier transforms (scipy.fft) <https://docs.scipy.org/doc/scipy/reference/fft.html>`_
 
+.. seealso:: :doc:`../user_guide/fft`
+
 Fast Fourier Transforms (FFTs)
 ------------------------------
 
@@ -52,12 +54,6 @@ Code compatibility features
 
 3. Like in ``scipy.fft``, all FFT functions in this module have an optional argument ``overwrite_x`` (default is ``False``), which has the same semantics as in ``scipy.fft``: when it is set to ``True``, the input array ``x`` *can* (not *will*) be overwritten arbitrarily. For this reason, when an in-place FFT is desired, the user should always reassign the input in the following manner: ``x = cupyx.scipy.fftpack.fft(x, ..., overwrite_x=True, ...)``.
 
-4. The ``cupyx.scipy.fft`` module can also be used as a backend for ``scipy.fft`` e.g. by installing with ``scipy.fft.set_backend(cupyx.scipy.fft)``. This can allow ``scipy.fft`` to work with both ``numpy`` and ``cupy`` arrays.
+4. The ``cupyx.scipy.fft`` module can also be used as a backend for ``scipy.fft`` e.g. by installing with ``scipy.fft.set_backend(cupyx.scipy.fft)``. This can allow ``scipy.fft`` to work with both ``numpy`` and ``cupy`` arrays. For more information, see :ref:`scipy_fft_backend`.
 
 5. The boolean switch :data:`cupy.fft.config.use_multi_gpus` also affects the FFT functions in this module, see :doc:`./fft`. Moreover, this switch is *honored* when planning manually using :func:`~cupyx.scipy.fftpack.get_fft_plan`.
-
-.. note::
-   ``scipy.fft`` requires SciPy version 1.4.0 or newer.
-
-.. note::
-    To use ``scipy.fft.set_backend()`` together with an explicit ``plan`` argument requires SciPy version 1.5.0 or newer.

@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import importlib
 import inspect
 import os
 import pkg_resources
@@ -61,7 +62,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
-              'sphinx.ext.linkcode']
+              'sphinx.ext.linkcode',
+              'sphinx_copybutton']
 
 try:
     import sphinxcontrib.spelling  # noqa
@@ -85,8 +87,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'CuPy'
-copyright = u'2015, Preferred Networks, inc. and Preferred Infrastructure, inc.'
-author = u'Preferred Networks, inc. and Preferred Infrastructure, inc.'
+copyright = u'2015, Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
+author = u'Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -149,6 +151,22 @@ todo_include_todos = False
 napoleon_use_ivar = True
 napoleon_include_special_with_doc = True
 
+# -- Copybutton settings --------------------------------------------------
+
+# Only copy lines starting with the input prompts,
+# valid prompt styles: [
+#     Python Repl + continuation (e.g., '>>> ', '... '),
+#     Bash (e.g., '$ '),
+#     ipython and qtconsole + continuation (e.g., 'In [29]: ', '  ...: '),
+#     jupyter-console + continuation (e.g., 'In [29]: ', '     ...: ')
+# ]
+# regex taken from https://sphinx-copybutton.readthedocs.io/en/latest/#using-regexp-prompt-identifiers
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
+# Continue copying lines as long as they end with this character
+copybutton_line_continuation_character = "\\"
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -193,12 +211,12 @@ html_theme_options = {
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = '_static/favicon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -349,7 +367,7 @@ autosummary_generate = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
 }
 
 doctest_global_setup = '''
@@ -417,6 +435,9 @@ def linkcode_resolve(domain, info):
     if not mod.__name__.split('.')[0] in _top_modules:
         return None
 
+    # If it's wrapped (e.g., by `contextlib.contextmanager`), unwrap it
+    obj = inspect.unwrap(obj)
+
     # Get the source file name and line number at which obj is defined.
     try:
         filename = inspect.getsourcefile(obj)
@@ -424,16 +445,42 @@ def linkcode_resolve(domain, info):
         # obj is not a module, class, function, ..etc.
         return None
 
-    # inspect can return None for cython objects
+    # `inspect.getsourcefile` returns None for C-extension objects
     if filename is None:
-        return None
-
-    # Get the source line number
-    _, linenum = inspect.getsourcelines(obj)
-    assert isinstance(linenum, int)
+        filename = inspect.getfile(obj)
+        for ext in importlib.machinery.EXTENSION_SUFFIXES:
+            if filename.endswith(ext):
+                filename = filename[:-len(ext)] + '.pyx'
+                break
+        else:
+            return None
+        linenum = None
+    else:
+        # Get the source line number
+        _, linenum = inspect.getsourcelines(obj)
+        assert isinstance(linenum, int)
 
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)
 
-    return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
-        tag, relpath, linenum)
+    fragment = '' if linenum is None else f'#L{linenum}'
+    return f'https://github.com/cupy/cupy/blob/{tag}/{relpath}{fragment}'
+
+
+# Python Array API methods have type hints, which do not render
+# nicely by default. This option moves the type hints to the
+# doc content so as to make the function signatures shorter and
+# look nicer.
+autodoc_typehints = 'description'
+
+
+def remove_array_api_module_docstring(app, what, name, obj, options, lines):
+    # We don't want to take the docstring in cupyx.array_api because:
+    #   1. It's not how we document module-level stuff
+    #   2. The docstring is taken from numpy.array_api, which requires rewriting
+    # Here we remove the docstring and will add our own description in array_api.rst
+    if what == "module" and 'array_api' in name:
+        del lines[:]
+
+def setup(app):
+    app.connect("autodoc-process-docstring", remove_array_api_module_docstring)

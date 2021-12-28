@@ -1,43 +1,9 @@
+###
+### Windows (CUDA) CI Projects
+###
+
 configs {
-  key: "cupy.py27and35.gpu"
-  value {
-    requirement {
-      cpu: 8
-      memory: 24
-      disk: 10
-      gpu: 2
-    }
-    time_limit {
-      seconds: 1800
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    environment_variables { key: "GPU" value: "2" }
-    command: "bash .pfnci/script.sh py27and35"
-  }
-}
-configs {
-  key: "cupy.py37.gpu"
-  value {
-    requirement {
-      cpu: 8
-      memory: 24
-      disk: 10
-      gpu: 2
-    }
-    time_limit {
-      seconds: 1800
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    environment_variables { key: "GPU" value: "2" }
-    command: "bash .pfnci/script.sh py37"
-  }
-}
-configs {
-  key: "cupy.experimental.win.cuda100"
+  key: "cupy.win.cuda102"
   value {
     requirement {
       cpu: 8
@@ -54,132 +20,371 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
-    command: ".pfnci\\windows\\run.bat 10.0 3.7 test"
+    command: ".pfnci\\windows\\run.bat 10.2 3.7 test"
   }
 }
 
 
-# CuPy CI related targets: cupy.docker.{version}.{action}.
-# - version should be either "py37" or "py27and35".
-# - action should be either "test" or "push".  "test" only builds a Docker
-#   image, and "push" additionally pushes the Docker image to Google Container
-#   Registry.
+###
+### Linux (CUDA) CI Projects
+###
+
+# Project to build Docker images
 configs {
-  key: "cupy.docker.py37.test"
+  key: "cupy.prep-linux"
   value {
     requirement {
-      cpu: 2
-      memory: 12
+      cpu: 12
+      memory: 64
+      disk: 10
+      image: "docker"
     }
     time_limit: {
       seconds: 3600
     }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py37.test"
-  }
-}
-configs {
-  key: "cupy.docker.py27and35.test"
-  value {
-    requirement {
-      cpu: 2
-      memory: 12
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py27and35.test"
-  }
-}
-configs {
-  key: "cupy.docker.py37.push"
-  value {
-    requirement {
-      cpu: 2
-      memory: 12
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py37.push"
-  }
-}
-configs {
-  key: "cupy.docker.py27and35.push"
-  value {
-    requirement {
-      cpu: 2
-      memory: 12
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    command: "bash .pfnci/script.sh docker.py27and35.push"
+    command: ".pfnci/linux/main-flexci-prep.sh"
   }
 }
 
-# ROCm build test
+# CUDA 10.2 | Linux
 configs {
-  key: "cupy.py37.rocm-4-0"
+  key: "cupy.linux.cuda102"
   value {
     requirement {
       cpu: 8
-      memory: 24
+      memory: 50
       disk: 10
+      gpu: 1
     }
     time_limit: {
-      seconds: 3600
+      seconds: 21600
     }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    environment_variables { key: "ROCM_REPO" value: "4.0.1" }
-    command: "bash .pfnci/script.sh py37.rocm-4-0"
-  }
-}
-configs {
-  key: "cupy.py37.rocm-latest"
-  value {
-    requirement {
-      cpu: 8
-      memory: 24
-      disk: 10
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    checkout_strategy {
-      include_dot_git: true
-    }
-    environment_variables { key: "ROCM_REPO" value: "debian" }
-    command: "bash .pfnci/script.sh py37.rocm-latest"
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda102"
   }
 }
 
-# ChainerCV's tests are disabled in the master branch, but configs can be removed
-# only after removing web hooks.
-# TODO(maehashi): when discontinuing v7 branch, remove the web hooks and remove
-# configurations below.
+# CUDA 10.2 (Multi-GPU) | Linux
 configs {
-  key: "cupy.py3.cv.gpu"
+  key: "cupy.linux.cuda102.multi"
   value {
-    command: "true"
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda102.multi"
   }
 }
+
+# CUDA 11.0 | Linux
 configs {
-  key: "cupy.py3.cv.examples"
+  key: "cupy.linux.cuda110"
   value {
-    command: "true"
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda110"
+  }
+}
+
+# CUDA 11.0 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda110.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda110.multi"
+  }
+}
+
+# CUDA 11.1 | Linux
+configs {
+  key: "cupy.linux.cuda111"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda111"
+  }
+}
+
+# CUDA 11.1 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda111.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda111.multi"
+  }
+}
+
+# CUDA 11.2 | Linux
+configs {
+  key: "cupy.linux.cuda112"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda112"
+  }
+}
+
+# CUDA 11.2 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda112.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda112.multi"
+  }
+}
+
+# CUDA 11.3 | Linux
+configs {
+  key: "cupy.linux.cuda113"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda113"
+  }
+}
+
+# CUDA 11.3 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda113.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda113.multi"
+  }
+}
+
+# CUDA 11.4 | Linux
+configs {
+  key: "cupy.linux.cuda114"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda114"
+  }
+}
+
+# CUDA 11.4 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda114.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda114.multi"
+  }
+}
+
+# CUDA 11.5 | Linux
+configs {
+  key: "cupy.linux.cuda115"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    environment_variables { key: "TAGS" value: "mini" }
+    command: ".pfnci/linux/main-flexci.sh cuda115"
+  }
+}
+
+# CUDA 11.5 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda115.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda115.multi"
+  }
+}
+
+# CUDA 11.x + CUDA Python
+configs {
+  key: "cupy.linux.cuda11x-cuda-python"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda11x-cuda-python"
+  }
+}
+
+# CUDA + RAPIDS
+configs {
+  key: "cupy.linux.cuda-rapids"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda-rapids"
+  }
+}
+
+# CUDA + Example
+configs {
+  key: "cupy.linux.cuda-example"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda-example"
+  }
+}
+
+# CUDA + HEAD
+configs {
+  key: "cupy.linux.cuda-head"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda-head"
+  }
+}
+
+# Array API
+configs {
+  key: "cupy.linux.array-api"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 7200
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh array-api"
   }
 }

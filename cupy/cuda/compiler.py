@@ -2,23 +2,25 @@ import copy
 import hashlib
 import math
 import os
+import platform
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy.cuda import get_rocm_path
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip:
-    _cuda_version = driver.get_build_version()
-    if _cuda_version > 0:
-        from cupy.cuda.jitify import jitify
+_cuda_hip_version = driver.get_build_version()
+if not runtime.is_hip and _cuda_hip_version > 0:
+    from cupy.cuda.jitify import jitify
 
 
 _nvrtc_version = None
@@ -52,8 +54,8 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
             # but this is not true in general Windows environment unless
             # running inside the SDK Tools command prompt.
             # To mitigate the situation CuPy automatically adds a path to
-            # the VC++ compiler used to build Python / CuPy to the PATH, if
-            # VC++ is not available in PATH.
+            # the VC++ compiler (cl.exe) found via setuptools, if it is not
+            # on the PATH.
             extra_path = _get_extra_path_for_msvc()
             if extra_path is not None:
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
@@ -89,24 +91,24 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
 
 @_util.memoize()
 def _get_extra_path_for_msvc():
-    import distutils.spawn
-    cl_exe = distutils.spawn.find_executable('cl.exe')
+    cl_exe = shutil.which('cl.exe')
     if cl_exe:
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    from distutils import msvc9compiler
-    vcvarsall_bat = msvc9compiler.find_vcvarsall(
-        msvc9compiler.get_build_version())
-    if not vcvarsall_bat:
-        # Failed to find VC.
+    try:
+        import setuptools
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+    except Exception as e:
+        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
         return None
 
-    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
-    if not distutils.spawn.find_executable('cl.exe', path):
-        # The compiler could not be found.
-        return None
-    return path
+    for path in vctools:
+        cl_exe = os.path.join(path, 'cl.exe')
+        if os.path.exists(cl_exe):
+            return path
+    warnings.warn(f'cl.exe could not be found in {vctools}')
+    return None
 
 
 def _get_nvrtc_version():
@@ -121,26 +123,54 @@ def _get_nvrtc_version():
 _tegra_archs = ('53', '62', '72')
 
 
+@_util.memoize()
+def _get_max_compute_capability():
+    major, minor = _get_nvrtc_version()
+    if major < 11:
+        # CUDA 10.2
+        nvrtc_max_compute_capability = '75'
+    elif major == 11 and minor == 0:
+        # CUDA 11.0
+        nvrtc_max_compute_capability = '80'
+    else:
+        # CUDA 11.1 / 11.2 / 11.3 / 11.4
+        nvrtc_max_compute_capability = '86'
+    return nvrtc_max_compute_capability
+
+
 @_util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
-    major, minor = _get_nvrtc_version()
-    if major < 10 or (major == 10 and minor == 0):
-        # CUDA 9.x / 10.0
-        _nvrtc_max_compute_capability = '70'
-    elif major < 11:
-        # CUDA 10.1 / 10.2
-        _nvrtc_max_compute_capability = '75'
-    else:
-        # CUDA 11.0 / 11.1 / 11.2
-        _nvrtc_max_compute_capability = '80'
+    nvrtc_max_compute_capability = _get_max_compute_capability()
 
     arch = device.Device().compute_capability
     if arch in _tegra_archs:
         return arch
     else:
-        return min(arch, _nvrtc_max_compute_capability)
+        return min(arch, nvrtc_max_compute_capability)
+
+
+@_util.memoize(for_each_device=True)
+def _get_arch_for_options_for_nvrtc(arch=None):
+    # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
+    # version than the one included in the used CUDA version, as
+    # documented in:
+    # https://docs.nvidia.com/cuda/archive/11.3.0/nvrtc/index.html#versioning
+    # Here we use `-arch=sm_*` instead of `-arch=compute_*` to directly
+    # generate cubin (SASS) instead of PTX. See #5097 for details.
+    if arch is None:
+        arch = _get_arch()
+    if driver._is_cuda_python():
+        version = runtime.runtimeGetVersion()
+    else:
+        version = _cuda_hip_version
+    if (
+        not _use_ptx and version >= 11010
+        and arch <= _get_max_compute_capability()
+    ):
+        return f'-arch=sm_{arch}', 'cubin'
+    return f'-arch=compute_{arch}', 'ptx'
 
 
 def _is_cudadevrt_needed(options):
@@ -190,6 +220,7 @@ def _get_bool_env_variable(name, default):
         return False
 
 
+_use_ptx = _get_bool_env_variable('CUPY_COMPILE_WITH_PTX', False)
 _jitify_header_source_map_populated = False
 
 
@@ -231,15 +262,23 @@ def _jitify_prep(source, options, cu_path):
     return options, headers, include_names
 
 
+_has_usedforsecurity = (sys.version_info >= (3, 9))
+
+
+def _hash_hexdigest(value):
+    if _has_usedforsecurity:
+        hashobj = hashlib.sha1(value, usedforsecurity=False)
+    else:
+        hashobj = hashlib.sha1(value)
+    return hashobj.hexdigest()
+
+
+_hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
+
+
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
-    # For hipRTC, arch is ignored
-    if not runtime.is_hip:
-        if not arch:
-            arch = _get_arch()
-        options += ('-arch=compute_{}'.format(arch),)
-
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
 
@@ -249,17 +288,24 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         else:
             headers = include_names = ()
 
+        if not runtime.is_hip:
+            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
+            options += (arch_opt,)
+        else:
+            method = 'ptx'
+
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
-                             name_expressions=name_expressions)
+                             name_expressions=name_expressions, method=method)
+
         try:
-            ptx, mapping = prog.compile(options, log_stream)
+            compiled_obj, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
             if dump:
                 e.dump(sys.stderr)
             raise
-        return ptx, mapping
+        return compiled_obj, mapping
 
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
@@ -366,8 +412,9 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
+        # For the preprocess it is enough to use PTX method
+        # we don't need to explicitly obtain a CUBIN file.
         options += ('-arch=compute_{}'.format(arch),)
-
         prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
@@ -404,7 +451,16 @@ def get_cache_dir():
 _empty_file_preprocess_cache = {}
 
 
-def compile_with_cache(
+def compile_with_cache(*args, **kwargs):
+    # TODO(kmaehashi): change to visible warning in CuPy v11+.
+    warnings.warn(
+        'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
+        ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
+        ' instead.', DeprecationWarning)
+    return _compile_module_with_cache(*args, **kwargs)
+
+
+def _compile_module_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
         name_expressions=None, log_stream=None, jitify=False):
@@ -467,7 +523,8 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
-    env = (arch, options, _get_nvrtc_version(), backend)
+    env = ((arch, options, _get_nvrtc_version(), backend)
+           + _get_arch_for_options_for_nvrtc(arch))
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
@@ -476,7 +533,7 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.cubin'
 
     mod = function.Module()
 
@@ -492,10 +549,10 @@ def _compile_with_cache_cuda(
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as file:
                 data = file.read()
-            if len(data) >= 32:
-                hash = data[:32]
-                cubin = data[32:]
-                cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+            if len(data) >= _hash_length:
+                hash = data[:_hash_length]
+                cubin = data[_hash_length:]
+                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
                     return mod
@@ -530,10 +587,10 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to disk cache
-        cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
@@ -596,7 +653,7 @@ class CompileException(Exception):
 class _NVRTCProgram(object):
 
     def __init__(self, src, name='default_program', headers=(),
-                 include_names=(), name_expressions=None):
+                 include_names=(), name_expressions=None, method='ptx'):
         self.ptr = None
 
         if isinstance(src, bytes):
@@ -608,6 +665,7 @@ class _NVRTCProgram(object):
         self.name = name
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
         self.name_expressions = name_expressions
+        self.method = method
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
@@ -619,7 +677,7 @@ class _NVRTCProgram(object):
         try:
             if self.name_expressions:
                 for ker in self.name_expressions:
-                    nvrtc.addAddNameExpression(self.ptr, ker)
+                    nvrtc.addNameExpression(self.ptr, ker)
             nvrtc.compileProgram(self.ptr, options)
             mapping = None
             if self.name_expressions:
@@ -628,8 +686,13 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            # TODO(leofang): use getCUBIN() for _cuda_version >= 11010?
-            return nvrtc.getPTX(self.ptr), mapping
+            # This is to ensure backwards compatibility with nvrtc
+            if self.method == 'cubin':
+                return nvrtc.getCUBIN(self.ptr), mapping
+            elif self.method == 'ptx':
+                return nvrtc.getPTX(self.ptr), mapping
+            else:
+                raise RuntimeError('Unknown NVRTC compile method')
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options,
@@ -719,7 +782,8 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    if not is_hiprtc:
+    if (not is_hiprtc) or (is_hiprtc and _cuda_hip_version >= 402):
+        # "-I" is fixed on ROCm 4.2.0+
         return '#include <hip/hip_runtime.h>\n' + source
 
     # Workaround for hiprtc: it does not follow the -I option to search
@@ -761,6 +825,12 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     #   ROCm-Developer-Tools/HIP#2248
     options += ('-fcuda-flush-denormals-to-zero',)
 
+    # Workaround ROCm 4.3 LLVM_PATH issue in hipRTC #5689
+    rocm_build_version = driver.get_build_version()
+    if rocm_build_version >= 40300000 and rocm_build_version < 40500000:
+        options += (
+            '-I' + get_rocm_path() + '/llvm/lib/clang/13.0.0/include/',)
+
     if cache_dir is None:
         cache_dir = get_cache_dir()
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
@@ -787,7 +857,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.hsaco'
 
     mod = function.Module()
 
@@ -803,10 +873,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as f:
                 data = f.read()
-            if len(data) >= 32:
-                hash_value = data[:32]
-                binary = data[32:]
-                binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+            if len(data) >= _hash_length:
+                hash_value = data[:_hash_length]
+                binary = data[_hash_length:]
+                binary_hash = _hash_hexdigest(binary).encode('ascii')
                 if hash_value == binary_hash:
                     mod.load(binary)
                     return mod
@@ -826,10 +896,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         # Write to disk cache
-        binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+        binary_hash = _hash_hexdigest(binary).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:

@@ -1,8 +1,9 @@
-import pytest
-import unittest
 import functools
+import operator
+import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -126,7 +127,8 @@ def enable_slice_copy(func):
 
 
 def get_numpy_version():
-    return tuple(map(int, numpy.__version__.split('.')))
+    v = numpy.lib.NumpyVersion(numpy.__version__)
+    return (v.major, v.minor, v.bugfix)
 
 
 @ignore_fallback_warnings
@@ -235,17 +237,17 @@ class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'object': fallback_mode.numpy.ndarray},
-    {'object': fallback_mode.numpy.ndarray.__add__},
-    {'object': fallback_mode.numpy.vectorize},
-    {'object': fallback_mode.numpy.linalg.eig},
+    {'object': 'ndarray'},
+    {'object': 'ndarray.__add__'},
+    {'object': 'vectorize'},
+    {'object': 'linalg.eig'},
 )
 @testing.gpu
 class TestDocs(unittest.TestCase):
 
     @numpy_fallback_equal()
     def test_docs(self, xp):
-        return getattr(self.object, '__doc__')
+        return operator.attrgetter(self.object)(xp).__doc__
 
 
 @testing.gpu

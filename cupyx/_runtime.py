@@ -8,50 +8,6 @@ import numpy
 import cupy
 import cupy_backends
 
-try:
-    import cupy.cuda.thrust as thrust
-except ImportError:
-    thrust = None
-
-try:
-    import cupy_backends.cuda.libs.cudnn as cudnn
-except ImportError:
-    cudnn = None
-
-try:
-    import cupy_backends.cuda.libs.nccl as nccl
-except ImportError:
-    nccl = None
-
-try:
-    import cupy.cuda.cub as cub
-except ImportError:
-    cub = None
-
-try:
-    import cupy.cuda.jitify as jitify
-except ImportError:
-    jitify = None
-
-try:
-    import cupy_backends.cuda.libs.cutensor as cutensor
-except ImportError:
-    cutensor = None
-
-try:
-    import cupy_backends.cuda.libs.cusparselt as cusparselt
-except ImportError:
-    cusparselt = None
-
-try:
-    import scipy
-except ImportError:
-    scipy = None
-
-try:
-    import Cython
-except ImportError:
-    Cython = None
 
 is_hip = cupy_backends.cuda.api.runtime.is_hip
 
@@ -100,7 +56,7 @@ class _InstallInfo(object):
         return os.path.dirname(cupy_path)
 
 
-class _RuntimeInfo(object):
+class _RuntimeInfo:
 
     cupy_version = None
     cuda_path = None
@@ -136,7 +92,7 @@ class _RuntimeInfo(object):
     numpy_version = None
     scipy_version = None
 
-    def __init__(self):
+    def __init__(self, *, full=True):
         self.cupy_version = cupy.__version__
 
         if not is_hip:
@@ -149,70 +105,130 @@ class _RuntimeInfo(object):
         else:
             self.nvcc_path = cupy._environment.get_hipcc_path()
 
-        self.cuda_build_version = cupy.cuda.driver.get_build_version()
+        # CUDA Driver
+        self.cuda_build_version = str(cupy.cuda.driver.get_build_version())
+        if cupy.cuda.driver._is_cuda_python():
+            import cuda
+            self.cuda_build_version += f' (CUDA Python: {cuda.__version__})'
         self.cuda_driver_version = _eval_or_error(
             cupy.cuda.runtime.driverGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
 
+        # CUDA Runtime
         self.cuda_runtime_version = _eval_or_error(
             cupy.cuda.runtime.runtimeGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
 
-        self.cublas_version = _eval_or_error(
-            lambda: cupy.cuda.cublas.getVersion(
-                cupy.cuda.device.get_cublas_handle()),
-            cupy.cuda.cublas.CUBLASError)
+        # cuBLAS
+        self.cublas_version = '(available)'
+        if full:
+            self.cublas_version = _eval_or_error(
+                lambda: cupy.cuda.cublas.getVersion(
+                    cupy.cuda.device.get_cublas_handle()),
+                cupy.cuda.cublas.CUBLASError)
+
+        # cuFFT
         self.cufft_version = _eval_or_error(
             cupy.cuda.cufft.getVersion,
             cupy.cuda.cufft.CuFFTError)
+
+        # cuRAND
         self.curand_version = _eval_or_error(
             cupy.cuda.curand.getVersion,
             cupy.cuda.curand.CURANDError)
+
+        # cuSOLVER
         self.cusolver_version = _eval_or_error(
             cupy.cuda.cusolver._getVersion,
             cupy.cuda.cusolver.CUSOLVERError)
-        self.cusparse_version = _eval_or_error(
-            lambda: cupy.cuda.cusparse.getVersion(
-                cupy.cuda.device.get_cusparse_handle()),
-            cupy.cuda.cusparse.CuSparseError)
+
+        # cuSPARSE
+        self.cusparse_version = '(available)'
+        if full:
+            self.cusparse_version = _eval_or_error(
+                lambda: cupy.cuda.cusparse.getVersion(
+                    cupy.cuda.device.get_cusparse_handle()),
+                cupy.cuda.cusparse.CuSparseError)
+
+        # NVRTC
         self.nvrtc_version = _eval_or_error(
             cupy.cuda.nvrtc.getVersion,
             cupy.cuda.nvrtc.NVRTCError)
 
-        if thrust is not None:
+        # Thrust
+        try:
+            import cupy.cuda.thrust as thrust
             self.thrust_version = thrust.get_build_version()
+        except ImportError:
+            pass
 
-        if cudnn is not None:
+        # cuDNN
+        if cupy._environment._can_attempt_preload('cudnn'):
+            if full:
+                cupy._environment._preload_library('cudnn')
+            else:
+                self.cudnn_build_version = (
+                    '(not loaded; try `import cupy.cuda.cudnn` first)')
+                self.cudnn_version = self.cudnn_build_version
+        try:
+            import cupy_backends.cuda.libs.cudnn as cudnn
             self.cudnn_build_version = cudnn.get_build_version()
             self.cudnn_version = _eval_or_error(
                 cudnn.getVersion, cudnn.CuDNNError)
+        except ImportError:
+            pass
 
-        if nccl is not None:
+        # NCCL
+        try:
+            import cupy_backends.cuda.libs.nccl as nccl
             self.nccl_build_version = nccl.get_build_version()
             nccl_runtime_version = nccl.get_version()
             if nccl_runtime_version == 0:
                 nccl_runtime_version = '(unknown)'
             self.nccl_runtime_version = nccl_runtime_version
+        except ImportError:
+            pass
 
-        if cub is not None:
-            self.cub_build_version = cub.get_build_version()
+        # CUB
+        self.cub_build_version = cupy.cuda.cub.get_build_version()
 
-        if jitify is not None:
+        try:
+            import cupy.cuda.jitify as jitify
             self.jitify_build_version = jitify.get_build_version()
+        except ImportError:
+            pass
 
-        if cutensor is not None:
+        # cuTENSOR
+        try:
+            import cupy_backends.cuda.libs.cutensor as cutensor
             self.cutensor_version = cutensor.get_version()
+        except ImportError:
+            pass
 
-        if cusparselt is not None:
+        # cuSparseLT
+        try:
+            import cupy_backends.cuda.libs.cusparselt as cusparselt
             self.cusparselt_version = cusparselt.get_build_version()
+        except ImportError:
+            pass
 
+        # Cython
         self.cython_build_version = cupy._util.cython_build_ver
-        if Cython is not None:
+        try:
+            import Cython
             self.cython_version = Cython.__version__
+        except ImportError:
+            pass
 
+        # NumPy
         self.numpy_version = numpy.version.full_version
-        if scipy is not None:
+
+        # SciPy
+        try:
+            import scipy
             self.scipy_version = scipy.version.full_version
+        except ImportError:
+            pass
 
     def __str__(self):
         records = [
@@ -254,7 +270,14 @@ class _RuntimeInfo(object):
             ('cuSPARSELt Build Version', self.cusparselt_version),
         ]
 
-        for device_id in range(cupy.cuda.runtime.getDeviceCount()):
+        device_count = 0
+        try:
+            device_count = cupy.cuda.runtime.getDeviceCount()
+        except cupy.cuda.runtime.CUDARuntimeError as e:
+            if 'ErrorNoDevice' not in e.args[0]:
+                raise
+            # No GPU devices available.
+        for device_id in range(device_count):
             with cupy.cuda.Device(device_id) as device:
                 props = cupy.cuda.runtime.getDeviceProperties(device_id)
                 name = ('Device {} Name'.format(device_id),
@@ -281,8 +304,8 @@ class _RuntimeInfo(object):
         return s.getvalue()
 
 
-def get_runtime_info():
-    return _RuntimeInfo()
+def get_runtime_info(*, full=True):
+    return _RuntimeInfo(full=full)
 
 
 def get_install_info():

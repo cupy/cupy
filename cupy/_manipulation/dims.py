@@ -138,7 +138,7 @@ def expand_dims(a, axis):
 
     Returns:
         cupy.ndarray: The number of dimensions is one greater than that of
-            the input array.
+        the input array.
 
     .. seealso:: :func:`numpy.expand_dims`
 

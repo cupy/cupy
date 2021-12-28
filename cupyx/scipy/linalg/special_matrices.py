@@ -3,12 +3,6 @@ import cupy
 from cupy import _core
 
 
-__all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
-           'hadamard', 'leslie', 'kron', 'block_diag', 'companion',
-           'helmert', 'hilbert', 'dft',
-           'fiedler', 'fiedler_companion', 'convolution_matrix']
-
-
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (``N``, ``M``) matrix filled with ones at and below the
     ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
@@ -100,7 +94,7 @@ def toeplitz(c, r=None):
 
     Returns:
         cupy.ndarray: The Toeplitz matrix. Dtype is the same as
-            ``(c[0] + r[0]).dtype``.
+        ``(c[0] + r[0]).dtype``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.circulant`
     .. seealso:: :func:`cupyx.scipy.linalg.hankel`
@@ -149,7 +143,7 @@ def hankel(c, r=None):
 
     Returns:
         cupy.ndarray: The Hankel matrix. Dtype is the same as
-            ``(c[0] + r[0]).dtype``.
+        ``(c[0] + r[0]).dtype``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`cupyx.scipy.linalg.circulant`
@@ -194,7 +188,7 @@ def hadamard(n, dtype=int):
 _hadamard_kernel = _core.ElementwiseKernel(
     'T in', 'T out',
     'out = (__popc(_ind.get()[0] & _ind.get()[1]) & 1) ? -1 : 1;',
-    'hadamard', reduce_dims=False)
+    'cupyx_scipy_linalg_hadamard', reduce_dims=False)
 
 
 def leslie(f, s):
@@ -211,8 +205,8 @@ def leslie(f, s):
 
     Returns:
         cupy.ndarray: The array is zero except for the first row, which is
-            ``f``, and the first sub-diagonal, which is ``s``. The data-type of
-            the array will be the data-type of ``f[0]+s[0]``.
+        ``f``, and the first sub-diagonal, which is ``s``. The data-type of
+        the array will be the data-type of ``f[0]+s[0]``.
 
     .. seealso:: :func:`scipy.linalg.leslie`
     """
@@ -270,7 +264,7 @@ def block_diag(*arrs):
 
     Returns:
         (cupy.ndarray): Array with ``A``, ``B``, ``C``, ... on the diagonal.
-            Output has the same dtype as ``A``.
+        Output has the same dtype as ``A``.
 
     .. seealso:: :func:`scipy.linalg.block_diag`
     """
@@ -312,8 +306,8 @@ def companion(a):
 
     Returns:
         (cupy.ndarray): The first row of the output is ``-a[1:]/a[0]``, and the
-            first sub-diagonal is all ones. The data-type of the array is the
-            same as the data-type of ``-a[1:]/a[0]``.
+        first sub-diagonal is all ones. The data-type of the array is the
+        same as the data-type of ``-a[1:]/a[0]``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.fiedler_companion`
     .. seealso:: :func:`scipy.linalg.companion`
@@ -348,7 +342,7 @@ def helmert(n, full=False):
 
     Returns:
         cupy.ndarray: The Helmert matrix. The shape is (n, n) or (n-1, n)
-            depending on the ``full`` argument.
+        depending on the ``full`` argument.
 
     .. seealso:: :func:`scipy.linalg.helmert`
     """
@@ -514,11 +508,16 @@ def convolution_matrix(a, n, mode='full'):
             This is analogous to ``mode`` in ``numpy.convolve(v, a, mode)``.
 
     Returns:
-        cupy.ndarray: The convolution matrix whose row count depends on
-            ``mode``:
-                ``'full'   m + n -1``
-                ``'same'   max(m, n)``
-                ``'valid'  max(m, n) - min(m, n) + 1``
+        cupy.ndarray: The convolution matrix whose row count k depends on
+        ``mode``:
+
+        =========== =========================
+        ``mode``    k
+        =========== =========================
+        ``'full'``  m + n - 1
+        ``'same'``  max(m, n)
+        ``'valid'`` max(m, n) - min(m, n) + 1
+        =========== =========================
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`scipy.linalg.convolution_matrix`

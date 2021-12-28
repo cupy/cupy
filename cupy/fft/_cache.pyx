@@ -536,9 +536,13 @@ cdef inline void _add_multi_gpu_plan(list gpus, tuple key, plan) except*:
 
     try:
         for dev in gpus:
-            with device.Device(dev):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(dev)
                 cache = get_plan_cache()
                 cache._add_plan(key, plan)
+            finally:
+                runtime.setDevice(prev_device)
             insert_ok.append(dev)
     except Exception as e:
         # clean up and raise
@@ -557,9 +561,13 @@ cdef inline void _remove_multi_gpu_plan(list gpus, tuple key) except*:
     cdef PlanCache cache
 
     for dev in gpus:
-        with device.Device(dev):
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(dev)
             cache = get_plan_cache()
             cache._remove_plan(key=key)
+        finally:
+            runtime.setDevice(prev_device)
 
 
 cdef inline void _remove_append_multi_gpu_plan(list gpus, tuple key) except *:
@@ -567,9 +575,13 @@ cdef inline void _remove_append_multi_gpu_plan(list gpus, tuple key) except *:
     cdef PlanCache cache
 
     for dev in gpus:
-        with device.Device(dev):
+        prev_device = runtime.getDevice()
+        try:
+            runtime.setDevice(dev)
             cache = get_plan_cache()
             cache._move_plan_to_end(key=key)
+        finally:
+            runtime.setDevice(prev_device)
 
 
 cdef inline void _check_multi_gpu_plan_fit(list gpus, plan) except*:
@@ -578,9 +590,13 @@ cdef inline void _check_multi_gpu_plan_fit(list gpus, plan) except*:
 
     try:
         for dev in gpus:
-            with device.Device(dev):
+            prev_device = runtime.getDevice()
+            try:
+                runtime.setDevice(dev)
                 cache = get_plan_cache()
                 cache._check_plan_fit(plan)
+            finally:
+                runtime.setDevice(prev_device)
     except RuntimeError as e:
         e.args = (e.args[0] + ' for device {}'.format(cache.dev),)
         raise e

@@ -1,6 +1,5 @@
 from libc.stdint cimport intptr_t
 
-from cupy_backends.cuda.api.driver cimport get_build_version
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy._core.core cimport ndarray
 from cupy.cuda.device cimport get_compute_capability
@@ -90,7 +89,7 @@ cdef inline void _set_vars() except*:
         if not os.path.isfile(_nvprune):
             _nvprune = None
 
-    _build_ver = str(get_build_version())
+    _build_ver = str(CUPY_CUDA_VERSION)
     _cufft_ver = get_cufft_version()
     _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
@@ -170,8 +169,8 @@ cdef inline void _cythonize(str tempdir, str mod_name) except*:
     shutil.copyfile(os.path.join(_source_dir, 'cufft.pyx'),
                     os.path.join(tempdir, mod_name + '.pyx'))
     p = subprocess.run(['cython', '-3', '--cplus',
-                        '-E', 'HIP_VERSION=0',
-                        '-E', 'CUDA_VERSION=' + _build_ver,
+                        '-E', 'CUPY_HIP_VERSION=0',
+                        '-E', 'CUPY_CUDA_VERSION=' + _build_ver,
                         '-E', 'CUPY_CUFFT_STATIC=True',
                         os.path.join(tempdir, mod_name + '.pyx'),
                         '-o', os.path.join(tempdir, mod_name + '.cpp')],
@@ -193,24 +192,49 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
     p.check_returncode()
 
 
+# Archs with the same major CC version could share the implementations, so for
+# the purpose of pruning we should dump all SMs with the same major ver.
+#
+# In practice, this only happens with sm_86 (cupy/cupy#5508) as of CUDA 11.4;
+# other SMs always use sm_X0's symbols only and do not have their own
+# specializations.
+cdef dict _cc_major_map = {
+    '8': ('80', '86'),
+    '7': ('70', '72', '75'),
+    '6': ('60', '61', '62'),
+    '5': ('50', '52', '53'),
+    '3': ('35', '37'),
+}
+
+
 cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
     cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_temp, cufft_lib_cached
 
     if _nvprune:
         cufft_lib_full = os.path.join(_cuda_path, 'lib64/libcufft_static.a')
-        cufft_lib_pruned = 'cufft_static_' + _cufft_ver + '_sm' + arch
+        cufft_lib_pruned = f'cufft_static_{_cufft_ver}_sm{arch[0]}'
         cufft_lib_temp = os.path.join(temp_dir,
                                       'lib' + cufft_lib_pruned + '.a')
         cufft_lib_cached = os.path.join(cache_dir,
                                         'lib' + cufft_lib_pruned + '.a')
         if not os.path.isfile(cufft_lib_cached):
-            p = subprocess.run([_nvprune, '-arch=sm_' + arch,
-                                cufft_lib_full, '-o', cufft_lib_temp],
-                               env=os.environ, cwd=temp_dir)
+            comm = [_nvprune]
+            for cc in _cc_major_map[arch[0]]:
+                comm.append(f'--generate-code=arch=compute_{cc},code=sm_{cc}')
+            comm += [cufft_lib_full, '-o', cufft_lib_temp]
+            p = subprocess.run(comm,
+                               env=os.environ, cwd=temp_dir,
+                               stderr=subprocess.PIPE)
             p.check_returncode()
-            # atomic move with the destination guaranteed to be overwritten;
-            # using os.replace() is also ok here
-            os.rename(cufft_lib_temp, cufft_lib_cached)
+            if p.stderr:
+                # maybe this is a new arch that we haven't seen or unsupported
+                # by the current CUDA ver?
+                err = f'nvprune failed with sm_{arch}:\n{p.stderr}'
+                raise RuntimeError(err)
+            else:
+                # atomic move with the destination guaranteed to be overwritten
+                # (using os.replace() is also ok here)
+                os.rename(cufft_lib_temp, cufft_lib_cached)
     else:
         # nvprune is not found, just link against the full static lib
         cufft_lib_pruned = None

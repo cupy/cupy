@@ -1,9 +1,12 @@
+import itertools
+
 import numpy
 
 from cupy import _core
 from cupy._core import _fusion_interface
 from cupy._core import fusion
 from cupy._sorting import search
+from cupy_backends.cuda.api import runtime
 
 
 def copyto(dst, src, casting='same_kind', where=None):
@@ -39,31 +42,60 @@ def copyto(dst, src, casting='same_kind', where=None):
     if not can_cast:
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
+
     if fusion._is_fusing():
+        # TODO(kataoka): NumPy allows stripping leading unit dimensions.
+        # But fusion array proxy does not currently support
+        # `shape` and `squeeze`.
+
         if where is None:
             _core.elementwise_copy(src, dst)
         else:
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
 
+    if not src_is_python_scalar:
+        # Check broadcast condition
+        # - for fast-paths and
+        # - for a better error message (than ufunc's).
+        # NumPy allows stripping leading unit dimensions.
+        if not all([
+            s in (d, 1)
+            for s, d in itertools.zip_longest(
+                reversed(src.shape), reversed(dst.shape), fillvalue=1)
+        ]):
+            raise ValueError(
+                "could not broadcast input array "
+                f"from shape {src.shape} into shape {dst.shape}")
+        squeeze_ndim = src.ndim - dst.ndim
+        if squeeze_ndim > 0:
+            # always succeeds because broadcast conition is checked.
+            src = src.squeeze(tuple(range(squeeze_ndim)))
+
+    if where is not None:
+        _core.elementwise_copy(src, dst, _where=where)
+        return
+
     if dst.size == 0:
         return
 
-    if src_is_python_scalar and where is None:
+    if src_is_python_scalar:
         dst.fill(src)
         return
 
-    if where is None:
-        if _can_memcpy(dst, src):
-            dst.data.copy_from_async(src.data, src.nbytes)
-        else:
-            device = dst.device
-            with device:
-                if src.device != device:
-                    src = src.copy()
-                _core.elementwise_copy(src, dst)
-    else:
-        _core.elementwise_copy_where(src, where, dst)
+    if _can_memcpy(dst, src):
+        dst.data.copy_from_async(src.data, src.nbytes)
+        return
+
+    device = dst.device
+    prev_device = runtime.getDevice()
+    try:
+        runtime.setDevice(device.id)
+        if src.device != device:
+            src = src.copy()
+        _core.elementwise_copy(src, dst)
+    finally:
+        runtime.setDevice(prev_device)
 
 
 def _can_memcpy(dst, src):

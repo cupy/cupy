@@ -107,7 +107,17 @@ cusolverStatus_t cusolverDnSHgesv(...) {
 #endif // #if CUDA_VERSION < 10020
 
 #if CUDA_VERSION < 11000
+
+typedef enum cusolverDnParams_t {};
+
 // Functions added in CUDA 11.0
+cusolverStatus_t cusolverDnCreateParams(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDestroyParams(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -218,6 +228,17 @@ cusolverStatus_t cusolverDnSHgels(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 #endif // #if CUDA_VERSION < 11000
+
+#if CUDA_VERSION < 11010
+// Functions added in CUDA 11.1
+cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
+cusolverStatus_t cusolverDnXsyevd(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+#endif // #if CUDA_VERSION < 11010
 
 } // extern "C"
 

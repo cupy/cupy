@@ -7,9 +7,8 @@
 
 #elif defined(CUPY_USE_HIP)
 
-// TODO(leofang): support hipSPARSE
 #include "hip/cupy_hip_common.h"
-#include "stub/cupy_cusparse.h"
+#include "hip/cupy_hipsparse.h"
 
 #else
 

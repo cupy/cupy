@@ -42,3 +42,13 @@ def array_str(arr, max_line_width=None, precision=None, suppress_small=None):
     """
     return numpy.array_str(cupy.asnumpy(arr), max_line_width, precision,
                            suppress_small)
+
+
+def array2string(a, *args, **kwargs):
+    """Return a string representation of an array.
+
+
+    .. seealso:: :func:`numpy.array2string`
+
+    """
+    return numpy.array2string(cupy.asnumpy(a), *args, **kwargs)

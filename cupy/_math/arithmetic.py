@@ -21,6 +21,9 @@ reciprocal = _core.create_ufunc(
     ''')
 
 
+positive = _core.positive
+
+
 negative = _core.negative
 
 
@@ -30,6 +33,38 @@ conjugate = _core.conjugate
 angle = _core.angle
 
 
+# cupy.real is not a ufunc because it returns a view.
+# The ufunc implementation is used by fusion.
+_real_ufunc = _core.create_ufunc(
+    'cupy_real',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.real()'),
+     ('D->d', 'out0 = in0.real()')),
+    'out0 = in0',
+    doc='''Returns the real part of the elements of the array.
+
+    .. seealso:: :func:`numpy.real`
+
+    ''')
+
+
+# cupy.imag is not a ufunc because it may return a view.
+# The ufunc implementation is used by fusion.
+_imag_ufunc = _core.create_ufunc(
+    'cupy_imag',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.imag()'),
+     ('D->d', 'out0 = in0.imag()')),
+    'out0 = 0',
+    doc='''Returns the imaginary part of the elements of the array.
+
+    .. seealso:: :func:`numpy.imag`
+
+    ''')
+
+
 def real(val):
     '''Returns the real part of the elements of the array.
 
@@ -37,7 +72,7 @@ def real(val):
 
     '''
     if fusion._is_fusing():
-        return fusion._call_ufunc(_core.real, val)
+        return fusion._call_ufunc(_real_ufunc, val)
     if not isinstance(val, _core.ndarray):
         val = _core.array(val)
     return val.real
@@ -50,7 +85,7 @@ def imag(val):
 
     '''
     if fusion._is_fusing():
-        return fusion._call_ufunc(_core.imag, val)
+        return fusion._call_ufunc(_imag_ufunc, val)
     if not isinstance(val, _core.ndarray):
         val = _core.array(val)
     return val.imag

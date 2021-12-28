@@ -1,6 +1,7 @@
 import ast
 import collections
 import inspect
+import math
 import numbers
 import re
 import sys
@@ -54,6 +55,59 @@ def transpile_function_wrapper(func):
     return new_func
 
 
+def _parse_function_object(func):
+    # Parses function object into ast.FunctionDef object.
+    if not callable(func):
+        raise ValueError('`func` must be a callable object.')
+
+    if func.__name__ != '<lambda>':
+        if jit._getsource_func is None:
+            lines = inspect.getsource(func).split('\n')
+            num_indent = len(lines[0]) - len(lines[0].lstrip())
+            source = '\n'.join([
+                line.replace(' ' * num_indent, '', 1) for line in lines])
+        else:
+            source = jit._getsource_func(func)
+        tree = ast.parse(source)
+        assert isinstance(tree, ast.Module)
+        assert len(tree.body) == 1
+        return tree.body[0], source
+
+    if jit._getsource_func is not None:
+        full_source = jit._getsource_func(func)
+        start_line, end_line = 0, math.inf
+        source = full_source
+    else:
+        try:
+            filename = inspect.getsourcefile(func)
+        except TypeError:
+            filename = None
+        if filename is None:
+            raise ValueError(f'JIT needs access to Python source for {func}'
+                             'but could not be located')
+        with open(filename) as f:
+            full_source = f.read()
+        source, start_line = inspect.getsourcelines(func)
+        end_line = start_line + len(source)
+        source = ''.join(source)
+
+    tree = ast.parse(full_source)
+
+    nodes = [node for node in ast.walk(tree)
+             if isinstance(node, ast.Lambda)
+             and start_line <= node.lineno < end_line]
+    if len(nodes) > 1:
+        raise ValueError('Multiple callables are found near the'
+                         f' definition of {func}, and JIT could not'
+                         ' identify the source code for it.')
+    node = nodes[0]
+    return ast.FunctionDef(
+        name='_lambda_kernel', args=node.args,
+        body=[ast.Return(node.body)],
+        decorator_list=[], returns=None, type_comment=None,
+    ), source
+
+
 def transpile(func, attributes, mode, in_types, ret_type):
     """Transpile the target function
     Args:
@@ -63,32 +117,15 @@ def transpile(func, attributes, mode, in_types, ret_type):
         in_types (list of _cuda_types.TypeBase): Types of the arguments.
         ret_type (_cuda_types.TypeBase or None): Type of the return value.
     """
-
-    if not callable(func):
-        raise ValueError('`func` must be a callable object.')
-
-    if func.__name__ == '<lambda>':
-        raise NotImplementedError('Lambda function is not supported.')
-
-    attributes = ' '.join(attributes)
-    source = jit._getsource_func(func)
-    lines = source.split('\n')
-    num_indent = len(lines[0]) - len(lines[0].lstrip())
-    source = '\n'.join([
-        line.replace(' ' * num_indent, '', 1) for line in lines])
-
     cvars = inspect.getclosurevars(func)
     consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
-    tree = ast.parse(source)
-    assert isinstance(tree, ast.Module)
-    assert len(tree.body) == 1
+    attributes = ' '.join(attributes)
+    tree, source = _parse_function_object(func)
     cuda_code, env = _transpile_function(
-        tree.body[0], attributes, mode, consts, in_types, ret_type,
-        source=source
-    )
+        tree, attributes, mode, consts, in_types, ret_type, source=source)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
-        func_name=func.__name__,
+        func_name=tree.name,
         code=cuda_code,
         return_type=env.ret_type,
     )
@@ -343,10 +380,9 @@ def _transpile_stmt(stmt, is_toplevel, env):
                 else:
                     raise TypeError(
                         'Cannot assign constant value not at top-level.')
-            value = Data.init(value, env)
 
-        target = _transpile_lvalue(target, env, value.ctype)
-        return [f'{target.code} = {value.code};']
+        value = Data.init(value, env)
+        return _transpile_assign_stmt(target, env, value)
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -562,6 +598,13 @@ def _transpile_expr_internal(expr, env):
         value = _transpile_expr(expr.value, env)
         if is_constants(value):
             return Constant(getattr(value.obj, expr.attr))
+        if isinstance(value.ctype, _cuda_types.ArrayBase):
+            if 'ndim' == expr.attr:
+                return Constant(value.ctype.ndim)
+        if isinstance(value.ctype, _cuda_types.CArray):
+            if 'size' == expr.attr:
+                return Data(f'static_cast<long long>({value.code}.size())',
+                            _cuda_types.Scalar('q'))
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
@@ -578,35 +621,48 @@ def _transpile_expr_internal(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _transpile_lvalue(target, env, ctype):
+def _emit_assign_stmt(lvalue, rvalue, env):
+    if is_constants(lvalue):
+        raise TypeError('lvalue of assignment must not be constant value')
+
+    if (isinstance(lvalue.ctype, _cuda_types.Scalar)
+            and isinstance(rvalue.ctype, _cuda_types.Scalar)):
+        rvalue = _astype_scalar(rvalue, lvalue.ctype, 'same_kind', env)
+    elif lvalue.ctype != rvalue.ctype:
+        raise TypeError(
+            f'Data type mismatch of variable: `{lvalue.code}`: '
+            f'{lvalue.ctype} != {rvalue.ctype}')
+
+    return [f'{lvalue.code} = {rvalue.code};']
+
+
+def _transpile_assign_stmt(target, env, value, depth=0):
     if isinstance(target, ast.Name):
         name = target.id
         if env[name] is None:
-            env[name] = Data(name, ctype)
-        elif is_constants(env[name]):
-            raise TypeError('Type mismatch of variable: `{name}`')
-        elif env[name].ctype != ctype:
-            raise TypeError(
-                f'Data type mismatch of variable: `{name}`: '
-                f'{env[name].ctype.dtype} != {ctype.dtype}')
-        return env[name]
+            env[name] = Data(name, value.ctype)
+        return _emit_assign_stmt(env[name], value, env)
 
     if isinstance(target, ast.Subscript):
-        return _transpile_expr(target, env)
+        target = _transpile_expr(target, env)
+        return _emit_assign_stmt(target, value, env)
 
     if isinstance(target, ast.Tuple):
-        if not isinstance(ctype, _cuda_types.Tuple):
-            raise ValueError(f'{ctype} cannot be unpack')
+        if not isinstance(value.ctype, _cuda_types.Tuple):
+            raise ValueError(f'{value.ctype} cannot be unpack')
         size = len(target.elts)
-        if len(ctype.types) > size:
+        if len(value.ctype.types) > size:
             raise ValueError(f'too many values to unpack (expected {size})')
-        if len(ctype.types) < size:
+        if len(value.ctype.types) < size:
             raise ValueError(f'not enough values to unpack (expected {size})')
-        elts = [_transpile_lvalue(x, env, t)
-                for x, t in zip(target.elts, ctype.types)]
-        # TODO: Support compile time constants.
-        elts_code = ', '.join([x.code for x in elts])
-        return Data(f'thrust::tie({elts_code})', ctype)
+        codes = [f'{value.ctype} _temp{depth} = {value.code};']
+        for i in range(size):
+            code = f'thrust::get<{i}>(_temp{depth})'
+            ctype = value.ctype.types[i]
+            stmt = _transpile_assign_stmt(
+                target.elts[i], env, Data(code, ctype), depth + 1)
+            codes.extend(stmt)
+        return [CodeBlock('', codes)]
 
 
 def _indexing(array, index, env):
@@ -619,7 +675,10 @@ def _indexing(array, index, env):
     array = Data.init(array, env)
 
     if isinstance(array.ctype, _cuda_types.Tuple):
-        raise NotImplementedError
+        if is_constants(index):
+            i = index.obj
+            return Data(f'thrust::get<{i}>({array.code})', array.types[i])
+        raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
         index = Data.init(index, env)
@@ -651,7 +710,7 @@ def _indexing(array, index, env):
             return Data(
                 f'{array.code}._indexing({index.code})',
                 array.ctype.child_type)
-        if isinstance(index.ctype, _cuda_types.Array):
+        if isinstance(index.ctype, _cuda_types.CArray):
             raise TypeError('Advanced indexing is not supported.')
         assert False  # Never reach.
 

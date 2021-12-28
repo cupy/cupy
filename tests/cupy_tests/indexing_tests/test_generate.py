@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy._indexing import generate
 from cupy import testing
@@ -40,7 +41,8 @@ class TestIX_(unittest.TestCase):
     def test_ix_list(self, xp):
         return xp.ix_([0, 1], [2, 4])
 
-    @pytest.mark.xfail(runtime.is_hip, reason='HIP may have a bug')
+    @pytest.mark.xfail(runtime.is_hip and driver.get_build_version() < 402,
+                       reason='HIP may have a bug')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ix_ndarray(self, xp, dtype):
@@ -287,3 +289,21 @@ class TestRavelMultiIndex(unittest.TestCase):
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
             with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, mode='invalid')
+
+
+class TestMaskIndices:
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices(self, xp):
+        # arr is a square matrix with 50% density
+        multiplier = testing.shaped_random((10, 10), xp=xp, dtype=xp.bool_)
+        arr = testing.shaped_random((10, 10), xp=xp) * multiplier
+        return xp.mask_indices(10, lambda n, k=None: arr)
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices_k(self, xp):
+        return xp.mask_indices(10, xp.triu, k=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_empty(self, xp):
+        return xp.mask_indices(0, xp.triu)

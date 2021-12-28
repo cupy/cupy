@@ -1,7 +1,10 @@
+import gc
+import threading
 import unittest
 
 import pytest
 
+import cupy
 from cupy._creation import from_data
 from cupy import cuda
 from cupy import testing
@@ -60,13 +63,15 @@ class TestStream(unittest.TestCase):
 
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
+        assert stream is cuda.get_current_stream()
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
         del stream
-        assert cuda.Stream.null == cuda.get_current_stream()
+        assert stream_ptr == cuda.get_current_stream().ptr
+        cuda.Stream.null.use()
+        assert cuda.Stream.null is cuda.get_current_stream()
         # Want to test cudaStreamDestory is issued, but
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
-        del stream_ptr
         del x
 
     def test_del_default(self):
@@ -110,8 +115,6 @@ class TestStream(unittest.TestCase):
 
     @unittest.skipIf(cuda.runtime.is_hip,
                      'HIP does not support launch_host_func')
-    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
-                     'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -184,6 +187,56 @@ class TestStream(unittest.TestCase):
         # self.stream is "forgotten"!
         assert cuda.get_current_stream() == cuda.Stream.null
 
+    def test_stream_thread(self):
+        s1 = None
+
+        def f1(barrier, errors):
+            global s1
+            tid = barrier.wait()
+            try:
+                s1 = cuda.Stream()
+                barrier.wait()  # until t2 starts
+                s1.use()
+                barrier.wait()  # until t2 uses the stream
+                s1 = None
+                gc.collect()
+                barrier.wait()  # until t2 decrefs the stream
+                assert cuda.get_current_stream() is not None
+                cupy.arange(10)
+                errors[tid] = False
+            except Exception as e:
+                print(f'error in {tid}: {e}')
+
+        def f2(barrier, errors):
+            global s1
+            tid = barrier.wait()
+            try:
+                barrier.wait()  # until t1 creates the stream
+                s1.use()
+                barrier.wait()  # until t1 uses the stream
+                s1 = None
+                gc.collect()
+                barrier.wait()  # until t1 decrefs the stream
+                assert cuda.get_current_stream() is not None
+                cupy.arange(10)
+                errors[tid] = False
+            except Exception as e:
+                print(f'error in {tid}: {e}')
+
+        barrier = threading.Barrier(2)
+        errors = [True, True]
+        threads = [
+            threading.Thread(target=f1, args=(barrier, errors), daemon=True),
+            threading.Thread(target=f2, args=(barrier, errors), daemon=True),
+        ]
+        del s1
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for err in errors:
+            assert err is False
+
 
 @testing.gpu
 class TestExternalStream(unittest.TestCase):
@@ -213,8 +266,6 @@ class TestExternalStream(unittest.TestCase):
 
     @unittest.skipIf(cuda.runtime.is_hip,
                      'HIP does not support launch_host_func')
-    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
-                     'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]

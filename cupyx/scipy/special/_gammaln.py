@@ -2,7 +2,7 @@ from cupy import _core
 
 
 gammaln = _core.create_ufunc(
-    'cupyx_scipy_gammaln', ('f->f', 'd->d'),
+    'cupyx_scipy_special_gammaln', ('f->f', 'd->d'),
     '''
     if (isinf(in0) && in0 < 0) {
         out0 = -1.0 / 0.0;

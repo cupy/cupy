@@ -6,19 +6,19 @@ import warnings as _warnings
 
 import numpy as _numpy
 
-from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cusolver
 # due to a Cython bug (cython/cython#4000) we cannot just cimport the module
 from cupy_backends.cuda.libs.cusolver cimport (  # noqa
-    sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
+    sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
+    sgeqrf_bufferSize, dgeqrf_bufferSize, cgeqrf_bufferSize, zgeqrf_bufferSize,
+    sorgqr_bufferSize, dorgqr_bufferSize, cungqr_bufferSize, zungqr_bufferSize)
 
 from cupy.cuda cimport memory
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
-from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
@@ -46,10 +46,24 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
         intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
         intptr_t w_ptr, int buffersize, intptr_t info_ptr,
         int batch_size)
+    int geqrf_loop[T](
+        intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
+        intptr_t tau_ptr, intptr_t w_ptr,
+        int buffersize, intptr_t info_ptr,
+        int batch_size)
+    int orgqr_loop[T](
+        intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
+        intptr_t tau_ptr, intptr_t w_ptr,
+        int buffersize, intptr_t info_ptr,
+        int batch_size, int origin_n)
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
                          intptr_t, int, intptr_t, int) nogil
+ctypedef int(*geqrf_ptr)(intptr_t, int, int, intptr_t, int, intptr_t,
+                         intptr_t, int, intptr_t, int) nogil
+ctypedef int(*orgqr_ptr)(intptr_t, int, int, int, intptr_t, int, intptr_t,
+                         intptr_t, int, intptr_t, int, int) nogil
 
 
 _available_cuda_version = {
@@ -65,14 +79,14 @@ _available_cuda_version = {
 }
 
 _available_hip_version = {
-    'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
-    'potrfBatched': (306, None),
-    # Below are APIs supported by CUDA but not yet by HIP. We need them here
+    # For APIs supported by CUDA but not yet by HIP, we still need them here
     # so that our test suite can cover both platforms.
     'gesvdj': (_numpy.inf, None),
+    'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
     'gesvda': (_numpy.inf, None),
+    'potrfBatched': (306, None),
     'potrsBatched': (_numpy.inf, None),
-    'syevj': (_numpy.inf, None),
+    'syevj': (402, None),
     'gesv': (_numpy.inf, None),
     'gels': (_numpy.inf, None),
     'csrlsvqr': (_numpy.inf, None),
@@ -84,14 +98,13 @@ _available_compute_capability = {
 }
 
 
-@_util.memoize()
+@_util.memoize(for_each_device=True)
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cuda_version
-        version = _runtime.runtimeGetVersion()
     else:
         available_version = _available_hip_version
-        version = _driver.get_build_version()  # = HIP_VERSION
+    version = cusolver._get_cuda_build_version()
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
@@ -101,7 +114,7 @@ def check_availability(name):
     if version_removed is not None and version >= version_removed:
         return False
     # CUDA specific stuff
-    if name in _available_compute_capability:
+    if not _runtime.is_hip and name in _available_compute_capability:
         compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
             return False
@@ -193,7 +206,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
         return s
 
 
-def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
+cpdef _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     if not check_availability('gesvdjBatched'):
         raise RuntimeError('gesvdj is not available.')
 
@@ -219,7 +232,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
     a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
-    if _runtime.is_hip:
+    if runtime._is_hip_environment:
         # rocsolver_<t>gesvd_batched has a different signature...
         ap = _linalg._mat_ptrs(a)
     else:
@@ -249,7 +262,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
-    if _runtime.is_hip:
+    if runtime._is_hip_environment:
         v = v.swapaxes(-1, -2).conj()
     if not full_matrices:
         u = u[..., :mn]
@@ -557,8 +570,13 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     a = a.reshape(batch_size, m, lda)
     v = _cupy.array(
         a.swapaxes(-2, -1), order='C', copy=True, dtype=dtype)
+    if runtime._is_hip_environment:
+        # the batched syev/heev has a different signature...
+        vp = _linalg._mat_ptrs(v)
+    else:
+        vp = v
 
-    w = _cupy.empty((batch_size, m), real_dtype).swapaxes(-2, 1)
+    w = _cupy.empty((batch_size, m), real_dtype).swapaxes(-2, -1)
     dev_info = _cupy.empty((batch_size,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
@@ -590,10 +608,11 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
     params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
-        handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params, batch_size)
+        handle, jobz, uplo, m, vp.data.ptr, lda,
+        w.data.ptr, params, batch_size)
     work = _cupy.empty(work_size, dtype)
     syevjBatched(
-        handle, jobz, uplo, m, v.data.ptr, lda,
+        handle, jobz, uplo, m, vp.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
@@ -844,3 +863,119 @@ def csrlsvqr(A, b, tol=0, reorder=1):
                        'tolerance {} (singularity: {})'.
                        format(tol, singularity))
     return x
+
+
+cpdef _geqrf_orgqr_batched(a, mode):
+    '''Internal helper for batched QR solver. The input array ``a''
+    is of shape (batch_size, m, n)
+    '''
+    cdef intptr_t x_ptr, tau_ptr, w_ptr, info_ptr
+    cdef int m, n, k, batch_size, buffersize, orig_n
+
+    # support float32, float64, complex64, and complex128
+    dtype, out_dtype = _cupy.linalg._util.linalg_common_type(a)
+
+    batch_size, m, n = a.shape
+    mn = min(m, n)
+
+    x = a.swapaxes(-2, -1).astype(dtype, order='C', copy=True)
+    if runtime._is_hip_environment:
+        # rocsolver_<t>geqrf_batched has a different signature...
+        ap = _linalg._mat_ptrs(x)
+    else:
+        ap = x
+    x_ptr = ap.data.ptr
+
+    cdef intptr_t handle = _device.get_cusolver_handle()
+    dev_info = _ndarray_init((batch_size,), _numpy.int32)
+    info_ptr = dev_info.data.ptr
+
+    cdef geqrf_ptr geqrf
+    if dtype == 'f':
+        geqrf_bufferSize = sgeqrf_bufferSize
+        geqrf = geqrf_loop[float]
+    elif dtype == 'd':
+        geqrf_bufferSize = dgeqrf_bufferSize
+        geqrf = geqrf_loop[double]
+    elif dtype == 'F':
+        geqrf_bufferSize = cgeqrf_bufferSize
+        geqrf = geqrf_loop[cuComplex]
+    elif dtype == 'D':
+        geqrf_bufferSize = zgeqrf_bufferSize
+        geqrf = geqrf_loop[cuDoubleComplex]
+    else:
+        msg = ('dtype must be float32, float64, complex64 or complex128'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
+
+    # this wrapper also sets the stream for us
+    buffersize = geqrf_bufferSize(handle, m, n, x.data.ptr, n)
+    # we are on the same stream, so the workspace can be reused in the loop
+    workspace = memory.alloc(buffersize * a.dtype.itemsize)
+    w_ptr = workspace.ptr
+    tau = _cupy.empty((batch_size, mn), dtype=dtype)
+    tau_ptr = tau.data.ptr
+
+    # compute working space of geqrf and solve R
+    # the loop starts here, with gil released to reduce overhead
+    with nogil:
+        status = geqrf(handle, m, n, x_ptr, m, tau_ptr,
+                       w_ptr, buffersize, info_ptr, batch_size)
+    if status != 0:
+        raise _cusolver.CUSOLVERError(status)
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        'geqrf', dev_info)
+
+    if mode == 'r':
+        r = x[..., :mn].swapaxes(-2, -1)
+        return _cupy.linalg._util._triu(r).astype(out_dtype, copy=False)
+
+    if mode == 'raw':
+        return (x.astype(out_dtype, copy=False),
+                tau.astype(out_dtype, copy=False))
+
+    if mode == 'complete' and m > n:
+        mc = m
+        orig_n = m
+        q = _cupy.empty((batch_size, m, m), dtype)
+    else:
+        mc = mn
+        orig_n = n
+        q = _cupy.empty((batch_size, n, m), dtype)
+    q[..., :n, :] = x
+    x_ptr = q.data.ptr
+
+    # compute working space of orgqr and solve Q
+    cdef orgqr_ptr orgqr
+    if dtype == 'f':
+        orgqr_bufferSize = sorgqr_bufferSize
+        orgqr = orgqr_loop[float]
+    elif dtype == 'd':
+        orgqr_bufferSize = dorgqr_bufferSize
+        orgqr = orgqr_loop[double]
+    elif dtype == 'F':
+        orgqr_bufferSize = cungqr_bufferSize
+        orgqr = orgqr_loop[cuComplex]
+    elif dtype == 'D':
+        orgqr_bufferSize = zungqr_bufferSize
+        orgqr = orgqr_loop[cuDoubleComplex]
+
+    # this wrapper also sets the stream for us
+    buffersize = orgqr_bufferSize(
+        handle, m, mc, mn, x_ptr, m, tau_ptr)
+    workspace = memory.alloc(buffersize * a.dtype.itemsize)
+    w_ptr = workspace.ptr
+
+    with nogil:
+        status = orgqr(
+            handle, m, mc, mn, x_ptr, m, tau_ptr, w_ptr,
+            buffersize, info_ptr, batch_size, orig_n)
+    if status != 0:
+        raise _cusolver.CUSOLVERError(status)
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        'orgqr', dev_info)
+
+    q = q[..., :mc, :].swapaxes(-2, -1)
+    r = x[..., :mc].swapaxes(-2, -1)
+    return (q.astype(out_dtype, copy=False),
+            _cupy.linalg._util._triu(r).astype(out_dtype, copy=False))

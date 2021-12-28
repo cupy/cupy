@@ -1,31 +1,16 @@
 import os
 
 
-try:
+from cupy.testing._pytest_impl import is_available, check_available
+
+
+if is_available():
     import pytest
-    _error = None
-except ImportError as e:
-    _error = e
 
-
-def is_available():
-    return _error is None
-
-
-def check_available():
-    if _error is not None:
-        raise RuntimeError('''\
-{} is not available.
-
-Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
-
-
-def get_error():
-    return _error
-
-
-if _error is None:
     _gpu_limit = int(os.getenv('CUPY_TEST_GPU_LIMIT', '-1'))
+
+    def gpu(*args, **kwargs):
+        return pytest.mark.gpu(*args, **kwargs)
 
     def cudnn(*args, **kwargs):
         return pytest.mark.cudnn(*args, **kwargs)
@@ -35,9 +20,10 @@ if _error is None:
 
 else:
     def _dummy_callable(*args, **kwargs):
-        check_available()
+        check_available('pytest attributes')
         assert False  # Not reachable
 
+    gpu = _dummy_callable
     cudnn = _dummy_callable
     slow = _dummy_callable
 
@@ -52,19 +38,14 @@ def multi_gpu(gpu_num):
     be skipped.
     """
 
-    check_available()
+    check_available('multi_gpu attribute')
     # at this point we know pytest is available for sure
-    return pytest.mark.skipif(
-        0 <= _gpu_limit < gpu_num,
-        reason='{} GPUs required'.format(gpu_num))
 
+    assert 1 < gpu_num
 
-def gpu(f):
-    """Decorator to indicate that GPU is required to run the test.
-
-    Tests can be annotated with this decorator (e.g., ``@gpu``) to
-    declare that one GPU is required to run.
-    """
-
-    check_available()
-    return multi_gpu(1)(pytest.mark.gpu(f))
+    def _wrapper(f):
+        return pytest.mark.skipif(
+            0 <= _gpu_limit < gpu_num,
+            reason='{} GPUs required'.format(gpu_num))(
+                pytest.mark.multi_gpu(f))
+    return _wrapper

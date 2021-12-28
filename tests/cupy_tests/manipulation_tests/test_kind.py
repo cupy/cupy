@@ -11,6 +11,13 @@ from cupy import testing
 class TestKind(unittest.TestCase):
 
     @testing.for_all_dtypes()
+    def test_asfarray(self, dtype):
+        a = cupy.asarray([1, 2, 3])
+        a_gpu = cupy.asfarray(a, dtype)
+        a_cpu = numpy.asfarray(a.get(), dtype)
+        assert a_cpu.dtype == a_gpu.dtype
+
+    @testing.for_all_dtypes()
     def test_asfortranarray1(self, dtype):
         def func(xp):
             x = xp.zeros((2, 3), dtype)

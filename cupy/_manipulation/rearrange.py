@@ -3,7 +3,6 @@ import itertools
 import numpy
 
 import cupy
-from cupy._core import _reduction
 from cupy._core import internal
 
 
@@ -27,11 +26,7 @@ def flip(a, axis=None):
     .. seealso:: :func:`numpy.flip`
 
     """
-    a_ndim = a.ndim
-    if a_ndim < 1:
-        raise numpy.AxisError('Input must be >= 1-d')
-
-    axes = internal._normalize_axis_indices(axis, a_ndim)
+    axes = internal._normalize_axis_indices(axis, a.ndim)
     return _flip(a, axes)
 
 
@@ -99,9 +94,13 @@ def roll(a, shift, axis=None):
     """
     if axis is None:
         return roll(a.ravel(), shift, 0).reshape(a.shape)
-    elif isinstance(shift, cupy.ndarray):
+
+    axes = (axis,) if numpy.isscalar(axis) else axis
+    axes = tuple([  # allow_duplicate
+        internal._normalize_axis_index(ax, a.ndim) for ax in axes
+    ])
+    if isinstance(shift, cupy.ndarray):
         shift = shift.ravel()
-        axes = _reduction._get_axis(axis, a.ndim)[0]
         n_axes = max(len(axes), shift.size)
         axes = numpy.broadcast_to(axes, (n_axes,))
         shift = cupy.broadcast_to(shift, (n_axes,))
@@ -122,9 +121,7 @@ def roll(a, shift, axis=None):
 
         return a[tuple(indices)]
     else:
-        axis = _reduction._get_axis(axis, a.ndim)[0]
-
-        broadcasted = numpy.broadcast(shift, axis)
+        broadcasted = numpy.broadcast(shift, axes)
         if broadcasted.nd > 1:
             raise ValueError(
                 '\'shift\' and \'axis\' should be scalars or 1D sequences')

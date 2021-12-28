@@ -1,9 +1,10 @@
-import numpy
 import re
 
-import cupy
+import numpy
 
+import cupy
 import cupy._core._routines_manipulation as _manipulation
+from cupy._core._dtype import get_dtype
 from cupy._core import internal
 
 # Signature parsing code and dimension accessing has been borrowed
@@ -39,7 +40,6 @@ def _parse_gufunc_signature(signature):
     # TODO(ecastill) multiple output support
     if len(outs) > 1:
         raise ValueError('Currently more than 1 output is not supported')
-    outs = outs[0] if ((len(outs) == 1) and (out_txt[-1] != ',')) else outs
     return ins, outs
 
 
@@ -59,7 +59,7 @@ def _validate_normalize_axes(
     if axes and not isinstance(axes, list):
         raise ValueError('`axes` has to be of type list')
 
-    output_coredimss = output_coredimss if nout > 1 else [output_coredimss]
+    # output_coredimss = output_coredimss if nout > 1 else [output_coredimss]
     filtered_core_dims = list(filter(len, input_coredimss))
     nr_outputs_with_coredims = len(
         [True for x in output_coredimss if len(x) > 0])
@@ -140,6 +140,157 @@ def _validate_normalize_axes(
     return input_axes, output_axes
 
 
+class _OpsRegister:
+    '''
+    Holds the ops for each dtypes signature like ('ff->f', func1)
+    and allows to do look ups for these
+    '''
+    class _Op:
+        def __init__(self, in_types, out_types, func):
+            self.func = func
+            self.in_types = tuple(numpy.dtype(i) for i in in_types)
+            self.out_types = tuple(numpy.dtype(o) for o in out_types)
+            self.sig_str = (''.join(
+                in_t.char for in_t in self.in_types) + '->' + ''.join(
+                    out_t.char for out_t in self.out_types))
+
+    def __init__(self, signatures, default_func, nin, nout, name):
+        self._default_func = default_func
+        self._nin = nin
+        self._nout = nout
+        self._ops = self._process_signatures(signatures)
+        self._name = name
+
+    def _sig_str_to_tuple(self, sig):
+        sig = sig.replace(' ', '')
+        toks = sig.split('->')
+        if len(toks) != 2:
+            raise ValueError(f'signature {sig} for dtypes is invalid')
+        else:
+            ins, outs = toks
+        return ins, outs
+
+    def _process_signatures(self, signatures):
+        ops = []
+        for sig in signatures:
+            if isinstance(sig, tuple):
+                sig, op = sig
+            else:
+                op = self._default_func
+            ins, outs = self._sig_str_to_tuple(sig)
+            # Check the number of inputs and outputs matches the gufunc sig
+            if len(ins) != self._nin:
+                raise ValueError(
+                    f'signature {sig} for dtypes is invalid number of inputs '
+                    'is not consistent with general signature')
+            if len(outs) != self._nout:
+                raise ValueError(
+                    f'signature {sig} for dtypes is invalid number of inputs '
+                    'is not consistent with general signature')
+
+            ops.append(_OpsRegister._Op(ins, outs, op))
+        return ops
+
+    def _determine_from_args(self, args, casting):
+        n = len(args)
+        in_types = tuple(arg.dtype for arg in args)
+        for op in self._ops:
+            op_types = op.in_types
+            for i in range(n):
+                it = in_types[i]
+                ot = op_types[i]
+                if not numpy.can_cast(it, ot, casting=casting):
+                    break
+            else:
+                return op
+        return None
+
+    def _determine_from_dtype(self, dtype):
+        for op in self._ops:
+            op_types = op.out_types
+            for t in op_types:
+                if t != dtype:
+                    break
+            else:
+                return op
+        return None
+
+    def _determine_from_signature(self, signature):
+        # Lets convert the signature as it can be a tuple of tuples
+        # or a string
+        if isinstance(signature, tuple):
+            # create a string to do a look-up on the ops
+            if len(signature) == 1:
+                raise TypeError(
+                    'The use of a length 1 tuple for the ufunc `signature` is'
+                    ' not allowed. Use `dtype` or  fill the tuple with'
+                    ' `None`s.')
+            nin = self._nin
+            nout = self._nout
+            if len(signature) != (nin + nout):
+                raise TypeError(
+                    'A type-tuple must be specified of length 1 or 3 for ufunc'
+                    f' {self._name}')
+            signature = ''.join(
+                numpy.dtype(t).char for t in signature[:nin]) + '->' + ''.join(
+                    numpy.dtype(t).char for t in signature[nin:nin+nout])
+
+        if isinstance(signature, str):
+            is_out = len(signature) == 1
+            for op in self._ops:
+                if is_out:
+                    for t in op.out_types:
+                        if t.char != signature:
+                            break
+                    else:
+                        return op
+                else:
+                    if op.sig_str == signature:
+                        return op
+        raise TypeError('No loop matching the specified signature and'
+                        f' casting was found for ufunc {self._name}')
+
+    def determine_dtype(self, args, dtype, casting, signature):
+        ret_dtype = None
+        func = self._default_func
+        if signature is not None:
+            # TODO(ecastill) use an externally provided signature to
+            # find the typecasting rules
+            op = self._determine_from_signature(signature)
+        elif dtype is not None:
+            if type(dtype) == tuple:
+                # TODO(ecastill) support dtype tuples
+                raise RuntimeError('dtype with tuple is not yet supported')
+            op = self._determine_from_dtype(dtype)
+        else:
+            op = self._determine_from_args(args, casting)
+
+        if op is None:
+            # Should we allow op to be none?
+            if dtype is None:
+                dtype = args[0].dtype
+                for arg in args:
+                    ret_dtype = numpy.promote_types(dtype, arg.dtype)
+            else:
+                ret_dtype = get_dtype(dtype)
+        else:
+            # Convert args to the op specified in_types
+            n_args = []
+            for i, (arg, in_type) in enumerate(zip(args, op.in_types)):
+                if numpy.can_cast(arg.dtype, in_type, casting=casting):
+                    n_args.append(arg.astype(in_type, copy=False))
+                else:
+                    raise TypeError(
+                        f'cannot cast ufunc {self._name} input {i} from'
+                        f' {arg.dtype} to {dtype} with casting rule'
+                        f' {casting}')
+            args = n_args
+            ret_dtype = op.out_types[0]
+            func = op.func
+
+        return args, ret_dtype, func
+
+
 class _GUFunc:
     '''
     Creates a Generalized Universal Function by wrapping a user
@@ -169,8 +320,16 @@ class _GUFunc:
         supports_out (bool, optional):
             If the wrapped function supports out as one of its kwargs.
             Defaults to `False`.
+        signatures (list of tuple of str):
+            Contains strings in the form of 'ii->i' with i being the char of a
+            dtype. Each element of the list is a tuple with the string
+            and a alternative function to `func` to be executed when the inputs
+            of the function can be casted as described by this function.
         name (str, optional):
             Name for the GUFunc object. If not specified, ``func``'s name
+            is used.
+        doc (str, optional):
+            Docstring for the GUFunc object. If not specified, ``func.__doc__``
             is used.
     '''
 
@@ -179,14 +338,21 @@ class _GUFunc:
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self._default_casting = 'same_kind'
-        self.__name__ = kwargs.get('name', func.__name__)
+        self.__name__ = kwargs.pop('name', func.__name__)
+        self.__doc__ = kwargs.pop('doc', func.__doc__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
         # stuff internally due to CUDA libraries requirements
-        self._supports_batched = kwargs.get('supports_batched', False)
-        self._supports_out = kwargs.get('supports_out', False)
+        self._supports_batched = kwargs.pop('supports_batched', False)
+        self._supports_out = kwargs.pop('supports_out', False)
+        signatures = kwargs.pop('signatures', [])
+
+        if kwargs:
+            raise TypeError(
+                'got unexpected keyword arguments: '
+                + ', '.join([repr(k) for k in kwargs])
+            )
 
         # Preprocess the signature here
         input_coredimss, output_coredimss = _parse_gufunc_signature(
@@ -204,12 +370,24 @@ class _GUFunc:
         # Determine nout: nout = None for functions of one
         # direct return; nout = int for return tuples
         self._nout = (
-            None
+            0
             if not isinstance(output_coredimss, list)
             else len(output_coredimss)
         )
+        self._nin = (
+            0
+            if not isinstance(input_coredimss, list)
+            else len(input_coredimss)
+        )
+        # Determines the function that will be run depending on the datatypes
+        # Pass a list of signatures that are either the types in format
+        # ii->o or a tuple with the string and a function other than func to be
+        # executed for those types
+        # For some reason _nout is a tuple and now we get it with 0s
+        self._ops_register = _OpsRegister(
+            signatures, self._func, self._nin, self._nout, self.__name__)
 
-    def _apply_func_to_inputs(self, dim, sizes, dims, args, outs):
+    def _apply_func_to_inputs(self, func, dim, sizes, dims, args, outs):
         # Apply function
         # The resulting array is loop_output_dims+the specified dims
         # Some functions have batching logic inside due to higly
@@ -217,10 +395,10 @@ class _GUFunc:
         if self._supports_batched or dim == len(dims):
             # Check if the function supports out, order and other args
             if self._supports_out and outs is not None:
-                outs = outs[0] if len(outs) == 0 else outs
-                self._func(*args, out=outs)
+                outs = outs[0] if len(outs) == 1 else outs
+                func(*args, out=outs)
             else:
-                fouts = self._func(*args)
+                fouts = func(*args)
                 # TODO(ecastill) improve this check
                 if isinstance(fouts, cupy.ndarray):
                     fouts = (fouts,)
@@ -233,7 +411,7 @@ class _GUFunc:
                 if outs is not None:
                     n_outs = [o[i] for o in outs]
                     self._apply_func_to_inputs(
-                        dim + 1, sizes, dims, n_args, n_outs)
+                        func, dim + 1, sizes, dims, n_args, n_outs)
 
     def _transpose_element(self, arg, iax, shape):
         iax = tuple(a if a < 0 else a - len(shape) for a in iax)
@@ -342,6 +520,24 @@ class _GUFunc:
 
         return args, dimsizess, loop_output_dims, outs, missing_dims
 
+    def _determine_order(self, args, order):
+        if order.upper() in ('C', 'K'):
+            # Order is determined to be C to allocate the out array
+            # but we will change the strides of the out array
+            # to be K later in __call__
+            return 'C'
+        elif order.upper() == 'A':
+            # order is F if all arrays are strictly F
+            order = ('F' if all([a.flags.f_contiguous
+                                 and not a.flags.c_contiguous
+                                 for a in args]) else 'C')
+            return order
+
+        elif order.upper() == 'F':
+            return 'F'
+        else:
+            raise RuntimeError(f'Unknown order {order}')
+
     def __call__(self, *args, **kwargs):
         '''
         Apply a generalized ufunc.
@@ -381,6 +577,31 @@ class _GUFunc:
                 signatures like ``'(i),(i)->()'`` or ``'(m,m)->()'``.
                 If used, the location of the dimensions in the output can
                 be controlled with axes and axis.
+            casting (str, optional):
+                Provides a policy for what kind of casting is permitted.
+                Defaults to ``'same_kind'``
+            dtype (dtype, optional):
+                Overrides the dtype of the calculation and output arrays.
+                Similar to signature.
+            signature (str or tuple of dtype, optional):
+                Either a data-type, a tuple of data-types, or a special
+                signature string indicating the input and output types of a
+                ufunc. This argument allows you to provide a specific
+                signature for the function to be used if registered in the
+                ``signatures`` kwarg of the ``__init__`` method.
+                If the loop specified does not exist for the ufunc, then
+                a TypeError is raised. Normally, a suitable loop is found
+                automatically by comparing the input types with what is
+                available and searching for a loop with data-types to
+                which all inputs can be cast safely. This keyword argument
+                lets you bypass that search and choose a particular loop.
+            order (str, optional):
+                Specifies the memory layout of the output array. Defaults to
+                ``'K'``.``'C'`` means the output should be C-contiguous,
+                ``'F'`` means F-contiguous, ``'A'`` means F-contiguous
+                if the inputs are F-contiguous and not also not C-contiguous,
+                C-contiguous otherwise, and ``'K'`` means to match the element
+                ordering of the inputs as closely as possible.
             out (cupy.ndarray): Output array. It outputs to new arrays
                 default.
 
@@ -392,17 +613,24 @@ class _GUFunc:
         #  as those take non-scalar input.
         # where = kwargs.pop('where', None)
 
-        dtype = args[0].dtype
-        for arg in args:
-            ret_dtype = numpy.promote_types(dtype, arg.dtype)
-
         outs = kwargs.pop('out', None)
         axes = kwargs.pop('axes', None)
         axis = kwargs.pop('axis', None)
+        order = kwargs.pop('order', 'K')
+        dtype = kwargs.pop('dtype', None)
         keepdims = kwargs.pop('keepdims', False)
+        signature = kwargs.pop('signature', None)
+        casting = kwargs.pop('casting', 'same_kind')
         if len(kwargs) > 0:
             raise RuntimeError(
                 'Unknown kwargs {}'.format(' '.join(kwargs.keys())))
+
+        ret_dtype = None
+        func = self._func
+
+        # this will cast the inputs appropiately
+        args, ret_dtype, func = self._ops_register.determine_dtype(
+            args, dtype, casting, signature)
 
         if not type(self._signature) == str:
             raise TypeError('`signature` has to be of type string')
@@ -412,6 +640,8 @@ class _GUFunc:
                 outs = (outs,)
             else:
                 raise TypeError('`outs` must be a tuple or `cupy.ndarray`')
+
+        filter_order = self._determine_order(args, order)
 
         input_coredimss = self._input_coredimss
         output_coredimss = self._output_coredimss
@@ -432,20 +662,33 @@ class _GUFunc:
 
         # The output shape varies depending on optional dims or not
         # TODO(ecastill) this only works for one out argument
-        out_shape = tuple([dimsizess[od][0] for od in loop_output_dims]
-                          + [dimsizess[od][0] for od in output_coredimss])
+        out_shape = [dimsizess[od][0] for od in loop_output_dims]
+        if self._nout > 0:
+            out_shape += [dimsizess[od][0] for od in output_coredimss[0]]
+        out_shape = tuple(out_shape)
+
         if outs is None:
-            outs = (cupy.empty(out_shape, dtype=ret_dtype),)
-        elif outs[0].shape != out_shape:
-            raise ValueError(f'Invalid shape for out {outs[0].shape}'
-                             f' needs {out_shape}')
-        self._apply_func_to_inputs(0, dimsizess, loop_output_dims, args, outs)
+            outs = cupy.empty(out_shape, dtype=ret_dtype, order=filter_order)
+            if order == 'K':
+                strides = internal._get_strides_for_order_K(
+                    outs, ret_dtype, out_shape)
+                outs._set_shape_and_strides(out_shape, strides, True, True)
+            outs = (outs,)
+        else:
+            if outs[0].shape != out_shape:
+                raise ValueError(f'Invalid shape for out {outs[0].shape}'
+                                 f' needs {out_shape}')
+            if not numpy.can_cast(ret_dtype, outs[0].dtype, casting=casting):
+                raise TypeError(f'Cannot cast out dtype from {outs[0].dtype}'
+                                f' to {ret_dtype} with rule {casting}')
+        self._apply_func_to_inputs(
+            func, 0, dimsizess, loop_output_dims, args, outs)
 
         # This code credit goes to Dask
         # https://github.com/dask/dask/blob/61b578f5a3ad88cbc6a8b9a73ce08c551bd969fa/dask/array/gufunc.py#L462-L503
         # Treat direct output
 
-        if self._nout is None:
+        if self._nout == 0:
             output_coredimss = [output_coredimss]
 
         # Split output
@@ -482,5 +725,6 @@ class _GUFunc:
                         d for d, n in zip(core_shape, ocd) if n not in m_dims])
                     shape = shape[:-len(ocd)] + core_shape
                     leaf_arr = leaf_arr.reshape(shape)
+                # leaf_arrs.append(leaf_arr.astype(leaf_arr.dtype, order=order))  # NOQA
                 leaf_arrs.append(leaf_arr)
-        return tuple(leaf_arrs) if self._nout else leaf_arrs[0]
+        return tuple(leaf_arrs) if self._nout > 1 else leaf_arrs[0]

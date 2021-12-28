@@ -1,5 +1,5 @@
+import functools
 import re
-import unittest
 from unittest import mock
 
 import numpy
@@ -12,6 +12,7 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse import construct
 
@@ -24,7 +25,7 @@ from cupyx.scipy.sparse import construct
     'k': [0, 1],
 }))
 @testing.with_requires('scipy')
-class TestEye(unittest.TestCase):
+class TestEye:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eye(self, xp, sp):
@@ -40,7 +41,7 @@ class TestEye(unittest.TestCase):
     'format': ['csr', 'csc', 'coo'],
 }))
 @testing.with_requires('scipy')
-class TestIdentity(unittest.TestCase):
+class TestIdentity:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_eye(self, xp, sp):
@@ -54,7 +55,7 @@ class TestIdentity(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
-class TestSpdiags(unittest.TestCase):
+class TestSpdiags:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_spdiags(self, xp, sp):
@@ -67,7 +68,7 @@ class TestSpdiags(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64]
 }))
-class TestVstack(unittest.TestCase):
+class TestVstack:
 
     def data(self):
 
@@ -121,7 +122,7 @@ class TestVstack(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64]
 }))
-class TestHstack(unittest.TestCase):
+class TestHstack:
 
     def data(self):
 
@@ -166,7 +167,7 @@ class TestHstack(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64]
 }))
-class TestBmat(unittest.TestCase):
+class TestBmat:
 
     def data(self):
         A = sparse.csr_matrix(cupy.asarray([[1, 2], [3, 4]],
@@ -246,7 +247,7 @@ class TestBmat(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
     'format': ['csr', 'csc', 'coo'],
 }))
-class TestRandom(unittest.TestCase):
+class TestRandom:
 
     def test_random(self):
         x = getattr(sparse, self.random_method)(
@@ -307,7 +308,7 @@ class TestRandom(unittest.TestCase):
 
 
 @testing.with_requires('scipy')
-class TestRandomInvalidArgument(unittest.TestCase):
+class TestRandomInvalidArgument:
 
     def test_too_small_density(self):
         for sp in (scipy.sparse, sparse):
@@ -321,7 +322,7 @@ class TestRandomInvalidArgument(unittest.TestCase):
 
     def test_invalid_dtype(self):
         # Note: SciPy 1.12+ accepts integer.
-        with self.assertRaises(NotImplementedError):
+        with pytest.raises(NotImplementedError):
             sparse.random(3, 4, dtype='i')
 
 
@@ -330,7 +331,7 @@ class TestRandomInvalidArgument(unittest.TestCase):
     'format': ['dia', 'csr', 'csc', 'coo'],
 }))
 @testing.with_requires('scipy')
-class TestDiags(unittest.TestCase):
+class TestDiags:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_diags_scalar_offset(self, xp, sp):
@@ -396,6 +397,21 @@ _arrs_kron = [
     [[0.5, 0.125, 0, 3.25], [0, 2.5, 0, 0]], ]
 
 
+def skip_HIP_0_size_matrix():
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            try:
+                impl(self, *args, **kw)
+            except AssertionError as e:
+                if runtime.is_hip:
+                    assert 'ValueError: hipSPARSE' in str(e)
+                    pytest.xfail('may be buggy')
+                raise
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
     'format': ('csr', 'csc', 'coo'),
@@ -403,13 +419,14 @@ _arrs_kron = [
     'arrB': _arrs_kron,
 }))
 @testing.with_requires('scipy>=1.6')
-class TestKron(unittest.TestCase):
+class TestKron:
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
         a = xp.array(arr, dtype=dtype)
         a = sp.csr_matrix(a)
         return a
 
+    @skip_HIP_0_size_matrix()
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_kron(self, xp, sp):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
@@ -441,13 +458,14 @@ _arrs_kronsum = [
     'arrB': _arrs_kronsum,
 }))
 @testing.with_requires('scipy>=1.6')
-class TestKronsum(unittest.TestCase):
+class TestKronsum:
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
         a = xp.array(arr, dtype=dtype)
         a = sp.csr_matrix(a)
         return a
 
+    @skip_HIP_0_size_matrix()
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_kronsum(self, xp, sp):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)

@@ -107,11 +107,13 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline void is_async_alloc_supported(int device_id) except*:
-    if CUDA_VERSION < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
+cdef inline void check_async_alloc_supported(int device_id) except*:
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
+    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
     cdef list support
     try:
@@ -135,48 +137,32 @@ cdef class MemoryAsync(BaseMemory):
 
     Args:
         size (int): Size of the memory allocation in bytes.
-        stream (intptr_t): Pointer to the stream on which the memory is
-            allocated and freed.
+        stream (Stream): The stream on which the memory is allocated and freed.
     """
-    cdef:
-        readonly intptr_t stream
 
-    def __init__(self, size_t size, intptr_t stream):
+    cdef:
+        readonly object stream_ref
+
+    def __init__(self, size_t size, stream):
         self.size = size
         self.device_id = device.get_device_id()
         # The stream is allowed to be destroyed before the memory is freed, so
-        # we don't need to hold a reference to the stream.
-        self.stream = stream
-        is_async_alloc_supported(self.device_id)
+        # we don't need to hold a strong reference to the stream.
+        self.stream_ref = weakref.ref(stream)
+        check_async_alloc_supported(self.device_id)
         if size > 0:
-            self.ptr = runtime.mallocAsync(size, stream)
+            self.ptr = runtime.mallocAsync(size, stream.ptr)
 
     def __dealloc__(self):
-        # Free is attempted in the following order until success:
-        # 1. Free on the stream on which this memory was allocated
-        # 2. Free on the current stream, as self.stream is likely
-        #    destroyed by now. To enable this we trust the user
-        #    has established a correct stream order.
-        # 3. Free synchronously (unlikely to happen)
-        # Note: Cannot raise in the destructor! (cython/cython#1613)
-
-        cdef intptr_t curr_stream = self.stream
-        cdef tuple ok_errors = (runtime.errorInvalidResourceHandle,
-                                runtime.errorContextIsDestroyed,)
-
-        if self.ptr:
-            try:
-                runtime.freeAsync(self.ptr, curr_stream)
-            except CUDARuntimeError as e:
-                if e.status not in ok_errors:
-                    raise
-                try:
-                    curr_stream = stream_module.get_current_stream_ptr()
-                    runtime.freeAsync(self.ptr, curr_stream)
-                except CUDARuntimeError as e:
-                    if e.status not in ok_errors:
-                        raise
-                    runtime.free(self.ptr)
+        # Free on the stream on which this memory was allocated.
+        # If the stream is already destroyed, free on the current stream. In
+        # this case, we trust the user has established a correct stream order.
+        if self.ptr == 0:
+            return
+        stream = self.stream_ref()
+        if stream is None:
+            stream = stream_module.get_current_stream()
+        runtime.freeAsync(self.ptr, stream.ptr)
 
 
 cdef class UnownedMemory(BaseMemory):
@@ -226,8 +212,11 @@ cdef class ManagedMemory(BaseMemory):
     """
 
     def __init__(self, size_t size):
-        if runtime._is_hip_environment:
-            raise RuntimeError('HIP does not support managed memory')
+        if (
+            runtime._is_hip_environment and
+            driver.get_build_version() < 40300000
+        ):
+            raise RuntimeError('Managed memory requires ROCm 4.3+')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
@@ -257,9 +246,6 @@ cdef class ManagedMemory(BaseMemory):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
             runtime.free(self.ptr)
-
-
-cdef set _peer_access_checked = set()
 
 
 @cython.final
@@ -421,7 +407,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -441,7 +427,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -601,28 +587,6 @@ cdef class MemoryPointer:
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
 
-    @staticmethod
-    cdef _set_peer_access(int device, int peer):
-        device_pair = device, peer
-
-        if device_pair in _peer_access_checked:
-            return
-        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
-        _peer_access_checked.add(device_pair)
-        if not can_access:
-            return
-
-        cdef int current = runtime.getDevice()
-        runtime.setDevice(device)
-        try:
-            runtime.deviceEnablePeerAccess(peer)
-        # peer access could already be set by external libraries at this point
-        except CUDARuntimeError as e:
-            if e.status != runtime.errorPeerAccessAlreadyEnabled:
-                raise
-        finally:
-            runtime.setDevice(current)
-
 
 # cpdef because unit-tested
 cpdef MemoryPointer _malloc(size_t size):
@@ -659,8 +623,7 @@ cpdef MemoryPointer malloc_async(size_t size):
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
     cdef intptr_t stream_ptr
-    stream_ptr = stream_module.get_current_stream_ptr()
-    mem = MemoryAsync(size, stream_ptr)
+    mem = MemoryAsync(size, stream_module.get_current_stream())
     return MemoryPointer(mem, 0)
 
 
@@ -953,8 +916,8 @@ cdef class _Arena:
 
         Returns:
             bool: ``True`` if the chunk can successfully be removed from
-                the free list. ``False`` otherwise (e.g., the chunk could not
-                be found in the free list as the chunk is allocated.)
+            the free list. ``False`` otherwise (e.g., the chunk could not
+            be found in the free list as the chunk is allocated.)
         """
 
         cdef size_t index, bin_index
@@ -1531,9 +1494,6 @@ cdef class MemoryPool:
         return mp.get_limit()
 
 
-cdef bint MemoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
-
-
 cdef class MemoryAsyncPool:
     """(Experimental) CUDA memory pool for all GPU devices on the host.
 
@@ -1590,6 +1550,7 @@ cdef class MemoryAsyncPool:
     cdef:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
+        readonly bint memoryAsyncHasStat
 
     def __init__(self, pool_handles='current'):
         _util.experimental('cupy.cuda.MemoryAsyncPool')
@@ -1597,21 +1558,29 @@ cdef class MemoryAsyncPool:
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
         self._pools = []
-
+        self.memoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                prev_device = runtime.getDevice()
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool
@@ -1659,7 +1628,7 @@ cdef class MemoryAsyncPool:
         # to prevent CuPy from drawing too much memory from the pool; we cannot
         # do anything if other applications oversubscribe the pool.
         cdef size_t curr_total=-1, curr_free=0, total_limit=0
-        if MemoryAsyncHasStat:
+        if self.memoryAsyncHasStat:
             curr_total = self.total_bytes()
             curr_free = curr_total - self.used_bytes()
             if curr_free < rounded_size:  # need to increase pool size
@@ -1728,7 +1697,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes used by the pool.
         """
-        if not MemoryAsyncHasStat:
+        if not self.memoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
@@ -1749,7 +1718,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes acquired by the pool.
         """
-        if not MemoryAsyncHasStat:
+        if not self.memoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]

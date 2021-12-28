@@ -69,7 +69,7 @@ public:
  *     Complex: [R + Rj, R + nanj, nan + Rj, nan + nanj]
  * where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
  * it exists. Non-nan values are sorted as before."
- * Ref: https://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
+ * Ref: https://numpy.org/doc/stable/reference/generated/numpy.sort.html
  */
 
 template <typename T>

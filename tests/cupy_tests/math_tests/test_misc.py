@@ -41,7 +41,7 @@ class TestMisc(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_inf(self, name, xp, dtype):
+    def check_unary_inf(self, name, xp, dtype, **kwargs):
         inf = numpy.inf
         if numpy.dtype(dtype).kind != 'c':
             a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
@@ -50,11 +50,11 @@ class TestMisc(unittest.TestCase):
                           for x in [0, -1, 1, -inf, inf]
                           for y in [0, -1, 1, -inf, inf]],
                          dtype=dtype)
-        return getattr(xp, name)(a)
+        return getattr(xp, name)(a, **kwargs)
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_nan(self, name, xp, dtype):
+    def check_unary_nan(self, name, xp, dtype, **kwargs):
         nan = numpy.nan
         if numpy.dtype(dtype).kind != 'c':
             a = xp.array([0, -1, 1, -nan, nan], dtype=dtype)
@@ -63,7 +63,7 @@ class TestMisc(unittest.TestCase):
                           for x in [0, -1, 1, -nan, nan]
                           for y in [0, -1, 1, -nan, nan]],
                          dtype=dtype)
-        return getattr(xp, name)(a)
+        return getattr(xp, name)(a, **kwargs)
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -211,6 +211,26 @@ class TestMisc(unittest.TestCase):
 
     def test_nan_to_num_inf_nan(self):
         self.check_unary_inf_nan('nan_to_num')
+
+    def test_nan_to_num_nan_arg(self):
+        self.check_unary_nan('nan_to_num', nan=1.0)
+
+    def test_nan_to_num_inf_arg(self):
+        self.check_unary_inf('nan_to_num', posinf=1.0, neginf=-1.0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_nan_to_num_copy(self, xp):
+        x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
+        y = xp.nan_to_num(x, copy=True)
+        assert x is not y
+        return y
+
+    @testing.numpy_cupy_array_equal()
+    def test_nan_to_num_inplace(self, xp):
+        x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
+        y = xp.nan_to_num(x, copy=False)
+        assert x is y
+        return y
 
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_all_dtypes(name='dtype_y', no_bool=True)

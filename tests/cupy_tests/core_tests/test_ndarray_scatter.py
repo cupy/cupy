@@ -1,4 +1,3 @@
-import unittest
 import pytest
 
 import numpy
@@ -108,9 +107,10 @@ from cupy import testing
     {'shape': (2, 3, 4), 'slices': ([1, 1], 1), 'value': 1},
     {'shape': (2, 3, 4), 'slices': ([1], slice(1, 2)), 'value': 1},
     {'shape': (2, 3, 4), 'slices': ([[1]], slice(1, 2)), 'value': 1},
+    _ids=False,  # Do not generate ids from randomly generated params
 )
 @testing.gpu
-class TestScatterParametrized(unittest.TestCase):
+class TestScatterParametrized:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
                          numpy.uint64, numpy.ulonglong, numpy.float16,
@@ -150,7 +150,7 @@ class TestScatterParametrized(unittest.TestCase):
 
 
 @testing.gpu
-class TestScatterAdd(unittest.TestCase):
+class TestScatterAdd:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
                          numpy.uint64, numpy.ulonglong, numpy.float16,
@@ -219,7 +219,7 @@ class TestScatterAdd(unittest.TestCase):
             numpy.array([[1, 0, 0], [0, 1, 1]], dtype=src_dtype))
 
 
-class TestScatterMinMax(unittest.TestCase):
+class TestScatterMinMax:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
                          numpy.uint64, numpy.ulonglong, numpy.float64])

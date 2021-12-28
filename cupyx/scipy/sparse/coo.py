@@ -13,6 +13,7 @@ from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import _util
+from cupyx.scipy.sparse import sputils
 
 
 class coo_matrix(sparse_data._data_matrix):
@@ -57,7 +58,7 @@ class coo_matrix(sparse_data._data_matrix):
           diff_out = 0;
         }
         diff = diff_out;
-        ''', 'sum_duplicates_diff')
+        ''', 'cupyx_scipy_sparse_coo_sum_duplicates_diff')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None and len(shape) != 2:
@@ -304,6 +305,50 @@ class coo_matrix(sparse_data._data_matrix):
         return scipy.sparse.coo_matrix(
             (data, (row, col)), shape=self.shape)
 
+    def reshape(self, *shape, order='C'):
+        """Gives a new shape to a sparse matrix without changing its data.
+
+        Args:
+            shape (tuple):
+                The new shape should be compatible with the original shape.
+            order: {'C', 'F'} (optional)
+                Read the elements using this index order. 'C' means to read and
+                write the elements using C-like index order. 'F' means to read
+                and write the elements using Fortran-like index order. Default:
+                C.
+
+        Returns:
+            cupyx.scipy.sparse.coo_matrix: sparse matrix
+
+        """
+
+        shape = sputils.check_shape(shape, self.shape)
+
+        if shape == self.shape:
+            return self
+
+        nrows, ncols = self.shape
+
+        if order == 'C':  # C to represent matrix in row major format
+            dtype = sputils.get_index_dtype(maxval=(ncols * max(0, nrows - 1) +
+                                                    max(0, ncols - 1)))
+            flat_indices = cupy.multiply(ncols, self.row,
+                                         dtype=dtype) + self.col
+            new_row, new_col = divmod(flat_indices, shape[1])
+        elif order == 'F':
+            dtype = sputils.get_index_dtype(maxval=(ncols * max(0, nrows - 1) +
+                                                    max(0, ncols - 1)))
+            flat_indices = cupy.multiply(ncols, self.row,
+                                         dtype=dtype) + self.row
+            new_col, new_row = divmod(flat_indices, shape[0])
+        else:
+            raise ValueError("'order' must be 'C' or 'F'")
+
+        new_data = self.data
+
+        return coo_matrix((new_data, (new_row, new_col)), shape=shape,
+                          copy=False)
+
     def sum_duplicates(self):
         """Eliminate duplicate matrix entries by adding them together.
 
@@ -376,7 +421,7 @@ class coo_matrix(sparse_data._data_matrix):
                     row[index] = src_row;
                     col[index] = src_col;
                     ''',
-                    'sum_duplicates_assign'
+                    'cupyx_scipy_sparse_coo_sum_duplicates_assign'
                 )(src_data, src_row, src_col, index, data, row, col)
             elif self.data.dtype.kind == 'c':
                 cupy.ElementwiseKernel(
@@ -389,7 +434,7 @@ class coo_matrix(sparse_data._data_matrix):
                     row[index] = src_row;
                     col[index] = src_col;
                     ''',
-                    'sum_duplicates_assign_complex'
+                    'cupyx_scipy_sparse_coo_sum_duplicates_assign_complex'
                 )(src_data.real, src_data.imag, src_row, src_col, index,
                   data.real, data.imag, row, col)
 
