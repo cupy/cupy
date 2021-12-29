@@ -231,7 +231,6 @@ class TestGemv:
 
 
 @testing.parameterize(*testing.product({
-    'dtype': ['float32', 'float64'],
     'rank': [5, 9],
     'band': [0, 1, 3],
     'lower': [0, 1],
@@ -242,47 +241,44 @@ class TestGemv:
 class TestSbmv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        self.dtype = numpy.dtype(self.dtype)
-        self.tol = self._tol[self.dtype.char.lower()]
-
     def _gen2band(self, A, ku=0, kl=0, order='C'):
-        # oneAPI doc: https://spec.oneapi.io/versions/0.7/elements/oneMKL/source/domains/matrix-storage.html
-        # cublas doc: https://docs.nvidia.com/cuda/cublas/index.html
         assert A.ndim == 2
         n, m = A.shape
         ldm, lda = n, 1 + ku + kl
-        B = numpy.zeros(lda*ldm).reshape((lda, ldm), order=order).astype(A.dtype)
+        B = numpy.zeros((lda, ldm), dtype=A.dtype, order=order)
         for j in range(n):
             k = ku - j
             for i in range(max(0, j-ku), min(m, j + kl + 1)):
                 B[(k + i), j] = A[i, j]
         return B
 
-    def test_sbmv(self):
+    @testing.for_dtypes('fd')
+    def test_sbmv(self, dtype):
+        dtype = numpy.dtype(dtype)
         alpha, beta = 3.0, 2.0
-        n, k, l = self.rank, self.band, self.lower
-        a = numpy.eye(n, dtype=self.dtype) * (numpy.arange(n) + 1)
+        n, k = self.rank, self.band
+        a = numpy.eye(n, n, 0, dtype, self.order)
+        a *= numpy.random.randint(20)
         for i in range(1, k+1):
             band = numpy.random.randint(20, size=n-i)
-            a += numpy.diag(band, k= i)
+            a += numpy.diag(band, k=+i)
             a += numpy.diag(band, k=-i)
         x = numpy.random.randint(20, size=n).astype(a.dtype)
         y = numpy.random.randint(20, size=n).astype(a.dtype)
         ku, kl = k, 0
-        if l == 1:
+        if self.lower == 1:
             ku, kl = kl, ku
-        b = self._gen2band(a, ku, kl, self.order)
+        b = self._gen2band(a, ku, kl)
         a, b = cupy.asarray(a), cupy.asarray(b)
         x, y = cupy.asarray(x), cupy.asarray(y)
         ref = alpha * a.dot(x) + beta * y
         if self.mode is not None:
             alpha = self.mode.array(alpha)
             beta = self.mode.array(beta)
-        y_ret = cupy.cublas.sbmv(k, alpha, b, x, beta, y, lower=l)
-        cupy.testing.assert_allclose(y, ref, rtol=self.tol, atol=self.tol)
-        cupy.testing.assert_allclose(y_ret, ref, rtol=self.tol, atol=self.tol)
+        y_ret = cupy.cublas.sbmv(k, alpha, b, x, beta, y, lower=self.lower)
+        tol = self._tol[dtype.char.lower()]
+        cupy.testing.assert_allclose(y, ref, rtol=tol, atol=tol)
+        cupy.testing.assert_allclose(y_ret, ref, rtol=tol, atol=tol)
 
 
 @testing.parameterize(*testing.product({
@@ -337,7 +333,7 @@ class TestGer:
 
 @testing.parameterize(*testing.product({
     'nk': [(5, 9), (9, 5)],
-    'transa': ['N', 'T', 'C'], # 'C' never conjugates in syrk
+    'transa': ['N', 'T'],
     'ordera': ['F', 'C'],
     'orderc': ['F', 'C'],
     'lower': [0, 1],
@@ -372,7 +368,8 @@ class TestSyrk:
         a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
         aa = self._trans_matrix(a, self.transa)
         ref = alpha * aa.dot(aa.T)  # beta is used as a placeholder only
-        c = cublas.syrk(self.transa, a, alpha=alpha, beta=beta, lower=self.lower)
+        c = cublas.syrk(self.transa, a, alpha=alpha, beta=beta,
+                        lower=self.lower)
         rr, cc = cupy.asnumpy(ref), cupy.asnumpy(c)
         if self.lower:
             rr[numpy.triu_indices_from(rr,  1)] = 0
@@ -400,7 +397,8 @@ class TestSyrk:
         c = self._make_matrix(m, m, 'N', self.orderc, dtype)
         c0 = cupy.array(c)
         ref = alpha * aa.dot(aa.T) + beta * c
-        cublas.syrk(self.transa, a, out=c, alpha=alpha, beta=beta, lower=self.lower)
+        cublas.syrk(self.transa, a, out=c, alpha=alpha, beta=beta,
+                    lower=self.lower)
         rr, c0, cc = cupy.asnumpy(ref), cupy.asnumpy(c0), cupy.asnumpy(c)
         if self.lower:
             trii = numpy.triu_indices_from(rr,  1)

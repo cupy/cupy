@@ -644,11 +644,11 @@ def sbmv(k, alpha, a, x, beta, y, lower=False):
     handle = device.get_cublas_handle()
     try:
         func(handle, uplo, n, k,
-            alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
-            beta_ptr, y.data.ptr, 1)
+             alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
+             beta_ptr, y.data.ptr, 1)
     finally:
         cublas.setPointerMode(handle, orig_mode)
-    
+
     return y
 
 
@@ -660,7 +660,7 @@ def _trans_to_cublas_op(trans):
     elif trans == 'H' or trans == cublas.CUBLAS_OP_C:
         trans = cublas.CUBLAS_OP_C
     else:
-        raise TypeError('invalid trans (actual: {})'.fromat(trans))
+        raise TypeError('invalid trans (actual: {})'.format(trans))
     return trans
 
 
@@ -923,6 +923,7 @@ def dgmm(side, a, x, out=None, incx=1):
             out[...] = c
     return out
 
+
 def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
     """Computes out := alpha*op1(a)*op2(a) + beta*out
 
@@ -984,9 +985,13 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
             a = a.copy(order='C')
             trans = 1 - trans
             lda = a.shape[1]
-        func(handle, 1 - uplo, trans, n, k,
-             alpha_ptr, a.data.ptr, lda,
-             beta_ptr, out.data.ptr, ldo)
+        try:
+            func(handle, 1 - uplo, trans, n, k,
+                 alpha_ptr, a.data.ptr, lda,
+                 beta_ptr, out.data.ptr, ldo)
+        finally:
+            cublas.setPointerMode(handle, orig_mode)
+
     else:
         if not a._f_contiguous:
             a = a.copy(order='F')
@@ -995,9 +1000,12 @@ def syrk(trans, a, out=None, alpha=1.0, beta=0.0, lower=False):
         c = out
         if not out._f_contiguous:
             c = out.copy(order='F')
-        func(handle, uplo, trans, n, k,
-             alpha_ptr, a.data.ptr, lda,
-             beta_ptr, out.data.ptr, ldo)
+        try:
+            func(handle, uplo, trans, n, k,
+                 alpha_ptr, a.data.ptr, lda,
+                 beta_ptr, out.data.ptr, ldo)
+        finally:
+            cublas.setPointerMode(handle, orig_mode)
         if not out._f_contiguous:
             out[...] = c
     return out

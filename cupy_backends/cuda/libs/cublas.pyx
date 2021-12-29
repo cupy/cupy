@@ -138,10 +138,12 @@ cdef extern from '../../cupy_blas.h' nogil:
         Handle handle, int m, int n, cuDoubleComplex* alpha,
         cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
         cuDoubleComplex* A, int lda)
-    int cublasSsbmv(Handle handle, FillMode uplo, int n, int k,
+    int cublasSsbmv(
+        Handle handle, FillMode uplo, int n, int k,
         const float* alpha, const float* A, int lda,
         const float* x, int incx, const float* beta, float* y, int incy)
-    int cublasDsbmv(Handle handle, FillMode uplo, int n, int k,
+    int cublasDsbmv(
+        Handle handle, FillMode uplo, int n, int k,
         const double* alpha, const double* A, int lda,
         const double* x, int incx, const double* beta, double* y, int incy)
 
@@ -859,7 +861,8 @@ cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
     check_status(status)
 
 
-cpdef ssbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int lda,
+cpdef ssbmv(intptr_t handle, int uplo, int n, int k,
+            size_t alpha, size_t A, int lda,
             size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
@@ -870,7 +873,8 @@ cpdef ssbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int
     check_status(status)
 
 
-cpdef dsbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int lda,
+cpdef dsbmv(intptr_t handle, int uplo, int n, int k,
+            size_t alpha, size_t A, int lda,
             size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
