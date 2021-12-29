@@ -338,9 +338,10 @@ class _BaseStream:
 
         .. note:: Currently this capability is not supported on HIP.
 
-        .. seealso:: `cudaStreamBeginCapture`_
+        .. seealso:: `cudaStreamBeginCapture()`_
 
-        .. _cudaStreamBeginCapture: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
+        .. _cudaStreamBeginCapture():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
 
         """
         if runtime._is_hip_environment:
@@ -360,9 +361,10 @@ class _BaseStream:
 
         .. note:: Currently this capability is not supported on HIP.
 
-        .. seealso:: `cudaStreamEndCapture`_
+        .. seealso:: `cudaStreamEndCapture()`_
 
-        .. _cudaStreamEndCapture: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1gf5a0efebc818054ceecd1e3e5e76d93e
+        .. _cudaStreamEndCapture():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1gf5a0efebc818054ceecd1e3e5e76d93e
 
         """
         if runtime._is_hip_environment:

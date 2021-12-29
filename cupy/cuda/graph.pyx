@@ -36,9 +36,11 @@ cdef class Graph:
                 specified (using the default value `None`), the graph is
                 launched on the current stream.
 
-        .. seealso:: `cudaGraphLaunch`_
+        .. seealso:: `cudaGraphLaunch()`_
 
-        .. _cudaGraphLaunch: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1g1accfe1da0c605a577c22d9751a09597
+        .. _cudaGraphLaunch():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1g1accfe1da0c605a577c22d9751a09597
+
         """
         cdef intptr_t stream_ptr
         if stream is None:
@@ -55,9 +57,11 @@ cdef class Graph:
                 specified (using the default value `None`), the graph is
                 uploaded the current stream.
 
-        .. seealso:: `cudaGraphUpload`_
+        .. seealso:: `cudaGraphUpload()`_
 
-        .. _cudaGraphUpload: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1ge546432e411b4495b93bdcbf2fc0b2bd
+        .. _cudaGraphUpload():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1ge546432e411b4495b93bdcbf2fc0b2bd
+
         """
         cdef intptr_t stream_ptr
         if stream is None:
