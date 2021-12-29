@@ -320,6 +320,31 @@ class _BaseStream:
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
     def begin_capture(self, mode=None):
+        """Begin stream capture to construct a CUDA graph.
+
+        A call to this function must be paired with a call to
+        :meth:`end_capture` to complete the capture.
+
+        Args:
+            mode (int): The stream capture mode. Default is
+                :data:`~cupy.cuda.runtime.streamCaptureModeRelaxed`.
+
+        .. note:: During the stream capture, synchronous device-host transfers
+            are not allowed. This has a particular implication for CuPy APIs,
+            as some functions that internally require synchronous transfer
+            would not work as expected and an exception would be raised. For
+            further constraints of CUDA stream capture, please refer to the
+            CUDA Programming Guide.
+
+        .. note:: Currently this capability is not supported on HIP.
+
+        .. seealso:: `cudaStreamBeginCapture`_
+
+        .. _cudaStreamBeginCapture: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
+
+        """
+        if runtime._is_hip_environment:
+            raise RuntimeError('This function is not supported on HIP')
         if self.ptr == 0 or self.ptr == 1:
             raise RuntimeError('cannot capture on the default (legacy) stream')
         if mode is None:
@@ -327,10 +352,34 @@ class _BaseStream:
         runtime.streamBeginCapture(self.ptr, mode)
 
     def end_capture(self):
+        """End stream capture and retrieve the constructed CUDA graph.
+
+        Returns:
+            :class:`~cupy.cuda.Graph`: A CUDA graph object that encapsulates
+                the captured work.
+
+        .. note:: Currently this capability is not supported on HIP.
+
+        .. seealso:: `cudaStreamEndCapture`_
+
+        .. _cudaStreamEndCapture: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1gf5a0efebc818054ceecd1e3e5e76d93e
+
+        """
+        if runtime._is_hip_environment:
+            raise RuntimeError('This function is not supported on HIP')
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
         return graph.Graph.from_stream(g)
 
     def is_capturing(self):
+        """Check if the stream is capturing.
+
+        Returns:
+            bool: If the capturing status is successfully queried, the returned
+                value indicates the capturing status.
+
+        """
+        if runtime._is_hip_environment:
+            raise RuntimeError('This function is not supported on HIP')
         # TODO(leofang): is it better to be a property?
         return runtime.streamIsCapturing(self.ptr)
 

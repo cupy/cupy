@@ -3,6 +3,12 @@ from cupy_backends.cuda cimport stream as stream_module
 
 
 cdef class Graph:
+    """The CUDA graph object.
+
+    Currently this class cannot be initiated by the user and must be created
+    via stream capture. See :meth:`~cupy.cuda.Stream.end_capture` for detail.
+
+    """
 
     cdef void _init(self, intptr_t graph, intptr_t graphExec):
         self.graph = graph
@@ -23,6 +29,17 @@ cdef class Graph:
         return graph
 
     cpdef launch(self, stream=None):
+        """Launch the CUDA graph on the given stream.
+
+        Args:
+            stream (:class:`~cupy.cuda.Stream`): A CuPy stream object. If not
+                specified (using the default value `None`), the graph is
+                launched on the current stream.
+
+        .. seealso:: `cudaGraphLaunch`_
+
+        .. _cudaGraphLaunch: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1g1accfe1da0c605a577c22d9751a09597
+        """
         cdef intptr_t stream_ptr
         if stream is None:
             stream_ptr = stream_module.get_current_stream_ptr()
@@ -31,6 +48,17 @@ cdef class Graph:
         runtime.graphLaunch(self.graphExec, stream_ptr)
 
     cpdef upload(self, stream=None):
+        """Upload the CUDA graph to the given stream.
+
+        Args:
+            stream (:class:`~cupy.cuda.Stream`): A CuPy stream object. If not
+                specified (using the default value `None`), the graph is
+                uploaded the current stream.
+
+        .. seealso:: `cudaGraphUpload`_
+
+        .. _cudaGraphUpload: https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html#group__CUDART__GRAPH_1ge546432e411b4495b93bdcbf2fc0b2bd
+        """
         cdef intptr_t stream_ptr
         if stream is None:
             stream_ptr = stream_module.get_current_stream_ptr()
