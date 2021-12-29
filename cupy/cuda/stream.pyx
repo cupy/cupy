@@ -356,8 +356,8 @@ class _BaseStream:
         """End stream capture and retrieve the constructed CUDA graph.
 
         Returns:
-            :class:`~cupy.cuda.Graph`: A CUDA graph object that encapsulates
-                the captured work.
+            cupy.cuda.Graph:
+                A CUDA graph object that encapsulates the captured work.
 
         .. note:: Currently this capability is not supported on HIP.
 
@@ -376,8 +376,11 @@ class _BaseStream:
         """Check if the stream is capturing.
 
         Returns:
-            bool: If the capturing status is successfully queried, the returned
-                value indicates the capturing status.
+            bool:
+                If the capturing status is successfully queried, the returned
+                value indicates the capturing status. An exception could be
+                raised if such a query is illegal, please refer to the CUDA
+                Programming Guide for detail.
 
         """
         if runtime._is_hip_environment:
