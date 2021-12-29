@@ -168,10 +168,12 @@ cpdef zgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
             size_t y, int incy, size_t A, int lda)
 cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
             size_t y, int incy, size_t A, int lda)
-cpdef ssbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int lda,
-            size_t x, int incx, size_t beta, size_t y, int incy);
-cpdef dsbmv(intptr_t handle, int uplo, int n, int k, size_t alpha, size_t A, int lda,
-            size_t x, int incx, size_t beta, size_t y, int incy);
+cpdef ssbmv(intptr_t handle, int uplo, int n, int k,
+            size_t alpha, size_t A, int lda,
+            size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef dsbmv(intptr_t handle, int uplo, int n, int k,
+            size_t alpha, size_t A, int lda,
+            size_t x, int incx, size_t beta, size_t y, int incy)
 
 
 ###############################################################################
