@@ -549,7 +549,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
         l_end = 0
     else:
         to_end = cupy.asanyarray(to_end)
-        if not cupy.can_cast(to_end, dtype_req, castinf="same_kind"):
+        if not cupy.can_cast(to_end, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_end` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
 
@@ -559,7 +559,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     # calulating using in place operation
     l_diff = max(len(arr) - 1, 0)
     result = cupy.empty(l_diff + l_begin + l_end, dtype=arr.dtype)
-    result = arr.__array_wrap__(result)
+    #result = arr.__array_wrap__(result)
     if l_begin > 0:
         result[:l_begin] = to_begin
     if l_end > 0:
