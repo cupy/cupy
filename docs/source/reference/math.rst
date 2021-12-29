@@ -71,6 +71,7 @@ Sums, products, differences
    nancumsum
    diff
    gradient
+   ediff1d
    cross
    trapz
 
