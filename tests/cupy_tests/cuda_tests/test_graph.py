@@ -7,12 +7,11 @@ from cupy import cuda
 from cupy import testing
 
 
-@testing.gpu
 @pytest.mark.skipif(cuda.runtime.is_hip,
                     reason='HIP does not support this')
 @pytest.mark.skipif(cuda.driver.get_build_version() < 10010,
                     reason='Only CUDA 10.1+ supports this')
-class TestGraph(unittest.TestCase):
+class TestGraph:
 
     def _helper1(self, a):
         # this tests ufuncs involving simple arithmetic
@@ -41,7 +40,8 @@ class TestGraph(unittest.TestCase):
             result += 2
         return result
 
-    def test_capture_run_on_same_stream(self):
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_capture_run_on_same_stream(self, upload):
         s = cupy.cuda.Stream(non_blocking=True)
 
         for n in range(3):
@@ -52,13 +52,16 @@ class TestGraph(unittest.TestCase):
                 s.begin_capture()
                 out1 = func(a)
                 g = s.end_capture()
+                if upload and cuda.runtime.runtimeGetVersion() >= 11010:
+                    g.upload()
                 g.launch()
             s.synchronize()
 
             out2 = func(a)
             testing.assert_array_equal(out1, out2)
 
-    def test_capture_run_on_different_streams(self):
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_capture_run_on_different_streams(self, upload):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
 
@@ -71,13 +74,16 @@ class TestGraph(unittest.TestCase):
                 out1 = func(a)
                 g = s1.end_capture()
             with s2:
+                if upload and cuda.runtime.runtimeGetVersion() >= 11010:
+                    g.upload()
                 g.launch()
             s2.synchronize()
 
             out2 = func(a)
             testing.assert_array_equal(out1, out2)
 
-    def test_stream_is_capturing(self):
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_stream_is_capturing(self, upload):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((100,))
 
@@ -91,11 +97,14 @@ class TestGraph(unittest.TestCase):
         assert not cuda.Stream.null.is_capturing()
 
         # check the graph integrity
+        if upload and cuda.runtime.runtimeGetVersion() >= 11010:
+            g.upload()
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, 3 * a)
 
-    def test_stream_fork_join(self):
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_stream_fork_join(self, upload):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
         e1 = cupy.cuda.Event()
@@ -119,11 +128,14 @@ class TestGraph(unittest.TestCase):
         # check integrity
         assert not s1.is_capturing()
         assert not s2.is_capturing()
+        if upload and cuda.runtime.runtimeGetVersion() >= 11010:
+            g.upload()
         g.launch()
         s1.synchronize()
         testing.assert_array_equal(out2, func(a * 100))
 
-    def test_null_stream_cannot_capture(self):
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_null_stream_cannot_capture(self, upload):
         s = cupy.cuda.Stream(non_blocking=False)
         a = cupy.random.random((100,))
 
@@ -140,6 +152,8 @@ class TestGraph(unittest.TestCase):
         assert not cuda.Stream.null.is_capturing()
 
         # check the graph integrity
+        if upload and cuda.runtime.runtimeGetVersion() >= 11010:
+            g.upload()
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, a + 4)
@@ -253,7 +267,8 @@ class TestGraph(unittest.TestCase):
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
 
     # This test used to fail, but as of CUDA 11.4 it passes...
-    def test_stream_capture_cublas(self):
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_stream_capture_cublas(self, upload):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((3, 4))
         b = cupy.random.random((4, 5))
@@ -263,6 +278,8 @@ class TestGraph(unittest.TestCase):
             g = s.end_capture()
 
         # check the graph integrity
+        if upload and cuda.runtime.runtimeGetVersion() >= 11010:
+            g.upload()
         g.launch()
         s.synchronize()
         testing.assert_array_equal(c, a @ b)
