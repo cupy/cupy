@@ -275,7 +275,7 @@ class TestGraph(unittest.TestCase):
         with s:
             s.begin_capture()
             with pytest.raises(CUSOLVERError) as e:
-                c = cupy.linalg.svd(a)
+                cupy.linalg.svd(a)
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
