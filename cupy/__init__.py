@@ -224,6 +224,7 @@ from cupy._creation.matrix import diagflat  # NOQA
 from cupy._creation.matrix import tri  # NOQA
 from cupy._creation.matrix import tril  # NOQA
 from cupy._creation.matrix import triu  # NOQA
+from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
