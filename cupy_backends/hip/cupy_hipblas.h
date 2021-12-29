@@ -305,7 +305,7 @@ cublasStatus_t cublasDger(cublasHandle_t handle, int m, int n, double* alpha, do
 }
 
 cublasStatus_t cublasCgeru(cublasHandle_t handle, int m, int n, cuComplex* alpha, cuComplex* x,
-                          int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+                           int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
     return hipblasCgeru(handle, m, n,
                         reinterpret_cast<const hipblasComplex*>(alpha),
                         reinterpret_cast<const hipblasComplex*>(x), incx,
@@ -314,7 +314,7 @@ cublasStatus_t cublasCgeru(cublasHandle_t handle, int m, int n, cuComplex* alpha
 }
 
 cublasStatus_t cublasCgerc(cublasHandle_t handle, int m, int n, cuComplex* alpha, cuComplex* x,
-                          int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+                           int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
     return hipblasCgerc(handle, m, n,
                         reinterpret_cast<const hipblasComplex*>(alpha),
                         reinterpret_cast<const hipblasComplex*>(x), incx,
@@ -340,6 +340,22 @@ cublasStatus_t cublasZgerc(cublasHandle_t handle, int m, int n, cuDoubleComplex*
                         reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
                         reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
                         reinterpret_cast<hipblasDoubleComplex*>(A), lda);
+}
+
+cublasStatus_t cublasSsbmv(cublasHandle_t handle, cublasFillMode_t uplo, int n, int k,
+                           const float* alpha, const float* A, int lda,
+                           const float* x, int incx,
+                           const float* beta, float* y, int incy) {
+    return hipblasSsbmv(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),
+                        n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+
+cublasStatus_t cublasDsbmv(cublasHandle_t handle, cublasFillMode_t uplo, int n, int k,
+                           const double* alpha, const double* A, int lda,
+                           const double* x, int incx,
+                           const double* beta, double* y, int incy) {
+    return hipblasDsbmv(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),
+                        n, k, alpha, A, lda, x, incx, beta, y, incy);
 }
 
 
@@ -545,6 +561,42 @@ cublasStatus_t cublasZtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasF
                         reinterpret_cast<const hipblasDoubleComplex*>(alpha),
                         reinterpret_cast<hipblasDoubleComplex*>(const_cast<cuDoubleComplex*>(A)), lda,
                         reinterpret_cast<hipblasDoubleComplex*>(B), ldb);
+}
+
+cublasStatus_t cublasSsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,
+                           const float* alpha, const float* A, int lda,
+                           const float* beta, float* C, int ldc) {
+    return hipblasSsyrk(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans), n, k,
+                        alpha, A, lda, beta, C, ldc);
+}
+
+cublasStatus_t cublasDsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k, 
+                           const double* alpha, const double* A, int lda,
+                           const double* beta, double* C, int ldc) {
+    return hipblasDsyrk(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),  n, k, 
+                        alpha, A, lda, beta, C, ldc);
+}
+
+cublasStatus_t cublasCsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,
+                           const cuComplex* alpha, const cuComplex* A,int lda,
+                           const cuComplex* beta, cuComplex* C, int ldc)
+{
+    return hipblasCsyrk(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans), n, k,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(A), lda,
+                        reinterpret_cast<const hipblasComplex*>(beta),
+                        reinterpret_cast<hipblasComplex*>(C), ldc);
+}
+
+cublasStatus_t cublasZsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,
+                           const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda,
+                           const cuDoubleComplex* beta, cuDoubleComplex* C, int ldc)
+{
+    return hipblasZsyrk(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb), n, k,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(A), lda,
+                        reinterpret_cast<const hipblasDoubleComplex*>(beta),
+                        reinterpret_cast<hipblasDoubleComplex*>(C), ldc);
 }
 
 
