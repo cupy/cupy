@@ -240,19 +240,27 @@ class TestGraph:
                 s.end_capture()
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
 
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
+
     def test_stream_capture_failure5(self):
-        s1 = cupy.cuda.Stream(non_blocking=True)
+        s = cupy.cuda.Stream(non_blocking=True)
         func = self._helper4
         a = cupy.random.random((100,))
 
-        with s1:
-            s1.begin_capture()
+        with s:
+            s.begin_capture()
             # internally the function requires synchronization, which is
             # incompatible with stream capturing and so we raise
             with pytest.raises(RuntimeError) as e:
                 func(a)
             assert 'is capturing' in str(e.value)
-            s1.end_capture()
+            s.end_capture()
+
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
 
     def test_stream_capture_failure6(self):
         s = cupy.cuda.Stream(non_blocking=True)
@@ -265,6 +273,10 @@ class TestGraph:
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
 
     # This test used to fail, but as of CUDA 11.4 it passes...
     @pytest.mark.parametrize('upload', (True, False))
@@ -296,3 +308,7 @@ class TestGraph:
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
                 s.end_capture()
             assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
