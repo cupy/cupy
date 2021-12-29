@@ -17,12 +17,11 @@ class TestKind(unittest.TestCase):
         a_cpu = numpy.asarray_chkfinite(a, dtype=dtype)
         assert a_gpu.dtype == a_cpu.dtype
 
+    @unittest.expectedFailure
     @testing.for_all_dtypes()
     def test_asarray_chkfinite_non_finite_vals(self, dtype):
         a = [-numpy.inf, 0., numpy.inf]
-        a_gpu = cupy.asarray_chkfinite(a, dtype=dtype)
-        a_cpu = numpy.asarray_chkfinite(a, dtype=dtype)
-        assert a_gpu.dtype == a_cpu.dtype
+        self.assertRaises(ValueError, cupy.asarray_chkfinite, a, dtype=dtype)
 
     @testing.for_all_dtypes()
     def test_asfarray(self, dtype):
