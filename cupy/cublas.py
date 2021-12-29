@@ -39,6 +39,7 @@ def batched_gesv(a, b):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
+    # TODO(kataoka): Support broadcast
     if not (
         (a.ndim == b.ndim or a.ndim == b.ndim + 1)
         and a.shape[:-1] == b.shape[:a.ndim - 1]
@@ -50,6 +51,7 @@ def batched_gesv(a, b):
     dtype, out_dtype = _util.linalg_common_type(a, b)
     if b.size == 0:
         return cupy.empty(b.shape, out_dtype)
+
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':
