@@ -127,14 +127,21 @@ class TestQRDecomposition(unittest.TestCase):
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
 
-        if ((not batched)
-                or (numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0')):
+        if numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0rc1':
+            result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
+            if mode == 'raw':
+                return  # should not `pytest.skip`` inside loop.
+                # pytest.skip("NumPy 1.22 changed output dtype in 'raw' mode")
+            self._check_result(result_cpu, result_gpu)
+            return
+
+        # We still want to test it to gain confidence...
+        # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
+        # NumPy 1.22 is out, and clean up this helper function
+        if not batched:
             result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
             self._check_result(result_cpu, result_gpu)
         else:
-            # We still want to test it to gain confidence...
-            # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
-            # NumPy 1.22 is out, and clean up this helper function
             batch_shape = a_cpu.shape[:-2]
             batch_size = prod(batch_shape)
             a_cpu = a_cpu.reshape(batch_size, *a_cpu.shape[-2:])

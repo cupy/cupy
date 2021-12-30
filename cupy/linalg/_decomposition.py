@@ -251,7 +251,7 @@ def _qr_batched(a, mode):
     q, r = out
     q = q.reshape(batch_shape + q.shape[-2:])
     idx = -1 if mode == 'raw' else -2
-    r.reshape(batch_shape + r.shape[idx:])
+    r = r.reshape(batch_shape + r.shape[idx:])
     return (q, r)
 
 
