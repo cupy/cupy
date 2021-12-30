@@ -201,8 +201,17 @@ square = _core.create_ufunc(
 absolute = _core.absolute
 
 
-# TODO(beam2d): Implement it
-# fabs
+fabs = _core.create_ufunc(
+    'cupy_fabs',
+    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
+     'Q->Q', 'e->e', 'f->f', 'd->d'),
+    'out0 = abs(in0)',
+    doc='''Calculates absolute values element-wise.
+    Only real values are handled.
+
+    .. seealso:: :data:`numpy.fabs`
+
+    ''')
 
 
 _unsigned_sign = 'out0 = in0 > 0'

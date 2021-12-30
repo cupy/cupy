@@ -630,6 +630,7 @@ from cupy._math.misc import absolute as abs  # NOQA
 from cupy._math.misc import absolute  # NOQA
 from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fabs  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
 from cupy._math.misc import interp  # NOQA

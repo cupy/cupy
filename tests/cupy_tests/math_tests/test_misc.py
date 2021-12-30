@@ -167,6 +167,12 @@ class TestMisc(unittest.TestCase):
     def test_sign_negative(self):
         self.check_unary_negative('sign', no_bool=True)
 
+    def test_fabs(self):
+        self.check_unary('fabs')
+
+    def test_fabs_negative(self):
+        self.check_unary_negative('fabs')
+
     def test_maximum(self):
         self.check_binary('maximum')
 
