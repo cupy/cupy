@@ -1099,7 +1099,8 @@ class TestEdiff1d:
     @testing.numpy_cupy_allclose()
     def test_ediff1d_ed2(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return xp.ediff1d(a, to_begin=cupy.array([0, 4]), to_end=cupy.array([1, 1]))
+        return xp.ediff1d(a, to_begin=cupy.array([0, 4]),
+                          to_end=cupy.array([1, 1]))
 
 
 class TestTrapz:
