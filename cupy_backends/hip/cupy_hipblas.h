@@ -346,16 +346,16 @@ cublasStatus_t cublasSsbmv(cublasHandle_t handle, cublasFillMode_t uplo, int n, 
                            const float* alpha, const float* A, int lda,
                            const float* x, int incx,
                            const float* beta, float* y, int incy) {
-    return hipblasSsbmv(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),
-                        n, k, alpha, A, lda, x, incx, beta, y, incy);
+    return hipblasSsbmv(handle, convert_hipblasFillMode_t(uplo), n, k,
+                        alpha, A, lda, x, incx, beta, y, incy);
 }
 
 cublasStatus_t cublasDsbmv(cublasHandle_t handle, cublasFillMode_t uplo, int n, int k,
                            const double* alpha, const double* A, int lda,
                            const double* x, int incx,
                            const double* beta, double* y, int incy) {
-    return hipblasDsbmv(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans),
-                        n, k, alpha, A, lda, x, incx, beta, y, incy);
+    return hipblasDsbmv(handle, convert_hipblasFillMode_t(uplo), n, k,
+        alpha, A, lda, x, incx, beta, y, incy);
 }
 
 
@@ -592,13 +592,12 @@ cublasStatus_t cublasZsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasO
                            const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda,
                            const cuDoubleComplex* beta, cuDoubleComplex* C, int ldc)
 {
-    return hipblasZsyrk(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb), n, k,
+    return hipblasZsyrk(handle, convert_hipblasFillMode_t(uplo), convert_hipblasOperation_t(trans), n, k,
                         reinterpret_cast<const hipblasDoubleComplex*>(alpha),
                         reinterpret_cast<const hipblasDoubleComplex*>(A), lda,
                         reinterpret_cast<const hipblasDoubleComplex*>(beta),
                         reinterpret_cast<hipblasDoubleComplex*>(C), ldc);
 }
-
 
 // BLAS extension
 cublasStatus_t cublasSgeam(
