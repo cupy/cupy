@@ -254,7 +254,7 @@ cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
-cpdef bint streamIsCapturing(intptr_t stream) except? 0
+cpdef bint streamIsCapturing(intptr_t stream) except*
 cpdef intptr_t eventCreate() except? 0
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(intptr_t event)

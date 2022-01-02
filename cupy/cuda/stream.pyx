@@ -390,10 +390,13 @@ class _BaseStream:
                 Programming Guide for detail.
 
         """
+        # TODO(leofang): is it better to be a property?
         if runtime._is_hip_environment:
             raise RuntimeError('This function is not supported on HIP')
-        # TODO(leofang): is it better to be a property?
-        return runtime.streamIsCapturing(self.ptr)
+        try:
+            return runtime.streamIsCapturing(self.ptr)
+        except:
+            raise
 
 
 class Stream(_BaseStream):

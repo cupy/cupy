@@ -10,7 +10,7 @@ cdef class Graph:
 
     """
 
-    cdef void _init(self, intptr_t graph, intptr_t graphExec):
+    cdef void _init(self, intptr_t graph, intptr_t graphExec) except*:
         if graph > 0:
             # at this point cudaGraphExec_t has been instantiated, so we no
             # longer need to hold the cudaGraph_t

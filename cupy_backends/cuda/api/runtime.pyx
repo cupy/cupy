@@ -884,7 +884,7 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     return <intptr_t>g
 
 
-cpdef bint streamIsCapturing(intptr_t stream) except? 0:
+cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
     if CUPY_CUDA_VERSION < 10010:
         raise RuntimeError('streamIsCapturing is supported since CUDA 10.1+')

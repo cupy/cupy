@@ -144,7 +144,7 @@ class TestGraph:
             assert s.is_capturing()
             # cudaStreamLegacy is unhappy when a blocking stream is capturing
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
-                assert cuda.Stream.null.is_capturing()
+                cuda.Stream.null.is_capturing()
             assert 'cudaErrorStreamCaptureImplicit' in str(e.value)
             g = s.end_capture()
         assert not s.is_capturing()
