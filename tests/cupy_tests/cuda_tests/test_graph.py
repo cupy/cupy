@@ -3,6 +3,7 @@ import pytest
 import cupy
 from cupy import cuda
 from cupy import testing
+import cupyx
 
 
 @pytest.mark.skipif(cuda.runtime.is_hip,
@@ -158,6 +159,7 @@ class TestGraph:
 
     def test_stream_capture_failure1(self):
         s = cupy.cuda.Stream(non_blocking=True)
+
         with s:
             s.begin_capture()
             with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
@@ -230,6 +232,7 @@ class TestGraph:
 
     def test_stream_capture_failure4(self):
         s = cupy.cuda.Stream(non_blocking=True)
+
         with s:
             s.begin_capture()
             # query the stream status is illegal during capturing
@@ -262,6 +265,7 @@ class TestGraph:
 
     def test_stream_capture_failure6(self):
         s = cupy.cuda.Stream(non_blocking=True)
+
         with s:
             s.begin_capture()
             # synchronize the stream is illegal during capturing
@@ -276,36 +280,65 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
-    # This test used to fail, but as of CUDA 11.4 it passes...
-    @pytest.mark.parametrize('upload', (True, False))
-    def test_stream_capture_cublas(self, upload):
+    def test_stream_capture_failure_cublas(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((3, 4))
         b = cupy.random.random((4, 5))
+
         with s:
             s.begin_capture()
-            c = cupy.matmul(a, b)
-            g = s.end_capture()
+            with pytest.raises(NotImplementedError) as e:
+                cupy.matmul(a, b)
+            assert 'cuBLAS' in str(e.value)
+            s.end_capture()
 
-        # check the graph integrity
-        if upload and cuda.runtime.runtimeGetVersion() >= 11010:
-            g.upload()
-        g.launch()
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
         s.synchronize()
-        testing.assert_array_equal(c, a @ b)
 
     def test_stream_capture_failure_cusolver(self):
-        from cupy_backends.cuda.libs.cusolver import CUSOLVERError
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((8, 8))
         a += a.T
+
         with s:
             s.begin_capture()
-            with pytest.raises(CUSOLVERError) as e:
+            with pytest.raises(NotImplementedError) as e:
                 cupy.linalg.svd(a)
-            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
-                s.end_capture()
-            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+            assert 'cuSOLVER' in str(e.value)
+            s.end_capture()
+
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
+
+    def test_stream_capture_failure_curand(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+
+        with s:
+            s.begin_capture()
+            with pytest.raises(NotImplementedError) as e:
+                cupy.random.random(100)
+            assert 'cuRAND' in str(e.value)
+            s.end_capture()
+
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
+
+    def test_stream_capture_failure_cusparse(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.zeros((3, 4))
+        a[0] = 1
+        a = cupyx.scipy.sparse.csr_matrix(a)
+        a.has_canonical_format  # avoid launching custom kernels during capture
+
+        with s:
+            s.begin_capture()
+            with pytest.raises(NotImplementedError) as e:
+                a * a.T
+            assert 'cuSPARSE' in str(e.value)
+            s.end_capture()
 
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
