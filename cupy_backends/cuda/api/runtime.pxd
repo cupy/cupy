@@ -69,9 +69,11 @@ IF CUPY_USE_CUDA_PYTHON:
 
     ctypedef cudaDeviceProp DeviceProp
 
+    ctypedef cudaStreamCaptureStatus StreamCaptureStatus
     ctypedef cudaStreamCaptureMode StreamCaptureMode
     ctypedef cudaGraph_t Graph
     ctypedef cudaGraphExec_t GraphExec
+    ctypedef cudaGraphNode_t GraphNode
 
 ELSE:
     include "_runtime_typedef.pxi"
