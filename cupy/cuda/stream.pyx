@@ -349,6 +349,13 @@ class _BaseStream:
         if self.ptr == 0 or self.ptr == 1:
             raise RuntimeError('cannot capture on the default (legacy) stream')
         if mode is None:
+            # We default to the relaxed mode for the following reason: During
+            # the capture the memory pool might need to increase size. If it's
+            # backed by cudaMalloc, which is an "unsafe" API, other modes would
+            # not permit such a (legitimate) operation. See the API doc for
+            # "cudaThreadExchangeStreamCaptureMode" for further detail.
+            # (Though, ideally stream capture should be used together with
+            # the async APIs, such as cudaMallocAsync.)
             mode = runtime.streamCaptureModeRelaxed
         runtime.streamBeginCapture(self.ptr, mode)
 
