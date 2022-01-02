@@ -395,7 +395,7 @@ class _BaseStream:
             raise RuntimeError('This function is not supported on HIP')
         try:
             return runtime.streamIsCapturing(self.ptr)
-        except:
+        except RuntimeError:  # can be RuntimeError or CUDARuntimeError
             raise
 
 
