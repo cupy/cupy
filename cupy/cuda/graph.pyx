@@ -11,7 +11,11 @@ cdef class Graph:
     """
 
     cdef void _init(self, intptr_t graph, intptr_t graphExec):
-        self.graph = graph
+        if graph > 0:
+            # at this point cudaGraphExec_t has been instantiated, so we no
+            # longer need to hold the cudaGraph_t
+            runtime.graphDestroy(graph)
+        self.graph = 0
         self.graphExec = graphExec
 
     def __dealloc__(self):
