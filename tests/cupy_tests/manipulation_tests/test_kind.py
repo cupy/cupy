@@ -22,7 +22,11 @@ class TestKind(unittest.TestCase):
     def test_asarray_chkfinite_non_finite_vals(self, dtype, order):
         a = [-numpy.inf, 0., numpy.inf, numpy.nan]
         for xp in (numpy, cupy):
-            with pytest.raises(ValueError):
+            if xp.issubdtype(dtype, xp.integer):
+                error = OverflowError
+            else:
+                error = ValueError
+            with pytest.raises(error):
                 xp.asarray_chkfinite(a, dtype=dtype, order=order)
 
     @testing.for_all_dtypes()
