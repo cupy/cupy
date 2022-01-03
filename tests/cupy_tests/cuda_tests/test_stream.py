@@ -65,7 +65,7 @@ class TestStream(unittest.TestCase):
         hash(self.stream)
         hash(cuda.Stream(True))
         hash(cuda.Stream(False))
-        mapping = {cuda.Stream(): 1, cuda.Stream(): 2}
+        mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
 
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
