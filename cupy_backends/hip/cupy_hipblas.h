@@ -1,7 +1,7 @@
 #ifndef INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H
 #define INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H
 
-#include "cupy_hip_common.h"
+#include "cupy_hip_common.h" 
 #include <hipblas.h>
 #include <hip/hip_version.h>  // for HIP_VERSION
 #include <stdexcept>  // for gcc 10
