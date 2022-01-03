@@ -10,18 +10,20 @@ from cupy import testing
 @testing.gpu
 class TestKind(unittest.TestCase):
 
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    def test_asarray_chkfinite(self, dtype):
+    @testing.numpy_cupy_array_equal()
+    def test_asarray_chkfinite(self, xp, dtype, order):
         a = [0, 4, 0, 5]
-        a_gpu = cupy.asarray_chkfinite(a, dtype=dtype)
-        a_cpu = numpy.asarray_chkfinite(a, dtype=dtype)
-        assert a_gpu.dtype == a_cpu.dtype
+        return xp.asarray_chkfinite(a, dtype=dtype, order=order)
 
-    @unittest.expectedFailure
+    @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    def test_asarray_chkfinite_non_finite_vals(self, dtype):
-        a = [-numpy.inf, 0., numpy.inf]
-        self.assertRaises(ValueError, cupy.asarray_chkfinite, a, dtype=dtype)
+    def test_asarray_chkfinite_non_finite_vals(self, xp, dtype, order):
+        a = [-numpy.inf, 0., numpy.inf, numpy.nan]
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.asarray_chkfinite(a, dtype=dtype, order=order)
 
     @testing.for_all_dtypes()
     def test_asfarray(self, dtype):
