@@ -325,6 +325,24 @@ class _BaseStream:
         A call to this function must be paired with a call to
         :meth:`end_capture` to complete the capture.
 
+        .. code-block:: python
+
+            # create a non-blocking stream for the purpose of capturing
+            s1 = cp.cuda.Stream(non_blocking=True)
+            with s1:
+                s1.begin_capture()
+                # ... perform operations to construct a graph ...
+                g = s1.end_capture()
+
+            # the returned graph can be launched on any stream (including s1)
+            g.launch(stream=s1)
+            s1.synchronize()
+
+            s2 = cp.cuda.Stream()
+            with s2:
+                g.launch()
+            s2.synchronize()
+
         Args:
             mode (int): The stream capture mode. Default is
                 :data:`~cupy.cuda.runtime.streamCaptureModeRelaxed`.

@@ -6,7 +6,7 @@ cdef class Graph:
     """The CUDA graph object.
 
     Currently this class cannot be initiated by the user and must be created
-    via stream capture. See :meth:`~cupy.cuda.Stream.end_capture` for detail.
+    via stream capture. See :meth:`~cupy.cuda.Stream.begin_capture` for detail.
 
     """
 
@@ -23,6 +23,11 @@ cdef class Graph:
             runtime.graphDestroy(self.graph)
         if self.graphExec > 0:
             runtime.graphExecDestroy(self.graphExec)
+
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError(
+            'currently this class cannot be initiated by the user and must '
+            'be created via stream capture')
 
     @staticmethod
     cdef Graph from_stream(intptr_t g):
