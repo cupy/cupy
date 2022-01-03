@@ -19,7 +19,7 @@ class TestKind(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    def test_asarray_chkfinite_non_finite_vals(self, xp, dtype, order):
+    def test_asarray_chkfinite_non_finite_vals(self, dtype, order):
         a = [-numpy.inf, 0., numpy.inf, numpy.nan]
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):

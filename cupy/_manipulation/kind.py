@@ -3,8 +3,7 @@ from cupy import _core
 
 
 def asarray_chkfinite(a, dtype=None, order=None):
-    """
-    Convert the given input to an array,
+    """Converts the given input to an array,
     and raises an error if the input contains NaNs or Infs.
 
     Args:
@@ -13,7 +12,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
         order: {'C', 'F', 'A', 'K'}, optional
 
     Returns:
-        cupy.ndarray: Array interpretation of `a`.
+        cupy.ndarray: An array on the current device.
 
     .. seealso:: :func:`numpy.asarray_chkfinite`
 
