@@ -203,8 +203,7 @@ absolute = _core.absolute
 
 fabs = _core.create_ufunc(
     'cupy_fabs',
-    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d'),
+    ('e->e', 'f->f', 'd->d'),
     'out0 = abs(in0)',
     doc='''Calculates absolute values element-wise.
     Only real values are handled.
