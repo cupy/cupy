@@ -1,5 +1,6 @@
 import cupy
 from cupy import _core
+import numpy
 
 
 def asarray_chkfinite(a, dtype=None, order=None):
@@ -13,15 +14,21 @@ def asarray_chkfinite(a, dtype=None, order=None):
 
     Returns:
         cupy.ndarray: An array on the current device.
+    .. note::
+        This function performs device synchronization when ``a`` is a
+        ``cupy.ndarray``.
 
     .. seealso:: :func:`numpy.asarray_chkfinite`
 
     """
 
-    a = cupy.asarray(a, dtype=dtype, order=order)
-    if not cupy.isfinite(a).all():
-        raise ValueError(
-            "Array must not contain infs or nans.")
+    if isinstance(a, cupy.ndarray):
+        if not cupy.isfinite(a).all():
+            raise ValueError(
+                "Array must not contain infs or nans.")
+    else:
+        a = cupy.asarray(numpy.asarray_chkfinite(a, dtype=dtype, order=order),
+                         dtype=dtype, order=order)
 
     return a
 
