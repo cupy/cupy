@@ -45,10 +45,10 @@ try:
     from cupy.fft.fft import _cook_shape
 except ImportError:
     # local copy of private cupy.fft function
-    def _cook_shape(a, s, axes, value_type, order="C"):
+    def _cook_shape(a, s, axes, value_type, order='C'):
         if s is None or s == a.shape:
             return a
-        if (value_type == "C2R") and (s[-1] is not None):
+        if (value_type == 'C2R') and (s[-1] is not None):
             s = list(s)
             s[-1] = s[-1] // 2 + 1
         for sz, axis in zip(s, axes):
@@ -68,11 +68,11 @@ except ImportError:
         return a
 
 
-__all__ = ["dct", "dctn", "dst", "dstn", "idct", "idctn", "idst", "idstn"]
+__all__ = ['dct', 'dctn', 'dst', 'dstn', 'idct', 'idctn', 'idst', 'idstn']
 
 
 def _promote_dtype(x):
-    if x.dtype.kind in "bui":
+    if x.dtype.kind in 'bui':
         # use float64 instead of promote_types to match SciPy's behavior
         float_dtype = cupy.float64
     else:
@@ -95,16 +95,16 @@ def _get_dct_norm_factor(n, inorm, dct_type=2):
     Returns:
         fct (float): The normalization factor
     """
-    if inorm == "none":
+    if inorm == 'none':
         return 1
     delta = -1 if dct_type == 1 else 0
     d = 2 * (n + delta)
-    if inorm == "full":
+    if inorm == 'full':
         fct = 1 / d
-    elif inorm == "sqrt":
+    elif inorm == 'sqrt':
         fct = 1 / math.sqrt(d)
     else:
-        raise ValueError("expected inorm = 'none', 'sqrt' or 'full'")
+        raise ValueError('expected inorm = "none", "sqrt" or "full"')
     return fct
 
 
@@ -128,8 +128,8 @@ def _reshuffle_dct2(x, n, axis, dst=False):
 
 
 _mult_factor_dct2 = _core.ElementwiseKernel(
-    in_params="R xr, int32 N, R norm_factor",
-    out_params="C y",
+    in_params='R xr, int32 N, R norm_factor',
+    out_params='C y',
     operation="""
     C j(0., -1.);
     y = (R)2.0 * norm_factor * exp(j * (R)(i * M_PI / (2 * N)));""",
@@ -174,23 +174,25 @@ def _dct_or_dst_type2(
         cupy.ndarray: The transformed array.
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError("axis out of range")
+        raise numpy.AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:
         raise ValueError(
-            "invalid number of data points ({}) specified".format(n)
+            f'invalid number of data points ({n}) specified'
         )
 
-    x = _cook_shape(x, (n,), (axis,), "R2R")
+    x = _cook_shape(x, (n,), (axis,), 'R2R')
     n = x.shape[axis]
 
     x = _reshuffle_dct2(x, x.shape[axis], axis, dst)
 
-    if norm == "ortho":
-        inorm = "sqrt"
+    if norm == 'ortho':
+        inorm = 'sqrt'
+    elif norm == 'forward':
+        inorm = 'full' if forward else 'none'
     else:
-        inorm = "none" if forward else "full"
+        inorm = 'none' if forward else 'full'
     norm_factor = _get_dct_norm_factor(n, inorm=inorm, dct_type=2)
 
     x = _fft.fft(x, n=n, axis=axis, overwrite_x=True)
@@ -204,7 +206,7 @@ def _dct_or_dst_type2(
         slrev[axis] = slice(None, None, -1)
         x = x[tuple(slrev)]
 
-    if norm == "ortho":
+    if norm == 'ortho':
         sl0 = [slice(None)] * x.ndim
         sl0[axis] = slice(1)
         x[tuple(sl0)] *= math.sqrt(2) * 0.5
@@ -239,8 +241,8 @@ def _reshuffle_dct3(y, n, axis, dst):
 
 
 _mult_factor_dct3 = _core.ElementwiseKernel(
-    in_params="R xr, int32 N, R norm_factor",
-    out_params="C y",
+    in_params='R xr, int32 N, R norm_factor',
+    out_params='C y',
     operation="""
     C j(0., 1.);
     y = (R)(2 * N * norm_factor) * exp(j * (R)(i * M_PI / (2 * N)));""",
@@ -283,24 +285,30 @@ def _dct_or_dst_type3(
         cupy.ndarray: The transformed array.
     """
     if axis < -x.ndim or axis >= x.ndim:
-        raise numpy.AxisError("axis out of range")
+        raise numpy.AxisError('axis out of range')
     if axis < 0:
         axis += x.ndim
     if n is not None and n < 1:
         raise ValueError(
-            "invalid number of data points ({}) specified".format(n)
+            f'invalid number of data points ({n}) specified'
         )
 
-    x = _cook_shape(x, (n,), (axis,), "R2R")
+    x = _cook_shape(x, (n,), (axis,), 'R2R')
     n = x.shape[axis]
 
     # determine normalization factor
-    if norm == "ortho":
+    if norm == 'ortho':
         sl0_scale = 0.5 * math.sqrt(2)
-        inorm = "sqrt"
-    else:
+        inorm = 'sqrt'
+    elif norm == 'forward':
         sl0_scale = 0.5
-        inorm = "none" if forward else "full"
+        inorm = 'full' if forward else 'none'
+    elif norm == 'backward' or norm is None:
+        sl0_scale = 0.5
+        inorm = 'none' if forward else 'full'
+    else:
+        raise ValueError(f'Invalid norm value "{norm}", should be "backward", '
+                         '"ortho" or "forward"')
     norm_factor = _get_dct_norm_factor(n, inorm=inorm, dct_type=3)
     dtype = cupy.promote_types(x, cupy.complex64)
 
@@ -308,7 +316,7 @@ def _dct_or_dst_type3(
     sl0[axis] = slice(1)
 
     if dst:
-        if norm == "ortho":
+        if norm == 'ortho':
             float_dtype = cupy.promote_types(x.dtype, cupy.float32)
             if x.dtype != float_dtype:
                 x = x.astype(float_dtype)
@@ -381,7 +389,7 @@ def dct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
            https://en.wikipedia.org/wiki/Discrete_cosine_transform
 
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = dct(x.real, type, n, axis, norm, overwrite_x)
         out = out + 1j * dct(x.imag, type, n, axis, norm, overwrite_x)
@@ -399,10 +407,10 @@ def dct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         )
     elif type in [1, 4]:
         raise NotImplementedError(
-            "Only DCT-II and DCT-III have been implemented."
+            'Only DCT-II and DCT-III have been implemented.'
         )
     else:
-        raise ValueError("invalid DCT type")
+        raise ValueError('invalid DCT type')
 
 
 @_fft._implements(_fft._scipy_fft.dst)
@@ -450,7 +458,7 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     .. [1] Wikipedia, "Discrete sine transform",
            https://en.wikipedia.org/wiki/Discrete_sine_transform
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = dst(x.real, type, n, axis, norm, overwrite_x)
         out = out + 1j * dst(x.imag, type, n, axis, norm, overwrite_x)
@@ -468,10 +476,10 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         )
     elif type in [1, 4]:
         raise NotImplementedError(
-            "Only DST-II and DST-III have been implemented."
+            'Only DST-II and DST-III have been implemented.'
         )
     else:
-        raise ValueError("invalid DST type")
+        raise ValueError('invalid DST type')
 
 
 @_fft._implements(_fft._scipy_fft.idct)
@@ -515,7 +523,7 @@ def idct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     See the `scipy.fft.dct` documentation for a full description of each type.
 
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = idct(x.real, type, n, axis, norm, overwrite_x)
         out = out + 1j * idct(x.imag, type, n, axis, norm, overwrite_x)
@@ -531,10 +539,10 @@ def idct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         return _dct_or_dst_type2(x, n=n, axis=axis, norm=norm, forward=False)
     elif type in [1, 4]:
         raise NotImplementedError(
-            "Only DCT-II and DCT-III have been implemented."
+            'Only DCT-II and DCT-III have been implemented.'
         )
     else:
-        raise ValueError("invalid DCT type")
+        raise ValueError('invalid DCT type')
 
 
 @_fft._implements(_fft._scipy_fft.idst)
@@ -570,7 +578,7 @@ def idst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
 
     See the `scipy.fft.dst` documentation for a full description of each type.
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = idst(x.real, type, n, axis, norm, overwrite_x)
         out = out + 1j * idst(x.imag, type, n, axis, norm, overwrite_x)
@@ -590,10 +598,10 @@ def idst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         )
     elif type in [1, 4]:
         raise NotImplementedError(
-            "Only DST-II and DST-III have been implemented."
+            'Only DST-II and DST-III have been implemented.'
         )
     else:
-        raise ValueError("invalid DST type")
+        raise ValueError('invalid DST type')
 
 
 def _iterable_of_int(x, name=None):
@@ -604,9 +612,9 @@ def _iterable_of_int(x, name=None):
     try:
         x = [operator.index(a) for a in x]
     except TypeError as e:
-        name = name or "value"
+        name = name or 'value'
         raise ValueError(
-            "{} must be a scalar or iterable of integers".format(name)
+            f'{name} must be a scalar or iterable of integers'
         ) from e
 
     return x
@@ -618,25 +626,25 @@ def _init_nd_shape_and_axes(x, shape, axes):
     noaxes = axes is None
 
     if not noaxes:
-        axes = _iterable_of_int(axes, "axes")
+        axes = _iterable_of_int(axes, 'axes')
         axes = [a + x.ndim if a < 0 else a for a in axes]
 
         if any(a >= x.ndim or a < 0 for a in axes):
-            raise ValueError("axes exceeds dimensionality of input")
+            raise ValueError('axes exceeds dimensionality of input')
         if len(set(axes)) != len(axes):
-            raise ValueError("all axes must be unique")
+            raise ValueError('all axes must be unique')
 
     if not noshape:
-        shape = _iterable_of_int(shape, "shape")
+        shape = _iterable_of_int(shape, 'shape')
         nshape = len(shape)
         if axes and len(axes) != nshape:
             raise ValueError(
-                "when given, axes and shape arguments"
-                " have to be of the same length"
+                'when given, axes and shape arguments'
+                ' have to be of the same length'
             )
         if noaxes:
             if nshape > x.ndim:
-                raise ValueError("shape requires more axes than are present")
+                raise ValueError('shape requires more axes than are present')
             axes = range(x.ndim - len(shape), x.ndim)
 
         shape = [x.shape[a] if s == -1 else s for s, a in zip(shape, axes)]
@@ -648,7 +656,7 @@ def _init_nd_shape_and_axes(x, shape, axes):
 
     if any(s < 1 for s in shape):
         raise ValueError(
-            "invalid number of data points ({0}) specified".format(shape)
+            f'invalid number of data points ({shape}) specified'
         )
 
     return shape, axes
@@ -692,7 +700,7 @@ def dctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     For full details of the DCT types and normalization modes, as well as
     references, see `dct`.
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = dctn(x.real, type, s, axes, norm, overwrite_x)
         out = out + 1j * dctn(x.imag, type, s, axes, norm, overwrite_x)
@@ -749,7 +757,7 @@ def idctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     For full details of the IDCT types and normalization modes, as well as
     references, see `idct`.
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = idctn(x.real, type, s, axes, norm, overwrite_x)
         out = out + 1j * idctn(x.imag, type, s, axes, norm, overwrite_x)
@@ -806,7 +814,7 @@ def dstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     For full details of the DST types and normalization modes, as well as
     references, see `dst`.
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = dstn(x.real, type, s, axes, norm, overwrite_x)
         out = out + 1j * dstn(x.imag, type, s, axes, norm, overwrite_x)
@@ -863,7 +871,7 @@ def idstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     For full details of the IDST types and normalization modes, as well as
     references, see `idst`.
     """
-    if x.dtype.kind == "c":
+    if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
         out = idstn(x.real, type, s, axes, norm, overwrite_x)
         out = out + 1j * idstn(x.imag, type, s, axes, norm, overwrite_x)
