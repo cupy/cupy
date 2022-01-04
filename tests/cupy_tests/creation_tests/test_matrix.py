@@ -213,12 +213,12 @@ class TestVander(unittest.TestCase):
 
     def test_vander_0dim(self):
         for xp in (numpy, cupy):
+            a = xp.zeros(())
             with pytest.raises(ValueError):
-                a = xp.zeros(())
                 xp.vander(a, N=self.N, increasing=self.increasing)
 
     def test_vander_2dim(self):
         for xp in (numpy, cupy):
+            m = xp.zeros((2, 2))
             with pytest.raises(ValueError):
-                m = xp.zeros((2, 2))
                 xp.vander(m, N=self.N, increasing=self.increasing)
