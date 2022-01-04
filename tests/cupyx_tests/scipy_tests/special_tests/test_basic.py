@@ -5,7 +5,6 @@ import cupy
 import numpy
 import pytest
 import scipy.special  # NOQA
-import scipy.special._ufuncs as cephes
 from numpy.testing import suppress_warnings
 
 import cupyx.scipy.special  # NOQA
@@ -39,22 +38,13 @@ class TestLegendreFunctions(unittest.TestCase):
         assert lp != 0 or cupy.isnan(lp)
 
 
-def test_gammasgn_vs_cephes():
-    vals = cupy.asarray([-4, -3.5, -2.3, 1, 4.2], cupy.float64)
-    scp = cupyx.scipy
-    assert_array_equal(
-        scp.special.gammasgn(vals),
-        numpy.sign(cephes.rgamma(cupy.asnumpy(vals))),
-    )
-
-
 @testing.gpu
 @testing.with_requires("scipy")
 class TestBasic(unittest.TestCase):
     @testing.for_dtypes(["e", "f", "d"])
     @numpy_cupy_allclose(scipy_name="scp")
     def test_gammasgn(self, xp, scp, dtype):
-        vals = xp.asarray([-4, -3.5, -2.3, 1, 4.2], dtype=dtype)
+        vals = xp.linspace(-4, 4, 100, dtype=dtype)
         return scp.special.gammasgn(vals)
 
     @testing.for_dtypes(["e", "f", "d"])
