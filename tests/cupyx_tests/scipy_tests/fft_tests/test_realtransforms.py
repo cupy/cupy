@@ -1,13 +1,16 @@
+import numpy as np
 import pytest
 import scipy
 
 import cupyx.scipy.fft  # noqa
+from cupyx.scipy import fft as cp_fft
 from cupy import testing
 
 try:
     # scipy.fft is available since scipy v1.4.0+
-    import scipy.fft  # noqa
+    import scipy.fft as scipy_fft  # noqa
 except ImportError:
+    scipy_fft = None
     pass
 
 # used to avoid SciPy bug in complex dtype cases with output_x=True
@@ -58,6 +61,16 @@ class TestDctDst():
     def test_dct(self, xp, scp, dtype, function):
         fft_func = getattr(getattr(scp, 'fft'), function)
         return self._run_transform(fft_func, xp, dtype)
+
+    @pytest.mark.parametrize('function', ['dct', 'dst', 'idct', 'idst'])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_dct_backend(self, xp, dtype, function):
+        backend = 'scipy' if xp is np else cp_fft
+        with scipy_fft.set_backend(backend):
+            fft_func = getattr(scipy_fft, function)
+            return self._run_transform(fft_func, xp, dtype)
 
 
 @testing.parameterize(
@@ -131,3 +144,13 @@ class TestDctnDstn():
     def test_dctn(self, xp, scp, dtype, function):
         fft_func = getattr(getattr(scp, 'fft'), function)
         return self._run_transform(fft_func, xp, dtype)
+
+    @pytest.mark.parametrize('function', ['dctn', 'dstn', 'idctn', 'idstn'])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_dctn_backend(self, xp, dtype, function):
+        backend = 'scipy' if xp is np else cp_fft
+        with scipy_fft.set_backend(backend):
+            fft_func = getattr(scipy_fft, function)
+            return self._run_transform(fft_func, xp, dtype)

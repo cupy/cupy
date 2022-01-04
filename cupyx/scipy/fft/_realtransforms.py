@@ -38,8 +38,8 @@ import operator
 import numpy
 
 import cupy
-import cupyx.scipy.fft
 from cupy import _core
+from cupyx.scipy.fft import _fft
 
 try:
     from cupy.fft.fft import _cook_shape
@@ -193,7 +193,7 @@ def _dct_or_dst_type2(
         inorm = "none" if forward else "full"
     norm_factor = _get_dct_norm_factor(n, inorm=inorm, dct_type=2)
 
-    x = cupyx.scipy.fft.fft(x, n=n, axis=axis, overwrite_x=True)
+    x = _fft.fft(x, n=n, axis=axis, overwrite_x=True)
     tmp = _exp_factor_dct2(x, n, axis, norm_factor)
 
     x *= tmp  # broadcasting
@@ -326,13 +326,14 @@ def _dct_or_dst_type3(
     x[tuple(sl0)] *= sl0_scale
 
     # inverse fft
-    x = cupyx.scipy.fft.ifft(x, n=n, axis=axis, overwrite_x=True)
+    x = _fft.ifft(x, n=n, axis=axis, overwrite_x=True)
     x = cupy.real(x)
 
     # reorder entries
     return _reshuffle_dct3(x, n, axis, dst)
 
 
+@_fft._implements(_fft._scipy_fft.dct)
 def dct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Discrete Cosine Transform of an array, x.
 
@@ -404,6 +405,7 @@ def dct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         raise ValueError("invalid DCT type")
 
 
+@_fft._implements(_fft._scipy_fft.dst)
 def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Discrete Sine Transform of an array, x.
 
@@ -472,6 +474,7 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         raise ValueError("invalid DST type")
 
 
+@_fft._implements(_fft._scipy_fft.idct)
 def idct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Inverse Discrete Cosine Transform of an array, x.
 
@@ -534,6 +537,7 @@ def idct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         raise ValueError("invalid DCT type")
 
 
+@_fft._implements(_fft._scipy_fft.idst)
 def idst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Inverse Discrete Sine Transform of an array, x.
 
@@ -650,6 +654,7 @@ def _init_nd_shape_and_axes(x, shape, axes):
     return shape, axes
 
 
+@_fft._implements(_fft._scipy_fft.dctn)
 def dctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Cosine Transform.
 
@@ -706,6 +711,7 @@ def dctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     return x
 
 
+@_fft._implements(_fft._scipy_fft.idctn)
 def idctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Cosine Transform.
 
@@ -762,6 +768,7 @@ def idctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     return x
 
 
+@_fft._implements(_fft._scipy_fft.dstn)
 def dstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Sine Transform.
 
@@ -818,6 +825,7 @@ def dstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     return x
 
 
+@_fft._implements(_fft._scipy_fft.idstn)
 def idstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Sine Transform.
 
