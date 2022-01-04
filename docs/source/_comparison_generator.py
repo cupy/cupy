@@ -89,10 +89,10 @@ def _generate_comparison_rst(
 def _section(
         header, base_mod, cupy_mod,
         base_type='NumPy', klass=None, exclude_mod=None, exclude=None,
-        footnotes=None):
+        footnotes=None, header_char='~'):
     return [
         header,
-        '~' * len(header),
+        header_char * len(header),
         '',
     ] + _generate_comparison_rst(
         base_mod, cupy_mod, base_type, klass, exclude_mod, exclude, footnotes
@@ -105,9 +105,20 @@ _deprecated = 'Not supported as it has been deprecated in NumPy.'
 _np_matrix = (
     'Use of :class:`numpy.matrix` is discouraged in NumPy and thus'
     ' we have no plan to add it to CuPy.')
+_np_poly1d = (
+    'Use of :class:`numpy.poly1d` is discouraged in NumPy and thus'
+    ' we have stopped adding functions with the interface.')
 _dtype_na = (
     '`object` and string dtypes are not supported in GPU and thus'
     ' left unimplemented in CuPy.')
+_dtype_time = (
+    '`datetime64` and `timedelta64` dtypes are currently unsupported.')
+_dtype_rec = (
+    'Structured arrays and record arrays are currently unsupported.')
+_float_error_state = (
+    'Floating point error handling depends on CPU-specific features'
+    ' which is not available in GPU.')
+_byte_order = 'Not supported as GPUs only support little-endian byte-encoding.'
 
 
 def generate():
@@ -126,17 +137,28 @@ def generate():
             'add_newdoc_ufunc',
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
+            'kernel_version',
             'test',
             'Tester',
         ], footnotes={
             'Datetime64': _deprecated,  # NumPy 1.20
             'Uint64': _deprecated,  # NumPy 1.20
             'mafromtxt': _deprecated,  # NumPy 1.17
+            'alen': _deprecated,  # NumPy 1.18
+            'asscalar': _deprecated,  # NumPy 1.16
+            'loads': _deprecated,  # NumPy 1.15
+            'ndfromtxt': _deprecated,  # NumPy 1.17
+            'set_numeric_ops': _deprecated,  # NumPy 1.16
 
             'asmatrix': _np_matrix,
             'bmat': _np_matrix,
             'mat': _np_matrix,
             'matrix': _np_matrix,
+
+            'poly': _np_poly1d,
+            'polyder': _np_poly1d,
+            'polydiv': _np_poly1d,
+            'polyint': _np_poly1d,
 
             'Bytes0': _dtype_na,  # also deprecated in NumPy 1.20
             'bytes0': _dtype_na,
@@ -154,10 +176,39 @@ def generate():
             'unicode_': _dtype_na,
             'void': _dtype_na,
             'void0': _dtype_na,
+
+            'busday_count': _dtype_time,
+            'busday_offset': _dtype_time,
+            'busdaycalendar': _dtype_time,
+            'is_busday': _dtype_time,
+            'isnat': _dtype_time,
+            'datetime64': _dtype_time,
+            'datetime_as_string': _dtype_time,
+            'datetime_data': _dtype_time,
+            'timedelta64': _dtype_time,
+
+            'fromregex': _dtype_rec,
+            'recarray': _dtype_rec,
+            'recfromcsv': _dtype_rec,
+            'recfromtxt': _dtype_rec,
+            'record': _dtype_rec,
+
+            'errstate': _float_error_state,
+            'geterr': _float_error_state,
+            'geterrcall': _float_error_state,
+            'geterrobj': _float_error_state,
+            'seterr': _float_error_state,
+            'seterrcall': _float_error_state,
+            'seterrobj': _float_error_state,
         })
     buf += _section(
         'Multi-Dimensional Array',
-        'numpy', 'cupy', klass='ndarray')
+        'numpy', 'cupy', klass='ndarray', footnotes={
+            'tostring': _deprecated,
+
+            'byteswap': _byte_order,
+            'newbyteorder': _byte_order,
+        })
     buf += _section(
         'Linear Algebra',
         'numpy.linalg', 'cupy.linalg', exclude=['test'])
@@ -167,6 +218,17 @@ def generate():
     buf += _section(
         'Random Sampling',
         'numpy.random', 'cupy.random', exclude=['test'])
+    buf += _section(
+        'Polynomials',
+        'numpy.polynomial', 'cupy.polynomial', exclude=['test'])
+    buf += _section(
+        'Power Series',
+        'numpy.polynomial.polynomial', 'cupy.polynomial.polynomial',
+        header_char='"')
+    buf += _section(
+        'Polyutils',
+        'numpy.polynomial.polyutils', 'cupy.polynomial.polyutils',
+        header_char='"')
 
     buf += [
         'SciPy / CuPy APIs',

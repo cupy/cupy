@@ -2,6 +2,7 @@ import copy
 import hashlib
 import math
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -53,8 +54,8 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
             # but this is not true in general Windows environment unless
             # running inside the SDK Tools command prompt.
             # To mitigate the situation CuPy automatically adds a path to
-            # the VC++ compiler used to build Python / CuPy to the PATH, if
-            # VC++ is not available in PATH.
+            # the VC++ compiler (cl.exe) found via setuptools, if it is not
+            # on the PATH.
             extra_path = _get_extra_path_for_msvc()
             if extra_path is not None:
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
@@ -90,24 +91,24 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
 
 @_util.memoize()
 def _get_extra_path_for_msvc():
-    import distutils.spawn
-    cl_exe = distutils.spawn.find_executable('cl.exe')
+    cl_exe = shutil.which('cl.exe')
     if cl_exe:
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    from distutils import msvc9compiler
-    vcvarsall_bat = msvc9compiler.find_vcvarsall(
-        msvc9compiler.get_build_version())
-    if not vcvarsall_bat:
-        # Failed to find VC.
+    try:
+        import setuptools
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+    except Exception as e:
+        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
         return None
 
-    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
-    if not distutils.spawn.find_executable('cl.exe', path):
-        # The compiler could not be found.
-        return None
-    return path
+    for path in vctools:
+        cl_exe = os.path.join(path, 'cl.exe')
+        if os.path.exists(cl_exe):
+            return path
+    warnings.warn(f'cl.exe could not be found in {vctools}')
+    return None
 
 
 def _get_nvrtc_version():
@@ -150,6 +151,7 @@ def _get_arch():
         return min(arch, nvrtc_max_compute_capability)
 
 
+@_util.memoize(for_each_device=True)
 def _get_arch_for_options_for_nvrtc(arch=None):
     # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
     # version than the one included in the used CUDA version, as
@@ -165,7 +167,7 @@ def _get_arch_for_options_for_nvrtc(arch=None):
         version = _cuda_hip_version
     if (
         not _use_ptx and version >= 11010
-        and arch < _get_max_compute_capability()
+        and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
     return f'-arch=compute_{arch}', 'ptx'
@@ -258,6 +260,20 @@ def _jitify_prep(source, options, cu_path):
     assert name == cu_path
 
     return options, headers, include_names
+
+
+_has_usedforsecurity = (sys.version_info >= (3, 9))
+
+
+def _hash_hexdigest(value):
+    if _has_usedforsecurity:
+        hashobj = hashlib.sha1(value, usedforsecurity=False)
+    else:
+        hashobj = hashlib.sha1(value)
+    return hashobj.hexdigest()
+
+
+_hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
@@ -441,7 +457,7 @@ def compile_with_cache(*args, **kwargs):
         'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
         ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
         ' instead.', DeprecationWarning)
-    _compile_module_with_cache(*args, **kwargs)
+    return _compile_module_with_cache(*args, **kwargs)
 
 
 def _compile_module_with_cache(
@@ -517,7 +533,7 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.cubin'
 
     mod = function.Module()
 
@@ -533,10 +549,10 @@ def _compile_with_cache_cuda(
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as file:
                 data = file.read()
-            if len(data) >= 32:
-                hash = data[:32]
-                cubin = data[32:]
-                cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+            if len(data) >= _hash_length:
+                hash = data[:_hash_length]
+                cubin = data[_hash_length:]
+                cubin_hash = _hash_hexdigest(cubin).encode('ascii')
                 if hash == cubin_hash:
                     mod.load(cubin)
                     return mod
@@ -571,10 +587,10 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to disk cache
-        cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
@@ -841,7 +857,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
-    name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
+    name = _hash_hexdigest(key_src) + '.hsaco'
 
     mod = function.Module()
 
@@ -857,10 +873,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         if os.path.exists(path) and not name_expressions:
             with open(path, 'rb') as f:
                 data = f.read()
-            if len(data) >= 32:
-                hash_value = data[:32]
-                binary = data[32:]
-                binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+            if len(data) >= _hash_length:
+                hash_value = data[:_hash_length]
+                binary = data[_hash_length:]
+                binary_hash = _hash_hexdigest(binary).encode('ascii')
                 if hash_value == binary_hash:
                     mod.load(binary)
                     return mod
@@ -880,10 +896,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         # Write to disk cache
-        binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+        binary_hash = _hash_hexdigest(binary).encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
-        # corrupted file. We detect it by appending md5 hash at the beginning
+        # corrupted file. We detect it by appending a hash at the beginning
         # of each cache file. If the file is corrupted, it will be ignored
         # next time it is read.
         with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:

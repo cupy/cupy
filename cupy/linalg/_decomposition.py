@@ -123,6 +123,8 @@ def _potrf_batched(a):
         raise RuntimeError('potrfBatched is not available')
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -153,12 +155,13 @@ def _potrf_batched(a):
 def cholesky(a):
     """Cholesky decomposition.
 
-    Decompose a given two-dimensional square matrix into ``L * L.T``,
-    where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
+    Decompose a given two-dimensional square matrix into ``L * L.H``,
+    where ``L`` is a lower-triangular matrix and ``.H`` is a conjugate
     transpose operator.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(..., M, M)``
+        a (cupy.ndarray): Hermitian (symmetric if all elements are real),
+            positive-definite input matrix with dimension ``(..., M, M)``.
 
     Returns:
         cupy.ndarray: The lower-triangular matrix of shape ``(..., M, M)``.
@@ -180,6 +183,8 @@ def cholesky(a):
         return _potrf_batched(a)
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
@@ -221,9 +226,6 @@ def _qr_batched(a, mode):
     if batch_size == 0 or m == 0 or n == 0:
         # support float32, float64, complex64, and complex128
         dtype, out_dtype = _util.linalg_common_type(a)
-        if mode == 'raw':
-            # compatibility with numpy.linalg.qr
-            out_dtype = numpy.promote_types(out_dtype, 'd')
 
         if mode == 'reduced':
             return (cupy.empty(batch_shape + (m, 0), out_dtype),
@@ -246,7 +248,7 @@ def _qr_batched(a, mode):
     q, r = out
     q = q.reshape(batch_shape + q.shape[-2:])
     idx = -1 if mode == 'raw' else -2
-    r.reshape(batch_shape + r.shape[idx:])
+    r = r.reshape(batch_shape + r.shape[idx:])
     return (q, r)
 
 
@@ -293,9 +295,6 @@ def qr(a, mode='reduced'):
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _util.linalg_common_type(a)
-    if mode == 'raw':
-        # compatibility with numpy.linalg.qr
-        out_dtype = numpy.promote_types(out_dtype, 'd')
 
     m, n = a.shape
     mn = min(m, n)

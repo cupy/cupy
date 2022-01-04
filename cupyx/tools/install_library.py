@@ -68,33 +68,33 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
-    '11.5', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.5', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.4', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.4', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.3', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.3', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.2', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.2', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.1', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.1', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.0', '8.2.4',
-    'cudnn-11.4-linux-x64-v8.2.4.15.tgz',
-    'cudnn-11.4-windows-x64-v8.2.4.15.zip'))
+    '11.0', '8.3.0',
+    'cudnn-11.5-linux-x64-v8.3.0.98.tgz',
+    'cudnn-11.5-windows-x64-v8.3.0.98.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.2', '8.2.4',
-    'cudnn-10.2-linux-x64-v8.2.4.15.tgz',
-    'cudnn-10.2-windows10-x64-v8.2.4.15.zip'))
+    '10.2', '8.3.0',
+    'cudnn-10.2-linux-x64-v8.3.0.98.tgz',
+    'cudnn-10.2-windows10-x64-v8.3.0.98.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
@@ -227,6 +227,21 @@ Remove the directory first if you want to reinstall.'''.format(destination))
         raise RuntimeError('''
 The current platform ({}) is not supported.'''.format(target_platform))
 
+    if library == 'cudnn':
+        print('By downloading and using cuDNN, you accept the terms and'
+              ' conditions of the NVIDIA cuDNN Software License Agreement:')
+        print('  https://docs.nvidia.com/deeplearning/cudnn/sla/index.html')
+        print()
+    elif library == 'cutensor':
+        print('By downloading and using cuTENSOR, you accept the terms and'
+              ' conditions of the NVIDIA cuTENSOR Software License Agreement:')
+        print('  https://docs.nvidia.com/cuda/cutensor/license.html')
+        print()
+    elif library == 'nccl':
+        pass  # BSD
+    else:
+        assert False
+
     print('Installing {} {} for CUDA {} to: {}'.format(
         library, record[library], record['cuda'], destination))
 
@@ -255,7 +270,14 @@ The current platform ({}) is not supported.'''.format(target_platform))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
-            dir_name = os.path.basename(url)[:-7]  # remove '.tar.xz'
+            if target_platform == 'Linux':
+                ext = '.tar.xz'
+            elif target_platform == 'Windows':
+                ext = '.zip'
+            else:
+                assert False
+            assert url.endswith(ext)
+            dir_name = os.path.basename(url)[:-len(ext)]
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),

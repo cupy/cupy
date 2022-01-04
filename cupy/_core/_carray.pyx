@@ -43,6 +43,7 @@ cdef class Indexer:
     cdef void init(self, const shape_t& shape):
         self.shape = shape
         self.size = internal.prod(shape)
+        self._index_32_bits = self.size <= (1 << 31)
 
     @property
     def ndim(self):

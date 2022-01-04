@@ -80,6 +80,16 @@ class TestAllAnyWithNaN:
         return out
 
 
+class TestAllAnyAlias:
+    @testing.numpy_cupy_array_equal()
+    def test_alltrue(self, xp):
+        return xp.alltrue(xp.array([1, 2, 3]))
+
+    @testing.numpy_cupy_array_equal()
+    def test_sometrue(self, xp):
+        return xp.sometrue(xp.array([0]))
+
+
 @testing.parameterize(
     *testing.product(
         {'f': ['in1d', 'isin'],

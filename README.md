@@ -46,6 +46,7 @@ Choose the right package for your platform.
 | CUDA 11.2     | `pip install cupy-cuda112`    |
 | CUDA 11.3     | `pip install cupy-cuda113`    |
 | CUDA 11.4     | `pip install cupy-cuda114`    |
+| CUDA 11.5     | `pip install cupy-cuda115`    |
 | ROCm 4.0 (*)  | `pip install cupy-rocm-4-0`   |
 | ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
 | ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |
@@ -80,11 +81,11 @@ CuPy is being maintained and developed by [Preferred Networks Inc.](https://pref
 ## Reference
 
 Ryosuke Okuta, Yuya Unno, Daisuke Nishino, Shohei Hido and Crissman Loomis.
-CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations.
+**CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations.**
 *Proceedings of Workshop on Machine Learning Systems (LearningSys) in The Thirty-first Annual Conference on Neural Information Processing Systems (NIPS)*, (2017).
-[URL](http://learningsys.org/nips17/assets/papers/paper_16.pdf)
+[[PDF](http://learningsys.org/nips17/assets/papers/paper_16.pdf)]
 
-```
+```bibtex
 @inproceedings{cupy_learningsys2017,
   author       = "Okuta, Ryosuke and Unno, Yuya and Nishino, Daisuke and Hido, Shohei and Loomis, Crissman",
   title        = "CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations",

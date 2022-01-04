@@ -17,7 +17,8 @@ from cupy_backends.cuda.libs cimport cudnn
 
 from cupy._core._ufuncs import elementwise_copy as _elementwise_copy
 from cupy import _util
-from cupy_backends.cuda.libs import cudnn as _py_cudnn
+
+from cupy.cuda import cudnn as _py_cudnn
 
 
 cdef int _cudnn_version = -1

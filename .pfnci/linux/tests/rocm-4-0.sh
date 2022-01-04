@@ -12,5 +12,5 @@ export CUPY_TEST_FULL_COMBINATION="0"
 export CUPY_INSTALL_USE_HIP=1
 
 "$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow"
+"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
 "$ACTIONS/cleanup.sh"

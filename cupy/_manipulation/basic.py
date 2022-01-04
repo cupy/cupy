@@ -1,3 +1,5 @@
+import itertools
+
 import numpy
 
 from cupy import _core
@@ -40,12 +42,35 @@ def copyto(dst, src, casting='same_kind', where=None):
     if not can_cast:
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
+
     if fusion._is_fusing():
+        # TODO(kataoka): NumPy allows stripping leading unit dimensions.
+        # But fusion array proxy does not currently support
+        # `shape` and `squeeze`.
+
         if where is None:
             _core.elementwise_copy(src, dst)
         else:
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
+
+    if not src_is_python_scalar:
+        # Check broadcast condition
+        # - for fast-paths and
+        # - for a better error message (than ufunc's).
+        # NumPy allows stripping leading unit dimensions.
+        if not all([
+            s in (d, 1)
+            for s, d in itertools.zip_longest(
+                reversed(src.shape), reversed(dst.shape), fillvalue=1)
+        ]):
+            raise ValueError(
+                "could not broadcast input array "
+                f"from shape {src.shape} into shape {dst.shape}")
+        squeeze_ndim = src.ndim - dst.ndim
+        if squeeze_ndim > 0:
+            # always succeeds because broadcast conition is checked.
+            src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if where is not None:
         _core.elementwise_copy(src, dst, _where=where)

@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import importlib
 import inspect
 import os
 import pkg_resources
@@ -86,8 +87,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'CuPy'
-copyright = u'2015, Preferred Networks, inc. and Preferred Infrastructure, inc.'
-author = u'Preferred Networks, inc. and Preferred Infrastructure, inc.'
+copyright = u'2015, Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
+author = u'Preferred Networks, Inc. and Preferred Infrastructure, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -434,6 +435,9 @@ def linkcode_resolve(domain, info):
     if not mod.__name__.split('.')[0] in _top_modules:
         return None
 
+    # If it's wrapped (e.g., by `contextlib.contextmanager`), unwrap it
+    obj = inspect.unwrap(obj)
+
     # Get the source file name and line number at which obj is defined.
     try:
         filename = inspect.getsourcefile(obj)
@@ -441,19 +445,26 @@ def linkcode_resolve(domain, info):
         # obj is not a module, class, function, ..etc.
         return None
 
-    # inspect can return None for cython objects
+    # `inspect.getsourcefile` returns None for C-extension objects
     if filename is None:
-        return None
-
-    # Get the source line number
-    _, linenum = inspect.getsourcelines(obj)
-    assert isinstance(linenum, int)
+        filename = inspect.getfile(obj)
+        for ext in importlib.machinery.EXTENSION_SUFFIXES:
+            if filename.endswith(ext):
+                filename = filename[:-len(ext)] + '.pyx'
+                break
+        else:
+            return None
+        linenum = None
+    else:
+        # Get the source line number
+        _, linenum = inspect.getsourcelines(obj)
+        assert isinstance(linenum, int)
 
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)
 
-    return 'https://github.com/cupy/cupy/blob/{}/{}#L{}'.format(
-        tag, relpath, linenum)
+    fragment = '' if linenum is None else f'#L{linenum}'
+    return f'https://github.com/cupy/cupy/blob/{tag}/{relpath}{fragment}'
 
 
 # Python Array API methods have type hints, which do not render

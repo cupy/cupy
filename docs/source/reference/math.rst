@@ -72,6 +72,7 @@ Sums, products, differences
    diff
    gradient
    cross
+   trapz
 
 
 Exponents and logarithms
@@ -132,6 +133,7 @@ Arithmetic operations
 
    add
    reciprocal
+   positive
    negative
    multiply
    divide

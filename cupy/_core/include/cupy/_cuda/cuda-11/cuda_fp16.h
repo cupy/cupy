@@ -99,6 +99,9 @@
 #ifndef __CUDA_FP16_H__
 #define __CUDA_FP16_H__
 
+#define ___CUDA_FP16_STRINGIFY_INNERMOST(x) #x
+#define __CUDA_FP16_STRINGIFY(x) ___CUDA_FP16_STRINGIFY_INNERMOST(x)
+
 #if defined(__cplusplus)
 #if defined(__CUDACC__)
 #define __CUDA_FP16_DECL__ static __device__ __inline__
@@ -364,7 +367,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float2 __half22float2(const __half2 a);
 * \brief Convert a half to a signed integer in round-to-nearest-even mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed integer in
-* round-to-nearest-even mode.
+* round-to-nearest-even mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns int
@@ -380,7 +383,7 @@ __CUDA_FP16_DECL__ int __half2int_rn(const __half h);
 * \brief Convert a half to a signed integer in round-towards-zero mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed integer in
-* round-towards-zero mode.
+* round-towards-zero mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns int
@@ -396,7 +399,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ int __half2int_rz(const __half h);
 * \brief Convert a half to a signed integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed integer in
-* round-down mode.
+* round-down mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns int
@@ -412,7 +415,7 @@ __CUDA_FP16_DECL__ int __half2int_rd(const __half h);
 * \brief Convert a half to a signed integer in round-up mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed integer in
-* round-up mode.
+* round-up mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns int
@@ -495,7 +498,7 @@ __CUDA_FP16_DECL__ __half __int2half_ru(const int i);
 * mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed short
-* integer in round-to-nearest-even mode.
+* integer in round-to-nearest-even mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns short int
@@ -511,7 +514,7 @@ __CUDA_FP16_DECL__ short int __half2short_rn(const __half h);
 * \brief Convert a half to a signed short integer in round-towards-zero mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed short
-* integer in round-towards-zero mode.
+* integer in round-towards-zero mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns short int
@@ -527,7 +530,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ short int __half2short_rz(const __half h);
 * \brief Convert a half to a signed short integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed short
-* integer in round-down mode.
+* integer in round-down mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns short int
@@ -543,7 +546,7 @@ __CUDA_FP16_DECL__ short int __half2short_rd(const __half h);
 * \brief Convert a half to a signed short integer in round-up mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed short
-* integer in round-up mode.
+* integer in round-up mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns short int
@@ -626,7 +629,7 @@ __CUDA_FP16_DECL__ __half __short2half_ru(const short int i);
 * \brief Convert a half to an unsigned integer in round-to-nearest-even mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
-* in round-to-nearest-even mode.
+* in round-to-nearest-even mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned int
@@ -642,7 +645,7 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_rn(const __half h);
 * \brief Convert a half to an unsigned integer in round-towards-zero mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
-* in round-towards-zero mode.
+* in round-towards-zero mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned int
@@ -658,7 +661,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ unsigned int __half2uint_rz(const __half h);
 * \brief Convert a half to an unsigned integer in round-down mode.
 *
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
-* in round-down mode.
+* in round-down mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 *
 * \returns unsigned int
@@ -674,7 +677,7 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_rd(const __half h);
 * \brief Convert a half to an unsigned integer in round-up mode.
 *
 * \details Convert the half-precision floating-point value \p h to an unsigned integer
-* in round-up mode.
+* in round-up mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 *
 * \returns unsigned int
@@ -757,7 +760,7 @@ __CUDA_FP16_DECL__ __half __uint2half_ru(const unsigned int i);
 * mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned short
-* integer in round-to-nearest-even mode.
+* integer in round-to-nearest-even mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned short int
@@ -774,7 +777,7 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_rn(const __half h);
 * mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned short
-* integer in round-towards-zero mode.
+* integer in round-towards-zero mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned short int
@@ -790,7 +793,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half2ushort_rz(const __half h
 * \brief Convert a half to an unsigned short integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned short
-* integer in round-down mode.
+* integer in round-down mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned short int
@@ -802,7 +805,7 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_rd(const __half h);
 * \brief Convert a half to an unsigned short integer in round-up mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned short
-* integer in round-up mode.
+* integer in round-up mode. NaN inputs are converted to 0.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned short int
@@ -883,7 +886,7 @@ __CUDA_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i);
 * mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
-* integer in round-to-nearest-even mode.
+* integer in round-to-nearest-even mode. NaN inputs return 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned long long int
@@ -900,7 +903,7 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_rn(const __half h);
 * mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
-* integer in round-towards-zero mode.
+* integer in round-towards-zero mode. NaN inputs return 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned long long int
@@ -916,7 +919,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half 
 * \brief Convert a half to an unsigned 64-bit integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
-* integer in round-down mode.
+* integer in round-down mode. NaN inputs return 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned long long int
@@ -932,7 +935,7 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_rd(const __half h);
 * \brief Convert a half to an unsigned 64-bit integer in round-up mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
-* integer in round-up mode.
+* integer in round-up mode. NaN inputs return 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns unsigned long long int
@@ -1017,7 +1020,7 @@ __CUDA_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i);
 * mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
-* integer in round-to-nearest-even mode.
+* integer in round-to-nearest-even mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns long long int
@@ -1033,7 +1036,7 @@ __CUDA_FP16_DECL__ long long int __half2ll_rn(const __half h);
 * \brief Convert a half to a signed 64-bit integer in round-towards-zero mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
-* integer in round-towards-zero mode.
+* integer in round-towards-zero mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns long long int
@@ -1049,7 +1052,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ long long int __half2ll_rz(const __half h);
 * \brief Convert a half to a signed 64-bit integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
-* integer in round-down mode.
+* integer in round-down mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns long long int
@@ -1065,7 +1068,7 @@ __CUDA_FP16_DECL__ long long int __half2ll_rd(const __half h);
 * \brief Convert a half to a signed 64-bit integer in round-up mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed 64-bit
-* integer in round-up mode.
+* integer in round-up mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
 * \param[in] h - half. Is only being read. 
 * 
 * \returns long long int
@@ -1505,7 +1508,7 @@ __CUDA_FP16_DECL__ __half __short_as_half(const short int i);
 */
 __CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i);
 
-#if __CUDA_ARCH__ >= 300 || !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 300)
 #if !defined warpSize && !defined __local_warpSize
 #define warpSize    32
 #define __local_warpSize
@@ -1520,7 +1523,7 @@ __CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i);
 #endif
 
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
-#define __WSB_DEPRECATION_MESSAGE(x) #x"() is deprecated in favor of "#x"_sync() and may be removed in a future release (Use -Wno-deprecated-declarations to suppress this warning)."
+#define __WSB_DEPRECATION_MESSAGE(x) __CUDA_FP16_STRINGIFY(x) "() is deprecated in favor of " __CUDA_FP16_STRINGIFY(x) "_sync() and may be removed in a future release (Use -Wno-deprecated-declarations to suppress this warning)."
 
 __CUDA_FP16_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) __half2 __shfl(const __half2 var, const int delta, const int width = warpSize);
 __CUDA_FP16_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl_up)) __half2 __shfl_up(const __half2 var, const unsigned int delta, const int width = warpSize);
@@ -1574,6 +1577,7 @@ __CUDA_FP16_DECL__ __half2 __shfl_sync(const unsigned mask, const __half2 var, c
 * 
 * \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1598,6 +1602,7 @@ __CUDA_FP16_DECL__ __half2 __shfl_up_sync(const unsigned mask, const __half2 var
 * 
 * \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1621,6 +1626,7 @@ __CUDA_FP16_DECL__ __half2 __shfl_down_sync(const unsigned mask, const __half2 v
 * 
 * \returns Returns the 4-byte word referenced by var from the source thread ID as half2. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1645,6 +1651,7 @@ __CUDA_FP16_DECL__ __half2 __shfl_xor_sync(const unsigned mask, const __half2 va
 * 
 * \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1668,6 +1675,7 @@ __CUDA_FP16_DECL__ __half __shfl_sync(const unsigned mask, const __half var, con
 * 
 * \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1692,6 +1700,7 @@ __CUDA_FP16_DECL__ __half __shfl_up_sync(const unsigned mask, const __half var, 
 * 
 * \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1715,6 +1724,7 @@ __CUDA_FP16_DECL__ __half __shfl_down_sync(const unsigned mask, const __half var
 * 
 * \returns Returns the 2-byte word referenced by var from the source thread ID as half. 
 * If the source thread ID is out of range or the source thread has exited, the calling thread's own var is returned. 
+* \note_ref_guide_warp_shuffle
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior not reentrant, not thread safe
@@ -1726,9 +1736,9 @@ __CUDA_FP16_DECL__ __half __shfl_xor_sync(const unsigned mask, const __half var,
 #undef warpSize
 #undef __local_warpSize
 #endif
-#endif /*__CUDA_ARCH__ >= 300 || !defined(__CUDA_ARCH__) */
+#endif /*!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 300) */
 
-#if defined(__cplusplus) && ( __CUDA_ARCH__ >=320 || !defined(__CUDA_ARCH__) )
+#if defined(__cplusplus) && ( !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 320) )
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Generates a `ld.global.nc` load instruction.
@@ -1869,9 +1879,9 @@ __CUDA_FP16_DECL__ void __stwt(__half2 *const ptr, const __half2 value);
 * \param[in] value - the value to be stored
 */
 __CUDA_FP16_DECL__ void __stwt(__half *const ptr, const __half value);
-#endif /*defined(__cplusplus) && ( __CUDA_ARCH__ >=320 || !defined(__CUDA_ARCH__) )*/
+#endif /*defined(__cplusplus) && ( !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 320) )*/
 
-#if __CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs half2 vector if-equal comparison.
@@ -3024,7 +3034,7 @@ __CUDA_FP16_DECL__ bool __hgtu(const __half a, const __half b);
 * \endinternal
 */
 __CUDA_FP16_DECL__ bool __hisnan(const __half a);
-#if __CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Calculates \p half maximum of two input values.
@@ -3225,7 +3235,7 @@ __CUDA_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 __hfma2_relu(const __half2 a, const __half2 b, const __half2 c);
-#endif /*__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)*/
+#endif /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800) */
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs fast complex multiply-accumulate
@@ -3604,19 +3614,53 @@ __CUDA_FP16_DECL__ __half2 h2cos(const __half2 a);
 */
 __CUDA_FP16_DECL__ __half2 h2sin(const __half2 a);
 
-#endif /*if __CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__)*/
+#endif /*if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)*/
 
-#if __CUDA_ARCH__ >= 600 || !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 600)
 
+
+/**
+* \ingroup CUDA_MATH__HALF2_FUNCTIONS
+* \brief Vector add \p val to the value stored at \p address in global or shared memory, and writes this
+* value back to \p address. The atomicity of the add operation is guaranteed separately for each of the
+* two __half elements; the entire __half2 is not guaranteed to be atomic as a single 32-bit access.
+* 
+* \details The location of \p address must be in global or shared memory. This operation has undefined
+* behavior otherwise. This operation is only supported by devices of compute capability 6.x and higher.
+* 
+* \param[in] address - half2*. An address in global or shared memory.
+* \param[in] val - half2. The value to be added.
+* 
+* \returns half2
+* \retval The old value read from \p address.
+*
+* \note_ref_guide_atomic
+*/
 __CUDA_FP16_DECL__ __half2 atomicAdd(__half2 *const address, const __half2 val);
 
-#endif /*if __CUDA_ARCH__ >= 600 || !defined(__CUDA_ARCH__)*/
+#endif /*if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 600)*/
 
-#if __CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
 
+/**
+* \ingroup CUDA_MATH__HALF_FUNCTIONS
+* \brief Adds \p val to the value stored at \p address in global or shared memory, and writes this value
+* back to \p address. This operation is performed in one atomic operation.
+* 
+* \details The location of \p address must be in global or shared memory. This operation has undefined
+* behavior otherwise. This operation is only supported by devices of compute capability 7.x and higher.
+* 
+* \param[in] address - half*. An address in global or shared memory.
+* \param[in] val - half. The value to be added.
+* 
+* \returns half
+* \retval The old value read from \p address.
+* 
+* \note_ref_guide_atomic
+*/
 __CUDA_FP16_DECL__ __half atomicAdd(__half *const address, const __half val);
 
-#endif /*if __CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)*/
+#endif /*if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)*/
 
 #endif /* defined(__CUDACC__) */
 
@@ -3627,5 +3671,7 @@ __CUDA_FP16_DECL__ __half atomicAdd(__half *const address, const __half val);
 
 /* Note the .hpp file is included even for host-side compilation, to capture the "half" & "half2" definitions */
 #include "cuda_fp16.hpp"
+#undef ___CUDA_FP16_STRINGIFY_INNERMOST
+#undef __CUDA_FP16_STRINGIFY
 
 #endif /* end of include guard: __CUDA_FP16_H__ */

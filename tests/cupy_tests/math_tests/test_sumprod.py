@@ -202,6 +202,11 @@ class TestSumprod:
         a = testing.shaped_arange((2, 3), xp, src_dtype)
         return a.prod(dtype=dst_dtype)
 
+    @testing.numpy_cupy_allclose()
+    def test_product_alias(self, xp):
+        a = testing.shaped_arange((2, 3), xp, xp.float32)
+        return xp.product(a)
+
 
 # This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product({
@@ -774,6 +779,11 @@ class TestCumprod:
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
 
+    @testing.numpy_cupy_allclose()
+    def test_cumproduct_alias(self, xp):
+        a = testing.shaped_arange((2, 3), xp, xp.float32)
+        return xp.cumproduct(a)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(20,), (7, 6), (3, 4, 5)],
@@ -1027,3 +1037,57 @@ class TestGradientErrors:
             x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
             with pytest.raises(TypeError):
                 xp.gradient(x)
+
+
+class TestTrapz:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_1dim(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_1dim_with_x(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        x = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, x=x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_1dim_with_dx(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, dx=0.1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_2dim_without_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.trapz(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_trapz_2dim_with_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.trapz(a, axis=-2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        x = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, x=x, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.trapz(a, dx=0.1, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    def test_trapz_1dim_with_x_and_dx(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        x = testing.shaped_arange((5,), xp, dtype)
+        return xp.trapz(a, x=x, dx=0.1)

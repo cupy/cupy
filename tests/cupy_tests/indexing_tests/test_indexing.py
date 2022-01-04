@@ -82,6 +82,12 @@ class TestIndexing(unittest.TestCase):
         return xp.compress(b, a, axis=1)
 
     @testing.numpy_cupy_array_equal()
+    def test_compress_overrun_false(self, xp):
+        a = testing.shaped_arange((3,), xp)
+        b = xp.array([True, False, True, False, False, False])
+        return xp.compress(b, a)
+
+    @testing.numpy_cupy_array_equal()
     def test_compress_empty_1dim(self, xp):
         a = testing.shaped_arange((3, 4, 5), xp)
         b = xp.array([])
@@ -91,6 +97,12 @@ class TestIndexing(unittest.TestCase):
     def test_compress_empty_1dim_no_axis(self, xp):
         a = testing.shaped_arange((3, 4, 5), xp)
         b = xp.array([])
+        return xp.compress(b, a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_compress_0dim(self, xp):
+        a = xp.array(3)
+        b = xp.array([True])
         return xp.compress(b, a)
 
     @testing.for_all_dtypes()

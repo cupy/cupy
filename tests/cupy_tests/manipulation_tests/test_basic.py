@@ -21,6 +21,14 @@ class TestBasic:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_copyto_different_contiguity(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 2), xp, dtype).T
+        b = xp.empty((2, 3, 2), dtype=dtype)
+        xp.copyto(b, a)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_copyto_dtype(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype='?')
         b = xp.empty((2, 3, 4), dtype=dtype)
@@ -35,12 +43,58 @@ class TestBasic:
         xp.copyto(b, a)
         return b
 
+    @pytest.mark.parametrize(('dst_shape', 'src_shape'), [
+        ((), (2,)),
+        ((2, 0, 5, 4), (2, 0, 3, 4)),
+        ((6,), (2, 3)),
+        ((2, 3), (6,)),
+    ])
+    def test_copyto_raises_shape(self, dst_shape, src_shape):
+        for xp in (numpy, cupy):
+            dst = xp.zeros(dst_shape, int)
+            src = xp.zeros(src_shape, int)
+            with pytest.raises(ValueError):
+                xp.copyto(dst, src)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_squeeze(self, xp, dtype):
+        a = testing.shaped_arange((1, 1, 3, 4), xp, dtype)
+        b = xp.empty((3, 4), dtype=dtype)
+        xp.copyto(b, a)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_squeeze_different_contiguity(self, xp, dtype):
+        a = testing.shaped_arange((1, 1, 3, 4), xp, dtype)
+        b = xp.empty((4, 3), dtype=dtype).T
+        xp.copyto(b, a)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_squeeze_broadcast(self, xp, dtype):
+        a = testing.shaped_arange((1, 2, 1, 4), xp, dtype)
+        b = xp.empty((2, 3, 4), dtype=dtype)
+        xp.copyto(b, a)
+        return b
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_copyto_where(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 4), xp, dtype)
         c = testing.shaped_arange((2, 3, 4), xp, '?')
+        xp.copyto(a, b, where=c)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_where_squeeze_broadcast(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((1, 2, 1, 4), xp, dtype)
+        c = testing.shaped_arange((3, 4), xp, '?')
         xp.copyto(a, b, where=c)
         return a
 
