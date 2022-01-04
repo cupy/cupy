@@ -39,33 +39,8 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy.fft import fft as cp_fft
 from cupyx.scipy.fft import _fft
-
-try:
-    from cupy.fft.fft import _cook_shape
-except ImportError:
-    # local copy of private cupy.fft function
-    def _cook_shape(a, s, axes, value_type, order='C'):
-        if s is None or s == a.shape:
-            return a
-        if (value_type == 'C2R') and (s[-1] is not None):
-            s = list(s)
-            s[-1] = s[-1] // 2 + 1
-        for sz, axis in zip(s, axes):
-            if (sz is not None) and (sz != a.shape[axis]):
-                shape = list(a.shape)
-                if shape[axis] > sz:
-                    index = [slice(None)] * a.ndim
-                    index[axis] = slice(0, sz)
-                    a = a[tuple(index)]
-                else:
-                    index = [slice(None)] * a.ndim
-                    index[axis] = slice(0, shape[axis])
-                    shape[axis] = sz
-                    z = cupy.zeros(shape, a.dtype.char, order=order)
-                    z[tuple(index)] = a
-                    a = z
-        return a
 
 
 __all__ = ['dct', 'dctn', 'dst', 'dstn', 'idct', 'idctn', 'idst', 'idstn']
@@ -182,7 +157,7 @@ def _dct_or_dst_type2(
             f'invalid number of data points ({n}) specified'
         )
 
-    x = _cook_shape(x, (n,), (axis,), 'R2R')
+    x = cp_fft._cook_shape(x, (n,), (axis,), 'R2R')
     n = x.shape[axis]
 
     x = _reshuffle_dct2(x, x.shape[axis], axis, dst)
@@ -293,7 +268,7 @@ def _dct_or_dst_type3(
             f'invalid number of data points ({n}) specified'
         )
 
-    x = _cook_shape(x, (n,), (axis,), 'R2R')
+    x = cp_fft._cook_shape(x, (n,), (axis,), 'R2R')
     n = x.shape[axis]
 
     # determine normalization factor
