@@ -225,6 +225,9 @@ class _BaseStream:
         return '<{} {} (device {})>'.format(
             type(self).__name__, self.ptr, self.device_id)
 
+    def __hash__(self):
+        return self.ptr
+
     def use(self):
         """Makes this stream current.
 
