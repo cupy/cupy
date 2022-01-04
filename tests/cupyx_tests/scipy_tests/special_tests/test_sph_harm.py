@@ -2,9 +2,9 @@ import cupy as cp
 import pytest
 import scipy.special  # NOQA
 
-import cupyx.scipy.special
+import cupyx.scipy.special  # NOQA
 from cupy import testing
-from cupy.testing import assert_allclose, numpy_cupy_allclose
+from cupy.testing import numpy_cupy_allclose
 
 
 def _get_harmonic_list(degree_max):

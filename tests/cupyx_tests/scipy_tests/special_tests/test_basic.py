@@ -5,12 +5,10 @@ import cupy
 import numpy
 import pytest
 import scipy.special  # NOQA
-from numpy.testing import suppress_warnings
 
 import cupyx.scipy.special  # NOQA
 from cupy import testing
 from cupy.testing import (
-    assert_allclose,
     assert_array_equal,
     assert_array_almost_equal,
 )
