@@ -127,14 +127,23 @@ class TestQRDecomposition(unittest.TestCase):
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
 
-        if ((not batched)
-                or (numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0')):
+        if numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0rc1':
             result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
             self._check_result(result_cpu, result_gpu)
+            return
+
+        # We still want to test it to gain confidence...
+        # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
+        # NumPy 1.22 is out, and clean up this helper function
+        if not batched:
+            result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
+            if mode == 'raw':
+                if dtype is numpy.float32:
+                    result_gpu = tuple(x.astype('d') for x in result_gpu)
+                elif dtype is numpy.complex64:
+                    result_gpu = tuple(x.astype('D') for x in result_gpu)
+            self._check_result(result_cpu, result_gpu)
         else:
-            # We still want to test it to gain confidence...
-            # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
-            # NumPy 1.22 is out, and clean up this helper function
             batch_shape = a_cpu.shape[:-2]
             batch_size = prod(batch_shape)
             a_cpu = a_cpu.reshape(batch_size, *a_cpu.shape[-2:])
@@ -146,10 +155,20 @@ class TestQRDecomposition(unittest.TestCase):
                     idx = -1 if mode == 'raw' else -2
                     r_gpu = r_gpu.reshape(batch_size, *r_gpu.shape[idx:])
                     res_gpu = (q_gpu[i], r_gpu[i])
+                    if mode == 'raw':
+                        if dtype is numpy.float32:
+                            res_gpu = tuple(x.astype('d') for x in res_gpu)
+                        elif dtype is numpy.complex64:
+                            res_gpu = tuple(x.astype('D') for x in res_gpu)
                     self._check_result(res_cpu, res_gpu)
                 else:  # mode == 'r'
                     res_gpu = result_gpu.reshape(
                         batch_size, *result_gpu.shape[-2:])[i]
+                    if mode == 'raw':
+                        if dtype is numpy.float32:
+                            res_gpu = res_gpu.astype('d')
+                        elif dtype is numpy.complex64:
+                            res_gpu = res_gpu.astype('D')
                     self._check_result(res_cpu, res_gpu)
 
     def _check_result(self, result_cpu, result_gpu):

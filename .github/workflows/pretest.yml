@@ -24,7 +24,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.ccache
-        key: ccache
+        key: ccache-${{ github.sha }}
+        restore-keys: ccache-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
 
     - name: Setup ccache
       run: |

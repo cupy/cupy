@@ -61,6 +61,12 @@ class TestStream(unittest.TestCase):
         assert null1 == null2
         assert null2 != null3
 
+    def test_hash(self):
+        hash(self.stream)
+        hash(cuda.Stream(True))
+        hash(cuda.Stream(False))
+        mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
+
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
         assert stream is cuda.get_current_stream()
