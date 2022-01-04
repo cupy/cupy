@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-import scipy
 
 import cupyx.scipy.fft  # noqa
 from cupyx.scipy import fft as cp_fft

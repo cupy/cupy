@@ -39,7 +39,7 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupy.fft import fft as cp_fft
+from cupy.fft._fft import _cook_shape
 from cupyx.scipy.fft import _fft
 
 
@@ -157,7 +157,7 @@ def _dct_or_dst_type2(
             f'invalid number of data points ({n}) specified'
         )
 
-    x = cp_fft._cook_shape(x, (n,), (axis,), 'R2R')
+    x = _cook_shape(x, (n,), (axis,), 'R2R')
     n = x.shape[axis]
 
     x = _reshuffle_dct2(x, x.shape[axis], axis, dst)
@@ -268,7 +268,7 @@ def _dct_or_dst_type3(
             f'invalid number of data points ({n}) specified'
         )
 
-    x = cp_fft._cook_shape(x, (n,), (axis,), 'R2R')
+    x = _cook_shape(x, (n,), (axis,), 'R2R')
     n = x.shape[axis]
 
     # determine normalization factor
