@@ -33,6 +33,7 @@ else:
             'axis': [-1, 0],
             'norm': ['ortho'],
             'overwrite_x': [False],
+            'function': ['dct', 'dst', 'idct', 'idst'],
         }
     )
     # test all overwrite_x and norm combinations on a smaller subset of shapes
@@ -44,6 +45,7 @@ else:
             'axis': [-1, 0],
             'norm': all_dct_norms,
             'overwrite_x': [False, True],
+            'function': ['dct', 'dst', 'idct', 'idst'],
         }
     )
 
@@ -74,24 +76,22 @@ class TestDctDst():
             testing.assert_array_equal(x, x_orig)
         return out
 
-    @pytest.mark.parametrize('function', ['dct', 'dst', 'idct', 'idst'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         scipy_name='scp', rtol=1e-4, atol=1e-5, accept_error=ValueError,
         contiguous_check=False
     )
-    def test_dct(self, xp, scp, dtype, function):
-        fft_func = getattr(getattr(scp, 'fft'), function)
+    def test_dct(self, xp, scp, dtype):
+        fft_func = getattr(getattr(scp, 'fft'), self.function)
         return self._run_transform(fft_func, xp, dtype)
 
-    @pytest.mark.parametrize('function', ['dct', 'dst', 'idct', 'idst'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_dct_backend(self, xp, dtype, function):
+    def test_dct_backend(self, xp, dtype):
         backend = 'scipy' if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
-            fft_func = getattr(scipy_fft, function)
+            fft_func = getattr(scipy_fft, self.function)
             return self._run_transform(fft_func, xp, dtype)
 
 
@@ -105,8 +105,9 @@ class TestDctDst():
                 # Note: non-integer s or s == 0 will cause a ValueError
                 's': [None, (1, 5), (-1, -1), (0, 5), (1.5, 2.5)],
                 'axes': [None, (-2, -1), (-1, -2), (0,)],
-                'norm': [None, 'ortho'],
-                'overwrite_x': [True, False],
+                'norm': ['ortho'],
+                'overwrite_x': [False],
+                'function': ['dctn', 'dstn', 'idctn', 'idstn'],
             }
         )
         # 3D cases
@@ -118,8 +119,9 @@ class TestDctDst():
                 #       len(s) > ndim raises a ValueError
                 's': [None, (1, 5), (1, 4, 10), (2, 2, 2, 2)],
                 'axes': [None, (-2, -1), (-1, -2, -3)],
-                'norm': [None, 'ortho'],
-                'overwrite_x': [True, False],
+                'norm': ['ortho'],
+                'overwrite_x': [False],
+                'function': ['dctn', 'dstn', 'idctn', 'idstn'],
             }
         )
         # 4D cases
@@ -128,9 +130,10 @@ class TestDctDst():
                 'shape': [(2, 3, 4, 5)],
                 'type': [2, 3],
                 's': [None],
-                'axes': [None, (0, 1, 2, 3)],
-                'norm': [None, 'ortho'],
+                'axes': [None],
+                'norm': all_dct_norms,
                 'overwrite_x': [True, False],
+                'function': ['dctn', 'dstn', 'idctn', 'idstn'],
             }
         )
     )
@@ -157,22 +160,20 @@ class TestDctnDstn():
             testing.assert_array_equal(x, x_orig)
         return out
 
-    @pytest.mark.parametrize('function', ['dctn', 'dstn', 'idctn', 'idstn'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         scipy_name='scp', rtol=1e-4, atol=1e-5, accept_error=ValueError,
         contiguous_check=False
     )
-    def test_dctn(self, xp, scp, dtype, function):
-        fft_func = getattr(getattr(scp, 'fft'), function)
+    def test_dctn(self, xp, scp, dtype):
+        fft_func = getattr(getattr(scp, 'fft'), self.function)
         return self._run_transform(fft_func, xp, dtype)
 
-    @pytest.mark.parametrize('function', ['dctn', 'dstn', 'idctn', 'idstn'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_dctn_backend(self, xp, dtype, function):
+    def test_dctn_backend(self, xp, dtype):
         backend = 'scipy' if xp is np else cp_fft
         with scipy_fft.set_backend(backend):
-            fft_func = getattr(scipy_fft, function)
+            fft_func = getattr(scipy_fft, self.function)
             return self._run_transform(fft_func, xp, dtype)
