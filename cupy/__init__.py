@@ -530,6 +530,9 @@ from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
+# Borrowed from NumPy
+from numpy import RankWarning  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -652,6 +655,7 @@ from cupy._misc.who import who  # NOQA
 from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
 from numpy import safe_eval  # NOQA
+from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -715,6 +719,15 @@ from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
 from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
+
+# -----------------------------------------------------------------------------
+# Classes without their own docs
+# -----------------------------------------------------------------------------
+from numpy import ComplexWarning  # NOQA
+from numpy import ModuleDeprecationWarning  # NOQA
+from numpy import TooHardError  # NOQA
+from numpy import VisibleDeprecationWarning  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Undocumented functions
