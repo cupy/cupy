@@ -17,11 +17,12 @@ from cupy.testing import (
 from cupy.testing import numpy_cupy_allclose
 
 
-# TODO: update/expand lpmv tests. The below is adapted from SciPy
 @testing.gpu
 @testing.with_requires("scipy")
-class TestLegendreFunctions(unittest.TestCase):
+class TestLegendreFunctions():
+
     def test_lpmv_basic(self):
+        # specific values tested in the SciPy test suite
         scp = cupyx.scipy
         lp = scp.special.lpmv(0, 2, 0.5)
         assert_array_almost_equal(lp, -0.125, 7)
@@ -36,6 +37,14 @@ class TestLegendreFunctions(unittest.TestCase):
         finally:
             numpy.seterr(**olderr)
         assert lp != 0 or cupy.isnan(lp)
+
+    @pytest.mark.parametrize("order", [0, 1, 2, 3, 4])
+    @pytest.mark.parametrize("degree", [0, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50])
+    @testing.for_dtypes(["e", "f", "d"])
+    @numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
+    def test_lpmv(self, xp, scp, dtype, order, degree):
+        vals = xp.linspace(-1, 1, 100, dtype=dtype)
+        return scp.special.lpmv(order, degree, vals)
 
 
 @testing.gpu
@@ -61,34 +70,16 @@ class TestBasic(unittest.TestCase):
         vals = xp.linspace(1 / math.sqrt(2), math.sqrt(2), 1000, dtype=dtype)
         return scp.special.log1p(vals)
 
+    def test_log1p_real(self):
+        log1p = cupyx.scipy.special.log1p
+        inf = cupy.inf
+        nan = cupy.nan
+        assert_array_equal(log1p(0), 0.0)
+        assert_array_equal(log1p(-1), -inf)
+        assert_array_equal(log1p(-2), nan)
+        assert_array_equal(log1p(inf), inf)
 
-def test_log1p_real():
-    log1p = cupyx.scipy.special.log1p
-    inf = cupy.inf
-    nan = cupy.nan
-    assert_array_equal(log1p(0), 0.0)
-    assert_array_equal(log1p(-1), -inf)
-    assert_array_equal(log1p(-2), nan)
-    assert_array_equal(log1p(inf), inf)
-
-
-@pytest.mark.skip(reason="complex not currently supported in log1p")
-def test_log1p_complex():
-    log1p = cupyx.scipy.special.log1p
-    c = complex
-    inf, nan, pi = cupy.inf, cupy.nan, cupy.pi
-    assert_array_equal(log1p(0 + 0j), 0 + 0j)
-    assert_array_equal(log1p(c(-1, 0)), c(-inf, 0))
-    with suppress_warnings() as sup:
-        sup.filter(RuntimeWarning, "invalid value encountered in multiply")
-        assert_allclose(log1p(c(1, inf)), c(inf, pi / 2))
-        assert_array_equal(log1p(c(1, nan)), c(nan, nan))
-        assert_allclose(log1p(c(-inf, 1)), c(inf, pi))
-        assert_array_equal(log1p(c(inf, 1)), c(inf, 0))
-        assert_allclose(log1p(c(-inf, inf)), c(inf, 3 * pi / 4))
-        assert_allclose(log1p(c(inf, inf)), c(inf, pi / 4))
-        assert_array_equal(log1p(c(inf, nan)), c(inf, nan))
-        assert_array_equal(log1p(c(-inf, nan)), c(inf, nan))
-        assert_array_equal(log1p(c(nan, inf)), c(inf, nan))
-        assert_array_equal(log1p(c(nan, 1)), c(nan, nan))
-        assert_array_equal(log1p(c(nan, nan)), c(nan, nan))
+    def test_log1p_complex(self):
+        # complex-valued log1p not yet implemented
+        with pytest.raises(TypeError):
+            cupyx.scipy.special.log1p(0 + 0j)
