@@ -206,7 +206,9 @@ class _BaseStream:
         # This operator needed as the ptr may be shared between multiple Stream
         # instances (e.g, `Stream.null` singleton and `Stream(null=True)` or
         # `ExternalStream`s).
-        return self.ptr == other.ptr
+        if isinstance(other, _BaseStream):
+            return self.ptr == other.ptr
+        return False
 
     def __enter__(self):
         # N.B. for maintainers: do not use this context manager in CuPy
