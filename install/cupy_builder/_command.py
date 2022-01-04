@@ -1,5 +1,3 @@
-from distutils import ccompiler
-from distutils import errors
 import os
 import sys
 
@@ -11,7 +9,6 @@ from cupy_builder._context import Context
 from cupy_builder.cupy_setup_build import cythonize
 from cupy_builder.cupy_setup_build import check_extensions
 from cupy_builder.cupy_setup_build import get_ext_modules
-import cupy_builder.install_build as build
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
 
 
