@@ -139,7 +139,7 @@ __device__ double log1p(double x)
     if ((z < NPY_SQRT1_2) || (z > NPY_SQRT2))
         return (log(z));
     z = x * x;
-    z = -0.5 * z + x * (z * polevl<7>(x, LP) / p1evl<7>(x, LQ));
+    z = -0.5 * z + x * (z * polevl<6>(x, LP) / p1evl<6>(x, LQ));
     return (x + z);
 }
 
@@ -801,7 +801,7 @@ __device__ double find_inverse_s(double p, double q)
     else {
         t = sqrt(-2 * log(q));
     }
-    s = t - polevl<4>(t, a) / polevl<5>(t, b);
+    s = t - polevl<3>(t, a) / polevl<4>(t, b);
     if(p < 0.5)
         s = -s;
     return s;
@@ -1101,7 +1101,6 @@ __device__ double igami(double a, double p)
     else if (p > 0.9) {
         return igamci(a, 1 - p);
     }
-
     x = find_inverse_gamma(a, p, 1 - p);
     /* Halley's method */
     for (i = 0; i < 3; i++) {
@@ -1110,10 +1109,10 @@ __device__ double igami(double a, double p)
             return x;
         }
         f_fp = (igam(a, x) - p) * x / fac;
-        /* The ratio of the first and second derivatives simplifies */
+        // The ratio of the first and second derivatives simplifies
         fpp_fp = -1.0 + (a - 1) / x;
         if (isinf(fpp_fp)) {
-            /* Resort to Newton's method in the case of overflow */
+            // Resort to Newton's method in the case of overflow
             x = x - f_fp;
         }
         else {
