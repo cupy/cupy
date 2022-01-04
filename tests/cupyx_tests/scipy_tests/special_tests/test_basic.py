@@ -1,3 +1,4 @@
+import math
 import unittest
 
 import cupy
@@ -56,8 +57,22 @@ class TestBasic(unittest.TestCase):
         vals = xp.asarray([-4, -3.5, -2.3, 1, 4.2], dtype=dtype)
         return scp.special.gammasgn(vals)
 
+    @testing.for_dtypes(["e", "f", "d"])
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_log1p_(self, xp, scp, dtype):
+        # only test with values > 0 to avoid NaNs
+        vals = xp.logspace(-10, 10, 10000, dtype=dtype)
+        return scp.special.log1p(vals)
 
-def test_log1p():
+    @testing.for_dtypes(["e", "f", "d"])
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_log1p_path2(self, xp, scp, dtype):
+        # test values for code path corresponding to range [1/sqrt(2), sqrt(2)]
+        vals = xp.linspace(1 / math.sqrt(2), math.sqrt(2), 1000, dtype=dtype)
+        return scp.special.log1p(vals)
+
+
+def test_log1p_real():
     log1p = cupyx.scipy.special.log1p
     inf = cupy.inf
     nan = cupy.nan
