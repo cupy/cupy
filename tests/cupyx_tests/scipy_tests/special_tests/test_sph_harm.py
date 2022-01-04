@@ -1,9 +1,10 @@
 import cupy as cp
-from cupy.testing import assert_allclose
-import cupyx.scipy.special as sc
+import pytest
+import scipy.special  # NOQA
 
-
-# TODO: update/expand sph_harm tests. The below is adapted from SciPy
+import cupyx.scipy.special
+from cupy import testing
+from cupy.testing import assert_allclose, numpy_cupy_allclose
 
 
 def test_first_harmonics():
@@ -39,9 +40,32 @@ def test_first_harmonics():
 
     for harm, m, n in zip(harms, m, n):
         assert_allclose(
-            sc.sph_harm(m, n, theta, phi),
+            cupyx.scipy.special.sph_harm(m, n, theta, phi),
             harm(theta, phi),
             rtol=1e-15,
             atol=1e-15,
             err_msg="Y^{}_{} incorrect".format(m, n),
         )
+
+
+def _get_harmonic_list(degree_max):
+    """Generate list of all spherical harmonics up to degree_max."""
+    harmonic_list = []
+    for degree in range(degree_max + 1):
+        for order in range(-degree, degree + 1):
+            harmonic_list.append((order, degree))
+    return harmonic_list
+
+
+@testing.gpu
+@testing.with_requires("scipy")
+class TestBasic():
+
+    @pytest.mark.parametrize("m, n", _get_harmonic_list(degree_max=5))
+    @testing.for_dtypes(["e", "f", "d"])
+    @numpy_cupy_allclose(scipy_name="scp")
+    def test_sph_harm_higher_order(self, xp, scp, dtype, m, n):
+        theta = xp.linspace(0, 2 * cp.pi)
+        phi = xp.linspace(0, cp.pi)
+        theta, phi = xp.meshgrid(theta, phi)
+        return scp.special.sph_harm(m, n, theta, phi)
