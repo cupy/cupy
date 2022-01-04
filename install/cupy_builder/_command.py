@@ -4,6 +4,7 @@ import os
 import sys
 
 import setuptools
+import setuptools.command.build_ext
 
 import cupy_builder
 from cupy_builder._context import Context
