@@ -172,10 +172,10 @@ Miscellaneous
    cbrt
    square
    absolute
+   fabs
    sign
    maximum
    minimum
-   fabs
    fmax
    fmin
    nan_to_num
