@@ -167,11 +167,7 @@ def vander(x, N=None, increasing=False):
     v = cupy.empty((len(x), N), dtype=numpy.promote_types(x.dtype, int))
     tmp = v[:, ::-1] if not increasing else v
 
-    if N > 0:
-        tmp[:, 0] = 1
-    if N > 1:
-        tmp[:, 1:] = x[:, None]
-        cupy.cumprod(tmp[:, 1:], out=tmp[:, 1:], axis=1)
+    cupy.power(x.reshape(-1, 1), cupy.arange(N), out=tmp)
 
     return v
 
