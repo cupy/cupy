@@ -15,6 +15,7 @@ class TestDeviceFunction(unittest.TestCase):
             tid = jit.threadIdx.x
             z[tid] = g(x[tid], y[tid]) + x[tid] + y[tid]
 
+        @jit.rawkernel(device=True)
         def g(x, y):
             x += 1
             y += 1
@@ -35,6 +36,7 @@ class TestDeviceFunction(unittest.TestCase):
             z[tid] += g(30)(x[tid], y[tid])
 
         def g(const):
+            @jit.rawkernel(device=True)
             def f(x, y):
                 return x + y + const
             return f
@@ -51,6 +53,7 @@ class TestDeviceFunction(unittest.TestCase):
             tid = jit.threadIdx.x
             z[tid] = g(x[tid], y[tid])
 
+        @jit.rawkernel(device=True)
         def g(x, y):
             return x + y + g(x, y)
 
@@ -69,6 +72,7 @@ class TestDeviceFunction(unittest.TestCase):
             g(1)(y)
 
         def g(step):
+            @jit.rawkernel(device=True)
             def f(x):
                 if step < 256:
                     tid = jit.threadIdx.x

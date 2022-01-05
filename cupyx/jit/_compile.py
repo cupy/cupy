@@ -18,6 +18,7 @@ from cupyx.jit import _internal_types
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
+from cupyx.jit import _interface
 
 
 _is_debug_mode = False
@@ -609,13 +610,16 @@ def _transpile_expr_internal(expr, env):
             ctype = _cuda_types.Scalar(func)
             return _astype_scalar(args[0], ctype, 'unsafe', env)
 
-        # cache = env.device_functions_cache[func]
-        args = [Data.init(x, env) for x in args]
-        in_types = tuple([x.ctype for x in args])
-        fname, return_type = _transpile_func_obj(
-            func, ['__device__'], env.mode, in_types, None, env.generated)
-        in_params = ', '.join([x.code for x in args])
-        return Data(f'{fname}({in_params})', return_type)
+        if isinstance(func, _interface._JitRawKernel) and func._device:
+            args = [Data.init(x, env) for x in args]
+            in_types = tuple([x.ctype for x in args])
+            fname, return_type = _transpile_func_obj(
+                func._func, ['__device__'], env.mode,
+                in_types, None, env.generated)
+            in_params = ', '.join([x.code for x in args])
+            return Data(f'{fname}({in_params})', return_type)
+
+        raise TypeError(f"Invalid function call '{fname}'.")
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
