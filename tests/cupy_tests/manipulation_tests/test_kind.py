@@ -18,7 +18,7 @@ class TestKind(unittest.TestCase):
         return xp.asarray_chkfinite(a, dtype=dtype, order=order)
 
     @testing.for_orders('CFAK')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     def test_asarray_chkfinite_non_finite_vals(self, dtype, order):
         a = [-numpy.inf, 0., numpy.inf, numpy.nan]
         for xp in (numpy, cupy):
