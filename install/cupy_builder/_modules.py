@@ -59,6 +59,7 @@ _cuda_files = [
     'cupy.cuda.pinned_memory',
     'cupy.cuda.function',
     'cupy.cuda.stream',
+    'cupy.cuda.graph',
     'cupy.cuda.texture',
     'cupy.fft._cache',
     'cupy.fft._callback',
