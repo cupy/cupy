@@ -320,7 +320,7 @@ def variance(input, labels=None, index=None):
                            cupy.ulonglong]:
         warnings.warn(
             'Using the slower implementation because the provided '
-            'type is not supported by cupyx.scipy.ndimage.sum. '
+            f'type {input.dtype} is not supported by cupyx.scipy.ndimage.sum. '
             'Consider using an array of type int32, float16, '
             'float32, float64, uint32, uint64 as data types '
             'for the fast implementation', _util.PerformanceWarning)
