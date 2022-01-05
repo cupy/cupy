@@ -141,7 +141,35 @@ def triu(m, k=0):
     return cupy.where(mask, m.dtype.type(0), m)
 
 
-# TODO(okuta): Implement vander
+def vander(x, N=None, increasing=False):
+    """Returns a Vandermonde matrix.
+
+    Args:
+        x (array-like): 1-D array or array-like object.
+        N (int, optional): Number of columns in the output.
+            ``N = len(x)`` by default.
+        increasing (bool, optional): Order of the powers of the columns.
+            If True, the powers increase from right to left,
+            if False (the default) they are reversed.
+
+    Returns:
+        cupy.ndarray: A Vandermonde matrix.
+
+    .. seealso:: :func:`numpy.vander`
+
+    """
+    x = cupy.asarray(x)
+    if x.ndim != 1:
+        raise ValueError("x must be a one-dimensional array or sequence.")
+    if N is None:
+        N = len(x)
+
+    v = cupy.empty((len(x), N), dtype=numpy.promote_types(x.dtype, int))
+    tmp = v[:, ::-1] if not increasing else v
+
+    cupy.power(x.reshape(-1, 1), cupy.arange(N), out=tmp)
+
+    return v
 
 
 # TODO(okuta): Implement mat
