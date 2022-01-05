@@ -191,17 +191,17 @@ class TestTriLowerAndUpper(unittest.TestCase):
 class TestVander(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose()
     def test_vander(self, xp, dtype):
         a = testing.shaped_arange((3,), xp, dtype=dtype)
         return xp.vander(a, N=self.N, increasing=self.increasing)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose()
     def test_vander_array_like_list(self, xp):
         a = [0, 1, 2, 3, 4, 5, 6]
         return xp.vander(a, N=self.N, increasing=self.increasing)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose()
     def test_vander_array_like_tuple(self, xp):
         a = (0, 1, 2, 3, 4, 5, 6)
         return xp.vander(a, N=self.N, increasing=self.increasing)
