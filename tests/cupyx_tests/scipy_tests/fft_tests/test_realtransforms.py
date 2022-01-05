@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-import cupyx.scipy.fft  # noqa
 from cupyx.scipy import fft as cp_fft
 from cupy import testing
 
@@ -10,13 +9,12 @@ try:
     import scipy.fft as scipy_fft  # noqa
 except ImportError:
     scipy_fft = None
-    pass
 
 # used to avoid SciPy bug in complex dtype cases with output_x=True
 # https://github.com/scipy/scipy/pull/11904
-scipy_cplx_bug = not cupyx.scipy.fft._scipy_150
+scipy_cplx_bug = not cp_fft._scipy_150
 
-if cupyx.scipy.fft._scipy_160:
+if cp_fft._scipy_160:
     # additional normalization options available for SciPy>=1.6
     all_dct_norms = [None, 'ortho', 'forward', 'backward']
 else:
@@ -47,11 +45,9 @@ else:
             'function': ['dct', 'dst', 'idct', 'idst'],
         }
     )
-
 )
-@testing.gpu
 @testing.with_requires('scipy>=1.4')
-class TestDctDst():
+class TestDctDst:
 
     def _run_transform(self, dct_func, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -81,7 +77,7 @@ class TestDctDst():
         contiguous_check=False
     )
     def test_dct(self, xp, scp, dtype):
-        fft_func = getattr(getattr(scp, 'fft'), self.function)
+        fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
     @testing.for_all_dtypes()
@@ -137,7 +133,6 @@ class TestDctDst():
         )
     )
 )
-@testing.gpu
 @testing.with_requires('scipy>=1.4')
 class TestDctnDstn():
 
@@ -165,7 +160,7 @@ class TestDctnDstn():
         contiguous_check=False
     )
     def test_dctn(self, xp, scp, dtype):
-        fft_func = getattr(getattr(scp, 'fft'), self.function)
+        fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
     @testing.for_all_dtypes()
