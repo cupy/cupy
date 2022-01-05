@@ -88,6 +88,22 @@ class TestMisc(unittest.TestCase):
                      dtype=dtype)
         return getattr(xp, name)(a, b)
 
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_for_fabs(self, name, xp, dtype, no_bool=False):
+        if no_bool and numpy.dtype(dtype).char == '?':
+            return numpy.int_(0)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
+
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def check_unary_for_fabs_negative(self, name, xp, dtype, no_bool=False):
+        if no_bool and numpy.dtype(dtype).char == '?':
+            return numpy.int_(0)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
+
     @unittest.skipIf(
         sys.platform == 'win32', 'dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
@@ -161,17 +177,17 @@ class TestMisc(unittest.TestCase):
     def test_absolute_negative(self):
         self.check_unary_negative('absolute')
 
+    def test_fabs(self):
+        self.check_unary_for_fabs('fabs')
+
+    def test_fabs_negative(self):
+        self.check_unary_for_fabs_negative('fabs')
+
     def test_sign(self):
         self.check_unary('sign', no_bool=True)
 
     def test_sign_negative(self):
         self.check_unary_negative('sign', no_bool=True)
-
-    def test_fabs(self):
-        self.check_unary('fabs')
-
-    def test_fabs_negative(self):
-        self.check_unary_negative('fabs')
 
     def test_maximum(self):
         self.check_binary('maximum')
