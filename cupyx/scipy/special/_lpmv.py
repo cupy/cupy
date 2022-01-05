@@ -46,7 +46,7 @@ __device__ double psi_spec(double x)
 {
     double xa = fabs(x);
     double PI = 3.1415926535897930;
-    double EL = 0.5772156649015329;  // Euler–Mascheroni constant
+    double EL = 0.5772156649015329;  // Euler-Mascheroni constant
     double s = 0.;
     double ps;
     int n = 0;
@@ -98,10 +98,10 @@ __device__ double psi_spec(double x)
 
 
 /*
- *       Purpose: Compute gamma function Г(x)
- *       Input :  x  --- Argument of Г(x)
- *                      ( x is not equal to 0,-1,-2,…)
- *       Output:  GA --- Г(x)
+ *       Purpose: Compute gamma function Gamma(x)
+ *       Input :  x  --- Argument of Gamma(x)
+ *                      ( x is not equal to 0,-1,-2,...)
+ *       Output:  GA --- Gamma(x)
  */
 __device__ double gamma2(double x)
 {
@@ -171,7 +171,7 @@ __device__ double gamma2(double x)
  *     Purpose: Compute the associated Legendre function
  *              Pmv(x) with an integer order and an arbitrary
  *              nonnegative degree v
- *     Input :  x   --- Argument of Pm(x)  ( -1 ≤ x ≤ 1 )
+ *     Input :  x   --- Argument of Pm(x)  ( -1 <= x <= 1 )
  *              m   --- Order of Pmv(x)
  *              v   --- Degree of Pmv(x)
  */
@@ -181,7 +181,7 @@ __device__ double lpmv0(double v, double m, double x)
     int j, k;
 
     double PI = 3.141592653589793;
-    double EL = .5772156649015329;  // Euler–Mascheroni constant
+    double EL = .5772156649015329;  // Euler-Mascheroni constant
     double EPS = 1.0e-14;
     int nv = (int)v;
     double v0 = v - nv;
@@ -312,7 +312,7 @@ __device__ double lpmv0(double v, double m, double x)
 /*       Purpose: Compute the associated Legendre function
  *                Pmv(x) with an integer order and an arbitrary
  *                degree v, using recursion for large degrees
- *       Input :  x   --- Argument of Pm(x)  ( -1 ≤ x ≤ 1 )
+ *       Input :  x   --- Argument of Pm(x)  ( -1 <= x <= 1 )
  *                m   --- Order of Pmv(x)
  *                v   --- Degree of Pmv(x)
  *       Output:  PMV --- Pmv(x)
