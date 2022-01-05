@@ -24,7 +24,7 @@ poch_definition = (
  */
 
 // include for CUDART_NAN, CUDART_INF
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 
 
 __device__ double is_nonpos_int(double x)

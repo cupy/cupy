@@ -18,7 +18,7 @@ sph_harmonic_definition = (
 #include <cupy/complex.cuh>
 
 // include for CUDART_NAN, CUDART_INF
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 
 #define NPY_PI        3.141592653589793238462643383279502884  /* pi */
 

@@ -40,7 +40,7 @@ _zeta_c = _zeta_c.replace(
 _misc_preamble = """
 
 // include for CUDART_NAN, CUDART_INF
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 
 // defines from /scipy/special/cephes/const.c
 __constant__ double MACHEP = 1.11022302462515654042E-16;
