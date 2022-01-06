@@ -559,7 +559,8 @@ def ediff1d(arr, to_end=None, to_begin=None):
     # calulating using in place operation
     l_diff = max(len(arr) - 1, 0)
     result = cupy.empty(l_diff + l_begin + l_end, dtype=arr.dtype)
-    # result = arr.__array_wrap__(result)  # Cupy does not support subclassing a ndarray
+    # Cupy does not support subclassing a ndarray
+    # result = arr.__array_wrap__(result)
     if l_begin > 0:
         result[:l_begin] = to_begin
     if l_end > 0:
