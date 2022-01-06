@@ -524,8 +524,11 @@ def ediff1d(arr, to_end=None, to_begin=None):
 
     .. seealso:: :func:`numpy.ediff1d`
     """
+    if not isinstance(arr, cupy.ndarray):
+        raise TypeError('`arr` should be of type cupy.ndarray')
+
     # to flattened array.
-    arr = cupy.array(arr).ravel()
+    arr = arr.ravel()
 
     # to ensure the dtype of the output array is same as that of input.
     dtype_req = arr.dtype
