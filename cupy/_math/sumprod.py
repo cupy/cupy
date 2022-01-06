@@ -525,7 +525,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     .. seealso:: :func:`numpy.ediff1d`
     """
     # to flattened array.
-    arr = cupy.asanyarray(arr).ravel()
+    arr = cupy.array(arr).ravel()
 
     # to ensure the dtype of the output array is same as that of input.
     dtype_req = arr.dtype
@@ -537,7 +537,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     if to_begin is None:
         l_begin = 0
     else:
-        to_begin = cupy.asanyarray(to_begin)
+        to_begin = cupy.array(to_begin)
         if not cupy.can_cast(to_begin, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_begin` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
@@ -548,7 +548,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     if to_end is None:
         l_end = 0
     else:
-        to_end = cupy.asanyarray(to_end)
+        to_end = cupy.array(to_end)
         if not cupy.can_cast(to_end, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_end` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
@@ -559,7 +559,7 @@ def ediff1d(arr, to_end=None, to_begin=None):
     # calulating using in place operation
     l_diff = max(len(arr) - 1, 0)
     result = cupy.empty(l_diff + l_begin + l_end, dtype=arr.dtype)
-    # result = arr.__array_wrap__(result)
+    # result = arr.__array_wrap__(result)  # Cupy does not support subclassing a ndarray
     if l_begin > 0:
         result[:l_begin] = to_begin
     if l_end > 0:
