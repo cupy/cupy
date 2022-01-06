@@ -17,6 +17,7 @@ from cupy.array_api._dtypes import (
     int64,
     uint64,
 )
+from cupy.array_api._array_object import Array
 
 
 def test_validate_index():
@@ -290,3 +291,17 @@ def test_python_scalar_construtors():
 
     assert_raises(TypeError, lambda: operator.index(b))
     assert_raises(TypeError, lambda: operator.index(f))
+
+
+def test_array_properties():
+    a = ones((1, 2, 3))
+    b = ones((2, 3))
+    assert_raises(ValueError, lambda: a.T)
+
+    assert isinstance(b.T, Array)
+    assert b.T.shape == (3, 2)
+
+    assert isinstance(a.mT, Array)
+    assert a.mT.shape == (1, 3, 2)
+    assert isinstance(b.mT, Array)
+    assert b.mT.shape == (3, 2)
