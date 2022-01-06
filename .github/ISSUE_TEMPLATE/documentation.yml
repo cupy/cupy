@@ -14,9 +14,9 @@ body:
         Please give a clear description of the doc issue. Make sure to provide relevant links to the document you are referring to.
     validations:
       required: true
-    - type: textarea
-      id: description
-      attributes:
-        label: Idea or request for content
-        description: >
-          Please give a clear description of what topics are missing from the documentation.
+  - type: textarea
+    id: description
+    attributes:
+      label: Idea or request for content
+      description: >
+        Please give a clear description of what topics are missing from the documentation.
