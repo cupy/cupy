@@ -25,7 +25,7 @@ def _get_weights_dtype(input, weights):
     elif weights.dtype.kind in 'iub':
         # convert integer dtype weights to double as in SciPy
         return cupy.float64
-    return cupy.promote_types(input.real.dtype, cupy.float32)
+    return cupy.promote_types(input._array.real.dtype if hasattr(input, '_array') else input.real.dtype, cupy.float32)
 
 
 def _get_output(output, input, shape=None, complex_output=False):
@@ -87,8 +87,9 @@ def _get_inttype(input):
     # The indices actually use byte positions and we can't just use
     # input.nbytes since that won't tell us the number of bytes between the
     # first and last elements when the array is non-contiguous
-    nbytes = sum((x-1)*abs(stride) for x, stride in
-                 zip(input.shape, input.strides)) + input.dtype.itemsize
+    nbytes = sum((x - 1) * abs(stride) for x, stride in
+                 zip(input.shape,
+                     input._array.strides if hasattr(input, '_array') else input.strides)) + input.dtype.itemsize
     return 'int' if nbytes < (1 << 31) else 'ptrdiff_t'
 
 

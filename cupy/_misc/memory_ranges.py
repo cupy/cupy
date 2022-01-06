@@ -31,7 +31,7 @@ def shares_memory(a, b, max_work=None):
     if a is b and a.size != 0:
         return True
     if max_work == 'MAY_SHARE_BOUNDS':
-        return _memory_range.may_share_bounds(a, b)
+        return _memory_range.may_share_bounds(a, b._array if hasattr(b, '_array') else b)
 
     if max_work in (None, 'MAY_SHARE_EXACT'):
         a_ptrs = _get_memory_ptrs(a).ravel()

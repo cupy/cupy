@@ -138,6 +138,7 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     if needs_temp:
         output, temp = _util._get_output(output.dtype, input), output
     args.append(output)
+    args = [arg._array if hasattr(arg, '_array') else arg for arg in args]
     kernel(*args)
     if needs_temp:
         temp[...] = output[...]
