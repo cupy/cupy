@@ -864,6 +864,8 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
+    if _is_hip_environment:
+        raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
     if CUPY_CUDA_VERSION < 10010:
         raise RuntimeError('streamBeginCapture is supported since CUDA 10.1+')
@@ -876,6 +878,8 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
+    if _is_hip_environment:
+        raise RuntimeError('streamEndCapture is not supported in ROCm')
     if CUPY_CUDA_VERSION < 10010:
         raise RuntimeError('streamEndCapture is supported since CUDA 10.1+')
     with nogil:
@@ -886,6 +890,8 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
+    if _is_hip_environment:
+        raise RuntimeError('streamIsCapturing is not supported in ROCm')
     if CUPY_CUDA_VERSION < 10010:
         raise RuntimeError('streamIsCapturing is supported since CUDA 10.1+')
     with nogil:
