@@ -1112,12 +1112,6 @@ cdef class ndarray:
                 return _logic._ndarray_greater(self, other)
             if op == 5:
                 return _logic._ndarray_greater_equal(self, other)
-        elif other is None or other is Ellipsis:
-            if op == 2:
-                return cupy.zeros(self._shape, dtype=cupy.bool_)
-            if op == 3:
-                return cupy.ones(self._shape, dtype=cupy.bool_)
-            return NotImplemented
         elif not _should_use_rop(self, other):
             if isinstance(other, numpy.ndarray) and other.ndim == 0:
                 other = other.item()  # Workaround for numpy<1.13
@@ -1126,8 +1120,21 @@ cdef class ndarray:
             if op == 1:
                 return numpy.less_equal(self, other)
             if op == 2:
+                # cupy.ndarray does not support dtype=object, but
+                # allow comparison with None, Ellipsis, and etc.
+                if type(other).__eq__ is object.__eq__:
+                    # Implies `other` is neither (Python/NumPy) scalar nor
+                    # ndarray. With object's default __eq__, it never
+                    # equals to an element of cupy.ndarray.
+                    return cupy.zeros(self._shape, dtype=cupy.bool_)
                 return numpy.equal(self, other)
             if op == 3:
+                if (
+                    type(other).__eq__ is object.__eq__
+                    and type(other).__ne__ is object.__ne__
+                ):
+                    # Similar to eq, but ne falls back to `not __eq__`.
+                    return cupy.ones(self._shape, dtype=cupy.bool_)
                 return numpy.not_equal(self, other)
             if op == 4:
                 return numpy.greater(self, other)
