@@ -640,6 +640,7 @@ class TestErrorSpmv:
             cupy.cusparse.spmv(a, x)
 
 
+@pytest.mark.skip(reason='#6282 implemented cupy.fabs')
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'transa': [False, True],
