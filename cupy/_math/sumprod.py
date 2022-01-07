@@ -540,7 +540,8 @@ def ediff1d(arr, to_end=None, to_begin=None):
     if to_begin is None:
         l_begin = 0
     else:
-        to_begin = cupy.array(to_begin)
+        if not isinstance(to_begin, cupy.ndarray):
+            raise TypeError('`to_begin` should be of type cupy.ndarray')
         if not cupy.can_cast(to_begin, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_begin` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
@@ -551,7 +552,8 @@ def ediff1d(arr, to_end=None, to_begin=None):
     if to_end is None:
         l_end = 0
     else:
-        to_end = cupy.array(to_end)
+        if not isinstance(to_end, cupy.ndarray):
+            raise TypeError('`to_end` should be of type cupy.ndarray')
         if not cupy.can_cast(to_end, dtype_req, casting="same_kind"):
             raise TypeError("dtype of `to_end` must be compatible "
                             "with input `arr` under the `same_kind` rule.")
