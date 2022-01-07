@@ -27,10 +27,9 @@ def asarray_chkfinite(a, dtype=None, order=None):
             raise ValueError(
                 "Array must not contain infs or nans.")
     else:
-        a = cupy.asarray(numpy.asarray_chkfinite(a, dtype=dtype, order=order),
-                         dtype=dtype, order=order)
+        a = numpy.asarray_chkfinite(a, dtype=dtype, order=order)
 
-    return a
+    return cupy.asarray(a, dtype=dtype, order=order)
 
 
 def asfarray(a, dtype=cupy.float_):
