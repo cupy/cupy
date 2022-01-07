@@ -24,6 +24,7 @@ from cupyx.scipy.special._gammainc import gammainc  # NOQA
 from cupyx.scipy.special._gammainc import gammaincinv  # NOQA
 from cupyx.scipy.special._gammainc import gammaincc  # NOQA
 from cupyx.scipy.special._gammainc import gammainccinv  # NOQA
+from cupyx.scipy.special._digamma import digamma as psi  # NOQA
 from cupyx.scipy.special._polygamma import polygamma  # NOQA
 from cupyx.scipy.special._digamma import digamma  # NOQA
 from cupyx.scipy.special._poch import poch  # NOQA
