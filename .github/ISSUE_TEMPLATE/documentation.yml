@@ -10,13 +10,13 @@ body:
     id: description
     attributes:
       label: The doc issue
-      description: >
+      description: |
         Please give a clear description of the doc issue. Make sure to provide relevant links to the document you are referring to.
     validations:
       required: true
   - type: textarea
-    id: description
+    id: description-idea
     attributes:
       label: Idea or request for content
-      description: >
+      description: |
         Please give a clear description of what topics are missing from the documentation.
