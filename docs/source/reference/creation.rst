@@ -67,3 +67,4 @@ Building matrices
    tri
    tril
    triu
+   vander

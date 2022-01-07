@@ -68,6 +68,17 @@ Streams and events
    cupy.cuda.get_elapsed_time
 
 
+.. _graph_api:
+
+Graphs
+------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupy.cuda.Graph
+
+
 Texture and surface memory
 --------------------------
 

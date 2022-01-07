@@ -43,6 +43,7 @@ Math operations
    true_divide
    floor_divide
    negative
+   positive
    power
    remainder
    mod

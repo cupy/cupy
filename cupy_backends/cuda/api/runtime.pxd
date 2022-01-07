@@ -69,6 +69,12 @@ IF CUPY_USE_CUDA_PYTHON:
 
     ctypedef cudaDeviceProp DeviceProp
 
+    ctypedef cudaStreamCaptureStatus StreamCaptureStatus
+    ctypedef cudaStreamCaptureMode StreamCaptureMode
+    ctypedef cudaGraph_t Graph
+    ctypedef cudaGraphExec_t GraphExec
+    ctypedef cudaGraphNode_t GraphNode
+
 ELSE:
     include "_runtime_typedef.pxi"
     from cupy_backends.cuda.api._runtime_enum cimport *
@@ -100,11 +106,22 @@ cpdef enum:
     eventDisableTiming = 2
     eventInterprocess = 4
 
+    # cudaStreamCaptureMode
+    streamCaptureModeGlobal = 0
+    streamCaptureModeThreadLocal = 1
+    streamCaptureModeRelaxed = 2
+
+    # cudaStreamCaptureStatus
+    streamCaptureStatusNone = 0
+    streamCaptureStatusActive = 1
+    streamCaptureStatusInvalidated = 2
+
     # cudaMemoryType
     memoryTypeUnregistered = 0
     memoryTypeHost = 1
     memoryTypeDevice = 2
     memoryTypeManaged = 3
+
 
 ###############################################################################
 # Constants
@@ -237,6 +254,9 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
+cpdef streamBeginCapture(intptr_t stream, int mode=*)
+cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
+cpdef bint streamIsCapturing(intptr_t stream) except*
 cpdef intptr_t eventCreate() except? 0
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(intptr_t event)
@@ -269,3 +289,14 @@ cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
 cpdef uintmax_t createSurfaceObject(intptr_t ResDesc)
 cpdef destroySurfaceObject(uintmax_t surfObject)
 # TODO(leofang): add cudaGetSurfaceObjectResourceDesc
+
+
+##############################################################################
+# Graph
+##############################################################################
+
+cpdef graphDestroy(intptr_t graph)
+cpdef graphExecDestroy(intptr_t graphExec)
+cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
+cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
+cpdef graphUpload(intptr_t graphExec, intptr_t stream)
