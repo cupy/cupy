@@ -1,6 +1,5 @@
 import cupy
 from cupy import _core
-import numpy
 
 
 def asarray_chkfinite(a, dtype=None, order=None):
