@@ -22,14 +22,11 @@ def asarray_chkfinite(a, dtype=None, order=None):
 
     """
 
-    if isinstance(a, cupy.ndarray):
-        if not cupy.isfinite(a).all():
-            raise ValueError(
-                "Array must not contain infs or nans.")
-    else:
-        a = numpy.asarray_chkfinite(a, dtype=dtype, order=order)
-
-    return cupy.asarray(a, dtype=dtype, order=order)
+    a = cupy.asarray(a, dtype=dtype, order=order)
+    if not cupy.isfinite(a).all():
+        raise ValueError(
+            "Array must not contain infs or nans.")
+    return a
 
 
 def asfarray(a, dtype=cupy.float_):
