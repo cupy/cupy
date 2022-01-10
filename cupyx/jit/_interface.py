@@ -157,7 +157,8 @@ def rawkernel(*, mode='cuda', device=False):
     cupy._util.experimental('cupyx.jit.rawkernel')
 
     def wrapper(func):
-        return functools.update_wrapper(_JitRawKernel(func, mode, device), func)
+        return functools.update_wrapper(
+            _JitRawKernel(func, mode, device), func)
     return wrapper
 
 
