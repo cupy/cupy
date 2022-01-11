@@ -307,3 +307,51 @@ class TestMaskIndices:
     @testing.numpy_cupy_array_equal()
     def test_empty(self, xp):
         return xp.mask_indices(0, xp.triu)
+
+
+@testing.gpu
+class TestTrilIndices:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_1(self, xp, dtype):
+        arr = testing.shaped_random((10, 10), xp=xp, dtype=dtype)
+        return xp.tril_indices(n=10, k=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_2(self, xp, dtype):
+        arr = testing.shaped_random((10, 20), xp=xp, dtype=dtype)
+        return xp.tril_indices(n=5, k=4, m=4)
+
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_3(self, xp):
+        return xp.tril_indices(n=4, k=4, m=3)
+
+
+@testing.gpu
+class TestTrilIndicesForm:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_from_1(self, xp, dtype):
+        arr = testing.shaped_random((10, 10), xp=xp, dtype=dtype)
+        return xp.tril_indices_from(arr, k=4)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_from_2(self, xp, dtype):
+        arr = testing.shaped_random((10, 20), xp=xp, dtype=dtype)
+        return xp.tril_indices_from(arr, k=13)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_from_3(self, xp, dtype):
+        arr = testing.shaped_random((4, 6), xp=xp, dtype=dtype)
+        return xp.tril_indices_from(arr)
+
+    @testing.for_all_dtypes()
+    def test_tril_indices_from_4(self, dtype):
+        for xp in (numpy, cupy):
+            with pytest.raises(AttributeError):
+                xp.tril_indices_from(4, k=1)
