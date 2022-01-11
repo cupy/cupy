@@ -167,7 +167,10 @@ def clip(a, a_min=None, a_max=None, out=None):
                                   a, a_min, a_max, out=out)
 
     # TODO(okuta): check type
-    return a.clip(a_min, a_max, out=out)
+    a = a._array if hasattr(a, '_array') else a
+    out = out._array if hasattr(out, '_array') else out
+    import cupy.array_api as cpx
+    return cpx.asarray(a.clip(a_min, a_max, out=out))
 
 
 # sqrt_fixed is deprecated.

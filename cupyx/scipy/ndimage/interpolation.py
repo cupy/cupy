@@ -749,5 +749,6 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
             integer_output=integer_output, grid_mode=grid_mode,
             nprepad=nprepad)
         zoom = cupy.asarray(zoom, dtype=cupy.float64)
-        kern(filtered, zoom, output)
-    return output
+        import cupy.array_api as cpx
+        kern(filtered, zoom, output._array if hasattr(output, '_array') else output)
+    return cpx.asarray(output)
