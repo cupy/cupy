@@ -477,21 +477,30 @@ def tril_indices(n, k=0, m=None):
     Here, the first row contains row coordinates of all indices and
     the second row contains column coordinates.
 
-    Args:
-    n (int): The row dimension of the arrays for which the returned
-             indices will be valid.
-    k (int, optional): Diagonal above which to zero elements. `k = 0`
-                       (the default) is the main diagonal, `k < 0` is
-                       below it and `k > 0` is above.
-    m (int, optional): The column dimension of the arrays for which the
-                       returned arrays will be valid. By default, `m = 0`.
+    Parameters
+    ----------
+    n : int
+        The row dimension of the arrays for which the returned
+        indices will be valid.
+    k : int, optional
+        Diagonal above which to zero elements. `k = 0`
+        (the default) is the main diagonal, `k < 0` is
+        below it and `k > 0` is above.
+    m : int, optional
+        The column dimension of the arrays for which the
+        returned arrays will be valid. By default, `m = 0`.
 
-    Returns:
-        tuple of ndarrays: The indices for the triangle. The returned tuple
-                           contains two arrays, each with the indices along
-                           one dimension of the array.
+    Returns
+    -------
+    y : tuple of ndarrays
+        The indices for the triangle. The returned tuple
+        contains two arrays, each with the indices along
+        one dimension of the array.
 
-    .. seealso:: :func:`numpy.tril_indices`
+    See Also
+    --------
+    numpy.tril_indices
+
     """
 
     tri_ = cupy.tri(n, m, k=k, dtype=bool)
@@ -503,12 +512,18 @@ def tril_indices(n, k=0, m=None):
 def tril_indices_from(arr, k=0):
     """Returns the indices for the lower-triangle of arr.
 
-    Args:
-    arr (cupy.ndarray): The indices are valid for square arrays
-                        whose dimensions are the same as arr.
-    k (int, optional): Diagonal offset.
+    Parameters
+    ----------
+    arr : cupy.ndarray
+          The indices are valid for square arrays
+          whose dimensions are the same as arr.
+    k : int, optional
+        Diagonal offset.
 
-    .. seealso:: :func:`numpy.tril_indices_from`
+    See Also
+    --------
+    numpy.tril_indices_from
+
     """
 
     if arr.ndim != 2:
