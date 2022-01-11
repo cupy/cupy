@@ -58,17 +58,22 @@ def _promote_dtype(x):
 def _get_dct_norm_factor(n, inorm, dct_type=2):
     """Normalization factors for DCT/DST I-IV.
 
-    Args:
-        n (int): Data size.
-        inorm ({'none', 'sqrt', 'full'}): When `inorm` is 'none', the scaling
-            factor is 1.0 (unnormalized). When `inorm` is 1, scaling by
-            ``1/sqrt(d)`` as needed for an orthogonal transform is used. When
-            `inorm` is 2, normalization by ``1/d`` is applied. The value of
-            ``d`` depends on both `n` and the `dct_type`.
-        dct_type ({1, 2, 3, 4}): Which type of DCT or DST is being normalized?
+    Parameters
+    ----------
+    n : int
+        Data size.
+    inorm : {'none', 'sqrt', 'full'}
+        When `inorm` is 'none', the scaling factor is 1.0 (unnormalized). When
+        `inorm` is 1, scaling by ``1/sqrt(d)`` as needed for an orthogonal
+        transform is used. When `inorm` is 2, normalization by ``1/d`` is
+        applied. The value of ``d`` depends on both `n` and the `dct_type`.
+    dct_type : {1, 2, 3, 4}
+        Which type of DCT or DST is being normalized?.
 
-    Returns:
-        fct (float): The normalization factor
+    Returns
+    -------
+    fct : float
+        The normalization factor.
     """
     if inorm == 'none':
         return 1
@@ -131,22 +136,31 @@ def _dct_or_dst_type2(
 ):
     """Forward DCT/DST-II (or inverse DCT/DST-III) along a single axis
 
-    Args:
-        x (cupy.ndarray): The data to transform.
-        n (int): The size of the transform. If None, ``x.shape[axis]`` is used.
-        axis (int): Axis along which the transform is applied.
-        forward (bool): Set true to indicate that this is a forward DCT-II as
-            opposed to an inverse DCT-III (The difference between the two is
-            only in the normalization factor).
-        norm ({None or 'ortho'}): The normalization convention to use.
-        dst (bool): If True, a discrete sine transform is computed rather than
-            the discrete cosine transform.
-        overwrite_x (bool): Indicates that it is okay to overwrite x. In
-            practice, the current implementation never performs the transform
-            in-place.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The data to transform.
+    n : int
+        The size of the transform. If None, ``x.shape[axis]`` is used.
+    axis : int
+        Axis along which the transform is applied.
+    forward : bool
+        Set true to indicate that this is a forward DCT-II as opposed to an
+        inverse DCT-III (The difference between the two is only in the
+        normalization factor).
+    norm : {None, 'ortho', 'forward', 'backward'}
+        The normalization convention to use.
+    dst : bool
+        If True, a discrete sine transform is computed rather than the discrete
+        cosine transform.
+    overwrite_x : bool
+        Indicates that it is okay to overwrite x. In practice, the current
+        implementation never performs the transform in-place.
 
-    Returns:
-        cupy.ndarray: The transformed array.
+    Returns
+    -------
+    y: cupy.ndarray
+        The transformed array.
     """
     if axis < -x.ndim or axis >= x.ndim:
         raise numpy.AxisError('axis out of range')
@@ -240,24 +254,34 @@ def _exp_factor_dct3(x, n, axis, dtype, norm_factor):
 def _dct_or_dst_type3(
     x, n=None, axis=-1, norm=None, forward=True, dst=False, overwrite_x=False
 ):
-    """Forward DCT/DST-III (or inverse DCT/DST-II).
+    """Forward DCT/DST-III (or inverse DCT/DST-II) along a single axis.
 
-    Args:
-        x (cupy.ndarray): The data to transform.
-        n (int): The size of the transform. If None, ``x.shape[axis]`` is used.
-        axis (int): Axis along which the transform is applied.
-        forward (bool): Set true to indicate that this is a forward DCT-II as
-            opposed to an inverse DCT-III (The difference between the two is
-            only in the normalization factor).
-        norm ({None or 'ortho'}): The normalization convention to use.
-        dst (bool): If True, a discrete sine transform is computed rather than
-            the discrete cosine transform.
-        overwrite_x (bool): Indicates that it is okay to overwrite x. In
-            practice, the current implementation never performs the transform
-            in-place.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The data to transform.
+    n : int
+        The size of the transform. If None, ``x.shape[axis]`` is used.
+    axis : int
+        Axis along which the transform is applied.
+    forward : bool
+        Set true to indicate that this is a forward DCT-II as opposed to an
+        inverse DCT-III (The difference between the two is only in the
+        normalization factor).
+    norm : {None, 'ortho', 'forward', 'backward'}
+        The normalization convention to use.
+    dst : bool
+        If True, a discrete sine transform is computed rather than the discrete
+        cosine transform.
+    overwrite_x : bool
+        Indicates that it is okay to overwrite x. In practice, the current
+        implementation never performs the transform in-place.
 
-    Returns:
-        cupy.ndarray: The transformed array.
+    Returns
+    -------
+    y: cupy.ndarray
+        The transformed array.
+
     """
     if axis < -x.ndim or axis >= x.ndim:
         raise numpy.AxisError('axis out of range')
@@ -320,47 +344,57 @@ def _dct_or_dst_type3(
 def dct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Discrete Cosine Transform of an array, x.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional, optional): Type of the DCT (see Notes).
-            Default type is 2. Currently CuPy only supports types 2 and 3.
-        n (int, optional, optional): Length of the transform.  If
-            ``n < x.shape[axis]``, `x` is truncated. If ``n > x.shape[axis]``,
-            `x` is zero-padded. The default results in ``n = x.shape[axis]``.
-        axis (int, optional): Axis along which the dct is computed; the default
-            is over the last axis (i.e., ``axis=-1``).
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-            can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DCT (see Notes). Default type is 2. Currently CuPy only
+        supports types 2 and 3.
+    n : int, optional:
+        Length of the transform.  If ``n < x.shape[axis]``, `x` is
+        truncated. If ``n > x.shape[axis]``, `x` is zero-padded.
+        The default results in ``n = x.shape[axis]``.
+    axis : int, optional
+        Axis along which the dct is computed; the default is over the
+        last axis (i.e., ``axis=-1``).
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-    Returns:
-        ndarray of real: The transformed input array.
+    Returns
+    -------
+    y : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    idct : Inverse DCT
+    :func:`scipy.fft.dct`
 
     Notes
     -----
-    For a single dimension array ``x``, ``dct(x, norm='ortho')`` is equal to
-    MATLAB ``dct(x)``.
+    For a single dimension array ``x``, ``dct(x, norm='ortho')`` is equal
+    to MATLAB ``dct(x)``.
 
-    For ``norm=None``, there is no scaling on `dct` and the `idct` is scaled by
-    ``1/N`` where ``N`` is the "logical" size of the DCT. For ``norm='ortho'``
-    both directions are scaled by the same factor ``1/sqrt(N)``.
+    For ``norm="ortho"`` both the `dct` and `idct` are scaled by the same
+    overall factor in both directions. By default, the transform is also
+    orthogonalized which for types 1, 2 and 3 means the transform definition is
+    modified to give orthogonality of the DCT matrix (see below).
 
-    CuPy currently only supports DCT types 2 and 3. 'The' DCT generally refers
-    to DCT type 2, and 'the' Inverse DCT generally refers to DCT type 3.
+    For ``norm="backward"``, there is no scaling on `dct` and the `idct` is
+    scaled by ``1/N`` where ``N`` is the "logical" size of the DCT. For
+    ``norm="forward"`` the ``1/N`` normalization is applied to the forward
+    `dct` instead and the `idct` is unnormalized.
 
-    See the `scipy.fft.dct` documentation for a full description of each type.
+    CuPy currently only supports DCT types 2 and 3. 'The' DCT generally
+    refers to DCT type 2, and 'the' Inverse DCT generally refers to DCT
+    type 3 [1]_. See the :func:`scipy.fft.dct` documentation for a full
+    description of each type.
 
     References
     ----------
-    .. [1] 'A Fast Cosine Transform in One and Two Dimensions', by J.
-           Makhoul, `IEEE Transactions on acoustics, speech and signal
-           processing` vol. 28(1), pp. 27-34, 1980.
-           https://doi.org/10.1109/TASSP.1980.1163351
-    .. [2] Wikipedia, "Discrete cosine transform",
+    .. [1] Wikipedia, "Discrete cosine transform",
            https://en.wikipedia.org/wiki/Discrete_cosine_transform
 
     """
@@ -392,46 +426,46 @@ def dct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
 def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Discrete Sine Transform of an array, x.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional, optional): Type of the DST (see Notes).
-            Default type is 2. Currently CuPy only supports types 2 and 3.
-        n (int, optional, optional): Length of the transform.  If
-            ``n < x.shape[axis]``, `x` is truncated. If ``n > x.shape[axis]``,
-            `x` is zero-padded. The default results in ``n = x.shape[axis]``.
-        axis (int, optional): Axis along which the dct is computed; the default
-            is over the last axis (i.e., ``axis=-1``).
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-            can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DCT (see Notes). Default type is 2.
+    n : int, optional
+        Length of the transform.  If ``n < x.shape[axis]``, `x` is
+        truncated.  If ``n > x.shape[axis]``, `x` is zero-padded. The
+        default results in ``n = x.shape[axis]``.
+    axis : int, optional
+        Axis along which the idct is computed; the default is over the
+        last axis (i.e., ``axis=-1``).
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-    Returns:
-      ndarray of reals: The transformed input array.
+    Returns
+    -------
+    idct : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    idst : Inverse DST
+    :func:`scipy.fft.dst`
 
     Notes
     -----
-    For a single dimension array ``x``.
 
-    For ``norm=None``, there is no scaling on the `dst` and the `idst` is
-    scaled by ``1/N`` where ``N`` is the "logical" size of the DST. For
-    ``norm='ortho'`` both directions are scaled by the same factor
-    ``1/sqrt(N)``.
+    For ``norm="ortho"`` both the `dst` and `idst` are scaled by the same
+    overall factor in both directions. By default, the transform is also
+    orthogonalized which for types 2 and 3 means the transform definition is
+    modified to give orthogonality of the DST matrix (see below).
 
-    There are, theoretically, 8 types of the DST for different combinations of
-    even/odd boundary conditions and boundary off sets [1]_, only types 2 and
-    3 are currently implemented in CuPy.
+    For ``norm="backward"``, there is no scaling on the `dst` and the `idst` is
+    scaled by ``1/N`` where ``N`` is the "logical" size of the DST.
 
-    See the `scipy.fft.dst` documentation for the full description of each
-    type.
-
-    References
-    ----------
-    .. [1] Wikipedia, "Discrete sine transform",
-           https://en.wikipedia.org/wiki/Discrete_sine_transform
+    See the :func:`scipy.fft.dst` documentation for a full description of each
+    type. CuPy currently only supports DST types 2 and 3.
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
@@ -461,42 +495,52 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
 def idct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Inverse Discrete Cosine Transform of an array, x.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional, optional): Type of the DCT (see Notes).
-            Default type is 2. Currently CuPy only supports types 2 and 3.
-        n (int, optional, optional): Length of the transform.  If
-            ``n < x.shape[axis]``, `x` is truncated. If ``n > x.shape[axis]``,
-            `x` is zero-padded. The default results in ``n = x.shape[axis]``.
-        axis (int, optional): Axis along which the dct is computed; the default
-            is over the last axis (i.e., ``axis=-1``).
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-            can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DCT (see Notes). Default type is 2.
+    n : int, optional
+        Length of the transform.  If ``n < x.shape[axis]``, `x` is
+        truncated.  If ``n > x.shape[axis]``, `x` is zero-padded. The
+        default results in ``n = x.shape[axis]``.
+    axis : int, optional
+        Axis along which the idct is computed; the default is over the
+        last axis (i.e., ``axis=-1``).
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-
-    Returns:
-        ndarray of real: The transformed input array.
+    Returns
+    -------
+    idct : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    dct : Forward DCT
+    :func:`scipy.fft.idct`
 
     Notes
     -----
     For a single dimension array `x`, ``idct(x, norm='ortho')`` is equal to
     MATLAB ``idct(x)``.
 
-    'The' IDCT is the IDCT-II, which is the same as the normalized DCT-III.
+    For ``norm="ortho"`` both the `dct` and `idct` are scaled by the same
+    overall factor in both directions. By default, the transform is also
+    orthogonalized which for types 1, 2 and 3 means the transform definition is
+    modified to give orthogonality of the IDCT matrix (see `dct` for the full
+    definitions).
 
-    The IDCT is equivalent to a normal DCT except for the normalization and
-    type. DCT type 1 and 4 are their own inverse and DCTs 2 and 3 are each
-    other's inverses.
+    'The' IDCT is the IDCT-II, which is the same as the normalized DCT-III
+    [1]_. See the :func:`scipy.fft.dct` documentation for a full description of
+    each type. CuPy currently only supports DCT types 2 and 3.
 
-    CuPy currently only supports DCT types 2 and 3.
-
-    See the `scipy.fft.dct` documentation for a full description of each type.
-
+    References
+    ----------
+    .. [1] Wikipedia, "Discrete sine transform",
+           https://en.wikipedia.org/wiki/Discrete_sine_transform
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
@@ -524,34 +568,37 @@ def idct(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
 def idst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     """Return the Inverse Discrete Sine Transform of an array, x.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional, optional): Type of the DCT (see Notes).
-            Default type is 2. Currently CuPy only supports types 2 and 3.
-        n (int, optional, optional): Length of the transform.  If
-            ``n < x.shape[axis]``, `x` is truncated. If ``n > x.shape[axis]``,
-            `x` is zero-padded. The default results in ``n = x.shape[axis]``.
-        axis (int, optional): Axis along which the dct is computed; the default
-            is over the last axis (i.e., ``axis=-1``).
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-            can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DST (see Notes). Default type is 2.
+    n : int, optional
+        Length of the transform. If ``n < x.shape[axis]``, `x` is
+        truncated.  If ``n > x.shape[axis]``, `x` is zero-padded. The
+        default results in ``n = x.shape[axis]``.
+    axis : int, optional
+        Axis along which the idst is computed; the default is over the
+        last axis (i.e., ``axis=-1``).
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-
-    Returns:
-        ndarray of real: The transformed input array.
+    Returns
+    -------
+    idst : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    dst : Forward DST
+    :func:`scipy.fft.idst`
 
     Notes
     -----
-    'The' IDST is the IDST-II, which is the same as the normalized DST-III.
-
-    CuPy currently only supports DST types 2 and 3.
-
-    See the `scipy.fft.dst` documentation for a full description of each type.
+    For full details of the DCT types and normalization modes, as well as
+    references, see :func:`scipy.fft.dct`.
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
@@ -641,34 +688,37 @@ def _init_nd_shape_and_axes(x, shape, axes):
 def dctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Cosine Transform.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional): Type of the DCT (see Notes).
-            Default type is 2. Only types 2 and 3 are currently supported by
-            CuPy.
-        s (int or array_like of ints or None, optional): The shape of the
-            result. If both `s` and `axes` (see below) are None, `s` is
-            ``x.shape``; if `s` is None but `axes` is not None, then `s` is
-            ``scipy.take(x.shape, axes, axis=0)``.
-           If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
-           If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
-           ``s[i]``.
-           If any element of `s` is -1, the size of the corresponding dimension
-           of `x` is used. (Default value = None)
-        axes (int or array_like of ints or None, optional): Axes over which the
-           DCT is computed. If not given, the last ``len(s)`` axes are used, or
-           all axes if `s` is also not specified. (Default value = None)
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-           Default is None.
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-           can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DCT (see Notes). Default type is 2.
+    s : int or array_like of ints or None, optional
+        The shape of the result. If both `s` and `axes` (see below) are None,
+        `s` is ``x.shape``; if `s` is None but `axes` is not None, then `s` is
+        ``numpy.take(x.shape, axes, axis=0)``.
+        If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
+        If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
+        ``s[i]``.
+        If any element of `s` is -1, the size of the corresponding dimension of
+        `x` is used.
+    axes : int or array_like of ints or None, optional
+        Axes over which the DCT is computed. If not given, the last ``len(s)``
+        axes are used, or all axes if `s` is also not specified.
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-    Returns:
-        ndarray of real: The transformed input array.
+    Returns
+    -------
+    y : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    idctn : Inverse multidimensional DCT
+    :func:`scipy.fft.dctn`
 
     Notes
     -----
@@ -698,39 +748,42 @@ def dctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
 def idctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Cosine Transform.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional): Type of the DCT (see Notes).
-            Default type is 2. Only types 2 and 3 are currently supported by
-            CuPy.
-        s (int or array_like of ints or None, optional): The shape of the
-            result. If both `s` and `axes` (see below) are None, `s` is
-            ``x.shape``; if `s` is None but `axes` is not None, then `s` is
-            ``scipy.take(x.shape, axes, axis=0)``.
-           If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
-           If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
-           ``s[i]``.
-           If any element of `s` is -1, the size of the corresponding dimension
-           of `x` is used. (Default value = None)
-        axes (int or array_like of ints or None, optional): Axes over which the
-           DCT is computed. If not given, the last ``len(s)`` axes are used, or
-           all axes if `s` is also not specified. (Default value = None)
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-           Default is None.
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-           can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DCT (see Notes). Default type is 2.
+    s : int or array_like of ints or None, optional
+        The shape of the result. If both `s` and `axes` (see below) are None,
+        `s` is ``x.shape``; if `s` is None but `axes` is not None, then `s` is
+        ``numpy.take(x.shape, axes, axis=0)``.
+        If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
+        If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
+        ``s[i]``.
+        If any element of `s` is -1, the size of the corresponding dimension of
+        `x` is used.
+    axes : int or array_like of ints or None, optional
+        Axes over which the DCT is computed. If not given, the last ``len(s)``
+        axes are used, or all axes if `s` is also not specified.
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-    Returns:
-      ndarray of real: The transformed input array.
+    Returns
+    -------
+    y : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    dctn : multidimensional DCT
+    :func:`scipy.fft.idctn`
 
     Notes
     -----
     For full details of the IDCT types and normalization modes, as well as
-    references, see `idct`.
+    references, see :func:`scipy.fft.idct`.
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
@@ -755,39 +808,42 @@ def idctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
 def dstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Sine Transform.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional): Type of the DST (see Notes).
-            Default type is 2. Only types 2 and 3 are currently supported by
-            CuPy.
-        s (int or array_like of ints or None, optional): The shape of the
-            result. If both `s` and `axes` (see below) are None, `s` is
-            ``x.shape``; if `s` is None but `axes` is not None, then `s` is
-            ``scipy.take(x.shape, axes, axis=0)``.
-           If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
-           If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
-           ``s[i]``.
-           If any element of `s` is -1, the size of the corresponding dimension
-           of `x` is used. (Default value = None)
-        axes (int or array_like of ints or None, optional): Axes over which the
-           DST is computed. If not given, the last ``len(s)`` axes are used, or
-           all axes if `s` is also not specified. (Default value = None)
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-           Default is None.
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-           can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DST (see Notes). Default type is 2.
+    s : int or array_like of ints or None, optional
+        The shape of the result. If both `s` and `axes` (see below) are None,
+        `s` is ``x.shape``; if `s` is None but `axes` is not None, then `s` is
+        ``numpy.take(x.shape, axes, axis=0)``.
+        If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
+        If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
+        ``s[i]``.
+        If any element of `s` is -1, the size of the corresponding dimension of
+        `x` is used.
+    axes : int or array_like of ints or None, optional
+        Axes over which the DST is computed. If not given, the last ``len(s)``
+        axes are used, or all axes if `s` is also not specified.
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-    Returns:
-        ndarray of real: The transformed input array.
+    Returns
+    -------
+    y : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    idstn : Inverse multidimensional DST
+    :func:`scipy.fft.dstn`
 
     Notes
     -----
-    For full details of the DST types and normalization modes, as well as
-    references, see `dst`.
+    For full details of the IDST types and normalization modes, as well as
+    references, see :func:`scipy.fft.dst`.
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
@@ -812,39 +868,42 @@ def dstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
 def idstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
     """Compute a multidimensional Discrete Sine Transform.
 
-    Args:
-        x (array_like): The input array.
-        type ({1, 2, 3, 4}, optional): Type of the DST (see Notes).
-            Default type is 2. Only types 2 and 3 are currently supported by
-            CuPy.
-        s (int or array_like of ints or None, optional): The shape of the
-            result. If both `s` and `axes` (see below) are None, `s` is
-            ``x.shape``; if `s` is None but `axes` is not None, then `s` is
-            ``scipy.take(x.shape, axes, axis=0)``.
-           If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
-           If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
-           ``s[i]``.
-           If any element of `s` is -1, the size of the corresponding dimension
-           of `x` is used. (Default value = None)
-        axes (int or array_like of ints or None, optional): Axes over which the
-           DST is computed. If not given, the last ``len(s)`` axes are used, or
-           all axes if `s` is also not specified. (Default value = None)
-        norm ({None, 'ortho'}, optional): Normalization mode (see Notes).
-           Default is None.
-        overwrite_x (bool, optional, optional): If True, the contents of `x`
-           can be destroyed; the default is False.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        The input array.
+    type : {1, 2, 3, 4}, optional
+        Type of the DST (see Notes). Default type is 2.
+    s : int or array_like of ints or None, optional
+        The shape of the result. If both `s` and `axes` (see below) are None,
+        `s` is ``x.shape``; if `s` is None but `axes` is not None, then `s` is
+        ``numpy.take(x.shape, axes, axis=0)``.
+        If ``s[i] > x.shape[i]``, the ith dimension is padded with zeros.
+        If ``s[i] < x.shape[i]``, the ith dimension is truncated to length
+        ``s[i]``.
+        If any element of `s` is -1, the size of the corresponding dimension of
+        `x` is used.
+    axes : int or array_like of ints or None, optional
+        Axes over which the DST is computed. If not given, the last ``len(s)``
+        axes are used, or all axes if `s` is also not specified.
+    norm : {"backward", "ortho", "forward"}, optional
+        Normalization mode (see Notes). Default is "backward".
+    overwrite_x : bool, optional
+        If True, the contents of `x` can be destroyed; the default is False.
 
-    Returns:
-        ndarray of real: The transformed input array.
+    Returns
+    -------
+    y : cupy.ndarray of real
+        The transformed input array.
 
     See Also
     --------
-    dstn : multidimensional DST
+    :func:`scipy.fft.idstn`
 
     Notes
     -----
     For full details of the IDST types and normalization modes, as well as
-    references, see `idst`.
+    references, see :func:`scipy.fft.idst`.
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
