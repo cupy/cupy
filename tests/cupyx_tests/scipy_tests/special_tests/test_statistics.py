@@ -1,13 +1,14 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
 import cupyx.scipy.special
 
 
-class _TestBase(object):
+class _TestBase:
 
     def test_ndtr(self):
         self.check_unary('ndtr')
@@ -20,8 +21,8 @@ class _TestBase(object):
         self.check_unary_lower_precision('log_expit')
 
 
-atol = {'default': 1e-15, cupy.float64: 1e-15}
-rtol = {'default': 1e-5, cupy.float64: 1e-15}
+atol = {'default': 1e-14, cupy.float64: 1e-14}
+rtol = {'default': 1e-5, cupy.float64: 1e-14}
 
 # not all functions pass at the stricter tolerances above
 atol_low = {'default': 5e-4, cupy.float64: 1e-12}
@@ -30,7 +31,7 @@ rtol_low = {'default': 5e-4, cupy.float64: 1e-12}
 
 @testing.gpu
 @testing.with_requires('scipy')
-class TestSpecial(unittest.TestCase, _TestBase):
+class TestSpecial(_TestBase):
 
     def _check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
@@ -60,10 +61,50 @@ class TestSpecial(unittest.TestCase, _TestBase):
         return scp.special.logit(a)
 
     def test_logit_nonfinite(self):
-        assert float(cupyx.scipy.special.logit(0)) == -numpy.inf
-        assert float(cupyx.scipy.special.logit(1)) == numpy.inf
-        assert numpy.isnan(float(cupyx.scipy.special.logit(1.1)))
-        assert numpy.isnan(float(cupyx.scipy.special.logit(-0.1)))
+        logit = cupyx.scipy.special.logit
+        assert float(logit(0)) == -numpy.inf
+        assert float(logit(1)) == numpy.inf
+        assert numpy.isnan(float(logit(1.1)))
+        assert numpy.isnan(float(logit(-0.1)))
+
+    @pytest.mark.parametrize('inverse', [False, True],
+                             ids=['boxcox', 'inv_boxcox'])
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
+    def test_boxcox(self, xp, scp, dtype, inverse):
+        import scipy.special  # NOQA
+
+        # outputs are only finite over range (0, 1)
+        x = xp.linspace(0.001, 1000, 1000, dtype=dtype).reshape((1, 1000))
+        lmbda = xp.asarray([-5, 0, 5], dtype=dtype).reshape((3, 1))
+        result = scp.special.boxcox(x, lmbda)
+        if inverse:
+            result = scp.special.inv_boxcox(result, lmbda)
+        return result
+
+    def test_boxcox_nonfinite(self):
+        boxcox = cupyx.scipy.special.boxcox
+        assert float(boxcox(0, -5)) == -numpy.inf
+        assert numpy.isnan(float(boxcox(-0.1, 5)))
+
+    @pytest.mark.parametrize('inverse', [False, True],
+                             ids=['boxcox', 'inv_boxcox'])
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
+    def test_boxcox1p(self, xp, scp, dtype, inverse):
+        import scipy.special  # NOQA
+
+        x = xp.linspace(-0.99, 1000, 1000, dtype=dtype).reshape((1, 1000))
+        lmbda = xp.asarray([-5, 0, 5], dtype=dtype).reshape((3, 1))
+        result = scp.special.boxcox1p(x, lmbda)
+        if inverse:
+            result = scp.special.inv_boxcox1p(result, lmbda)
+        return result
+
+    def test_boxcox1p_nonfinite(self):
+        boxcox1p = cupyx.scipy.special.boxcox1p
+        assert float(boxcox1p(-1, -5)) == -numpy.inf
+        assert numpy.isnan(float(boxcox1p(-1.1, 5)))
 
 
 @testing.gpu
