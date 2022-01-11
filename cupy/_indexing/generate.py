@@ -494,7 +494,7 @@ def tril_indices(n, k=0, m=None):
     .. seealso:: :func:`numpy.tril_indices`
     """
 
-    tri_ =  cupy.tri(n, m, k=k, dtype=bool)
+    tri_ = cupy.tri(n, m, k=k, dtype=bool)
 
     return tuple(cupy.broadcast_to(inds, tri_.shape)[tri_]
                  for inds in cupy.indices(tri_.shape, dtype=int))

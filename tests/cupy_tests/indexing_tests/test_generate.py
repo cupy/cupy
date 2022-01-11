@@ -315,18 +315,27 @@ class TestTrilIndices:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_tril_indices_1(self, xp, dtype):
-        arr = testing.shaped_random((10, 10), xp=xp, dtype=dtype)
-        return xp.tril_indices(n=10, k=0)
+        return xp.tril_indices(n=29, k=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_tril_indices_2(self, xp, dtype):
-        arr = testing.shaped_random((10, 20), xp=xp, dtype=dtype)
-        return xp.tril_indices(n=5, k=4, m=4)
+        return xp.tril_indices(n=11, k=4, m=4)
 
     @testing.numpy_cupy_array_equal()
     def test_tril_indices_3(self, xp):
         return xp.tril_indices(n=4, k=4, m=3)
+
+    @testing.for_all_dtypes()
+    def test_tril_indices(self, dtype):
+        for xp in (numpy, cupy):
+            arr = testing.shaped_random((10, 10), xp=xp, dtype=dtype)
+            if xp is numpy:
+                error = ValueError
+            else:
+                error = TypeError
+            with pytest.raises(error):
+                xp.tril_indices(arr, k=0)
 
 
 @testing.gpu
