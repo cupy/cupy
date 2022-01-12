@@ -20,6 +20,7 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 from cupy import _core
 
 from cupyx.scipy.special._digamma import polevl_definition
+from cupyx.scipy.special._gamma import gamma_implementation
 from cupyx.scipy.special._zeta import zeta_definition
 
 _zeta_c = zeta_definition
@@ -772,6 +773,7 @@ __device__ double igam(double a, double x)
 
 _igami_preamble = (
     _igam_preamble
+    + gamma_implementation
     + """
 
 // from scipy/special/cephes/igami.c
@@ -834,20 +836,6 @@ __device__ double didonato_SN(double a, double x, unsigned N, double tolerance)
         }
     }
     return sum;
-}
-
-
-__device__ double Gamma(double in0)
-{
-    double out0;
-    if (isinf(in0) && in0 < 0) {
-        out0 = -1.0 / 0.0;
-    } else if (in0 < 0. && in0 == floor(in0)) {
-        out0 = 1.0 / 0.0;
-    } else {
-        out0 = tgamma(in0);
-    }
-    return out0;
 }
 
 
