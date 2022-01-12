@@ -3,29 +3,16 @@
 The source code here is an adaptation with minimal changes from the following
 files in SciPy's bundled Cephes library:
 
-https://github.com/scipy/scipy/blob/master/scipy/special/cephes/beta.c
+https://github.com/scipy/scipy/blob/main/scipy/special/cephes/beta.c
 
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
 """
 
 from cupy import _core
+from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_implementation
-
-
-"""
-    "beta": {
-        "cephes.h": {
-            "beta": "dd->d"
-        }
-    },
-    "betaln": {
-        "cephes.h": {
-            "lbeta": "dd->d"
-        }
-    },
-"""
-#include "mconf.h"
+from cupyx.scipy.special._gammainc import p1evl_definition
 
 
 misc_preamble = """
@@ -34,34 +21,63 @@ misc_preamble = """
 
 // defines from /scipy/special/cephes/const.c
 __constant__ double MAXLOG = 7.09782712893383996732E2;
+__constant__ double LOGPI = 1.14472988584940017414;
+
+// defines from npy_math.h
+#define NPY_PI        3.141592653589793238462643383279502884  /* pi */
 
 #define MAXGAM 171.624376956302725
 #define ASYMP_FACTOR 1e6
-
 """
+
 
 lgam_sgn_implementation = """
 
+
+/* A[]: Stirling's formula expansion of log Gamma
+ * B[], C[]: log Gamma function between 2 and 3
+ */
+__constant__ double A[] = {
+    8.11614167470508450300E-4,
+    -5.95061904284301438324E-4,
+    7.93650340457716943945E-4,
+    -2.77777777730099687205E-3,
+    8.33333333333331927722E-2
+};
+
+__constant__ double B[] = {
+    -1.37825152569120859100E3,
+    -3.88016315134637840924E4,
+    -3.31612992738871184744E5,
+    -1.16237097492762307383E6,
+    -1.72173700820839662146E6,
+    -8.53555664245765465627E5
+};
+
+__constant__ double C[] = {
+    /* 1.00000000000000000000E0, */
+    -3.51815701436523470549E2,
+    -1.70642106651881159223E4,
+    -2.20528590553854454839E5,
+    -1.13933444367982507207E6,
+    -2.53252307177582951285E6,
+    -2.01889141433532773231E6
+};
+
+/* log( sqrt( 2*pi ) ) */
+__constant__ double LS2PI = 0.91893853320467274178;
+
+#define MAXLGM 2.556348e305
+
+
 __device__ static double lgam_sgn(double x, int *sign)
-{
-    double out;
-    out = lgamma(x);
-    *sign = (int) (out > 0);
-    return out;
-}
-"""
-
-# TODO: probably don't need this lgam_sgn
-lgam_sgn_unused = """
-
-double lgam_sgn(double x, int *sign)
 {
     double p, q, u, w, z;
     int i;
 
     *sign = 1;
 
-    if isinf(x) {
+    if (isinf(x)) {
         return x;
     }
 
@@ -124,7 +140,7 @@ double lgam_sgn(double x, int *sign)
         }
         p -= 2.0;
         x = x + p;
-        p = x * polevl(x, B, 5) / p1evl(x, C, 6);
+        p = x * polevl<5>(x, B) / p1evl<6>(x, C);
         return (log(z) + p);
     }
 
@@ -143,10 +159,18 @@ double lgam_sgn(double x, int *sign)
                - 2.7777777777777777777778e-3) * p
               + 0.0833333333333333333333) / x;
     } else {
-        q += polevl(p, A, 4) / x;
+        q += polevl<4>(p, A) / x;
     }
     return q;
 }
+
+
+__device__ static double lgam(double x)
+{
+    int sign;
+    return lgam_sgn(x, &sign);
+}
+
 """
 
 lbeta_symp_implementation = """
@@ -170,6 +194,8 @@ __device__ static double lbeta_asymp(double a, double b, int *sgn)
 beta_implementation = (
     misc_preamble
     + gamma_implementation
+    + polevl_definition
+    + p1evl_definition
     + lgam_sgn_implementation
     + lbeta_symp_implementation
     + """
@@ -278,6 +304,8 @@ __device__ double beta(double a, double b)
 lbeta_implementation = (
     misc_preamble
     + gamma_implementation
+    + polevl_definition
+    + p1evl_definition
     + lgam_sgn_implementation
     + lbeta_symp_implementation
     + """
@@ -393,9 +421,9 @@ beta = _core.create_ufunc(
 
     Parameters
     ----------
-    a, b : array-like
+    a, b : cupy.ndarray
         Real-valued arguments
-    out : ndarray, optional
+    out : cupy.ndarray, optional
         Optional output array for the function result
 
     Returns
@@ -420,17 +448,17 @@ betaln = _core.create_ufunc(
 
     Parameters
     ----------
-    a, b : array-like
+    a, b : cupy.ndarray
         Real-valued arguments
-    out : ndarray, optional
+    out : cupy.ndarray, optional
         Optional output array for the function result
 
     Returns
     -------
     scalar or ndarray
-        Value of the beta function
+        Value of the natural log of the magnitude of beta.
 
-    .. seealso:: :meth:`scipy.special.beta`
+    .. seealso:: :meth:`scipy.special.betaln`
 
     """,
 )

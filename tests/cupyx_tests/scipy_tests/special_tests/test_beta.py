@@ -4,6 +4,16 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
+def _get_logspace_max(dtype):
+    # keep logspace within range of the float dtype
+    if dtype.char == 'd':
+        return 200
+    elif dtype.char == 'f':
+        return 30
+    elif dtype.char == 'e':
+        return 5
+
+
 @testing.gpu
 @testing.with_requires('scipy')
 class TestBeta:
@@ -17,7 +27,7 @@ class TestBeta:
         b = testing.shaped_arange((10, 1), xp, dtype) + dtype(1)
         return scp.special.beta(a, b)
 
-    @testing.for_float_dtypes()  # no_complex=True, no_bool=True)
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_beta_linspace(self, xp, scp, dtype):
         import scipy.special  # NOQA
@@ -26,15 +36,14 @@ class TestBeta:
         b = xp.linspace(-20, 20, 100, dtype=dtype).reshape(100, 1)
         return scp.special.beta(a, b)
 
-    # TODO: fix failure if smaller starting values are used for the range
-    @testing.for_float_dtypes()  # no_complex=True, no_bool=True)
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_beta_linspace_large(self, xp, scp, dtype):
+    def test_beta_logspace(self, xp, scp, dtype):
         import scipy.special  # NOQA
-
-        a = xp.linspace(10, 200, 200, dtype=dtype).reshape(1, 200)
-        b = xp.linspace(10, 200, 200, dtype=dtype).reshape(200, 1)
-        return scp.special.beta(a, b)
+        minmax = _get_logspace_max(xp.dtype(dtype))
+        a = xp.logspace(-minmax, minmax, 32, dtype).reshape(1, 32)
+        b = xp.logspace(-minmax, minmax, 32, dtype).reshape(32, 1)
+        return scp.special.betaln(a, b)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
@@ -84,6 +93,16 @@ class TestBetaLn:
         b = xp.linspace(1, 200, 200, dtype=dtype).reshape(200, 1)
         return scp.special.betaln(a, b)
 
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_betaln_logspace(self, xp, scp, dtype):
+        import scipy.special  # NOQA
+
+        minmax = _get_logspace_max(xp.dtype(dtype))
+        a = xp.logspace(-minmax, minmax, 32, dtype).reshape(1, 32)
+        b = xp.logspace(-minmax, minmax, 32, dtype).reshape(32, 1)
+        return scp.special.betaln(a, b)
+
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_betaln_scalar(self, xp, scp, dtype):
@@ -94,10 +113,10 @@ class TestBetaLn:
     def test_betaln_specific_vals(self):
         # specific values borrowed from SciPy test suite
         special = cupyx.scipy.special
-        assert special.beta(1, 1) == 0.0
-        testing.assert_allclose(special.beta(-100.3, 1e-200),
+        assert special.betaln(1, 1) == 0.0
+        testing.assert_allclose(special.betaln(-100.3, 1e-200),
                                 special.gammaln(1e-200))
-        testing.assert_allclose(special.beta(0.0342, 171),
+        testing.assert_allclose(special.betaln(0.0342, 170),
                                 3.1811881124242447, rtol=1e-14, atol=0)
 
     @testing.for_float_dtypes()
