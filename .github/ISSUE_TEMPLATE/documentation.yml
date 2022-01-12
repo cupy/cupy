@@ -9,9 +9,9 @@ body:
   - type: textarea
     id: description
     attributes:
-      label: The doc issue
+      label: Description
       description: |
-        Please give a clear description of the doc issue. Make sure to provide relevant links to the document you are referring to.
+        Please describe the issue with the current documentation. Make sure to provide relevant links to the document you are referring to.
     validations:
       required: true
   - type: textarea
