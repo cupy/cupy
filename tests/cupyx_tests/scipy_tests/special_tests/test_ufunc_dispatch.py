@@ -32,7 +32,12 @@ class TestUfunc:
         ufunc = getattr(scipy.special, ufunc)
         # some ufunc (like sph_harm) do not work with float inputs
         # therefore we retrieve the types from the ufunc itself
-        types = ufunc.types[0]
+        if ufunc.__name__ in ['bdtr', 'bdtrc', 'bdtri']:
+            # Make sure non-deprecated types are used.
+            # (avoids DeprecationWarning from SciPy >=1.7)
+            types = 'dld->d'
+        else:
+            types = ufunc.types[0]
         args = [
             cupy.testing.shaped_random((5,), xp, dtype=types[i])
             for i in range(ufunc.nin)
