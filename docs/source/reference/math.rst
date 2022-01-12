@@ -174,6 +174,7 @@ Miscellaneous
    cbrt
    square
    absolute
+   fabs
    sign
    maximum
    minimum
