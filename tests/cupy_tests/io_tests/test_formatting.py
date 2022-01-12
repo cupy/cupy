@@ -23,3 +23,9 @@ class TestFormatting(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), cupy)
         b = testing.shaped_arange((2, 3, 4), numpy)
         return cupy.array2string(a) == numpy.array2string(b)
+
+    def test_format_float_positional(self):
+        a = testing.shaped_arange((1,), cupy)
+        b = testing.shaped_arange((1,), numpy)
+        assert cupy.format_float_positional(
+            a) == numpy.format_float_positional(b)

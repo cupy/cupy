@@ -52,3 +52,12 @@ def array2string(a, *args, **kwargs):
 
     """
     return numpy.array2string(cupy.asnumpy(a), *args, **kwargs)
+
+
+def format_float_positional(a, *args, **kwargs):
+    """Returns the decimal string in positional notation
+
+    .. seealso:: :func:`numpy.format_float_positional`
+
+    """
+    return numpy.format_float_positional(cupy.asnumpy(a), *args, **kwargs)
