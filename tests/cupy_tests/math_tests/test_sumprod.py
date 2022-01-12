@@ -1039,6 +1039,71 @@ class TestGradientErrors:
                 xp.gradient(x)
 
 
+class TestEdiff1d:
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_1dim(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_2dim(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.ediff1d(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_3dim(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.ediff1d(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_begin1(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([0], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_begin2(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([4, 4], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_begin3(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([1, 1], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_end1(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a, to_end=xp.array([0], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_end2(self, xp, dtype):
+        a = testing.shaped_arange((4, 1), xp, dtype)
+        return xp.ediff1d(a, to_end=xp.array([1, 2], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_ed1(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([-1], dtype=dtype),
+                          to_end=xp.array([0], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_ed2(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([0, 4], dtype=dtype),
+                          to_end=xp.array([1, 1], dtype=dtype))
+
+
 class TestTrapz:
 
     @testing.for_all_dtypes()

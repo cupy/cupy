@@ -224,6 +224,7 @@ from cupy._creation.matrix import diagflat  # NOQA
 from cupy._creation.matrix import tri  # NOQA
 from cupy._creation.matrix import tril  # NOQA
 from cupy._creation.matrix import triu  # NOQA
+from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
@@ -531,6 +532,9 @@ from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
+# Borrowed from NumPy
+from numpy import RankWarning  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -570,6 +574,7 @@ from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumprod as cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA
 from cupy._math.sumprod import nansum  # NOQA
@@ -631,6 +636,7 @@ from cupy._math.misc import absolute as abs  # NOQA
 from cupy._math.misc import absolute  # NOQA
 from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fabs  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
 from cupy._math.misc import interp  # NOQA
@@ -653,6 +659,7 @@ from cupy._misc.who import who  # NOQA
 from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
 from numpy import safe_eval  # NOQA
+from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -716,6 +723,15 @@ from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
 from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
+
+# -----------------------------------------------------------------------------
+# Classes without their own docs
+# -----------------------------------------------------------------------------
+from numpy import ComplexWarning  # NOQA
+from numpy import ModuleDeprecationWarning  # NOQA
+from numpy import TooHardError  # NOQA
+from numpy import VisibleDeprecationWarning  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Undocumented functions

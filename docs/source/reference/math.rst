@@ -71,6 +71,7 @@ Sums, products, differences
    nancumsum
    diff
    gradient
+   ediff1d
    cross
    trapz
 
@@ -133,6 +134,7 @@ Arithmetic operations
 
    add
    reciprocal
+   positive
    negative
    multiply
    divide
@@ -172,6 +174,7 @@ Miscellaneous
    cbrt
    square
    absolute
+   fabs
    sign
    maximum
    minimum
