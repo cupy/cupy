@@ -17,7 +17,6 @@ from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_definition
 from cupyx.scipy.special._gammainc import p1evl_definition
-from cupyx.scipy.special._ndtri import ndtri_definition
 
 
 beta_preamble = """
@@ -870,7 +869,8 @@ __device__ double incbi(double aa, double bb, double yy0)
     }
     /* approximation to inverse function */
 
-    yp = -ndtri(yy0);
+    // normcdfinv is the CUDA Math API equivalent of cephes ndtri
+    yp = -normcdfinv(yy0);
 
     if (yy0 > 0.5) {
         rflg = 1;
@@ -1083,7 +1083,6 @@ betaincinv = _core.create_ufunc(
         gamma_definition +
         polevl_definition +
         p1evl_definition +
-        ndtri_definition +
         lgam_sgn_definition +
         lbeta_symp_definition +
         beta_definition +
