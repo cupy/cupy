@@ -13,7 +13,7 @@ _gamma_body = """
 
 # Also define a standalone Gamma device function for internal use in other code
 # like beta, betaln, etc.
-gamma_implementation = f"""
+gamma_definition = f"""
 
 __device__ double Gamma(double in0)
 {{

@@ -8,6 +8,7 @@ from cupyx.scipy.special._bessel import y1  # NOQA
 
 # Raw statistical functions
 from cupyx.scipy.special._statistics import ndtr  # NOQA
+from cupyx.scipy.special._ndtri import ndtri  # NOQA
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
@@ -26,8 +27,8 @@ from cupyx.scipy.special._gammainc import gammaincc  # NOQA
 from cupyx.scipy.special._gammainc import gammainccinv  # NOQA
 from cupyx.scipy.special._beta import beta  # NOQA
 from cupyx.scipy.special._beta import betaln  # NOQA
-# from cupyx.scipy.special._incbet import betainc  # NOQA
-# from cupyx.scipy.special._incbet import betaincinv  # NOQA
+from cupyx.scipy.special._beta import betainc  # NOQA
+from cupyx.scipy.special._beta import betaincinv  # NOQA
 from cupyx.scipy.special._digamma import digamma as psi  # NOQA
 from cupyx.scipy.special._polygamma import polygamma  # NOQA
 from cupyx.scipy.special._digamma import digamma  # NOQA
