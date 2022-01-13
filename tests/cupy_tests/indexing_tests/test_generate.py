@@ -309,7 +309,6 @@ class TestMaskIndices:
         return xp.mask_indices(0, xp.triu)
 
 
-@testing.gpu
 class TestTrilIndices:
 
     @testing.for_all_dtypes()
@@ -338,7 +337,6 @@ class TestTrilIndices:
                 xp.tril_indices(arr, k=0)
 
 
-@testing.gpu
 class TestTrilIndicesForm:
 
     @testing.for_all_dtypes()

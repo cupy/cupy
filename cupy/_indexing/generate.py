@@ -469,13 +469,11 @@ def mask_indices(n, mask_func, k=0):
 # TODO(okuta): Implement diag_indices_from
 
 
-# TODO(okuta): Implement mask_indices
-
-
 def tril_indices(n, k=0, m=None):
     """Returns the indices of the lower triangular matrix.
-    Here, the first row contains row coordinates of all indices and
-    the second row contains column coordinates.
+    Here, the first group of elements contains row coordinates
+    of all indices and the second group of elements
+    contains column coordinates.
 
     Parameters
     ----------
@@ -488,7 +486,7 @@ def tril_indices(n, k=0, m=None):
         below it and `k > 0` is above.
     m : int, optional
         The column dimension of the arrays for which the
-        returned arrays will be valid. By default, `m = 0`.
+        returned arrays will be valid. By default, `m = n`.
 
     Returns
     -------
