@@ -107,6 +107,16 @@ ndtr = _core.create_ufunc(
     ''')
 
 
+ndtri = _core.create_ufunc(
+    'cupyx_scipy_special_ndtri', ('f->f', 'd->d'),
+    'out0 = normcdfinv(in0)',
+    doc='''Inverse of the cumulative distribution function of the standard
+           normal distribution.
+
+    .. seealso:: :meth:`scipy.special.ndtri`
+''')
+
+
 boxcox_definition = """
 static __device__ double boxcox(double x, double lmbda) {
     // if lmbda << 1 and log(x) < 1.0, the lmbda*log(x) product can lose
@@ -237,5 +247,4 @@ inv_boxcox1p = _core.create_ufunc(
         cupy.ndarray: values of inv_boxcox1p(x)
 
     .. seealso:: :data:`scipy.special.inv_boxcox1p`
-
-    ''')
+''')

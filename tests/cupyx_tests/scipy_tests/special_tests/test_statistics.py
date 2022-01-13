@@ -13,6 +13,12 @@ class _TestBase:
     def test_ndtr(self):
         self.check_unary('ndtr')
 
+    def test_ndtri(self):
+        self.check_unary_linspace0_1('ndtri')
+
+    def test_logit(self):
+        self.check_unary_linspace0_1('ndtri')
+
     def test_expit(self):
         self.check_unary_lower_precision('expit')
 
@@ -33,32 +39,29 @@ rtol_low = {'default': 5e-4, cupy.float64: 1e-12}
 @testing.with_requires('scipy')
 class TestSpecial(_TestBase):
 
-    def _check_unary(self, name, xp, scp, dtype):
+    def _check_unary(self, a, name, scp):
         import scipy.special  # NOQA
 
-        a = xp.linspace(-10, 10, 100, dtype=dtype)
         return getattr(scp.special, name)(a)
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
-        return self._check_unary(name, xp, scp, dtype)
+        a = xp.linspace(-10, 10, 100, dtype=dtype)
+        return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol_low, rtol=rtol_low,
                                  scipy_name='scp')
     def check_unary_lower_precision(self, name, xp, scp, dtype):
-        return self._check_unary(name, xp, scp, dtype)
+        a = xp.linspace(-10, 10, 100, dtype=dtype)
+        return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=atol_low, rtol=rtol_low,
-                                 scipy_name='scp')
-    def test_logit(self, xp, scp, dtype):
-        import scipy.special  # NOQA
-
-        # outputs are only finite over range (0, 1)
-        a = xp.linspace(0.001, .999, 1000, dtype=dtype)
-        return scp.special.logit(a)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def check_unary_linspace0_1(self, name, xp, scp, dtype):
+        p = xp.linspace(0, 1, 1000, dtype)
+        return self._check_unary(p, name, scp)
 
     def test_logit_nonfinite(self):
         logit = cupyx.scipy.special.logit
@@ -111,10 +114,8 @@ class TestSpecial(_TestBase):
 @testing.with_requires('scipy')
 class TestFusionSpecial(unittest.TestCase, _TestBase):
 
-    def _check_unary(self, name, xp, scp, dtype):
+    def _check_unary(self, a, name, scp):
         import scipy.special  # NOQA
-
-        a = testing.shaped_arange((2, 3), xp, dtype)
 
         @cupy.fuse()
         def f(x):
@@ -123,12 +124,20 @@ class TestFusionSpecial(unittest.TestCase, _TestBase):
         return f(a)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
-        return self._check_unary(name, xp, scp, dtype)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol_low, rtol=rtol_low,
                                  scipy_name='scp')
     def check_unary_lower_precision(self, name, xp, scp, dtype):
-        return self._check_unary(name, xp, scp, dtype)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return self._check_unary(a, name, scp)
+
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    def check_unary_linspace0_1(self, name, xp, scp, dtype):
+        a = xp.linspace(0, 1, 1000, dtype)
+        return self._check_unary(a, name, scp)

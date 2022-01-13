@@ -28,6 +28,7 @@ Raw statistical functions
    :toctree: generated/
 
    ndtr
+   ndtri
    logit
    expit
    log_expit
