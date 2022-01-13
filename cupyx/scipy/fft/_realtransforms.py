@@ -446,7 +446,7 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
 
     Returns
     -------
-    idct : cupy.ndarray of real
+    dst : cupy.ndarray of real
         The transformed input array.
 
     See Also
@@ -597,8 +597,8 @@ def idst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
 
     Notes
     -----
-    For full details of the DCT types and normalization modes, as well as
-    references, see :func:`scipy.fft.dct`.
+    For full details of the DST types and normalization modes, as well as
+    references, see :func:`scipy.fft.dst`.
     """
     if x.dtype.kind == 'c':
         # separable application on real and imaginary parts
@@ -764,7 +764,7 @@ def idctn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
         If any element of `s` is -1, the size of the corresponding dimension of
         `x` is used.
     axes : int or array_like of ints or None, optional
-        Axes over which the DCT is computed. If not given, the last ``len(s)``
+        Axes over which the IDCT is computed. If not given, the last ``len(s)``
         axes are used, or all axes if `s` is also not specified.
     norm : {"backward", "ortho", "forward"}, optional
         Normalization mode (see Notes). Default is "backward".
@@ -842,7 +842,7 @@ def dstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
 
     Notes
     -----
-    For full details of the IDST types and normalization modes, as well as
+    For full details of the DST types and normalization modes, as well as
     references, see :func:`scipy.fft.dst`.
     """
     if x.dtype.kind == 'c':
@@ -884,7 +884,7 @@ def idstn(x, type=2, s=None, axes=None, norm=None, overwrite_x=False):
         If any element of `s` is -1, the size of the corresponding dimension of
         `x` is used.
     axes : int or array_like of ints or None, optional
-        Axes over which the DST is computed. If not given, the last ``len(s)``
+        Axes over which the IDST is computed. If not given, the last ``len(s)``
         axes are used, or all axes if `s` is also not specified.
     norm : {"backward", "ortho", "forward"}, optional
         Normalization mode (see Notes). Default is "backward".
