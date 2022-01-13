@@ -22,7 +22,7 @@ if [[ "${TARGET}" == cuda115* ]]; then
     if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 470.* ]]; then
         add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
         apt-get purge -qqy "cuda-drivers*" "*nvidia*-470"
-        apt-get install -qqy "cuda-drivers"
+        apt-get install -qqy "cuda-drivers-495"
         modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
         nvidia-smi
     fi
