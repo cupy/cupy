@@ -431,7 +431,7 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
     x : cupy.ndarray
         The input array.
     type : {1, 2, 3, 4}, optional
-        Type of the DCT (see Notes). Default type is 2.
+        Type of the DST (see Notes). Default type is 2.
     n : int, optional
         Length of the transform.  If ``n < x.shape[axis]``, `x` is
         truncated.  If ``n > x.shape[axis]``, `x` is zero-padded. The
