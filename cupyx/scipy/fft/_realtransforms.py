@@ -437,7 +437,7 @@ def dst(x, type=2, n=None, axis=-1, norm=None, overwrite_x=False):
         truncated.  If ``n > x.shape[axis]``, `x` is zero-padded. The
         default results in ``n = x.shape[axis]``.
     axis : int, optional
-        Axis along which the idct is computed; the default is over the
+        Axis along which the dst is computed; the default is over the
         last axis (i.e., ``axis=-1``).
     norm : {"backward", "ortho", "forward"}, optional
         Normalization mode (see Notes). Default is "backward".
