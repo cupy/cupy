@@ -46,7 +46,7 @@ cuda:
   "11.4":
     full_version: "11.4.0"
   "11.5":
-    full_version: "11.5.0"
+    full_version: "11.5.1"
 rocm:
   null:
     full_version: null
