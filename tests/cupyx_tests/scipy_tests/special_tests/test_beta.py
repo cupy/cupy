@@ -80,6 +80,7 @@ class TestBeta:
         testing.assert_allclose(special.betaln(0.0342, 170),
                                 3.1811881124242447, rtol=1e-14, atol=0)
 
+
 @testing.gpu
 @testing.with_requires('scipy')
 class TestBetaInc:
