@@ -17,6 +17,8 @@ Generating index arrays
    where
    indices
    mask_indices
+   triu_indices
+   triu_indices_from
    ix_
    ravel_multi_index
    unravel_index
