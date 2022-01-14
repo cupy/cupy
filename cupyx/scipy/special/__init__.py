@@ -5,6 +5,7 @@ from cupyx.scipy.special._bessel import j0  # NOQA
 from cupyx.scipy.special._bessel import j1  # NOQA
 from cupyx.scipy.special._bessel import y0  # NOQA
 from cupyx.scipy.special._bessel import y1  # NOQA
+from cupyx.scipy.special._bessel import yn  # NOQA
 
 # Raw statistical functions
 from cupyx.scipy.special._statistics import ndtr  # NOQA
@@ -44,4 +45,9 @@ from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions
+from cupyx.scipy.special._basic import cbrt  # NOQA
+from cupyx.scipy.special._basic import exp2  # NOQA
+from cupyx.scipy.special._basic import exp10  # NOQA
 from cupyx.scipy.special._basic import log1p  # NOQA
+from cupyx.scipy.special._basic import expm1  # NOQA
+from cupy import sinc  # NOQA

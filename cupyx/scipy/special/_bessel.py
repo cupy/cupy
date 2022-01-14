@@ -41,6 +41,17 @@ y1 = _core.create_ufunc(
     ''')
 
 
+# Note: oddly, unlike for y0 or y1, SciPy always returns double for yn
+yn = _core.create_ufunc(
+    'cupyx_scipy_special_yn', ('id->d',),
+    'out0 = yn(in0, in1)',
+    doc='''Bessel function of the second kind of order n.
+
+    .. seealso:: :meth:`scipy.special.yn`
+
+    ''')
+
+
 i0 = _core.create_ufunc(
     'cupyx_scipy_special_i0', ('f->f', 'd->d'),
     'out0 = cyl_bessel_i0(in0)',

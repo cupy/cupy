@@ -35,6 +35,15 @@ class TestSpecial(unittest.TestCase):
     def test_i1(self):
         self.check_unary('i1')
 
+    @testing.for_dtypes('efd')
+    @testing.numpy_cupy_allclose(atol=1e-12, scipy_name='scp')
+    def test_yn(self, xp, scp, dtype):
+        import scipy.special  # NOQA
+
+        n = xp.arange(0.01, 10, dtype=xp.int32)
+        a = xp.linspace(-10, 10, 100, dtype=dtype)
+        return scp.special.yn(n[:, xp.newaxis], a[xp.newaxis, :])
+
 
 @testing.gpu
 @testing.with_requires('scipy')

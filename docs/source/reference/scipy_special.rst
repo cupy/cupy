@@ -15,6 +15,7 @@ Bessel functions
    j1
    y0
    y1
+   yn
    i0
    i1
 
@@ -99,4 +100,10 @@ Convenience functions
 .. autosummary::
    :toctree: generated/
 
+   cbrt
+   exp2
+   exp10
    log1p
+   expm1
+   sinc
+
