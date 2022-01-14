@@ -48,6 +48,7 @@ from cupyx.scipy.special._zeta import zeta  # NOQA
 from cupyx.scipy.special._basic import cbrt  # NOQA
 from cupyx.scipy.special._basic import exp10  # NOQA
 from cupyx.scipy.special._basic import exp2  # NOQA
+from cupyx.scipy.special._basic import radian  # NOQA
 from cupyx.scipy.special._basic import cosdg  # NOQA
 from cupyx.scipy.special._basic import sindg  # NOQA
 from cupyx.scipy.special._basic import tandg  # NOQA

@@ -4,6 +4,11 @@ cotdg and tandg implementations are adapted from the following SciPy code:
 
 https://github.com/scipy/scipy/blob/master/scipy/special/cephes/tandg.c
 
+radian is from
+
+https://github.com/scipy/scipy/blob/master/scipy/special/cephes/sindg.c
+
+
 Cephes Math Library Release 2.0:  April, 1987
 Copyright 1984, 1987 by Stephen L. Moshier
 Direct inquiries to 30 Frost Street, Cambridge, MA 02140
@@ -187,3 +192,25 @@ cotdg = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.cotdg`
 
     ''')
+
+radian_implementation = """
+/* 1 arc second, in radians*/
+__constant__ double P64800 =
+    4.848136811095359935899141023579479759563533023727e-6;
+
+__device__ double radian(double d, double m, double s)
+{
+    return (((d * 60.0 + m) * 60.0 + s) * P64800);
+}
+"""
+
+radian = _core.create_ufunc(
+    'cupyx_scipy_special_radian', ('fff->f', 'ddd->d'),
+    'out0 = radian(in0, in1, in2)',
+    preamble=radian_implementation,
+    doc='''Degrees, minutes, seconds to radians:
+
+    .. seealso:: :meth:`scipy.special.radian`
+
+    ''')
+

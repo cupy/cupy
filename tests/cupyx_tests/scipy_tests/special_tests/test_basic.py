@@ -105,6 +105,15 @@ class TestBasic:
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
         return scp.special.expm1(vals)
 
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_radian(self, xp, scp, dtype):
+        tmp = xp.linspace(-100, 100, 10, dtype=dtype)
+        d = tmp[:, xp.newaxis, xp.newaxis]
+        m = tmp[xp.newaxis, : xp.newaxis]
+        s = tmp[xp.newaxis, xp.newaxis, :]
+        return scp.special.radian(d, m, s)
+
     @pytest.mark.parametrize('function', ['cosdg', 'sindg', 'tandg', 'cotdg'])
     @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp", atol=1e-10, rtol=1e-6)

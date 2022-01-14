@@ -103,6 +103,7 @@ Convenience functions
    cbrt
    exp10
    exp2
+   radian
    cosdg
    sindg
    tandg
