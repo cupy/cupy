@@ -129,6 +129,20 @@ class TestBasic:
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
         return scp.special.cbrt(vals)
 
+
+    # TODO: omit "e" since SciPy will promote to "f", but CuPy does not
+    @testing.for_dtypes("fd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_round(self, xp, scp, dtype):
+        vals = xp.concatenate(
+            (
+                xp.linspace(-2, 2, 100, dtype=dtype),
+                # test at half-integer locations
+                xp.asarray([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], dtype=dtype),
+            )
+        )
+        return scp.special.round(vals)
+
     # Exclude 'e' here because of deficiency in the NumPy/SciPy
     # implementation for float16 dtype. This was also noted in
     # cupy_tests/math_tests/test_special.py

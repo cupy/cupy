@@ -110,5 +110,6 @@ Convenience functions
    cotdg
    log1p
    expm1
+   round
    sinc
 

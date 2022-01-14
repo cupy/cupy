@@ -55,4 +55,5 @@ from cupyx.scipy.special._basic import tandg  # NOQA
 from cupyx.scipy.special._basic import cotdg  # NOQA
 from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._basic import expm1  # NOQA
+from cupy import round  # NOQA
 from cupy import sinc  # NOQA
