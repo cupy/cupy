@@ -101,8 +101,12 @@ Convenience functions
    :toctree: generated/
 
    cbrt
-   exp2
    exp10
+   exp2
+   cosdg
+   sindg
+   tandg
+   cotdg
    log1p
    expm1
    sinc

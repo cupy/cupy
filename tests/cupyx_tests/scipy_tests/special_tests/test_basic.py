@@ -1,5 +1,4 @@
 import math
-import unittest
 
 import cupy
 import numpy
@@ -17,7 +16,7 @@ from cupy.testing import numpy_cupy_allclose
 
 @testing.gpu
 @testing.with_requires("scipy")
-class TestLegendreFunctions():
+class TestLegendreFunctions:
 
     def test_lpmv_basic(self):
         # specific values tested in the SciPy test suite
@@ -47,7 +46,7 @@ class TestLegendreFunctions():
 
 @testing.gpu
 @testing.with_requires("scipy")
-class TestBasic(unittest.TestCase):
+class TestBasic:
 
     @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp")
@@ -105,6 +104,16 @@ class TestBasic(unittest.TestCase):
     def test_expm1(self, xp, scp, dtype):
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
         return scp.special.expm1(vals)
+
+    @pytest.mark.parametrize('function', ['cosdg', 'sindg', 'tandg', 'cotdg'])
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", atol=1e-10, rtol=1e-6)
+    def test_trig_degrees(self, xp, scp, dtype, function):
+        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        vals = xp.concatenate((vals, xp.arange(-360, 361, 45, dtype=dtype)))
+        # test at exact multiples of 45 degrees
+        vals = xp.arange(-360, 361, 45, dtype=dtype)
+        return getattr(scp.special, function)(vals)
 
     @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)

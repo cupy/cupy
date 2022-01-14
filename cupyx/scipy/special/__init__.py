@@ -46,8 +46,12 @@ from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions
 from cupyx.scipy.special._basic import cbrt  # NOQA
-from cupyx.scipy.special._basic import exp2  # NOQA
 from cupyx.scipy.special._basic import exp10  # NOQA
+from cupyx.scipy.special._basic import exp2  # NOQA
+from cupyx.scipy.special._basic import cosdg  # NOQA
+from cupyx.scipy.special._basic import sindg  # NOQA
+from cupyx.scipy.special._basic import tandg  # NOQA
+from cupyx.scipy.special._basic import cotdg  # NOQA
 from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._basic import expm1  # NOQA
 from cupy import sinc  # NOQA
