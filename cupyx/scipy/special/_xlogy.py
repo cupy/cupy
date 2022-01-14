@@ -7,7 +7,7 @@ xlogy_definition = """
 
 template <typename T>
 static __device__ T xlogy(T x, T y) {
-    if ((x == (T)0.0) && ~isnan(y)) {
+    if ((x == (T)0.0) && !isnan(y)) {
         return (T)0.0;
     } else {
         return x * log(y);

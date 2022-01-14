@@ -84,7 +84,7 @@ class TestBasic:
             cupyx.scipy.special.log1p(0 + 0j)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_float_dtypes()
+    @testing.for_dtypes('efdFD')
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy(self, xp, scp, dtype, function):
@@ -97,7 +97,7 @@ class TestBasic:
         return getattr(scp.special, function)(x, y)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_float_dtypes()
+    @testing.for_dtypes('efdFD')
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy_zeros(self, xp, scp, dtype, function):
