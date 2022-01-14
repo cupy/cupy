@@ -213,4 +213,3 @@ radian = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.radian`
 
     ''')
-

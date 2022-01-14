@@ -129,7 +129,6 @@ class TestBasic:
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
         return scp.special.cbrt(vals)
 
-
     # TODO: omit "e" since SciPy will promote to "f", but CuPy does not
     @testing.for_dtypes("fd")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
