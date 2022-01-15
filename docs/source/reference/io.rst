@@ -34,10 +34,10 @@ String formatting
 .. autosummary::
    :toctree: generated/
 
-   format_float_positional
    array2string
    array_repr
    array_str
+   format_float_positional
 
 
 Base-n representations

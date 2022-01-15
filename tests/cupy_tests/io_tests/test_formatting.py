@@ -24,6 +24,11 @@ class TestFormatting(unittest.TestCase):
         b = testing.shaped_arange((2, 3, 4), numpy)
         return cupy.array2string(a) == numpy.array2string(b)
 
+    def test_format_float_positional_python_scalar(self):
+        x = 1.0
+        assert cupy.format_float_positional(
+            x) == numpy.format_float_positional(x)
+
     def test_format_float_positional(self):
         a = testing.shaped_arange((1,), cupy)
         b = testing.shaped_arange((1,), numpy)
