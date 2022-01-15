@@ -111,5 +111,6 @@ Convenience functions
    log1p
    expm1
    round
+   xlogy
+   xlog1py
    sinc
-
