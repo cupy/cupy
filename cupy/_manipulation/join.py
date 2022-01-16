@@ -133,6 +133,3 @@ def stack(tup, axis=0, out=None):
     .. seealso:: :func:`numpy.stack`
     """
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out)
-
-
-row_stack = vstack
