@@ -5,13 +5,15 @@ import numpy
 import pytest
 import scipy.special  # NOQA
 
-import cupyx.scipy.special  # NOQA
+import cupyx.scipy.special
 from cupy import testing
 from cupy.testing import (
     assert_array_equal,
     assert_array_almost_equal,
 )
 from cupy.testing import numpy_cupy_allclose
+
+rtol = {'default': 1e-5, cupy.float64: 1e-12, cupy.complex128: 1e-12}
 
 
 @testing.gpu
@@ -75,7 +77,7 @@ class TestBasic:
         return xp.abs(scp.special.log1p(vals))
 
     @testing.for_dtypes("efd")
-    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    @numpy_cupy_allclose(scipy_name="scp", rtol=rtol)
     def test_log1p_path2(self, xp, scp, dtype):
         # test values for code path corresponding to range [1/sqrt(2), sqrt(2)]
         vals = xp.linspace(1 / math.sqrt(2), math.sqrt(2), 1000, dtype=dtype)
@@ -89,3 +91,36 @@ class TestBasic:
         assert_array_equal(log1p(-1), -inf)
         assert_array_equal(log1p(-2), nan)
         assert_array_equal(log1p(inf), inf)
+
+    @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
+    @testing.for_dtypes("efdFD")
+    @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
+                                                 cupy.float64: 1e-12})
+    def test_xlogy(self, xp, scp, dtype, function):
+        # only test with values > 0 to avoid NaNs
+        x = xp.linspace(-100, 100, 1000, dtype=dtype)
+        y = xp.linspace(0.001, 100, 1000, dtype=dtype)
+        if x.dtype.kind == 'c':
+            x -= 1j * x
+            y += 1j * y
+        return getattr(scp.special, function)(x, y)
+
+    @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
+    @testing.for_dtypes('efdFD')
+    @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
+                                                 cupy.float64: 1e-12})
+    def test_xlogy_zeros(self, xp, scp, dtype, function):
+        # only test with values > 0 to avoid NaNs
+        x = xp.zeros((1, 100), dtype=dtype)
+        y = xp.linspace(-10, 10, 100, dtype=dtype)
+        if y.dtype.kind == 'c':
+            y += 1j * y
+        return getattr(scp.special, function)(x, y)
+
+    @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
+    @testing.for_all_dtypes()
+    def test_xlogy_nonfinite(self, dtype, function):
+        func = getattr(cupyx.scipy.special, function)
+        y = cupy.ones((5,), dtype=dtype)
+        assert cupy.all(cupy.isnan(func(cupy.nan, y)))
+        assert cupy.all(cupy.isnan(func(y, cupy.nan)))
