@@ -65,7 +65,7 @@ exp10 = _core.create_ufunc(
 
 
 expm1 = _core.create_ufunc(
-    'cupyx_scipy_special_expm1', ('f->f', 'd->d'),
+    'cupyx_scipy_special_expm1', ('f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = expm1(in0)',
     doc='''Computes ``exp(x) - 1``.
 

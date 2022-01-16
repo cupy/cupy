@@ -134,10 +134,13 @@ class TestBasic:
             vals = xp.linspace(-37, 37, 100, dtype=dtype)
         return scp.special.exp10(vals)
 
-    @testing.for_dtypes("efd")
+    @testing.for_dtypes("efdFD")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_expm1(self, xp, scp, dtype):
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        if xp.dtype(dtype).kind == 'c':
+            # broadcast to mix small and large real and imaginary parts
+            vals = vals[:, xp.newaxis] + 1j * vals[xp.newaxis, :]
         return scp.special.expm1(vals)
 
     @testing.for_dtypes("efd")
