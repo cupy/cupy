@@ -290,7 +290,6 @@ def qr(a, mode='reduced'):
             msg = 'Unrecognized mode \'{}\''.format(mode)
         raise ValueError(msg)
     if a.ndim > 2:
-        cupy._util.experimental('cupy.linalg.qr')
         return _qr_batched(a, mode)
 
     # support float32, float64, complex64, and complex128
