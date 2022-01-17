@@ -161,6 +161,7 @@ class TestNotificationVectorize(NotificationTestBase):
         msg2 += "falling back to its numpy implementation"
         assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
 
+    @pytest.mark.skip(reason='#6282 implemented cupy.fabs')
     @test_utils.enable_slice_copy
     def test_numpy_only_pyfunc(self):
 

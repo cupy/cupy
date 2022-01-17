@@ -54,3 +54,7 @@ class TestDigamma(unittest.TestCase):
         a = numpy.array([-numpy.inf, numpy.nan, numpy.inf]).astype(dtype)
         a = xp.asarray(a)
         return scp.special.digamma(a)
+
+    def test_psi(self):
+        """Verify that psi exists and is the same as digamma"""
+        assert cupyx.scipy.special.psi is cupyx.scipy.special.digamma

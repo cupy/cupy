@@ -397,6 +397,8 @@ from cupy._indexing.generate import c_  # NOQA
 from cupy._indexing.generate import indices  # NOQA
 from cupy._indexing.generate import ix_  # NOQA
 from cupy._indexing.generate import mask_indices  # NOQA
+from cupy._indexing.generate import tril_indices  # NOQA
+from cupy._indexing.generate import tril_indices_from  # NOQA
 from cupy._indexing.generate import triu_indices  # NOQA
 from cupy._indexing.generate import triu_indices_from  # NOQA
 from cupy._indexing.generate import r_  # NOQA
@@ -575,6 +577,7 @@ from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumprod as cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA
 from cupy._math.sumprod import nansum  # NOQA
@@ -636,6 +639,7 @@ from cupy._math.misc import absolute as abs  # NOQA
 from cupy._math.misc import absolute  # NOQA
 from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fabs  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
 from cupy._math.misc import interp  # NOQA
