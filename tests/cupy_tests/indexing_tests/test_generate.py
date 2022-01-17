@@ -311,14 +311,12 @@ class TestMaskIndices:
 
 class TestTrilIndices:
 
-    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_tril_indices_1(self, xp, dtype):
+    def test_tril_indices_1(self, xp):
         return xp.tril_indices(n=29, k=0)
 
-    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_tril_indices_2(self, xp, dtype):
+    def test_tril_indices_2(self, xp):
         return xp.tril_indices(n=11, k=4, m=4)
 
     @testing.numpy_cupy_array_equal()
