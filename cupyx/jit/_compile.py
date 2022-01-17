@@ -519,9 +519,8 @@ def _transpile_expr_internal(expr, env):
         if isinstance(expr, Constant):
             return x if expr.obj else y
         if cond.ctype.dtype.kind == 'c':
-            raise NotImplementedError('')
-        x = Data.init(x, env)
-        y = Data.init(y, env)
+            raise TypeError("Complex type value cannot be boolean condition.")
+        x, y = _infer_type(x, y, env), _infer_type(y, x, env)
         if x.ctype.dtype != y.ctype.dtype:
             raise TypeError(
                 'Type mismatch in conditional expression.: '
@@ -737,3 +736,11 @@ def _astype_scalar(x, ctype, casting, env):
                 numpy.ComplexWarning)
         return Data(f'({ctype})({x.code}.real())', ctype)
     return Data(f'({ctype})({x.code})', ctype)
+
+
+def _infer_type(x, hint, env) -> Data:
+    if not isinstance(x, Constant) or isinstance(x.obj, numpy.generic):
+        return Data.init(x, env)
+    hint = Data.init(hint, env)
+    cast_x = _astype_scalar(x, hint.ctype, 'same_kind', env)
+    return Data.init(cast_x, env)
