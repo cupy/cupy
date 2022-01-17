@@ -104,6 +104,7 @@ def ascontiguousarray(a, dtype=None):
     .. seealso:: :func:`numpy.ascontiguousarray`
 
     """
+    a = a._array if hasattr(a, '_array') else a
     return _core.ascontiguousarray(a, dtype)
 
 
