@@ -29,8 +29,8 @@ library_records = {}
 def _make_cudnn_url(public_version, cuda_version, filename):
     # https://developer.download.nvidia.com/compute/redist/cudnn/v8.3.2/local_installers/11.5/cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz
     return (
-        'https://developer.download.nvidia.com/compute/redist/cudnn/' +
-        '/{}/local_installers/{}/{}'.format(
+        'https://developer.download.nvidia.com/compute/redist/cudnn' +
+        '/v{}/local_installers/{}/{}'.format(
             public_version, cuda_version, filename))
 
 
