@@ -363,7 +363,7 @@ class TestTrilIndicesForm:
             with pytest.raises(AttributeError):
                 xp.tril_indices_from(4, k=1)
 
-                
+
 class TestTriuIndices:
 
     @testing.numpy_cupy_array_equal()
