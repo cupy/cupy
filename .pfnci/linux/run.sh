@@ -52,7 +52,7 @@ main() {
   cache_archive="linux-${TARGET}-${base_branch}.tar.gz"
   cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci/cache}"
 
-  if [[ "${DOCKER_IMAGE_CACHE}" = "0" ]]; then
+  if [[ "${DOCKER_IMAGE_CACHE:-1}" = "0" ]]; then
     docker_cache_from=""
   fi
 
