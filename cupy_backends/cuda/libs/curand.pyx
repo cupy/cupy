@@ -3,6 +3,7 @@
 """Thin wrapper of cuRAND."""
 cimport cython  # NOQA
 
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
@@ -112,6 +113,13 @@ cpdef int getVersion() except? -1:
 
 
 cpdef setStream(size_t generator, size_t stream):
+    # TODO(leofang): The support of stream capture is not mentioned at all in
+    # the cuRAND docs (as of CUDA 11.5), so we disable this functionality.
+    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+        raise NotImplementedError(
+            'calling cuRAND API during stream capture is currently '
+            'unsupported')
+
     status = curandSetStream(<Generator>generator, <Stream>stream)
     check_status(status)
 

@@ -406,6 +406,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
@@ -445,6 +453,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpy(self.ptr, ptr, size,
@@ -465,6 +481,13 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so H2D transfers '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,
@@ -528,6 +551,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpy(ptr, self.ptr, size,
@@ -548,6 +579,13 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so D2H transfers '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(ptr, self.ptr, size,
@@ -567,6 +605,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             runtime.memset(self.ptr, value, size)
 

@@ -1,14 +1,13 @@
 import operator
-import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
 
 
-@testing.gpu
-class TestArrayElementwiseOp(unittest.TestCase):
+class TestArrayElementwiseOp:
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
@@ -481,8 +480,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_boolarray_op(operator.iadd)
 
 
-@testing.gpu
-class TestArrayIntElementwiseOp(unittest.TestCase):
+class TestArrayIntElementwiseOp:
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(accept_error=TypeError)
@@ -693,3 +691,85 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     def test_doubly_broadcasted_mod(self):
         with numpy.errstate(divide='ignore', invalid='ignore'):
             self.check_array_doubly_broadcasted_op(operator.mod)
+
+
+@pytest.mark.parametrize('value', [
+    None,
+    Ellipsis,
+    object(),
+    numpy._NoValue,
+])
+class TestArrayObjectComparison:
+
+    @pytest.mark.parametrize('swap', [False, True])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_eq_object(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value == a
+        else:
+            return a == value
+
+    @pytest.mark.parametrize('swap', [False, True])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_ne_object(self, xp, dtype, value, swap):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        if swap:
+            return value != a
+        else:
+            return a != value
+
+
+class HasEq:
+    def __eq__(self, other):
+        return (other == 2) | (other == 4)
+
+
+class HasNe:
+    def __ne__(self, other):
+        return (other == 2) | (other == 4)
+
+
+class HasEqSub(HasEq):
+    pass
+
+
+class CustomInt(int):
+    pass
+
+
+@pytest.mark.parametrize('dtype', ['int32', 'float64'])
+@pytest.mark.parametrize('value', [
+    HasEq(),
+    HasNe(),  # eq test passes because `==` does not fall back to `__ne__`.
+    HasEqSub(),
+    CustomInt(3),
+])
+class TestArrayObjectComparisonDifficult:
+
+    # OK to raise TypeError.
+    # If CuPy returns a result, it should match with NumPy's result.
+
+    def test_eq_object(self, dtype, value):
+        expected = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype) == value
+
+        a = cupy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        try:
+            res = a == value
+        except TypeError:
+            pytest.skip()
+
+        cupy.testing.assert_array_equal(res, expected)
+
+    def test_ne_object(self, dtype, value):
+        expected = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype) != value
+
+        a = cupy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+        try:
+            res = a != value
+        except TypeError:
+            pytest.skip()
+
+        cupy.testing.assert_array_equal(res, expected)

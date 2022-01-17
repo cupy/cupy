@@ -1055,7 +1055,7 @@ class Array:
     # Note: mT is new in array API spec (see matrix_transpose)
     @property
     def mT(self) -> Array:
-        from ._linear_algebra_functions import matrix_transpose
+        from .linalg import matrix_transpose
         return matrix_transpose(self)
 
     @property
@@ -1097,4 +1097,4 @@ class Array:
         # https://data-apis.org/array-api/latest/API_specification/array_object.html#t
         if self.ndim != 2:
             raise ValueError("x.T requires x to have 2 dimensions. Use x.mT to transpose stacks of matrices and permute_dims() to permute dimensions.")
-        return self._array.T
+        return self.__class__._new(self._array.T)

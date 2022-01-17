@@ -70,6 +70,9 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
+Installing CuPy from PyPI
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Package names are different depending on your CUDA Toolkit version.
 
@@ -115,7 +118,7 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
 .. _install_cupy_from_conda_forge:
 
 Installing CuPy from Conda-Forge
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
 The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
@@ -136,9 +139,9 @@ However, if for any reason you need to force-install a particular CUDA version (
 
     cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cudnn cutensor nccl
 
-    Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.1+.
+    Each of them can also be installed separately as needed.
 
 .. note::
 
@@ -153,15 +156,11 @@ However, if for any reason you need to force-install a particular CUDA version (
     it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
     avoid surprises.
 
-.. note::
-
-   Use ``conda install -c conda-forge/label/cupy_rc cupy`` if you want to install pre-release (development) versions.
-
 
 .. _install_cupy_from_source:
 
 Installing CuPy from Source
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use of wheel packages is recommended whenever possible.
 However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
@@ -366,7 +365,7 @@ On CentOS 6 / 7::
   $ sudo yum install centos-release-scl
   $ sudo yum install devtoolset-7-gcc-c++
   $ source /opt/rh/devtoolset-7/enable
-  $ export NVCC="nvcc --compiler-bidir gcc-7"
+  $ export NVCC="nvcc --compiler-bindir gcc"
 
 
 Using CuPy on AMD GPU (experimental)

@@ -43,6 +43,10 @@ cdef extern from '../../cupy_lapack.h' nogil:
     int cusolverDnSetStream(Handle handle, Stream streamId)
     int cusolverSpSetStream(SpHandle handle, Stream streamId)
 
+    # Params
+    int cusolverDnCreateParams(Params* params)
+    int cusolverDnDestroyParams(Params params)
+
     # Library Property
     int cusolverGetProperty(LibraryPropertyType type, int* value)
 
@@ -927,6 +931,19 @@ cdef extern from '../../cupy_lapack.h' nogil:
         cuDoubleComplex *A, int lda, double *W, cuDoubleComplex *work,
         int lwork, int *info, SyevjInfo params, int batchSize)
 
+    # 64bit
+    int cusolverDnXsyevd_bufferSize(
+        Handle handle, Params params, EigMode jobz, FillMode uplo, int64_t n,
+        DataType dataTypeA, void *A, int64_t lda,
+        DataType dataTypeW, void *W, DataType computeType,
+        size_t *workspaceInBytesOnDevice, size_t *workspaceInBytesOnHost)
+    int cusolverDnXsyevd(
+        Handle handle, Params params, EigMode jobz, FillMode uplo, int64_t n,
+        DataType dataTypeA, void *A, int64_t lda,
+        DataType dataTypeW, void *W, DataType computeType,
+        void *bufferOnDevice, size_t workspaceInBytesOnDevice,
+        void *bufferOnHost, size_t workspaceInBytesOnHost, int *info)
+
     ###########################################################################
     # Sparse LAPACK Functions
     ###########################################################################
@@ -1117,6 +1134,13 @@ cpdef spDestroy(intptr_t handle):
 ###############################################################################
 
 cpdef setStream(intptr_t handle, size_t stream):
+    # TODO(leofang): The support of stream capture is not mentioned at all in
+    # the cuSOLVER docs (as of CUDA 11.5), so we disable this functionality.
+    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+        raise NotImplementedError(
+            'calling cuSOLVER API during stream capture is currently '
+            'unsupported')
+
     with nogil:
         status = cusolverDnSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
@@ -1152,6 +1176,24 @@ cdef _setStream(intptr_t handle):
 cdef _spSetStream(intptr_t handle):
     """Set current stream"""
     spSetStream(handle, stream_module.get_current_stream_ptr())
+
+
+###############################################################################
+# Params
+###############################################################################
+
+cpdef intptr_t createParams() except? 0:
+    cdef Params params
+    with nogil:
+        status = cusolverDnCreateParams(&params)
+    check_status(status)
+    return <intptr_t>params
+
+cpdef destroyParams(intptr_t params):
+    with nogil:
+        status = cusolverDnDestroyParams(<Params>params)
+    check_status(status)
+
 
 ###########################################################################
 # Dense LAPACK Functions (Linear Solver)
@@ -3413,6 +3455,39 @@ cpdef zheevjBatched(intptr_t handle, int jobz, int uplo, int n,
             <cuDoubleComplex*>work, lwork, <int*>info,
             <SyevjInfo>params, batchSize)
     check_status(status)
+
+# dense eigenvalue solver (64bit)
+cpdef (size_t, size_t) xsyevd_bufferSize(  # noqa
+        intptr_t handle, intptr_t params, int jobz, int uplo,
+        int64_t n, int dataTypeA, intptr_t A, int64_t lda,
+        int dataTypeW, intptr_t W, int computeType) except *:
+    cdef size_t workspaceInBytesOnDevice, workspaceInBytesOnHost
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnXsyevd_bufferSize(
+            <Handle>handle, <Params>params, <EigMode> jobz, <FillMode> uplo, n,
+            <DataType>dataTypeA, <void*>A, lda,
+            <DataType>dataTypeW, <void*>W, <DataType>computeType,
+            &workspaceInBytesOnDevice, &workspaceInBytesOnHost)
+    check_status(status)
+    return workspaceInBytesOnDevice, workspaceInBytesOnHost
+
+cpdef xsyevd(
+        intptr_t handle, intptr_t params, int jobz, int uplo,
+        int64_t n, int dataTypeA, intptr_t A, int64_t lda,
+        int dataTypeW, intptr_t W, int computeType, intptr_t bufferOnDevice,
+        size_t workspaceInBytesOnDevice, intptr_t bufferOnHost,
+        size_t workspaceInBytesOnHost, intptr_t info):
+    setStream(handle, stream_module.get_current_stream_ptr())
+    with nogil:
+        status = cusolverDnXsyevd(
+            <Handle>handle, <Params>params, <EigMode>jobz, <FillMode>uplo, n,
+            <DataType>dataTypeA, <void*>A, lda,
+            <DataType>dataTypeW, <void*>W, <DataType>computeType,
+            <void*>bufferOnDevice, workspaceInBytesOnDevice,
+            <void*>bufferOnHost, workspaceInBytesOnHost, <int*>info)
+    check_status(status)
+
 
 ###############################################################################
 # Sparse LAPACK Functions

@@ -3,8 +3,6 @@ import numpy
 import cupy
 import cupyx.scipy.sparse
 
-__all__ = ['norm']
-
 
 def _sparse_frobenius_norm(x):
     if cupy.issubdtype(x.dtype, cupy.complexfloating):

@@ -224,6 +224,7 @@ from cupy._creation.matrix import diagflat  # NOQA
 from cupy._creation.matrix import tri  # NOQA
 from cupy._creation.matrix import tril  # NOQA
 from cupy._creation.matrix import triu  # NOQA
+from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
@@ -262,6 +263,7 @@ from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
 
+from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
 
@@ -367,7 +369,6 @@ from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
-from numpy import MachAr  # NOQA
 
 from numpy import find_common_type  # NOQA
 from numpy import issctype  # NOQA
@@ -395,6 +396,9 @@ from numpy import typename  # NOQA
 from cupy._indexing.generate import c_  # NOQA
 from cupy._indexing.generate import indices  # NOQA
 from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import mask_indices  # NOQA
+from cupy._indexing.generate import tril_indices  # NOQA
+from cupy._indexing.generate import tril_indices_from  # NOQA
 from cupy._indexing.generate import r_  # NOQA
 from cupy._indexing.generate import ravel_multi_index  # NOQA
 from cupy._indexing.generate import unravel_index  # NOQA
@@ -529,6 +533,9 @@ from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
 
+# Borrowed from NumPy
+from numpy import RankWarning  # NOQA
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -568,6 +575,7 @@ from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumprod as cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA
 from cupy._math.sumprod import nansum  # NOQA
@@ -629,6 +637,7 @@ from cupy._math.misc import absolute as abs  # NOQA
 from cupy._math.misc import absolute  # NOQA
 from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fabs  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
 from cupy._math.misc import interp  # NOQA
@@ -651,6 +660,7 @@ from cupy._misc.who import who  # NOQA
 from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
 from numpy import safe_eval  # NOQA
+from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -714,6 +724,15 @@ from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
 from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
+
+# -----------------------------------------------------------------------------
+# Classes without their own docs
+# -----------------------------------------------------------------------------
+from numpy import ComplexWarning  # NOQA
+from numpy import ModuleDeprecationWarning  # NOQA
+from numpy import TooHardError  # NOQA
+from numpy import VisibleDeprecationWarning  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Undocumented functions
@@ -873,19 +892,21 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
-if _sys.version_info >= (3, 7):
-    _deprecated_attrs = {
-        'int': (int, 'cupy.int_'),
-        'bool': (bool, 'cupy.bool_'),
-        'float': (float, 'cupy.float_'),
-        'complex': (complex, 'cupy.complex_'),
-    }
+_deprecated_apis = [
+    'MachAr',  # NumPy 1.22
+]
 
-    def __getattr__(name):
-        value = _deprecated_attrs.get(name)
-        if value is None:
-            raise AttributeError(
-                f"module 'cupy' has no attribute {name!r}")
+_deprecated_scalar_aliases = {  # NumPy 1.20
+    'int': (int, 'cupy.int_'),
+    'bool': (bool, 'cupy.bool_'),
+    'float': (float, 'cupy.float_'),
+    'complex': (complex, 'cupy.complex_'),
+}
+
+
+def __getattr__(name):
+    value = _deprecated_scalar_aliases.get(name)
+    if value is not None:
         attr, eq_attr = value
         _warnings.warn(
             f'`cupy.{name}` is a deprecated alias for the Python scalar type '
@@ -894,9 +915,8 @@ if _sys.version_info >= (3, 7):
             DeprecationWarning, stacklevel=2
         )
         return attr
-else:
-    # Does not emit warnings.
-    from builtins import int
-    from builtins import bool
-    from builtins import float
-    from builtins import complex
+
+    if name in _deprecated_apis:
+        return getattr(_numpy, name)
+
+    raise AttributeError(f"module 'cupy' has no attribute {name!r}")

@@ -60,7 +60,6 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "1" }
-    environment_variables { key: "TAGS" value: "mini" }
     command: ".pfnci/linux/main-flexci.sh cuda102"
   }
 }
@@ -296,7 +295,6 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "TAGS" value: "mini" }
     command: ".pfnci/linux/main-flexci.sh cuda115.multi"
   }
 }
@@ -315,7 +313,6 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "TAGS" value: "cuda-python" }
     command: ".pfnci/linux/main-flexci.sh cuda11x-cuda-python"
   }
 }
@@ -334,7 +331,6 @@ configs {
       seconds: 3600
     }
     environment_variables { key: "GPU" value: "1" }
-    environment_variables { key: "TAGS" value: "rapids" }
     command: ".pfnci/linux/main-flexci.sh cuda-rapids"
   }
 }
@@ -353,7 +349,6 @@ configs {
       seconds: 3600
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "TAGS" value: "mini,example" }
     command: ".pfnci/linux/main-flexci.sh cuda-example"
   }
 }
@@ -372,7 +367,6 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "TAGS" value: "head" }
     command: ".pfnci/linux/main-flexci.sh cuda-head"
   }
 }
@@ -391,7 +385,6 @@ configs {
       seconds: 7200
     }
     environment_variables { key: "GPU" value: "1" }
-    environment_variables { key: "TAGS" value: "array-api" }
     command: ".pfnci/linux/main-flexci.sh array-api"
   }
 }

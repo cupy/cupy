@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy_backends.cuda cimport stream as stream_module
 
@@ -1590,6 +1591,16 @@ cpdef setPointerMode(intptr_t handle, int mode):
 # Stream
 
 cpdef setStream(intptr_t handle, size_t stream):
+    # TODO(leofang): It seems most of cuSPARSE APIs support stream capture (as
+    # of CUDA 11.5) under certain conditions, see
+    # https://docs.nvidia.com/cuda/cusparse/index.html#optimization-notes
+    # Before we come up with a robust strategy to test the support conditions,
+    # we disable this functionality.
+    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+        raise NotImplementedError(
+            'calling cuSPARSE API during stream capture is currently '
+            'unsupported')
+
     status = cusparseSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 

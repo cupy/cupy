@@ -15,12 +15,6 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     # Extract pull-request ID
     pull_req="$(echo "${FLEXCI_BRANCH}" | cut -d/ -f3)"
     echo "Testing Pull-Request: #${pull_req}"
-
-    pip3 install -q pygithub
-    TO_EXECUTE=$(./.pfnci/flexci_test_tag.py "${TAGS:-}")
-    if [[ "${TO_EXECUTE}" == "no" ]]; then
-        exit 0
-    fi
 fi
 
 # TODO(kmaehashi): Hack for CUDA 11.5 until FlexCI base image update
@@ -28,7 +22,7 @@ if [[ "${TARGET}" == cuda115* ]]; then
     if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 470.* ]]; then
         add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
         apt-get purge -qqy "cuda-drivers*" "*nvidia*-470"
-        apt-get install -qqy "cuda-drivers"
+        apt-get install -qqy "cuda-drivers-495"
         modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
         nvidia-smi
     fi

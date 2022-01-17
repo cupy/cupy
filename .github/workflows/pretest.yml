@@ -24,7 +24,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.ccache
-        key: ccache
+        key: ccache-${{ github.sha }}
+        restore-keys: ccache-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
 
     - name: Setup ccache
       run: |
@@ -64,12 +65,15 @@ jobs:
         pushd install
         mypy cupy_builder
 
-    - name: Test - CI Generator
+    - name: Test - CI Tools
       run: |
-        pip install PyYAML types-PyYAML mypy
+        pip install PyYAML types-PyYAML pygithub mypy
         pushd .pfnci
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
+        popd
+        pushd .github/workflows
+        mypy flexci_dispatcher.py
         popd
 
   rocm-build:

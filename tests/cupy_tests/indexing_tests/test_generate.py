@@ -289,3 +289,76 @@ class TestRavelMultiIndex(unittest.TestCase):
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
             with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, mode='invalid')
+
+
+class TestMaskIndices:
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices(self, xp):
+        # arr is a square matrix with 50% density
+        multiplier = testing.shaped_random((10, 10), xp=xp, dtype=xp.bool_)
+        arr = testing.shaped_random((10, 10), xp=xp) * multiplier
+        return xp.mask_indices(10, lambda n, k=None: arr)
+
+    @testing.numpy_cupy_array_equal()
+    def test_mask_indices_k(self, xp):
+        return xp.mask_indices(10, xp.triu, k=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_empty(self, xp):
+        return xp.mask_indices(0, xp.triu)
+
+
+class TestTrilIndices:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_1(self, xp, dtype):
+        return xp.tril_indices(n=29, k=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_2(self, xp, dtype):
+        return xp.tril_indices(n=11, k=4, m=4)
+
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_3(self, xp):
+        return xp.tril_indices(n=4, k=4, m=3)
+
+    @testing.for_all_dtypes()
+    def test_tril_indices(self, dtype):
+        for xp in (numpy, cupy):
+            arr = testing.shaped_random((10, 10), xp=xp, dtype=dtype)
+            if xp is numpy:
+                error = ValueError
+            else:
+                error = TypeError
+            with pytest.raises(error):
+                xp.tril_indices(arr, k=0)
+
+
+class TestTrilIndicesForm:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_from_1(self, xp, dtype):
+        arr = testing.shaped_random((10, 10), xp=xp, dtype=dtype)
+        return xp.tril_indices_from(arr, k=4)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_from_2(self, xp, dtype):
+        arr = testing.shaped_random((10, 20), xp=xp, dtype=dtype)
+        return xp.tril_indices_from(arr, k=13)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_tril_indices_from_3(self, xp, dtype):
+        arr = testing.shaped_random((4, 6), xp=xp, dtype=dtype)
+        return xp.tril_indices_from(arr)
+
+    @testing.for_all_dtypes()
+    def test_tril_indices_from_4(self, dtype):
+        for xp in (numpy, cupy):
+            with pytest.raises(AttributeError):
+                xp.tril_indices_from(4, k=1)

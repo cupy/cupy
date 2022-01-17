@@ -13,6 +13,8 @@ cdef extern from *:
     ctypedef void _StreamCallbackDef(
         driver.Stream stream, Error status, void* userData)
     ctypedef _StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
+    ctypedef void* StreamCaptureStatus 'cudaStreamCaptureStatus'
+    ctypedef void* GraphNode 'cudaGraphNode_t'
 
     ctypedef void _HostFnDef(void* userData)
     ctypedef _HostFnDef* HostFn 'cudaHostFn_t'
@@ -41,6 +43,10 @@ cdef extern from *:
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     ctypedef int Limit 'cudaLimit'
+
+    ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
+    ctypedef void* Graph 'cudaGraph_t'
+    ctypedef void* GraphExec 'cudaGraphExec_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supprted in Cython

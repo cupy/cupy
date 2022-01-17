@@ -165,6 +165,12 @@ class TestFlip(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_flip_dim_0(self, xp, dtype):
+        x = testing.shaped_arange((), xp, dtype)
+        return xp.flip(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_flip_empty_dim_1(self, xp, dtype):
         x = xp.array([], dtype).reshape((0,))
         return xp.flip(x, 0)
