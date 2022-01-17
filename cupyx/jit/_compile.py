@@ -11,6 +11,7 @@ import numpy
 
 from cupy._core._codeblock import CodeBlock
 from cupy._core import _kernel
+from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
