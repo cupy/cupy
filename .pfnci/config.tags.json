@@ -27,5 +27,6 @@
     "cupy.linux.cuda-rapids": ["full", "rapids"],
     "cupy.linux.cuda-example": ["full", "mini", "example"],
     "cupy.linux.cuda-head": ["head"],
+    "cupy.linux.cuda-head": ["slow"],
     "cupy.linux.array-api": ["array-api"]
 }
