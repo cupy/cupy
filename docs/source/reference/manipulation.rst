@@ -62,11 +62,11 @@ Changing kind of array
    :toctree: generated/
 
    asarray
-   asarray_chkfinite
    asanyarray
    asfarray
    asfortranarray
    ascontiguousarray
+   asarray_chkfinite
    require
 
 
