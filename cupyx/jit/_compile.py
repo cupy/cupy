@@ -149,10 +149,12 @@ def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
             raise ValueError("Recursive function is not supported.")
         return result
 
+    # Do sanity check first.
+    tree, source = _parse_function_object(func)
+
     cvars = inspect.getclosurevars(func)
     consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
     attributes = ' '.join(attributes)
-    tree, source = _parse_function_object(func)
     name = tree.name
     if len(generated.device_function) > 0:
         name += '_' + str(len(generated.device_function))
