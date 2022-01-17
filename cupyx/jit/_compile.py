@@ -113,6 +113,7 @@ def _parse_function_object(func):
              if isinstance(node, ast.Lambda)
              and start_line <= node.lineno < end_line]
     if len(nodes) > 1:
+        # TODO(kmaehashi): can be improved by heuristics (e.g. number of args)
         raise ValueError('Multiple callables are found near the'
                          f' definition of {func}, and JIT could not'
                          ' identify the source code for it.')
@@ -140,7 +141,8 @@ class Generated:
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
-    """Transpile the target function
+    """Transpiles the target function.
+
     Args:
         func (function): Target function.
         attributes (list of str): Attributes of the generated CUDA function.
