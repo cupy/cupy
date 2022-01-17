@@ -13,6 +13,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
 
     Returns:
         cupy.ndarray: An array on the current device.
+
     .. note::
         This function performs device synchronization.
 
@@ -23,7 +24,7 @@ def asarray_chkfinite(a, dtype=None, order=None):
     a = cupy.asarray(a, dtype=dtype, order=order)
     if not cupy.isfinite(a).all():
         raise ValueError(
-            "array must not contain Infs or NaNs.")
+            "array must not contain Infs or NaNs")
     return a
 
 
