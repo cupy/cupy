@@ -1,7 +1,7 @@
 import ast
 import collections
 import inspect
-import math
+import linecache
 import numbers
 import re
 import sys
@@ -11,7 +11,6 @@ import numpy
 
 from cupy._core._codeblock import CodeBlock
 from cupy._core import _kernel
-from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
@@ -57,40 +56,56 @@ def transpile_function_wrapper(func):
 
 
 def _parse_function_object(func):
-    # Parses function object into ast.FunctionDef object.
+    """Returns the tuple of ``ast.FunctionDef`` object and the source string
+    for the given callable ``func``.
+
+    ``func`` can be a ``def`` function or a ``lambda`` expression.
+
+    The source is returned only for informational purposes (i.e., rendering
+    an exception message in case of an error).
+    """
     if not callable(func):
         raise ValueError('`func` must be a callable object.')
 
+    try:
+        # ``filename`` can be any of:
+        # - A "real" file path on the filesystem
+        # - "<stdin>" (within Python interpreter)
+        # - "<ipython-input-XXXXXXXX>" (within IPython interpreter)
+        filename = inspect.getsourcefile(func)
+    except TypeError:
+        raise ValueError(
+            f'JIT needs access to Python source code for {func}'
+            ' but could not be located.\n'
+            '(hint: it is likely you passed a built-in functions or methods)')
+
+    if filename == '<stdin>':
+        raise ValueError(
+            f'JIT needs access to the Python source code for {func}'
+            ' but it could not be retrieved within the Python interactive'
+            ' interpreter. Consider using IPython instead.')
+
     if func.__name__ != '<lambda>':
-        if jit._getsource_func is None:
-            lines = inspect.getsource(func).split('\n')
-            num_indent = len(lines[0]) - len(lines[0].lstrip())
-            source = '\n'.join([
-                line.replace(' ' * num_indent, '', 1) for line in lines])
-        else:
-            source = jit._getsource_func(func)
+        lines, _ = inspect.getsourcelines(func)
+        num_indent = len(lines[0]) - len(lines[0].lstrip())
+        source = ''.join([
+            line.replace(' ' * num_indent, '', 1) for line in lines])
         tree = ast.parse(source)
         assert isinstance(tree, ast.Module)
         assert len(tree.body) == 1
         return tree.body[0], source
 
-    if jit._getsource_func is not None:
-        full_source = jit._getsource_func(func)
-        start_line, end_line = 0, math.inf
-        source = full_source
-    else:
-        try:
-            filename = inspect.getsourcefile(func)
-        except TypeError:
-            filename = None
-        if filename is None:
-            raise ValueError(f'JIT needs access to Python source for {func}'
-                             'but could not be located')
-        with open(filename) as f:
-            full_source = f.read()
-        source, start_line = inspect.getsourcelines(func)
-        end_line = start_line + len(source)
-        source = ''.join(source)
+    # Extract the AST of the lambda from the AST of the whole source file
+    # that defines that lambda.
+    # This is needed because ``inspect.getsourcelines(lambda_expr)`` may
+    # return unparsable code snippet.
+
+    # Use ``linecache.getlines`` instead of directly opening a file to
+    # support notebook environments.
+    full_source = ''.join(linecache.getlines(filename))
+    source, start_line = inspect.getsourcelines(func)
+    end_line = start_line + len(source)
+    source = ''.join(source)
 
     tree = ast.parse(full_source)
 
