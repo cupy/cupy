@@ -34,8 +34,10 @@ log1p = _core.create_ufunc(
     """,
 )
 
+
 cbrt = _core.create_ufunc(
-    'cupyx_scipy_special_cbrt', ('f->f', 'd->d'),
+    'cupyx_scipy_special_cbrt',
+    (('f->f', 'out0 = cbrtf(in0)'), 'd->d'),
     'out0 = cbrt(in0)',
     doc='''Cube root.
 
@@ -45,7 +47,8 @@ cbrt = _core.create_ufunc(
 
 
 exp2 = _core.create_ufunc(
-    'cupyx_scipy_special_exp2', ('f->f', 'd->d'),
+    'cupyx_scipy_special_exp2',
+    (('f->f', 'out0 = exp2f(in0)'), 'd->d'),
     'out0 = exp2(in0)',
     doc='''Computes ``2**x``.
 
@@ -55,7 +58,8 @@ exp2 = _core.create_ufunc(
 
 
 exp10 = _core.create_ufunc(
-    'cupyx_scipy_special_exp10', ('f->f', 'd->d'),
+    'cupyx_scipy_special_exp10',
+    (('f->f', 'out0 = exp10f(in0)'), 'd->d'),
     'out0 = exp10(in0)',
     doc='''Computes ``10**x``.
 
@@ -65,7 +69,8 @@ exp10 = _core.create_ufunc(
 
 
 expm1 = _core.create_ufunc(
-    'cupyx_scipy_special_expm1', ('f->f', 'd->d', 'F->F', 'D->D'),
+    'cupyx_scipy_special_expm1',
+    (('f->f', 'out0 = expm1f(in0)'), 'd->d', 'F->F', 'D->D'),
     'out0 = expm1(in0)',
     doc='''Computes ``exp(x) - 1``.
 
@@ -79,7 +84,8 @@ pi180_preamble = """
 """
 
 cosdg = _core.create_ufunc(
-    'cupyx_scipy_special_cosdg', ('f->f', 'd->d'),
+    'cupyx_scipy_special_cosdg',
+    (('f->f', 'out0 = cosf(PI180 * in0)'), 'd->d'),
     'out0 = cos(PI180 * in0)',
     preamble=pi180_preamble,
     doc='''Cosine of x with x in degrees.
@@ -90,7 +96,8 @@ cosdg = _core.create_ufunc(
 
 
 sindg = _core.create_ufunc(
-    'cupyx_scipy_special_sindg', ('f->f', 'd->d'),
+    'cupyx_scipy_special_sindg',
+    (('f->f', 'out0 = sinf(PI180 * in0)'), 'd->d'),
     'out0 = sin(PI180 * in0)',
     preamble=pi180_preamble,
     doc='''Sine of x with x in degrees.
@@ -193,12 +200,14 @@ cotdg = _core.create_ufunc(
 
     ''')
 
+
 radian_implementation = """
 /* 1 arc second, in radians*/
 __constant__ double P64800 =
     4.848136811095359935899141023579479759563533023727e-6;
 
-__device__ double radian(double d, double m, double s)
+template <typename T>
+__device__ T radian(T d, T m, T s)
 {
     return (((d * 60.0 + m) * 60.0 + s) * P64800);
 }
