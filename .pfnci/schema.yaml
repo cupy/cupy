@@ -326,6 +326,11 @@ cython:
     spec: "==0.29.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
+cuda-python:
+  null:
+    spec: null
+  "11":
+    spec: "==11.*"
 
 ###############################################################################
 # Environment Variables
