@@ -10,6 +10,9 @@ import cupyx.scipy.special
 
 class _TestBase:
 
+    def test_ndtr(self):
+        self.check_unary_linspace0_1('ndtri')
+
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
