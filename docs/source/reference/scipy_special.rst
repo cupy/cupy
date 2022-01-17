@@ -108,3 +108,5 @@ Convenience functions
    :toctree: generated/
 
    log1p
+   xlogy
+   xlog1py

@@ -88,7 +88,7 @@ log_expit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of log(expit(x))
 
-    .. seealso:: :data:`scipy.special.expit`
+    .. seealso:: :data:`scipy.special.log_expit`
 
     .. note::
         The function is mathematically equivalent to ``log(expit(x))``, but
@@ -102,7 +102,7 @@ ndtr = _core.create_ufunc(
     'out0 = normcdf(in0)',
     doc='''Cumulative distribution function of normal distribution.
 
-    .. seealso:: :meth:`scipy.special.ndtr`
+    .. seealso:: :data:`scipy.special.ndtr`
 
     ''')
 
@@ -113,7 +113,7 @@ ndtri = _core.create_ufunc(
     doc='''Inverse of the cumulative distribution function of the standard
            normal distribution.
 
-    .. seealso:: :meth:`scipy.special.ndtri`
+    .. seealso:: :data:`scipy.special.ndtri`
 ''')
 
 

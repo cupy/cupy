@@ -10,9 +10,6 @@ import cupyx.scipy.special
 
 class _TestBase:
 
-    def test_ndtr(self):
-        self.check_unary('ndtr')
-
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
@@ -124,7 +121,7 @@ class TestFusionSpecial(unittest.TestCase, _TestBase):
         return f(a)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         return self._check_unary(a, name, scp)
@@ -137,7 +134,7 @@ class TestFusionSpecial(unittest.TestCase, _TestBase):
         return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         a = xp.linspace(0, 1, 1000, dtype)
         return self._check_unary(a, name, scp)
