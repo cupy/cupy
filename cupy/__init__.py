@@ -397,6 +397,8 @@ from cupy._indexing.generate import c_  # NOQA
 from cupy._indexing.generate import indices  # NOQA
 from cupy._indexing.generate import ix_  # NOQA
 from cupy._indexing.generate import mask_indices  # NOQA
+from cupy._indexing.generate import tril_indices  # NOQA
+from cupy._indexing.generate import tril_indices_from  # NOQA
 from cupy._indexing.generate import r_  # NOQA
 from cupy._indexing.generate import ravel_multi_index  # NOQA
 from cupy._indexing.generate import unravel_index  # NOQA

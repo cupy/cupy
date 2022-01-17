@@ -469,13 +469,64 @@ def mask_indices(n, mask_func, k=0):
 # TODO(okuta): Implement diag_indices_from
 
 
-# TODO(okuta): Implement mask_indices
+def tril_indices(n, k=0, m=None):
+    """Returns the indices of the lower triangular matrix.
+    Here, the first group of elements contains row coordinates
+    of all indices and the second group of elements
+    contains column coordinates.
+
+    Parameters
+    ----------
+    n : int
+        The row dimension of the arrays for which the returned
+        indices will be valid.
+    k : int, optional
+        Diagonal above which to zero elements. `k = 0`
+        (the default) is the main diagonal, `k < 0` is
+        below it and `k > 0` is above.
+    m : int, optional
+        The column dimension of the arrays for which the
+        returned arrays will be valid. By default, `m = n`.
+
+    Returns
+    -------
+    y : tuple of ndarrays
+        The indices for the triangle. The returned tuple
+        contains two arrays, each with the indices along
+        one dimension of the array.
+
+    See Also
+    --------
+    numpy.tril_indices
+
+    """
+
+    tri_ = cupy.tri(n, m, k=k, dtype=bool)
+
+    return tuple(cupy.broadcast_to(inds, tri_.shape)[tri_]
+                 for inds in cupy.indices(tri_.shape, dtype=int))
 
 
-# TODO(okuta): Implement tril_indices
+def tril_indices_from(arr, k=0):
+    """Returns the indices for the lower-triangle of arr.
 
+    Parameters
+    ----------
+    arr : cupy.ndarray
+          The indices are valid for square arrays
+          whose dimensions are the same as arr.
+    k : int, optional
+        Diagonal offset.
 
-# TODO(okuta): Implement tril_indices_from
+    See Also
+    --------
+    numpy.tril_indices_from
+
+    """
+
+    if arr.ndim != 2:
+        raise ValueError("input array must be 2-d")
+    return tril_indices(arr.shape[-2], k=k, m=arr.shape[-1])
 
 
 # TODO(okuta): Implement triu_indices
