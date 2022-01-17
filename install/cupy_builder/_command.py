@@ -21,14 +21,14 @@ def compile_device_code(ctx: Context, ext: setuptools.Extension):
     """
     sources_cu = []
     sources_cpp = []
-    for src in ext.sources:
+    for src in ext.sources:  # type: ignore
         if os.path.splitext(src)[1] == '.cu':
             sources_cu.append(src)
         else:
             sources_cpp.append(src)
     if len(sources_cu) == 0:
         # No device code used in this extension.
-        return ext.sources, []
+        return ext.sources, []  # type: ignore
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
@@ -37,7 +37,7 @@ def compile_device_code(ctx: Context, ext: setuptools.Extension):
 
     objects = []
     for src in sources_cu:
-        print('Compiling device code', src, 'for module', ext.name)
+        print('Compiling device code', src, 'for module', ext.name)  # type: ignore  # NOQA
         obj = os.path.abspath(f'build/temp.device_objects/{src}.o')
         os.makedirs(os.path.dirname(obj), exist_ok=True)
         # TODO: check timestamp
