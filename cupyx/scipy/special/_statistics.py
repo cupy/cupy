@@ -88,7 +88,7 @@ log_expit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of log(expit(x))
 
-    .. seealso:: :data:`scipy.special.expit`
+    .. seealso:: :data:`scipy.special.log_expit`
 
     .. note::
         The function is mathematically equivalent to ``log(expit(x))``, but
