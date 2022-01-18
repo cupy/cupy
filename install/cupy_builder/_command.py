@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import List
 
 import setuptools
 import setuptools.command.build_ext
@@ -10,7 +11,6 @@ from cupy_builder.cupy_setup_build import cythonize
 from cupy_builder.cupy_setup_build import check_extensions
 from cupy_builder.cupy_setup_build import get_ext_modules
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
-
 
 def compile_device_code(ctx: Context, ext: setuptools.Extension):
     """Compiles device code ("*.cu").
@@ -38,13 +38,28 @@ def compile_device_code(ctx: Context, ext: setuptools.Extension):
     objects = []
     for src in sources_cu:
         print('Compiling device code', src, 'for module', ext.name)  # type: ignore  # NOQA
-        obj = os.path.abspath(f'build/temp.device_objects/{src}.o')
-        os.makedirs(os.path.dirname(obj), exist_ok=True)
-        # TODO: check timestamp
-        compiler.compile(obj, src, ext)
+        obj_ext = 'obj' if sys.platform == 'win32' else 'o'
+        obj = os.path.abspath(f'build/temp.device_objects/{src}.{obj_ext}')
+        if os.path.exists(obj):
+            needs_build = _get_timestamp([obj]) < _get_timestamp(sources_cu)
+        else:
+            needs_build = True
+            os.makedirs(os.path.dirname(obj), exist_ok=True)
+        if needs_build:
+            compiler.compile(obj, src, ext)
+        else:
+            print(f'Reusing cached object file: {obj}')
         objects.append(obj)
 
     return sources_cpp, objects
+
+
+def _get_timestamp(files: List[str]) -> int:
+    latest = 0
+    for f in files:
+        stat = os.lstat(f)
+        latest = max(latest, stat.st_atime, stat.st_mtime, stat.st_ctime)
+    return latest
 
 
 class custom_build_ext(setuptools.command.build_ext.build_ext):
