@@ -16,9 +16,10 @@ from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
 def compile_device_code(ctx: Context, ext: setuptools.Extension):
     """Compiles device code ("*.cu").
 
-    This method invokes the device compiler (nvcc/hipcc) to build an object
-    file from the device code, then modify the given extension to link the
-    object files in later step.
+    This method invokes the device compiler (nvcc/hipcc) to build object
+    files from device code, then returns the tuple of:
+    - list of remaining (non-device) source files ("*.cpp")
+    - list of compiled object files for device code ("*.o")
     """
     sources_cu = []
     sources_cpp = []
