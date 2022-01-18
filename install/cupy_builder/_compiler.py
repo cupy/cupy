@@ -1,9 +1,12 @@
 import distutils.ccompiler
 import os
+import os.path
+import platform
 import sys
 import subprocess
 from typing import List
 
+import setuptools
 from setuptools import Extension
 
 from cupy_builder._context import Context
@@ -205,5 +208,18 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             postargs += ['--std=c++14']
             num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
             postargs += [f'-t{num_threads}']
+        cl_exe_path = self._find_host_compiler_path()
+        if cl_exe_path is None:
+            print('Warning: Host compiler path could not be detected')
+        else:
+            postargs += ['--compiler-bindir', cl_exe_path]
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
+
+    def _find_host_compiler_path(self):
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+        for path in vctools:
+            cl_exe = os.path.join(path, 'cl.exe')
+            if os.path.exists(cl_exe):
+                return path
+        return None
