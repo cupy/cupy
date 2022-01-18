@@ -19,6 +19,7 @@
   scipy: "1.4"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -44,6 +45,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
@@ -69,6 +71,7 @@
   scipy: null
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -94,6 +97,7 @@
   scipy: "1.5"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -119,6 +123,7 @@
   scipy: "1.6"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
@@ -144,6 +149,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -170,6 +176,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -207,6 +214,7 @@
   scipy: "1.4"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -227,6 +235,7 @@
   scipy: "1.6"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -248,6 +257,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -272,6 +282,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit-slow"
 
@@ -300,6 +311,7 @@
   scipy: "1.7"
   optuna: "2"
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "example"
 
@@ -324,5 +336,31 @@
   scipy: "pre"
   optuna: "pre"
   cython: "0.29"  # TODO: support Cython 3
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
+  test: "unit"
+
+###############################################################################
+# CUDA Python Test
+###############################################################################
+
+# CUDA 11.x / CUDA Python | Linux
+- project: "cupy.linux.cuda11x-cuda-python"
+  target: "cuda11x-cuda-python"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.5"
+  rocm: null
+  nccl: "2.11"
+  cutensor: "1.4"
+  cusparselt: "0.1.0"
+  cudnn: "8.3"
+  python: "3.10"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  cuda-python: "11"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
