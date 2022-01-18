@@ -12,6 +12,7 @@ from cupy_builder.cupy_setup_build import check_extensions
 from cupy_builder.cupy_setup_build import get_ext_modules
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
 
+
 def compile_device_code(ctx: Context, ext: setuptools.Extension):
     """Compiles device code ("*.cu").
 
@@ -54,8 +55,8 @@ def compile_device_code(ctx: Context, ext: setuptools.Extension):
     return sources_cpp, objects
 
 
-def _get_timestamp(files: List[str]) -> int:
-    latest = 0
+def _get_timestamp(files: List[str]) -> float:
+    latest = 0.0
     for f in files:
         stat = os.lstat(f)
         latest = max(latest, stat.st_atime, stat.st_mtime, stat.st_ctime)
