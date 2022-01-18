@@ -258,7 +258,7 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
                 break
         output = tmp_out
     if temp_needed:
-        _core.elemntwise_copy(output, temp)
+        _core.elementwise_copy(output, temp)
         output = temp
     return output
 
