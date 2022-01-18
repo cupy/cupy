@@ -38,7 +38,7 @@ def compile_device_code(ctx: Context, ext: setuptools.Extension):
 
     objects = []
     for src in sources_cu:
-        print(f'{ext.name}: Device code: {src}')  # type: ignore  # NOQA
+        print(f'{ext.name}: Device code: {src}')  # type: ignore
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
         # TODO(kmaehashi): embed CUDA version in path
         obj = f'build/temp.device_objects/{src}.{obj_ext}'
