@@ -73,6 +73,15 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
         if num_jobs > 1:
             self.parallel = num_jobs
+            if hasattr(self.compiler, 'initialize'):
+                # Workarounds a bug in setuptools/distutils on Windows by
+                # initializing the compiler before starting a thread.
+                # By default, MSVCCompiler performs initialization in the
+                # first compilation. However, in parallel compilation mode,
+                # the init code runs in each thread and messes up the internal
+                # state as the init code is not locked and is not idempotent.
+                # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
+                self.compiler.initialize()
         super().build_extensions()
 
     def build_extension(self, ext):
