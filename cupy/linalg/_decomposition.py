@@ -297,8 +297,8 @@ def qr(a, mode='reduced'):
     dtype, out_dtype = _util.linalg_common_type(a)
 
     m, n = a.shape
-    mn = min(m, n)
-    if mn == 0:
+    k = min(m, n)
+    if k == 0:
         if mode == 'reduced':
             return cupy.empty((m, 0), out_dtype), cupy.empty((0, n), out_dtype)
         elif mode == 'complete':
@@ -332,14 +332,14 @@ def qr(a, mode='reduced'):
     # compute working space of geqrf and solve R
     buffersize = geqrf_bufferSize(handle, m, n, x.data.ptr, n)
     workspace = cupy.empty(buffersize, dtype=dtype)
-    tau = cupy.empty(mn, dtype=dtype)
+    tau = cupy.empty(k, dtype=dtype)
     geqrf(handle, m, n, x.data.ptr, m,
           tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
 
     if mode == 'r':
-        r = x[:, :mn].transpose()
+        r = x[:, :k].transpose()
         return _util._triu(r).astype(out_dtype, copy=False)
 
     if mode == 'raw':
@@ -351,7 +351,7 @@ def qr(a, mode='reduced'):
         mc = m
         q = cupy.empty((m, m), dtype)
     else:
-        mc = mn
+        mc = k
         q = cupy.empty((n, m), dtype)
     q[:n] = x
 
@@ -370,10 +370,10 @@ def qr(a, mode='reduced'):
         orgqr = cusolver.zungqr
 
     buffersize = orgqr_bufferSize(
-        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+        handle, m, mc, k, q.data.ptr, m, tau.data.ptr)
     workspace = cupy.empty(buffersize, dtype=dtype)
     orgqr(
-        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        handle, m, mc, k, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
         buffersize, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         orgqr, dev_info)
