@@ -1,6 +1,5 @@
 import os
 import sys
-from typing import List
 
 import setuptools
 import setuptools.command.build_ext
@@ -39,29 +38,24 @@ def compile_device_code(ctx: Context, ext: setuptools.Extension):
 
     objects = []
     for src in sources_cu:
-        print('Compiling device code', src, 'for module', ext.name)  # type: ignore  # NOQA
+        print(f'{ext.name}: Device code: {src}')  # type: ignore  # NOQA
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
-        obj = os.path.abspath(f'build/temp.device_objects/{src}.{obj_ext}')
-        if os.path.exists(obj):
-            needs_build = _get_timestamp([obj]) < _get_timestamp(sources_cu)
+        # TODO(kmaehashi): embed CUDA version in path
+        obj = f'build/temp.device_objects/{src}.{obj_ext}'
+        if os.path.exists(obj) and (_get_timestamp(src) < _get_timestamp(obj)):
+            print(f'{ext.name}: Reusing cached object file: {obj}')  # type: ignore  # NOQA
         else:
-            needs_build = True
             os.makedirs(os.path.dirname(obj), exist_ok=True)
-        if needs_build:
+            print(f'{ext.name}: Building: {obj}')  # type: ignore
             compiler.compile(obj, src, ext)
-        else:
-            print(f'Reusing cached object file: {obj}')
         objects.append(obj)
 
     return sources_cpp, objects
 
 
-def _get_timestamp(files: List[str]) -> float:
-    latest = 0.0
-    for f in files:
-        stat = os.lstat(f)
-        latest = max(latest, stat.st_atime, stat.st_mtime, stat.st_ctime)
-    return latest
+def _get_timestamp(path: str) -> float:
+    stat = os.lstat(path)
+    return max(stat.st_atime, stat.st_mtime, stat.st_ctime)
 
 
 class custom_build_ext(setuptools.command.build_ext.build_ext):
