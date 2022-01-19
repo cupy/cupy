@@ -759,6 +759,10 @@ def _try_reduction_routine(
         # TODO(asi1024): Support also for F-contiguous array
         return None
 
+    if x.size == 1 and cutensor.get_version() == 10400:
+        # WAR: element-1 reduction is buggy
+        return None
+
     in_arg = x
 
     reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)

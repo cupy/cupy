@@ -160,6 +160,18 @@ class TestMisc(unittest.TestCase):
     def test_absolute_negative(self):
         self.check_unary_negative('absolute')
 
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_fabs(self, xp, dtype):
+        a = xp.array([2, 3, 4], dtype=dtype)
+        return xp.fabs(a)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_fabs_negative(self, xp, dtype):
+        a = xp.array([-2.0, -4.0, 0.0, 4.0], dtype=dtype)
+        return xp.fabs(a)
+
     def test_sign(self):
         self.check_unary('sign', no_bool=True)
 
