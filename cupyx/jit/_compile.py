@@ -81,11 +81,11 @@ def _parse_function_object(func):
         raise ValueError(
             f'JIT needs access to Python source code for {func}'
             ' but could not be located.\n'
-            '(hint: it is likely you passed a built-in functions or methods)')
+            '(hint: it is likely you passed a built-in function or method)')
     elif filename == '<stdin>':
         raise RuntimeError(
             f'JIT needs access to the Python source code for {func}'
-            ' but it could not be retrieved within the Python interactive'
+            ' but it cannot be retrieved within the Python interactive'
             ' interpreter. Consider using IPython instead.')
 
     if func.__name__ != '<lambda>':
