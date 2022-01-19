@@ -273,7 +273,8 @@ The current platform ({}) is not supported.'''.format(target_platform))
 
         print('Installing...')
         if library == 'cudnn':
-            for item in ['include', 'lib', 'LICENSE']:
+            libdir = 'bin' if sys.platform == 'win32' else 'lib'
+            for item in ['include', libdir, 'LICENSE']:
                 shutil.move(
                     os.path.join(outdir, dir_name, item),
                     os.path.join(destination, item))
