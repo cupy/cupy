@@ -75,13 +75,15 @@ def _parse_function_object(func):
         # - "<ipython-input-XXXXXXXX>" (within IPython interpreter)
         filename = inspect.getsourcefile(func)
     except TypeError:
+        filename = None
+
+    if filename is None:
         raise ValueError(
             f'JIT needs access to Python source code for {func}'
             ' but could not be located.\n'
             '(hint: it is likely you passed a built-in functions or methods)')
-
-    if filename == '<stdin>':
-        raise ValueError(
+    elif filename == '<stdin>':
+        raise RuntimeError(
             f'JIT needs access to the Python source code for {func}'
             ' but it could not be retrieved within the Python interactive'
             ' interpreter. Consider using IPython instead.')
