@@ -290,10 +290,11 @@ def _quantile_is_valid(q):
     return True
 
 
-def percentile(a, q, axis=None, out=None, *,
+def percentile(a, q, axis=None, out=None,
                overwrite_input=False,
                method='linear',
                keepdims=False,
+               *,
                interpolation=None):
     """Computes the q-th percentile of the data along the specified axis.
 
@@ -336,10 +337,11 @@ def percentile(a, q, axis=None, out=None, *,
         keepdims=keepdims)
 
 
-def quantile(a, q, axis=None, out=None, *,
+def quantile(a, q, axis=None, out=None,
              overwrite_input=False,
              method='linear',
              keepdims=False,
+             *,
              interpolation=None):
     """Computes the q-th quantile of the data along the specified axis.
 
