@@ -1,21 +1,27 @@
 import numpy
 import cupy
-import scipy.special
 import cupyx.scipy.special
 
 from cupy import testing
 import pytest
 
-scipy_ufuncs = {
-    f
-    for f in scipy.special.__all__
-    if isinstance(getattr(scipy.special, f), numpy.ufunc)
-}
-cupyx_scipy_ufuncs = {
-    f
-    for f in dir(cupyx.scipy.special)
-    if isinstance(getattr(cupyx.scipy.special, f), cupy.ufunc)
-}
+try:
+    import scipy.special
+
+    scipy_ufuncs = {
+        f
+        for f in scipy.special.__all__
+        if isinstance(getattr(scipy.special, f), numpy.ufunc)
+    }
+    cupyx_scipy_ufuncs = {
+        f
+        for f in dir(cupyx.scipy.special)
+        if isinstance(getattr(cupyx.scipy.special, f), cupy.ufunc)
+    }
+except ImportError:
+    scipy_ufuncs = set()
+    cupyx_scipy_ufuncs = set()
+
 
 @testing.gpu
 @testing.with_requires("scipy")
