@@ -75,14 +75,10 @@ def _parse_function_object(func):
         # - "<ipython-input-XXXXXXXX>" (within IPython interpreter)
         filename = inspect.getsourcefile(func)
     except TypeError:
+        # Built-in function or method, or inside Doctest
         filename = None
 
-    if filename is None:
-        raise ValueError(
-            f'JIT needs access to Python source code for {func}'
-            ' but could not be located.\n'
-            '(hint: it is likely you passed a built-in function or method)')
-    elif filename == '<stdin>':
+    if filename == '<stdin>':
         raise RuntimeError(
             f'JIT needs access to the Python source code for {func}'
             ' but it cannot be retrieved within the Python interactive'
@@ -97,6 +93,13 @@ def _parse_function_object(func):
         assert isinstance(tree, ast.Module)
         assert len(tree.body) == 1
         return tree.body[0], source
+
+    if filename is None:
+        # filename is needed for lambdas.
+        raise ValueError(
+            f'JIT needs access to Python source code for {func}'
+            ' but could not be located.\n'
+            '(hint: it is likely you passed a built-in function or method)')
 
     # Extract the AST of the lambda from the AST of the whole source file
     # that defines that lambda.
