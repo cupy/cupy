@@ -17,10 +17,9 @@ cupyx_scipy_ufuncs = {
     if isinstance(getattr(cupyx.scipy.special, f), cupy.ufunc)
 }
 
-
 @testing.gpu
 @testing.with_requires("scipy")
-@pytest.mark.parametrize("ufunc", cupyx_scipy_ufuncs & scipy_ufuncs)
+@pytest.mark.parametrize("ufunc", sorted(cupyx_scipy_ufuncs & scipy_ufuncs))
 class TestUfunc:
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_dispatch(self, xp, ufunc):
