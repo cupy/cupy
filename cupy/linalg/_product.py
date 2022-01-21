@@ -42,6 +42,70 @@ matmul = _GUFunc(
 )
 
 
+def _multi_dot_three(A, B, C, out=None):
+    """Find the best order for three arrays and do the multiplication.
+    """
+    a0, a1b0 = A.shape
+    b1c0, c1 = C.shape
+    b1c0, c1 = C.shape
+    # cost1 = cost((AB)C) = a0*a1b0*b1c0 + a0*b1c0*c1
+    cost1 = a0 * b1c0 * (a1b0 + c1)
+    # cost2 = cost(A(BC)) = a1b0*b1c0*c1 + a0*a1b0*c1
+    cost2 = a1b0 * c1 * (a0 + b1c0)
+
+    if cost1 < cost2:
+        return dot(dot(A, B), C, out=out)
+    else:
+        return dot(A, dot(B, C), out=out)
+
+
+def _multi_dot_matrix_chain_order(arr, return_costs=False):
+    """Returns a cupy.ndarray that encodes the optimal order of
+    multiplication. The optimal order array is then used by
+    `_multi_dot()` to do the multiplication.
+
+    It also return the cost matrix if `return_costs` is `True`
+
+    The cost function is given by:
+
+        cost[i, j] = min([
+            cost[prefix] + cost[suffix] + cost_mult(prefix, suffix)
+            for k in range(i, j)])
+    """
+    n = len(arr)
+    # To store dimensions of the matrices
+    p = [a.shape[0] for a in arr] + [arr[-1].shape[1]]
+    # Matrix of costs of the subproblems
+    # m[i,j]: min number of scalar multiplications needed to compute A_{i..j}
+    m = zeros((n, n), dtype=double)
+    # Actual ordering
+    s[i, j] is the value of k at which we split the product A_i..A_j
+    s = empty((n, n), dtype=intp)
+
+    for l in range(1, n):
+        for i in range(n - l):
+            j = i + l
+            m[i, j] = Inf
+            for k in range(i, j):
+                q = m[i, k] + m[k+1, j] + p[i]*p[k+1]*p[j+1]
+                if q < m[i, j]:
+                    m[i, j] = q
+                    s[i, j] = k
+
+    return (s, m) if return_costs else s
+
+
+def _multi_dot(arr, order, i, j, out=None):
+    """Do the multiplication with the given order."""
+    if i == j:
+        assert out is None
+        return arr[i]
+    else:
+        return dot(_multi_dot(arr, order, i, order[i, j]),
+                   _multi_dot(arr, order, order[i, j], j),
+                   out=out)
+
+
 def dot(a, b, out=None):
     """Returns a dot product of two arrays.
 
@@ -379,6 +443,69 @@ def matrix_power(M, n):
             result = Z if result is None else cupy.matmul(result, Z)
 
     return result
+
+
+def multi_dot(arr, *, out=None):
+    """Compute the dot product of two or more arrays in a single function
+    call, and automatically select the fastest evaluation order.
+
+    Note: `multi_dot` chains `cupy.dot` and uses optimal parenthesization
+    of the matrices. Depending on the shape of the matrices, this can
+    speed up the multiplication a lot.
+
+    Parameters
+    ----------
+    arr : cupy.ndarray
+        If the first argument is 1-D vector of shape (n,) it is
+        treated as row vector of shape (1, n). If the last argument is
+        1-D vector of shape (n,) it is treated as column vector of shape
+        (n, 1). The other arguments must be 2-D.
+    out : cupy.ndarray, optional
+        The output argument. It must have the exact kind that would be
+        returned if it was not used. It must have the right type, must be
+        C-contiguous. Its dtype must be similar to the dtype returned for
+        `dot(a, b)`.
+
+    Returns
+    -------
+    output : cupy.ndarray
+        Returns the dot product of the given arrays.
+
+    See Also
+    --------
+    numpy.multi_dot
+
+    """
+    n = len(arr)
+    # optimization only makes sense for len(arr) > 2
+    if n < 2:
+        raise ValueError("Expecting at least two arrays.")
+    elif n == 2:
+        return cupy.dot(arr[0], arr[1], out=out)
+
+    # save original ndim to reshape the result array into the proper form later
+    ndim_first, ndim_last = arr[0].ndim, arr[-1].ndim
+    # Convert vectors to 2D arrays
+    if arr[0].ndim == 1:
+        arr[0] = cupy.atleast_2d(arr[0])
+    if arr[-1].ndim == 1:
+        arr[-1] = cupy.atleast_2d(arr[-1]).T
+    _util._assert_2d(*arr)
+
+    # _multi_dot_three is much faster than _multi_dot_matrix_chain_orde
+    if n == 3:
+        result = _multi_dot_three(arr[0], arr[1], arr[2], out=out)
+    else:
+        order = _multi_dot_matrix_chain_order(arrays)
+        result = _multi_dot(arrays, order, 0, n - 1, out=out)
+
+    # return proper shape
+    if ndim_first == 1 and ndim_last == 1:
+        return result[0, 0]
+    elif ndim_first == 1 or ndim_last == 1:
+        return result.ravel()
+    else:
+        return result
 
 
 def kron(a, b):
