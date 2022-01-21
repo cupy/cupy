@@ -79,13 +79,13 @@ def _multi_dot_matrix_chain_order(arr, return_costs=False):
     # m[i,j]: min number of scalar multiplications needed to compute A_{i..j}
     m = zeros((n, n), dtype=double)
     # Actual ordering
-    s[i, j] is the value of k at which we split the product A_i..A_j
-    s = empty((n, n), dtype=intp)
+    # s[i, j] is the value of k at which we split the product A_i..A_j
+    s = empty((n, n), dtype=cupy.intp)
 
     for l in range(1, n):
         for i in range(n - l):
             j = i + l
-            m[i, j] = Inf
+            m[i, j] = cupy.Inf
             for k in range(i, j):
                 q = m[i, k] + m[k+1, j] + p[i]*p[k+1]*p[j+1]
                 if q < m[i, j]:
