@@ -1,4 +1,5 @@
 import numpy
+import cupy
 
 from cupy import testing
 
@@ -123,3 +124,31 @@ class TestIn1DIsIn:
             return xp.in1d(x, y, self.assume_unique, self.invert)\
                 .reshape(x.shape)
         return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
+
+
+@testing.gpu
+class TestUnion1d:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_union1d(self, xp, dtype):
+        x = xp.array([4, 1, 1, 1, 9, 9, 9], dtype=dtype)
+        y = xp.array([4, 0, 5, 2, 0, 0, 5], dtype=dtype)
+        return xp.union1d(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_union1d_2(self, xp, dtype):
+        x = testing.shaped_arange((5, 2), xp, dtype=dtype)
+        y = testing.shaped_arange((2, 3, 4), xp, dtype=dtype)
+        return xp.union1d(x, y)
+
+    @testing.for_all_dtypes()
+    def test_union1d_3(self, dtype):
+        for xp in (numpy, cupy):
+            x = xp.array([0+1j, 3+2j], dtype=dtype)
+            y = xp.array([0+2j, 4+11j], dtype=dtype)
+            if xp.issubdtype(dtype, xp.complex):
+                error = TypeError
+            with pytest.raises(error):
+                xp.union1d(x, y)
