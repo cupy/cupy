@@ -1,6 +1,7 @@
 import numpy
-import cupy
+import pytest
 
+import cupy
 from cupy import testing
 
 
