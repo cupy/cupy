@@ -48,6 +48,6 @@ from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions
-from cupyx.scipy.special._gammainc import log1p  # NOQA
+from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
