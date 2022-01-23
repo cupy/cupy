@@ -335,7 +335,7 @@
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
-  cython: "0.29"  # TODO: support Cython 3
+  cython: "pre"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
