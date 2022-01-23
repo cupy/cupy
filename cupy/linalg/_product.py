@@ -47,7 +47,6 @@ def _multi_dot_three(A, B, C, out=None):
     """
     a0, a1b0 = A.shape
     b1c0, c1 = C.shape
-    b1c0, c1 = C.shape
     # cost1 = cost((AB)C) = a0*a1b0*b1c0 + a0*b1c0*c1
     cost1 = a0 * b1c0 * (a1b0 + c1)
     # cost2 = cost(A(BC)) = a1b0*b1c0*c1 + a0*a1b0*c1
@@ -77,10 +76,10 @@ def _multi_dot_matrix_chain_order(arr, return_costs=False):
     p = [a.shape[0] for a in arr] + [arr[-1].shape[1]]
     # Matrix of costs of the subproblems
     # m[i,j]: min number of scalar multiplications needed to compute A_{i..j}
-    m = zeros((n, n), dtype=double)
+    m = cupy.zeros((n, n), dtype=cupy.double)
     # Actual ordering
     # s[i, j] is the value of k at which we split the product A_i..A_j
-    s = empty((n, n), dtype=cupy.intp)
+    s = cupy.empty((n, n), dtype=cupy.intp)
 
     for l in range(1, n):
         for i in range(n - l):
@@ -97,13 +96,15 @@ def _multi_dot_matrix_chain_order(arr, return_costs=False):
 
 def _multi_dot(arr, order, i, j, out=None):
     """Do the multiplication with the given order."""
+    i = int(i)
+    j = int(j)
     if i == j:
         assert out is None
         return arr[i]
     else:
-        return dot(_multi_dot(arr, order, i, order[i, j]),
-                   _multi_dot(arr, order, order[i, j], j),
-                   out=out)
+        return cupy.dot(_multi_dot(arr, order, i, order[i, j]),
+                        _multi_dot(arr, order, order[i, j] + 1, j),
+                        out=out)
 
 
 def dot(a, b, out=None):
@@ -400,12 +401,11 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
-# TODO: rename `M` to `a`
-def matrix_power(M, n):
+def matrix_power(a, n):
     """Raise a square matrix to the (integer) power `n`.
 
     Args:
-        M (~cupy.ndarray): Matrix to raise by power n.
+        a (~cupy.ndarray): Matrix to raise by power n.
         n (~int): Power to raise matrix to.
 
     Returns:
@@ -413,32 +413,32 @@ def matrix_power(M, n):
 
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
-    _util._assert_cupy_array(M)
-    _util._assert_stacked_2d(M)
-    _util._assert_stacked_square(M)
+    _util._assert_cupy_array(a)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
     if not isinstance(n, int):
         raise TypeError('exponent must be an integer')
 
     if n == 0:
-        return _util.stacked_identity_like(M)
+        return _util.stacked_identity_like(a)
     elif n < 0:
-        M = _solve.inv(M)
+        a = _solve.inv(a)
         n *= -1
 
     # short-cuts
     if n <= 3:
         if n == 1:
-            return M
+            return a
         elif n == 2:
-            return cupy.matmul(M, M)
+            return cupy.matmul(a, a)
         else:
-            return cupy.matmul(cupy.matmul(M, M), M)
+            return cupy.matmul(cupy.matmul(a, a), a)
 
     # binary decomposition to reduce the number of Matrix
     # multiplications for n > 3.
     result, Z = None, None
     for b in cupy.binary_repr(n)[::-1]:
-        Z = M if Z is None else cupy.matmul(Z, Z)
+        Z = a if Z is None else cupy.matmul(Z, Z)
         if b == '1':
             result = Z if result is None else cupy.matmul(result, Z)
 
@@ -496,8 +496,8 @@ def multi_dot(arr, *, out=None):
     if n == 3:
         result = _multi_dot_three(arr[0], arr[1], arr[2], out=out)
     else:
-        order = _multi_dot_matrix_chain_order(arrays)
-        result = _multi_dot(arrays, order, 0, n - 1, out=out)
+        order = _multi_dot_matrix_chain_order(arr)
+        result = _multi_dot(arr, order, 0, n - 1, out=out)
 
     # return proper shape
     if ndim_first == 1 and ndim_last == 1:

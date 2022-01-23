@@ -72,6 +72,96 @@ class TestDot(unittest.TestCase):
         return c
 
 
+@testing.gpu
+class TestMultiDot:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_func_with_three_args(self, xp, dtype):
+        a = testing.shaped_arange((4, 1), xp, dtype)
+        b = testing.shaped_arange((1, 4), xp, dtype)
+        c = testing.shaped_arange((4, 1), xp, dtype)
+        return xp.linalg.multi_dot([a, b, c])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_func_with_two_args(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_arange((3, 2), xp, dtype)
+        return xp.linalg.multi_dot([a, b])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_func_with_four_args(self, xp, dtype):
+        # uses dynamic programming concept
+        a = testing.shaped_arange((6, 2), xp, dtype)
+        b = testing.shaped_arange((2, 6), xp, dtype)
+        c = testing.shaped_arange((6, 2), xp, dtype)
+        d = testing.shaped_arange((2, 1), xp, dtype)
+        return xp.linalg.multi_dot([a, b, c, d])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_vector_as_first_args(self, xp, dtype):
+        a = testing.shaped_arange((4, ), xp, dtype)
+        b = testing.shaped_arange((4, 2), xp, dtype)
+        return xp.linalg.multi_dot([a, b])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_vector_as_last_args(self, xp, dtype):
+        a = testing.shaped_arange((4, 2), xp, dtype)
+        b = testing.shaped_arange((2, 4), xp, dtype)
+        c = testing.shaped_arange((4, ), xp, dtype)
+        return xp.linalg.multi_dot([a, b, c])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_vector_as_first_and_last_args(self, xp, dtype):
+        a = testing.shaped_arange((9, ), xp, dtype)
+        b = testing.shaped_arange((9, 5), xp, dtype)
+        c = testing.shaped_arange((5, 9), xp, dtype)
+        d = testing.shaped_arange((9, ), xp, dtype)
+        return xp.linalg.multi_dot([a, b, c, d])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_three_args_with_out(self, xp, dtype):
+        a = testing.shaped_arange((6, 2), xp, dtype)
+        b = testing.shaped_arange((2, 6), xp, dtype)
+        c = testing.shaped_arange((6, 2), xp, dtype)
+
+        out = xp.zeros((6, 2), dtype=dtype)
+        return xp.linalg.multi_dot([a, b, c], out=out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_two_args_with_out(self, xp, dtype):
+        a = testing.shaped_arange((3, 5), xp, dtype)
+        b = testing.shaped_arange((5, 3), xp, dtype)
+
+        out = xp.zeros((3, 3), dtype=dtype)
+        return xp.linalg.multi_dot([a, b], out=out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multi_dot_four_args_with_out(self, xp, dtype):
+        a = testing.shaped_arange((6, 2), xp, dtype)
+        b = testing.shaped_arange((2, 6), xp, dtype)
+        c = testing.shaped_arange((6, 2), xp, dtype)
+        d = testing.shaped_arange((2, 1), xp, dtype)
+
+        out = xp.zeros((6, 1), dtype=dtype)
+        return xp.linalg.multi_dot([a, b, c, d], out=out)
+
+    @testing.for_all_dtypes()
+    def test_multi_dot_one_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((4, ), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.linalg.multi_dot([a])
+
+
 @testing.parameterize(*testing.product({
     'params': [
         #  Test for 0 dimension
