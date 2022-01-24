@@ -35,6 +35,6 @@ class TestUfunc:
         types = ufunc.types[0]
         args = [
             cupy.testing.shaped_random((5,), xp, dtype=types[i])
-            for i in range(ufunc.nargs - 1)
+            for i in range(ufunc.nin)
         ]
         return ufunc(*args)
