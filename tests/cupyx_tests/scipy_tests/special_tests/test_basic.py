@@ -162,7 +162,9 @@ class TestBasic:
 
     @pytest.mark.parametrize('function', ['cosdg', 'sindg', 'tandg', 'cotdg'])
     @testing.for_dtypes("efd")
-    @numpy_cupy_allclose(scipy_name="scp", atol=1e-10, rtol=1e-6)
+    @numpy_cupy_allclose(scipy_name="scp",
+                         atol={'default': 1e-6, cupy.float64: 1e-12},
+                         rtol=1e-6)
     def test_trig_degrees(self, xp, scp, dtype, function):
         vals = xp.linspace(-100, 100, 200, dtype=dtype)
         # test at exact multiples of 45 degrees
