@@ -45,6 +45,10 @@ class TestEigenvalue:
         else:
             atol = 1e-5
         testing.assert_allclose(A @ v, v @ xp.diag(w), atol=atol, rtol=1)
+        # Check if v @ vt is an identity matrix
+        testing.assert_allclose(v @ v.swapaxes(-2, -1).conj(),
+                                xp.identity(A.shape[-1], _dtype), atol=atol,
+                                rtol=atol)
         if xp == numpy and dtype == numpy.float16:
             w = w.astype('e')
         return w
