@@ -614,7 +614,7 @@ from cupy._math.arithmetic import add  # NOQA
 from cupy._math.arithmetic import divide  # NOQA
 from cupy._math.arithmetic import divmod  # NOQA
 from cupy._math.arithmetic import floor_divide  # NOQA
-from cupy._math.arithmetic import float_power
+from cupy._math.arithmetic import float_power  #NOQA
 from cupy._math.arithmetic import fmod  # NOQA
 from cupy._math.arithmetic import modf  # NOQA
 from cupy._math.arithmetic import multiply  # NOQA
