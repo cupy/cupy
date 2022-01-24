@@ -264,6 +264,7 @@ from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
 from cupy._manipulation.join import vstack as row_stack  # NOQA
 
+from cupy._manipulation.kind import asarray_chkfinite  # NOQA
 from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
