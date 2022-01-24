@@ -151,7 +151,7 @@ class LinuxGenerator:
 
         # Setup Python libraries.
         pip_args = []
-        for pylib in ('numpy', 'scipy', 'optuna', 'cython'):
+        for pylib in ('numpy', 'scipy', 'optuna', 'cython', 'cuda-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 continue

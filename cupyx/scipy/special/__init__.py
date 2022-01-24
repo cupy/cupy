@@ -8,7 +8,11 @@ from cupyx.scipy.special._bessel import y1  # NOQA
 from cupyx.scipy.special._bessel import yn  # NOQA
 
 # Raw statistical functions
+
 from cupyx.scipy.special._statistics import ndtr  # NOQA
+from cupyx.scipy.special._statistics import logit  # NOQA
+from cupyx.scipy.special._statistics import expit  # NOQA
+from cupyx.scipy.special._statistics import log_expit  # NOQA
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA

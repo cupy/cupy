@@ -29,6 +29,9 @@ Raw statistical functions
    :toctree: generated/
 
    ndtr
+   logit
+   expit
+   log_expit
 
 
 Information Theory functions

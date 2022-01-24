@@ -390,7 +390,7 @@ class LaneID(BuiltinFunc):
         return preamble
 
     def call_const(self, env):
-        env.preambles.add(self._get_preamble())
+        env.generated.add_code(self._get_preamble())
         return Data('LaneId()', _cuda_types.uint32)
 
 

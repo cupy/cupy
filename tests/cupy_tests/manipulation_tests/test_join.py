@@ -421,3 +421,30 @@ class TestJoin:
             out = xp.zeros((3, 3, 4), dtype=xp.int64)
             with pytest.raises(TypeError):
                 xp.stack((a, b, c), axis=1, out=out)
+
+    @testing.for_all_dtypes(name='dtype1')
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_array_equal()
+    def test_row_stack(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((4, 3), xp, dtype1)
+        b = testing.shaped_arange((3,), xp, dtype2)
+        c = testing.shaped_arange((2, 3), xp, dtype1)
+        return xp.row_stack((a, b, c))
+
+    def test_row_stack_wrong_ndim1(self):
+        a = cupy.zeros(())
+        b = cupy.zeros((3,))
+        with pytest.raises(ValueError):
+            cupy.row_stack((a, b))
+
+    def test_row_stack_wrong_ndim2(self):
+        a = cupy.zeros((3, 2, 3))
+        b = cupy.zeros((3, 2))
+        with pytest.raises(ValueError):
+            cupy.row_stack((a, b))
+
+    def test_row_stack_wrong_shape(self):
+        a = cupy.zeros((3, 2))
+        b = cupy.zeros((4, 3))
+        with pytest.raises(ValueError):
+            cupy.row_stack((a, b))
