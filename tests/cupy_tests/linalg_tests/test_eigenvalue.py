@@ -8,15 +8,10 @@ from cupy import testing
 
 
 def _get_hermitian(xp, a, UPLO):
-    assert UPLO in 'UL'
-    A = xp.triu(a) if UPLO == 'U' else xp.tril(a)
-    A = A + A.swapaxes(-2, -1).conj()
-    n = a.shape[-1]
-    # Note: there is no "cupy.s_()", but we're just constructing slice objects
-    # here, so it's fine to call "numpy.s_()".
-    diag = numpy.s_[..., xp.arange(n), xp.arange(n)]
-    A[diag] -= a[diag]
-    return A
+    if UPLO == 'U':
+        return xp.triu(a) + xp.triu(a, 1).swapaxes(-2, -1).conj()
+    else:
+        return xp.tril(a) + xp.tril(a, -1).swapaxes(-2, -1).conj()
 
 
 @testing.parameterize(*testing.product({
@@ -35,16 +30,16 @@ class TestEigenvalue:
             _dtype = 'f'
         else:
             _dtype = dtype
-        a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], _dtype)
+        if numpy.dtype(_dtype).kind == 'c':
+            a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], _dtype)
+        else:
+            a = xp.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], _dtype)
         w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
 
         # Changed the verification method to check if Av and vw match, since
         # the eigenvectors of eigh() with CUDA 11.6 are mathematically correct
         # but may not match NumPy.
-        if self.UPLO == 'U':
-            A = xp.triu(a) + xp.transpose(xp.triu(a, 1))
-        else:
-            A = xp.tril(a) + xp.transpose(xp.tril(a, -1))
+        A = _get_hermitian(xp, a, self.UPLO)
         if dtype == numpy.float16:
             atol = 1e-3
         else:
@@ -70,24 +65,6 @@ class TestEigenvalue:
         for i in range(a.shape[0]):
             testing.assert_allclose(
                 A[i].dot(v[i]), w[i]*v[i], rtol=1e-5, atol=1e-5)
-        return w
-
-    @testing.for_dtypes('FD')
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, contiguous_check=False)
-    def test_eigh_complex(self, xp, dtype):
-        a = xp.array([[1, 2j, 3], [4j, 5, 6j], [7, 8j, 9]], dtype)
-        w, v = xp.linalg.eigh(a, UPLO=self.UPLO)
-
-        # Changed the verification method to check if Av and vw match, since
-        # the eigenvectors of eigh() with CUDA 11.6 are mathematically correct
-        # but may not match NumPy.
-        if self.UPLO == 'U':
-            A = xp.triu(a) + xp.conjugate(
-                xp.transpose(xp.triu(a, 1)))
-        else:
-            A = xp.tril(a) + xp.conjugate(
-                xp.transpose(xp.tril(a, -1)))
-        testing.assert_allclose(A @ v, v @ xp.diag(w), atol=1e-5, rtol=1)
         return w
 
     @testing.for_dtypes('FD')
