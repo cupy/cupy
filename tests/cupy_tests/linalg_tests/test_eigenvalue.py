@@ -40,15 +40,15 @@ class TestEigenvalue:
         # the eigenvectors of eigh() with CUDA 11.6 are mathematically correct
         # but may not match NumPy.
         A = _get_hermitian(xp, a, self.UPLO)
-        if dtype == numpy.float16:
-            atol = 1e-3
+        if _dtype == numpy.float16:
+            tol = 1e-3
         else:
-            atol = 1e-5
-        testing.assert_allclose(A @ v, v @ xp.diag(w), atol=atol, rtol=1)
+            tol = 1e-5
+        testing.assert_allclose(A @ v, v @ xp.diag(w), atol=tol, rtol=tol)
         # Check if v @ vt is an identity matrix
         testing.assert_allclose(v @ v.swapaxes(-2, -1).conj(),
-                                xp.identity(A.shape[-1], _dtype), atol=atol,
-                                rtol=atol)
+                                xp.identity(A.shape[-1], _dtype), atol=tol,
+                                rtol=tol)
         if xp == numpy and dtype == numpy.float16:
             w = w.astype('e')
         return w
