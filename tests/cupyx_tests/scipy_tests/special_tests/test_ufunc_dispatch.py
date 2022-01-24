@@ -37,6 +37,4 @@ class TestUfunc:
             cupy.testing.shaped_random((5,), xp, dtype=types[i])
             for i in range(ufunc.nargs - 1)
         ]
-        res = ufunc(*args)
-        assert type(res) == xp.ndarray
-        return res
+        return ufunc(*args)
