@@ -58,7 +58,7 @@ class _PerfCaseResult:
         return '{:<20s}:{}'.format(self.name, ' '.join(results))
 
     def __str__(self):
-        return '{}\nName: {}\nTimings: {}\nDevices: {}'.format(self.to_str(show_gpu=True),self.name,self._ts,self._devices)
+        return '{}\nName: {}\nTimings: {}\nDevices: {}'.format(self.to_str(show_gpu=True),self.name,self._ts,self._devices) 
 
 
 def benchmark(
