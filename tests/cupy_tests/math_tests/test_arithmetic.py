@@ -228,7 +228,7 @@ class ArithmeticBinaryBase:
         # TODO(niboshi): Fix this. If rhs is a Python complex,
         #    numpy returns complex64
         #    cupy returns complex128
-        if xp is cupy and isinstance(arg2, complex):
+        if xp is cupy and isinstance(arg2, complex) and self.name != 'float_power':
             if dtype1 in (numpy.float16, numpy.float32):
                 y = y.astype(numpy.complex64)
 
