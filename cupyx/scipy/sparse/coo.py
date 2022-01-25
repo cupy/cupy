@@ -95,9 +95,10 @@ class coo_matrix(sparse_data._data_matrix):
         elif _scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupyx.scipy.sparse
             x = arg1.tocoo()
-            data = cupy.array(x.data)
-            row = cupy.array(x.row, dtype='i')
-            col = cupy.array(x.col, dtype='i')
+            import cupy.array_api as cpx
+            data = cpx.asarray(x.data)
+            row = cpx.asarray(x.row, dtype=cpx.int32)
+            col = cpx.asarray(x.col, dtype=cpx.int32)
             copy = False
             if shape is None:
                 shape = arg1.shape
@@ -114,7 +115,7 @@ class coo_matrix(sparse_data._data_matrix):
                     base.isdense(row) and row.ndim == 1 and
                     base.isdense(col) and col.ndim == 1):
                 raise ValueError('row, column, and data arrays must be 1-D')
-            if not (len(data) == len(row) == len(col)):
+            if not (data.shape[0] == row.shape[0] == col.shape[0]):
                 raise ValueError(
                     'row, column, and data array must all be the same length')
 
@@ -143,24 +144,34 @@ class coo_matrix(sparse_data._data_matrix):
                 'Only float32, float64, complex64 and complex128'
                 ' are supported')
 
-        data = data.astype(dtype, copy=copy)
-        row = row.astype('i', copy=copy)
-        col = col.astype('i', copy=copy)
+        #import cupy.array_api as cpx
+        # TODO: copy not supported yet
+        from cupy.array_api.array_compatibility import get_namespace
+        import ipdb; ipdb.set_trace()
+        cpx, array_api = get_namespace(data, row, col)
+        if array_api:
+            data = cpx.astype(cpx.asarray(data), dtype)
+            row = cpx.astype(cpx.asarray(row), dtype)
+            col = cpx.astype(cpx.asarray(col), dtype)
+        else:
+            data = data.astype(dtype)
+            row = row.astype(dtype)
+            col = col.astype(dtype)
 
         if shape is None:
-            if len(row) == 0 or len(col) == 0:
+            if row.shape[0] == 0 or col.shape[0] == 0:
                 raise ValueError(
                     'cannot infer dimensions from zero sized index arrays')
             shape = (int(row.max()) + 1, int(col.max()) + 1)
 
-        if len(data) > 0:
-            if row.max() >= shape[0]:
+        if data.shape[0] > 0:
+            if cpx.max(row) >= shape[0]:
                 raise ValueError('row index exceeds matrix dimensions')
-            if col.max() >= shape[1]:
+            if cpx.max(col) >= shape[1]:
                 raise ValueError('column index exceeds matrix dimensions')
-            if row.min() < 0:
+            if cpx.min(row) < 0:
                 raise ValueError('negative row index found')
-            if col.min() < 0:
+            if cpx.min(col) < 0:
                 raise ValueError('negative column index found')
 
         sparse_data._data_matrix.__init__(self, data)

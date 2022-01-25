@@ -3,6 +3,9 @@ from cupy._core import core
 
 
 def isdense(x):
+    # TODO: Use get_namespace here.
+    if hasattr(x, '__array_namespace__') and x.__array_namespace__():
+        return isinstance(x._array, core.ndarray)
     return isinstance(x, core.ndarray)
 
 
