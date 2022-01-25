@@ -61,7 +61,7 @@ jobs:
 
     - name: Test - Installer
       run: |
-        pip install mypy
+        pip install mypy types-setuptools
         pushd install
         mypy cupy_builder
 
