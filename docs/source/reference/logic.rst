@@ -61,6 +61,7 @@ Comparison
    allclose
    isclose
    array_equal
+   array_equiv
    greater
    greater_equal
    less

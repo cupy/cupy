@@ -262,7 +262,9 @@ from cupy._manipulation.join import dstack  # NOQA
 from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
+from cupy._manipulation.join import vstack as row_stack  # NOQA
 
+from cupy._manipulation.kind import asarray_chkfinite  # NOQA
 from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
@@ -399,6 +401,8 @@ from cupy._indexing.generate import ix_  # NOQA
 from cupy._indexing.generate import mask_indices  # NOQA
 from cupy._indexing.generate import tril_indices  # NOQA
 from cupy._indexing.generate import tril_indices_from  # NOQA
+from cupy._indexing.generate import triu_indices  # NOQA
+from cupy._indexing.generate import triu_indices_from  # NOQA
 from cupy._indexing.generate import r_  # NOQA
 from cupy._indexing.generate import ravel_multi_index  # NOQA
 from cupy._indexing.generate import unravel_index  # NOQA
@@ -437,6 +441,7 @@ from cupy._io.npz import savez_compressed  # NOQA
 from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
 from cupy._io.formatting import array2string  # NOQA
+from cupy._io.formatting import format_float_positional  # NOQA
 
 from cupy._io.text import savetxt  # NOQA
 
@@ -478,6 +483,7 @@ from cupy.linalg._norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._logic.comparison import allclose  # NOQA
 from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import array_equiv  # NOQA
 from cupy._logic.comparison import isclose  # NOQA
 
 from cupy._logic.content import isfinite  # NOQA

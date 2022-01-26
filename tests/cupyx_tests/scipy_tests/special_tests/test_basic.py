@@ -13,7 +13,7 @@ from cupy.testing import (
 )
 from cupy.testing import numpy_cupy_allclose
 
-rtol = {'default': 1e-5, cupy.float64: 1e-12}
+rtol = {'default': 1e-5, cupy.float64: 1e-12, cupy.complex128: 1e-12}
 
 
 @testing.gpu
@@ -39,7 +39,7 @@ class TestLegendreFunctions:
 
     @pytest.mark.parametrize("order", [0, 1, 2, 3, 4])
     @pytest.mark.parametrize("degree", [0, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50])
-    @testing.for_dtypes(["e", "f", "d"])
+    @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
     def test_lpmv(self, xp, scp, dtype, order, degree):
         vals = xp.linspace(-1, 1, 100, dtype=dtype)
@@ -49,20 +49,34 @@ class TestLegendreFunctions:
 @testing.gpu
 @testing.with_requires("scipy")
 class TestBasic:
-    @testing.for_dtypes(["e", "f", "d"])
+
+    @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp")
     def test_gammasgn(self, xp, scp, dtype):
         vals = xp.linspace(-4, 4, 100, dtype=dtype)
         return scp.special.gammasgn(vals)
 
-    @testing.for_dtypes(["e", "f", "d"])
-    @numpy_cupy_allclose(scipy_name="scp", rtol=rtol)
-    def test_log1p_(self, xp, scp, dtype):
-        # only test with values > 0 to avoid NaNs
-        vals = xp.logspace(-10, 10, 10000, dtype=dtype)
-        return scp.special.log1p(vals)
+    @testing.for_dtypes("efdFD")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
+    def test_log1p_linspace(self, xp, scp, dtype):
+        vals = xp.linspace(-100, 100, 1000, dtype=dtype)
+        dtype = xp.dtype(dtype)
+        if dtype.kind == 'c':
+            # broadcast to mix large and small real vs. imaginary
+            vals = vals[::10, xp.newaxis] + 1j * vals[xp.newaxis, ::10]
+        return xp.abs(scp.special.log1p(vals))
 
-    @testing.for_dtypes(["e", "f", "d"])
+    @testing.for_dtypes("efFdD")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
+    def test_log1p_logspace(self, xp, scp, dtype):
+        dtype = xp.dtype(dtype)
+        vals = xp.logspace(-10, 10, 1000, dtype=dtype)
+        if dtype.kind == 'c':
+            # broadcast to mix large and small real vs. imaginary
+            vals = vals[::10, xp.newaxis] + 1j * vals[xp.newaxis, ::10]
+        return xp.abs(scp.special.log1p(vals))
+
+    @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp", rtol=rtol)
     def test_log1p_path2(self, xp, scp, dtype):
         # test values for code path corresponding to range [1/sqrt(2), sqrt(2)]
@@ -78,13 +92,8 @@ class TestBasic:
         assert_array_equal(log1p(-2), nan)
         assert_array_equal(log1p(inf), inf)
 
-    def test_log1p_complex(self):
-        # complex-valued log1p not yet implemented
-        with pytest.raises(TypeError):
-            cupyx.scipy.special.log1p(0 + 0j)
-
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_dtypes('efdFD')
+    @testing.for_dtypes("efdFD")
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy(self, xp, scp, dtype, function):

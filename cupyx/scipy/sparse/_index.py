@@ -564,7 +564,7 @@ class IndexMixin(object):
 
 def _try_is_scipy_spmatrix(index):
     if scipy_available:
-        return isinstance(index, scipy.sparse.base.spmatrix)
+        return isinstance(index, scipy.sparse.spmatrix)
     return False
 
 

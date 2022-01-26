@@ -7,7 +7,11 @@ from cupyx.scipy.special._bessel import y0  # NOQA
 from cupyx.scipy.special._bessel import y1  # NOQA
 
 # Raw statistical functions
+
 from cupyx.scipy.special._statistics import ndtr  # NOQA
+from cupyx.scipy.special._statistics import logit  # NOQA
+from cupyx.scipy.special._statistics import expit  # NOQA
+from cupyx.scipy.special._statistics import log_expit  # NOQA
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
@@ -44,6 +48,6 @@ from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions
-from cupyx.scipy.special._gammainc import log1p  # NOQA
+from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA

@@ -47,9 +47,10 @@ class _JitRawKernel:
     by users.
     """
 
-    def __init__(self, func, mode):
+    def __init__(self, func, mode, device):
         self._func = func
         self._mode = mode
+        self._device = device
         self._cache = {}
         self._cached_codes = {}
 
@@ -150,13 +151,14 @@ class _JitRawKernel:
         return next(iter(codes.values()))
 
 
-def rawkernel(mode='cuda'):
+def rawkernel(*, mode='cuda', device=False):
     """A decorator compiles a Python function into CUDA kernel.
     """
     cupy._util.experimental('cupyx.jit.rawkernel')
 
     def wrapper(func):
-        return functools.update_wrapper(_JitRawKernel(func, mode), func)
+        return functools.update_wrapper(
+            _JitRawKernel(func, mode, device), func)
     return wrapper
 
 
