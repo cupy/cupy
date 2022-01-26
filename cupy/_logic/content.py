@@ -43,10 +43,13 @@ isnan = _create_float_test_ufunc(
 
 def isneginf(x, out=None):
     """Test element-wise for negative infinity, return result as bool array.
+
     Args:
         x (cupy.ndarray): Input array.
+
     Returns:
         cupy.ndarray: Boolean array of same shape as ``x``.
+
     Examples
     --------
     >>> cupy.isneginf(0)
@@ -71,10 +74,13 @@ def isneginf(x, out=None):
 
 def isposinf(x, out=None):
     """Test element-wise for positive infinity, return result as bool array.
+
     Args:
         x (cupy.ndarray): Input array.
+
     Returns:
         cupy.ndarray: Boolean array of same shape as ``x``.
+
     Examples
     --------
     >>> cupy.isposinf(0)
