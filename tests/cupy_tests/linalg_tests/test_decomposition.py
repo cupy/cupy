@@ -110,15 +110,13 @@ class TestCholeskyInvalid(unittest.TestCase):
         self.check_L(A)
 
 
-@pytest.mark.parametrize(
-    'mode', [
-        'r', pytest.param('raw', marks=testing.with_requires('numpy>=1.22')),
-        'complete', 'reduced']
-)
+@testing.parameterize(*testing.product({
+    'mode': ['r', 'raw', 'complete', 'reduced'],
+}))
 class TestQRDecomposition(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
-    def check_mode(self, array, mode, dtype, batched=False):
+    def check_mode(self, array, mode, dtype):
         if runtime.is_hip and driver.get_build_version() < 307:
             if dtype in (numpy.complex64, numpy.complex128):
                 pytest.skip('ungqr unsupported')
@@ -126,8 +124,12 @@ class TestQRDecomposition(unittest.TestCase):
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
-        result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
-        self._check_result(result_cpu, result_gpu)
+        if (
+            mode != 'raw' or
+            numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0rc1'
+        ):
+            result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
+            self._check_result(result_cpu, result_gpu)
 
     def _check_result(self, result_cpu, result_gpu):
         if isinstance(result_cpu, tuple):
@@ -147,25 +149,17 @@ class TestQRDecomposition(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.22')
     @testing.fix_random()
-    @_condition.repeat(3, 10)
     def test_mode_rank3(self):
-        self.check_mode(numpy.random.randn(3, 2, 4),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(4, 3, 3),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(2, 5, 4),
-                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(3, 2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(4, 3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 5, 4), mode=self.mode)
 
     @testing.with_requires('numpy>=1.22')
     @testing.fix_random()
-    @_condition.repeat(3, 10)
     def test_mode_rank4(self):
-        self.check_mode(numpy.random.randn(2, 3, 2, 4),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(2, 4, 3, 3),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(2, 2, 5, 4),
-                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(2, 3, 2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 4, 3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 2, 5, 4), mode=self.mode)
 
     @testing.with_requires('numpy>=1.16')
     def test_empty_array(self):

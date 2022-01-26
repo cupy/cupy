@@ -227,17 +227,18 @@ def _qr_batched(a, mode):
         # support float32, float64, complex64, and complex128
         dtype, out_dtype = _util.linalg_common_type(a)
 
+        k = min(m, n)
         if mode == 'reduced':
-            return (cupy.empty(batch_shape + (m, 0), out_dtype),
-                    cupy.empty(batch_shape + (0, n), out_dtype))
+            return (cupy.empty(batch_shape + (m, k), out_dtype),
+                    cupy.empty(batch_shape + (k, n), out_dtype))
         elif mode == 'complete':
             q = _util.stacked_identity(batch_shape, m, out_dtype)
             return (q, cupy.empty(batch_shape + (m, n), out_dtype))
         elif mode == 'r':
-            return cupy.empty(batch_shape + (0, n), out_dtype)
+            return cupy.empty(batch_shape + (k, n), out_dtype)
         elif mode == 'raw':
             return (cupy.empty(batch_shape + (n, m), out_dtype),
-                    cupy.empty(batch_shape + (0,), out_dtype))
+                    cupy.empty(batch_shape + (k,), out_dtype))
 
     # ...then delegate real computation to cuSOLVER/rocSOLVER
     a = a.reshape(-1, *(a.shape[-2:]))
