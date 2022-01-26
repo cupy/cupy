@@ -228,7 +228,6 @@ def _qr_batched(a, mode):
         # support float32, float64, complex64, and complex128
         dtype, out_dtype = _util.linalg_common_type(a)
 
-        k = min(m, n)
         if mode == 'reduced':
             return (cupy.empty(batch_shape + (m, k), out_dtype),
                     cupy.empty(batch_shape + (k, n), out_dtype))
