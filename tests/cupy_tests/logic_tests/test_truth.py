@@ -144,12 +144,8 @@ class TestUnion1d:
         y = testing.shaped_arange((2, 3, 4), xp, dtype=dtype)
         return xp.union1d(x, y)
 
-    @testing.for_all_dtypes()
-    def test_union1d_3(self, dtype):
-        for xp in (numpy, cupy):
-            x = xp.array([0+1j, 3+2j], dtype=dtype)
-            y = xp.array([0+2j, 4+11j], dtype=dtype)
-            if xp.issubdtype(dtype, xp.complex):
-                error = TypeError
-            with pytest.raises(error):
-                xp.union1d(x, y)
+    @testing.numpy_cupy_array_equal()
+    def test_union1d_3(self, xp):
+        x = xp.zeros((2, 2), dtype=xp.complex_)
+        y = xp.array([[1+1j, 2+3j], [4+1j, 0+7j]])
+        return xp.union1d(x, y)
