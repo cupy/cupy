@@ -7,10 +7,11 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 cpdef enum:
     # cutensorAlgo_t (values > 0 correspond to certain algorithms of GETT)
-    ALGO_GETT = -4     # NOQA, Choose the GETT algorithm
-    ALGO_TGETT = -3    # NOQA, Transpose (A or B) + GETT
-    ALGO_TTGT = -2     # NOQA, Transpose-Transpose-GEMM-Transpose (requires additional memory)
-    ALGO_DEFAULT = -1  # NOQA, Lets the internal heuristic choose
+    ALGO_DEFAULT_PATIENT = -6  # NOQA, Uses the more accurate but also more time-consuming performance model
+    ALGO_GETT = -4             # NOQA, Choose the GETT algorithm
+    ALGO_TGETT = -3            # NOQA, Transpose (A or B) + GETT
+    ALGO_TTGT = -2             # NOQA, Transpose-Transpose-GEMM-Transpose (requires additional memory)
+    ALGO_DEFAULT = -1          # NOQA, Lets the internal heuristic choose
 
     # cutensorWorksizePreference_t
     WORKSPACE_MIN = 1          # NOQA, At least one algorithm will be available

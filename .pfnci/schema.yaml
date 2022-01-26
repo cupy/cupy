@@ -121,6 +121,16 @@ cutensor:
       "11.3":
       "11.4":
       "11.5":
+  "1.4":
+    spec: "1.4.*"
+    cuda:
+      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
+      "11.0":
+      "11.1":
+      "11.2":
+      "11.3":
+      "11.4":
+      "11.5":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
