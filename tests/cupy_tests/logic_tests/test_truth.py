@@ -1,7 +1,5 @@
 import numpy
-import pytest
 
-import cupy
 from cupy import testing
 
 
@@ -127,7 +125,6 @@ class TestIn1DIsIn:
         return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
 
 
-@testing.gpu
 class TestUnion1d:
 
     @testing.for_all_dtypes()
