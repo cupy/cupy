@@ -371,7 +371,7 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
             HIP_nccl,
             HIP_random,
             COMMON_dlpack,
-        ] + [HIP_thrust] if context.enable_thrust else []
+        ] + ([HIP_thrust] if context.enable_thrust else [])
 
     return [
         CUDA_cuda,
@@ -385,4 +385,4 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         CUDA_random,
         CUDA_cusparselt,
         COMMON_dlpack,
-    ] + [CUDA_thrust] if context.enable_thrust else []
+    ] + ([CUDA_thrust] if context.enable_thrust else [])
