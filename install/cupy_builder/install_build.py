@@ -231,7 +231,7 @@ def _match_output_lines(output_lines, regexs):
     return None
 
 
-def get_compiler_base_options(compiler_path) -> List[str]:
+def get_compiler_base_options(compiler_path: List[str]) -> List[str]:
     """Returns base options for nvcc compiler.
 
     """
@@ -321,7 +321,7 @@ def check_cuda_version(compiler, settings):
     return True
 
 
-def get_cuda_version(formatted=False) -> int:
+def get_cuda_version(formatted: bool = False) -> int:
     """Return CUDA Toolkit version cached in check_cuda_version()."""
     global _cuda_version
     if _cuda_version is None:
@@ -359,7 +359,7 @@ def check_hip_version(compiler, settings):
     return True
 
 
-def get_hip_version(formatted=False) -> int:
+def get_hip_version(formatted: bool = False) -> int:
     """Return ROCm version cached in check_hip_version()."""
     global _hip_version
     if _hip_version is None:
@@ -403,7 +403,7 @@ def check_compute_capabilities(compiler, settings):
     return True
 
 
-def get_compute_capabilities(formatted=False) -> Set[int]:
+def get_compute_capabilities(formatted: bool = False) -> Set[int]:
     return _compute_capabilities
 
 
