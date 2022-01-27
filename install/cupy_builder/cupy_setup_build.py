@@ -6,7 +6,6 @@ from distutils import sysconfig
 import os
 import shutil
 import sys
-from typing import List
 
 import pkg_resources
 import setuptools
