@@ -898,7 +898,7 @@ class TestCscMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @testing.xfail(
+    @pytest.mark.xfail(
         numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1',
         reason='See scipy/15210')
     def test_rmul_unsupported(self):
