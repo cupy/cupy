@@ -91,16 +91,14 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):  # type: ignore[
         print('Cythonizing...')
         cythonize(self.extensions, cupy_builder.get_context())
 
-        # Rewrite source filenames of each extension from "*.pyx" to "*.cpp".
+        # Change an extension in each source filenames from "*.pyx" to "*.cpp".
         # c.f. `Cython.Distutils.old_build_ext`
         for ext in self.extensions:
             sources_pyx, sources_others = filter_files_by_extension(
                 ext.sources, '.pyx')
-            sources_cpp = []
-            for src in sources_pyx:
-                sources_cpp.append('{}.cpp'.format(os.path.splitext(src)[0]))
+            sources_cpp = ['{}.cpp'.format(os.path.splitext(src)[0])
+                           for src in sources_pyx]
             ext.sources = sources_cpp + sources_others
-
         super().build_extensions()
 
     def build_extension(self, ext: setuptools.Extension) -> None:
