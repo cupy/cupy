@@ -925,10 +925,12 @@ class TestCsrMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @pytest.mark.xfail(
-        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1',
-        reason='See scipy/15210')
     def test_rmul_unsupported(self):
+        if (
+            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
+            self.make_method not in ['_make_empty', '_make_shape']
+        ):
+            pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
             if m.nnz == 0:
