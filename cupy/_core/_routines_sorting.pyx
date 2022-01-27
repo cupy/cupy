@@ -42,9 +42,17 @@ cdef _ndarray_sort(ndarray self, int axis):
     if ndim == 1:
         thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
     else:
-        keys_array = ndarray(data.shape, dtype=numpy.intp)
-        thrust.sort(
-            self.dtype, data.data.ptr, keys_array.data.ptr, data.shape)
+        max_size = max(min(1 << 22, data.size) // data.shape[-1], 1)
+        keys_array = ndarray((max_size * data.shape[-1],), dtype=numpy.intp)
+        stop = data.size // data.shape[-1]
+        for offset in range(0, stop, max_size):
+            width = min(max_size, stop - offset)
+            thrust.sort(
+                self.dtype,
+                data.data.ptr + offset * data.shape[-1] * data.itemsize,
+                keys_array.data.ptr,
+                (width, data.shape[-1]),
+            )
 
     if axis == ndim - 1:
         pass
