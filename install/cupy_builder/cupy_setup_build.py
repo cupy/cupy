@@ -485,17 +485,6 @@ def cythonize(extensions, ctx: Context):
         compiler_directives=directives, **cythonize_options)
 
 
-def check_extensions(extensions: List[setuptools.Extension]) -> None:
-    for x in extensions:
-        for f in x.sources:
-            if not os.path.isfile(f):
-                raise RuntimeError('''\
-Missing file: {}
-Please install Cython.
-See https://docs.cupy.dev/en/stable/install.html for details.
-'''.format(f))
-
-
 def get_ext_modules(use_cython: bool, ctx: Context):
     # We need to call get_config_vars to initialize _config_vars in distutils
     # see #1849
