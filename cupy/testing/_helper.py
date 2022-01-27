@@ -57,7 +57,7 @@ def installed(*specifiers):
     for spec in specifiers:
         try:
             pkg_resources.require(spec)
-        except pkg_resources.VersionConflict:
+        except pkg_resources.ResolutionError:
             return False
     return True
 
