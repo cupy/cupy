@@ -26,14 +26,14 @@ def compile_device_code(
     """
     sources_cu = []
     sources_cpp = []
-    for src in ext.sources:  # type: ignore
+    for src in ext.sources:  # type: ignore[attr-defined]
         if os.path.splitext(src)[1] == '.cu':
             sources_cu.append(src)
         else:
             sources_cpp.append(src)
     if len(sources_cu) == 0:
         # No device code used in this extension.
-        return ext.sources, []  # type: ignore
+        return ext.sources, []  # type: ignore[attr-defined]
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
@@ -42,15 +42,15 @@ def compile_device_code(
 
     objects = []
     for src in sources_cu:
-        print(f'{ext.name}: Device code: {src}')  # type: ignore
+        print(f'{ext.name}: Device code: {src}')  # type: ignore[attr-defined]
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
         # TODO(kmaehashi): embed CUDA version in path
         obj = f'build/temp.device_objects/{src}.{obj_ext}'
         if os.path.exists(obj) and (_get_timestamp(src) < _get_timestamp(obj)):
-            print(f'{ext.name}: Reusing cached object file: {obj}')  # type: ignore  # NOQA
+            print(f'{ext.name}: Reusing cached object file: {obj}')  # type: ignore[attr-defined] # NOQA
         else:
             os.makedirs(os.path.dirname(obj), exist_ok=True)
-            print(f'{ext.name}: Building: {obj}')  # type: ignore
+            print(f'{ext.name}: Building: {obj}')  # type: ignore[attr-defined]
             compiler.compile(obj, src, ext)
         objects.append(obj)
 
@@ -96,8 +96,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):  # type: ignore[
 
         # Remove device code from list of sources, and instead add compiled
         # object files to link.
-        ext.sources = sources_cpp
-        ext.extra_objects += extra_objects
+        ext.sources = sources_cpp  # type: ignore[attr-defined]
+        ext.extra_objects += extra_objects  # type: ignore[attr-defined]
 
         # Let setuptools do the rest of the build process, i.e., compile
         # "*.cpp" files and link object files generated from "*.cu".

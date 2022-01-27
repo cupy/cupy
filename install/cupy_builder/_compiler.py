@@ -7,6 +7,7 @@ import subprocess
 from typing import Optional, List
 
 import setuptools
+import setuptools.msvc
 from setuptools import Extension
 
 from cupy_builder._context import Context
