@@ -75,7 +75,8 @@ def isneginf(x, out=None):
         raise TypeError(f'This operation is not supported for {dtype} values '
                         'because it would be ambiguous.') from e
 
-    return cupy.logical_and(is_inf, signbit, out=None)
+    # TODO(khushi-411): Use `out` instead of `out=out` (see #6393)
+    return cupy.logical_and(is_inf, signbit, out=out)
 
 
 def isposinf(x, out=None):
@@ -112,4 +113,5 @@ def isposinf(x, out=None):
         raise TypeError(f'This operation is not supported for {dtype} values '
                         'because it would be ambiguous.') from e
 
-    return cupy.logical_and(is_inf, signbit, out=None)
+    # TODO(khushi-411): Use `out` instead of `out=out` (see #6393)
+    return cupy.logical_and(is_inf, signbit, out=out)
