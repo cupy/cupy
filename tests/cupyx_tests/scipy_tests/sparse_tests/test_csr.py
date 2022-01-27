@@ -925,7 +925,10 @@ class TestCsrMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @testing.with_requires('scipy!=1.8.0rc1')  # scipy/15210
+    @testing.xfail(
+        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1',
+        reason='See scipy/15210')
+    @testing.with_requires('scipy>=1.8.0rc1')
     def test_rmul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
@@ -1243,7 +1246,6 @@ class TestCsrMatrixScipyComparison:
 @testing.with_requires('scipy')
 class TestCsrMatrixPowScipyComparison:
 
-    @testing.with_requires('scipy!=1.8.0rc1')  # scipy/15224
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
