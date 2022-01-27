@@ -99,6 +99,9 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):  # type: ignore[
             sources_cpp = ['{}.cpp'.format(os.path.splitext(src)[0])
                            for src in sources_pyx]
             ext.sources = sources_cpp + sources_others
+            for src in ext.sources:
+                if not os.path.isfile(src):
+                    raise RuntimeError(f'Fatal error: missing file: {src}')
         super().build_extensions()
 
     def build_extension(self, ext: setuptools.Extension) -> None:
