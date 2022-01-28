@@ -1139,7 +1139,7 @@ class TestLOBPCG:
         output = saved_stdout.getvalue().strip()
         return output
 
-    @testing.with_requires('scipy>=1.8.0rc1')
+    @testing.with_requires('scipy<1.8.0')
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs
            and is identical to scipy's output format.
