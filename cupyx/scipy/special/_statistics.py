@@ -99,7 +99,7 @@ log_expit = _core.create_ufunc(
 
 ndtr = _core.create_ufunc(
     'cupyx_scipy_special_ndtr',
-    (('f->f', 'normcdff(in0)'), 'd->d'),
+    (('f->f', 'out0 = normcdff(in0)'), 'd->d'),
     'out0 = normcdf(in0)',
     doc='''Cumulative distribution function of normal distribution.
 
@@ -110,7 +110,7 @@ ndtr = _core.create_ufunc(
 
 ndtri = _core.create_ufunc(
     'cupyx_scipy_special_ndtri',
-    (('f->f', 'normcdfinvf(in0)'), 'd->d'),
+    (('f->f', 'out0 = normcdfinvf(in0)'), 'd->d'),
     'out0 = normcdfinv(in0)',
     doc='''Inverse of the cumulative distribution function of the standard
            normal distribution.

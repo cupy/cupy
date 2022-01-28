@@ -11,13 +11,13 @@ import cupyx.scipy.special
 class _TestBase:
 
     def test_ndtr(self):
-        self.check_unary_linspace0_1('ndtri')
+        self.check_unary_linspace0_1('ndtr')
 
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
     def test_logit(self):
-        self.check_unary_linspace0_1('ndtri')
+        self.check_unary_lower_precision('logit')
 
     def test_expit(self):
         self.check_unary_lower_precision('expit')
@@ -58,9 +58,9 @@ class TestSpecial(_TestBase):
         return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
-        p = xp.linspace(0, 1, 1000, dtype)
+        p = xp.linspace(0, 1, 1000, dtype=dtype)
         return self._check_unary(p, name, scp)
 
     def test_logit_nonfinite(self):
