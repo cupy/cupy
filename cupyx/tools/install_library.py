@@ -266,20 +266,21 @@ The current platform ({}) is not supported.'''.format(target_platform))
         print('Extracting...')
         outdir = os.path.join(tmpdir, 'extract')
         _unpack_archive(f.name, outdir)
+
+        subdir = os.listdir(outdir)
+        assert len(subdir) == 1
+        dir_name = subdir[0]
+
         print('Installing...')
         if library == 'cudnn':
-            shutil.move(os.path.join(outdir, 'cuda'), destination)
+            libdirs = ['bin', 'lib'] if sys.platform == 'win32' else ['lib']
+            for item in libdirs + ['include', 'LICENSE']:
+                shutil.move(
+                    os.path.join(outdir, dir_name, item),
+                    os.path.join(destination, item))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
-            if target_platform == 'Linux':
-                ext = '.tar.xz'
-            elif target_platform == 'Windows':
-                ext = '.zip'
-            else:
-                assert False
-            assert url.endswith(ext)
-            dir_name = os.path.basename(url)[:-len(ext)]
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
@@ -290,9 +291,7 @@ The current platform ({}) is not supported.'''.format(target_platform))
             shutil.move(
                 os.path.join(outdir, dir_name, license), destination)
         elif library == 'nccl':
-            subdir = os.listdir(outdir)  # ['nccl_2.8.4-1+cuda11.2_x86_64']
-            assert len(subdir) == 1
-            shutil.move(os.path.join(outdir, subdir[0]), destination)
+            shutil.move(os.path.join(outdir, dir_name), destination)
         else:
             assert False
         print('Cleaning up...')

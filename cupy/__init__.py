@@ -262,7 +262,9 @@ from cupy._manipulation.join import dstack  # NOQA
 from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
+from cupy._manipulation.join import vstack as row_stack  # NOQA
 
+from cupy._manipulation.kind import asarray_chkfinite  # NOQA
 from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
@@ -481,6 +483,7 @@ from cupy.linalg._norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._logic.comparison import allclose  # NOQA
 from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import array_equiv  # NOQA
 from cupy._logic.comparison import isclose  # NOQA
 
 from cupy._logic.content import isfinite  # NOQA
@@ -498,6 +501,7 @@ from cupy._logic.type_test import isrealobj  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
+from cupy._logic.truth import union1d  # NOQA
 
 
 def isscalar(element):

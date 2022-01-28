@@ -111,39 +111,6 @@ _unity_c_partial = (
     + """
 // part of cephes/unity.c
 
-__constant__ double LP[] = {
-    4.5270000862445199635215E-5,
-    4.9854102823193375972212E-1,
-    6.5787325942061044846969E0,
-    2.9911919328553073277375E1,
-    6.0949667980987787057556E1,
-    5.7112963590585538103336E1,
-    2.0039553499201281259648E1,
-};
-
-__constant__ double LQ[] = {
-    /* 1.0000000000000000000000E0, */
-    1.5062909083469192043167E1,
-    8.3047565967967209469434E1,
-    2.2176239823732856465394E2,
-    3.0909872225312059774938E2,
-    2.1642788614495947685003E2,
-    6.0118660497603843919306E1,
-};
-
-__device__ double log1p(double x)
-{
-    double z;
-
-    z = 1.0 + x;
-    if ((z < NPY_SQRT1_2) || (z > NPY_SQRT2))
-        return (log(z));
-    z = x * x;
-    z = -0.5 * z + x * (z * polevl<6>(x, LP) / p1evl<6>(x, LQ));
-    return (x + z);
-}
-
-
 /* log(1 + x) - x */
 __device__ double log1pmx(double x)
 {
@@ -1124,25 +1091,6 @@ __device__ double igami(double a, double p)
 }
 
 """
-)
-
-
-log1p = _core.create_ufunc(
-    "cupyx_scipy_log1p",
-    ("f->f", "d->d"),
-    "out0 = out0_type(log1p(in0));",
-    preamble=_misc_preamble + _unity_c_partial,
-    doc="""Elementwise function for scipy.special.log1p
-
-    Calculates log(1 + x) for use when `x` is near zero.
-
-    Notes
-    -----
-    This implementation currently does not support complex-valued `x`.
-
-    .. seealso:: :meth:`scipy.special.log1p`
-
-    """,
 )
 
 

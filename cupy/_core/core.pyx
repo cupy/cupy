@@ -1395,6 +1395,12 @@ cdef class ndarray:
             'Implicit conversion to a NumPy array is not allowed. '
             'Please use `.get()` to construct a NumPy array explicitly.')
 
+    @classmethod
+    def __class_getitem__(cls, tuple item):
+        from cupy.typing._generic_alias import GenericAlias
+        item1, item2 = item
+        return GenericAlias(cupy.ndarray, (item1, item2))
+
     # TODO(okuta): Implement __array_wrap__
 
     # Container customization:
@@ -1545,6 +1551,7 @@ cdef class ndarray:
         numpy array.
         """
         import cupy  # top-level ufuncs
+        import cupyx.scipy.special  # special ufuncs
         inout = inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
@@ -1559,7 +1566,9 @@ cdef class ndarray:
         if method == '__call__':
             name = ufunc.__name__
             try:
-                cp_ufunc = getattr(cupy, name)
+                cp_ufunc = getattr(cupy, name, None) or getattr(
+                    cupyx.scipy.special, name
+                )
             except AttributeError:
                 return NotImplemented
             for x in inout:

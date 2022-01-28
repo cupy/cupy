@@ -25,6 +25,8 @@ Environment variables:
 - CACHE_DIR: Path to the local directory to store cache files.
 - CACHE_GCS_DIR: Path to the GCS directory to store a cache archive.
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
+- DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
+                      image.
 "
 
 set -eu
@@ -46,8 +48,13 @@ main() {
   repo_root="$(cd "$(dirname "${BASH_SOURCE}")/../.."; pwd)"
   base_branch="$(cat "${repo_root}/.pfnci/BRANCH")"
   docker_image="${DOCKER_IMAGE:-asia.gcr.io/pfn-public-ci/cupy-ci}:${TARGET}-${base_branch}"
+  docker_cache_from="${docker_image}"
   cache_archive="linux-${TARGET}-${base_branch}.tar.gz"
   cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci/cache}"
+
+  if [[ "${DOCKER_IMAGE_CACHE:-1}" = "0" ]]; then
+    docker_cache_from=""
+  fi
 
   echo "
     =====================================================================
@@ -60,6 +67,7 @@ main() {
     Repository Root     : ${repo_root}
     Base Branch         : ${base_branch}
     Docker Image        : ${docker_image}
+    Docker Image Cache  : ${docker_cache_from}
     Remote Cache        : ${cache_gcs_dir}/${cache_archive}
     Local Cache         : ${CACHE_DIR:-(not set)}
     =====================================================================
@@ -71,7 +79,7 @@ main() {
       tests_dir="${repo_root}/.pfnci/linux/tests"
       DOCKER_BUILDKIT=1 docker build \
           -t "${docker_image}" \
-          --cache-from "${docker_image}" \
+          --cache-from "${docker_cache_from}" \
           --build-arg BUILDKIT_INLINE_CACHE=1 \
           -f "${tests_dir}/${TARGET}.Dockerfile" \
           "${tests_dir}"

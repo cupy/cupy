@@ -13,6 +13,7 @@ Truth value testing
 
    all
    any
+   union1d
 
 
 Array contents
@@ -61,6 +62,7 @@ Comparison
    allclose
    isclose
    array_equal
+   array_equiv
    greater
    greater_equal
    less
