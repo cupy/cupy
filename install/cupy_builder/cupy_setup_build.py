@@ -6,7 +6,6 @@ from distutils import sysconfig
 import os
 import shutil
 import sys
-from typing import List
 
 import pkg_resources
 import setuptools
@@ -483,17 +482,6 @@ def cythonize(extensions, ctx: Context):
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
-
-
-def check_extensions(extensions: List[setuptools.Extension]) -> None:
-    for x in extensions:
-        for f in x.sources:
-            if not os.path.isfile(f):
-                raise RuntimeError('''\
-Missing file: {}
-Please install Cython.
-See https://docs.cupy.dev/en/stable/install.html for details.
-'''.format(f))
 
 
 def get_ext_modules(use_cython: bool, ctx: Context):
