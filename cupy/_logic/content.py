@@ -53,7 +53,7 @@ def isneginf(x, out=None):
         it should have a shape that input broadcasts to.
         By default, None, a freshly- allocated boolean array,
         is returned.
-    
+
     Returns
     -------
     y : cupy.ndarray
