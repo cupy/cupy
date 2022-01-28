@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import contextlib
 import distutils.util
 import os
@@ -6,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import List, Set
 
 import cupy_builder
 import cupy_builder.install_utils as utils
@@ -82,7 +85,7 @@ def get_cuda_path():
     return _cuda_path
 
 
-def get_nvcc_path():
+def get_nvcc_path() -> List[str]:
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
         return distutils.util.split_quoted(nvcc)
@@ -103,7 +106,7 @@ def get_nvcc_path():
         return None
 
 
-def get_hipcc_path():
+def get_hipcc_path() -> List[str]:
     hipcc = os.environ.get('HIPCC', None)
     if hipcc:
         return distutils.util.split_quoted(hipcc)
@@ -228,7 +231,7 @@ def _match_output_lines(output_lines, regexs):
     return None
 
 
-def get_compiler_base_options(compiler_path):
+def get_compiler_base_options(compiler_path: List[str]) -> List[str]:
     """Returns base options for nvcc compiler.
 
     """
@@ -318,7 +321,7 @@ def check_cuda_version(compiler, settings):
     return True
 
 
-def get_cuda_version(formatted=False):
+def get_cuda_version(formatted: bool = False) -> int:
     """Return CUDA Toolkit version cached in check_cuda_version()."""
     global _cuda_version
     if _cuda_version is None:
@@ -356,7 +359,7 @@ def check_hip_version(compiler, settings):
     return True
 
 
-def get_hip_version(formatted=False):
+def get_hip_version(formatted: bool = False) -> int:
     """Return ROCm version cached in check_hip_version()."""
     global _hip_version
     if _hip_version is None:
@@ -400,7 +403,7 @@ def check_compute_capabilities(compiler, settings):
     return True
 
 
-def get_compute_capabilities(formatted=False):
+def get_compute_capabilities(formatted: bool = False) -> Set[int]:
     return _compute_capabilities
 
 
