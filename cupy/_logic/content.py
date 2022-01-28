@@ -46,9 +46,14 @@ def isneginf(x, out=None):
 
     Parameters
     ----------
-    x : cupy.ndarray)
+    x : cupy.ndarray
         Input array.
-
+    out : cupy.ndarray, optional
+        A location into which the result is stored. If provided,
+        it should have a shape that input broadcasts to.
+        By default, None, a freshly- allocated boolean array,
+        is returned.
+    
     Returns
     -------
     y : cupy.ndarray
@@ -57,9 +62,11 @@ def isneginf(x, out=None):
     Examples
     --------
     >>> cupy.isneginf(0)
-    False
-    >>> cupy.isneginf([4, -4, cupy.inf, -cupy.inf, cupy.nan])
-    [False, False, False, True, False]
+    array(False)
+    >>> cupy.isneginf(-cupy.inf)
+    array(True)
+    >>> cupy.isneginf(cupy.array([-cupy.inf, -4, cupy.nan, 0, 4, cupy.inf]))
+    array([ True, False, False, False, False, False])
 
     See Also
     --------
@@ -86,6 +93,11 @@ def isposinf(x, out=None):
     ----------
     x : cupy.ndarray
         Input array.
+    out : cupy.ndarray
+        A location into which the result is stored. If provided,
+        it should have a shape that input broadcasts to.
+        By default, None, a freshly- allocated boolean array,
+        is returned.
 
     Returns
     -------
@@ -95,9 +107,11 @@ def isposinf(x, out=None):
     Examples
     --------
     >>> cupy.isposinf(0)
-    False
-    >>> cupy.isposinf([4, -4, cupy.inf, -cupy.inf, cupy.nan])
-    [False, False, True, False, False]
+    array(False)
+    >>> cupy.isposinf(cupy.inf)
+    array(True)
+    >>> cupy.isposinf(cupy.array([-cupy.inf, -4, cupy.nan, 0, 4, cupy.inf]))
+    array([False, False, False, False, False,  True])
 
     See Also
     --------
