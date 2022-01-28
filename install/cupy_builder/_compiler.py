@@ -4,16 +4,17 @@ import os.path
 import platform
 import sys
 import subprocess
-from typing import List
+from typing import Optional, List
 
 import setuptools
+import setuptools.msvc
 from setuptools import Extension
 
 from cupy_builder._context import Context
 import cupy_builder.install_build as build
 
 
-def _nvcc_gencode_options(cuda_version):
+def _nvcc_gencode_options(cuda_version: int) -> List[str]:
     """Returns NVCC GPU code generation options."""
 
     if sys.argv == ['setup.py', 'develop']:
@@ -122,7 +123,7 @@ class DeviceCompilerBase:
     def __init__(self, ctx: Context):
         self._context = ctx
 
-    def _get_preprocess_options(self, ext: Extension):
+    def _get_preprocess_options(self, ext: Extension) -> List[str]:
         # https://setuptools.pypa.io/en/latest/deprecated/distutils/apiref.html#distutils.core.Extension
         # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/command/build_ext.py#L524-L526
         incdirs = ext.include_dirs[:]  # type: ignore
@@ -131,22 +132,20 @@ class DeviceCompilerBase:
             macros.append((undef,))
         return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
 
-    def spawn(self, commands: List[str]):
+    def spawn(self, commands: List[str]) -> None:
         print('Command:', commands)
         subprocess.check_call(commands)
 
 
 class DeviceCompilerUnix(DeviceCompilerBase):
 
-    def compile(self, obj: str, src: str, ext: Extension):
+    def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
-            return self._compile_unix_hipcc(
-                obj, src, ext)
+            self._compile_unix_hipcc(obj, src, ext)
         else:
-            return self._compile_unix_nvcc(
-                obj, src, ext)
+            self._compile_unix_nvcc(obj, src, ext)
 
-    def _compile_unix_nvcc(self, obj: str, src: str, ext: Extension):
+    def _compile_unix_nvcc(self, obj: str, src: str, ext: Extension) -> None:
         cc_args = self._get_preprocess_options(ext) + ['-c']
 
         # For CUDA C source files, compile them with NVCC.
@@ -168,7 +167,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
 
-    def _compile_unix_hipcc(self, obj: str, src: str, ext: Extension):
+    def _compile_unix_hipcc(self, obj: str, src: str, ext: Extension) -> None:
         cc_args = self._get_preprocess_options(ext) + ['-c']
 
         # For CUDA C source files, compile them with HIPCC.
@@ -189,7 +188,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
 
 class DeviceCompilerWin32(DeviceCompilerBase):
 
-    def compile(self, obj: str, src: str, ext: Extension):
+    def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
             raise RuntimeError('ROCm is not supported on Windows')
 
@@ -216,8 +215,9 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
-    def _find_host_compiler_path(self):
-        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+    def _find_host_compiler_path(self) -> Optional[str]:
+        vctools: List[str] = setuptools.msvc.EnvironmentInfo(
+            platform.machine()).VCTools
         for path in vctools:
             cl_exe = os.path.join(path, 'cl.exe')
             if os.path.exists(cl_exe):

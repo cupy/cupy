@@ -6,6 +6,7 @@ from distutils import sysconfig
 import os
 import shutil
 import sys
+from typing import List
 
 import pkg_resources
 import setuptools
@@ -484,7 +485,7 @@ def cythonize(extensions, ctx: Context):
         compiler_directives=directives, **cythonize_options)
 
 
-def check_extensions(extensions):
+def check_extensions(extensions: List[setuptools.Extension]) -> None:
     for x in extensions:
         for f in x.sources:
             if not os.path.isfile(f):
