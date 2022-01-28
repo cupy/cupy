@@ -26,5 +26,5 @@ else:
 
 
 _ScalarType = TypeVar("ScalarType", bound=numpy.generic, covariant=True)
-_DType = GenericAlias(numpy.dtype, (_ScalarType))
+_DType = GenericAlias(numpy.dtype, (_ScalarType,))
 NDArray = GenericAlias(cupy.ndarray, (Any, _DType))
