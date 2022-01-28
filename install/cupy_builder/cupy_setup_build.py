@@ -17,9 +17,6 @@ from cupy_builder.install_build import PLATFORM_LINUX
 from cupy_builder.install_build import PLATFORM_WIN32
 
 
-use_hip = build.use_hip
-
-
 def ensure_module_file(file):
     if isinstance(file, tuple):
         return file
@@ -89,7 +86,7 @@ def canonicalize_hip_libraries(hip_version, libraries):
     libraries.extend(new_libraries)
 
 
-def preconfigure_modules(MODULES, compiler, settings):
+def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
     """Returns a list of modules buildable in given environment and settings.
 
     For each module in MODULES list, this function checks if the module
@@ -151,7 +148,7 @@ def preconfigure_modules(MODULES, compiler, settings):
         # hipfft as well as rocfft. We configure the lists of include
         # directories and libraries to link here depending on ROCm version
         # before the configuration process following.
-        if use_hip and module['name'] == 'cuda':
+        if ctx.use_hip and module['name'] == 'cuda':
             if module['check_method'](compiler, settings):
                 hip_version = module['version_method']()
                 if hip_version >= 401:
@@ -191,7 +188,7 @@ def preconfigure_modules(MODULES, compiler, settings):
         elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None)):
             installed = True
-            cmd = 'nvcc' if not use_hip else 'hipcc'
+            cmd = 'nvcc' if not ctx.use_hip else 'hipcc'
             errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
         else:
@@ -215,7 +212,7 @@ def preconfigure_modules(MODULES, compiler, settings):
                 break
 
     # Get a list of the CC of the devices connected to this node
-    if not use_hip:
+    if not ctx.use_hip:
         build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
@@ -303,7 +300,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
         available_modules = [m['name'] for m in MODULES]
     else:
         available_modules, settings = preconfigure_modules(
-            MODULES, compiler, settings)
+            ctx, MODULES, compiler, settings)
         required_modules = get_required_modules(MODULES)
         if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
@@ -472,7 +469,7 @@ def cythonize(extensions, ctx: Context):
     if ctx.use_stub:  # on RTD
         compile_time_env['CUPY_CUDA_VERSION'] = 0
         compile_time_env['CUPY_HIP_VERSION'] = 0
-    elif use_hip:  # on ROCm/HIP
+    elif ctx.use_hip:  # on ROCm/HIP
         compile_time_env['CUPY_CUDA_VERSION'] = 0
         compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
     else:  # on CUDA
