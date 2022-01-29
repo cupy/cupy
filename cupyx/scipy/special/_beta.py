@@ -417,7 +417,7 @@ beta = _core.create_ufunc(
 
     See Also
     --------
-    :meth:`scipy.special.beta`
+    :func:`scipy.special.beta`
 
     """,
 )
@@ -454,7 +454,7 @@ betaln = _core.create_ufunc(
 
     See Also
     --------
-    :meth:`scipy.special.betaln`
+    :func:`scipy.special.betaln`
 
     """,
 )
@@ -814,7 +814,7 @@ betainc = _core.create_ufunc(
 
     See Also
     --------
-    :meth:`scipy.special.betainc`
+    :func:`scipy.special.betainc`
 
     """,
 )
@@ -1094,7 +1094,7 @@ betaincinv = _core.create_ufunc(
 
     See Also
     --------
-    :meth:`scipy.special.betaincinv`
+    :func:`scipy.special.betaincinv`
 
     """,
 )
