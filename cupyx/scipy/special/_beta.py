@@ -94,8 +94,6 @@ __device__ static double lgam_sgn(double x, int *sign)
         w = lgam_sgn(q, sign);
         p = floor(q);
         if (p == q) {
-            //lgsing:
-            //  sf_error("lgam", SF_ERROR_SINGULAR, NULL);
             return CUDART_INF;
         }
         i = p;
@@ -110,7 +108,6 @@ __device__ static double lgam_sgn(double x, int *sign)
         }
         z = q * sin(NPY_PI * z);
         if (z == 0.0){
-            // goto lgsing;
             return CUDART_INF;
         }
         /*     z = log(NPY_PI) - log( z ) - w; */
@@ -129,7 +126,6 @@ __device__ static double lgam_sgn(double x, int *sign)
         }
         while (u < 2.0) {
             if (u == 0.0) {
-                // goto lgsing;
                 return CUDART_INF;
             }
             z /= u;
@@ -216,7 +212,6 @@ __device__ static double beta_negint(int a, double b)
         return sgn * beta(1 - a - b, b);
     }
     else {
-        // sf_error("lbeta", SF_ERROR_OVERFLOW, NULL);
         return CUDART_INF;
     }
 }
@@ -232,7 +227,6 @@ __device__ double beta(double a, double b)
                 return beta_negint((int)a, b);
             }
             else {
-                //goto overflow;
                 return CUDART_INF;
             }
         }
@@ -244,7 +238,6 @@ __device__ double beta(double a, double b)
                 return beta_negint((int)b, a);
             }
             else {
-                // goto overflow;
                 return CUDART_INF;
             }
         }
@@ -270,7 +263,6 @@ __device__ double beta(double a, double b)
         y = lgam_sgn(a, &sgngam) + y;
         sign *= sgngam;
         if (y > MAXLOG) {
-            // goto overflow;
             return sign * CUDART_INF;
         }
         return sign * exp(y);
@@ -280,7 +272,6 @@ __device__ double beta(double a, double b)
     a = Gamma(a);
     b = Gamma(b);
     if (y == 0.0) {
-        // goto overflow
         return sign * CUDART_INF;
     }
 
@@ -294,10 +285,6 @@ __device__ double beta(double a, double b)
     }
 
     return (y);
-
-// overflow:
-//     sf_error("beta", SF_ERROR_OVERFLOW, NULL);
-//     return (sign * CUDART_INF);
 }
 """
 
@@ -319,7 +306,6 @@ __device__ static double lbeta_negint(int a, double b)
         return r;
     }
     else {
-        // sf_error("lbeta", SF_ERROR_OVERFLOW, NULL);
         return CUDART_INF;
     }
 }
@@ -339,7 +325,6 @@ __device__ double lbeta(double a, double b)
                 return lbeta_negint((int)a, b);
             }
             else {
-                // goto over;
                 return CUDART_INF;
             }
         }
@@ -351,7 +336,6 @@ __device__ double lbeta(double a, double b)
                 return lbeta_negint((int)b, a);
             }
             else {
-                // goto over;
                 return CUDART_INF;
             }
         }
@@ -383,8 +367,6 @@ __device__ double lbeta(double a, double b)
     a = Gamma(a);
     b = Gamma(b);
     if (y == 0.0) {
-        // over:
-        // sf_error("lbeta", SF_ERROR_OVERFLOW, NULL);
         return (sign * CUDART_INF);
     }
 
@@ -490,7 +472,6 @@ __device__ double incbet(double aa, double bb, double xx)
 
     if (aa <= 0.0 || bb <= 0.0)
     {
-        // sf_error("incbet", SF_ERROR_DOMAIN, NULL);
         return CUDART_NAN;
     }
 
@@ -501,7 +482,6 @@ __device__ double incbet(double aa, double bb, double xx)
         if (xx == 1.0) {
             return 1.0;
         }
-        // sf_error("incbet", SF_ERROR_DOMAIN, NULL);
         return CUDART_NAN;
     }
 
@@ -985,14 +965,13 @@ ihalve:
             dir -= 1;
         }
     }
-    // sf_error("incbi", SF_ERROR_LOSS, NULL);
+
     if (x0 >= 1.0) {
         x = 1.0 - MACHEP;
         goto done;
     }
     if (x <= 0.0) {
 under:
-        // sf_error("incbi", SF_ERROR_UNDERFLOW, NULL);
         x = 0.0;
         goto done;
     }
