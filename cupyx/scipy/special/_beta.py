@@ -415,7 +415,9 @@ beta = _core.create_ufunc(
     scalar or ndarray
         Value of the beta function
 
-    .. seealso:: :meth:`scipy.special.beta`
+    See Also
+    --------
+    :meth:`scipy.special.beta`
 
     """,
 )
@@ -450,7 +452,9 @@ betaln = _core.create_ufunc(
     scalar or ndarray
         Value of the natural log of the magnitude of beta.
 
-    .. seealso:: :meth:`scipy.special.betaln`
+    See Also
+    --------
+    :meth:`scipy.special.betaln`
 
     """,
 )
@@ -808,7 +812,9 @@ betainc = _core.create_ufunc(
     scalar or ndarray
         Value of the incomplete beta function
 
-    .. seealso:: :meth:`scipy.special.betainc`
+    See Also
+    --------
+    :meth:`scipy.special.betainc`
 
     """,
 )
@@ -1086,7 +1092,9 @@ betaincinv = _core.create_ufunc(
     scalar or ndarray
         Value of the inverse of the incomplete beta function
 
-    .. seealso:: :meth:`scipy.special.betaincinv`
+    See Also
+    --------
+    :meth:`scipy.special.betaincinv`
 
     """,
 )
