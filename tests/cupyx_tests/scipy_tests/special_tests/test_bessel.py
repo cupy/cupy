@@ -37,9 +37,7 @@ class TestSpecial:
     def test_i1(self):
         self.check_unary('i1')
 
-    @pytest.mark.parametrize('order_dtype', ['uint8', 'uint16', 'uint32',
-                                             'uint64', 'int8', 'int16',
-                                             'int32', 'int64', int])
+    @testing.for_dtypes('iId', name='order_dtype')
     @testing.for_dtypes('efd')
     @testing.numpy_cupy_allclose(atol=1e-12, scipy_name='scp')
     def test_yn(self, xp, scp, dtype, order_dtype):
