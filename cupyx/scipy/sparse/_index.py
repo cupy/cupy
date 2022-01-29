@@ -14,7 +14,7 @@ from cupy.cuda import runtime
 import numpy
 
 try:
-    import scipy
+    import scipy.sparse
     scipy_available = True
 except ImportError:
     scipy_available = False

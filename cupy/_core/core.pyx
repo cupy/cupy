@@ -1395,6 +1395,12 @@ cdef class ndarray:
             'Implicit conversion to a NumPy array is not allowed. '
             'Please use `.get()` to construct a NumPy array explicitly.')
 
+    @classmethod
+    def __class_getitem__(cls, tuple item):
+        from cupy.typing._generic_alias import GenericAlias
+        item1, item2 = item
+        return GenericAlias(cupy.ndarray, (item1, item2))
+
     # TODO(okuta): Implement __array_wrap__
 
     # Container customization:
