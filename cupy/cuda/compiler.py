@@ -452,7 +452,7 @@ def get_cache_dir():
     return os.environ.get('CUPY_CACHE_DIR', _default_cache_dir)
 
 
-_empty_file_preprocess_cache = {}
+_empty_file_preprocess_cache: dict = {}
 
 
 def compile_with_cache(*args, **kwargs):
