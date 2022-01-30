@@ -98,6 +98,72 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
     return v1 == v2 if invert else v1 != v2
 
 
+def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
+    """Find the intersection of two arrays.
+    Returns the sorted, unique values that are in both of the input arrays.
+
+    Parameters
+    ----------
+    arr1, arr2 : cupy.ndarray
+        Input arrays. Arrays will be flattened if they are not in 1D.
+    assume_unique : bool
+        By default, None. If set True, the input arrays will be
+        assumend to be unique, which speeds up the calculation. If set True,
+        but the arrays are not unique, incorrect results and out-of-bounds
+        indices could result.
+    return_indices : bool
+       By default, False. If True, the indices which correspond to the
+       intersection of the two arrays are returned.
+
+    Returns
+    -------
+    intersect1d : cupy.ndarray
+        Sorted 1D array of common and unique elements.
+    comm1 : cupy.ndarray
+        The indices of the first occurrences of the common values
+        in `arr1`. Only provided if `return_indices` is True.
+    comm2 : cupy.ndarray
+        The indices of the first occurrences of the common values
+        in `arr2`. Only provided if `return_indices` is True.
+
+    See Also
+    --------
+    numpy.intersect1d
+
+    """
+    if not assume_unique:
+        if return_indices:
+            arr1, ind1 = cupy.unique(arr1, return_index=True)
+            arr2, ind2 = cupy.unique(arr2, return_index=True)
+        else:
+            arr1 = cupy.unique(arr1)
+            arr2 = cupy.unique(arr2)
+    else:
+        arr1 = arr1.ravel()
+        arr2 = arr2.ravel()
+
+    aux = cupy.concatenate((arr1, arr2))
+    if return_indices:
+        aux_sort_indices = cupy.argsort(aux)
+        aux = aux[aux_sort_indices]
+    else:
+        aux.sort()
+
+    mask = aux[1:] == aux[:-1]
+    int1d = aux[:-1][mask]
+
+    if return_indices:
+        arr1_indices = aux_sort_indices[:-1][mask]
+        arr2_indices = aux_sort_indices[1:][mask] - arr1.size
+        if not assume_unique:
+            arr1_indices = ind1[arr1_indices]
+            arr2_indices = ind2[arr2_indices]
+
+        return int1d, arr1_indices, arr2_indices
+    else:
+        return int1d
+
+
 def isin(element, test_elements, assume_unique=False, invert=False):
     """Calculates element in ``test_elements``, broadcasting over ``element``
     only. Returns a boolean array of the same shape as ``element`` that is
