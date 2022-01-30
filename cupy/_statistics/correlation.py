@@ -78,7 +78,8 @@ def correlate(a, v, mode='valid'):
     return out
 
 
-def cov(a, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None, *, dtype=None):
+def cov(a, y=None, rowvar=True, bias=False, ddof=None,
+        fweights=None, aweights=None, *, dtype=None):
     """Returns the covariance matrix of an array.
 
     This function currently does not support ``fweights`` and ``aweights``
@@ -100,9 +101,9 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
         fweights (cupy.ndarray, int): 1-D array of integer frequency weights.
             the number of times each observation vector should be repeated.
         aweights (cupy.ndarray): 1-D array of observation vector weights.
-            These relative weights are typically large for observations 
-            considered "important" and smaller for observations considered 
-            less "important". If ``ddof=0`` the array of weights can be used 
+            These relative weights are typically large for observations
+            considered "important" and smaller for observations considered
+            less "important". If ``ddof=0`` the array of weights can be used
             to assign probabilities to observation vectors.
         dtype: Data type specifier. By default, the return data-type will have
             at least `numpy.float64` precision.
@@ -125,8 +126,10 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
         else:
             if y.ndim > 2:
                 raise ValueError('y must be <= 2-d')
-            dtype = functools.reduce(numpy.promote_types,
-                                    (a.dtype, y.dtype, numpy.float64))
+            dtype = functools.reduce(
+                numpy.promote_types,
+                (a.dtype, y.dtype, numpy.float64)
+            )
 
     X = cupy.array(a, ndmin=2, dtype=dtype)
     if not rowvar and X.shape[0] != 1:
@@ -158,7 +161,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
             raise ValueError(
                 "fweights cannot be negative")
         w = fweights
-    
+
     if aweights is not None:
         aweights = cupy.asarray(aweights, dtype=float)
         if aweights.ndim > 1:
