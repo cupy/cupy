@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -95,13 +95,15 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda114``
    * - v11.5
      - ``$ pip install cupy-cuda115``
+   * - v11.6
+     - ``$ pip install cupy-cuda116``
 
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
    If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
-    $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
+    $ python -m cupyx.tools.install_library --cuda 11.6 --library cutensor
 
 .. note::
 
