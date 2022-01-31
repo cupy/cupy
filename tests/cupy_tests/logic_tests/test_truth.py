@@ -152,7 +152,7 @@ class TestIntersect1d:
     @testing.numpy_cupy_array_equal()
     def test_return_indices(self, xp, dtype):
         a = xp.array([2, 3, 4, 1, 9, 4], dtype=dtype)
-        b = xp.array([7, 5, 1, 2, 9, 3], dtype=dtype) 
+        b = xp.array([7, 5, 1, 2, 9, 3], dtype=dtype)
         return xp.intersect1d(a, b, return_indices=True)
 
     @testing.for_all_dtypes()
