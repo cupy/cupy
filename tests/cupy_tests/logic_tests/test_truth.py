@@ -92,6 +92,43 @@ class TestAllAnyAlias:
 
 @testing.parameterize(
     *testing.product(
+        {'f': ['intersect1d'],
+         'shape_x': [
+             (0, ),
+             (3, ),
+             (2, 3),
+             (2, 1, 3),
+             (2, 0, 1),
+             (2, 0, 1, 1)
+        ],
+            'shape_y': [
+             (0, ),
+             (3, ),
+             (2, 3),
+             (2, 1, 3),
+             (2, 0, 1),
+             (2, 0, 1, 1)
+        ],
+            'assume_unique': [False, True],
+            'return_indices': [False, True]}))
+@testing.gpu
+class TestIntersect1D:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test(self, xp, dtype):
+        x = testing.shaped_arange(self.shape_x, xp, dtype)
+        y = testing.shaped_arange(self.shape_y, xp, dtype)
+
+        if dtype == numpy.bool_:
+            self.assume_unique = False
+
+        return getattr(xp, self.f)(x, y, self.assume_unique,
+                                   self.return_indices)
+
+
+@testing.parameterize(
+    *testing.product(
         {'f': ['in1d', 'isin'],
          'shape_x': [
              (0, ),
