@@ -7,18 +7,26 @@ from cupy import _util
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
-    Args:
-        a (cupy.ndarray): Input array.
-        axis (int or tuple of ints): Along which axis to compute all.
-            The flattened array is used by default.
-        out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the axis is remained as an axis of
-            size one.
+    Parameters
+    ----------
+    a : cupy.ndarray)
+        Input array.
+    axis : int or tuple of ints)
+        Along which axis to compute all.
+        The flattened array is used by default.
+    out : cupy.ndarray
+        Output array.
+    keepdims : bool
+        If ``True``, the axis is remained as an axis of size one.
 
-    Returns:
-        cupy.ndarray: An array reduced of the input array along the axis.
+    Returns
+    -------
+    y : cupy.ndarray
+        An array reduced of the input array along the axis.
 
-    .. seealso:: :func:`numpy.all`
+    See Also
+    --------
+    numpy.all
 
     """
     if _fusion_thread_local.is_fusing():
@@ -36,18 +44,26 @@ def all(a, axis=None, out=None, keepdims=False):
 def any(a, axis=None, out=None, keepdims=False):
     """Tests whether any array elements along a given axis evaluate to True.
 
-    Args:
-        a (cupy.ndarray): Input array.
-        axis (int or tuple of ints): Along which axis to compute all.
-            The flattened array is used by default.
-        out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the axis is remained as an axis of
-            size one.
+    Parameters
+    ----------
+    a : cupy.ndarray
+        Input array.
+    axis : int or tuple of ints
+        Along which axis to compute all.
+        The flattened array is used by default.
+    out : cupy.ndarray
+        Output array.
+    keepdims : bool
+        If ``True``, the axis is remained as an axis of size one.
 
-    Returns:
-        cupy.ndarray: An array reduced of the input array along the axis.
+    Returns
+    -------
+    y : cupy.ndarray
+        An array reduced of the input array along the axis.
 
-    .. seealso:: :func:`numpy.any`
+    See Also
+    --------
+    numpy.any
 
     """
     if _fusion_thread_local.is_fusing():
@@ -69,17 +85,23 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
     Returns a boolean array the same length as ``ar1`` that is ``True``
     where an element of ``ar1`` is in ``ar2`` and ``False`` otherwise.
 
-    Args:
-        ar1 (cupy.ndarray): Input array.
-        ar2 (cupy.ndarray): The values against which to test each value of
-            ``ar1``.
-        assume_unique (bool, optional): Ignored
-        invert (bool, optional): If ``True``, the values in the returned array
-            are inverted (that is, ``False`` where an element of ``ar1`` is in
-            ``ar2`` and ``True`` otherwise). Default is ``False``.
+    Parameters
+    ----------
+    ar1 : cupy.ndarray
+        Input array.
+    ar2 : cupy.ndarray
+        The values against which to test each value of ``ar1``.
+    assume_unique : bool, optional
+        Ignored
+    invert : bool, optional
+        If ``True``, the values in the returned array
+        are inverted (that is, ``False`` where an element of ``ar1`` is in
+        ``ar2`` and ``True`` otherwise). Default is ``False``.
 
-    Returns:
-        cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
+    Returns
+    -------
+    y : cupy.ndarray, bool
+        The values ``ar1[in1d]`` are in ``ar2``.
 
     """
     # Ravel both arrays, behavior for the first array could be different
@@ -170,20 +192,27 @@ def isin(element, test_elements, assume_unique=False, invert=False):
     ``True`` where an element of ``element`` is in ``test_elements`` and
     ``False`` otherwise.
 
-    Args:
-        element (cupy.ndarray): Input array.
-        test_elements (cupy.ndarray): The values against which to test each
-            value of ``element``. This argument is flattened if it is an
-            array or array_like.
-        assume_unique (bool, optional): Ignored
-        invert (bool, optional): If ``True``, the values in the returned array
-            are inverted, as if calculating element not in ``test_elements``.
-            Default is ``False``.
+    Parameters
+    ----------
+    element : cupy.ndarray
+        Input array.
+    test_elements : cupy.ndarray
+        The values against which to test each
+        value of ``element``. This argument is flattened if it is an
+        array or array_like.
+    assume_unique : bool, optional
+        Ignored
+    invert : bool, optional
+        If ``True``, the values in the returned array
+        are inverted, as if calculating element not in ``test_elements``.
+        Default is ``False``.
 
-    Returns:
-        cupy.ndarray, bool:
-            Has the same shape as ``element``. The values ``element[isin]``
-            are in ``test_elements``.
+    Returns
+    -------
+    y : cupy.ndarray, bool
+        Has the same shape as ``element``. The values ``element[isin]``
+        are in ``test_elements``.
+
     """
     return in1d(element, test_elements, assume_unique=assume_unique,
                 invert=invert).reshape(element.shape)
