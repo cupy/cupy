@@ -174,7 +174,9 @@ def ptp(a, axis=None, out=None, keepdims=False):
     return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
-def _quantile_unchecked(a, q, axis=None, out=None, method='linear',
+def _quantile_unchecked(a, q, axis=None, out=None,
+                        overwrite_input=False,
+                        method='linear',
                         keepdims=False):
     if q.ndim == 0:
         q = q[None]
@@ -193,11 +195,13 @@ def _quantile_unchecked(a, q, axis=None, out=None, method='linear',
                 keepdim[ax % a.ndim] = 1
             keepdim = tuple(keepdim)
 
-    # Copy a since we need it sorted but without modifying the original array
     if isinstance(axis, int):
         axis = axis,
     if axis is None:
-        ap = a.flatten()
+        if overwrite_input:
+            ap = a.ravel()
+        else:
+            ap = a.flatten()
         nkeep = 0
     else:
         # Reduce axes from a and put them last
@@ -206,7 +210,10 @@ def _quantile_unchecked(a, q, axis=None, out=None, method='linear',
         nkeep = len(keep)
         for i, s in enumerate(sorted(keep)):
             a = a.swapaxes(i, s)
-        ap = a.reshape(a.shape[:nkeep] + (-1,)).copy()
+        if overwrite_input:
+            ap = a.reshape(a.shape[:nkeep] + (-1,))
+        else:
+            ap = a.reshape(a.shape[:nkeep] + (-1,)).copy()
 
     axis = -1
     ap.sort(axis=axis)
@@ -283,7 +290,11 @@ def _quantile_is_valid(q):
     return True
 
 
-def percentile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
+def percentile(a, q, axis=None, out=None,
+               overwrite_input=False,
+               method='linear',
+               keepdims=False,
+               *,
                interpolation=None):
     """Computes the q-th percentile of the data along the specified axis.
 
@@ -294,6 +305,10 @@ def percentile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
         axis (int or tuple of ints): Along which axis or axes to compute the
             percentiles. The flattened array is used by default.
         out (cupy.ndarray): Output array.
+        overwrite_input (bool): If True, then allow the input array `a`
+            to be modified by the intermediate calculations, to save
+            memory. In this case, the contents of the input `a` after this
+            function completes is undefined.
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are``lower``, ``higher``, ``midpoint``,
@@ -316,10 +331,17 @@ def percentile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
     if not _quantile_is_valid(q):  # synchronize
         raise ValueError('Percentiles must be in the range [0, 100]')
     return _quantile_unchecked(
-        a, q, axis=axis, out=out, method=method, keepdims=keepdims)
+        a, q, axis=axis, out=out,
+        overwrite_input=overwrite_input,
+        method=method,
+        keepdims=keepdims)
 
 
-def quantile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
+def quantile(a, q, axis=None, out=None,
+             overwrite_input=False,
+             method='linear',
+             keepdims=False,
+             *,
              interpolation=None):
     """Computes the q-th quantile of the data along the specified axis.
 
@@ -330,6 +352,10 @@ def quantile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
         axis (int or tuple of ints): Along which axis or axes to compute the
             quantiles. The flattened array is used by default.
         out (cupy.ndarray): Output array.
+        overwrite_input (bool): If True, then allow the input array `a`
+            to be modified by the intermediate calculations, to save
+            memory. In this case, the contents of the input `a` after this
+            function completes is undefined.
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are``lower``, ``higher``, ``midpoint``,
@@ -351,7 +377,10 @@ def quantile(a, q, axis=None, out=None, *, method='linear', keepdims=False,
     if not _quantile_is_valid(q):  # synchronize
         raise ValueError('Quantiles must be in the range [0, 1]')
     return _quantile_unchecked(
-        a, q, axis=axis, out=out, method=method, keepdims=keepdims)
+        a, q, axis=axis, out=out,
+        overwrite_input=overwrite_input,
+        method=method,
+        keepdims=keepdims)
 
 
 # Borrowd from NumPy

@@ -143,6 +143,18 @@ class TestQuantileMethods:
         return xp.percentile(
             a, q, axis=-1, method=method, out=out)
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_percentile_overwrite(self, xp, dtype, method):
+        a = testing.shaped_random((10, 2, 3, 2), xp, dtype)
+        ap = a.copy()
+        q = testing.shaped_random((5,), xp, dtype=dtype, scale=100)
+        res = xp.percentile(ap, q, axis=-1, method=method,
+                            overwrite_input=True)
+
+        assert not xp.all(ap == a)
+        return res
+
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     def test_percentile_bad_q(self, dtype, method):
         for xp in (numpy, cupy):
@@ -218,6 +230,18 @@ class TestQuantileMethods:
         out = testing.shaped_random((5, 10, 2, 3), xp, dtype)
         return xp.quantile(
             a, q, axis=-1, method=method, out=out)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_quantile_overwrite(self, xp, dtype, method):
+        a = testing.shaped_random((10, 2, 3, 2), xp, dtype)
+        ap = a.copy()
+        q = testing.shaped_random((5,), xp, dtype=dtype, scale=1)
+
+        res = xp.quantile(a, q, axis=-1, method=method, overwrite_input=True)
+
+        assert not xp.all(ap == a)
+        return res
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     def test_quantile_bad_q(self, dtype, method):

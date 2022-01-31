@@ -5,13 +5,20 @@ from cupyx.scipy.special._bessel import j0  # NOQA
 from cupyx.scipy.special._bessel import j1  # NOQA
 from cupyx.scipy.special._bessel import y0  # NOQA
 from cupyx.scipy.special._bessel import y1  # NOQA
+from cupyx.scipy.special._bessel import yn  # NOQA
 
 # Raw statistical functions
 
 from cupyx.scipy.special._statistics import ndtr  # NOQA
+from cupyx.scipy.special._statistics import ndtri  # NOQA
 from cupyx.scipy.special._statistics import logit  # NOQA
 from cupyx.scipy.special._statistics import expit  # NOQA
 from cupyx.scipy.special._statistics import log_expit  # NOQA
+from cupyx.scipy.special._statistics import boxcox  # NOQA
+from cupyx.scipy.special._statistics import boxcox1p  # NOQA
+from cupyx.scipy.special._statistics import inv_boxcox  # NOQA
+from cupyx.scipy.special._statistics import inv_boxcox1p  # NOQA
+
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
@@ -48,6 +55,17 @@ from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions
-from cupyx.scipy.special._gammainc import log1p  # NOQA
+from cupyx.scipy.special._basic import cbrt  # NOQA
+from cupyx.scipy.special._basic import exp10  # NOQA
+from cupyx.scipy.special._basic import exp2  # NOQA
+from cupyx.scipy.special._basic import radian  # NOQA
+from cupyx.scipy.special._basic import cosdg  # NOQA
+from cupyx.scipy.special._basic import sindg  # NOQA
+from cupyx.scipy.special._basic import tandg  # NOQA
+from cupyx.scipy.special._basic import cotdg  # NOQA
+from cupyx.scipy.special._basic import log1p  # NOQA
+from cupyx.scipy.special._basic import expm1  # NOQA
+from cupy import round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
+from cupy import sinc  # NOQA

@@ -407,6 +407,24 @@ configs {
   }
 }
 
+# CUDA + Slow (for stable branch)
+configs {
+  key: "cupy.linux.cuda-slow-stable"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci-stable.sh cuda-slow"
+  }
+}
+
 # CUDA + HEAD
 configs {
   key: "cupy.linux.cuda-head"
