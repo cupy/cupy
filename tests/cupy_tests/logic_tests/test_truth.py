@@ -158,6 +158,13 @@ class TestIntersect1d:
         ui2 = xp.unravel_index(i2, b.shape)
         return c, a[ui1], b[ui2]
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_multiple_instances(self, xp, dtype):
+        a = xp.array([2, 4, 5, 2, 1, 5], dtype=dtype)
+        b = xp.array([4, 6, 2, 5, 7, 6], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
 
 class TestUnion1d:
 
