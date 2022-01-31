@@ -10,9 +10,15 @@ from cupyx.scipy.special._bessel import yn  # NOQA
 # Raw statistical functions
 
 from cupyx.scipy.special._statistics import ndtr  # NOQA
+from cupyx.scipy.special._statistics import ndtri  # NOQA
 from cupyx.scipy.special._statistics import logit  # NOQA
 from cupyx.scipy.special._statistics import expit  # NOQA
 from cupyx.scipy.special._statistics import log_expit  # NOQA
+from cupyx.scipy.special._statistics import boxcox  # NOQA
+from cupyx.scipy.special._statistics import boxcox1p  # NOQA
+from cupyx.scipy.special._statistics import inv_boxcox  # NOQA
+from cupyx.scipy.special._statistics import inv_boxcox1p  # NOQA
+
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
