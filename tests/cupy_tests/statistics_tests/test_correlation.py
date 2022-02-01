@@ -81,7 +81,7 @@ class TestCov(unittest.TestCase):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             with pytest.raises(ValueError):
                 xp.cov(a, y, rowvar, bias, ddof,
-                      fweights, aweights, dtype=dtype)
+                       fweights, aweights, dtype=dtype)
 
     def test_cov(self):
         self.check((2, 3))
