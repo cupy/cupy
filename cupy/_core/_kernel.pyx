@@ -974,8 +974,6 @@ cdef function.Function _get_ufunc_kernel(
     op.append(';')
     op.extend(out_op)
     operation = '\n'.join(op)
-    print(operation)
-    print('Operation done')
     # HIP/ROCm 4.3 has an issue with ifs and ternary operators
     #
     # int bool(int x) {
