@@ -982,7 +982,7 @@ cdef function.Function _get_ufunc_kernel(
     #     if (x != 0) return 1;
     #     return 0;
     # }
-    # 
+    #
     # bool(5) == 1;  //false
     # bool(5) == 5;  //true
     #
