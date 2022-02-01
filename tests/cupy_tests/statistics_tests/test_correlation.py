@@ -35,13 +35,14 @@ class TestCorrcoef(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         y = testing.shaped_arange((2, 3), xp, dtype)
         return xp.corrcoef(a, y=y, rowvar=False)
-    
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_corrcoef_dtype(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         y = testing.shaped_arange((2, 3), xp, dtype)
         return xp.corrcoef(a, y=y, dtype=dtype)
+
 
 @testing.gpu
 class TestCov(unittest.TestCase):
@@ -56,21 +57,24 @@ class TestCov(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check(self, a_shape, y_shape=None, rowvar=True, bias=False,
-              ddof=None, xp=None, dtype=None, fweights=None, aweights=None):
+              ddof=None, xp=None, dtype=None,
+              fweights=None, aweights=None):
         a, y = self.generate_input(a_shape, y_shape, xp, dtype)
         return xp.cov(a, y, rowvar, bias, ddof, fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check_warns(self, a_shape, y_shape=None, rowvar=True, bias=False,
-                    ddof=None, xp=None, dtype=None, fweights=None, aweights=None):
+                    ddof=None, xp=None, dtype=None,
+                    fweights=None, aweights=None):
         with testing.assert_warns(RuntimeWarning):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             return xp.cov(a, y, rowvar, bias, ddof, fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
-    def check_raises(self, a_shape, y_shape=None, rowvar=True, bias=False,
-                     ddof=None, dtype=None, fweights=None, aweights=None):
+    def check_raises(self, a_shape, y_shape=None,
+                     rowvar=True, bias=False, ddof=None,
+                     dtype=None, fweights=None, aweights=None):
         for xp in (numpy, cupy):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             with pytest.raises(ValueError):

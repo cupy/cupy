@@ -153,10 +153,10 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
 
     w = None
     if fweights is not None:
-        if not type(fweights) == cupy.ndarray: 
+        if not type(fweights) == cupy.ndarray:
             raise TypeError(
                 "fweights must be a cupy.ndarray")
-        if not fweights.dtype.char in 'bBhHiIlLqQ':
+        if fweights.dtype.char not in 'bBhHiIlLqQ':
             raise TypeError(
                 "fweights must be integer")
         fweights = fweights.astype(dtype=float)
@@ -169,7 +169,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
         w = fweights
 
     if aweights is not None:
-        if not type(aweights) == cupy.ndarray: 
+        if not type(aweights) == cupy.ndarray:
             raise TypeError(
                 "aweights must be a cupy.ndarray")
         aweights = aweights.astype(dtype=float)
