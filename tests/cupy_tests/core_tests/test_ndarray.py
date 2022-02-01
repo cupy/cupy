@@ -360,22 +360,6 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
                 assert iface['stream'] == stream.ptr
 
 
-@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
-                    reason='This is supported on CUDA')
-class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
-
-    def setUp(self):
-        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
-
-    def test_cuda_array_interface_hasattr(self):
-        assert not hasattr(self.arr, '__cuda_array_interface__')
-
-    def test_cuda_array_interface_getattr(self):
-        with pytest.raises(AttributeError) as e:
-            getattr(self.arr, '__cuda_array_interface__')
-        assert 'HIP' in str(e.value)
-
-
 @testing.parameterize(
     *testing.product({
         'indices_shape': [(2,), (2, 3)],
