@@ -9,9 +9,9 @@ def all(a, axis=None, out=None, keepdims=False):
 
     Parameters
     ----------
-    a : cupy.ndarray)
+    a : cupy.ndarray
         Input array.
-    axis : int or tuple of ints)
+    axis : int or tuple of ints
         Along which axis to compute all.
         The flattened array is used by default.
     out : cupy.ndarray
@@ -129,7 +129,7 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
     arr1, arr2 : cupy.ndarray
         Input arrays. Arrays will be flattened if they are not in 1D.
     assume_unique : bool
-        By default, None. If set True, the input arrays will be
+        By default, False. If set True, the input arrays will be
         assumend to be unique, which speeds up the calculation. If set True,
         but the arrays are not unique, incorrect results and out-of-bounds
         indices could result.
