@@ -109,8 +109,8 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
             considered "important" and smaller for observations considered
             less "important". If ``ddof=0`` the array of weights can be used
             to assign probabilities to observation vectors.
-            It is required that fweights >= 0. However, the function will not
-            error when fweights < 0 for performance reasons.
+            It is required that aweights >= 0. However, the function will not
+            error when aweights < 0 for performance reasons.
         dtype: Data type specifier. By default, the return data-type will have
             at least `numpy.float64` precision.
 

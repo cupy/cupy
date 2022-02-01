@@ -61,7 +61,7 @@ class TestCov(unittest.TestCase):
               fweights=None, aweights=None):
         a, y = self.generate_input(a_shape, y_shape, xp, dtype)
         return xp.cov(a, y, rowvar, bias, ddof,
-                    fweights, aweights, dtype=dtype)
+                      fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -71,7 +71,7 @@ class TestCov(unittest.TestCase):
         with testing.assert_warns(RuntimeWarning):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             return xp.cov(a, y, rowvar, bias, ddof,
-                        fweights, aweights, dtype=dtype)
+                          fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
     def check_raises(self, a_shape, y_shape=None,
@@ -81,7 +81,7 @@ class TestCov(unittest.TestCase):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             with pytest.raises(ValueError):
                 xp.cov(a, y, rowvar, bias, ddof,
-                    fweights, aweights, dtype=dtype)
+                      fweights, aweights, dtype=dtype)
 
     def test_cov(self):
         self.check((2, 3))
@@ -91,6 +91,11 @@ class TestCov(unittest.TestCase):
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)
         self.check((2, 3))
+        self.check((1, 3), fweights=cupy.array([1, 4, 1]))
+        self.check((1, 3), aweights=cupy.array([1.0, 4.0, 1.0]))
+        self.check((1, 3), bias=True, aweights=cupy.array([1.0, 4.0, 1.0]))
+        self.check((1, 3), fweights=cupy.array([1, 4, 1]),
+                   aweights=cupy.array([1.0, 4.0, 1.0]))
 
     def test_cov_warns(self):
         self.check_warns((2, 3), ddof=3)
