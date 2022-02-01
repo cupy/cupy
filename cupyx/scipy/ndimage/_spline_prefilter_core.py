@@ -170,7 +170,9 @@ def _get_spline1d_code(mode, poles, n_boundary):
             c[i * element_stride] += z * c[(i - 1) * element_stride];
         }}''')
         code.append('''
+        #ifdef __HIP_DEVICE_COMPILE__
         __syncthreads();
+        #endif
         ''')
         # initialize and apply the anti-causal filter
         code.append(_anticausal_init_code(mode))
