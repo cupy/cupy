@@ -190,9 +190,6 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
-        if runtime._is_hip_environment:
-            raise AttributeError(
-                'HIP/ROCm does not support cuda array interface')
         cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
@@ -200,6 +197,8 @@ cdef class ndarray:
         }
         cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         cdef intptr_t stream_ptr
+        if runtime._is_hip_environment:
+            ver = 2
 
         if ver == 3:
             stream_ptr = stream_module.get_current_stream_ptr()
@@ -2623,9 +2622,6 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
 
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
-    if runtime._is_hip_environment:
-        raise RuntimeError(
-            'HIP/ROCm does not support cuda array interface')
 
     cdef Py_ssize_t sh, st
     cdef dict desc = a.__cuda_array_interface__
