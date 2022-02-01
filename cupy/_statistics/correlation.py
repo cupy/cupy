@@ -19,6 +19,8 @@ def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None, *, dtype=None):
             transposed.
         bias (None): Has no effect, do not use.
         ddof (None): Has no effect, do not use.
+        dtype: Data type specifier. By default, the return data-type will have
+            at least `numpy.float64` precision.
 
     Returns:
         cupy.ndarray: The Pearson product-moment correlation coefficients of
@@ -100,11 +102,15 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
 
         fweights (cupy.ndarray, int): 1-D array of integer frequency weights.
             the number of times each observation vector should be repeated.
+            It is required that fweights >= 0. However, the function will not
+            error when fweights < 0 for performance reasons.
         aweights (cupy.ndarray): 1-D array of observation vector weights.
             These relative weights are typically large for observations
             considered "important" and smaller for observations considered
             less "important". If ``ddof=0`` the array of weights can be used
             to assign probabilities to observation vectors.
+            It is required that fweights >= 0. However, the function will not
+            error when fweights < 0 for performance reasons.
         dtype: Data type specifier. By default, the return data-type will have
             at least `numpy.float64` precision.
 
@@ -147,32 +153,32 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
 
     w = None
     if fweights is not None:
-        fweights = cupy.asarray(fweights, dtype=float)
-        if not cupy.all(fweights == cupy.around(fweights)):
+        if not type(fweights) == cupy.ndarray: 
+            raise TypeError(
+                "fweights must be a cupy.ndarray")
+        if not fweights.dtype.char in 'bBhHiIlLqQ':
             raise TypeError(
                 "fweights must be integer")
+        fweights = fweights.astype(dtype=float)
         if fweights.ndim > 1:
             raise RuntimeError(
                 "cannot handle multidimensional fweights")
         if fweights.shape[0] != X.shape[1]:
             raise RuntimeError(
                 "incompatible numbers of samples and fweights")
-        if any(fweights < 0):
-            raise ValueError(
-                "fweights cannot be negative")
         w = fweights
 
     if aweights is not None:
-        aweights = cupy.asarray(aweights, dtype=float)
+        if not type(aweights) == cupy.ndarray: 
+            raise TypeError(
+                "aweights must be a cupy.ndarray")
+        aweights = aweights.astype(dtype=float)
         if aweights.ndim > 1:
             raise RuntimeError(
                 "cannot handle multidimensional aweights")
         if aweights.shape[0] != X.shape[1]:
             raise RuntimeError(
                 "incompatible numbers of samples and aweights")
-        if any(aweights < 0):
-            raise ValueError(
-                "aweights cannot be negative")
         if w is None:
             w = aweights
         else:
