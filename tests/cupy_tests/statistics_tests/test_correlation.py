@@ -60,7 +60,8 @@ class TestCov(unittest.TestCase):
               ddof=None, xp=None, dtype=None,
               fweights=None, aweights=None):
         a, y = self.generate_input(a_shape, y_shape, xp, dtype)
-        return xp.cov(a, y, rowvar, bias, ddof, fweights, aweights, dtype=dtype)
+        return xp.cov(a, y, rowvar, bias, ddof,
+                    fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -69,7 +70,8 @@ class TestCov(unittest.TestCase):
                     fweights=None, aweights=None):
         with testing.assert_warns(RuntimeWarning):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
-            return xp.cov(a, y, rowvar, bias, ddof, fweights, aweights, dtype=dtype)
+            return xp.cov(a, y, rowvar, bias, ddof,
+                        fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
     def check_raises(self, a_shape, y_shape=None,
@@ -78,7 +80,8 @@ class TestCov(unittest.TestCase):
         for xp in (numpy, cupy):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             with pytest.raises(ValueError):
-                xp.cov(a, y, rowvar, bias, ddof, fweights, aweights, dtype=dtype)
+                xp.cov(a, y, rowvar, bias, ddof,
+                    fweights, aweights, dtype=dtype)
 
     def test_cov(self):
         self.check((2, 3))
