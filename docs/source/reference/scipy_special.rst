@@ -15,6 +15,7 @@ Bessel functions
    j1
    y0
    y1
+   yn
    i0
    i1
 
@@ -28,6 +29,14 @@ Raw statistical functions
    :toctree: generated/
 
    ndtr
+   ndtri
+   logit
+   expit
+   log_expit
+   boxcox
+   boxcox1p
+   inv_boxcox
+   inv_boxcox1p
 
 
 Information Theory functions
@@ -51,8 +60,14 @@ Gamma and related functions
 
    gamma
    gammaln
+   gammainc
+   gammaincinv
+   gammaincc
+   gammainccinv
+   psi
    polygamma
    digamma
+   poch
 
 
 Error function and Fresnel integrals
@@ -68,6 +83,16 @@ Error function and Fresnel integrals
    erfcinv
 
 
+Legendre functions
+---------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lpmv
+   sph_harm
+
+
 Other special functions
 -----------------------
 
@@ -75,3 +100,25 @@ Other special functions
    :toctree: generated/
 
    zeta
+
+
+Convenience functions
+-----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   cbrt
+   exp10
+   exp2
+   radian
+   cosdg
+   sindg
+   tandg
+   cotdg
+   log1p
+   expm1
+   round
+   xlogy
+   xlog1py
+   sinc

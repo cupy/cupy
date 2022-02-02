@@ -37,6 +37,7 @@ String formatting
    array2string
    array_repr
    array_str
+   format_float_positional
 
 
 Base-n representations

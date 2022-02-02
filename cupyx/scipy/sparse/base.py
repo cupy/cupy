@@ -332,7 +332,7 @@ class spmatrix(object):
 
     def dot(self, other):
         """Ordinary dot product"""
-        return self * other
+        return self @ other
 
     def getH(self):
         return self.transpose().conj()

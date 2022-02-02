@@ -217,6 +217,14 @@ int cublasZgerc(...) {
     return 0;
 }
 
+cublasStatus_t cublasSsbmv(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDsbmv(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 // BLAS Level 3
 cublasStatus_t cublasSgemm(...) {
     return CUBLAS_STATUS_SUCCESS;
@@ -288,6 +296,22 @@ cublasStatus_t cublasCtrsm(...) {
 }
 
 cublasStatus_t cublasZtrsm(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasSsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZsyrk(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

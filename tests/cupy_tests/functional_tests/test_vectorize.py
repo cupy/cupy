@@ -631,3 +631,15 @@ class TestVectorize(unittest.TestCase):
         x2 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=2)
         with pytest.raises(ValueError, match='Multiple callables are found'):
             return f(x1, x2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_relu(self, xp):
+        f = xp.vectorize(lambda x: x if x > 0.0 else 0.0)
+        a = xp.array([0.4, -0.2, 1.8, -1.2], dtype=xp.float32)
+        return f(a)  # float32
+
+    def test_relu_type_error(self):
+        f = cupy.vectorize(lambda x: x if x > 0.0 else cupy.float64(0.0))
+        a = cupy.array([0.4, -0.2, 1.8, -1.2], dtype=cupy.float32)
+        with pytest.raises(TypeError):
+            return f(a)

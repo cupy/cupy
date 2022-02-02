@@ -48,15 +48,15 @@ class TestNotifications(NotificationTestBase):
 
 
 @testing.parameterize(
-    {'func_name': 'array_equiv', 'shape': (3, 4)},
+    {'func_name': 'get_include'},
 )
 @testing.gpu
 class TestNotificationModes(NotificationTestBase):
 
     @property
     def func(self):
-        if self.func_name == 'array_equiv':
-            return fallback_mode.numpy.array_equiv
+        if self.func_name == 'get_include':
+            return fallback_mode.numpy.get_include
         assert False
 
     def test_notification_ignore(self):
@@ -65,9 +65,7 @@ class TestNotificationModes(NotificationTestBase):
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
-            a = testing.shaped_random(self.shape, fallback_mode.numpy)
-            b = testing.shaped_random(self.shape, fallback_mode.numpy)
-            self.func(a, b)
+            self.func()
 
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
@@ -79,9 +77,7 @@ class TestNotificationModes(NotificationTestBase):
         saved_stdout = io.StringIO()
 
         with contextlib.redirect_stdout(saved_stdout):
-            a = testing.shaped_random(self.shape, fallback_mode.numpy)
-            b = testing.shaped_random(self.shape, fallback_mode.numpy)
-            self.func(a, b)
+            self.func()
 
         _ufunc_config.seterr(**old)
         nf = self.func._numpy_object
@@ -95,18 +91,14 @@ class TestNotificationModes(NotificationTestBase):
         _ufunc_config.seterr(fallback_mode='warn')
 
         with pytest.warns(fallback_mode.notification.FallbackWarning):
-            a = testing.shaped_random(self.shape, fallback_mode.numpy)
-            b = testing.shaped_random(self.shape, fallback_mode.numpy)
-            self.func(a, b)
+            self.func()
 
     def test_notification_raise(self):
 
         old = _ufunc_config.seterr(fallback_mode='raise')
 
         with pytest.raises(AttributeError):
-            a = testing.shaped_random(self.shape, fallback_mode.numpy)
-            b = testing.shaped_random(self.shape, fallback_mode.numpy)
-            self.func(a, b)
+            self.func()
 
         _ufunc_config.seterr(**old)
 
@@ -161,6 +153,7 @@ class TestNotificationVectorize(NotificationTestBase):
         msg2 += "falling back to its numpy implementation"
         assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
 
+    @pytest.mark.skip(reason='#6282 implemented cupy.fabs')
     @test_utils.enable_slice_copy
     def test_numpy_only_pyfunc(self):
 

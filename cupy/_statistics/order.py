@@ -174,7 +174,9 @@ def ptp(a, axis=None, out=None, keepdims=False):
     return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
-def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
+def _quantile_unchecked(a, q, axis=None, out=None,
+                        overwrite_input=False,
+                        method='linear',
                         keepdims=False):
     if q.ndim == 0:
         q = q[None]
@@ -193,11 +195,13 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
                 keepdim[ax % a.ndim] = 1
             keepdim = tuple(keepdim)
 
-    # Copy a since we need it sorted but without modifying the original array
     if isinstance(axis, int):
         axis = axis,
     if axis is None:
-        ap = a.flatten()
+        if overwrite_input:
+            ap = a.ravel()
+        else:
+            ap = a.flatten()
         nkeep = 0
     else:
         # Reduce axes from a and put them last
@@ -206,29 +210,38 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
         nkeep = len(keep)
         for i, s in enumerate(sorted(keep)):
             a = a.swapaxes(i, s)
-        ap = a.reshape(a.shape[:nkeep] + (-1,)).copy()
+        if overwrite_input:
+            ap = a.reshape(a.shape[:nkeep] + (-1,))
+        else:
+            ap = a.reshape(a.shape[:nkeep] + (-1,)).copy()
 
     axis = -1
     ap.sort(axis=axis)
     Nx = ap.shape[axis]
     indices = q * (Nx - 1.)
 
-    if interpolation == 'lower':
+    if method in ['inverted_cdf', 'averaged_inverted_cdf',
+                  'closest_observation', 'interpolated_inverted_cdf',
+                  'hazen', 'weibull', 'median_unbiased', 'normal_unbiased']:
+        # TODO(takagi) Implement new methods introduced in NumPy 1.22
+        raise ValueError(f'\'{method}\' method is not yet supported. '
+                         'Please use any other method.')
+    elif method == 'lower':
         indices = cupy.floor(indices).astype(cupy.int32)
-    elif interpolation == 'higher':
+    elif method == 'higher':
         indices = cupy.ceil(indices).astype(cupy.int32)
-    elif interpolation == 'midpoint':
+    elif method == 'midpoint':
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
-    elif interpolation == 'nearest':
+    elif method == 'nearest':
         # TODO(hvy): Implement nearest using around
-        raise ValueError('\'nearest\' interpolation is not yet supported. '
-                         'Please use any other interpolation method.')
-    elif interpolation == 'linear':
+        raise ValueError('\'nearest\' method is not yet supported. '
+                         'Please use any other method.')
+    elif method == 'linear':
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
                          'Actual: \'{0}\' not in (\'linear\', \'lower\', '
-                         '\'higher\', \'midpoint\')'.format(interpolation))
+                         '\'higher\', \'midpoint\')'.format(method))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
@@ -277,8 +290,12 @@ def _quantile_is_valid(q):
     return True
 
 
-def percentile(a, q, axis=None, out=None, interpolation='linear',
-               keepdims=False):
+def percentile(a, q, axis=None, out=None,
+               overwrite_input=False,
+               method='linear',
+               keepdims=False,
+               *,
+               interpolation=None):
     """Computes the q-th percentile of the data along the specified axis.
 
     Args:
@@ -288,29 +305,44 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
         axis (int or tuple of ints): Along which axis or axes to compute the
             percentiles. The flattened array is used by default.
         out (cupy.ndarray): Output array.
-        interpolation (str): Interpolation method when a quantile lies between
+        overwrite_input (bool): If True, then allow the input array `a`
+            to be modified by the intermediate calculations, to save
+            memory. In this case, the contents of the input `a` after this
+            function completes is undefined.
+        method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are``lower``, ``higher``, ``midpoint``,
             ``nearest`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        interpolation (str): Deprecated name for the method keyword argument.
 
     Returns:
         cupy.ndarray: The percentiles of ``a``, along the axis if specified.
 
     .. seealso:: :func:`numpy.percentile`
     """
+    if interpolation is not None:
+        method = _check_interpolation_as_method(
+            method, interpolation, 'percentile')
     if not isinstance(q, cupy.ndarray):
         q = cupy.asarray(q, dtype='d')
     q = cupy.true_divide(q, 100)
     if not _quantile_is_valid(q):  # synchronize
         raise ValueError('Percentiles must be in the range [0, 100]')
-    return _quantile_unchecked(a, q, axis=axis, out=out,
-                               interpolation=interpolation, keepdims=keepdims)
+    return _quantile_unchecked(
+        a, q, axis=axis, out=out,
+        overwrite_input=overwrite_input,
+        method=method,
+        keepdims=keepdims)
 
 
-def quantile(a, q, axis=None, out=None, interpolation='linear',
-             keepdims=False):
+def quantile(a, q, axis=None, out=None,
+             overwrite_input=False,
+             method='linear',
+             keepdims=False,
+             *,
+             interpolation=None):
     """Computes the q-th quantile of the data along the specified axis.
 
     Args:
@@ -320,21 +352,50 @@ def quantile(a, q, axis=None, out=None, interpolation='linear',
         axis (int or tuple of ints): Along which axis or axes to compute the
             quantiles. The flattened array is used by default.
         out (cupy.ndarray): Output array.
-        interpolation (str): Interpolation method when a quantile lies between
+        overwrite_input (bool): If True, then allow the input array `a`
+            to be modified by the intermediate calculations, to save
+            memory. In this case, the contents of the input `a` after this
+            function completes is undefined.
+        method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are``lower``, ``higher``, ``midpoint``,
             ``nearest`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        interpolation (str): Deprecated name for the method keyword argument.
 
     Returns:
         cupy.ndarray: The quantiles of ``a``, along the axis if specified.
 
     .. seealso:: :func:`numpy.quantile`
     """
+    if interpolation is not None:
+        method = _check_interpolation_as_method(
+            method, interpolation, 'quantile')
     if not isinstance(q, cupy.ndarray):
         q = cupy.asarray(q, dtype='d')
     if not _quantile_is_valid(q):  # synchronize
         raise ValueError('Quantiles must be in the range [0, 1]')
-    return _quantile_unchecked(a, q, axis=axis, out=out,
-                               interpolation=interpolation, keepdims=keepdims)
+    return _quantile_unchecked(
+        a, q, axis=axis, out=out,
+        overwrite_input=overwrite_input,
+        method=method,
+        keepdims=keepdims)
+
+
+# Borrowd from NumPy
+def _check_interpolation_as_method(method, interpolation, fname):
+    # Deprecated NumPy 1.22, 2021-11-08
+    warnings.warn(
+        f"the `interpolation=` argument to {fname} was renamed to "
+        "`method=`, which has additional options.\n"
+        "Users of the modes 'nearest', 'lower', 'higher', or "
+        "'midpoint' are encouraged to review the method they. "
+        "(Deprecated NumPy 1.22)",
+        DeprecationWarning, stacklevel=3)
+    if method != "linear":
+        # sanity check, we assume this basically never happens
+        raise TypeError(
+            "You shall not pass both `method` and `interpolation`!\n"
+            "(`interpolation` is Deprecated in favor of `method`)")
+    return interpolation
