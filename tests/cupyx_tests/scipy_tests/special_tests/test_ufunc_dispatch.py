@@ -27,7 +27,7 @@ except ImportError:
 @testing.with_requires("scipy")
 @pytest.mark.parametrize("ufunc", sorted(cupyx_scipy_ufuncs & scipy_ufuncs))
 class TestUfunc:
-    @testing.numpy_cupy_allclose(atol=1e-5)
+    @testing.numpy_cupy_allclose(atol=1e-4)
     def test_dispatch(self, xp, ufunc):
         ufunc = getattr(scipy.special, ufunc)
         # some ufunc (like sph_harm) do not work with float inputs
