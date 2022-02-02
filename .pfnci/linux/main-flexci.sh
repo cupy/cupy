@@ -23,6 +23,7 @@ if [[ "${TARGET}" == cuda116* ]]; then
         add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
         apt-get purge -qqy "cuda-drivers*" "*nvidia*-495"
         apt-get install -qqy "cuda-drivers"
+        killall Xorg
         modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
         nvidia-smi
     fi
