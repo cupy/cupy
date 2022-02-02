@@ -24,7 +24,9 @@ if [[ "${TARGET}" == cuda116* ]]; then
         apt-get purge -qqy "cuda-drivers*" "*nvidia*-495"
         apt-get install -qqy "cuda-drivers"
         killall Xorg
+        nvidia-smi -pm 0
         modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
+        nvidia-smi -pm 1
         nvidia-smi
     fi
 fi
