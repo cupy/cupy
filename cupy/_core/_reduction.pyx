@@ -25,7 +25,6 @@ from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _create_ndarray_from_shape_strides
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport ndarray
-from cupy._core.dlpack cimport from_dlpack
 from cupy._core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
@@ -547,8 +546,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
             arr = _convert_object_with_cuda_array_interface(a)
-        elif hasattr(a, '__dlpack__'):
-            arr = from_dlpack(a)
+        elif hasattr(a, '__cupy_get_ndarray__'):
+            arr = a.__cupy_get_ndarray__()
         else:
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %

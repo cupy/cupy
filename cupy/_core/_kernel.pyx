@@ -19,7 +19,6 @@ from cupy.cuda cimport texture
 from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
-from cupy._core.dlpack cimport from_dlpack
 from cupy._core._dtype cimport get_dtype
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
@@ -122,8 +121,8 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
         elif hasattr(arg, '__cuda_array_interface__'):
             s = _convert_object_with_cuda_array_interface(arg)
             _check_peer_access(<ndarray>s, dev_id)
-        elif hasattr(arg, '__dlpack__'):
-            s = from_dlpack(arg)
+        elif hasattr(arg, '__cupy_get_ndarray__'):
+            s = arg.__cupy_get_ndarray__()
             _check_peer_access(<ndarray>s, dev_id)
         else:  # scalars or invalid args
             if use_c_scalar:

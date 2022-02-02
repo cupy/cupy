@@ -1577,7 +1577,7 @@ cdef class ndarray:
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
                 check = (hasattr(x, '__cuda_array_interface__')
-                         or hasattr(x, '__dlpack__'))
+                         or hasattr(x, '__cupy_get_ndarray__'))
                 if runtime._is_hip_environment and isinstance(x, ndarray):
                     check = True
                 if (not check
