@@ -312,7 +312,6 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "1" }
-    environment_variables { key: "TAGS" value: "mini" }
     command: ".pfnci/linux/main-flexci.sh cuda116"
   }
 }
