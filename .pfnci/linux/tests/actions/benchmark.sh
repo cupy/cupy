@@ -3,7 +3,7 @@
 set -uex
 
 
-git clone git@github.com:cupy/cupy-performance.git performance
+git clone https://github.com/cupy/cupy-performance.git performance
 # TODO(ecastill): make this optional
 pip install seaborn
 
