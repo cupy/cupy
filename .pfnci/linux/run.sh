@@ -158,7 +158,6 @@ main() {
         fi
         echo "benchmark results detected 2"
         ls ${repo_root}:/performance/*.csv
-        ;;
         trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
@@ -166,6 +165,7 @@ main() {
             --tty --user "$(id -u):$(id -g)" \
             "${docker_image}" bash
       fi
+      ;;
     * )
       echo "Unsupported stage: ${stage}" >&2
       exit 1
