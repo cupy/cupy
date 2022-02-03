@@ -159,7 +159,7 @@ main() {
             "${docker_image}" bash
       fi
 
-      if [[-d "${repo_root}/performance" ]]; then
+      if [[ -d "${repo_root}/performance" ]]; then
         echo "benchmark results detected"
         ls ${repo_root}:/performance/*.csv
       fi
