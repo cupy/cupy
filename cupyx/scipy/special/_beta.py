@@ -78,7 +78,7 @@ __constant__ double LOGPI = 1.14472988584940017414;
 #define MAXLGM 2.556348e305
 
 
-__device__ static double lgam_sgn(double x, int *sign)
+__noinline__ __device__ static double lgam_sgn(double x, int *sign)
 {
     double p, q, u, w, z;
     int i;
@@ -181,7 +181,7 @@ lbeta_symp_definition = """
 /*
  * Asymptotic expansion for  ln(|B(a, b)|) for a > ASYMP_FACTOR*max(|b|, 1).
  */
-__device__ static double lbeta_asymp(double a, double b, int *sgn)
+__noinline__ __device__ double lbeta_asymp(double a, double b, int *sgn)
 {
     double r = lgam_sgn(b, sgn);
     r -= b * log(a);
@@ -197,14 +197,14 @@ __device__ static double lbeta_asymp(double a, double b, int *sgn)
 
 beta_definition = """
 
-__device__ double beta(double, double);
+__noinline__ __device__ double beta(double, double);
 
 
 /*
  * Special case for a negative integer argument
  */
 
-__device__ static double beta_negint(int a, double b)
+__noinline__ __device__ static double beta_negint(int a, double b)
 {
     int sgn;
     if (b == (int)b && 1 - a - b > 0) {
@@ -216,7 +216,7 @@ __device__ static double beta_negint(int a, double b)
     }
 }
 
-__device__ double beta(double a, double b)
+__noinline__ __device__ double beta(double a, double b)
 {
     double y;
     int sign = 1;
@@ -291,14 +291,14 @@ __device__ double beta(double a, double b)
 
 lbeta_definition = """
 
-__device__ double lbeta(double, double);
+__noinline__ __device__ double lbeta(double, double);
 
 
 /*
  * Special case for a negative integer argument
  */
 
-__device__ static double lbeta_negint(int a, double b)
+__noinline__ __device__ static double lbeta_negint(int a, double b)
 {
     double r;
     if (b == (int)b && 1 - a - b > 0) {
@@ -312,7 +312,7 @@ __device__ static double lbeta_negint(int a, double b)
 
 // Natural log of |beta|
 
-__device__ double lbeta(double a, double b)
+__noinline__ __device__ double lbeta(double a, double b)
 {
     double y;
     int sign;
@@ -462,14 +462,14 @@ betaln = _core.create_ufunc(
 
 incbet_definition = """
 
-__device__ static double incbd(double, double, double);
-__device__ static double incbcf(double, double, double);
-__device__ static double pseries(double, double, double);
+__noinline__ __device__ static double incbd(double, double, double);
+__noinline__ __device__ static double incbcf(double, double, double);
+__noinline__ __device__ static double pseries(double, double, double);
 
 __constant__ double big = 4.503599627370496e15;
 __constant__ double biginv = 2.22044604925031308085e-16;
 
-__device__ double incbet(double aa, double bb, double xx)
+__noinline__ __device__ double incbet(double aa, double bb, double xx)
 {
     double a, b, t, x, xc, w, y;
     int flag;
@@ -564,7 +564,7 @@ __device__ double incbet(double aa, double bb, double xx)
  * for incomplete beta integral
  */
 
-__device__ static double incbcf(double a, double b, double x)
+__noinline__ __device__ static double incbcf(double a, double b, double x)
 {
     double xk, pk, pkm1, pkm2, qk, qkm1, qkm2;
     double k1, k2, k3, k4, k5, k6, k7, k8;
@@ -652,7 +652,7 @@ __device__ static double incbcf(double a, double b, double x)
  * for incomplete beta integral
  */
 
-__device__ static double incbd(double a, double b, double x)
+__noinline__ __device__ static double incbd(double a, double b, double x)
 {
     double xk, pk, pkm1, pkm2, qk, qkm1, qkm2;
     double k1, k2, k3, k4, k5, k6, k7, k8;
@@ -740,7 +740,7 @@ __device__ static double incbd(double a, double b, double x)
 /* Power series for incomplete beta integral.
  * Use when b*x is small and x not too close to 1.  */
 
-__device__ static double pseries(double a, double b, double x)
+__noinline__ __device__ static double pseries(double a, double b, double x)
 {
     double s, t, u, v, n, t1, z, ai;
 
@@ -822,7 +822,7 @@ betainc = _core.create_ufunc(
 
 incbi_definition = """
 
-__device__ double incbi(double aa, double bb, double yy0)
+__noinline__ __device__ double incbi(double aa, double bb, double yy0)
 {
     double a, b, y0, d, y, x, x0, x1, lgm, yp, di, dithresh, yl, yh, xt;
     int i, rflg, dir, nflg;

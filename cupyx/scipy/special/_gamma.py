@@ -15,7 +15,7 @@ _gamma_body = """
 # like beta, betaln, etc.
 gamma_definition = f"""
 
-__device__ double Gamma(double in0)
+__noinline__ __device__ double Gamma(double in0)
 {{
     double out0;
     {_gamma_body}
