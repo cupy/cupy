@@ -2,28 +2,17 @@
 
 set -uex
 
-MARKER="${1:-}"; shift
-PYTEST_FILES=(${@:-.})
 
-pytest_opts=(
-    -rfEX
-    --timeout 300
-    --maxfail 500
-    --showlocals
-    --durations 10
-)
+git clone git@github.com:cupy/cupy-performance.git performance
+# TODO(ecastill): make this optional
+pip install seaborn
 
-if [[ "${MARKER}" != "" ]]; then
-    pytest_opts+=(-m "${MARKER}")
-fi
-
-# TODO: support coverage reporting
-python3 -m pip install --user pytest-timeout pytest-xdist
-
-pushd tests
-timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
-test_retval=0
-timeout --signal INT --kill-after 60 60 echo "test"1 || test_retval=$?
+pushd performance
+python prof.py benchmarks/bench_ufunc_cupy.py -c
+# Concat all results
+# Upload result to chainer-public
+gsutil -m -q cp *.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 popd
 
 case ${test_retval} in
