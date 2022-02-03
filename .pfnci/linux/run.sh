@@ -157,7 +157,8 @@ main() {
           ls ${repo_root}:/performance/*.csv
         fi
         echo "benchmark results detected 2"
-        ls ${repo_root}:/performance/*.csv
+        ls ${repo_root}
+        ls ${repo_root}/performance/*.csv
         trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
