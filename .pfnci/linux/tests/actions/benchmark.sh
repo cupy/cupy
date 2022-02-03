@@ -12,7 +12,6 @@ pushd performance
 # Concat all results
 # Upload result to chainer-public
 # gsutil -m -q cp *.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
-echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 popd
 
 case ${test_retval} in
