@@ -82,8 +82,14 @@ package_data = {
 
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
-ext_modules = cupy_setup_build.get_ext_modules(False, ctx)
-build_ext = cupy_setup_build.custom_build_ext
+
+if len(sys.argv) < 2 or sys.argv[1] == 'egg_info':
+    # Extensions are unnecessary for egg_info generation as all sources files
+    # can be enumerated via MANIFEST.in.
+    ext_modules = []
+else:
+    ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
+
 
 # Get __version__ variable
 with open(os.path.join(source_root, 'cupy', '_version.py')) as f:
@@ -140,5 +146,5 @@ setup(
     tests_require=tests_require,
     extras_require=extras_require,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext},
+    cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
 )

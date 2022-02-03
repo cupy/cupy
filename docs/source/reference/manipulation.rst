@@ -66,6 +66,7 @@ Changing kind of array
    asfarray
    asfortranarray
    ascontiguousarray
+   asarray_chkfinite
    require
 
 

@@ -15,16 +15,15 @@
 import importlib
 import inspect
 import os
-import pkg_resources
 import sys
 
+import cupy
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import _comparison_generator
 
 
-__version__ = pkg_resources.get_distribution('cupy').version
-
+__version__ = cupy.__version__
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 rtd_version = os.environ.get('READTHEDOCS_VERSION')

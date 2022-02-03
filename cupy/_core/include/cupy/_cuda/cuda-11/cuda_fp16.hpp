@@ -1836,6 +1836,18 @@ __CUDA_FP16_DECL__ __half2 __hmul2_sat(const __half2 a, const __half2 b)
 {
     __BINARY_OP_HALF2_MACRO(mul.sat)
 }
+__CUDA_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b)
+{
+    __BINARY_OP_HALF2_MACRO(add.rn)
+}
+__CUDA_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b)
+{
+    __BINARY_OP_HALF2_MACRO(sub.rn)
+}
+__CUDA_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b)
+{
+    __BINARY_OP_HALF2_MACRO(mul.rn)
+}
 __CUDA_FP16_DECL__ __half2 __hfma2(const __half2 a, const __half2 b, const __half2 c)
 {
     __TERNARY_OP_HALF2_MACRO(fma.rn)
@@ -1883,6 +1895,18 @@ __CUDA_FP16_DECL__ __half __hsub_sat(const __half a, const __half b)
 __CUDA_FP16_DECL__ __half __hmul_sat(const __half a, const __half b)
 {
     __BINARY_OP_HALF_MACRO(mul.sat)
+}
+__CUDA_FP16_DECL__ __half __hadd_rn(const __half a, const __half b)
+{
+    __BINARY_OP_HALF_MACRO(add.rn)
+}
+__CUDA_FP16_DECL__ __half __hsub_rn(const __half a, const __half b)
+{
+    __BINARY_OP_HALF_MACRO(sub.rn)
+}
+__CUDA_FP16_DECL__ __half __hmul_rn(const __half a, const __half b)
+{
+    __BINARY_OP_HALF_MACRO(mul.rn)
 }
 __CUDA_FP16_DECL__ __half __hfma(const __half a, const __half b, const __half c)
 {
@@ -1937,7 +1961,7 @@ __CUDA_FP16_DECL__ __half __hdiv(const __half a, const __half b) {
                 " .reg.b16         r;        \n"\
                 "  mov.b16         r,%1;     \n"\
                 "  cvt.f32.f16     f,r;      \n"\
-                "  " __CUDA_FP16_STRINGIFY(fun) ".approx.f32   f,f;  \n"\
+                "  " __CUDA_FP16_STRINGIFY(fun) ".approx.ftz.f32   f,f;  \n"\
                 "  cvt.rn.f16.f32      r,f;  \n"\
                 "  mov.b16         %0,r;     \n"\
                 "}": "=h"(__HALF_TO_US(val)) : "h"(__HALF_TO_CUS(a)));\
@@ -1950,8 +1974,8 @@ __CUDA_FP16_DECL__ __half __hdiv(const __half a, const __half b) {
                 "  mov.b32         {hl, hu}, %1;   \n"\
                 "  cvt.f32.f16     fl, hl;         \n"\
                 "  cvt.f32.f16     fu, hu;         \n"\
-                "  " __CUDA_FP16_STRINGIFY(fun) ".approx.f32   fl, fl;     \n"\
-                "  " __CUDA_FP16_STRINGIFY(fun) ".approx.f32   fu, fu;     \n"\
+                "  " __CUDA_FP16_STRINGIFY(fun) ".approx.ftz.f32   fl, fl;     \n"\
+                "  " __CUDA_FP16_STRINGIFY(fun) ".approx.ftz.f32   fu, fu;     \n"\
                 "  cvt.rn.f16.f32      hl, fl;     \n"\
                 "  cvt.rn.f16.f32      hu, fu;     \n"\
                 "  mov.b32         %0, {hl, hu};   \n"\
@@ -2091,13 +2115,14 @@ static __device__ __forceinline__ float __float_simpl_cosf(float a)
 
 __CUDA_FP16_DECL__ __half hexp(const __half a) {
     __half val;
-    asm("{.reg.b32         f, C;           \n"
+    asm("{.reg.b32         f, C, nZ;       \n"
         " .reg.b16         h,r;            \n"
         "  mov.b16         h,%1;           \n"
         "  cvt.f32.f16     f,h;            \n"
-        "  mov.b32         C, 0x3fb8aa3bU;  \n"
-        "  mul.f32         f,f,C;          \n"
-        "  ex2.approx.f32      f,f;        \n"
+        "  mov.b32         C, 0x3fb8aa3bU; \n"
+        "  mov.b32         nZ, 0x80000000U;\n"
+        "  fma.rn.f32      f,f,C,nZ;       \n"
+        "  ex2.approx.ftz.f32  f,f;        \n"
         "  cvt.rn.f16.f32      r,f;        \n"
         __SPEC_CASE(h, r, 0X1F79U, 0x9400U)
         __SPEC_CASE(h, r, 0X25CFU, 0x9400U)
@@ -2110,16 +2135,17 @@ __CUDA_FP16_DECL__ __half hexp(const __half a) {
 __CUDA_FP16_DECL__ __half2 h2exp(const __half2 a) {
     __half2 val;
     asm("{.reg.b16         hl, hu;         \n"
-        " .reg.b32         h,r,fl,fu, C;   \n"
+        " .reg.b32         h,r,fl,fu,C,nZ; \n"
         "  mov.b32         {hl, hu}, %1;   \n"
         "  mov.b32         h, %1;          \n"
         "  cvt.f32.f16     fl, hl;         \n"
         "  cvt.f32.f16     fu, hu;         \n"
-        "  mov.b32         C, 0x3fb8aa3bU;  \n"
-        "  mul.f32         fl,fl,C;        \n"
-        "  mul.f32         fu,fu,C;        \n"
-        "  ex2.approx.f32      fl, fl;     \n"
-        "  ex2.approx.f32      fu, fu;     \n"
+        "  mov.b32         C, 0x3fb8aa3bU; \n"
+        "  mov.b32         nZ, 0x80000000U;\n"
+        "  fma.rn.f32      fl,fl,C,nZ;     \n"
+        "  fma.rn.f32      fu,fu,C,nZ;     \n"
+        "  ex2.approx.ftz.f32  fl, fl;     \n"
+        "  ex2.approx.ftz.f32  fu, fu;     \n"
         "  cvt.rn.f16.f32      hl, fl;     \n"
         "  cvt.rn.f16.f32      hu, fu;     \n"
         "  mov.b32         r, {hl, hu};    \n"
@@ -2137,7 +2163,7 @@ __CUDA_FP16_DECL__ __half hexp2(const __half a) {
         " .reg.b16         r;              \n"
         "  mov.b16         r,%1;           \n"
         "  cvt.f32.f16     f,r;            \n"
-        "  ex2.approx.f32      f,f;        \n"
+        "  ex2.approx.ftz.f32      f,f;    \n"
         "  mov.b32         ULP, 0x33800000U;\n"
         "  fma.rn.f32      f,f,ULP,f;      \n"
         "  cvt.rn.f16.f32      r,f;        \n"
@@ -2152,8 +2178,8 @@ __CUDA_FP16_DECL__ __half2 h2exp2(const __half2 a) {
         "  mov.b32         {hl, hu}, %1;   \n"
         "  cvt.f32.f16     fl, hl;         \n"
         "  cvt.f32.f16     fu, hu;         \n"
-        "  ex2.approx.f32      fl, fl;     \n"
-        "  ex2.approx.f32      fu, fu;     \n"
+        "  ex2.approx.ftz.f32  fl, fl;     \n"
+        "  ex2.approx.ftz.f32  fu, fu;     \n"
         "  mov.b32         ULP, 0x33800000U;\n"
         "  fma.rn.f32      fl,fl,ULP,fl;   \n"
         "  fma.rn.f32      fu,fu,ULP,fu;   \n"
@@ -2166,12 +2192,13 @@ __CUDA_FP16_DECL__ __half2 h2exp2(const __half2 a) {
 __CUDA_FP16_DECL__ __half hexp10(const __half a) {
     __half val;
     asm("{.reg.b16         h,r;            \n"
-        " .reg.b32         f, C;           \n"
+        " .reg.b32         f, C, nZ;       \n"
         "  mov.b16         h, %1;          \n"
         "  cvt.f32.f16     f, h;           \n"
-        "  mov.b32         C, 0x40549A78U;  \n"
-        "  mul.f32         f,f,C;          \n"
-        "  ex2.approx.f32      f, f;       \n"
+        "  mov.b32         C, 0x40549A78U; \n"
+        "  mov.b32         nZ, 0x80000000U;\n"
+        "  fma.rn.f32      f,f,C,nZ;       \n"
+        "  ex2.approx.ftz.f32  f, f;       \n"
         "  cvt.rn.f16.f32      r, f;       \n"
         __SPEC_CASE(h, r, 0x34DEU, 0x9800U)
         __SPEC_CASE(h, r, 0x9766U, 0x9000U)
@@ -2185,16 +2212,17 @@ __CUDA_FP16_DECL__ __half hexp10(const __half a) {
 __CUDA_FP16_DECL__ __half2 h2exp10(const __half2 a) {
     __half2 val;
     asm("{.reg.b16         hl, hu;         \n"
-        " .reg.b32         h,r,fl,fu, C;   \n"
+        " .reg.b32         h,r,fl,fu,C,nZ; \n"
         "  mov.b32         {hl, hu}, %1;   \n"
         "  mov.b32         h, %1;          \n"
         "  cvt.f32.f16     fl, hl;         \n"
         "  cvt.f32.f16     fu, hu;         \n"
-        "  mov.b32         C, 0x40549A78U;  \n"
-        "  mul.f32         fl,fl,C;        \n"
-        "  mul.f32         fu,fu,C;        \n"
-        "  ex2.approx.f32      fl, fl;     \n"
-        "  ex2.approx.f32      fu, fu;     \n"
+        "  mov.b32         C, 0x40549A78U; \n"
+        "  mov.b32         nZ, 0x80000000U;\n"
+        "  fma.rn.f32      fl,fl,C,nZ;     \n"
+        "  fma.rn.f32      fu,fu,C,nZ;     \n"
+        "  ex2.approx.ftz.f32  fl, fl;     \n"
+        "  ex2.approx.ftz.f32  fu, fu;     \n"
         "  cvt.rn.f16.f32      hl, fl;     \n"
         "  cvt.rn.f16.f32      hu, fu;     \n"
         "  mov.b32         r, {hl, hu};    \n"
@@ -2213,7 +2241,7 @@ __CUDA_FP16_DECL__ __half hlog2(const __half a) {
         " .reg.b32         f;              \n"
         "  mov.b16         h, %1;          \n"
         "  cvt.f32.f16     f, h;           \n"
-        "  lg2.approx.f32      f, f;       \n"
+        "  lg2.approx.ftz.f32  f, f;       \n"
         "  cvt.rn.f16.f32      r, f;       \n"
         __SPEC_CASE(r, r, 0xA2E2U, 0x8080U)
         __SPEC_CASE(r, r, 0xBF46U, 0x9400U)
@@ -2228,8 +2256,8 @@ __CUDA_FP16_DECL__ __half2 h2log2(const __half2 a) {
         "  mov.b32         {hl, hu}, %1;   \n"
         "  cvt.f32.f16     fl, hl;         \n"
         "  cvt.f32.f16     fu, hu;         \n"
-        "  lg2.approx.f32      fl, fl;     \n"
-        "  lg2.approx.f32      fu, fu;     \n"
+        "  lg2.approx.ftz.f32  fl, fl;     \n"
+        "  lg2.approx.ftz.f32  fu, fu;     \n"
         "  cvt.rn.f16.f32      hl, fl;     \n"
         "  cvt.rn.f16.f32      hu, fu;     \n"
         "  mov.b32         r, {hl, hu};    \n"
@@ -2245,7 +2273,7 @@ __CUDA_FP16_DECL__ __half hlog(const __half a) {
         " .reg.b16         r,h;            \n"
         "  mov.b16         h,%1;           \n"
         "  cvt.f32.f16     f,h;            \n"
-        "  lg2.approx.f32      f,f;        \n"
+        "  lg2.approx.ftz.f32  f,f;        \n"
         "  mov.b32         C, 0x3f317218U;  \n"
         "  mul.f32         f,f,C;          \n"
         "  cvt.rn.f16.f32      r,f;        \n"
@@ -2265,8 +2293,8 @@ __CUDA_FP16_DECL__ __half2 h2log(const __half2 a) {
         "  mov.b32         h, %1;              \n"
         "  cvt.f32.f16     fl, hl;             \n"
         "  cvt.f32.f16     fu, hu;             \n"
-        "  lg2.approx.f32      fl, fl;         \n"
-        "  lg2.approx.f32      fu, fu;         \n"
+        "  lg2.approx.ftz.f32  fl, fl;         \n"
+        "  lg2.approx.ftz.f32  fu, fu;         \n"
         "  mov.b32         C, 0x3f317218U;     \n"
         "  mul.f32         fl,fl,C;            \n"
         "  mul.f32         fu,fu,C;            \n"
@@ -2287,7 +2315,7 @@ __CUDA_FP16_DECL__ __half hlog10(const __half a) {
         " .reg.b32         f, C;           \n"
         "  mov.b16         h, %1;          \n"
         "  cvt.f32.f16     f, h;           \n"
-        "  lg2.approx.f32      f, f;       \n"
+        "  lg2.approx.ftz.f32  f, f;       \n"
         "  mov.b32         C, 0x3E9A209BU; \n"
         "  mul.f32         f,f,C;          \n"
         "  cvt.rn.f16.f32      r, f;       \n"
@@ -2307,8 +2335,8 @@ __CUDA_FP16_DECL__ __half2 h2log10(const __half2 a) {
         "  mov.b32         h, %1;              \n"
         "  cvt.f32.f16     fl, hl;             \n"
         "  cvt.f32.f16     fu, hu;             \n"
-        "  lg2.approx.f32      fl, fl;         \n"
-        "  lg2.approx.f32      fu, fu;         \n"
+        "  lg2.approx.ftz.f32  fl, fl;         \n"
+        "  lg2.approx.ftz.f32  fu, fu;         \n"
         "  mov.b32         C, 0x3E9A209BU;     \n"
         "  mul.f32         fl,fl,C;            \n"
         "  mul.f32         fu,fu,C;            \n"

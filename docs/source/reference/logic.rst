@@ -13,6 +13,7 @@ Truth value testing
 
    all
    any
+   union1d
 
 
 Array contents
