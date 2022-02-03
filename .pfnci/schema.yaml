@@ -53,11 +53,6 @@ rocm:
   null:
     full_version: null
     packages: []
-  "4.0":
-    full_version: "4.0.1"
-    packages: ['rocm-dev', 'hipblas', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
   "4.2":
     full_version: "4.2"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
