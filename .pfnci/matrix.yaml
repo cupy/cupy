@@ -160,7 +160,6 @@
   test: "unit-multi"
 
 # CUDA 11.5 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda115"
   target: "cuda115"
   system: "linux"
@@ -184,6 +183,33 @@
 - project: "cupy.linux.cuda115.multi"
   _inherits: "cupy.linux.cuda115"
   target: "cuda115.multi"
+  test: "unit-multi"
+
+# CUDA 11.6 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda116"
+  target: "cuda116"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.6"
+  rocm: null
+  nccl: "2.11"
+  cutensor: "1.4"
+  cusparselt: "0.1.0"
+  cudnn: "8.3"
+  python: "3.10"
+  numpy: "1.21"
+  scipy: "1.7"
+  optuna: "2"
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.6 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda116.multi"
+  _inherits: "cupy.linux.cuda116"
+  target: "cuda116.multi"
   test: "unit-multi"
 
 ###############################################################################
@@ -325,9 +351,9 @@
   target: "cuda-head"
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.4"
+  cuda: "11.5"
   rocm: null
-  nccl: "2.10"
+  nccl: "2.11"
   cutensor: "1.4"
   cusparselt: "0.1.0"
   cudnn: "8.3"

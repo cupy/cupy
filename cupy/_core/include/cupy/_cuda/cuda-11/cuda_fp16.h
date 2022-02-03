@@ -2176,6 +2176,68 @@ __CUDA_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b);
 __CUDA_FP16_DECL__ __half2 __hmul2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+* \brief Performs \p half2 vector addition in round-to-nearest-even mode.
+*
+* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest
+* mode. Prevents floating-point contractions of mul+add into fma.
+* \internal
+* \req DEEPLEARN-SRM_REQ-95
+* \endinternal
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The sum of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_ARITHMETIC
+* \brief Performs \p half2 vector subtraction in round-to-nearest-even mode.
+*
+* \details Subtracts \p half2 input vector \p b from input vector \p a in
+* round-to-nearest-even mode. Prevents floating-point contractions of mul+sub
+* into fma.
+* \internal
+* \req DEEPLEARN-SRM_REQ-104
+* \endinternal
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The subtraction of vector \p b from \p a.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_ARITHMETIC
+* \brief Performs \p half2 vector multiplication in round-to-nearest-even mode.
+*
+* \details Performs \p half2 vector multiplication of inputs \p a and \p b, in
+* round-to-nearest-even mode. Prevents floating-point contractions of
+* mul+add or sub into fma.
+* \internal
+* \req DEEPLEARN-SRM_REQ-102
+* \endinternal
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The result of elementwise multiplying the vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector division in round-to-nearest-even mode.
 *
 * \details Divides \p half2 input vector \p a by input vector \p b in round-to-nearest
@@ -2404,6 +2466,62 @@ __CUDA_FP16_DECL__ __half __hsub(const __half a, const __half b);
 * \retval The result of multiplying \p a and \p b. 
 */
 __CUDA_FP16_DECL__ __half __hmul(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_ARITHMETIC
+* \brief Performs \p half addition in round-to-nearest-even mode.
+*
+* \details Performs \p half addition of inputs \p a and \p b, in round-to-nearest-even
+* mode. Prevents floating-point contractions of mul+add into fma.
+* \internal
+* \req DEEPLEARN-SRM_REQ-94
+* \endinternal
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \retval The sum of \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hadd_rn(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_ARITHMETIC
+* \brief Performs \p half subtraction in round-to-nearest-even mode.
+*
+* \details Subtracts \p half input \p b from input \p a in round-to-nearest
+* mode. Prevents floating-point contractions of mul+sub into fma.
+* \internal
+* \req DEEPLEARN-SRM_REQ-97
+* \endinternal
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \retval The result of subtracting \p b from \p a.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hsub_rn(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_ARITHMETIC
+* \brief Performs \p half multiplication in round-to-nearest-even mode.
+*
+* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest
+* mode. Prevents floating-point contractions of mul+add or sub into fma.
+* \internal
+* \req DEEPLEARN-SRM_REQ-99
+* \endinternal
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \retval The result of multiplying \p a and \p b.
+*/
+__CUDA_FP16_DECL__ __half __hmul_rn(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half division in round-to-nearest-even mode.
@@ -3620,7 +3738,7 @@ __CUDA_FP16_DECL__ __half2 h2sin(const __half2 a);
 
 
 /**
-* \ingroup CUDA_MATH__HALF2_FUNCTIONS
+* \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Vector add \p val to the value stored at \p address in global or shared memory, and writes this
 * value back to \p address. The atomicity of the add operation is guaranteed separately for each of the
 * two __half elements; the entire __half2 is not guaranteed to be atomic as a single 32-bit access.
@@ -3643,7 +3761,7 @@ __CUDA_FP16_DECL__ __half2 atomicAdd(__half2 *const address, const __half2 val);
 #if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
 
 /**
-* \ingroup CUDA_MATH__HALF_FUNCTIONS
+* \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Adds \p val to the value stored at \p address in global or shared memory, and writes this value
 * back to \p address. This operation is performed in one atomic operation.
 * 
