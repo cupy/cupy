@@ -17,13 +17,16 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 fi
 
-# TODO(kmaehashi): Hack for CUDA 11.5 until FlexCI base image update
-if [[ "${TARGET}" == cuda115* ]]; then
-    if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 470.* ]]; then
-        add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
-        apt-get purge -qqy "cuda-drivers*" "*nvidia*-470"
-        apt-get install -qqy "cuda-drivers-495"
+# TODO(kmaehashi): Hack for CUDA 11.6 until FlexCI base image update
+if [[ "${TARGET}" == cuda116* ]]; then
+    if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 495.* ]]; then
+        add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+        apt-get purge -qqy "cuda-drivers*" "*nvidia*-495"
+        apt-get install -qqy "cuda-drivers"
+        killall Xorg
+        nvidia-smi -pm 0
         modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
+        nvidia-smi -pm 1
         nvidia-smi
     fi
 fi
