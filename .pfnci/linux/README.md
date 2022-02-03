@@ -16,9 +16,9 @@ Here are some examples:
 # Stages: Build the docker image for testing, then run the unit test.
 ./run.sh cuda114 build test
 
-# Target: rocm-4-0
+# Target: rocm-4-2
 # Stages: Only build the docker image.
-./run.sh rocm-4-0 build
+./run.sh rocm-4-2 build
 ```
 
 ## Test Targets

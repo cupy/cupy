@@ -222,28 +222,6 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 4.0 | Linux
-# The lowest ROCm version matrix is intended to cover the lowest supported combination.
-- project: "cupy.linux.rocm-4-0"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-0,label=mnj-mi50/"
-  target: "rocm-4-0"
-  system: "linux"
-  os: "ubuntu:20.04"
-  cuda: null
-  rocm: "4.0"
-  nccl: null
-  cutensor: null
-  cusparselt: null
-  cudnn: null
-  python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
-  optuna: "2"
-  cython: "0.29"
-  cuda-python: null
-  env:CUPY_ACCELERATORS: null
-  test: "unit"
-
 # ROCm 4.2 | Linux
 - project: "cupy.linux.rocm-4-2"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-2,label=mnj-mi50/"
