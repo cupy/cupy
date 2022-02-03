@@ -600,15 +600,19 @@ class TestCsrMatrixScipyComparison:
         return n
 
     # dot
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_scalar(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.dot(2.0)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_numpy_scalar(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.dot(numpy.dtype(self.dtype).type(2.0)).toarray()
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_numpy_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
@@ -637,11 +641,13 @@ class TestCsrMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_zero_dim(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        x = xp.array(2, dtype=self.dtype)
-        return m.dot(x)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_zero_dim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = xp.array(2, dtype=self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -920,6 +926,11 @@ class TestCsrMatrixScipyComparison:
                 x * m
 
     def test_rmul_unsupported(self):
+        if (
+            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
+            self.make_method not in ['_make_empty', '_make_shape']
+        ):
+            pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
             if m.nnz == 0:

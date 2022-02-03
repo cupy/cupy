@@ -15,6 +15,7 @@ Bessel functions
    j1
    y0
    y1
+   yn
    i0
    i1
 
@@ -28,6 +29,14 @@ Raw statistical functions
    :toctree: generated/
 
    ndtr
+   ndtri
+   logit
+   expit
+   log_expit
+   boxcox
+   boxcox1p
+   inv_boxcox
+   inv_boxcox1p
 
 
 Information Theory functions
@@ -103,4 +112,17 @@ Convenience functions
 .. autosummary::
    :toctree: generated/
 
+   cbrt
+   exp10
+   exp2
+   radian
+   cosdg
+   sindg
+   tandg
+   cotdg
    log1p
+   expm1
+   round
+   xlogy
+   xlog1py
+   sinc

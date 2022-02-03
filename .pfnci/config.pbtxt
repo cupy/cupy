@@ -307,12 +307,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 10
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda11x-cuda-python"
   }
 }
@@ -350,6 +350,42 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci/linux/main-flexci.sh cuda-example"
+  }
+}
+
+# CUDA + Slow
+configs {
+  key: "cupy.linux.cuda-slow"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda-slow"
+  }
+}
+
+# CUDA + Slow (for stable branch)
+configs {
+  key: "cupy.linux.cuda-slow-stable"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci-stable.sh cuda-slow"
   }
 }
 

@@ -25,7 +25,7 @@ from cupy import _core
 
 nan_inf = """
 // include for CUDART_NAN, CUDART_INF
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 
 """
 
@@ -33,7 +33,7 @@ nan_inf = """
 lpmv_definition = """
 
 // include for CUDART_NAN, CUDART_INF
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 
 // CUDA C++ translation of code from:
 // https://github.com/scipy/scipy/blob/master/scipy/special/specfun/specfun.f
