@@ -64,7 +64,7 @@ rocm:
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "4.3":
-    full_version: "4.3"
+    full_version: "4.3.1"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
