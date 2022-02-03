@@ -151,6 +151,14 @@ main() {
         docker_pid=$!
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
         wait $docker_pid
+        # Upload benchmark results
+        if [[ -d "${repo_root}/performance" ]]; then
+          echo "benchmark results detected"
+          ls ${repo_root}:/performance/*.csv
+        fi
+        echo "benchmark results detected 2"
+        ls ${repo_root}:/performance/*.csv
+        ;;
         trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
@@ -158,12 +166,6 @@ main() {
             --tty --user "$(id -u):$(id -g)" \
             "${docker_image}" bash
       fi
-
-      if [[ -d "${repo_root}/performance" ]]; then
-        echo "benchmark results detected"
-        ls ${repo_root}:/performance/*.csv
-      fi
-      ;;
     * )
       echo "Unsupported stage: ${stage}" >&2
       exit 1
