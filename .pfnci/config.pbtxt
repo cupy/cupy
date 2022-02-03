@@ -442,6 +442,24 @@ configs {
   }
 }
 
+# CUDA + HEAD (for stable branch)
+configs {
+  key: "cupy.linux.cuda-head-stable"
+  value {
+    requirement {
+      cpu: 8
+      memory: 50
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci-stable.sh cuda-head"
+  }
+}
+
 # Array API
 configs {
   key: "cupy.linux.array-api"
