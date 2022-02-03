@@ -11,7 +11,7 @@ pushd performance
 python prof.py benchmarks/bench_ufunc_cupy.py -c
 # Concat all results
 # Upload result to chainer-public
-gsutil -m -q cp *.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+# gsutil -m -q cp *.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 popd
 

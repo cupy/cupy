@@ -158,8 +158,10 @@ main() {
             --tty --user "$(id -u):$(id -g)" \
             "${docker_image}" bash
       fi
+      if [[-d "${repo_root}:src/performance" ]] then
+        echo "benchmark results detected"
+      fi
       ;;
-
     * )
       echo "Unsupported stage: ${stage}" >&2
       exit 1

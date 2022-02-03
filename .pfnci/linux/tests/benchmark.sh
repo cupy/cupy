@@ -11,6 +11,6 @@ export NVCC="ccache nvcc"
 
 export CUPY_ACCELERATORS="cub,cutensor"
 
-"$ACTIONS/build.sh"
+# "$ACTIONS/build.sh"
 "$ACTIONS/benchmark.sh"
 "$ACTIONS/cleanup.sh"
