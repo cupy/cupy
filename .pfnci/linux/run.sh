@@ -145,6 +145,9 @@ main() {
       fi
 
       test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
+      mkdir "${repo_root}/perf-results"
+      docker_args+=(--volume="${repo_root}/perf-results:/perf-results")
+
       if [[ "${stage}" = "test" ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
             "${docker_image}" timeout 8h "${test_command[@]}" &
@@ -152,13 +155,11 @@ main() {
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
         wait $docker_pid
         # Upload benchmark results
-        if [[ -d "${repo_root}/performance" ]]; then
+        if [[ -d "${repo_root}/perf-results" ]]; then
           echo "benchmark results detected"
-          ls ${repo_root}:/performance/*.csv
         fi
         echo "benchmark results detected 2"
-        ls ${repo_root}
-        ls ${repo_root}/performance/*.csv
+        ls ${repo_root}/perf-results/*.csv
         trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
