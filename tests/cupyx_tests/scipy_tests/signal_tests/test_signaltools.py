@@ -14,8 +14,6 @@ except ImportError:
     pass
 
 
-@pytest.mark.skipif(runtime.is_hip,  # see #6427
-                    reason="Flaky in HIP when running with other tests")
 @testing.parameterize(*testing.product({
     'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
     'size2': [3, 4, 5, 10],
@@ -63,9 +61,9 @@ class TestFFTConvolve:
 
     def _hip_skip_invalid_condition(self):
         invalid_condition = [
-            ('full', 4), ('full', 5), ('full', 10),
+            ('full', 3), ('full', 4), ('full', 5), ('full', 10),
             ('same', 3), ('same', 4), ('same', 5), ('same', 10),
-            ('valid', 10)]
+            ('valid', 3), ('valid', 10)]
         if (runtime.is_hip and self.size1 == (3, 4, 10)
                 and (self.mode, self.size2) in invalid_condition):
             pytest.xfail('ROCm/HIP may have a bug')
