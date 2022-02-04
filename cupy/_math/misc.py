@@ -380,11 +380,14 @@ def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
     .. seealso:: :func:`numpy.nan_to_num`
 
     """
-    dtype = x.dtype
+    if not isinstance(x, cupy.ndarray):
+        out = cupy.full((), x)
+    else:
+        out = cupy.empty_like(x) if copy else x
+    dtype = out.dtype
     nan = _check_nan_inf(nan, dtype)
     posinf = _check_nan_inf(posinf, dtype, False)
     neginf = _check_nan_inf(neginf, dtype, True)
-    out = None if copy else x
     return _nan_to_num(x, nan, posinf, neginf, out=out)
 
 
