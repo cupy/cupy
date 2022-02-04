@@ -473,8 +473,8 @@ def log(msg: str) -> None:
 
 def parse_args(argv: List[str]) -> Any:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--schema', type=str, required=True)
-    parser.add_argument('-m', '--matrix', type=str, required=True)
+    parser.add_argument('-s', '--schema', type=str, default=None)
+    parser.add_argument('-m', '--matrix', type=str, default=None)
     parser.add_argument('-d', '--directory', type=str)
     parser.add_argument('-D', '--dry-run', action='store_true', default=False)
     return parser.parse_args()
@@ -482,6 +482,12 @@ def parse_args(argv: List[str]) -> Any:
 
 def main(argv: List[str]) -> int:
     options = parse_args(argv)
+
+    basedir = os.path.abspath(os.path.dirname(argv[0]))
+    if options.schema is None:
+        options.schema = os.path.join(basedir, 'schema.yaml')
+    if options.matrix is None:
+        options.matrix = os.path.join(basedir, 'matrix.yaml')
 
     log(f'Loading schema: {options.schema}')
     with open(options.schema) as f:
@@ -497,6 +503,8 @@ def main(argv: List[str]) -> int:
     validate_matrixes(schema, matrixes)
 
     output = {}
+
+    # Generate test assets
     for matrix in matrixes:
         log(
             f'Processing project matrix: {matrix.project} '
@@ -512,6 +520,7 @@ def main(argv: List[str]) -> int:
         else:
             raise AssertionError
 
+    # Generate coverage matrix
     covgen = CoverageGenerator(schema, matrixes)
     covout, warns = covgen.generate_markdown()
     output['coverage.md'] = covout
@@ -523,12 +532,10 @@ def main(argv: List[str]) -> int:
         log('----------------------------------------')
 
     # Write output files.
-    base_dir = (
-        options.directory if options.directory else
-        os.path.abspath(os.path.dirname(argv[0])))
+    out_basedir = options.directory if options.directory else basedir
     retval = 0
     for filename, content in output.items():
-        filepath = f'{base_dir}/{filename}'
+        filepath = f'{out_basedir}/{filename}'
         if options.dry_run:
             with open(filepath) as f:
                 if f.read() != content:
