@@ -14,7 +14,7 @@ except ImportError:
     pass
 
 
-@pytest.mark.skipif(runtime.is_hip,
+@pytest.mark.skipif(runtime.is_hip,  # see #6427
                     reason="Flaky in HIP when running with other tests")
 @testing.parameterize(*testing.product({
     'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
