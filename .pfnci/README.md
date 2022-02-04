@@ -10,12 +10,14 @@ This directory contains the test matrix definition, and a tool to generate test 
 * [`schema.yaml`](schema.yml) defines all the possible values for each test axis (e.g., `cuda`, `python`, `numpy`), and constraints between them.
 * [`matrix.yaml`](matrix.yml) defines the configuration of each test matrix (e.g., `cupy.linux.cuda115`.)
 * [`generate.py`](generate.py) generates the test assets (Dockerfile/shell script for Linux, PowerShell script for Windows) for each matrix from the schema and the matrix.
-  This program also generates [`coverage.md`](coverage.md) to see the configuration coverage.
-* [`config.pbtxt`](config.pbtxt) is a FlexCI configuration file that defines hardware configurations of each test matrix.
+  This program also generates the following files:
+    * [`config.tags.json`](config.tags.json): mapping of test matrices and test trigger phrases
+    * [`coverage.md`](coverage.md): human-readable configuration coverage table
+* [`config.pbtxt`](config.pbtxt) is a FlexCI configuration file that defines launch configurations of each test matrix.
 
 ## Usage
 
-To generate `linux/tests/*.Dockerfile`, `linux/tests/*.sh` and `coverage.md`:
+To generate `linux/tests/*.Dockerfile`, `linux/tests/*.sh`, `config.tags.json`, and `coverage.md`:
 
 ```
 pip install PyYAML
