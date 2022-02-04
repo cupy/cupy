@@ -7,12 +7,12 @@ git clone https://github.com/cupy/cupy-performance.git performance
 # TODO(ecastill): make this optional
 pip install seaborn
 ls
-pushd /perf-results
-# python prof.py benchmarks/bench_ufunc_cupy.py -c
+pushd performance
+python prof.py benchmarks/bench_ufunc_cupy.py -c
 # Concat all results
 # Upload result to chainer-public
 # gsutil -m -q cp *.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
-echo "test" > test.csv
+cp *.csv /perf-results/
 popd
 
 # case ${test_retval} in

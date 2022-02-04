@@ -160,6 +160,7 @@ main() {
         fi
         echo "benchmark results detected 2"
         ls ${repo_root}/perf-results/*.csv
+        gsutil_with_retry -m -q cp ${repo_root}/perf-results/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
         trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
