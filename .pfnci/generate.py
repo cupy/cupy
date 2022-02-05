@@ -8,21 +8,21 @@ import sys
 
 import yaml
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 
-SchemaType = Dict[str, Any]
+SchemaType = Mapping[str, Any]
 
 
 class Matrix:
-    def __init__(self, record: Dict[str, str]):
+    def __init__(self, record: Mapping[str, Any]):
         self._rec = {
             '_inherits': None,
             '_extern': False,
         }
         self._rec.update(record)
 
-    def env(self):
+    def env(self) -> Dict[str, Any]:
         envvars = {}
         for k, v in self._rec.items():
             if not k.startswith('env:') or v is None:
@@ -30,15 +30,15 @@ class Matrix:
             envvars[k.split(':', 2)[1]] = v
         return envvars
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if key in self._rec:
             return self._rec[key]
         raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
-    def copy(self):
+    def copy(self) -> 'Matrix':
         return Matrix(self._rec.copy())
 
-    def update(self, matrix: 'Matrix'):
+    def update(self, matrix: 'Matrix') -> None:
         self._rec.update(matrix._rec)
 
 
@@ -224,7 +224,7 @@ class LinuxGenerator:
                         f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
         elif matrix.rocm is not None:
-            return self.schema['rocm'][matrix.rocm]['packages']
+            return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
         raise AssertionError
 
     def generate_script(self) -> str:
@@ -376,7 +376,7 @@ class TagGenerator:
         return json.dumps(output, indent=4)
 
 
-def validate_schema(schema: SchemaType):
+def validate_schema(schema: SchemaType) -> None:
     # Validate schema consistency
     for key, key_schema in schema.items():
         if key == 'os':
