@@ -164,19 +164,21 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
         arr1 = arr1.ravel()
         arr2 = arr2.ravel()
 
-    aux = cupy.concatenate((arr1, arr2))
     if return_indices:
-        aux_sort_indices = cupy.argsort(aux)
-        aux = aux[aux_sort_indices]
+        arr2_sort_indices = cupy.argsort(arr2)
+        arr2 = arr2[arr2_sort_indices]
     else:
-        aux.sort()
+        arr2 = cupy.sort(arr2)
 
-    mask = aux[1:] == aux[:-1]
-    int1d = aux[:-1][mask]
+    v1 = cupy.searchsorted(arr2, arr1, 'left')
+    v2 = cupy.searchsorted(arr2, arr1, 'right')
+
+    mask = v1 != v2
+    int1d = arr1[mask]
 
     if return_indices:
-        arr1_indices = aux_sort_indices[:-1][mask]
-        arr2_indices = aux_sort_indices[1:][mask] - arr1.size
+        arr1_indices = cupy.flatnonzero(mask)
+        arr2_indices = arr2_sort_indices[v2[mask]-1]
         if not assume_unique:
             arr1_indices = ind1[arr1_indices]
             arr2_indices = ind2[arr2_indices]

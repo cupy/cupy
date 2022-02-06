@@ -127,7 +127,7 @@ class TestIn1DIsIn:
 
 class TestIntersect1d:
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_one_dim_with_unique_values(self, xp, dtype):
         a = xp.array([1, 2, 3, 4, 5], dtype=dtype)
