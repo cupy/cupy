@@ -22,3 +22,4 @@ Boolean operations
 
    in1d
    isin
+   setdiff1d

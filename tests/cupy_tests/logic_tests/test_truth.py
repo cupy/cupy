@@ -125,6 +125,30 @@ class TestIn1DIsIn:
         return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
 
 
+class TestSetdiff1d:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setdiff1d_1(self, xp, dtype):
+        x = xp.array([1, 2, 3, 4, 5], dtype=dtype)
+        y = xp.array([1, 2, 3, 4, 5], dtype=dtype)
+        return xp.setdiff1d(x, y, assume_unique=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setdiff1d_2(self, xp, dtype):
+        x = xp.array([3, 4, 9, 1, 5, 4], dtype=dtype)
+        y = xp.array([8, 7, 3, 9, 0], dtype=dtype)
+        return xp.setdiff1d(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setdiff1d_3(self, xp, dtype):
+        x = xp.array([3, 4, 9, 1, 5, 4], dtype=dtype)
+        y = xp.array([8, 7, 3, 9, 0], dtype=dtype)
+        return xp.setdiff1d(x, y, assume_unique=True)
+
+
 class TestUnion1d:
 
     @testing.for_all_dtypes()
