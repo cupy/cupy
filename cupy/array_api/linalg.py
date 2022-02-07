@@ -7,7 +7,7 @@ from ._array_object import Array
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ._typing import Literal, Optional, Sequence, Tuple, Union
+    from typing import Literal, Optional, Sequence, Tuple, Union
 
 from typing import NamedTuple
 
