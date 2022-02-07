@@ -16,15 +16,15 @@ _environment._preload_library('nccl')  # NOQA
 
 try:
     from cupy import _core  # NOQA
-except ImportError as e:
+except ImportError as exc:
     raise ImportError(f'''
 ================================================================
 {_environment._diagnose_import_error()}
 
 Original error:
-  {type(e).__name__}: {e}
+  {type(exc).__name__}: {exc}
 ================================================================
-''') from e
+''') from exc
 
 
 from cupy import cuda  # NOQA

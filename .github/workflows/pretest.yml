@@ -50,6 +50,10 @@ jobs:
         autopep8 -r . --diff | tee check_autopep8
         test ! -s check_autopep8
 
+    - name: Static Type Checking (mypy)
+      run: |
+        mypy cupy cupyx cupy_backends
+
     - name: Test - Docs Build
       run: |
         # Test to detect invalid escape sequences in docstrings (#1619)

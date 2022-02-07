@@ -156,19 +156,19 @@ def array_equiv(a1, a2):
     return (a1 == a2).all()
 
 
-greater = _core.greater
+greater: _core.ufunc = _core.greater
 
 
-greater_equal = _core.greater_equal
+greater_equal: _core.ufunc = _core.greater_equal
 
 
-less = _core.less
+less: _core.ufunc = _core.less
 
 
-less_equal = _core.less_equal
+less_equal: _core.ufunc = _core.less_equal
 
 
-equal = _core.equal
+equal: _core.ufunc = _core.equal
 
 
-not_equal = _core.not_equal
+not_equal: _core.ufunc = _core.not_equal
