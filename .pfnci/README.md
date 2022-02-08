@@ -7,8 +7,8 @@ CuPy uses two infrastructures for GPU tests.
 
 This directory contains the test matrix definition, and a tool to generate test environment from the matrix.
 
-* [`schema.yaml`](schema.yml) defines all the possible values for each test axis (e.g., `cuda`, `python`, `numpy`), and constraints between them.
-* [`matrix.yaml`](matrix.yml) defines the configuration of each test matrix (e.g., `cupy.linux.cuda115`.)
+* [`schema.yaml`](schema.yaml) defines all the possible values for each test axis (e.g., `cuda`, `python`, `numpy`), and constraints between them.
+* [`matrix.yaml`](matrix.yaml) defines the configuration of each test matrix (e.g., `cupy.linux.cuda115`.)
 * [`generate.py`](generate.py) generates the test assets (Dockerfile/shell script for Linux, PowerShell script for Windows) for each matrix from the schema and the matrix.
   This program also generates the following files:
     * [`config.tags.json`](config.tags.json): mapping of test matrices and test trigger phrases
