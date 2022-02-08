@@ -238,6 +238,12 @@ class TestMeanVar:
         a = testing.shaped_arange((2, 3), xp, dtype)
         return a.var(ddof=1)
 
+    @testing.slow
+    @testing.numpy_cupy_allclose()
+    def test_var_large(self, xp, dtype):
+        a = xp.ones(3 * 10 ** 8, dtype=xp.float32)
+        return a.var()
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_var_all_ddof(self, xp, dtype):
