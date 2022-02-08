@@ -1,5 +1,6 @@
 import urllib.request
 import sys
+from typing import Tuple
 
 
 # Take cupy_backends/stub/cupy_cusparse.h and generate
@@ -33,6 +34,7 @@ hip_versions = ("3.5.0", "3.7.0", "3.8.0", "3.9.0", "4.0.0", "4.2.0")
 
 
 # typedefs
+typedefs: Tuple[str, ...]
 typedefs = ('cusparseIndexBase_t', 'cusparseStatus_t', 'cusparseHandle_t',
             'cusparseMatDescr_t', 'csrsv2Info_t', 'csrsm2Info_t',
             'csric02Info_t', 'bsric02Info_t', 'csrilu02Info_t',
@@ -376,13 +378,13 @@ if __name__ == '__main__':
 
         x = 0
         for hip_ver in hip_versions:
-            stubs = stubs.splitlines()
+            stubs_splitted = stubs.splitlines()
 
             req = urllib.request.urlopen(hipsparse_url.format(hip_ver))
             with req as f:
                 hip_h = f.read().decode()
 
-            stubs = main(hip_h, cu_h, stubs, hip_ver, init)
+            stubs = main(hip_h, cu_h, stubs_splitted, hip_ver, init)
             init = True
 
     # more hacks...

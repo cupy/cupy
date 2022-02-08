@@ -6,7 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
