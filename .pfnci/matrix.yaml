@@ -5,6 +5,7 @@
 # CUDA 10.2 | Linux
 # The lowest CUDA version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.cuda102"
+  tags: ["full", "mini"]
   target: "cuda102"
   system: "linux"
   os: "ubuntu:18.04"
@@ -26,11 +27,13 @@
 # CUDA 10.2 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda102.multi"
   _inherits: "cupy.linux.cuda102"
+  tags: ["full", "mini", "multi"]
   target: "cuda102.multi"
   test: "unit-multi"
 
 # CUDA 11.0 | Linux
 - project: "cupy.linux.cuda110"
+  tags: ["full"]
   target: "cuda110"
   system: "linux"
   os: "ubuntu:20.04"
@@ -52,11 +55,13 @@
 # CUDA 11.0 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda110.multi"
   _inherits: "cupy.linux.cuda110"
+  tags: ["full", "multi"]
   target: "cuda110.multi"
   test: "unit-multi"
 
 # CUDA 11.1 | Linux
 - project: "cupy.linux.cuda111"
+  tags: ["full"]
   target: "cuda111"
   system: "linux"
   os: "centos:7"
@@ -77,12 +82,14 @@
 
 # CUDA 11.1 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda111.multi"
+  tags: ["full", "multi"]
   _inherits: "cupy.linux.cuda111"
   target: "cuda111.multi"
   test: "unit-multi"
 
 # CUDA 11.2 | Linux
 - project: "cupy.linux.cuda112"
+  tags: ["full"]
   target: "cuda112"
   system: "linux"
   os: "centos:8"
@@ -104,11 +111,13 @@
 # CUDA 11.2 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda112.multi"
   _inherits: "cupy.linux.cuda112"
+  tags: ["full", "multi"]
   target: "cuda112.multi"
   test: "unit-multi"
 
 # CUDA 11.3 | Linux
 - project: "cupy.linux.cuda113"
+  tags: ["full"]
   target: "cuda113"
   system: "linux"
   os: "ubuntu:18.04"
@@ -130,11 +139,13 @@
 # CUDA 11.3 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda113.multi"
   _inherits: "cupy.linux.cuda113"
+  tags: ["full", "multi"]
   target: "cuda113.multi"
   test: "unit-multi"
 
 # CUDA 11.4 | Linux
 - project: "cupy.linux.cuda114"
+  tags: ["full"]
   target: "cuda114"
   system: "linux"
   os: "ubuntu:20.04"
@@ -156,11 +167,13 @@
 # CUDA 11.4 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda114.multi"
   _inherits: "cupy.linux.cuda114"
+  tags: ["full", "multi"]
   target: "cuda114.multi"
   test: "unit-multi"
 
 # CUDA 11.5 | Linux
 - project: "cupy.linux.cuda115"
+  tags: ["full", "mini"]
   target: "cuda115"
   system: "linux"
   os: "ubuntu:20.04"
@@ -182,6 +195,7 @@
 # CUDA 11.5 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda115.multi"
   _inherits: "cupy.linux.cuda115"
+  tags: ["full", "mini", "multi"]
   target: "cuda115.multi"
   test: "unit-multi"
 
@@ -189,6 +203,7 @@
 # The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda116"
   target: "cuda116"
+  tags: []  # TODO: to be filled when adding this matrix to CI
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.6"
@@ -209,6 +224,7 @@
 # CUDA 11.6 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda116.multi"
   _inherits: "cupy.linux.cuda116"
+  tags: []  # TODO: to be filled when adding this matrix to CI
   target: "cuda116.multi"
   test: "unit-multi"
 
@@ -226,6 +242,7 @@
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-0"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-0,label=mnj-mi50/"
+  tags: []  # n/a (Jenkins)
   target: "rocm-4-0"
   system: "linux"
   os: "ubuntu:20.04"
@@ -247,6 +264,7 @@
 # ROCm 4.2 | Linux
 - project: "cupy.linux.rocm-4-2"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-2,label=mnj-mi50/"
+  tags: []  # n/a (Jenkins)
   target: "rocm-4-2"
   system: "linux"
   os: "ubuntu:20.04"
@@ -269,6 +287,7 @@
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-4-3"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
+  tags: []  # n/a (Jenkins)
   target: "rocm-4-3"
   system: "linux"
   os: "ubuntu:20.04"
@@ -295,6 +314,7 @@
 # Slow | Linux
 - project: "cupy.linux.cuda-slow"
   target: "cuda-slow"
+  tags: ["slow"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.4"
@@ -324,6 +344,7 @@
 # - Accelerators are disabled as doctests expect it (#5891)
 - project: "cupy.linux.cuda-example"
   target: "cuda-example"
+  tags: ["full", "mini", "example"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.4"
@@ -349,6 +370,7 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
+  tags: ["head"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.5"
@@ -373,6 +395,7 @@
 # CUDA 11.x / CUDA Python | Linux
 - project: "cupy.linux.cuda11x-cuda-python"
   target: "cuda11x-cuda-python"
+  tags: ["full", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.5"
@@ -390,3 +413,25 @@
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
+
+###############################################################################
+# Tests in hand-crafted environment (not managed by generate.py)
+###############################################################################
+
+- project: "cupy.win.cuda102"
+  _extern: true
+  target: "cuda102"
+  tags: ["full", "mini", "windows"]
+  system: "windows"
+
+- project: "cupy.linux.cuda-rapids"
+  _extern: true
+  target: "cuda-rapids"
+  tags: ["full", "rapids"]
+  system: "linux"
+
+- project: "cupy.linux.array-api"
+  _extern: true
+  target: "array-api"
+  tags: ["array-api"]
+  system: "linux"
