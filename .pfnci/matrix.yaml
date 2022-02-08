@@ -185,7 +185,7 @@
   cudnn: "8.3"
   python: "3.10"
   numpy: "1.22"
-  scipy: "1.7"
+  scipy: "1.8"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
