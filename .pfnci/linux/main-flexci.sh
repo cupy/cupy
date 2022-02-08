@@ -43,7 +43,7 @@ if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get build benchmark"
 fi
 echo "$(dirname ${0})/run.sh" "${TARGET} ${STAGES}"
-BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET} ${STAGES}" 2>&1 | tee "${LOG_FILE}"
+BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 echo "****************************************************************************************************"
 echo "Build & Test: Exit with status ${test_retval}"
