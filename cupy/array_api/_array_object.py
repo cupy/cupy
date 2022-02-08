@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 """
 Wrapper class around the ndarray object for the array API standard.
 

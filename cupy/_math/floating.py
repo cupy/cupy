@@ -1,6 +1,6 @@
 from cupy import _core
 from cupy._math import ufunc
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
 
 
 signbit = _core.create_ufunc(
