@@ -25,6 +25,8 @@ Array contents
    isfinite
    isinf
    isnan
+   isneginf
+   isposinf
 
 
 Array type testing

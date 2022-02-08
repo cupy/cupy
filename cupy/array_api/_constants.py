@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import cupy as np
 
 e = np.e

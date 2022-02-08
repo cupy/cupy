@@ -380,7 +380,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -418,8 +418,6 @@ Package names are different depending on your ROCm version.
 
    * - ROCm
      - Command
-   * - v4.0
-     - ``$ pip install cupy-rocm-4-0``
    * - v4.2
      - ``$ pip install cupy-rocm-4-2``
    * - v4.3
