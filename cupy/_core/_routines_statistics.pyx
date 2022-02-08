@@ -560,7 +560,7 @@ cdef ndarray _var(
     div = max(items - ddof, 0)
     alpha = 1. / div if div != 0 else nan
     # when using very large arrays, the mean calculation with low precision
-    # can lead to incorrect results when calculating the std. 
+    # can lead to incorrect results when calculating the std.
     # Just by accomulating the (x_mean - x) we can notice the error.
     # see #6425
     if items > 10 ** 7:
