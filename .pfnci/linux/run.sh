@@ -27,7 +27,7 @@ Environment variables:
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
 - DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
                       image.
-- BENCHMARK_DIR: Path to the directory to store benchmark results
+- BENCHMARK_DIR: Path to the directory to store benchmark results.
 "
 
 set -eu
