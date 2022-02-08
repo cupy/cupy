@@ -16,6 +16,7 @@ Arguments:
   - test: Run tests.
   - shell: Start an interactive shell in the docker image for debugging.
            The source tree will be read-write mounted for convenience.
+  - benchmark: Run performance benchmarks.
 
 Environment variables:
 
@@ -39,6 +40,7 @@ set -eu
 
 main() {
   if (( $# < 2 )); then
+    echo $#
     echo "${USAGE}"
     exit 1;
   fi
