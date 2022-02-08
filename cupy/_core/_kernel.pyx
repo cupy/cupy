@@ -122,6 +122,9 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
         elif hasattr(arg, '__cuda_array_interface__'):
             s = _convert_object_with_cuda_array_interface(arg)
             _check_peer_access(<ndarray>s, dev_id)
+        elif hasattr(arg, '__cupy_get_ndarray__'):
+            s = arg.__cupy_get_ndarray__()
+            _check_peer_access(<ndarray>s, dev_id)
         else:  # scalars or invalid args
             if use_c_scalar:
                 s = _scalar.scalar_to_c_scalar(arg)
