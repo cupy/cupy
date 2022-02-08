@@ -559,7 +559,12 @@ cdef ndarray _var(
     # on why NaN is the result.
     div = max(items - ddof, 0)
     alpha = 1. / div if div != 0 else nan
-
+    # when using very large arrays, the mean calculation with low precision
+    # can lead to incorrect results when calculating the std. 
+    # Just by accomulating the (x_mean - x) we can notice the error.
+    # see #6425
+    if items > 10 ** 7:
+        dtype_mean = 'float64'
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
 
     if out is None:
