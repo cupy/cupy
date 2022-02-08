@@ -37,7 +37,13 @@ gcloud auth configure-docker
 
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
-CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_get build test 2>&1 | tee "${LOG_FILE}"
+
+STAGES="cache_get build test"
+if [[ "${TARGET}" == "benchmark" ]]; then
+    STAGES="cache_get build benchmark"
+fi
+
+BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET} ${STAGES}" 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 echo "****************************************************************************************************"
 echo "Build & Test: Exit with status ${test_retval}"
@@ -57,6 +63,13 @@ fi
 
 echo "Uploading the log..."
 gsutil -m -q cp "${LOG_FILE}" "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+
+if [[ "${TARGET}" == "benchmark" ]]; then
+    echo "Uploading benchmark results"
+    ls /tmp/benchmark/*.csv
+    gsutil -m -q cp /tmp/benchmark/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+
+fi
 
 echo "****************************************************************************************************"
 echo "Full log is available at:"

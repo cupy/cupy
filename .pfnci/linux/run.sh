@@ -27,6 +27,7 @@ Environment variables:
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
 - DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
                       image.
+- BENCHMARK_DIR: Path to the directory to store benchmark results
 "
 
 set -eu
@@ -118,7 +119,7 @@ main() {
       rm -f "${cache_archive}"
       ;;
 
-    test | shell )
+    test | shell | benchmark)
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
@@ -145,8 +146,10 @@ main() {
       fi
 
       test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
-      mkdir "${repo_root}/perf-results"
-      docker_args+=(--volume="${repo_root}/perf-results:/perf-results")
+      if [[ "${stage}" = "benchmark" ]]; then
+        mkdir -p ${BENCHMARK_DIR}
+        docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
+      fi
 
       if [[ "${stage}" = "test" ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
@@ -154,14 +157,15 @@ main() {
         docker_pid=$!
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
         wait $docker_pid
-        # Upload benchmark results
-        if [[ -d "${repo_root}/perf-results" ]]; then
-          echo "benchmark results detected"
-        fi
-        echo "benchmark results detected 2"
-        ls ${repo_root}/perf-results/*.csv
-        gsutil_with_retry -m -q cp ${repo_root}/perf-results/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
         trap TERM INT HUP
+        # # Upload benchmark results
+        # if [[ -d "${repo_root}/perf-results" ]]; then
+        #   echo "benchmark results detected"
+        # fi
+        # echo "benchmark results detected 2"
+        # ls ${repo_root}/perf-results/*.csv
+        # gsutil_with_retry -m -q cp ${repo_root}/perf-results/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+        # trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
         "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" \
