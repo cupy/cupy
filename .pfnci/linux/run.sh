@@ -151,21 +151,13 @@ main() {
         docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
       fi
 
-      if [[ "${stage}" = "test" ]]; then
+      if [[ "${stage}" = "test" || "${stage}" = "benchmark" ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
             "${docker_image}" timeout 8h "${test_command[@]}" &
         docker_pid=$!
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
         wait $docker_pid
         trap TERM INT HUP
-        # # Upload benchmark results
-        # if [[ -d "${repo_root}/perf-results" ]]; then
-        #   echo "benchmark results detected"
-        # fi
-        # echo "benchmark results detected 2"
-        # ls ${repo_root}/perf-results/*.csv
-        # gsutil_with_retry -m -q cp ${repo_root}/perf-results/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
-        # trap TERM INT HUP
       elif [[ "${stage}" = "shell" ]]; then
         echo "Hint: ${test_command[@]}"
         "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" \
