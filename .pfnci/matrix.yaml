@@ -151,7 +151,7 @@
   os: "ubuntu:20.04"
   cuda: "11.4"
   rocm: null
-  nccl: "2.11"
+  nccl: "2.10"
   cutensor: "1.4"
   cusparselt: "0.1.0"
   cudnn: "8.3"
