@@ -33,7 +33,7 @@ def _choose_conv_method(in1, in2, mode):
 
 def _fftconv_faster(x, h, mode):
     """
-    .. seealso:: :func: `scipy.signal.signaltools._fftconv_faster`
+    .. seealso:: :func: `scipy.signal._signaltools._fftconv_faster`
 
     """
     # TODO(Dahlia-Chehata): replace with GPU-based constants.
