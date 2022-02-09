@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 """
 This file defines the types for type annotations.
 

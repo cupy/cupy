@@ -27,6 +27,7 @@ from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy_backends.cuda.api cimport runtime
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -120,6 +121,9 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
             s = arg
         elif hasattr(arg, '__cuda_array_interface__'):
             s = _convert_object_with_cuda_array_interface(arg)
+            _check_peer_access(<ndarray>s, dev_id)
+        elif hasattr(arg, '__cupy_get_ndarray__'):
+            s = arg.__cupy_get_ndarray__()
             _check_peer_access(<ndarray>s, dev_id)
         else:  # scalars or invalid args
             if use_c_scalar:
@@ -910,7 +914,11 @@ cdef str fix_cast_expr(src_type, dst_type, str expr):
     if src_kind == dst_kind:
         return expr
     if src_kind == 'b':
-        return f'({expr}) ? 1 : 0'
+        # HIP has an issue with bool conversions detailed below
+        if runtime._is_hip_environment:
+            return f'_hip_bool_cast({expr})'
+        else:
+            return f'({expr}) ? 1 : 0'
     if src_kind == 'c':
         if dst_kind == 'b':
             return f'({expr}) != {_scalar.get_typename(src_type)}()'
@@ -969,7 +977,26 @@ cdef function.Function _get_ufunc_kernel(
     op.append(';')
     op.extend(out_op)
     operation = '\n'.join(op)
-
+    # HIP/ROCm 4.3 has an issue with ifs and ternary operators
+    #
+    # int bool(int x) {
+    #     if (x != 0) return 1;
+    #     return 0;
+    # }
+    #
+    # bool(5) == 1;  //false
+    # bool(5) == 5;  //true
+    #
+    # also it simplifies  (a ? 1 : 0)  directly to a, and yields
+    # an incorrect value
+    if runtime._is_hip_environment:
+        preamble += """
+        __device__ int _hip_bool_cast(long long int x) {
+            volatile int a = 1;
+            if (x == 0) a = 0;
+            return a;
+        }
+        """
     return _get_simple_elementwise_kernel(
         params, arginfos, operation, name, type_map, preamble,
         loop_prep=loop_prep)

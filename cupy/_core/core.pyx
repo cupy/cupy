@@ -1395,6 +1395,12 @@ cdef class ndarray:
             'Implicit conversion to a NumPy array is not allowed. '
             'Please use `.get()` to construct a NumPy array explicitly.')
 
+    @classmethod
+    def __class_getitem__(cls, tuple item):
+        from cupy.typing._generic_alias import GenericAlias
+        item1, item2 = item
+        return GenericAlias(cupy.ndarray, (item1, item2))
+
     # TODO(okuta): Implement __array_wrap__
 
     # Container customization:
@@ -1570,7 +1576,8 @@ cdef class ndarray:
                 # implicit host-to-device conversion.
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
-                check = hasattr(x, '__cuda_array_interface__')
+                check = (hasattr(x, '__cuda_array_interface__')
+                         or hasattr(x, '__cupy_get_ndarray__'))
                 if runtime._is_hip_environment and isinstance(x, ndarray):
                     check = True
                 if (not check

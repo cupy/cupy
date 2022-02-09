@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.22 and SciPy 1.7, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v11 is based on NumPy 1.22 and SciPy 1.8, and has been tested against the following versions:
 
 * `NumPy <https://numpy.org/>`_: v1.18 / v1.19 / v1.20 / v1.21 / v1.22
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7 / v1.8
 
     * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
@@ -378,7 +378,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -416,8 +416,6 @@ Package names are different depending on your ROCm version.
 
    * - ROCm
      - Command
-   * - v4.0
-     - ``$ pip install cupy-rocm-4-0``
    * - v4.2
      - ``$ pip install cupy-rocm-4-2``
    * - v4.3

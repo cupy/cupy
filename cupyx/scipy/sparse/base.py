@@ -10,10 +10,10 @@ try:
     SparseWarning = _sparse.SparseWarning
     SparseEfficiencyWarning = _sparse.SparseEfficiencyWarning
 except ImportError:
-    class SparseWarning(Warning):
+    class SparseWarning(Warning):  # type: ignore
         pass
 
-    class SparseEfficiencyWarning(SparseWarning):
+    class SparseEfficiencyWarning(SparseWarning):  # type: ignore
         pass
 
 

@@ -2,6 +2,7 @@ import functools
 import inspect
 import os
 import random
+from typing import Tuple, Type
 import traceback
 import unittest
 import warnings
@@ -20,7 +21,8 @@ from cupy.testing._pytest_impl import is_available
 if is_available():
     import _pytest.outcomes
     _is_pytest_available = True
-    _skip_classes = unittest.SkipTest, _pytest.outcomes.Skipped
+    _skip_classes: Tuple[Type, ...] = (
+        unittest.SkipTest, _pytest.outcomes.Skipped)
 else:
     _is_pytest_available = False
     _skip_classes = unittest.SkipTest,

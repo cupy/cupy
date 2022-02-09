@@ -124,3 +124,86 @@ class TestBasic:
         y = cupy.ones((5,), dtype=dtype)
         assert cupy.all(cupy.isnan(func(cupy.nan, y)))
         assert cupy.all(cupy.isnan(func(y, cupy.nan)))
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_exp2(self, xp, scp, dtype):
+        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        return scp.special.exp2(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_exp10(self, xp, scp, dtype):
+        if xp.dtype(dtype).char == 'd':
+            vals = xp.linspace(-100, 100, 100, dtype=dtype)
+        else:
+            # Note: comparisons start to fail outside this range
+            #       np.finfo(np.float32).max is 3.4028235e+38
+            vals = xp.linspace(-37, 37, 100, dtype=dtype)
+        return scp.special.exp10(vals)
+
+    @testing.for_dtypes("efdFD")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_expm1(self, xp, scp, dtype):
+        vals = xp.linspace(-50, 50, 200, dtype=dtype)
+        if xp.dtype(dtype).kind == 'c':
+            # broadcast to mix small and large real and imaginary parts
+            vals = vals[:, xp.newaxis] + 1j * vals[xp.newaxis, :]
+        return scp.special.expm1(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_radian(self, xp, scp, dtype):
+        tmp = xp.linspace(-100, 100, 10, dtype=dtype)
+        d = tmp[:, xp.newaxis, xp.newaxis]
+        m = tmp[xp.newaxis, : xp.newaxis]
+        s = tmp[xp.newaxis, xp.newaxis, :]
+        return scp.special.radian(d, m, s)
+
+    @pytest.mark.parametrize('function', ['cosdg', 'sindg', 'tandg', 'cotdg'])
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp",
+                         atol={'default': 1e-6, cupy.float64: 1e-12},
+                         rtol=1e-6)
+    def test_trig_degrees(self, xp, scp, dtype, function):
+        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        # test at exact multiples of 45 degrees
+        vals = xp.concatenate((vals, xp.arange(-360, 361, 45, dtype=dtype)))
+        return getattr(scp.special, function)(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_cbrt(self, xp, scp, dtype):
+        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        return scp.special.cbrt(vals)
+
+    # TODO: omit "e" since SciPy will promote to "f", but CuPy does not
+    @testing.for_dtypes("fd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_round(self, xp, scp, dtype):
+        vals = xp.concatenate(
+            (
+                xp.linspace(-2, 2, 100, dtype=dtype),
+                # test at half-integer locations
+                xp.asarray([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], dtype=dtype),
+            )
+        )
+        return scp.special.round(vals)
+
+    # Exclude 'e' here because of deficiency in the NumPy/SciPy
+    # implementation for float16 dtype. This was also noted in
+    # cupy_tests/math_tests/test_special.py
+    @testing.for_dtypes("fd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6, atol=1e-6)
+    def test_sinc(self, xp, scp, dtype):
+        vals = xp.linspace(-100, 100, 200, dtype=dtype)
+        return scp.special.sinc(vals)
+
+    # TODO: Should we make all int dtypes convert to float64 and test for that?
+    #       currently int8->float16, int16->float32, etc... but for
+    #       numpy.sinc/scipy.special.sinc any int type becomes float64.
+    @testing.for_dtypes("fd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6, atol=1e-6)
+    def test_sinc_integer_valued(self, xp, scp, dtype):
+        vals = xp.arange(0, 10, dtype=dtype)
+        return scp.special.sinc(vals)

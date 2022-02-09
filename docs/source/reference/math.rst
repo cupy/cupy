@@ -142,6 +142,7 @@ Arithmetic operations
    subtract
    true_divide
    floor_divide
+   float_power
    fmod
    mod
    modf
