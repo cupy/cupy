@@ -292,13 +292,13 @@ class CoverageGenerator:
         self.schema = schema
         self.matrixes = matrixes
 
-    def generate_markdown(self) -> Tuple[str, List[str]]:
+    def generate_rst(self) -> Tuple[str, List[str]]:
         # Generate a matrix table.
         table = [
             ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
             ['', 'System'] + [m.system for m in self.matrixes] + [''],
             ['', 'Target'] + [
-                f'[{m.target}][t{i}][🐳][d{i}][📜][s{i}]'
+                f'`{m.target} <t{i}_>`_ `🐳 <d{i}_>`_ `📜 <s{i}_>`_'
                 for i, m in enumerate(self.matrixes)
             ] + [''],
             [''] * (len(self.matrixes) + 3)
@@ -321,33 +321,27 @@ class CoverageGenerator:
                 if count == 0:
                     coverage_warns.append(f'Uncovered axis: {key} = {value}')
 
-        # Prepare markdown output.
+        # Prepare reST output.
         lines = [
-            '<!-- AUTO GENERATED: DO NOT EDIT! -->',
+            '.. AUTO GENERATED: DO NOT EDIT!',
             '',
-            '# CuPy CI Test Coverage',
+            'CuPy CI Test Coverage',
+            '=====================',
+            '',
+            '.. list-table::',
+            '   :header-rows: 3',
+            '   :stub-columns: 2',
             '',
         ]
 
-        # Render the matrix table as markdown.
-        widths = [
-            max([len(row[col_idx]) for row in table])
-            for col_idx in range(len(table[0]))
-        ]
-        for row_idx, row in enumerate(table):
+        # Render the matrix table as reST.
+        for row in table:
+            col0 = row[0]
             lines += [
-                '| ' + ' | '.join([
-                    ('{:<' + str(widths[col_idx]) + '}').format(row[col_idx])
-                    for col_idx in range(len(row))
-                ]) + ' |',
+                f'   * - {col0}',
+            ] + [
+                f'     - {col}' for col in row[1:]
             ]
-            if row_idx == 0:
-                lines += [
-                    '| ' + ' | '.join([
-                        '-' * widths[col_idx]
-                        for col_idx in range(len(row))
-                    ]) + ' |',
-                ]
 
         # Add links to FlexCI projects.
         lines += ['']
@@ -356,9 +350,9 @@ class CoverageGenerator:
             if hasattr(m, '_url'):
                 url = m._url
             lines += [
-                f'[t{i}]:{url}',
-                f'[d{i}]:{m.system}/tests/{m.target}.Dockerfile',
-                f'[s{i}]:{m.system}/tests/{m.target}.sh',
+                f'.. _t{i}: {url}',
+                f'.. _d{i}: {m.system}/tests/{m.target}.Dockerfile',
+                f'.. _s{i}: {m.system}/tests/{m.target}.sh',
             ]
         lines += ['']
 
@@ -551,8 +545,8 @@ def main(argv: List[str]) -> int:
 
     # Generate coverage matrix
     covgen = CoverageGenerator(schema, [m for m in matrixes if not m._extern])
-    covout, warns = covgen.generate_markdown()
-    output['coverage.md'] = covout
+    covout, warns = covgen.generate_rst()
+    output['coverage.rst'] = covout
     if len(warns) != 0:
         log('----------------------------------------')
         log('Test coverage warnings:')
