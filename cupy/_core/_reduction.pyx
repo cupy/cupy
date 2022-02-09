@@ -546,6 +546,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
             arr = _convert_object_with_cuda_array_interface(a)
+        elif hasattr(a, '__cupy_get_ndarray__'):
+            arr = a.__cupy_get_ndarray__()
         else:
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
