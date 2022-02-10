@@ -125,6 +125,44 @@ class TestIn1DIsIn:
         return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
 
 
+class TestIntersect1d:
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_one_dim_with_unique_values(self, xp, dtype):
+        a = xp.array([1, 2, 3, 4, 5], dtype=dtype)
+        b = xp.array([1, 2, 3, 4, 5], dtype=dtype)
+        return xp.intersect1d(a, b, assume_unique=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_with_random_val(self, xp, dtype):
+        a = xp.array([3, 4, 9, 1, 5, 4], dtype=dtype)
+        b = xp.array([8, 7, 3, 9, 0], dtype=dtype)
+        return xp.intersect1d(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_more_dim(self, xp, dtype):
+        a = testing.shaped_random((3, 4), xp, dtype=dtype)
+        b = testing.shaped_random((5, 2), xp, dtype=dtype)
+        return xp.intersect1d(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_return_indices(self, xp, dtype):
+        a = xp.array([2, 3, 4, 1, 9, 4], dtype=dtype)
+        b = xp.array([7, 5, 1, 2, 9, 3], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_multiple_instances(self, xp, dtype):
+        a = xp.array([2, 4, 5, 2, 1, 5], dtype=dtype)
+        b = xp.array([4, 6, 2, 5, 7, 6], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+
 class TestUnion1d:
 
     @testing.for_all_dtypes()
