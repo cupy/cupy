@@ -21,5 +21,6 @@ Boolean operations
    :toctree: generated/
 
    in1d
+   intersect1d
    isin
    setdiff1d
