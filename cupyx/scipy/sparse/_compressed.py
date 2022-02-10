@@ -15,10 +15,10 @@ from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
 from cupy import cusparse
-from cupyx.scipy.sparse import base
-from cupyx.scipy.sparse import coo
-from cupyx.scipy.sparse import data as sparse_data
-from cupyx.scipy.sparse import sputils
+from cupyx.scipy.sparse import _base
+from cupyx.scipy.sparse import _coo
+from cupyx.scipy.sparse import _data as sparse_data
+from cupyx.scipy.sparse import _sputils
 from cupyx.scipy.sparse import _util
 
 from cupyx.scipy.sparse import _index
@@ -198,7 +198,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise ValueError('invalid shape (must be a 2-tuple of int)')
             shape = int(shape[0]), int(shape[1])
 
-        if base.issparse(arg1):
+        if _base.issparse(arg1):
             x = arg1.asformat(self.format)
             data = x.data
             indices = x.indices
@@ -236,7 +236,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # Note: This implementation is not efficeint, as it first
             # constructs a sparse matrix with coo format, then converts it to
             # compressed format.
-            sp_coo = coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
+            sp_coo = _coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
             sp_compressed = sp_coo.asformat(self.format)
             data = sp_compressed.data
             indices = sp_compressed.indices
@@ -244,16 +244,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
-            if not (base.isdense(data) and data.ndim == 1 and
-                    base.isdense(indices) and indices.ndim == 1 and
-                    base.isdense(indptr) and indptr.ndim == 1):
+            if not (_base.isdense(data) and data.ndim == 1 and
+                    _base.isdense(indices) and indices.ndim == 1 and
+                    _base.isdense(indptr) and indptr.ndim == 1):
                 raise ValueError(
                     'data, indices, and indptr should be 1-D')
 
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
-        elif base.isdense(arg1):
+        elif _base.isdense(arg1):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
             elif arg1.ndim == 1:
@@ -328,11 +328,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise NotImplementedError(
                     'adding a nonzero scalar to a sparse matrix is not '
                     'supported')
-        elif base.isspmatrix(other):
+        elif _base.isspmatrix(other):
             alpha = -1 if lhs_negative else 1
             beta = -1 if rhs_negative else 1
             return self._add_sparse(other, alpha, beta)
-        elif base.isdense(other):
+        elif _base.isdense(other):
             if lhs_negative:
                 if rhs_negative:
                     return -self.todense() - other
@@ -620,7 +620,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # Update index data type
 
-        idx_dtype = sputils.get_index_dtype(
+        idx_dtype = _sputils.get_index_dtype(
             (self.indices, self.indptr), maxval=(
                 self.nnz + x.size))
 
