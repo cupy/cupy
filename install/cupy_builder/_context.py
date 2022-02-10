@@ -15,8 +15,6 @@ class Context:
             _argv: List[str] = sys.argv):
         self.source_root = source_root
 
-        self.enable_thrust = _get_env_bool(
-            'CUPY_SETUP_ENABLE_THRUST', True, _env)
         self.use_cuda_python = _get_env_bool(
             'CUPY_USE_CUDA_PYTHON', False, _env)
         self.use_hip = _get_env_bool(
