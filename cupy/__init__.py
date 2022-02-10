@@ -504,6 +504,7 @@ from cupy._logic.type_test import isrealobj  # NOQA
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import intersect1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
+from cupy._logic.truth import setdiff1d  # NOQA
 from cupy._logic.truth import union1d  # NOQA
 
 

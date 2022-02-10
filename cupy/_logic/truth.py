@@ -220,6 +220,41 @@ def isin(element, test_elements, assume_unique=False, invert=False):
                 invert=invert).reshape(element.shape)
 
 
+def setdiff1d(ar1, ar2, assume_unique=False):
+    """Find the set difference of two arrays. It returns unique
+    values in `ar1` that are not in `ar2`.
+
+    Parameters
+    ----------
+    ar1 : cupy.ndarray
+        Input array
+    ar2 : cupy.ndarray
+        Input array for comparision
+    assume_unique : bool
+        By default, False, i.e. input arrays are not unique.
+        If True, input arrays are assumed to be unique. This can
+        speed up the calculation.
+
+    Returns
+    -------
+    setdiff1d : cupy.ndarray
+        Returns a 1D array of values in `ar1` that are not in `ar2`.
+        It always returns a sorted output for unsorted input only
+        if `assume_unique=False`.
+
+    See Also
+    --------
+    numpy.setdiff1d
+
+    """
+    if assume_unique:
+        ar1 = cupy.ravel(ar1)
+    else:
+        ar1 = cupy.unique(ar1)
+        ar2 = cupy.unique(ar2)
+    return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
+
+
 def union1d(arr1, arr2):
     """Find the union of two arrays.
 
