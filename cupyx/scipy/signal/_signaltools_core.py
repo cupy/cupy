@@ -103,7 +103,7 @@ def _reverse(x):
 
 
 def _inputs_swap_needed(mode, shape1, shape2, axes=None):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     if mode != 'valid' or not shape1:
         return False
     if axes is None:
@@ -117,7 +117,7 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
 
 
 def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     s1, s2 = in1.shape, in2.shape
     axes = _init_nd_and_axes(in1, axes)
     # Length-1 axes can rely on broadcasting rules, no fft needed
@@ -151,7 +151,7 @@ def _init_nd_and_axes(x, axes):
 
 
 def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     if not axes:
         # rfftn/irfftn require an axis or more.
         return in1 * in2
@@ -170,7 +170,7 @@ def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
 
 
 def _apply_conv_mode(full, s1, s2, mode, axes):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     if mode == 'full':
         return cupy.ascontiguousarray(full)
     if mode == 'valid':
@@ -219,7 +219,7 @@ def _optimal_oa_block_size(overlap):
 
 
 def _calc_oa_lens(s1, s2):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
 
     # Set up the arguments for the conventional FFT approach.
     fallback = (s1+s2-1, None, s1, s2)
