@@ -35,6 +35,10 @@ from cupyx.scipy.special._gammainc import gammainc  # NOQA
 from cupyx.scipy.special._gammainc import gammaincinv  # NOQA
 from cupyx.scipy.special._gammainc import gammaincc  # NOQA
 from cupyx.scipy.special._gammainc import gammainccinv  # NOQA
+from cupyx.scipy.special._beta import beta  # NOQA
+from cupyx.scipy.special._beta import betaln  # NOQA
+from cupyx.scipy.special._beta import betainc  # NOQA
+from cupyx.scipy.special._beta import betaincinv  # NOQA
 from cupyx.scipy.special._digamma import digamma as psi  # NOQA
 from cupyx.scipy.special._polygamma import polygamma  # NOQA
 from cupyx.scipy.special._digamma import digamma  # NOQA

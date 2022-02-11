@@ -64,6 +64,10 @@ Gamma and related functions
    gammaincinv
    gammaincc
    gammainccinv
+   beta
+   betaln
+   betainc
+   betaincinv
    psi
    polygamma
    digamma
