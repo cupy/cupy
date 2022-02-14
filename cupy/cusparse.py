@@ -932,7 +932,7 @@ def coo2csr(x):
         _cusparse.xcoo2csr(
             handle, x.row.data.ptr, nnz, m,
             indptr.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    return cupyx.scipy.sparse.csr.csr_matrix(
+    return cupyx.scipy.sparse.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
 
 
@@ -947,7 +947,7 @@ def coo2csc(x):
         _cusparse.xcoo2csr(
             handle, x.col.data.ptr, nnz, n,
             indptr.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    return cupyx.scipy.sparse.csc.csc_matrix(
+    return cupyx.scipy.sparse.csc_matrix(
         (x.data, x.row, indptr), shape=x.shape)
 
 

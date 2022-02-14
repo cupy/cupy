@@ -1,10 +1,10 @@
 import numpy
 import cupy
-from cupyx.scipy.sparse import coo
-from cupyx.scipy.sparse import csc
-from cupyx.scipy.sparse import csr
-from cupyx.scipy.sparse import dia
-from cupyx.scipy.sparse import sputils
+from cupyx.scipy.sparse import _coo
+from cupyx.scipy.sparse import _csc
+from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _dia
+from cupyx.scipy.sparse import _sputils
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -34,16 +34,16 @@ def eye(m, n=None, k=0, dtype='d', format=None):
             indices = cupy.arange(n, dtype='i')
             data = cupy.ones(n, dtype=dtype)
             if format == 'csr':
-                cls = csr.csr_matrix
+                cls = _csr.csr_matrix
             else:
-                cls = csc.csc_matrix
+                cls = _csc.csc_matrix
             return cls((data, indices, indptr), (n, n))
 
         elif format == 'coo':
             row = cupy.arange(n, dtype='i')
             col = cupy.arange(n, dtype='i')
             data = cupy.ones(n, dtype=dtype)
-            return coo.coo_matrix((data, (row, col)), (n, n))
+            return _coo.coo_matrix((data, (row, col)), (n, n))
 
     diags = cupy.ones((1, max(0, min(m + k, n))), dtype=dtype)
     return spdiags(diags, k, m, n).asformat(format)
@@ -85,7 +85,7 @@ def spdiags(data, diags, m, n, format=None):
     .. seealso:: :func:`scipy.sparse.spdiags`
 
     """
-    return dia.dia_matrix((data, diags), shape=(m, n)).asformat(format)
+    return _dia.dia_matrix((data, diags), shape=(m, n)).asformat(format)
 
 
 def _compressed_sparse_stack(blocks, axis):
@@ -95,8 +95,8 @@ def _compressed_sparse_stack(blocks, axis):
     other_axis = 1 if axis == 0 else 0
     data = cupy.concatenate([b.data for b in blocks])
     constant_dim = blocks[0].shape[other_axis]
-    idx_dtype = sputils.get_index_dtype(arrays=[b.indptr for b in blocks],
-                                        maxval=max(data.size, constant_dim))
+    idx_dtype = _sputils.get_index_dtype(arrays=[b.indptr for b in blocks],
+                                         maxval=max(data.size, constant_dim))
     indices = cupy.empty(data.size, dtype=idx_dtype)
     indptr = cupy.empty(sum(b.shape[axis]
                             for b in blocks) + 1, dtype=idx_dtype)
@@ -116,11 +116,11 @@ def _compressed_sparse_stack(blocks, axis):
         last_indptr += b.indptr[-1]
     indptr[-1] = last_indptr
     if axis == 0:
-        return csr.csr_matrix((data, indices, indptr),
-                              shape=(sum_dim, constant_dim))
+        return _csr.csr_matrix((data, indices, indptr),
+                               shape=(sum_dim, constant_dim))
     else:
-        return csc.csc_matrix((data, indices, indptr),
-                              shape=(constant_dim, sum_dim))
+        return _csc.csc_matrix((data, indices, indptr),
+                               shape=(constant_dim, sum_dim))
 
 
 def hstack(blocks, format=None, dtype=None):
@@ -239,18 +239,18 @@ def bmat(blocks, format=None, dtype=None):
                 blocks_flat.append(blocks[m][n])
 
     if len(blocks_flat) == 0:
-        return coo.coo_matrix((0, 0), dtype=dtype)
+        return _coo.coo_matrix((0, 0), dtype=dtype)
 
     # check for fast path cases
     if (N == 1 and format in (None, 'csr') and
-            all(isinstance(b, csr.csr_matrix)
+            all(isinstance(b, _csr.csr_matrix)
                 for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 0)
         if dtype is not None:
             A = A.astype(dtype)
         return A
     elif (M == 1 and format in (None, 'csc')
-          and all(isinstance(b, csc.csc_matrix) for b in blocks_flat)):
+          and all(isinstance(b, _csc.csc_matrix) for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 1)
         if dtype is not None:
             A = A.astype(dtype)
@@ -264,7 +264,7 @@ def bmat(blocks, format=None, dtype=None):
     for i in range(M):
         for j in range(N):
             if blocks[i][j] is not None:
-                A = coo.coo_matrix(blocks[i][j])
+                A = _coo.coo_matrix(blocks[i][j])
                 blocks[i][j] = A
                 block_mask[i][j] = True
 
@@ -291,7 +291,7 @@ def bmat(blocks, format=None, dtype=None):
     nnz = sum(block.nnz for block in blocks_flat)
     if dtype is None:
         all_dtypes = [blk.dtype for blk in blocks_flat]
-        dtype = sputils.upcast(*all_dtypes) if all_dtypes else None
+        dtype = _sputils.upcast(*all_dtypes) if all_dtypes else None
 
     row_offsets = numpy.cumsum(brow_lengths)
     col_offsets = numpy.cumsum(bcol_lengths)
@@ -299,7 +299,7 @@ def bmat(blocks, format=None, dtype=None):
     shape = (row_offsets[-1], col_offsets[-1])
 
     data = cupy.empty(nnz, dtype=dtype)
-    idx_dtype = sputils.get_index_dtype(maxval=max(shape))
+    idx_dtype = _sputils.get_index_dtype(maxval=max(shape))
     row = cupy.empty(nnz, dtype=idx_dtype)
     col = cupy.empty(nnz, dtype=idx_dtype)
 
@@ -313,7 +313,7 @@ def bmat(blocks, format=None, dtype=None):
         col[idx] = B.col + col_offsets[j]
         nnz += B.nnz
 
-    return coo.coo_matrix((data, (row, col)), shape=shape).asformat(format)
+    return _coo.coo_matrix((data, (row, col)), shape=shape).asformat(format)
 
 
 def random(m, n, density=0.01, format='coo', dtype=None,
@@ -368,7 +368,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     j = ind // m
     i = ind - j * m
     vals = data_rvs(k).astype(dtype)
-    return coo.coo_matrix(
+    return _coo.coo_matrix(
         (vals, (i, j)), shape=(m, n)).asformat(format)
 
 
@@ -437,9 +437,9 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
         Repeated diagonal offsets are disallowed.
     """
     # if offsets is not a sequence, assume that there's only one diagonal
-    if sputils.isscalarlike(offsets):
+    if _sputils.isscalarlike(offsets):
         # now check that there's actually only one diagonal
-        if len(diagonals) == 0 or sputils.isscalarlike(diagonals[0]):
+        if len(diagonals) == 0 or _sputils.isscalarlike(diagonals[0]):
             diagonals = [cupy.atleast_1d(diagonals)]
         else:
             raise ValueError('Different number of diagonals and offsets.')
@@ -490,7 +490,7 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
                         j, len(diagonal), offset, m, n))
             raise
 
-    return dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
+    return _dia.dia_matrix((data_arr, offsets), shape=(m, n)).asformat(format)
 
 
 def kron(A, B, format=None):
@@ -512,13 +512,13 @@ def kron(A, B, format=None):
     # TODO(leofang): investigate if possible to optimize performance by
     #                starting with CSR instead of COO matrices
 
-    A = coo.coo_matrix(A)
-    B = coo.coo_matrix(B)
+    A = _coo.coo_matrix(A)
+    B = _coo.coo_matrix(B)
     out_shape = (A.shape[0] * B.shape[0], A.shape[1] * B.shape[1])
 
     if A.nnz == 0 or B.nnz == 0:
         # kronecker product is the zero matrix
-        return coo.coo_matrix(out_shape).asformat(format)
+        return _coo.coo_matrix(out_shape).asformat(format)
 
     if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64
@@ -542,7 +542,8 @@ def kron(A, B, format=None):
     data = data.reshape(-1, B.nnz) * B.data
     data = data.ravel()
 
-    return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)
+    return _coo.coo_matrix(
+        (data, (row, col)), shape=out_shape).asformat(format)
 
 
 def kronsum(A, B, format=None):
@@ -564,8 +565,8 @@ def kronsum(A, B, format=None):
     .. seealso:: :func:`scipy.sparse.kronsum`
 
     """
-    A = coo.coo_matrix(A)
-    B = coo.coo_matrix(B)
+    A = _coo.coo_matrix(A)
+    B = _coo.coo_matrix(B)
 
     if A.shape[0] != A.shape[1]:
         raise ValueError('A is not square matrix')
@@ -573,7 +574,7 @@ def kronsum(A, B, format=None):
     if B.shape[0] != B.shape[1]:
         raise ValueError('B is not square matrix')
 
-    dtype = sputils.upcast(A.dtype, B.dtype)
+    dtype = _sputils.upcast(A.dtype, B.dtype)
 
     L = kron(eye(B.shape[0], dtype=dtype), A, format=format)
     R = kron(B, eye(A.shape[0], dtype=dtype), format=format)

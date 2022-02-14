@@ -1,9 +1,9 @@
 import cupy
 from cupy._core import internal
 from cupy import _util
-from cupyx.scipy.sparse import base
-from cupyx.scipy.sparse import coo
-from cupyx.scipy.sparse import sputils
+from cupyx.scipy.sparse import _base
+from cupyx.scipy.sparse import _coo
+from cupyx.scipy.sparse import _sputils
 
 
 _ufuncs = [
@@ -13,7 +13,7 @@ _ufuncs = [
 ]
 
 
-class _data_matrix(base.spmatrix):
+class _data_matrix(_base.spmatrix):
 
     def __init__(self, data):
         self.data = data
@@ -54,12 +54,12 @@ class _data_matrix(base.spmatrix):
         else:
             return self
 
-    conj.__doc__ = base.spmatrix.conj.__doc__
+    conj.__doc__ = _base.spmatrix.conj.__doc__
 
     def copy(self):
         return self._with_data(self.data.copy(), copy=True)
 
-    copy.__doc__ = base.spmatrix.copy.__doc__
+    copy.__doc__ = _base.spmatrix.copy.__doc__
 
     def count_nonzero(self):
         """Returns number of non-zero entries.
@@ -91,7 +91,7 @@ class _data_matrix(base.spmatrix):
            :meth:`scipy.sparse.spmatrix.mean`
 
         """
-        sputils.validateaxis(axis)
+        _sputils.validateaxis(axis)
         nRow, nCol = self.shape
         data = self.data.copy()
 
@@ -156,11 +156,11 @@ class _minmax_mixin(object):
         value = cupy.compress(mask, value)
 
         if axis == 0:
-            return coo.coo_matrix(
+            return _coo.coo_matrix(
                 (value, (cupy.zeros(len(value)), major_index)),
                 dtype=self.dtype, shape=(1, M))
         else:
-            return coo.coo_matrix(
+            return _coo.coo_matrix(
                 (value, (major_index, cupy.zeros(len(value)))),
                 dtype=self.dtype, shape=(M, 1))
 
@@ -169,7 +169,7 @@ class _minmax_mixin(object):
             raise ValueError(("Sparse matrices do not support "
                               "an 'out' parameter."))
 
-        sputils.validateaxis(axis)
+        _sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
@@ -217,7 +217,7 @@ class _minmax_mixin(object):
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        sputils.validateaxis(axis)
+        _sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
