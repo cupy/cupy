@@ -8,6 +8,7 @@ from cupy._core import internal
 from cupy.cuda import runtime
 from cupyx import _texture
 from cupyx.scipy.ndimage import _util
+from cupyx.scipy.ndimage import _uarray
 from cupyx.scipy.ndimage import _interp_kernels
 from cupyx.scipy.ndimage import _spline_prefilter_core
 
@@ -67,6 +68,7 @@ def _get_spline_output(input, output):
     return temp, float_dtype, output_dtype
 
 
+@_uarray.implements('spline_filter1d')
 def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
                     mode='mirror'):
     """
@@ -151,6 +153,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     return temp.astype(output_dtype, copy=False)
 
 
+@_uarray.implements('spline_filter')
 def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
     """Multidimensional spline filter.
 
@@ -248,6 +251,7 @@ def _filter_input(image, prefilter, mode, cval, order):
     return cupy.ascontiguousarray(filtered), npad
 
 
+@_uarray.implements('map_coordinates')
 def map_coordinates(input, coordinates, output=None, order=3,
                     mode='constant', cval=0.0, prefilter=True):
     """Map the input array to new coordinates by interpolation.
@@ -310,6 +314,7 @@ def map_coordinates(input, coordinates, output=None, order=3,
     return ret
 
 
+@_uarray.implements('affine_transform')
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
                      order=3, mode='constant', cval=0.0, prefilter=True, *,
                      texture_memory=False):
@@ -467,6 +472,7 @@ def _minmax(coor, minc, maxc):
     return minc, maxc
 
 
+@_uarray.implements('rotate')
 def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
            mode='constant', cval=0.0, prefilter=True):
     """Rotate an array.
@@ -563,6 +569,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
                             mode, cval, prefilter)
 
 
+@_uarray.implements('shift')
 def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
           prefilter=True):
     """Shift an array.
@@ -635,6 +642,7 @@ def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
     return output
 
 
+@_uarray.implements('zoom')
 def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
          prefilter=True, *, grid_mode=False):
     """Zoom an array.
