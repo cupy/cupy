@@ -69,3 +69,8 @@ from cupyx.scipy.ndimage._morphology import morphological_gradient  # NOQA
 from cupyx.scipy.ndimage._morphology import morphological_laplace  # NOQA
 from cupyx.scipy.ndimage._morphology import white_tophat  # NOQA
 from cupyx.scipy.ndimage._morphology import black_tophat  # NOQA
+
+
+from cupyx.scipy.ndimage._uarray import __ua_convert__  # NOQA
+from cupyx.scipy.ndimage._uarray import __ua_domain__  # NOQA
+from cupyx.scipy.ndimage._uarray import __ua_function__  # NOQA
