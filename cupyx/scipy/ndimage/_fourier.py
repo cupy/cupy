@@ -3,6 +3,7 @@ import numpy
 import cupy
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
+from cupyx.scipy.ndimage import _uarray
 from cupyx.scipy import special
 
 
@@ -31,6 +32,7 @@ def _reshape_nd(arr, ndim, axis):
     return arr.reshape(nd_shape)
 
 
+@_uarray.implements('fourier_gaussian')
 def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     """Multidimensional Gaussian shift filter.
 
@@ -84,6 +86,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     return output
 
 
+@_uarray.implements('fourier_uniform')
 def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     """Multidimensional uniform shift filter.
 
@@ -134,6 +137,7 @@ def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     return output
 
 
+@_uarray.implements('fourier_shift')
 def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     """Multidimensional Fourier shift filter.
 
@@ -183,6 +187,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     return output
 
 
+@_uarray.implements('fourier_ellipsoid')
 def fourier_ellipsoid(input, size, n=-1, axis=-1, output=None):
     """Multidimensional ellipsoid Fourier filter.
 
