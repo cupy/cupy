@@ -5,8 +5,10 @@ import numpy
 import cupy
 from cupy import _core
 from cupy import _util
+from cupyx.scipy.ndimage import _uarray
 
 
+@_uarray.implements('label')
 def label(input, structure=None, output=None):
     """Labels features in an array.
 
@@ -289,6 +291,7 @@ def _mean_driver(input, labels, index, return_count=False, use_kern=False):
     return sum / count
 
 
+@_uarray.implements('variance')
 def variance(input, labels=None, index=None):
     """Calculates the variance of the values of an n-D image array, optionally
     at specified sub-regions.
@@ -365,6 +368,7 @@ def variance(input, labels=None, index=None):
                                     out) / count
 
 
+@_uarray.implements('sum_labels')
 def sum_labels(input, labels=None, index=None):
     """Calculates the sum of the values of an n-D image array, optionally
        at specified sub-regions.
@@ -429,6 +433,7 @@ def sum_labels(input, labels=None, index=None):
     return _ndimage_sum_kernel(input, labels, index, index.size, out)
 
 
+@_uarray.implements('sum')
 def sum(input, labels=None, index=None):
     """Calculates the sum of the values of an n-D image array, optionally
        at specified sub-regions.
@@ -454,6 +459,7 @@ def sum(input, labels=None, index=None):
     return sum_labels(input, labels, index)
 
 
+@_uarray.implements('mean')
 def mean(input, labels=None, index=None):
     """Calculates the mean of the values of an n-D image array, optionally
        at specified sub-regions.
@@ -521,6 +527,7 @@ def mean(input, labels=None, index=None):
     return _mean_driver(input, labels, index, use_kern=use_kern)
 
 
+@_uarray.implements('standard_deviation')
 def standard_deviation(input, labels=None, index=None):
     """Calculates the standard deviation of the values of an n-D image array,
     optionally at specified sub-regions.
@@ -772,6 +779,7 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
     return result
 
 
+@_uarray.implements('minimum')
 def minimum(input, labels=None, index=None):
     """Calculate the minimum of the values of an array over labeled regions.
 
@@ -800,6 +808,7 @@ def minimum(input, labels=None, index=None):
     return _select(input, labels, index, find_min=True)[0]
 
 
+@_uarray.implements('maximum')
 def maximum(input, labels=None, index=None):
     """Calculate the maximum of the values of an array over labeled regions.
 
@@ -828,6 +837,7 @@ def maximum(input, labels=None, index=None):
     return _select(input, labels, index, find_max=True)[0]
 
 
+@_uarray.implements('median')
 def median(input, labels=None, index=None):
     """Calculate the median of the values of an array over labeled regions.
 
@@ -856,6 +866,7 @@ def median(input, labels=None, index=None):
     return _select(input, labels, index, find_median=True)[0]
 
 
+@_uarray.implements('minimum_position')
 def minimum_position(input, labels=None, index=None):
     """Find the positions of the minimums of the values of an array at labels.
 
@@ -913,6 +924,7 @@ def minimum_position(input, labels=None, index=None):
     return [tuple(v) for v in (result.reshape(-1, 1) // dim_prod) % dims]
 
 
+@_uarray.implements('maximum_position')
 def maximum_position(input, labels=None, index=None):
     """Find the positions of the maximums of the values of an array at labels.
 
@@ -970,6 +982,7 @@ def maximum_position(input, labels=None, index=None):
     return [tuple(v) for v in (result.reshape(-1, 1) // dim_prod) % dims]
 
 
+@_uarray.implements('extrema')
 def extrema(input, labels=None, index=None):
     """Calculate the minimums and maximums of the values of an array at labels,
     along with their positions.
@@ -1034,6 +1047,7 @@ def extrema(input, labels=None, index=None):
     return minimums, maximums, min_positions, max_positions
 
 
+@_uarray.implements('center_of_mass')
 def center_of_mass(input, labels=None, index=None):
     """
     Calculate the center of mass of the values of an array at labels.
@@ -1073,6 +1087,7 @@ def center_of_mass(input, labels=None, index=None):
     return [v for v in cupy.stack(results, axis=-1)]
 
 
+@_uarray.implements('labeled_comprehension')
 def labeled_comprehension(
     input, labels, index, func, out_dtype, default, pass_positions=False
 ):
@@ -1205,6 +1220,7 @@ def labeled_comprehension(
     return output
 
 
+@_uarray.implements('histogram')
 def histogram(input, min, max, bins, labels=None, index=None):
     """Calculate the histogram of the values of an array, optionally at labels.
 
