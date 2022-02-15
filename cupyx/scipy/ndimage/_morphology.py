@@ -8,6 +8,7 @@ import cupy
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
+from cupyx.scipy.ndimage import _uarray
 
 
 @cupy.memoize(for_each_device=True)
@@ -81,6 +82,7 @@ def _center_is_true(structure, origin):
     return bool(structure[coor])  # device synchronization
 
 
+@_uarray.implements('iterate_structure')
 def iterate_structure(structure, iterations, origin=None):
     """Iterate a structure by dilating it with itself.
 
@@ -119,6 +121,7 @@ def iterate_structure(structure, iterations, origin=None):
         return out, origin
 
 
+@_uarray.implements('generate_binary_structure')
 def generate_binary_structure(rank, connectivity):
     """Generate a binary structure for binary morphological operations.
 
@@ -262,6 +265,7 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     return output
 
 
+@_uarray.implements('binary_erosion')
 def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
                    border_value=0, origin=0, brute_force=False):
     """Multidimensional binary erosion with a given structuring element.
@@ -308,6 +312,7 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
                            border_value, origin, 0, brute_force)
 
 
+@_uarray.implements('binary_dilation')
 def binary_dilation(input, structure=None, iterations=1, mask=None,
                     output=None, border_value=0, origin=0, brute_force=False):
     """Multidimensional binary dilation with the given structuring element.
@@ -359,6 +364,7 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
                            border_value, origin, 1, brute_force)
 
 
+@_uarray.implements('binary_opening')
 def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
                    mask=None, border_value=0, brute_force=False):
     """
@@ -411,6 +417,7 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
                            border_value, origin, brute_force)
 
 
+@_uarray.implements('binary_closing')
 def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
                    mask=None, border_value=0, brute_force=False):
     """
@@ -463,6 +470,7 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
                           border_value, origin, brute_force)
 
 
+@_uarray.implements('binary_hit_or_miss')
 def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
                        origin1=0, origin2=None):
     """
@@ -523,6 +531,7 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
         return cupy.logical_and(tmp1, result)
 
 
+@_uarray.implements('binary_propagation')
 def binary_propagation(input, structure=None, mask=None, output=None,
                        border_value=0, origin=0):
     """
@@ -556,6 +565,7 @@ def binary_propagation(input, structure=None, mask=None, output=None,
                            origin, brute_force=True)
 
 
+@_uarray.implements('binary_fill_holes')
 def binary_fill_holes(input, structure=None, output=None, origin=0):
     """Fill the holes in binary objects.
 
@@ -597,6 +607,7 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
         return output
 
 
+@_uarray.implements('grey_erosion')
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
                  mode='reflect', cval=0.0, origin=0):
     """Calculates a greyscale erosion.
@@ -637,6 +648,7 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
                                        output, mode, cval, origin, 'min')
 
 
+@_uarray.implements('grey_dilation')
 def grey_dilation(input, size=None, footprint=None, structure=None,
                   output=None, mode='reflect', cval=0.0, origin=0):
     """Calculates a greyscale dilation.
@@ -697,6 +709,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
                                        output, mode, cval, origin, 'max')
 
 
+@_uarray.implements('grey_closing')
 def grey_closing(input, size=None, footprint=None, structure=None,
                  output=None, mode='reflect', cval=0.0, origin=0):
     """Calculates a multi-dimensional greyscale closing.
@@ -738,6 +751,7 @@ def grey_closing(input, size=None, footprint=None, structure=None,
                         origin)
 
 
+@_uarray.implements('grey_opening')
 def grey_opening(input, size=None, footprint=None, structure=None,
                  output=None, mode='reflect', cval=0.0, origin=0):
     """Calculates a multi-dimensional greyscale opening.
@@ -779,6 +793,7 @@ def grey_opening(input, size=None, footprint=None, structure=None,
                          origin)
 
 
+@_uarray.implements('morphological_gradient')
 def morphological_gradient(
     input,
     size=None,
@@ -838,6 +853,7 @@ def morphological_gradient(
         )
 
 
+@_uarray.implements('morphological_laplace')
 def morphological_laplace(
     input,
     size=None,
@@ -900,6 +916,7 @@ def morphological_laplace(
         return tmp2
 
 
+@_uarray.implements('white_tophat')
 def white_tophat(
     input,
     size=None,
@@ -958,6 +975,7 @@ def white_tophat(
     return tmp
 
 
+@_uarray.implements('black_tophat')
 def black_tophat(
     input,
     size=None,
