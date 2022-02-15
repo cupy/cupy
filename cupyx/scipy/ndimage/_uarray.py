@@ -15,7 +15,7 @@ except ImportError:
 # Backend support for scipy.ndimage
 
 __ua_domain__ = 'numpy.scipy.ndimage'
-_implemented = {}
+_implemented = {}  # type: ignore
 
 
 def __ua_convert__(dispatchables, coerce):
