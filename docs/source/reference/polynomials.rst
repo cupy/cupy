@@ -63,6 +63,15 @@ Fitting
    polyfit
 
 
+Calculus
+~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   polyder
+
+
 Arithmetic
 ~~~~~~~~~~
 

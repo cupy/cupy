@@ -38,14 +38,21 @@ def _wraps_polyroutine(func):
 def polyadd(a1, a2):
     """Computes the sum of two polynomials.
 
-    Args:
-        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+    Parameters
+    ----------
+    a1 : scalar, cupy.ndarray or cupy.poly1d
+        First input polynomial
+    a2 : scalar, cupy.ndarray or cupy.poly1d
+        Second input polynomial
 
-    Returns:
-        cupy.ndarray or cupy.poly1d: The sum of the inputs.
+    Returns
+    -------
+    out : cupy.ndarray or cupy.poly1d
+        The sum of the inputs
 
-    .. seealso:: :func:`numpy.polyadd`
+    See Also
+    --------
+    numpy.polyadd
 
     """
     if a1.size < a2.size:
@@ -60,14 +67,21 @@ def polyadd(a1, a2):
 def polysub(a1, a2):
     """Computes the difference of two polynomials.
 
-    Args:
-        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+    Parameters
+    ----------
+    a1 : scalar, cupy.ndarray or cupy.poly1d
+        First input polynomial
+    a2 : scalar, cupy.ndarray or cupy.poly1d
+        Second input polynomial
 
-    Returns:
-        cupy.ndarray or cupy.poly1d: The difference of the inputs.
+    Returns
+    -------
+    out : cupy.ndarray or cupy.poly1d
+        The difference of the inputs
 
-    .. seealso:: :func:`numpy.polysub`
+    See Also
+    --------
+    numpy.polysub
 
     """
     if a1.shape[0] <= a2.shape[0]:
@@ -85,14 +99,21 @@ def polysub(a1, a2):
 def polymul(a1, a2):
     """Computes the product of two polynomials.
 
-    Args:
-        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+    Parameters
+    ----------
+    a1 : scalar, cupy.ndarray or cupy.poly1d
+        First input polynomial
+    a2 : scalar, cupy.ndarray or cupy.poly1d
+        Second input polynomial
 
-    Returns:
-        cupy.ndarray or cupy.poly1d: The product of the inputs.
+    Returns
+    -------
+    out : cupy.ndarray or cupy.poly1d
+        The product of the inputs
 
-    .. seealso:: :func:`numpy.polymul`
+    See Also
+    --------
+    numpy.polymul
 
     """
     a1 = cupy.trim_zeros(a1, trim='f')
@@ -102,6 +123,43 @@ def polymul(a1, a2):
     if a2.size == 0:
         a2 = cupy.array([0.], a2.dtype)
     return cupy.convolve(a1, a2)
+
+
+def polyder(p, m=1):
+    """Returns the derivative of the specified order of a polynomial.
+
+    Parameters
+    ----------
+    p : poly1d or sequence
+        Polynomial to differentiate
+    m : int, optional
+        Order of differentiation. By default, 1
+
+    Returns
+    -------
+    der : poly1d
+        A new polynomial representing the derivative.
+
+    See Also
+    --------
+    numpy.polyder
+
+    """
+    m = int(m)
+    if m < 0:
+        raise ValueError("Order of derivative must be positive.")
+
+    truepoly = isinstance(p, cupy.poly1d)
+    p = cupy.asarray(p)
+    n = len(p) - 1
+    y = p[:-1] * cupy.arange(n, 0, -1)
+    if m == 0:
+        val = p
+    else:
+        val = polyder(y, m - 1)
+    if truepoly:
+        val = cupy.poly1d(val)
+    return val
 
 
 def _polypow(x, n):
@@ -124,41 +182,51 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     """Returns the least squares fit of polynomial of degree deg
     to the data y sampled at x.
 
-    Args:
-        x (cupy.ndarray): x-coordinates of the sample points of shape (M,).
-        y (cupy.ndarray): y-coordinates of the sample points of shape
-            (M,) or (M, K).
-        deg (int): degree of the fitting polynomial.
-        rcond (float, optional): relative condition number of the fit.
-            The default value is ``len(x) * eps``.
-        full (bool, optional): indicator of the return value nature.
-            When False (default), only the coefficients are returned.
-            When True, diagnostic information is also returned.
-        w (cupy.ndarray, optional): weights applied to the y-coordinates
-            of the sample points of shape (M,).
-        cov (bool or str, optional): if given, returns the coefficients
-            along with the covariance matrix.
+    Parameters
+    ----------
+    x : cupy.ndarray
+        x-coordinates of the sample points of shape (M,)
+    y : cupy.ndarray
+        y-coordinates of the sample points of shape
+        (M,) or (M, K)
+    deg : int
+        Degree of the fitting polynomial
+    rcond : float, optional
+        Relative condition number of the fit.
+        The default value is ``len(x) * eps``.
+    full : bool, optional
+        Indicator of the return value nature.
+        When False (default), only the coefficients are returned.
+        When True, diagnostic information is also returned.
+    w : cupy.ndarray, optional
+        Weights applied to the y-coordinates
+        of the sample points of shape (M,).
+    cov : bool or str, optional
+        If given, returns the coefficients
+        along with the covariance matrix.
 
-    Returns:
-        cupy.ndarray or tuple:
-        p (cupy.ndarray of shape (deg + 1,) or (deg + 1, K)):
-            Polynomial coefficients from highest to lowest degree
-        residuals, rank, singular_values, rcond \
-        (cupy.ndarray, int, cupy.ndarray, float):
-            Present only if ``full=True``.
-            Sum of squared residuals of the least-squares fit,
-            rank of the scaled Vandermonde coefficient matrix,
-            its singular values, and the specified value of ``rcond``.
-        V (cupy.ndarray of shape (M, M) or (M, M, K)):
-            Present only if ``full=False`` and ``cov=True``.
-            The covariance matrix of the polynomial coefficient estimates.
+    Returns
+    -------
+    p : cupy.ndarray of shape (deg + 1,) or (deg + 1, K)
+        Polynomial coefficients from highest to lowest degree
+    residuals, rank, singular_values, rcond :
+    cupy.ndarray, int, cupy.ndarray, float
+        Present only if ``full=True``.
+        Sum of squared residuals of the least-squares fit,
+        rank of the scaled Vandermonde coefficient matrix,
+        its singular values, and the specified value of ``rcond``.
+    V : cupy.ndarray of shape (M, M) or (M, M, K)
+        Present only if ``full=False`` and ``cov=True``.
+        The covariance matrix of the polynomial coefficient estimates.
 
-    .. warning::
+    Warning
+    -------
+    numpy.RankWarning: The rank of the coefficient matrix in the
+    least-squares fit is deficient. It is raised if ``full=False``.
 
-        numpy.RankWarning: The rank of the coefficient matrix in the
-        least-squares fit is deficient. It is raised if ``full=False``.
-
-    .. seealso:: :func:`numpy.polyfit`
+    See Also
+    --------
+    numpy.polyfit
 
     """
     if x.dtype.char == 'e' and y.dtype.kind == 'b':
@@ -238,19 +306,26 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 def polyval(p, x):
     """Evaluates a polynomial at specific values.
 
-    Args:
-        p (cupy.ndarray or cupy.poly1d): input polynomial.
-        x (scalar, cupy.ndarray): values at which the polynomial
+    Parameters
+    ----------
+    p : cupy.ndarray or cupy.poly1d
+        Input polynomial
+    x : scalar, cupy.ndarray
+        Values at which the polynomial
         is evaluated.
 
-    Returns:
-        cupy.ndarray or cupy.poly1d: polynomial evaluated at x.
+    Returns
+    -------
+    out : cupy.ndarray or cupy.poly1d
+        Polynomial evaluated at x
 
-    .. warning::
+    Warning
+    -------
+    This function doesn't currently support poly1d values to evaluate.
 
-        This function doesn't currently support poly1d values to evaluate.
-
-    .. seealso:: :func:`numpy.polyval`
+    See Also
+    --------
+    numpy.polyval
 
     """
     if isinstance(p, cupy.poly1d):
@@ -288,21 +363,27 @@ def polyval(p, x):
 def roots(p):
     """Computes the roots of a polynomial with given coefficients.
 
-    Args:
-        p (cupy.ndarray or cupy.poly1d): polynomial coefficients.
+    Parameters
+    ----------
+    p : cupy.ndarray or cupy.poly1d
+        Polynomial coefficients
 
-    Returns:
-        cupy.ndarray: polynomial roots.
+    Returns
+    -------
+    out : cupy.ndarray
+        Polynomial roots
 
-    .. warning::
+    Warning
+    -------
+    This function doesn't support currently polynomial coefficients
+    whose companion matrices are general 2d square arrays. Only those
+    with complex Hermitian or real symmetric 2d arrays are allowed.
 
-        This function doesn't support currently polynomial coefficients
-        whose companion matrices are general 2d square arrays. Only those
-        with complex Hermitian or real symmetric 2d arrays are allowed.
+    The current `cupy.roots` doesn't guarantee the order of results.
 
-        The current `cupy.roots` doesn't guarantee the order of results.
-
-    .. seealso:: :func:`numpy.roots`
+    See Also
+    --------
+    numpy.roots
 
     """
     if isinstance(p, cupy.poly1d):

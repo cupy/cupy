@@ -844,6 +844,48 @@ class TestRootsSpecialCases:
 
 
 @testing.gpu
+class TestPolyDer:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_1dim(self, xp, dtype):
+       a = xp.poly1d([1, 1, 1, 1])
+       return xp.polyder(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_0_order(self, xp, dtype):
+        a = testing.shaped_arange((4,), xp, dtype=dtype)
+        return xp.polyder(xp.poly1d(a), m=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_multi_order(self, xp, dtype):
+        a = xp.poly1d([-1, 4, 1, 1, 9])
+        return xp.polyder(a, m=3)
+
+    @testing.for_all_dtypes()
+    def test_neg_order(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.poly1d([3, 6, 9, 5])
+            with pytest.raises(ValueError):
+                xp.polyder(a, m=-1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_constant(self, xp, dtype):
+        a = xp.poly1d([4])
+        return xp.polyder(a, m=1)
+
+    @testing.for_all_dtypes()
+    def test_multi_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 2), xp, dtype=dtype)
+            with pytest.raises(ValueError):
+                xp.polyder(xp.poly1d(a), m=2)
+
+
+@testing.gpu
 class TestRoots:
 
     @testing.for_all_dtypes(no_bool=True)
