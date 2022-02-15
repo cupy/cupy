@@ -63,6 +63,11 @@ rocm:
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
+  "5.0":
+    full_version: "5.0.1"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
 
 ###############################################################################
 # CUDA Optional Libraries
