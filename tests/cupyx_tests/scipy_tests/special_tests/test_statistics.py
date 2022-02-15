@@ -247,8 +247,10 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
 
         func = getattr(scp.special, function)
         n = xp.linspace(0, 80, 80, dtype=int_dtype)[xp.newaxis, :, xp.newaxis]
+
         # broadcast to create k <= n
-        k = xp.linspace(0, 1, 10, dtype=dtype)[:, xp.newaxis, xp.newaxis] * n
+        k = xp.linspace(0, 1, 10, dtype=int_dtype)
+        k = k[:, xp.newaxis, xp.newaxis] * n
         p = xp.linspace(0, 1, 5, dtype=dtype)[xp.newaxis, xp.newaxis, :]
         return func(k, n, p)
 
