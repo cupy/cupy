@@ -6,8 +6,10 @@ from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _filters_generic
+from cupyx.scipy.ndimage import _uarray
 
 
+@_uarray.implements('correlate')
 def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
     """Multi-dimensional correlate.
 
@@ -42,6 +44,7 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
     return _correlate_or_convolve(input, weights, output, mode, cval, origin)
 
 
+@_uarray.implements('convolve')
 def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
     """Multi-dimensional convolution.
 
@@ -77,6 +80,7 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
                                   True)
 
 
+@_uarray.implements('correlate1d')
 def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                 origin=0):
     """One-dimensional correlate.
@@ -113,6 +117,7 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
     return _correlate_or_convolve(input, weights, output, mode, cval, origins)
 
 
+@_uarray.implements('convolve1d')
 def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
                origin=0):
     """One-dimensional convolution.
@@ -207,6 +212,7 @@ def _run_1d_correlates(input, params, get_weights, output, mode, cval,
         input, wghts, output, mode, cval, origin)
 
 
+@_uarray.implements('uniform_filter1d')
 def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
                      cval=0.0, origin=0):
     """One-dimensional uniform filter along the given axis.
@@ -243,6 +249,7 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
                        origin)
 
 
+@_uarray.implements('uniform_filter')
 def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
                    origin=0):
     """Multi-dimensional uniform filter.
@@ -281,6 +288,7 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
     return _run_1d_correlates(input, sizes, get, output, mode, cval, origin)
 
 
+@_uarray.implements('gaussian_filter1d')
 def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
                       mode="reflect", cval=0.0, truncate=4.0):
     """One-dimensional Gaussian filter along the given axis.
@@ -320,6 +328,7 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
     return correlate1d(input, weights, axis, output, mode, cval)
 
 
+@_uarray.implements('gaussian_filter')
 def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
                     cval=0.0, truncate=4.0):
     """Multi-dimensional Gaussian filter.
@@ -398,6 +407,7 @@ def _gaussian_kernel1d(sigma, order, radius):
     return cupy.asarray((q * phi_x)[::-1])
 
 
+@_uarray.implements('prewitt')
 def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
     """Compute a Prewitt filter along the given axis.
 
@@ -425,6 +435,7 @@ def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
     return _prewitt_or_sobel(input, axis, output, mode, cval, cupy.ones(3))
 
 
+@_uarray.implements('sobel')
 def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
     """Compute a Sobel filter along the given axis.
 
@@ -463,6 +474,7 @@ def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
                               get, output, mode, cval)
 
 
+@_uarray.implements('generic_laplace')
 def generic_laplace(input, derivative2, output=None, mode="reflect",
                     cval=0.0, extra_arguments=(), extra_keywords=None):
     """Multi-dimensional Laplace filter using a provided second derivative
@@ -522,6 +534,7 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
     return output
 
 
+@_uarray.implements('laplace')
 def laplace(input, output=None, mode="reflect", cval=0.0):
     """Multi-dimensional Laplace filter based on approximate second
     derivatives.
@@ -553,6 +566,7 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
     return generic_laplace(input, derivative2, output, mode, cval)
 
 
+@_uarray.implements('gaussian_laplace')
 def gaussian_laplace(input, sigma, output=None, mode="reflect",
                      cval=0.0, **kwargs):
     """Multi-dimensional Laplace filter using Gaussian second derivatives.
@@ -589,6 +603,7 @@ def gaussian_laplace(input, sigma, output=None, mode="reflect",
     return generic_laplace(input, derivative2, output, mode, cval)
 
 
+@_uarray.implements('generic_gradient_magnitude')
 def generic_gradient_magnitude(input, derivative, output=None,
                                mode="reflect", cval=0.0,
                                extra_arguments=(), extra_keywords=None):
@@ -651,6 +666,7 @@ def generic_gradient_magnitude(input, derivative, output=None,
     return cupy.sqrt(output, output, casting='unsafe')
 
 
+@_uarray.implements('gaussian_gradient_magnitude')
 def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
                                 cval=0.0, **kwargs):
     """Multi-dimensional gradient magnitude using Gaussian derivatives.
@@ -687,6 +703,7 @@ def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
     return generic_gradient_magnitude(input, derivative, output, mode, cval)
 
 
+@_uarray.implements('minimum_filter')
 def minimum_filter(input, size=None, footprint=None, output=None,
                    mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional minimum filter.
@@ -720,6 +737,7 @@ def minimum_filter(input, size=None, footprint=None, output=None,
                               cval, origin, 'min')
 
 
+@_uarray.implements('maximum_filter')
 def maximum_filter(input, size=None, footprint=None, output=None,
                    mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional maximum filter.
@@ -786,6 +804,7 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
                                       structure, weights_dtype=bool)
 
 
+@_uarray.implements('minimum_filter1d')
 def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
                      cval=0.0, origin=0):
     """Compute the minimum filter along a single axis.
@@ -813,6 +832,7 @@ def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
     return _min_or_max_1d(input, size, axis, output, mode, cval, origin, 'min')
 
 
+@_uarray.implements('maximum_filter1d')
 def maximum_filter1d(input, size, axis=-1, output=None, mode="reflect",
                      cval=0.0, origin=0):
     """Compute the maximum filter along a single axis.
@@ -887,6 +907,7 @@ def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
         has_weights=has_weights, has_structure=has_structure)
 
 
+@_uarray.implements('rank_filter')
 def rank_filter(input, rank, size=None, footprint=None, output=None,
                 mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional rank filter.
@@ -923,6 +944,7 @@ def rank_filter(input, rank, size=None, footprint=None, output=None,
                         size, footprint, output, mode, cval, origin)
 
 
+@_uarray.implements('median_filter')
 def median_filter(input, size=None, footprint=None, output=None,
                   mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional median filter.
@@ -956,6 +978,7 @@ def median_filter(input, size=None, footprint=None, output=None,
                         size, footprint, output, mode, cval, origin)
 
 
+@_uarray.implements('percentile_filter')
 def percentile_filter(input, percentile, size=None, footprint=None,
                       output=None, mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional percentile filter.
@@ -1110,6 +1133,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
         mode, w_shape, int_type, offsets, cval, preamble=sorter)
 
 
+@_uarray.implements('generic_filter')
 def generic_filter(input, function, size=None, footprint=None,
                    output=None, mode="reflect", cval=0.0, origin=0):
     """Compute a multi-dimensional filter using the provided raw kernel or
@@ -1178,6 +1202,7 @@ def generic_filter(input, function, size=None, footprint=None,
                                       weights_dtype=bool)
 
 
+@_uarray.implements('generic_filter1d')
 def generic_filter1d(input, function, filter_size, axis=-1, output=None,
                      mode="reflect", cval=0.0, origin=0):
     """Compute a 1D filter along the given axis using the provided raw kernel.
