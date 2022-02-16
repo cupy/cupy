@@ -210,7 +210,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     p : cupy.ndarray of shape (deg + 1,) or (deg + 1, K)
         Polynomial coefficients from highest to lowest degree
     residuals, rank, singular_values, rcond : cupy.ndarray,
-    int, cupy.ndarray, float
+                                              int, cupy.ndarray, float
         Present only if ``full=True``.
         Sum of squared residuals of the least-squares fit,
         rank of the scaled Vandermonde coefficient matrix,
