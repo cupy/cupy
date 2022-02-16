@@ -38,6 +38,7 @@ String formatting
    array_repr
    array_str
    format_float_positional
+   format_float_scientific
 
 
 Base-n representations
