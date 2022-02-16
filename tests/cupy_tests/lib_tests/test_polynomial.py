@@ -849,8 +849,8 @@ class TestPolyDer:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_1dim(self, xp, dtype):
-       a = xp.poly1d([1, 1, 1, 1])
-       return xp.polyder(a)
+        a = xp.poly1d([1, 1, 1, 1])
+        return xp.polyder(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
