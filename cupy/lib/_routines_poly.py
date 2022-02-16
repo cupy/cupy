@@ -130,14 +130,14 @@ def polyder(p, m=1):
 
     Parameters
     ----------
-    p : poly1d or sequence
+    p : poly1d or cupy.ndarray
         Polynomial to differentiate
     m : int, optional
         Order of differentiation. By default, 1
 
     Returns
     -------
-    der : poly1d
+    der : cupy.ndarray or cupy.poly1d
         A new polynomial representing the derivative.
 
     See Also
@@ -209,8 +209,8 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     -------
     p : cupy.ndarray of shape (deg + 1,) or (deg + 1, K)
         Polynomial coefficients from highest to lowest degree
-    residuals, rank, singular_values, rcond :
-    cupy.ndarray, int, cupy.ndarray, float
+    residuals, rank, singular_values, rcond : cupy.ndarray,
+    int, cupy.ndarray, float
         Present only if ``full=True``.
         Sum of squared residuals of the least-squares fit,
         rank of the scaled Vandermonde coefficient matrix,

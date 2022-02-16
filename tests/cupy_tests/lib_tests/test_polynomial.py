@@ -884,6 +884,12 @@ class TestPolyDer:
             with pytest.raises(ValueError):
                 xp.polyder(xp.poly1d(a), m=2)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_lead_coef_zero(self, xp, dtype):
+        a = xp.poly1d([0, 1, 3, 0])
+        return xp.polyder(a, m=1)
+
 
 @testing.gpu
 class TestRoots:
