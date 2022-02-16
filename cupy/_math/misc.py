@@ -399,7 +399,24 @@ def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
     return _nan_to_num(x, nan, posinf, neginf, out=out)
 
 
-# TODO(okuta): Implement real_if_close
+def real_if_close(x, tol=100):
+    """If input is complex with all imaginary parts close to zero, return real
+    parts.
+    “Close to zero” is defined as tol * (machine epsilon of the type for x).
+
+    .. seealso:: :func:`numpy.real_if_close`
+
+    """
+    x = cupy.asanyarray(x)
+    if not issubclass(x.dtype.type, cupy.complexfloating):
+        return x
+    if tol > 1:
+        from numpy.core import getlimits
+        f = getlimits.finfo(x.dtype.type)
+        tol = f.eps * tol
+    if cupy.all(cupy.absolute(x.imag) < tol):
+        x = x.real
+    return x
 
 
 @cupy._util.memoize(for_each_device=True)
