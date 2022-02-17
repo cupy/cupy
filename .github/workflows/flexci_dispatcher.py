@@ -75,7 +75,7 @@ def _complement_commit_status(
 
 def extract_requested_tags(comment: str) -> Optional[Set[str]]:
     """
-    Returns the list of test tags requested in the comment.
+    Returns the set of test tags requested in the comment.
     """
     for line in comment.splitlines():
         match = re.fullmatch(r'/test ([\w,\- ]+)', line)
@@ -138,15 +138,18 @@ def main(argv: Any) -> int:
             projects_skipped.add(project)
 
     if len(projects_dispatch) == 0:
-        _log('No projects matched with the requested tag')
-        return 1
-
-    _log(f'Dispatching projects: {projects_dispatch}')
-    success = _forward_to_flexci(
-        payload, webhook_secret, projects_dispatch, options.flexci_uri)
-    if not success:
-        _log('Failed to dispatch')
-        return 1
+        if requested_tags == {'skip'}:
+            _log('Skipping all projects as requested')
+        else:
+            _log('No projects matched with the requested tag')
+            return 1
+    else:
+        _log(f'Dispatching projects: {projects_dispatch}')
+        success = _forward_to_flexci(
+            payload, webhook_secret, projects_dispatch, options.flexci_uri)
+        if not success:
+            _log('Failed to dispatch')
+            return 1
 
     if len(projects_skipped) != 0:
         _complement_commit_status(
