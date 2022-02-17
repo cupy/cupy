@@ -7,9 +7,18 @@ from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
 
 try:
-    import scipy.ndimage  # NOQA
+    import scipy.ndimage as scipy_ndimage
+    import scipy
 except ImportError:
-    pass
+    scipy_ndimage = None
+    scipy = None
+
+
+# TODO: After the feature is released
+# requires_scipy_ndimage_backend = testing.with_requires('scipy>=1.x.x')
+requires_scipy_ndimage_backend = pytest.mark.skip(
+    'scipy.ndimage backend feature has not been released'
+)
 
 
 class FilterTestCaseBase:
@@ -226,6 +235,17 @@ class TestFilter(FilterTestCaseBase):
         if self.dtype == getattr(self, 'output', None):
             pytest.skip("redundant")
         return self._filter(xp, scp)
+
+    @requires_scipy_ndimage_backend
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter_backend(self, xp, scp):
+        self._hip_skip_invalid_condition()
+        if self.dtype == getattr(self, 'output', None):
+            pytest.skip("redundant")
+        backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
+        with scipy_ndimage.set_backend(backend):
+            out = self._filter(xp, scp)
+        return out
 
 
 @testing.with_requires('scipy')
