@@ -143,10 +143,21 @@ class TestArrayCopyAndView:
         return a
 
     @testing.for_all_dtypes()
-    def test_fill_with_numpy_nonscalar_ndarray(self, dtype):
+    def test_fill_with_cupy_scalar_ndarray(self, dtype):
+        def make(xp):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            a.fill(xp.ones((), dtype=dtype))
+            return a
+        a = make(cupy)
+        e = make(numpy)
+        testing.assert_array_equal(a, e)
+
+    @testing.for_all_dtypes()
+    def test_fill_with_nonscalar_ndarray(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        with pytest.raises(ValueError):
-            a.fill(numpy.ones((1,), dtype=dtype))
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                a.fill(xp.ones((1,), dtype=dtype))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
