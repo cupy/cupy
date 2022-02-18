@@ -84,6 +84,10 @@ class TestGammainc(object):
     #     dataset = cp.vstack((a, x, self.gammainc_line(x))).T
     #     FuncData(sc.gammainc, dataset, (0, 1), 2, rtol=1e-11).check()
 
+    @pytest.mark.skipif(
+        cp.cuda.runtime.is_hip and
+        cp.cuda.runtime.runtimeGetVersion() < 5_00_00000,
+        reason='ROCm/HIP fails in ROCm 4.x')
     def test_roundtrip(self):
         a = cp.logspace(-5, 10, 100)
         x = cp.logspace(-5, 10, 100)
