@@ -366,7 +366,8 @@ class TagGenerator:
     def generate(self) -> str:
         output = {}
         for matrix in self.matrixes:
-            output[matrix.project] = matrix.tags
+            if matrix.tags is not None:
+                output[matrix.project] = matrix.tags
         return json.dumps(output, indent=4)
 
 
