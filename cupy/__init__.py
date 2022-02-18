@@ -442,6 +442,7 @@ from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
 from cupy._io.formatting import array2string  # NOQA
 from cupy._io.formatting import format_float_positional  # NOQA
+from cupy._io.formatting import format_float_scientific  # NOQA
 
 from cupy._io.text import savetxt  # NOQA
 
