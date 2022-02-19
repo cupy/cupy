@@ -65,6 +65,21 @@ def format_float_positional(x, *args, **kwargs):
     return numpy.format_float_positional(cupy.asnumpy(x), *args, **kwargs)
 
 
+def searchsorted(a, v, side='left', sorter=None):
+    """
+    Find indices where elements should be inserted to maintain order.
+    Find the indices into a sorted array `a` such that, if the
+    corresponding elements in `v` were inserted before the indices, the
+    order of `a` would be preserved.
+    Assuming that `a` is sorted:
+   
+    `side`  returned index `i` satisfies
+
+    left    ``a[i-1] < v <= a[i]``
+    right   ``a[i-1] <= v < a[i]``
+    ======  ============================
+    return cupy.searchsorted(a, 'searchsorted', v, side=side, sorter=sorter)
+
 def format_float_scientific(x, *args, **kwargs):
     """Format a floating-point scalar as a decimal string in scientific notation.
 
