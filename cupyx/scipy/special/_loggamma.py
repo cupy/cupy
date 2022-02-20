@@ -221,47 +221,29 @@ __device__ complex<double> loggamma_taylor(complex<double> z)
 
 """
 
-cgamma_definition = loggamma_definition + """
-
-// Compute Gamma(z) using loggamma.
-
-__device__ complex<double> cgamma(complex<double> z)
-{
-    if ((z.real <= 0) && (z == floor(z.real))){
-        // Poles
-        complex<double> ctemp(CUDART_NAN, CUDART_NAN);
-        return ctemp;
-    }
-    return exp(loggamma(z));  // complex exp via Thrust
-}
-"""
-
-crgamma_definition = loggamma_definition + """
-
-// Compute 1/Gamma(z) using loggamma
-
-__device__ complex<double> crgamma(complex<double> z)
-{
-
-    if ((z.real <= 0) && (z == floor(z.real))){
-        // Zeros at 0, -1, -2, ...
-        return 0;
-    }
-    return exp(-loggamma(z));  // complex exp via Thrust
-}
-"""
-
 
 
 loggamma = _core.create_ufunc(
-    "cupyx_scipy_gammaincinv",
-    ("ff->f", "dd->d"),
-    "out0 = out0_type(igami(in0, in1));",
+    'cupyx_scipy_gammaincinv',
+    ('ff->f', 'dd->d'),
+    'out0 = out0_type(igami(in0, in1));',
     preamble=_igami_preamble,
-    doc="""Elementwise function for scipy.special.gammaincinv
+    doc="""Principal branch of the logarithm of the gamma function.
 
-    Inverse to gammainc.
+    Parameters
+    ----------
+    z : cupy.ndarray
+        Values in the complex plain at which to compute loggamma
+    out : cupy.ndarray, optional
+        Output array for computed values of loggamma
 
-    .. seealso:: :meth:`scipy.special.gammaincinv`
+    Returns
+    -------
+    cupy.ndarray
+        Values of loggamma at z.
+
+    See Also
+    --------
+    :func:`scipy.special.loggamma`
     """,
 )
