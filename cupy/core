@@ -20,7 +20,7 @@ from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
-from 
+
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
