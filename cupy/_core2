@@ -20,7 +20,7 @@ from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
-
+from 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
@@ -908,7 +908,23 @@ cdef class ndarray:
 
         """
         return _indexing._ndarray_diagonal(self, offset, axis1, axis2)
+        
+    cpdef ndarray searchsorted(a, v, side='left', sorter=None):
+     """
+     Find indices where elements should be inserted to maintain order.
+     Find the indices into a sorted array `a` such that, if the
+     corresponding elements in `v` were inserted before the indices, the
+     order of `a` would be preserved.
+     Assuming that `a` is sorted:
+    
+     `side`  returned index `i` satisfies
 
+     left    ``a[i-1] < v <= a[i]``
+     right   ``a[i-1] <= v < a[i]``
+     ======  ============================
+     """
+     return cupy.ndarray.searchsorted(a, 'searchsorted', v, side=side, sorter=sorter)
+     
     # -------------------------------------------------------------------------
     # Calculation
     # -------------------------------------------------------------------------
