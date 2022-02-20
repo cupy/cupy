@@ -78,6 +78,7 @@ def searchsorted(a, v, side='left', sorter=None):
     left    ``a[i-1] < v <= a[i]``
     right   ``a[i-1] <= v < a[i]``
     ======  ============================
+    """
     return cupy.searchsorted(a, 'searchsorted', v, side=side, sorter=sorter)
 
 def format_float_scientific(x, *args, **kwargs):
