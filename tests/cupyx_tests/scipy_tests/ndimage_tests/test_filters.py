@@ -345,6 +345,15 @@ class TestFilterFast(FilterTestCaseBase):
         self._hip_skip_invalid_condition()
         return self._filter(xp, scp)
 
+    @requires_scipy_ndimage_backend
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter_backend(self, xp, scp):
+        self._hip_skip_invalid_condition()
+        backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
+        with scipy_ndimage.set_backend(backend):
+            out = self._filter(xp, scp)
+        return out
+
 
 # This tests filters that are very similar to other filters so we only check
 # the basics with them.
@@ -493,6 +502,15 @@ class TestGenericFilter(FilterTestCaseBase):
         self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
+    @requires_scipy_ndimage_backend
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter_backend(self, xp, scp):
+        self.function = self.get_func_or_kernel(xp)
+        backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
+        with scipy_ndimage.set_backend(backend):
+            out = self._filter(xp, scp)
+        return out
+
 
 # Kernels and functions for use with generic_filter1d
 def shift_pyfunc(src, dst):
@@ -553,6 +571,15 @@ class TestGeneric1DFilter(FilterTestCaseBase):
         # numpy vs cupy
         self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
+
+    @requires_scipy_ndimage_backend
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter_backend(self, xp, scp):
+        self.function = self.get_func_or_kernel(xp)
+        backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
+        with scipy_ndimage.set_backend(backend):
+            out = self._filter(xp, scp)
+        return out
 
 
 # Tests things requiring scipy >= 1.5.0
