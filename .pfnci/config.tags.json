@@ -71,9 +71,6 @@
     "cupy.linux.cuda-slow": [
         "slow"
     ],
-    "cupy.linux.benchmark": [
-        "benchmark"
-    ],
     "cupy.linux.cuda-example": [
         "@push",
         "full",
@@ -125,5 +122,8 @@
     ],
     "cupy.linux.array-api": [
         "array-api"
+    ],
+    "cupy.linux.benchmark.pr": [
+        "benhmark"
     ]
 }
