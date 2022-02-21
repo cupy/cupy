@@ -477,3 +477,9 @@
   target: "array-api"
   tags: ["array-api"]
   system: "linux"
+
+- project: "cupy.linux.benchmark.pr"
+  _extern: true
+  target: "benchmark"
+  tags: ["benhmark"]
+  system: "linux"
