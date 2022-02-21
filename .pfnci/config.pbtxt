@@ -442,6 +442,10 @@ configs {
       memory: 50
       disk: 10
       gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
     environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh benchmark"
   }
