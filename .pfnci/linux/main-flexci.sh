@@ -17,6 +17,16 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 fi
 
+if [[ "${TARGET}" == "benchmark" ]]; then
+    # if [[ "${pull_req}" == "" ]]; then
+        echo "Downloading master benchmark results"
+        CUR_DATE=$(date +"%F-%H:%M")
+        mkdir -p /tmp/benchmark/head/
+        gsutil -m -q cp "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/" /tmp/benchmark/head/
+        ls /tmp/benchmark/head/
+    # fi
+fi
+
 # TODO(kmaehashi): Hack for CUDA 11.6 until FlexCI base image update
 if [[ "${TARGET}" == cuda116* ]]; then
     if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 495.* ]]; then
@@ -43,7 +53,7 @@ if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get build benchmark"
 fi
 echo "$(dirname ${0})/run.sh" "${TARGET} ${STAGES}"
-BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
+# BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 echo "****************************************************************************************************"
 echo "Build & Test: Exit with status ${test_retval}"
@@ -65,7 +75,7 @@ echo "Uploading the log..."
 gsutil -m -q cp "${LOG_FILE}" "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 
 if [[ "${TARGET}" == "benchmark" ]]; then
-    # if [[ "${pull_req}" == "" ]]; then
+    if [[ "${pull_req}" == "" ]]; then
         echo "Uploading benchmark results"
         ls /tmp/benchmark/*.csv
         CUR_DATE=$(date +"%F-%H:%M")
@@ -74,7 +84,7 @@ if [[ "${TARGET}" == "benchmark" ]]; then
         echo "Benchmark results are available at:"
         echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/benchmarks/master/"
         echo "****************************************************************************************************"
-    # fi
+    fi
 fi
 
 echo "****************************************************************************************************"
