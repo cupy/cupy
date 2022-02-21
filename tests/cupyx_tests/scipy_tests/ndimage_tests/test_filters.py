@@ -237,14 +237,14 @@ class TestFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
     @requires_scipy_ndimage_backend
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_filter_backend(self, xp, scp):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5)
+    def test_filter_backend(self, xp):
         self._hip_skip_invalid_condition()
         if self.dtype == getattr(self, 'output', None):
             pytest.skip("redundant")
         backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
         with scipy_ndimage.set_backend(backend):
-            out = self._filter(xp, scp)
+            out = self._filter(xp, scipy)
         return out
 
 
@@ -346,12 +346,12 @@ class TestFilterFast(FilterTestCaseBase):
         return self._filter(xp, scp)
 
     @requires_scipy_ndimage_backend
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_filter_backend(self, xp, scp):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5)
+    def test_filter_backend(self, xp):
         self._hip_skip_invalid_condition()
         backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
         with scipy_ndimage.set_backend(backend):
-            out = self._filter(xp, scp)
+            out = self._filter(xp, scipy)
         return out
 
 
@@ -503,12 +503,12 @@ class TestGenericFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
     @requires_scipy_ndimage_backend
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_filter_backend(self, xp, scp):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5)
+    def test_filter_backend(self, xp):
         self.function = self.get_func_or_kernel(xp)
         backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
         with scipy_ndimage.set_backend(backend):
-            out = self._filter(xp, scp)
+            out = self._filter(xp, scipy)
         return out
 
 
@@ -573,12 +573,12 @@ class TestGeneric1DFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
     @requires_scipy_ndimage_backend
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_filter_backend(self, xp, scp):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5)
+    def test_filter_backend(self, xp):
         self.function = self.get_func_or_kernel(xp)
         backend = 'scipy' if xp is numpy else cupyx.scipy.ndimage
         with scipy_ndimage.set_backend(backend):
-            out = self._filter(xp, scp)
+            out = self._filter(xp, scipy)
         return out
 
 
