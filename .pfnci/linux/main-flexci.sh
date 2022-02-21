@@ -43,7 +43,7 @@ if [[ "${TARGET}" == "benchmark" ]]; then
         echo "Downloading master benchmark results"
         CUR_DATE=$(date +"%F-%H:%M")
         mkdir -p /tmp/benchmark/head/
-        gsutil -m -q cp "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/" /tmp/benchmark/head/
+        gsutil -m cp -r "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/" /tmp/benchmark/head/
         ls /tmp/benchmark/head/
     # fi
 fi
