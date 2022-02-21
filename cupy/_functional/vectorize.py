@@ -51,7 +51,7 @@ class vectorize(object):
 
         if signature is not None:
             raise NotImplementedError(
-                'cupy.vectorize does not support `excluded` option currently.')
+                'cupy.vectorize does not support `signature` option currently.')
 
     @staticmethod
     def _parse_out_param(return_type):
