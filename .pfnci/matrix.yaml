@@ -481,5 +481,5 @@
 - project: "cupy.linux.benchmark.pr"
   _extern: true
   target: "benchmark"
-  tags: ["benhmark"]
+  tags: ["benchmark"]
   system: "linux"
