@@ -9,7 +9,7 @@ jobs:
     if: |
         github.repository_owner == 'cupy' &&
         github.event.issue.pull_request &&
-        contains(github.event.comment.body, '/test')
+        contains(github.event.comment.body, '/test ')
     runs-on: ubuntu-20.04
 
     steps:

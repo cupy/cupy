@@ -8,11 +8,11 @@ import cupy
 from cupy import cusparse
 from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
-from cupyx.scipy.sparse import base
-from cupyx.scipy.sparse import compressed
+from cupyx.scipy.sparse import _base
+from cupyx.scipy.sparse import _compressed
 
 
-class csc_matrix(compressed._compressed_sparse_matrix):
+class csc_matrix(_compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
@@ -112,7 +112,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 raise NotImplementedError
         elif cupyx.scipy.sparse.isspmatrix(other):
             return self * other.tocsr()
-        elif base.isdense(other):
+        elif _base.isdense(other):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
@@ -315,7 +315,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        trans = cupyx.scipy.sparse.csr.csr_matrix(
+        trans = cupyx.scipy.sparse.csr_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
         trans.has_canonical_format = self.has_canonical_format
         return trans
