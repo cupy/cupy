@@ -1,5 +1,6 @@
 import numpy as np
 import cupy
+import cupy.linalg as _cp_linalg
 
 
 try:
@@ -51,3 +52,22 @@ def implements(scipy_func_name):
         return func
 
     return inner
+
+
+# cupy linalg functions
+
+_cp_linalg_functions = [
+    # cupy.linalg._eigenvalue
+    'eigh', 'eigvalsh',
+    # cupy.linalg._decomposition
+    'cholesky', 'qr', 'svd',
+    # cupy.linalg._norms
+    'norm', 'det',
+    # cupy.linalg._solve
+    'solve', 'lstsq', 'inv', 'pinv'
+]
+
+for func_name in _cp_linalg_functions:
+    cp_func = getattr(_cp_linalg, func_name)
+    scipy_func = getattr(_scipy_linalg, func_name)
+    _implemented[scipy_func] = cp_func
