@@ -17,16 +17,6 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 fi
 
-if [[ "${TARGET}" == "benchmark" ]]; then
-    # if [[ "${pull_req}" == "" ]]; then
-        echo "Downloading master benchmark results"
-        CUR_DATE=$(date +"%F-%H:%M")
-        mkdir -p /tmp/benchmark/head/
-        gsutil -m -q cp "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/" /tmp/benchmark/head/
-        ls /tmp/benchmark/head/
-    # fi
-fi
-
 # TODO(kmaehashi): Hack for CUDA 11.6 until FlexCI base image update
 if [[ "${TARGET}" == cuda116* ]]; then
     if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 495.* ]]; then
@@ -47,6 +37,16 @@ gcloud auth configure-docker
 
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
+
+if [[ "${TARGET}" == "benchmark" ]]; then
+    # if [[ "${pull_req}" == "" ]]; then
+        echo "Downloading master benchmark results"
+        CUR_DATE=$(date +"%F-%H:%M")
+        mkdir -p /tmp/benchmark/head/
+        gsutil -m -q cp "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/" /tmp/benchmark/head/
+        ls /tmp/benchmark/head/
+    # fi
+fi
 
 STAGES="cache_get build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
