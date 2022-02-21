@@ -72,6 +72,7 @@ Gamma and related functions
    psi
    rgamma
    polygamma
+   multigammaln
    digamma
    poch
 

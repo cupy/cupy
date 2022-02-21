@@ -31,22 +31,22 @@ cgamma_definition = loggamma_definition + """
 
 __device__ complex<double> cgamma(complex<double> z)
 {
-    if ((z.real <= 0) && (z == floor(z.real))){
+    if ((z.real() <= 0.0) && (z == floor(z.real()))){
         // Poles
-        complex<double> ctemp(CUDART_NAN, CUDART_NAN);
-        return ctemp;
+        return complex<double>(CUDART_NAN, CUDART_NAN);
     }
-    return exp(loggamma(z));  // complex exp via Thrust
+    return exp(loggamma(z));
 }
 """
 
 
 gamma = _core.create_ufunc(
     'cupyx_scipy_gamma',
-    (('F->F', 'out = out0_type(cgamma(in0)))'),
-     ('D->D', 'out = cgamma(in0))'),
-     'f->f', 'd->d'),
+    ('f->f', 'd->d',
+     ('F->F', 'out0 = out0_type(cgamma(in0))'),
+     ('D->D', 'out0 = cgamma(in0)')),
     _gamma_body,
+    preamble=cgamma_definition,
     doc="""Gamma function.
 
     Args:

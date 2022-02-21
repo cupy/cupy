@@ -9,6 +9,8 @@ https://github.com/scipy/scipy/blob/master/scipy/special/_loggamma.pxd
 """
 
 from cupy import _core
+from cupyx.scipy.special._complexstuff import zlog1_definition
+from cupyx.scipy.special._trig import csinpi_definition
 
 
 ceval_poly_definition = """
@@ -39,8 +41,8 @@ __device__ complex<double> cevalpoly(double *coeffs, int degree,
     int j;
     double a = coeffs[0];
     double b = coeffs[1];
-    double r = 2*z.real;
-    double s = z.real*z.real + z.imag*z.imag;
+    double r = 2*z.real();
+    double s = z.real()*z.real() + z.imag()*z.imag();
     double tmp;
     for (j=2; j<=degree; j++)
     {
@@ -53,37 +55,6 @@ __device__ complex<double> cevalpoly(double *coeffs, int degree,
 """
 
 
-zlog1_definition = """
-
-/* Compute log, paying special attention to accuracy around 1. We
- * implement this ourselves because some systems (most notably the
- * Travis CI machines) are weak in this regime.
- */
-
-__device__ complex<double> zlog1(complex<double> z)
-{
-    int n;
-    complex<double> coeff = -1;
-    complex<double> res = 0;
-
-    if (abs(z - 1) > 0.1) {
-        return log(z);  // complex log via Thrust
-    }
-    z = z - 1;
-    if z == 0 {
-        return 0;
-    }
-    for (n=1; n<17; n++)
-    {
-        coeff *= -z;
-        res += coeff/n;
-        if (abs(res/coeff) < tol) {
-            break;
-        }
-    }
-    return res;
-}
-"""
 
 loggamma_real_definition = """
 
@@ -101,44 +72,50 @@ __device__ double loggamma_real(double x)
 """
 
 
-loggamma_definition = ceval_poly_definition + zlog1_definition + """
+loggamma_definition = (
+    ceval_poly_definition
+    + zlog1_definition
+    + csinpi_definition
+    + loggamma_real_definition
+    + """
 
 #include <cupy/math_constants.h>
 
+#define TWOPI 6.2831853071795864769252842  // 2*pi
+#define LOGPI 1.1447298858494001741434262  // log(pi)
+#define HLOG2PI 0.918938533204672742  // log(2*pi)/2
+#define SMALLX 7.0
+#define SMALLY 7.0
+#define TAYLOR_RADIUS 0.2
 
-#define TWOPI = 6.2831853071795864769252842  // 2*pi
-#define LOGPI = 1.1447298858494001741434262  // log(pi)
-#define HLOG2PI = 0.918938533204672742  // log(2*pi)/2
-#define SMALLX = 7
-#define SMALLY = 7
-#define TAYLOR_RADIUS = 0.2
+__device__ complex<double> loggamma_recurrence(complex<double>);
+__device__ complex<double> loggamma_stirling(complex<double>);
+__device__ complex<double> loggamma_taylor(complex<double>);
 
 
 // Compute the principal branch of log-Gamma
 
-__device__ complex<double> loggamma(complex<double> z)
+__noinline__ __device__ complex<double> loggamma(complex<double> z)
 {
     double tmp;
     if (isnan(z)) {
-        complex<double> ctemp(CUDART_NAN, CUDART_NAN);
-        return ctemp;
-    } else if ((z.real <= 0) && (z == floor(z.real))) {
-        complex<double> ctemp(CUDART_NAN, CUDART_NAN);
-        return ctemp;
-    } else if ((z.real > SMALLX) || (fabs(z.imag) > SMALLY)) {
+        return complex<double>(CUDART_NAN, CUDART_NAN);
+    } else if ((z.real() <= 0) && (z == floor(z.real()))) {
+        return complex<double>(CUDART_NAN, CUDART_NAN);
+    } else if ((z.real() > SMALLX) || (fabs(z.imag()) > SMALLY)) {
         return loggamma_stirling(z);
-    } else if (abs(z - 1) <= TAYLOR_RADIUS) {
+    } else if (abs(z - 1.0) <= TAYLOR_RADIUS) {
         return loggamma_taylor(z);
-    } else if (zabs(z - 2) <= TAYLOR_RADIUS) {
+    } else if (abs(z - 2.0) <= TAYLOR_RADIUS) {
         // Recurrence relation and the Taylor series around 1
-        return zlog1(z - 1) + loggamma_taylor(z - 1);
-    } else if (z.real < 0.1) {
+        return zlog1(z - 1.0) + loggamma_taylor(z - 1.0);
+    } else if (z.real() < 0.1) {
         // Reflection formula; see Proposition 3.1 in [1]
-        tmp = copysign(TWOPI, z.imag)*floor(0.5*z.real + 0.25);
+        tmp = copysign(TWOPI, z.imag())*floor(0.5*z.real() + 0.25);
         complex<double> ctemp(LOGPI, tmp);
-        return ctemp - log(sinpi(z)) - loggamma(1 - z);
-    } else if (npy_signbit(z.imag) == 0) {
-        // z.imag >= 0 but is not -0.0
+        return ctemp - log(csinpi(z)) - loggamma(1.0 - z);
+    } else if (signbit(z.imag()) == 0.0) {
+        // z.imag() >= 0 but is not -0.0
         return loggamma_recurrence(z);
     } else {
         return conj(loggamma_recurrence(conj(z)));
@@ -150,21 +127,21 @@ __device__ complex<double> loggamma(complex<double> z)
  *
  * See Proposition 2.2 in [1] and the Julia implementation [2].
  */
-__device__ complex<double> loggamma_recurrence(complex<double> z)
+__noinline__ __device__ complex<double> loggamma_recurrence(complex<double> z)
 {
     int signflips = 0;
     int sb = 0;
     int nsb;
     complex<double> shiftprod = z;
-    z.real += 1;
-    while(z.real <= SMALLX) {
+    z += 1.0;
+    while(z.real() <= SMALLX) {
         shiftprod *= z;
-        nsb = signbit(shiftprod.imag);
+        nsb = signbit(shiftprod.imag());
         if (nsb != 0 and sb == 0) {
             signflips += 1;
         }
         sb = nsb;
-        z.real += 1;
+        z += 1.0;
     }
     complex<double> ctemp(0.0, -signflips*TWOPI);
     return loggamma_stirling(z) - log(shiftprod) + ctemp;
@@ -213,21 +190,23 @@ __device__ complex<double> loggamma_taylor(complex<double> z)
         -2.0738555102867398527e-1, 2.7058080842778454788e-1,
         -4.0068563438653142847e-1, 8.2246703342411321824e-1,
         -5.7721566490153286061e-1
-    }
+    };
 
-    z = z - 1;
+    z = z - 1.0;
     return z*cevalpoly(coeffs, 22, z);
 }
 
-"""
+""")
 
 
 
 loggamma = _core.create_ufunc(
-    'cupyx_scipy_gammaincinv',
-    ('ff->f', 'dd->d'),
-    'out0 = out0_type(igami(in0, in1));',
-    preamble=_igami_preamble,
+    'cupyx_scipy_loggamma',
+    (('f->f', 'out0 = out0_type(loggamma_real(in0))'),
+     ('d->d', 'out0 = loggamma_real(in0)'),
+     'F->F', 'D->D'),
+    'out0 = out0_type(loggamma(in0))',
+    preamble=loggamma_definition,
     doc="""Principal branch of the logarithm of the gamma function.
 
     Parameters

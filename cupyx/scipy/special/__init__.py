@@ -43,6 +43,7 @@ from cupyx.scipy.special._beta import betaincinv  # NOQA
 from cupyx.scipy.special._digamma import digamma as psi  # NOQA
 from cupyx.scipy.special._gamma import rgamma  # NOQA
 from cupyx.scipy.special._polygamma import polygamma  # NOQA
+from cupyx.scipy.special._gammaln import multigammaln  # NOQA
 from cupyx.scipy.special._digamma import digamma  # NOQA
 from cupyx.scipy.special._poch import poch  # NOQA
 
