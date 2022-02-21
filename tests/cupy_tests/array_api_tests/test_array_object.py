@@ -309,7 +309,7 @@ def test_array_properties():
 
 def test___array__():
     a = ones((2, 3), dtype=int16)
-    assert np.asarray(a) is a._array
-    b = np.asarray(a, dtype=np.float64)
-    assert np.all(np.equal(b, np.ones((2, 3), dtype=np.float64)))
-    assert b.dtype == np.float64
+    assert cp.asarray(a) is a._array
+    b = cp.asarray(a, dtype=cp.float64)
+    assert cp.all(cp.equal(b, cp.ones((2, 3), dtype=cp.float64)))
+    assert b.dtype == cp.float64

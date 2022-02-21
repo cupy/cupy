@@ -115,22 +115,11 @@ class Array:
             mid = np.array2string(np.asnumpy(self._array), separator=', ', prefix=prefix, suffix=suffix)
         return prefix + mid + suffix
 
-    # This function is not required by the spec, but we implement it here for
-    # convenience so that np.asarray(np.array_api.Array) will work.
-    def __array__(self, dtype: Optional[np.dtype[Any]] = None) -> npt.NDArray[Any]:
-        """
-        Warning: this method is NOT part of the array API spec. Implementers
-        of other libraries need not include it, and users should not assume it
-        will be present in other implementations.
-
-        """
-        return np.asarray(self._array, dtype=dtype)
-
     # These are various helper functions to make the array behavior match the
     # spec in places where it either deviates from or is more strict than
     # NumPy behavior
 
-    def _check_allowed_dtypes(self, other: bool | int | float | Array, dtype_category: str, op: str) -> Array:
+    def _check_allowed_dtypes(self, other: Union[bool, int, float, Array], dtype_category: str, op: str) -> Array:
         """
         Helper function for operators to only allow specific input dtypes
 

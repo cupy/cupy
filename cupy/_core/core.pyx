@@ -2277,6 +2277,10 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     if order is None:
         order = 'K'
 
+    from cupy.array_api import _array_object
+    if isinstance(obj, _array_object.Array):
+        obj = obj._array
+
     if isinstance(obj, ndarray):
         return _array_from_cupy_ndarray(obj, dtype, copy, order, ndmin)
 
