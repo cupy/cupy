@@ -65,15 +65,16 @@ echo "Uploading the log..."
 gsutil -m -q cp "${LOG_FILE}" "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 
 if [[ "${TARGET}" == "benchmark" ]]; then
-    echo "Uploading benchmark results"
-    ls /tmp/benchmark/*.csv
-    CUR_DATE=$(date +"%F-%H:%M")
-    gsutil -m -q cp /tmp/benchmark/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/${CUR_DATE}/"
-    echo "****************************************************************************************************"
-    echo "Benchmark results are available at:"
-    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/benchmarks/${CUR_DATE}/"
-    echo "****************************************************************************************************"
-
+    if [[ "${pull_req}" == "" ]]; then
+        echo "Uploading benchmark results"
+        ls /tmp/benchmark/*.csv
+        CUR_DATE=$(date +"%F-%H:%M")
+        gsutil -m -q cp /tmp/benchmark/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/"
+        echo "****************************************************************************************************"
+        echo "Benchmark results are available at:"
+        echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/benchmarks/master/"
+        echo "****************************************************************************************************"
+    fi
 fi
 
 echo "****************************************************************************************************"
