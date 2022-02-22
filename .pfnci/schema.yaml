@@ -148,6 +148,14 @@ cusparselt:
       "11.4":
       "11.5":
       "11.6":
+  "0.2.0":
+    spec: "0.2.0.*"
+    cuda:
+      "11.2":
+      "11.3":
+      "11.4":
+      "11.5":
+      "11.6":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
