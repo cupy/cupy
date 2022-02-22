@@ -671,26 +671,24 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        if isinstance(value, numpy.ndarray):
-            if value.shape != ():
-                raise ValueError(
-                    'non-scalar numpy.ndarray cannot be used for fill')
-            value = value.item()
-            if value == 0 and self._c_contiguous:
-                self.data.memset_async(0, self.nbytes)
-            else:
-                fill_kernel(value, self)
-        elif isinstance(value, cupy.ndarray):
+        if isinstance(value, cupy.ndarray):
             if value.shape != ():
                 raise ValueError(
                     'non-scalar cupy.ndarray cannot be used for fill')
             value = value.astype(self.dtype, copy=False)
             fill_kernel(value, self)
+            return
+
+        if isinstance(value, numpy.ndarray):
+            if value.shape != ():
+                raise ValueError(
+                    'non-scalar numpy.ndarray cannot be used for fill')
+            value = value.item()
+
+        if value == 0 and self._c_contiguous:
+            self.data.memset_async(0, self.nbytes)
         else:
-            if value == 0 and self._c_contiguous:
-                self.data.memset_async(0, self.nbytes)
-            else:
-                fill_kernel(value, self)
+            fill_kernel(value, self)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
