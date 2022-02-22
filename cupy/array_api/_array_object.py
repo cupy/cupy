@@ -115,6 +115,9 @@ class Array:
             mid = np.array2string(np.asnumpy(self._array), separator=', ', prefix=prefix, suffix=suffix)
         return prefix + mid + suffix
 
+    def __cupy_get_ndarray__(self):
+        return self._array
+
     # These are various helper functions to make the array behavior match the
     # spec in places where it either deviates from or is more strict than
     # NumPy behavior
