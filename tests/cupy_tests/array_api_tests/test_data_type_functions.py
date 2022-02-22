@@ -1,6 +1,6 @@
 import pytest
 
-from numpy import array_api as xp
+from cupy import array_api as xp
 
 
 @pytest.mark.parametrize(

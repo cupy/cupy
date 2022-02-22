@@ -2,7 +2,7 @@ from typing import Callable
 
 import pytest
 
-from numpy import array_api as xp
+from cupy import array_api as xp
 
 
 def p(func: Callable, *args, **kwargs):

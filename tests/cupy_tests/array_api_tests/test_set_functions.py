@@ -2,7 +2,7 @@ import pytest
 from hypothesis import given
 from hypothesis.extra.array_api import make_strategies_namespace
 
-from numpy import array_api as xp
+from cupy import array_api as xp
 
 xps = make_strategies_namespace(xp)
 
