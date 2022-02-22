@@ -11,6 +11,7 @@ Arguments:
   - rmi: Remove a docker image used for testing.
   - push: Push the built docker image so that further test runs can reuse
           the image.
+  - benchmark_get: Pull benchmark results from GCP to BENCHMARK_DIR.
   - cache_get: Pull cache from Google Cloud Storage to CACHE_DIR if available.
   - cache_put: Push cache from CACHE_DIR to Google Cloud Storage.
   - test: Run tests.
@@ -107,6 +108,14 @@ main() {
         du -h "${cache_archive}" &&
         tar -x -f "${cache_archive}" -C "${CACHE_DIR}" &&
         rm -f "${cache_archive}" || echo "WARNING: Remote cache could not be retrieved."
+      ;;
+
+    benchmark_get )
+      # Download from GCS and extract to $CACHE_DIR.
+      echo "Downloading master benchmark results"
+      mkdir -p ${BENCHMARK_DIR}/head
+      gsutil_with_retry -m cp -r "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/*" /tmp/benchmark/head/
+      ls /tmp/benchmark/head/
       ;;
 
     cache_put )

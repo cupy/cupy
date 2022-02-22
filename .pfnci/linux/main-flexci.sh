@@ -38,20 +38,9 @@ gcloud auth configure-docker
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
 
-# TODO move this to an stage
-if [[ "${TARGET}" == "benchmark" ]]; then
-    if [[ "${pull_req}" != "" ]]; then
-        echo "Downloading master benchmark results"
-        CUR_DATE=$(date +"%F-%H:%M")
-        mkdir -p /tmp/benchmark/head/
-        gsutil -m cp -r "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/*" /tmp/benchmark/head/
-        ls /tmp/benchmark/head/
-    fi
-fi
-
 STAGES="cache_get build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
-    STAGES="cache_get build benchmark"
+    STAGES="cache_get benchmark_get build benchmark"
 fi
 echo "$(dirname ${0})/run.sh" "${TARGET} ${STAGES}"
 BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
