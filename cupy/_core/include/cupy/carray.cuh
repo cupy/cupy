@@ -30,7 +30,19 @@ namespace cupy {
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#ifdef __HIPCC__
+#ifdef __HIPCC_RTC__
+
+#include <hip/hip_version.h>
+#if HIP_VERSION >= 40400000
+// HIP runtime headers can be no longer explicitly included since ROCm 4.5 so
+// we only include necessary standard headers.
+#include <cassert>
+#include <cstddef>
+#else
+#include <hip/hip_fp16.h>
+#endif  // #if HIP_VERSION >= 40400000
+
+#elif __HIPCC__
 
 #include <hip/hip_fp16.h>
 
