@@ -12,7 +12,7 @@ python prof.py benchmarks/bench_ufunc_cupy.py -c
 # Compare with current branch
 for bench in *.csv
 do
-    python regression_detect.py ${bench} /perf-results/head/${bench}
+    python regresion_detect.py ${bench} /perf-results/head/${bench}
 done
 
 cp *.csv /perf-results/
