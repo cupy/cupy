@@ -12,6 +12,7 @@ Arguments:
   - push: Push the built docker image so that further test runs can reuse
           the image.
   - benchmark_get: Pull benchmark results from GCP to BENCHMARK_DIR.
+  - benchmark_put: Push benchmark results from BENCHMARK_DIR to GCP.
   - cache_get: Pull cache from Google Cloud Storage to CACHE_DIR if available.
   - cache_put: Push cache from CACHE_DIR to Google Cloud Storage.
   - test: Run tests.
@@ -55,6 +56,7 @@ main() {
   docker_cache_from="${docker_image}"
   cache_archive="linux-${TARGET}-${base_branch}.tar.gz"
   cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci/cache}"
+  benchmark_gcs_dir="gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks"
 
   if [[ "${DOCKER_IMAGE_CACHE:-1}" = "0" ]]; then
     docker_cache_from=""
@@ -110,14 +112,6 @@ main() {
         rm -f "${cache_archive}" || echo "WARNING: Remote cache could not be retrieved."
       ;;
 
-    benchmark_get )
-      # Download from GCS and extract to $CACHE_DIR.
-      echo "Downloading master benchmark results"
-      mkdir -p ${BENCHMARK_DIR}/head
-      gsutil_with_retry -m cp -r "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/*" /tmp/benchmark/head/
-      ls /tmp/benchmark/head/
-      ;;
-
     cache_put )
       # Compress $CACHE_DIR and upload to GCS.
       if [[ "${CACHE_DIR:-}" = "" ]]; then
@@ -128,6 +122,22 @@ main() {
       du -h "${cache_archive}"
       gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}/"
       rm -f "${cache_archive}"
+      ;;
+
+    benchmark_get )
+      # Download from GCS and extract to $CACHE_DIR.
+      echo "Downloading master benchmark results"
+      mkdir -p ${BENCHMARK_DIR}/head
+      gsutil_with_retry -m cp -r "${benchmark_gcs_dir}/master/*" ${BENCHMARK_DIR}/head/
+      ;;
+
+    benchmark_put )
+      echo "Uploading benchmark results"
+      gsutil_with_retry -m -q cp ${BENCHMARK_DIR}/*.csv "${benchmark_gcs_dir}/master/"
+      echo "****************************************************************************************************"
+      echo "Benchmark results are available at:"
+      echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/benchmarks/master/"
+      echo "****************************************************************************************************"
       ;;
 
     test | shell | benchmark)

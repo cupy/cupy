@@ -41,6 +41,9 @@ echo "**************************************************************************
 STAGES="cache_get build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get benchmark_get build benchmark"
+    if [[ "${pull_req}" == "" ]]; then
+        STAGES="${STAGES} benchmark_put"
+    fi
 fi
 echo "$(dirname ${0})/run.sh" "${TARGET} ${STAGES}"
 BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
@@ -63,19 +66,6 @@ fi
 
 echo "Uploading the log..."
 gsutil -m -q cp "${LOG_FILE}" "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
-
-if [[ "${TARGET}" == "benchmark" ]]; then
-    if [[ "${pull_req}" == "" ]]; then
-        echo "Uploading benchmark results"
-        ls /tmp/benchmark/*.csv
-        CUR_DATE=$(date +"%F-%H:%M")
-        gsutil -m -q cp /tmp/benchmark/*.csv "gs://chainer-artifacts-pfn-public-ci/cupy-ci/benchmarks/master/"
-        echo "****************************************************************************************************"
-        echo "Benchmark results are available at:"
-        echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/benchmarks/master/"
-        echo "****************************************************************************************************"
-    fi
-fi
 
 echo "****************************************************************************************************"
 echo "Full log is available at:"
