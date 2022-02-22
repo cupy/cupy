@@ -65,7 +65,7 @@ class TestBeta:
     def test_beta_specific_vals(self):
         # specific values borrowed from SciPy test suite
         special = cupyx.scipy.special
-        assert special.beta(1, 1) == 1.0
+        testing.assert_allclose(special.beta(1, 1), 1.0)
         testing.assert_allclose(special.beta(-100.3, 1e-200),
                                 special.gamma(1e-200))
         testing.assert_allclose(special.beta(0.0342, 171),
@@ -74,7 +74,7 @@ class TestBeta:
     def test_betaln_specific_vals(self):
         # specific values borrowed from SciPy test suite
         special = cupyx.scipy.special
-        assert special.betaln(1, 1) == 0.0
+        testing.assert_allclose(special.betaln(1, 1), 0.0, atol=1e-10)
         testing.assert_allclose(special.betaln(-100.3, 1e-200),
                                 special.gammaln(1e-200))
         testing.assert_allclose(special.betaln(0.0342, 170),
