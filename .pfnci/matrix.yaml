@@ -92,7 +92,7 @@
   tags: ["full"]
   target: "cuda112"
   system: "linux"
-  os: "centos:8"
+  os: "centos:7"
   cuda: "11.2"
   rocm: null
   nccl: "2.8"
