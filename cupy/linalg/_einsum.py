@@ -1,5 +1,6 @@
 import copy
 import itertools
+import operator
 import string
 import warnings
 
@@ -59,8 +60,9 @@ def _parse_int_subscript(list_subscript):
             try:
                 s = operator.index(s)
             except TypeError as e:
-                raise TypeError("For this input type lists must contain "
-                                "either int or Ellipsis") from e
+                raise TypeError(
+                    'For this input type lists must contain '
+                    'either int or Ellipsis') from e
             str_subscript += einsum_symbols[s]
     return str_subscript
 
