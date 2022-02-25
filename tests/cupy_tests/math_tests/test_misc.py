@@ -257,45 +257,51 @@ class TestMisc:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_real_if_close(self, xp, dtype):
+    def test_real_if_close_real_dtypes(self, xp, dtype):
         x = testing.shaped_random((10,), xp, dtype)
         return xp.real_if_close(x)
 
     @testing.numpy_cupy_array_equal()
     def test_real_if_close_complex64(self, xp):
-        x = testing.shaped_random((10,), xp, dtype='F') + 1e-15j
+        x = testing.shaped_random((10,), xp, dtype='f') + \
+            numpy.finfo('f').eps * 1j
         return xp.real_if_close(x)
 
     @testing.numpy_cupy_array_equal()
     def test_real_if_close_complex128(self, xp):
-        x = testing.shaped_random((10,), xp, dtype='D') + 1e-50j
+        x = testing.shaped_random((10,), xp, dtype='d') + \
+            numpy.finfo('d').eps * 1j
         return xp.real_if_close(x)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_real_if_close_with_tol(self, xp, dtype):
+    def test_real_if_close_with_tol_real_dtypes(self, xp, dtype):
         x = testing.shaped_random((10,), xp, dtype)
         return xp.real_if_close(x, tol=1e-6)
 
     @testing.numpy_cupy_array_equal()
     def test_real_if_close_with_tol_complex64(self, xp):
-        x = testing.shaped_random((10,), xp, dtype='F') + 1e-5j
-        return xp.real_if_close(x, tol=1e-6)
+        x = testing.shaped_random((10,), xp, dtype='f') + \
+            numpy.finfo('f').eps * 1j
+        return xp.real_if_close(x, tol=1e-10)
 
     @testing.numpy_cupy_array_equal()
     def test_real_if_close_with_tol_complex128(self, xp):
-        x = testing.shaped_random((10,), xp, dtype='D') + 1e-50j
-        return xp.real_if_close(x, tol=1e-55)
+        x = testing.shaped_random((10,), xp, dtype='d') + \
+            numpy.finfo('d').eps * 1j
+        return xp.real_if_close(x, tol=1e-20)
 
     @testing.numpy_cupy_array_equal()
     def test_real_if_close_with_greater_tol_complex64(self, xp):
-        x = testing.shaped_random((10,), xp, dtype='F') + 1e-7j
-        return xp.real_if_close(x, tol=1e-6)
+        x = testing.shaped_random((10,), xp, dtype='f') + \
+            numpy.finfo('f').eps * 1j
+        return xp.real_if_close(x, tol=1e-5)
 
     @testing.numpy_cupy_array_equal()
     def test_real_if_close_with_greater_tol_complex128(self, xp):
-        x = testing.shaped_random((10,), xp, dtype='D') + 1e-60j
-        return xp.real_if_close(x, tol=1e-50)
+        x = testing.shaped_random((10,), xp, dtype='d') + \
+            numpy.finfo('d').eps * 1j
+        return xp.real_if_close(x, tol=1e-10)
 
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_all_dtypes(name='dtype_y', no_bool=True)
