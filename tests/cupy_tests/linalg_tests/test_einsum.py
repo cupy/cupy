@@ -286,6 +286,7 @@ class TestListArgEinSumError:
 @pytest.mark.parametrize('do_opt', [False, True])
 class TestListArgEinSum:
     # numpy/numpy#15961: should accept int64 type in subscript list
+    @testing.with_requires('numpy>=1.19')
     @testing.numpy_cupy_allclose()
     def test_numpy_15961_array(self, xp, do_opt):
         n = 3
@@ -293,6 +294,7 @@ class TestListArgEinSum:
         sub = numpy.array([0, 0])
         return xp.einsum(a, sub, optimize=do_opt)
 
+    @testing.with_requires('numpy>=1.19')
     @testing.numpy_cupy_allclose()
     def test_numpy_15961_list(self, xp, do_opt):
         n = 3
