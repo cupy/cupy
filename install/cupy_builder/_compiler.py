@@ -2,6 +2,7 @@ import distutils.ccompiler
 import os
 import os.path
 import platform
+import shutil
 import sys
 import subprocess
 from typing import Optional, List
@@ -208,18 +209,24 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
             postargs += [f'-t{num_threads}']
         cl_exe_path = self._find_host_compiler_path()
-        if cl_exe_path is None:
-            print('Warning: Host compiler path could not be detected')
-        else:
+        if cl_exe_path is not None:
+            print(f'Using host compiler at {cl_exe_path}')
             postargs += ['--compiler-bindir', cl_exe_path]
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
     def _find_host_compiler_path(self) -> Optional[str]:
+        # c.f. cupy.cuda.compiler._get_extra_path_for_msvc
+        cl_exe = shutil.which('cl.exe')
+        if cl_exe:
+            # The compiler is already on PATH, no extra path needed.
+            return None
+
         vctools: List[str] = setuptools.msvc.EnvironmentInfo(
             platform.machine()).VCTools
         for path in vctools:
             cl_exe = os.path.join(path, 'cl.exe')
             if os.path.exists(cl_exe):
                 return path
+        print(f'Warning: cl.exe could not be found in {vctools}')
         return None
