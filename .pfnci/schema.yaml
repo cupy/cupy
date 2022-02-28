@@ -63,6 +63,11 @@ rocm:
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
+  "5.0":
+    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.1
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
 
 ###############################################################################
 # CUDA Optional Libraries
@@ -125,8 +130,8 @@ cusparselt:
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.1.0":
-    spec: "0.1.0.*"
+  "0.2.0":
+    spec: "0.2.0.*"
     cuda:
       "11.2":
       "11.3":

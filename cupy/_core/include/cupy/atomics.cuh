@@ -47,6 +47,13 @@ __device__ long long atomicAdd(long long *address, long long val) {
 }
 
 
+#if __HIPCC__
+#include <hip/hip_version.h>
+#endif  // #if __HIPCC__
+
+// Skip if ROCm 4.5+ as it implements the following atomic functions.
+#if !defined(__HIPCC__) || HIP_VERSION < 40400000
+
 __device__ float atomicMax(float* address, float val) {
   int* address_as_i = reinterpret_cast<int*>(address);
   int old = *address_as_i, assumed;
@@ -103,3 +110,5 @@ __device__ double atomicMin(double* address, double val) {
   } while (assumed != old);
   return __longlong_as_double(reinterpret_cast<long long&>(old));
 }
+
+#endif  // #if !defined(__HIPCC__) || HIP_VERSION < 40400000
