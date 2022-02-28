@@ -5,10 +5,8 @@ import numpy
 import cupy
 from cupy import testing
 import cupyx.scipy.linalg
-try:
-    import scipy.linalg as scipy_linalg
-except ImportError:
-    scipy_linalg = None
+if cupyx.scipy._scipy_available:
+    import scipy.linalg
 
 
 # TODO: After the feature is released
@@ -33,7 +31,7 @@ class TestLUFactor(unittest.TestCase):
                 'skip non-square tests since scipy.lu_factor requires square')
         a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
         a_gpu = cupy.asarray(a_cpu)
-        result_cpu = scipy_linalg.lu_factor(a_cpu)
+        result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
         assert len(result_cpu) == len(result_gpu)
         assert result_cpu[0].dtype == result_gpu[0].dtype
@@ -97,7 +95,7 @@ class TestLU(unittest.TestCase):
     def test_lu(self, dtype):
         a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
         a_gpu = cupy.asarray(a_cpu)
-        result_cpu = scipy_linalg.lu(a_cpu, permute_l=self.permute_l)
+        result_cpu = scipy.linalg.lu(a_cpu, permute_l=self.permute_l)
         result_gpu = cupyx.scipy.linalg.lu(a_gpu, permute_l=self.permute_l)
         assert len(result_cpu) == len(result_gpu)
         if not self.permute_l:
@@ -150,11 +148,11 @@ class TestLUSolve(unittest.TestCase):
         A = testing.shaped_random(a_shape, xp, dtype=dtype)
         b = testing.shaped_random(b_shape, xp, dtype=dtype)
         if xp is numpy:
-            lu = scipy_linalg.lu_factor(A)
+            lu = scipy.linalg.lu_factor(A)
             backend = 'scipy'
         else:
             lu = cupyx.scipy.linalg.lu_factor(A)
             backend = cupyx.scipy.linalg
-        with scipy_linalg.set_backend(backend):
-            out = scipy_linalg.lu_solve(lu, b, trans=self.trans)
+        with scipy.linalg.set_backend(backend):
+            out = scipy.linalg.lu_solve(lu, b, trans=self.trans)
         return out
