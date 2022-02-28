@@ -19,10 +19,10 @@ pip install cupy-cuda115
 # Run benchmarks for master
 python prof.py benchmarks/bench_ufunc_cupy.py -c
 mkdir master
-mv *.csv master/
+cp *.csv master/
 
 # Compare with current branch
-for bench in master/*.csv
+for bench in *.csv
 do
     # python regresion_detect.py /perf-results/head/${bench} ${bench}
     python regresion_detect.py master/${bench} pr/${bench}
