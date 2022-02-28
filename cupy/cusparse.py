@@ -143,6 +143,7 @@ _available_hipsparse_version = {
     'csrilu02': (305, None),
     'denseToSparse': (402, None),
     'sparseToDense': (402, None),
+    'spgemm': (_numpy.inf, None),
 }
 
 
