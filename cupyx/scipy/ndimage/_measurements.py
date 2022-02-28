@@ -368,7 +368,8 @@ def variance(input, labels=None, index=None):
                                     out) / count
 
 
-@_uarray.implements('sum_labels')
+# TODO: uncomment the following line when scipy >= 1.6.0 is supported in tests
+# @_uarray.implements('sum_labels')
 def sum_labels(input, labels=None, index=None):
     """Calculates the sum of the values of an n-D image array, optionally
        at specified sub-regions.
