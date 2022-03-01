@@ -223,6 +223,8 @@ CuPy CI Test Coverage
      - 
      - ✅
      - ✅
+     - ✅
+     - ✅
      - 
      - 
      - 
@@ -238,9 +240,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
-     - 
-     - 2
+     - 4
    * - 
      - centos:8
      - 
@@ -249,8 +249,6 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
-     - ✅
      - 
      - 
      - 
@@ -266,7 +264,9 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 2
+     - 
+     - 
+     - 0 🚨
    * - 
      - ws:2016
      - 
