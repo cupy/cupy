@@ -1119,6 +1119,12 @@ class TestCooMatrixDiagonal:
             scipy_diag = scipy_a.diagonal(k=k)
             cupyx_diag = cupyx_a.diagonal(k=k)
             testing.assert_allclose(scipy_diag, cupyx_diag)
+        scipy_a.has_canonical_format = False
+        cupyx_a.has_canonical_format = False
+        for k in range(-m, n+1):
+            scipy_diag = scipy_a.diagonal(k=k)
+            cupyx_diag = cupyx_a.diagonal(k=k)
+            testing.assert_allclose(scipy_diag, cupyx_diag)
 
     def _test_setdiag(self, scipy_a, cupyx_a, x, k):
         scipy_a = scipy_a.copy()
