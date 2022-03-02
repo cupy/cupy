@@ -205,9 +205,11 @@ class coo_matrix(sparse_data._data_matrix):
             row = self.row[diag_mask]
             data = self.data[diag_mask]
         else:
-            row, _, data = self._sum_duplicates(self.row[diag_mask],
-                                                self.col[diag_mask],
-                                                self.data[diag_mask])
+            diag_coo = coo_matrix((self.data[diag_mask],
+                                   (self.row[diag_mask], self.col[diag_mask])))
+            diag_coo.sum_duplicates()
+            row = diag_coo.row
+            data = diag_coo.data
         diag[row + min(k, 0)] = data
 
         return diag
