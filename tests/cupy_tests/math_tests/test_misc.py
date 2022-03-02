@@ -255,6 +255,76 @@ class TestMisc:
             with pytest.raises(ValueError):
                 xp.nan_to_num(0.0, **{kwarg: y})
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_real_dtypes(self, xp, dtype):
+        x = testing.shaped_random((10,), xp, dtype)
+        return xp.real_if_close(x)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_tol_real_dtypes(self, xp, dtype):
+        x = testing.shaped_random((10,), xp, dtype)
+        return xp.real_if_close(x, tol=1e-6)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_true(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 90
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x)
+        assert x.dtype != out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_false(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 110
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x)
+        assert x.dtype == out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_integer_tol_true(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 140
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x, tol=150)
+        assert x.dtype != out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_integer_tol_false(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 50
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x, tol=30)
+        assert x.dtype == out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_float_tol_true(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        x = testing.shaped_random((10,), xp, dtype) + 3e-4j
+        out = xp.real_if_close(x, tol=1e-3)
+        assert x.dtype != out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_float_tol_false(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        x = testing.shaped_random((10,), xp, dtype) + 3e-3j
+        out = xp.real_if_close(x, tol=1e-3)
+        assert x.dtype == out.dtype
+        return out
+
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_all_dtypes(name='dtype_y', no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
