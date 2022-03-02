@@ -8,8 +8,10 @@ from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupyx.scipy.linalg import _uarray
 
 
+@_uarray.implements('lu_factor')
 def lu_factor(a, overwrite_a=False, check_finite=True):
     """LU decomposition.
 
@@ -40,6 +42,7 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     return _lu_factor(a, overwrite_a, check_finite)
 
 
+@_uarray.implements('lu')
 def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
     """LU decomposition.
 
@@ -252,6 +255,7 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
 )
 
 
+@_uarray.implements('lu_solve')
 def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     """Solve an equation system, ``a * x = b``, given the LU factorization of ``a``
 
