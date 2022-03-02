@@ -206,7 +206,8 @@ class coo_matrix(sparse_data._data_matrix):
             data = self.data[diag_mask]
         else:
             diag_coo = coo_matrix((self.data[diag_mask],
-                                   (self.row[diag_mask], self.col[diag_mask])))
+                                   (self.row[diag_mask], self.col[diag_mask])),
+                                  shape=self.shape)
             diag_coo.sum_duplicates()
             row = diag_coo.row
             data = diag_coo.data
