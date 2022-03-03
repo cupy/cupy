@@ -6,17 +6,14 @@ import cupy.linalg as _cp_linalg
 try:
     import scipy.linalg as _scipy_linalg
 except ImportError:
-    class _DummyModule:
-        def __getattr__(self, name):
-            return None
-
-    _scipy_linalg = _DummyModule()
+    _scipy_linalg = None
 
 
 # Backend support for scipy.linalg
 
 __ua_domain__ = 'numpy.scipy.linalg'
 _implemented = {}  # type: ignore
+_notfound = []  # for test
 
 
 def __ua_convert__(dispatchables, coerce):
@@ -47,8 +44,12 @@ def __ua_function__(method, args, kwargs):
 def implements(scipy_func_name):
     """Decorator adds function to the dictionary of implemented functions"""
     def inner(func):
-        scipy_func = getattr(_scipy_linalg, scipy_func_name)
-        _implemented[scipy_func] = func
+        scipy_func = (
+            _scipy_linalg and getattr(_scipy_linalg, scipy_func_name, None))
+        if scipy_func:
+            _implemented[scipy_func] = func
+        else:
+            _notfound.append(scipy_func_name)
         return func
 
     return inner
