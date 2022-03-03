@@ -10,8 +10,10 @@ from cupyx.scipy.fft import _fft
 from cupyx.scipy.special import loggamma, poch
 
 try:
-    from scipy.fft import fht, ifht
+    # fht only exists in SciPy >= 1.7
+    from scipy.fft import fht as _fht
     _scipy_fft = _fft._scipy_fft
+    del _fht
 except ImportError:
     class _DummyModule:
         def __getattr__(self, name):

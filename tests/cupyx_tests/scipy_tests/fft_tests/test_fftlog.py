@@ -1,13 +1,20 @@
+import numpy as np
+
+import cupy
+import cupyx.scipy.fft as cp_fft
+from cupy import testing
+
+try:
+    # scipy.fft is available since scipy v1.4.0+
+    import scipy.fft as scipy_fft  # noqa
+except ImportError:
+    scipy_fft = None
+
 try:
     # fht, ifht, fhtoffset are available in scipy v1.7.0+
-    import scipy.fft  # noqa
     from scipy.fft import fhtoffset
 except ImportError:
     fhtoffset = None
-
-import cupy
-import cupyx.scipy.fft  # noqa
-from cupy import testing
 
 atol = {cupy.float64: 1e-10, 'default': 1e-5}
 rtol = {cupy.float64: 1e-10, 'default': 1e-5}
@@ -49,3 +56,22 @@ class TestFftlog:
         a = f(r, mu).astype(dtype)
         func = getattr(scp.fft, self.function)
         return func(a, dln, mu, offset=offset, bias=bias)
+
+
+@testing.parameterize(*testing.product({
+    'function': ['fht', 'ifht'],
+}))
+@testing.gpu
+class TestFftlogScipyBackend:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
+                                 contiguous_check=False)
+    @testing.with_requires('scipy>=1.9.0')
+    def test_dct_backend(self, xp, dtype):
+        backend = 'scipy' if xp is np else cp_fft
+        with scipy_fft.set_backend(backend):
+            fft_func = getattr(scipy_fft, self.function)
+            r = xp.logspace(-2, 2, 10)
+            dln = xp.log(r[1]/r[0])
+            return fft_func(r, dln, mu=0.5)
