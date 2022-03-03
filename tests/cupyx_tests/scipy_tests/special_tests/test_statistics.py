@@ -231,16 +231,18 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         x = x[xp.newaxis, xp.newaxis, :]
         return func(a, b, x)
 
+    # omit test with scipy < 1.5 due to change in ufunc type signatures
     @pytest.mark.parametrize('function', ['bdtr', 'bdtrc', 'bdtri'])
     @testing.for_float_dtypes()
     @testing.for_signed_dtypes(name='int_dtype')
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.5.0')
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):
         import scipy.special  # NOQA
 
         if xp.dtype(int_dtype) not in [xp.int32, xp.int64]:
             if xp.dtype(dtype) != xp.float64:
-                # Skip cases deprecated in SciPy 1.7+ via this Cython code:
+                # Skip cases deprecated in SciPy 1.5+ via this Cython code:
                 # https://github.com/scipy/scipy/blob/cdb9b034d46c7ba0cacf65a9b2848c5d49c286c4/scipy/special/_legacy.pxd#L39-L43  # NOQA
                 # It causes infinite recursion in numpy_cupy_allclose
                 return xp.zeros((1,))

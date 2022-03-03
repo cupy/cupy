@@ -191,9 +191,9 @@ __device__ double bdtri_unsafe(double k, double n, double p)
 bdtr = _core.create_ufunc(
     "cupyx_scipy_bdtr",
     (
-        ('ddd->d', 'out0 = bdtr_unsafe(in0, in1, in2);'),
+        ('fff->f', 'out0 = out0_type(bdtr_unsafe(in0, in1, in2));'),
         'dld->d',
-        ('fff->f', 'out0 = out0_type(bdtr_unsafe(in0, in1, in2));')
+        ('ddd->d', 'out0 = bdtr_unsafe(in0, in1, in2);'),
     ),
     "out0 = bdtr(in0, (int)in1, in2);",
     preamble=incbet_preamble + bdtr_definition,
@@ -226,9 +226,9 @@ bdtr = _core.create_ufunc(
 bdtrc = _core.create_ufunc(
     "cupyx_scipy_bdtrc",
     (
-        ('ddd->d', 'out0 = bdtrc_unsafe(in0, in1, in2);'),
+        ('fff->f', 'out0 = out0_type(bdtrc_unsafe(in0, in1, in2));'),
         'dld->d',
-        ('fff->f', 'out0 = out0_type(bdtrc_unsafe(in0, in1, in2));')
+        ('ddd->d', 'out0 = bdtrc_unsafe(in0, in1, in2);'),
     ),
     "out0 = out0_type(bdtrc(in0, in1, in2));",
     preamble=incbet_preamble + bdtrc_definition,
