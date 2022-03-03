@@ -9,7 +9,7 @@ import cupyx.scipy.special  # NOQA
 @testing.with_requires('scipy')
 class TestGamma:
 
-    @pytest.mark.parametrize('function', ['gamma', 'loggamma'])
+    @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_arange(self, xp, scp, dtype, function):
@@ -19,7 +19,7 @@ class TestGamma:
         func = getattr(scp.special, function)
         return func(a)
 
-    @pytest.mark.parametrize('function', ['gamma', 'loggamma'])
+    @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_linspace(self, xp, scp, dtype, function):
@@ -32,7 +32,7 @@ class TestGamma:
         func = getattr(scp.special, function)
         return func(a)
 
-    @pytest.mark.parametrize('function', ['gamma', 'loggamma'])
+    @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_scalar(self, xp, scp, dtype, function):
@@ -45,7 +45,7 @@ class TestGamma:
         func = getattr(scp.special, function)
         return func(val)
 
-    @pytest.mark.parametrize('function', ['gamma', 'loggamma'])
+    @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype, function):

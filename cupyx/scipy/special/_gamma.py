@@ -42,9 +42,12 @@ __device__ complex<double> cgamma(complex<double> z)
 
 gamma = _core.create_ufunc(
     'cupyx_scipy_gamma',
-    ('f->f', 'd->d',
-     ('F->F', 'out0 = out0_type(cgamma(in0))'),
-     ('D->D', 'out0 = cgamma(in0)')),
+    (
+        'f->f',
+        'd->d',
+        ('F->F', 'out0 = out0_type(cgamma(in0))'),
+        ('D->D', 'out0 = cgamma(in0)')
+    ),
     _gamma_body,
     preamble=cgamma_definition,
     doc="""Gamma function.
@@ -90,8 +93,8 @@ rgamma_implementation = chbevl_implementation + """
 
 #include <cupy/math_constants.h>
 
-#define MAXLOG = 7.09782712893383996732E2
-#define NPY_PI = 3.141592653589793238462643383279502884
+#define MAXLOG 7.09782712893383996732E2
+#define NPY_PI 3.141592653589793238462643383279502884
 
 
 /* Chebyshev coefficients for reciprocal Gamma function
@@ -121,7 +124,7 @@ __device__ double R[] = {
 /*
  *     Reciprocal Gamma function
  */
-double rgamma(double x)
+__device__ double rgamma(double x)
 {
     double w, y, z;
     int sign;
@@ -173,16 +176,16 @@ double rgamma(double x)
 """
 
 
-crgamma_definition = loggamma_definition + """
+crgamma_implementation = loggamma_definition + """
 
 // Compute 1/Gamma(z) using loggamma
 
 __device__ complex<double> crgamma(complex<double> z)
 {
 
-    if ((z.real <= 0) && (z == floor(z.real))){
+    if ((z.real() <= 0) && (z == floor(z.real()))){
         // Zeros at 0, -1, -2, ...
-        return 0;
+        return complex<double>(0.0, 0.0);
     }
     return exp(-loggamma(z));  // complex exp via Thrust
 }
@@ -191,11 +194,14 @@ __device__ complex<double> crgamma(complex<double> z)
 
 rgamma = _core.create_ufunc(
     'cupyx_scipy_rgamma',
-    (('F->F', 'out = out0_type(crgamma(in0)))'),
-     ('D->D', 'out = crgamma(in0))'),
-     'f->f', 'd->d'),
+    (
+        'f->f',
+        'd->d',
+        ('F->F', 'out0 = out0_type(crgamma(in0))'),
+        ('D->D', 'out0 = crgamma(in0)')
+    ),
     'out0 = out0_type(rgamma(in0))',
-    preamble=rgamma_implementation,
+    preamble=rgamma_implementation + crgamma_implementation,
     doc="""Reciprocal gamma function.
 
     Args:
