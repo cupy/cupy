@@ -55,7 +55,6 @@ __device__ complex<double> cevalpoly(double *coeffs, int degree,
 """
 
 
-
 loggamma_real_definition = """
 
 #include <cupy/math_constants.h>
@@ -197,7 +196,6 @@ __device__ complex<double> loggamma_taylor(complex<double> z)
 }
 
 """)
-
 
 
 loggamma = _core.create_ufunc(
