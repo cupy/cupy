@@ -38,6 +38,12 @@ namespace cupy {
 // we only include necessary standard headers.
 #include <cassert>
 #include <cstddef>
+
+// Confirmed to AMD, ROCm 5.0 doesn't recognize __forceinline__ and
+// __noinline__.
+#define __noinline__ __attribute__((noinline))
+#define __forceinline__ inline __attribute__((always_inline))
+
 #else
 #include <hip/hip_fp16.h>
 #endif  // #if HIP_VERSION >= 40400000
@@ -118,6 +124,10 @@ public:
 
   __device__ int signbit() const {
     return (__half_raw(data_).x & 0x8000u) != 0;
+  }
+
+  __device__ float16 operator-() {
+    return float16{-data_};
   }
 
   template<typename T>

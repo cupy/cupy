@@ -133,7 +133,7 @@ extern "C" __global__ void get_struct_layout(
                                 unsigned long long *itemsize,
                                 unsigned long long *sizes,
                                 unsigned long long *offsets) {{
-    const custom_user_struct* ptr = NULL;
+    const custom_user_struct* ptr = nullptr;
 
     itemsize[0] = sizeof(custom_user_struct);
 

@@ -19,7 +19,7 @@ extern "C" __global__ void get_struct_layout(
                                 unsigned long long *itemsize,
                                 unsigned long long *sizes,
                                 unsigned long long *offsets) {{
-    const complex_struct* ptr = NULL;
+    const complex_struct* ptr = nullptr;
 
     itemsize[0] = sizeof(complex_struct);
 

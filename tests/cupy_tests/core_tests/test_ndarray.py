@@ -4,6 +4,7 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import _util
@@ -163,6 +164,8 @@ class TestNdarrayDeepCopy(unittest.TestCase):
 
 
 _test_copy_multi_device_with_stream_src = r'''
+#include <ctime>
+
 extern "C" __global__
 void wait_and_write(long long *x) {
   clock_t start = clock();
@@ -180,8 +183,7 @@ void wait_and_write(long long *x) {
 '''
 
 
-@testing.gpu
-class TestNdarrayCopy(unittest.TestCase):
+class TestNdarrayCopy:
 
     @testing.multi_gpu(2)
     @testing.for_orders('CFA')
@@ -197,11 +199,14 @@ class TestNdarrayCopy(unittest.TestCase):
     def test_copy_multi_device_non_contiguous_K(self):
         arr = _core.ndarray((20,))[::2]
         with cuda.Device(1):
-            with self.assertRaises(NotImplementedError):
+            with pytest.raises(NotImplementedError):
                 arr.copy('K')
 
     # See cupy/cupy#5004
     @testing.multi_gpu(2)
+    @pytest.mark.xfail(
+        runtime.is_hip,
+        reason='ROCm may work differently in async D2D copy with streams')
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
         kern = cupy.RawKernel(

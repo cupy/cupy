@@ -1,5 +1,6 @@
 import cupy
-
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 from cupy import _util
 from cupyx.scipy.ndimage import _filters_core
 
@@ -200,7 +201,6 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
     code = '''#include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
-#include <type_traits>  // let Jitify handle this
 
 namespace raw_kernel {{\n{rk_code}\n}}
 
@@ -262,5 +262,7 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
              # is necessary.
              rk_code=rk.code.replace('__global__', '__device__'),
              CAST=_filters_core._CAST_FUNCTION)
+    if runtime.is_hip and driver.get_build_version() < 5_00_00000:
+        code = _filters_core.includes + code
     return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options,
                           jitify=True)

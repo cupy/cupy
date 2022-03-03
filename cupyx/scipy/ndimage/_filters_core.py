@@ -3,6 +3,8 @@ import warnings
 import numpy
 import cupy
 
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 
@@ -146,19 +148,19 @@ def _call_kernel(kernel, input, weights, output, structure=None,
 
 
 includes = r'''
-// workaround for HIP: line begins with #include
+// workaround for older HIP: line begins with #include
 #include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
+
+template<> struct std::is_floating_point<float16> : std::true_type {};
+template<> struct std::is_signed<float16> : std::true_type {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 '''
 
 
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
-template<> struct std::is_floating_point<float16> : std::true_type {};
-template<> struct std::is_signed<float16> : std::true_type {};
-template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
-
 template <class B, class A>
 __device__ __forceinline__
 typename std::enable_if<(!std::is_floating_point<A>::value
@@ -288,7 +290,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         name += '_with_structure'
     if has_mask:
         name += '_with_mask'
-    preamble = includes + _CAST_FUNCTION + preamble
+    preamble = _CAST_FUNCTION + preamble
+    if runtime.is_hip and driver.get_build_version() < 5_00_00000:
+        preamble = includes + preamble
     options += ('--std=c++11', '-DCUPY_USE_JITIFY')
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
