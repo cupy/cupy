@@ -240,7 +240,10 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):
         import scipy.special  # NOQA
 
-        if xp.dtype(int_dtype) not in [xp.int32, xp.int64]:
+        cast_to_long = [xp.float32]
+        if xp.dtype(int).itemsize == 8:
+            cast_to_long += [xp.float64]
+        if xp.dtype(int_dtype) not in cast_to_long:
             if xp.dtype(dtype) != xp.float64:
                 # Skip cases deprecated in SciPy 1.5+ via this Cython code:
                 # https://github.com/scipy/scipy/blob/cdb9b034d46c7ba0cacf65a9b2848c5d49c286c4/scipy/special/_legacy.pxd#L39-L43  # NOQA
@@ -251,7 +254,7 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         n = xp.linspace(0, 80, 80, dtype=int_dtype)[xp.newaxis, :, xp.newaxis]
 
         # broadcast to create k <= n
-        k = xp.linspace(0, 1, 10, dtype=int_dtype)
+        k = xp.linspace(0, 1, 10, dtype=dtype)
         k = k[:, xp.newaxis, xp.newaxis] * n
         p = xp.linspace(0, 1, 5, dtype=dtype)[xp.newaxis, xp.newaxis, :]
         return func(k, n, p)
