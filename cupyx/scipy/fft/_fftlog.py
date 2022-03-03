@@ -9,6 +9,16 @@ import cupy
 from cupyx.scipy.fft import _fft
 from cupyx.scipy.special import loggamma, poch
 
+try:
+    from scipy.fft import fht, ifht
+    _scipy_fft = _fft._scipy_fft
+except ImportError:
+    class _DummyModule:
+        def __getattr__(self, name):
+            return None
+
+    _scipy_fft = _DummyModule()
+
 # Note scipy also defines fhtoffset but this only operates on scalars
 __all__ = ['fht', 'ifht']
 
@@ -17,7 +27,7 @@ __all__ = ['fht', 'ifht']
 LN_2 = math.log(2)
 
 
-@_fft._implements(_fft._scipy_fft.fht)
+@_fft._implements(_scipy_fft.fht)
 def fht(a, dln, mu, offset=0.0, bias=0.0):
     """Compute the fast Hankel transform.
 
@@ -80,7 +90,7 @@ def fht(a, dln, mu, offset=0.0, bias=0.0):
     return A
 
 
-@_fft._implements(_fft._scipy_fft.ifht)
+@_fft._implements(_scipy_fft.ifht)
 def ifht(A, dln, mu, offset=0.0, bias=0.0):
     """Compute the inverse fast Hankel transform.
 
