@@ -240,15 +240,13 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):
         import scipy.special  # NOQA
 
-        cast_to_long = [xp.float32]
-        if xp.dtype(int).itemsize == 8:
-            cast_to_long += [xp.float64]
-        if xp.dtype(int_dtype) not in cast_to_long:
-            if xp.dtype(dtype) != xp.float64:
-                # Skip cases deprecated in SciPy 1.5+ via this Cython code:
-                # https://github.com/scipy/scipy/blob/cdb9b034d46c7ba0cacf65a9b2848c5d49c286c4/scipy/special/_legacy.pxd#L39-L43  # NOQA
-                # It causes infinite recursion in numpy_cupy_allclose
-                return xp.zeros((1,))
+        if dtype != xp.float64:
+            # Skip cases deprecated in SciPy 1.5+ via this Cython code:
+            # https://github.com/scipy/scipy/blob/cdb9b034d46c7ba0cacf65a9b2848c5d49c286c4/scipy/special/_legacy.pxd#L39-L43  # NOQA
+            # All type casts except `dld->d` should raise a DeprecationWawrning
+            # However on the SciPy side, this shows up as a SystemError
+            #    SystemError: <class 'DeprecationWarning'> returned a result with an exception set  # NOQA
+            return xp.zeros((1,))
 
         func = getattr(scp.special, function)
         n = xp.linspace(0, 80, 80, dtype=int_dtype)[xp.newaxis, :, xp.newaxis]
