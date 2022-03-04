@@ -511,8 +511,7 @@ def fiedler_companion(a):
     return c
 
 
-# TODO: uncomment the following line when scipy >= 1.5.0 is supported in tests
-# @_uarray.implements('convolution_matrix')
+@_uarray.implements('convolution_matrix')
 def convolution_matrix(a, n, mode='full'):
     """Construct a convolution matrix.
 
