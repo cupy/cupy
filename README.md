@@ -49,6 +49,7 @@ Choose the right package for your platform.
 | CUDA 11.5     | `pip install cupy-cuda115`    |
 | ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
 | ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |
+| ROCm 5.0 (*)  | `pip install cupy-rocm-5-0`   |
 
 (\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
 
