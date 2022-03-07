@@ -154,7 +154,7 @@ class _TestDistributionsBase:
 @testing.with_requires('scipy')
 class TestTwoArgumentDistribution(_TestDistributionsBase):
 
-    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     @pytest.mark.parametrize('function', ['chdtr', 'chdtrc', 'chdtri',
                                           'pdtr', 'pdtrc', 'pdtri'])
@@ -240,12 +240,14 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):
         import scipy.special  # NOQA
 
-        if dtype != xp.float64:
-            # Skip cases deprecated in SciPy 1.5+ via this Cython code:
-            # https://github.com/scipy/scipy/blob/cdb9b034d46c7ba0cacf65a9b2848c5d49c286c4/scipy/special/_legacy.pxd#L39-L43  # NOQA
-            # All type casts except `dld->d` should raise a DeprecationWawrning
-            # However on the SciPy side, this shows up as a SystemError
-            #    SystemError: <class 'DeprecationWarning'> returned a result with an exception set  # NOQA
+        # Skip cases deprecated in SciPy 1.5+ via this Cython code:
+        # https://github.com/scipy/scipy/blob/cdb9b034d46c7ba0cacf65a9b2848c5d49c286c4/scipy/special/_legacy.pxd#L39-L43  # NOQA
+        # All type casts except `dld->d` should raise a DeprecationWawrning
+        # However on the SciPy side, this shows up as a SystemError
+        #    SystemError: <class 'DeprecationWarning'> returned a result with an exception set  # NOQA
+        safe_cast = xp.result_type(int_dtype, 'l') == xp.dtype('l')
+        safe_cast &= xp.result_type(int_dtype, dtype) == xp.float64
+        if not safe_cast:
             return xp.zeros((1,))
 
         func = getattr(scp.special, function)
