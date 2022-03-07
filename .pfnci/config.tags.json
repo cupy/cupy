@@ -55,8 +55,6 @@
     "cupy.linux.cuda116": [],
     "cupy.linux.cuda116.multi": [],
     "cupy.linux.rocm-4-0": [],
-    "cupy.linux.rocm-4-2": [],
-    "cupy.linux.rocm-4-3": [],
     "cupy.linux.cuda-slow": [
         "slow"
     ],
