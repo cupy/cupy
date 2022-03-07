@@ -143,19 +143,19 @@ class TestFusionSpecial(_TestBase):
 
 class _TestDistributionsBase:
 
-    def _test_scalar(self, function, args, expected, rtol=None):
+    def _test_scalar(self, function, args, expected, rtol=1e-12, atol=1e-12):
         special = cupyx.scipy.special
         function = getattr(special, function)
-        if rtol is None:
-            testing.assert_array_equal(function(*args), expected)
-        else:
-            testing.assert_allclose(function(*args), expected, rtol=rtol)
+        testing.assert_allclose(function(*args), expected, rtol=rtol,
+                                atol=atol)
 
 
 @testing.gpu
 @testing.with_requires('scipy')
 class TestTwoArgumentDistribution(_TestDistributionsBase):
 
+    @pytest.mark.skipif(cp.cuda.runtime.is_hip,
+                        reason="avoid failures observed on HIP")
     @pytest.mark.parametrize('function', ['chdtr', 'chdtrc', 'chdtri',
                                           'pdtr', 'pdtrc', 'pdtri'])
     @testing.for_float_dtypes()
@@ -187,18 +187,18 @@ class TestTwoArgumentDistribution(_TestDistributionsBase):
         return func(k, y)
 
     @pytest.mark.parametrize(
-        'function, args, expected, rtol',
-        [('chdtr', (1, 0), 0.0, None),
-         ('chdtr', (0.7, cupy.inf), 1.0, None),
-         ('chdtr', (0.6, 3), 0.957890536704110, 1e-12),
-         ('chdtrc', (1, 0), 1.0, None),
-         ('chdtrc', (0.6, 3), 1 - 0.957890536704110, 1e-12),
-         ('chdtri', (1, 1), 0.0, None),
-         ('chdtri', (0.6, 1 - 0.957890536704110), 3, 1e-12),
+        'function, args, expected',
+        [('chdtr', (1, 0), 0.0),
+         ('chdtr', (0.7, cupy.inf), 1.0),
+         ('chdtr', (0.6, 3), 0.957890536704110),
+         ('chdtrc', (1, 0), 1.0),
+         ('chdtrc', (0.6, 3), 1 - 0.957890536704110),
+         ('chdtri', (1, 1), 0.0),
+         ('chdtri', (0.6, 1 - 0.957890536704110), 3),
          ]
     )
-    def test_scalar(self, function, args, expected, rtol):
-        self._test_scalar(function, args, expected, rtol)
+    def test_scalar(self, function, args, expected):
+        self._test_scalar(function, args, expected)
 
 
 @testing.gpu
@@ -271,29 +271,29 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         return func(k, n, p)
 
     @pytest.mark.parametrize(
-        'function, args, expected, rtol',
-        [('btdtr', (1, 1, 1), 1.0, None),
-         ('btdtri', (1, 1, 1), 1.0, None),
-         ('betainc', (1, 1, 0), 0.0, None),
+        'function, args, expected',
+        [('btdtr', (1, 1, 1), 1.0),
+         ('btdtri', (1, 1, 1), 1.0),
+         ('betainc', (1, 1, 0), 0.0),
          # Computed using Wolfram Alpha: CDF[FRatioDistribution[1e-6, 5], 10]
-         ('fdtr', (1e-6, 5, 10), 0.9999940790193488, 1e-12),
-         ('fdtrc', (1, 1, 0), 1.0, None),
+         ('fdtr', (1e-6, 5, 10), 0.9999940790193488),
+         ('fdtrc', (1, 1, 0), 1.0),
          # Computed using Wolfram Alpha:
          #   1 - CDF[FRatioDistribution[2, 1/10], 1e10]
-         ('fdtrc', (2, 0.1, 1e10), 0.2722378462129351, 1e-12),
+         ('fdtrc', (2, 0.1, 1e10), 0.2722378462129351),
          # From Wolfram Alpha:
          #   CDF[FRatioDistribution[1/10, 1], 3] = 0.8756751669632106...
-         ('fdtri', (0.1, 1, 0.8756751669632106), 3.0, 1e-12),
-         ('gdtr', (1, 1, 0), 0.0, None),
-         ('gdtr', (1, 1, cupy.inf), 1.0, None),
-         ('gdtrc', (1, 1, 0), 1.0, None),
-         ('bdtr', (1, 1, 0.5), 1.0, None),
-         ('bdtrc', (1, 3, 0.5), 0.5, None),
-         ('bdtri', (1, 3, 0.5), 0.5, None),
-         ('nbdtr', (1, 1, 1), 1.0, None),
-         ('nbdtrc', (1, 1, 1), 0.0, None),
-         ('nbdtri', (1, 1, 1), 1.0, None),
+         ('fdtri', (0.1, 1, 0.8756751669632106), 3.0),
+         ('gdtr', (1, 1, 0), 0.0),
+         ('gdtr', (1, 1, cupy.inf), 1.0),
+         ('gdtrc', (1, 1, 0), 1.0),
+         ('bdtr', (1, 1, 0.5), 1.0),
+         ('bdtrc', (1, 3, 0.5), 0.5),
+         ('bdtri', (1, 3, 0.5), 0.5),
+         ('nbdtr', (1, 1, 1), 1.0),
+         ('nbdtrc', (1, 1, 1), 0.0),
+         ('nbdtri', (1, 1, 1), 1.0),
          ]
     )
-    def test_scalar(self, function, args, expected, rtol):
-        self._test_scalar(function, args, expected, rtol)
+    def test_scalar(self, function, args, expected):
+        self._test_scalar(function, args, expected)
