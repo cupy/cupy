@@ -109,6 +109,14 @@ nccl:
       "11.4":
       "11.5":
       "11.6":
+  "2.12":
+    spec: "2.12.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.4":
+      "11.5":
+      "11.6":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
