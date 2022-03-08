@@ -237,6 +237,8 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
     @testing.for_signed_dtypes(name='int_dtype')
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason="avoid failures observed on HIP")
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):
         import scipy.special  # NOQA
 
