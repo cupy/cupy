@@ -45,9 +45,11 @@ class TestGamma:
         func = getattr(scp.special, function)
         return func(val)
 
+    # skip on SciPy < 1.5 due to: https://github.com/scipy/scipy/issues/11315
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
+    @testing.with_requires('scipy>=1.5.0')
     def test_inf_and_nan(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
