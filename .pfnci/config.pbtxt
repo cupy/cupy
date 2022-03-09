@@ -586,3 +586,47 @@ configs {
     command: ".pfnci\\windows\\run.bat 11.4 3.9 test"
   }
 }
+
+configs {
+  key: "cupy.win.cuda115"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 36000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
+    command: ".pfnci\\windows\\run.bat 11.5 3.10 test"
+  }
+}
+
+configs {
+  key: "cupy.win.cuda116"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 36000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
+    command: ".pfnci\\windows\\run.bat 11.6 3.10 test"
+  }
+}
