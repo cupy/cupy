@@ -93,8 +93,6 @@
         "windows"
     ],
     "cupy.win.cuda116": [
-        "full",
-        "mini",
         "windows"
     ],
     "cupy.linux.cuda-rapids": [
