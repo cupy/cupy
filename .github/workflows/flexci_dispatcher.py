@@ -28,21 +28,21 @@ def _forward_to_flexci(
     """
     Submits the GitHub webhook payload to FlexCI.
     """
-    payload_bytes = json.dumps(payload).encode('utf-8')
+    payload_enc = json.dumps(payload).encode('utf-8')
     project_list = ','.join(projects)
     url = f'{base_url}/x/github_webhook?project={project_list}&rule=^{event_name}:&quiet=true'  # NOQA
     _log(f'Request URI: {url}')
     req = urllib.request.Request(
         url,
-        data=payload_bytes,
+        data=payload_enc,
         headers={
             'User-Agent': 'FlexCI-Dispatcher',
             'Content-Type': 'application/json',
             'X-GitHub-Event': 'issue_comment',
             'X-Hub-Signature': 'sha1={}'.format(
-                hmac.new(secret.encode(), payload_bytes, 'sha1').hexdigest()),
+                hmac.new(secret.encode(), payload_enc, 'sha1').hexdigest()),
             'X-Hub-Signature-256': 'sha256={}'.format(
-                hmac.new(secret.encode(), payload_bytes, 'sha256').hexdigest()),
+                hmac.new(secret.encode(), payload_enc, 'sha256').hexdigest()),
         },
     )
     with urllib.request.urlopen(req) as res:
