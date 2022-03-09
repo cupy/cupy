@@ -74,6 +74,29 @@
         "mini",
         "windows"
     ],
+    "cupy.win.cuda110": [
+        "windows"
+    ],
+    "cupy.win.cuda111": [
+        "windows"
+    ],
+    "cupy.win.cuda112": [
+        "windows"
+    ],
+    "cupy.win.cuda113": [
+        "windows"
+    ],
+    "cupy.win.cuda114": [
+        "windows"
+    ],
+    "cupy.win.cuda115": [
+        "windows"
+    ],
+    "cupy.win.cuda116": [
+        "full",
+        "mini",
+        "windows"
+    ],
     "cupy.linux.cuda-rapids": [
         "full",
         "rapids"
