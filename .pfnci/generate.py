@@ -252,6 +252,9 @@ class LinuxGenerator:
                 'export CUPY_TEST_FULL_COMBINATION="0"',
                 'export CUPY_INSTALL_USE_HIP=1',
                 '',
+                '# Show detailed progress to diagnose abort issues',
+                'export PYTEST_ADDOPTS="-s -v"',
+                '',
             ]
         else:
             raise AssertionError
