@@ -61,13 +61,12 @@ def _complement_commit_status(
         event_name: str, payload: Dict[str, Any], token: str,
         projects: Set[str], context_prefix: str) -> None:
     gh_repo = github.Github(token).get_repo(payload['repository']['full_name'])
-    match event_name:
-        case 'push':
-            sha = payload['after']
-        case 'issue_comment':
-            sha = gh_repo.get_pull(payload['issue']['number']).head.sha
-        case _:
-            assert False
+    if event_name == 'push':
+        sha = payload['after']
+    elif event_name == 'issue_comment':
+        sha = gh_repo.get_pull(payload['issue']['number']).head.sha
+    else:
+        assert False
 
     _log(f'Checking statuses for commit {sha}')
     gh_commit = gh_repo.get_commit(sha)
@@ -122,33 +121,33 @@ def main(argv: Any) -> int:
     event_name = options.event
     with open(options.webhook, 'rb') as f:
         payload = json.load(f)
-    with open(options.projects) as f:
-        project_tags = json.load(f)
+    with open(options.projects) as f2:
+        project_tags = json.load(f2)
 
-    match event_name:
-        case 'push':
-            requested_tags = {'@push'}
-            _log('Requesting tests with @push tag')
-        case 'issue_comment':
-            action = payload['action']
-            if action != 'created':
-                _log(f'Invalid issue_comment action: {action}')
-                return 1
-
-            requested_tags = extract_requested_tags(payload['comment']['body'])
-            if requested_tags is None:
-                _log('No test requested in comment.')
-                return 0
-
-            association = payload['comment']['author_association']
-            if association not in ('OWNER', 'MEMBER'):
-                _log(f'Tests cannot be triggered by {association}')
-                return 1
-
-            _log(f'Requesting tests with tags: {requested_tags}')
-        case _:
-            _log(f'Invalid event name: {event_name}')
+    requested_tags = None
+    if event_name == 'push':
+        requested_tags = {'@push'}
+        _log('Requesting tests with @push tag')
+    elif event_name == 'issue_comment':
+        action = payload['action']
+        if action != 'created':
+            _log(f'Invalid issue_comment action: {action}')
             return 1
+
+        requested_tags = extract_requested_tags(payload['comment']['body'])
+        if requested_tags is None:
+            _log('No test requested in comment.')
+            return 0
+
+        association = payload['comment']['author_association']
+        if association not in ('OWNER', 'MEMBER'):
+            _log(f'Tests cannot be triggered by {association}')
+            return 1
+
+        _log(f'Requesting tests with tags: {requested_tags}')
+    else:
+        _log(f'Invalid event name: {event_name}')
+        return 1
 
     projects_dispatch: Set[str] = set()
     projects_skip: Set[str] = set()
