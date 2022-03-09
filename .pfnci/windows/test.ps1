@@ -100,16 +100,13 @@ function Main {
         throw "Unsupported test target: $target"
     }
 
-    $use_cache = ($Env:CUPY_CI_CACHE_KERNEL -eq "1")
-    $upload_cache = -Not (IsPullRequestTest)
-
     $base_branch = (Get-Content .pfnci\BRANCH)
+    $is_pull_request = IsPullRequestTest
     $cache_archive = "windows-cuda${cuda}-${base_branch}.zip"
 
-    if ($use_cache) {
-        DownloadCache "${cache_archive}"
-    }
-    if ($upload_cache) {
+    DownloadCache "${cache_archive}"
+
+    if (-Not $is_pull_request) {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
     }
 
@@ -125,7 +122,7 @@ function Main {
     }
     popd
 
-    if ($use_cache -And $upload_cache) {
+    if (-Not $is_pull_request) {
         UploadCache "${cache_archive}"
     }
 

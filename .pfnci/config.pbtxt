@@ -472,7 +472,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 10.2 3.7 test"
   }
 }
@@ -494,7 +493,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.0 3.8 test"
   }
 }
@@ -516,7 +514,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.1 3.9 test"
   }
 }
@@ -538,7 +535,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.2 3.7 test"
   }
 }
@@ -560,7 +556,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.3 3.8 test"
   }
 }
@@ -582,7 +577,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.4 3.9 test"
   }
 }
@@ -604,7 +598,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.5 3.10 test"
   }
 }
@@ -626,7 +619,6 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
     command: ".pfnci\\windows\\run.bat 11.6 3.10 test"
   }
 }
