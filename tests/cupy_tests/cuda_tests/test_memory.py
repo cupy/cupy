@@ -1004,6 +1004,9 @@ class TestExceptionPicklable(unittest.TestCase):
 class TestMallocAsync(unittest.TestCase):
 
     def setUp(self):
+        if cupy.cuda.runtime.deviceGetAttribute(
+            cupy.cuda.runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
+            pytest.skip('malloc_async is not supported on device 0')
         self.old_pool = cupy.get_default_memory_pool()
         memory.set_allocator(memory.malloc_async)
 
@@ -1074,6 +1077,9 @@ class TestMallocAsync(unittest.TestCase):
 class TestMemoryAsyncPool(unittest.TestCase):
 
     def setUp(self):
+        if cupy.cuda.runtime.deviceGetAttribute(
+            cupy.cuda.runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
+            pytest.skip('malloc_async is not supported on device 0')
         self.pool = memory.MemoryAsyncPool()
         self.unit = memory._allocation_unit_size
         self.stream = stream_module.Stream()
