@@ -11,8 +11,8 @@ ACTIONS="$(dirname $0)/actions"
 export CUPY_TEST_FULL_COMBINATION="0"
 export CUPY_INSTALL_USE_HIP=1
 
-# Show detailed progress to diagnose abort issues
-export PYTEST_ADDOPTS="-s -v"
+# Show stdout to diagnose abort issues
+export PYTEST_ADDOPTS="-s"
 
 "$ACTIONS/build.sh"
 "$ACTIONS/unittest.sh" "not slow and not multi_gpu"
