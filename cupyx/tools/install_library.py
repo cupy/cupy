@@ -184,14 +184,14 @@ _nccl_records.append(_make_nccl_record(
     '11.6', '2.12.7', '2.12',
     'nccl_2.12.7-1+cuda11.6_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.5', '2.12.7', '2.12',
-    'nccl_2.12.7-1+cuda11.6_x86_64.txz'))
+    '11.5', '2.11.4', '2.11',
+    'nccl_2.11.4-1+cuda11.4_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.4', '2.12.7', '2.12',
-    'nccl_2.12.7-1+cuda11.6_x86_64.txz'))
+    '11.4', '2.11.4', '2.11',
+    'nccl_2.11.4-1+cuda11.4_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.3', '2.12.7', '2.12',
-    'nccl_2.12.7-1+cuda11.6_x86_64.txz'))
+    '11.3', '2.9.9', '2.9',
+    'nccl_2.9.9-1+cuda11.3_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.2', '2.8.4', '2.8',
     'nccl_2.8.4-1+cuda11.2_x86_64.txz'))
