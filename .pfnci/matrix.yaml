@@ -39,7 +39,7 @@
   os: "ubuntu:20.04"
   cuda: "11.0"
   rocm: null
-  nccl: "2.9"
+  nccl: "2.12"
   cutensor: "1.4"
   cusparselt: null
   cudnn: "8.2"
