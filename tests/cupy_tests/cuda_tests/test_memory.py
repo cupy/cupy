@@ -10,6 +10,7 @@ import pytest
 import cupy.cuda
 from cupy.cuda import device
 from cupy.cuda import memory
+from cupy.cuda import runtime
 from cupy.cuda import stream as stream_module
 from cupy import testing
 
@@ -59,13 +60,18 @@ class TestUnownedMemory(unittest.TestCase):
             if self.allocator is memory.malloc_async:
                 raise unittest.SkipTest('HIP does not support async mempool')
         else:
-            if cupy.cuda.driver._is_cuda_python():
-                version = cupy.cuda.runtime.runtimeGetVersion()
-            else:
-                version = cupy.cuda.driver.get_build_version()
-            if version < 11020:
-                raise unittest.SkipTest('malloc_async is supported since '
-                                        'CUDA 11.2')
+            if self.allocator is memory.malloc_async:
+                if cupy.cuda.driver._is_cuda_python():
+                    version = cupy.cuda.runtime.runtimeGetVersion()
+                else:
+                    version = cupy.cuda.driver.get_build_version()
+                if version < 11020:
+                    raise unittest.SkipTest('malloc_async is supported since '
+                                            'CUDA 11.2')
+                elif runtime.deviceGetAttribute(
+                        runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
+                    raise unittest.SkipTest(
+                        'malloc_async is not supported on device 0')
 
         size = 24
         shape = (2, 3)
