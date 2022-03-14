@@ -84,6 +84,7 @@ class TestGammainc(object):
     #     dataset = cp.vstack((a, x, self.gammainc_line(x))).T
     #     FuncData(sc.gammainc, dataset, (0, 1), 2, rtol=1e-11).check()
 
+    @pytest.mark.skip(cp.cuda.runtime.is_hip, reason="Causes problems in HIP")
     def test_roundtrip(self):
         a = cp.logspace(-5, 10, 100)
         x = cp.logspace(-5, 10, 100)
@@ -136,6 +137,7 @@ class TestGammaincc(object):
         a = cp.arange(1, 10)
         assert_array_equal(sc.gammaincc(a, 0), 1)
 
+    @pytest.mark.skip(cp.cuda.runtime.is_hip, reason="Causes problems in HIP")
     def test_roundtrip(self):
         a = cp.logspace(-5, 10, 100)
         x = cp.logspace(-5, 10, 100)
