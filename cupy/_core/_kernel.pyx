@@ -1163,27 +1163,30 @@ cdef class ufunc:
             raise TypeError('Wrong arguments %s' % kwargs)
 
         n_args = len(args)
-        if n_args != self.nin and n_args != self.nargs:
+        if not (self.nin <= n_args <= self.nargs):
+            # TODO(kataoka): Fix error message for nout >= 2 (e.g. divmod)
             raise TypeError(
                 'Wrong number of arguments for {!r}. '
                 'It must be either {} or {} (with outputs), '
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
 
-        dev_id = device.get_device_id()
-        arg_list = _preprocess_args(dev_id, args, False)
-        if out is None:
-            in_args = arg_list[:self.nin]
-            out_args = arg_list[self.nin:]
-        else:
-            if self.nout != 1:
-                raise ValueError('Cannot use \'out\' in %s' % self.name)
-            if n_args != self.nin:
+        # parse inputs (positional) and outputs (positional or keyword)
+        in_args = args[:self.nin]
+        out_args = args[self.nin:]
+        if out is not None:
+            if out_args:
                 raise ValueError('Cannot specify \'out\' as both '
                                  'a positional and keyword argument')
+            if isinstance(out, tuple):
+                out_args = out
+            else:
+                out_args = out,
 
-            in_args = arg_list
-            out_args = _preprocess_args(dev_id, (out,), False)
+        dev_id = device.get_device_id()
+        in_args = _preprocess_args(dev_id, in_args, False)
+        out_args = _preprocess_args(dev_id, out_args, False)
+
         # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
         # broadcast).
         if has_where:
