@@ -1216,6 +1216,7 @@ cdef class ufunc:
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, in_args, False)
         out_args = _preprocess_optional_args(dev_id, out_args, False)
+        given_out_args = [o for o in out_args if o is not None]
 
         # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
         # broadcast).
@@ -1238,9 +1239,9 @@ cdef class ufunc:
             where_args = []
 
         # _copy_in_args_if_needed updates in_args
-        _copy_in_args_if_needed(in_args, out_args)
-        _copy_in_args_if_needed(where_args, out_args)
-        broad_values = in_args + where_args + out_args
+        _copy_in_args_if_needed(in_args, given_out_args)
+        _copy_in_args_if_needed(where_args, given_out_args)
+        broad_values = in_args + where_args + given_out_args
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
