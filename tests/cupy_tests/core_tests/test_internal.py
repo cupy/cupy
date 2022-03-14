@@ -1,6 +1,7 @@
 import math
 import unittest
 
+import numpy
 import pytest
 
 from cupy._core import internal
@@ -48,6 +49,12 @@ class TestGetSize(unittest.TestCase):
 
     def test_int(self):
         assert internal.get_size(1) == (1,)
+
+    def test_numpy_int(self):
+        assert internal.get_size(numpy.int32(1)) == (1,)
+
+    def test_numpy_zero_dim_ndarray(self):
+        assert internal.get_size(numpy.array(1)) == (1,)
 
     def test_float(self):
         with pytest.raises(ValueError):

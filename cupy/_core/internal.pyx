@@ -8,6 +8,7 @@ from libc.stdint cimport uint32_t
 import sys
 import warnings
 
+import operator
 import numpy
 
 from cupy._core.core cimport ndarray
@@ -53,10 +54,18 @@ cpdef inline tuple get_size(object size):
         )
         return ()
     if cpython.PySequence_Check(size):
-        return tuple(size)
-    if isinstance(size, int):
-        return size,
-    raise ValueError('size should be None, collections.abc.Sequence, or int')
+        try:
+            return tuple(size)
+        except TypeError:
+            # A numpy.ndarray unconditionally succeeds in PySequence_Check as
+            # it implements __getitem__, but zero-dim one is an unsized object
+            # and fails to make a tuple from it.
+            pass
+    try:
+        return operator.index(size),
+    except TypeError as e:
+        raise ValueError(
+            'size should be None, collections.abc.Sequence, or int') from e
 
 
 @cython.profile(False)
