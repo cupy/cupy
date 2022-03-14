@@ -54,8 +54,6 @@
     ],
     "cupy.linux.cuda116": [],
     "cupy.linux.cuda116.multi": [],
-    "cupy.linux.rocm-4-2": [],
-    "cupy.linux.rocm-4-3": [],
     "cupy.linux.cuda-slow": [
         "slow"
     ],
@@ -74,6 +72,27 @@
     "cupy.win.cuda102": [
         "full",
         "mini",
+        "windows"
+    ],
+    "cupy.win.cuda110": [
+        "windows"
+    ],
+    "cupy.win.cuda111": [
+        "windows"
+    ],
+    "cupy.win.cuda112": [
+        "windows"
+    ],
+    "cupy.win.cuda113": [
+        "windows"
+    ],
+    "cupy.win.cuda114": [
+        "windows"
+    ],
+    "cupy.win.cuda115": [
+        "windows"
+    ],
+    "cupy.win.cuda116": [
         "windows"
     ],
     "cupy.linux.cuda-rapids": [

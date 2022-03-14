@@ -123,40 +123,7 @@ It is also appreciated to make such a backport PR by any contributors, though, s
 Issues and Pull Requests
 ------------------------
 
-In this section, we explain how to file issues and send pull requests (PRs).
-
-Issue/PR Labels
-~~~~~~~~~~~~~~~
-
-Issues and PRs are labeled by the following tags:
-
-* **Bug**: bug reports (issues) and bug fixes (PRs)
-* **Enhancement**: implementation improvements without breaking the interface
-* **Feature**: feature requests (issues) and their implementations (PRs)
-* **NoCompat**: disrupts backward compatibility
-* **Test**: test fixes and updates
-* **Document**: document fixes and improvements
-* **Example**: fixes and improvements on the examples
-* **Install**: fixes installation script
-* **Contribution-Welcome**: issues that we request for contribution (only issues are categorized to this)
-* **Other**: other issues and PRs
-
-Multiple tags might be labeled to one issue/PR.
-**Note that revision releases cannot include PRs in Feature and NoCompat categories.**
-
-How to File an Issue
-~~~~~~~~~~~~~~~~~~~~
-
-On registering an issue, write precise explanations on how you want CuPy to be.
-Bug reports must include necessary and sufficient conditions to reproduce the bugs.
-Feature requests must include **what** you want to do (and **why** you want to do, if needed) with CuPy.
-You can contain your thoughts on **how** to realize it into the feature requests, though **what** part is most important for discussions.
-
-.. warning::
-
-   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_ instead of the issue tracker.
-   The issue tracker is not a place to share knowledge on practices.
-   We may suggest these places and immediately close how-to question issues.
+In this section, we explain how to send pull requests (PRs).
 
 How to Send a Pull Request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

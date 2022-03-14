@@ -380,11 +380,11 @@ __noinline__ __device__ double lbeta(double a, double b)
     }
 
     if (y < 0) {
-    y = -y;
+        y = -y;
     }
-
-    return (log(y));
+    return log(y);
 }
+
 """
 
 
@@ -780,22 +780,24 @@ __noinline__ __device__ static double pseries(double a, double b, double x)
 
 """
 
+incbet_preamble = (
+    beta_preamble +
+    gamma_definition +
+    polevl_definition +
+    p1evl_definition +
+    lgam_sgn_definition +
+    lbeta_symp_definition +
+    beta_definition +
+    lbeta_definition +
+    incbet_definition
+)
+
 
 betainc = _core.create_ufunc(
     "cupyx_scipy_betainc",
     ("fff->f", "ddd->d"),
     "out0 = out0_type(incbet(in0, in1, in2));",
-    preamble=(
-        beta_preamble +
-        gamma_definition +
-        polevl_definition +
-        p1evl_definition +
-        lgam_sgn_definition +
-        lbeta_symp_definition +
-        beta_definition +
-        lbeta_definition +
-        incbet_definition
-    ),
+    preamble=incbet_preamble,
     doc="""Incomplete beta function.
 
     Parameters
@@ -971,7 +973,6 @@ ihalve:
             dir -= 1;
         }
     }
-
     if (x0 >= 1.0) {
         x = 1.0 - MACHEP;
         goto done;
@@ -1058,24 +1059,14 @@ done:
 
 """
 
+incbi_preamble = incbet_preamble + incbi_definition
+
 
 betaincinv = _core.create_ufunc(
     "cupyx_scipy_betaincinv",
     ("fff->f", "ddd->d"),
     "out0 = out0_type(incbi(in0, in1, in2));",
-    preamble=(
-        beta_preamble +
-        gamma_definition +
-        polevl_definition +
-        p1evl_definition +
-        lgam_sgn_definition +
-        lbeta_symp_definition +
-        beta_definition +
-        lbeta_definition +
-        incbet_definition +
-        incbi_definition
-    ),
-
+    preamble=incbi_preamble,
     doc="""Inverse of the incomplete beta function.
 
     Parameters

@@ -657,6 +657,7 @@ from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
+from cupy._math.misc import real_if_close  # NOQA
 from cupy._math.misc import sign  # NOQA
 from cupy._math.misc import sqrt  # NOQA
 from cupy._math.misc import square  # NOQA

@@ -152,7 +152,9 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm2'):
+            if cusparse.check_availability('spgemm'):
+                return cusparse.spgemm(self, other)
+            elif cusparse.check_availability('csrgemm2'):
                 return cusparse.csrgemm2(self, other)
             elif cusparse.check_availability('csrgemm'):
                 return cusparse.csrgemm(self, other)
@@ -164,6 +166,10 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 return cusparse.csrgemm(self, other.T, transb=True)
+            elif cusparse.check_availability('spgemm'):
+                b = other.tocsr()
+                b.sum_duplicates()
+                return cusparse.spgemm(self, b)
             elif cusparse.check_availability('csrgemm2'):
                 b = other.tocsr()
                 b.sum_duplicates()

@@ -182,4 +182,5 @@ Miscellaneous
    fmax
    fmin
    nan_to_num
+   real_if_close
    interp
