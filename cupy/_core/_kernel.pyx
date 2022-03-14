@@ -624,7 +624,8 @@ cdef void _complex_warning(dtype_from, dtype_to):
 
 
 cdef list _get_out_args_from_optionals(
-        list out_args, tuple out_types, const shape_t& out_shape, casting):
+    list out_args, tuple out_types, const shape_t& out_shape, casting
+):
     cdef ndarray arr
 
     while len(out_args) < len(out_types):
@@ -1263,7 +1264,8 @@ cdef class ufunc:
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
-        out_args = _get_out_args_from_optionals(out_args, op.out_types, shape, casting)
+        out_args = _get_out_args_from_optionals(
+            out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
