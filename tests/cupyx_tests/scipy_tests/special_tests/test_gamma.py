@@ -1,6 +1,7 @@
 import numpy
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 
@@ -19,6 +20,10 @@ class TestGamma:
         func = getattr(scp.special, function)
         return func(a)
 
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip and
+        cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000,
+        reason='ROCm/HIP fails in ROCm 4.x')
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
