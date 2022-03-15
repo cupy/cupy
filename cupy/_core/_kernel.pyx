@@ -103,6 +103,28 @@ cdef inline _check_peer_access(ndarray arr, int device_id):
         _util.PerformanceWarning)
 
 
+cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
+    if isinstance(arg, ndarray):
+        s = arg
+        _check_peer_access(<ndarray>s, dev_id)
+    elif isinstance(arg, texture.TextureObject):
+        s = arg
+    elif hasattr(arg, '__cuda_array_interface__'):
+        s = _convert_object_with_cuda_array_interface(arg)
+        _check_peer_access(<ndarray>s, dev_id)
+    elif hasattr(arg, '__cupy_get_ndarray__'):
+        s = arg.__cupy_get_ndarray__()
+        _check_peer_access(<ndarray>s, dev_id)
+    else:  # scalars or invalid args
+        if use_c_scalar:
+            s = _scalar.scalar_to_c_scalar(arg)
+        else:
+            s = _scalar.scalar_to_numpy_scalar(arg)
+        if s is None:
+            raise TypeError('Unsupported type %s' % type(arg))
+    return s
+
+
 cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     """Preprocesses arguments for kernel invocation
 
@@ -112,28 +134,25 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
       - If use_c_scalar is False, into NumPy scalars.
     """
     cdef list ret = []
-
     for arg in args:
-        if isinstance(arg, ndarray):
-            s = arg
-            _check_peer_access(<ndarray>s, dev_id)
-        elif isinstance(arg, texture.TextureObject):
-            s = arg
-        elif hasattr(arg, '__cuda_array_interface__'):
-            s = _convert_object_with_cuda_array_interface(arg)
-            _check_peer_access(<ndarray>s, dev_id)
-        elif hasattr(arg, '__cupy_get_ndarray__'):
-            s = arg.__cupy_get_ndarray__()
-            _check_peer_access(<ndarray>s, dev_id)
-        else:  # scalars or invalid args
-            if use_c_scalar:
-                s = _scalar.scalar_to_c_scalar(arg)
-            else:
-                s = _scalar.scalar_to_numpy_scalar(arg)
-            if s is None:
-                raise TypeError('Unsupported type %s' % type(arg))
-        ret.append(s)
+        ret.append(_preprocess_arg(dev_id, arg, use_c_scalar))
+    return ret
 
+
+cdef list _preprocess_optional_args(int dev_id, args, bint use_c_scalar):
+    """Preprocesses arguments for kernel invocation
+
+    - Checks device compatibility for ndarrays
+    - Converts Python/NumPy scalars:
+      - If use_c_scalar is True, into CScalars.
+      - If use_c_scalar is False, into NumPy scalars.
+    """
+    cdef list ret = []
+    for arg in args:
+        if arg is None:
+            ret.append(None)
+        else:
+            ret.append(_preprocess_arg(dev_id, arg, use_c_scalar))
     return ret
 
 
@@ -604,13 +623,19 @@ cdef void _complex_warning(dtype_from, dtype_to):
             numpy.ComplexWarning)
 
 
-cdef list _get_out_args(list out_args, tuple out_types,
-                        const shape_t& out_shape, casting):
+cdef list _get_out_args_from_optionals(
+    list out_args, tuple out_types, const shape_t& out_shape, casting
+):
     cdef ndarray arr
-    if not out_args:
-        return [_ndarray_init(out_shape, t) for t in out_types]
+
+    while len(out_args) < len(out_types):
+        out_args.append(None)
 
     for i, a in enumerate(out_args):
+        if a is None:
+            out_args[i] = _ndarray_init(out_shape, out_types[i])
+            continue
+
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
@@ -1163,27 +1188,37 @@ cdef class ufunc:
             raise TypeError('Wrong arguments %s' % kwargs)
 
         n_args = len(args)
-        if n_args != self.nin and n_args != self.nargs:
+        if not (self.nin <= n_args <= self.nargs):
+            # TODO(kataoka): Fix error message for nout >= 2 (e.g. divmod)
             raise TypeError(
                 'Wrong number of arguments for {!r}. '
                 'It must be either {} or {} (with outputs), '
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
 
-        dev_id = device.get_device_id()
-        arg_list = _preprocess_args(dev_id, args, False)
-        if out is None:
-            in_args = arg_list[:self.nin]
-            out_args = arg_list[self.nin:]
-        else:
-            if self.nout != 1:
-                raise ValueError('Cannot use \'out\' in %s' % self.name)
-            if n_args != self.nin:
+        # parse inputs (positional) and outputs (positional or keyword)
+        in_args = args[:self.nin]
+        out_args = args[self.nin:]
+        if out is not None:
+            if out_args:
                 raise ValueError('Cannot specify \'out\' as both '
                                  'a positional and keyword argument')
+            if isinstance(out, tuple):
+                if len(out) != self.nout:
+                    raise ValueError(
+                        "The 'out' tuple must have exactly one entry per "
+                        "ufunc output")
+                out_args = out
+            else:
+                if 1 != self.nout:
+                    raise ValueError("'out' must be a tuple of arrays")
+                out_args = out,
 
-            in_args = arg_list
-            out_args = _preprocess_args(dev_id, (out,), False)
+        dev_id = device.get_device_id()
+        in_args = _preprocess_args(dev_id, in_args, False)
+        out_args = _preprocess_optional_args(dev_id, out_args, False)
+        given_out_args = [o for o in out_args if o is not None]
+
         # TODO(kataoka): Typecheck `in_args` w.r.t. `casting` (before
         # broadcast).
         if has_where:
@@ -1205,9 +1240,9 @@ cdef class ufunc:
             where_args = []
 
         # _copy_in_args_if_needed updates in_args
-        _copy_in_args_if_needed(in_args, out_args)
-        _copy_in_args_if_needed(where_args, out_args)
-        broad_values = in_args + where_args + out_args
+        _copy_in_args_if_needed(in_args, given_out_args)
+        _copy_in_args_if_needed(where_args, given_out_args)
+        broad_values = in_args + where_args + given_out_args
         # _broadcast updates shape
         internal._broadcast_core(broad_values, shape)
 
@@ -1229,7 +1264,8 @@ cdef class ufunc:
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
-        out_args = _get_out_args(out_args, op.out_types, shape, casting)
+        out_args = _get_out_args_from_optionals(
+            out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
