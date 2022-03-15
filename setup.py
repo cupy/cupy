@@ -41,6 +41,7 @@ extras_require = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
+        'hypothesis>=6.37.2',
     ],
     # TODO(kmaehashi): Remove 'jenkins' requirements.
     'jenkins': [
