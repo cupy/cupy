@@ -135,18 +135,39 @@ class TestArrayCopyAndView:
         a.fill(1)
         return a
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_fill_with_numpy_scalar_ndarray(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        a.fill(numpy.ones((), dtype=dtype))
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_fill_with_numpy_scalar_ndarray(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype1)
+        a.fill(numpy.ones((), dtype=dtype2))
+        return a
+
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_fill_with_cupy_scalar_ndarray(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype1)
+        b = xp.ones((), dtype=dtype2)
+
+        # `numpy.can_cast` returns `True` for `from` which is a scalar or array
+        # scalar that can be safely cast even if cast does not follow the
+        # given casting rule. However, the similar behavior is not trivial for
+        # CuPy arrays as it requires synchronization.
+        b_np = cupy.asnumpy(b)
+        if (
+            numpy.can_cast(b_np, a.dtype)
+            and not numpy.can_cast(b_np.dtype, a.dtype)
+        ):
+            return xp.array([])  # Skip a combination
+
+        a.fill(b)
         return a
 
     @testing.for_all_dtypes()
-    def test_fill_with_numpy_nonscalar_ndarray(self, dtype):
+    def test_fill_with_nonscalar_ndarray(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        with pytest.raises(ValueError):
-            a.fill(numpy.ones((1,), dtype=dtype))
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                a.fill(xp.ones((1,), dtype=dtype))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
