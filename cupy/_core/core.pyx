@@ -2299,6 +2299,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
             obj, dtype, copy, order, subok, ndmin)
+    if hasattr(obj, '__cupy_get_ndarray__'):
+        return _array_from_cupy_ndarray(
+            obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
 
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
