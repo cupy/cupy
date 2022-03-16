@@ -38,7 +38,7 @@ def _forward_to_flexci(
         headers={
             'User-Agent': 'FlexCI-Dispatcher',
             'Content-Type': 'application/json',
-            'X-GitHub-Event': 'issue_comment',
+            'X-GitHub-Event': event_name,
             'X-Hub-Signature': 'sha1={}'.format(
                 hmac.new(secret.encode(), payload_enc, 'sha1').hexdigest()),
             'X-Hub-Signature-256': 'sha256={}'.format(
