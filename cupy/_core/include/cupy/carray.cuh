@@ -127,7 +127,7 @@ public:
   }
 
   __device__ float16 operator-() {
-    return float16{-data_};
+    return float16(-data_);
   }
 
   template<typename T>
