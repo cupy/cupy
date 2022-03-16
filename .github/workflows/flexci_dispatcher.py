@@ -30,7 +30,7 @@ def _forward_to_flexci(
     """
     payload_enc = json.dumps(payload).encode('utf-8')
     project_list = ','.join(projects)
-    url = f'{base_url}/x/github_webhook?project={project_list}&rule=^{event_name}:&quiet=true'  # NOQA
+    url = f'{base_url}/x/github_webhook?project={project_list}&rule={event_name}:.%2B&quiet=true'  # NOQA
     _log(f'Request URI: {url}')
     req = urllib.request.Request(
         url,
