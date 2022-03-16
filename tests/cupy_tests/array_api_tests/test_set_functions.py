@@ -10,7 +10,7 @@ xps = make_strategies_namespace(xp)
 
 @pytest.mark.parametrize("func", [xp.unique_all, xp.unique_inverse])
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=xps.array_shapes()))
-@settings(suppress_health_check=[HealthCheck.too_slow])
+@settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
 def test_inverse_indices_shape(func, x):
     """
     Inverse indices share shape of input array
