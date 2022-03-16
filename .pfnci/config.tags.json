@@ -1,53 +1,67 @@
 {
     "cupy.linux.cuda102": [
+        "@push",
         "full",
         "mini"
     ],
     "cupy.linux.cuda102.multi": [
+        "@push",
         "full",
         "mini",
         "multi"
     ],
     "cupy.linux.cuda110": [
+        "@push",
         "full"
     ],
     "cupy.linux.cuda110.multi": [
+        "@push",
         "full",
         "multi"
     ],
     "cupy.linux.cuda111": [
+        "@push",
         "full"
     ],
     "cupy.linux.cuda111.multi": [
+        "@push",
         "full",
         "multi"
     ],
     "cupy.linux.cuda112": [
+        "@push",
         "full"
     ],
     "cupy.linux.cuda112.multi": [
+        "@push",
         "full",
         "multi"
     ],
     "cupy.linux.cuda113": [
+        "@push",
         "full"
     ],
     "cupy.linux.cuda113.multi": [
+        "@push",
         "full",
         "multi"
     ],
     "cupy.linux.cuda114": [
+        "@push",
         "full"
     ],
     "cupy.linux.cuda114.multi": [
+        "@push",
         "full",
         "multi"
     ],
     "cupy.linux.cuda115": [
+        "@push",
         "full",
         "mini"
     ],
     "cupy.linux.cuda115.multi": [
+        "@push",
         "full",
         "mini",
         "multi"
@@ -59,6 +73,7 @@
         "slow"
     ],
     "cupy.linux.cuda-example": [
+        "@push",
         "full",
         "mini",
         "example"
@@ -67,10 +82,12 @@
         "head"
     ],
     "cupy.linux.cuda11x-cuda-python": [
+        "@push",
         "full",
         "cuda-python"
     ],
     "cupy.win.cuda102": [
+        "@push",
         "full",
         "mini",
         "windows"
@@ -97,6 +114,7 @@
         "windows"
     ],
     "cupy.linux.cuda-rapids": [
+        "@push",
         "full",
         "rapids"
     ],
