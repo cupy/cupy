@@ -292,6 +292,9 @@ cpdef matDescriptorDestroy(MatDescriptor matDescr):
 cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
                           matAttribute, size_t data, size_t dataSize):
     """Sets the attribute related to matrix descriptor."""
+    if CUSPARSELT_VERSION < 200:
+        raise RuntimeError(
+            'matDescSetAttribute is supported since cuSPARSELt 0.2.0')
     status = cusparseLtMatDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatDescriptor_t*> matDescr._ptr,
@@ -302,6 +305,9 @@ cpdef matDescSetAttribute(Handle handle, MatDescriptor matDescr,
 cpdef matDescGetAttribute(Handle handle, MatDescriptor matDescr,
                           matAttribute, size_t data, size_t dataSize):
     """Gets the attribute related to matrix descriptor."""
+    if CUSPARSELT_VERSION < 200:
+        raise RuntimeError(
+            'matDescGetAttribute is supported since cuSPARSELt 0.2.0')
     status = cusparseLtMatDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatDescriptor_t*> matDescr._ptr,
@@ -333,6 +339,9 @@ cpdef matmulDescriptorInit(Handle handle,
 cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
                              matmulAttribute, size_t data, size_t dataSize):
     """Sets the attribute related to matmul descriptor."""
+    if CUSPARSELT_VERSION < 200:
+        raise RuntimeError(
+            'matmulDescSetAttribute is supported since cuSPARSELt 0.2.0')
     status = cusparseLtMatmulDescSetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
@@ -343,6 +352,9 @@ cpdef matmulDescSetAttribute(Handle handle, MatmulDescriptor matmulDescr,
 cpdef matmulDescGetAttribute(Handle handle, MatmulDescriptor matmulDescr,
                              matmulAttribute, size_t data, size_t dataSize):
     """Gets the attribute related to matmul descriptor."""
+    if CUSPARSELT_VERSION < 200:
+        raise RuntimeError(
+            'matmulDescGetAttribute is supported since cuSPARSELt 0.2.0')
     status = cusparseLtMatmulDescGetAttribute(
         <const cusparseLtHandle_t*> handle._ptr,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
