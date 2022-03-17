@@ -292,7 +292,7 @@ def linspace(
     _check_valid_dtype(dtype)
     if device is None:
         device = _Device()  # current device
-    if device is not None and not isinstance(device, _Device):
+    elif not isinstance(device, _Device):
         raise ValueError(f"Unsupported device {device!r}")
     prev_device = runtime.getDevice()
     try:

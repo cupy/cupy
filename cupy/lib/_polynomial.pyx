@@ -102,9 +102,8 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
-    @property
-    def __cuda_array_interface__(self):
-        return self.coeffs.__cuda_array_interface__
+    def __cupy_get_ndarray__(self):
+        return self.coeffs
 
     def __array__(self, dtype=None):
         raise TypeError(

@@ -102,6 +102,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):  # type: ignore[
             for src in ext.sources:
                 if not os.path.isfile(src):
                     raise RuntimeError(f'Fatal error: missing file: {src}')
+
+        print('Building extensions...')
         super().build_extensions()
 
     def build_extension(self, ext: setuptools.Extension) -> None:

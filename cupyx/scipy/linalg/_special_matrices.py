@@ -1,8 +1,10 @@
 import math
 import cupy
 from cupy import _core
+from cupyx.scipy.linalg import _uarray
 
 
+@_uarray.implements('tri')
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (``N``, ``M``) matrix filled with ones at and below the
     ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
@@ -32,6 +34,7 @@ def tri(N, M=None, k=0, dtype=None):
     return cupy.tri(N, M, k, bool if dtype is None else dtype)
 
 
+@_uarray.implements('tril')
 def tril(m, k=0):
     """Make a copy of a matrix with elements above the ``k``-th diagonal
     zeroed.
@@ -53,6 +56,7 @@ def tril(m, k=0):
     return t
 
 
+@_uarray.implements('triu')
 def triu(m, k=0):
     """Make a copy of a matrix with elements below the ``k``-th diagonal
     zeroed.
@@ -76,6 +80,7 @@ def triu(m, k=0):
     return t
 
 
+@_uarray.implements('toeplitz')
 def toeplitz(c, r=None):
     """Construct a Toeplitz matrix.
 
@@ -107,6 +112,7 @@ def toeplitz(c, r=None):
     return _create_toeplitz_matrix(c[::-1], r[1:])
 
 
+@_uarray.implements('circulant')
 def circulant(c):
     """Construct a circulant matrix.
 
@@ -126,6 +132,7 @@ def circulant(c):
     return _create_toeplitz_matrix(c[::-1], c[:0:-1])
 
 
+@_uarray.implements('hankel')
 def hankel(c, r=None):
     """Construct a Hankel matrix.
 
@@ -163,6 +170,7 @@ def _create_toeplitz_matrix(c, r, hankel=False):
         strides=(n if hankel else -n, n)).copy()
 
 
+@_uarray.implements('hadamard')
 def hadamard(n, dtype=int):
     """Construct an Hadamard matrix.
 
@@ -191,6 +199,7 @@ _hadamard_kernel = _core.ElementwiseKernel(
     'cupyx_scipy_linalg_hadamard', reduce_dims=False)
 
 
+@_uarray.implements('leslie')
 def leslie(f, s):
     """Create a Leslie matrix.
 
@@ -225,6 +234,7 @@ def leslie(f, s):
     return a
 
 
+@_uarray.implements('kron')
 def kron(a, b):
     """Kronecker product.
 
@@ -248,6 +258,7 @@ def kron(a, b):
     return cupy.concatenate(cupy.concatenate(o, axis=1), axis=1)
 
 
+@_uarray.implements('block_diag')
 def block_diag(*arrs):
     """Create a block diagonal matrix from provided arrays.
 
@@ -294,6 +305,7 @@ def block_diag(*arrs):
     return out
 
 
+@_uarray.implements('companion')
 def companion(a):
     """Create a companion matrix.
 
@@ -328,6 +340,7 @@ def companion(a):
     return c
 
 
+@_uarray.implements('helmert')
 def helmert(n, full=False):
     """Create an Helmert matrix of order ``n``.
 
@@ -356,6 +369,7 @@ def helmert(n, full=False):
     return H if full else H[1:]
 
 
+@_uarray.implements('hilbert')
 def hilbert(n):
     """Create a Hilbert matrix of order ``n``.
 
@@ -379,6 +393,7 @@ def hilbert(n):
 # TODO: invpascal(n, kind='symmetric', exact=True)
 
 
+@_uarray.implements('dft')
 def dft(n, scale=None):
     """Discrete Fourier transform matrix.
 
@@ -417,6 +432,7 @@ def dft(n, scale=None):
     return m
 
 
+@_uarray.implements('fiedler')
 def fiedler(a):
     """Returns a symmetric Fiedler matrix
 
@@ -446,6 +462,7 @@ def fiedler(a):
     return cupy.abs(a, out=a)
 
 
+@_uarray.implements('fiedler_companion')
 def fiedler_companion(a):
     """Returns a Fiedler companion matrix
 
@@ -494,6 +511,7 @@ def fiedler_companion(a):
     return c
 
 
+@_uarray.implements('convolution_matrix')
 def convolution_matrix(a, n, mode='full'):
     """Construct a convolution matrix.
 

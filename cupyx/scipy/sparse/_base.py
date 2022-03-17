@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupyx.scipy.sparse import _util
-from cupyx.scipy.sparse import sputils
+from cupyx.scipy.sparse import _sputils
 
 
 try:
@@ -11,10 +11,10 @@ try:
     SparseWarning = _sparse.SparseWarning
     SparseEfficiencyWarning = _sparse.SparseEfficiencyWarning
 except ImportError:
-    class SparseWarning(Warning):
+    class SparseWarning(Warning):  # type: ignore
         pass
 
-    class SparseEfficiencyWarning(SparseWarning):
+    class SparseEfficiencyWarning(SparseWarning):  # type: ignore
         pass
 
 
@@ -391,7 +391,7 @@ class spmatrix(object):
             return (cupy.issubdtype(dtype, cupy.integer) or
                     cupy.issubdtype(dtype, cupy.bool_))
 
-        sputils.validateaxis(axis)
+        _sputils.validateaxis(axis)
 
         res_dtype = self.dtype.type
         integral = _is_integral(self.dtype)
@@ -451,7 +451,7 @@ class spmatrix(object):
             cupyx.scipy.sparse.coo_matrix: sparse matrix
 
         """
-        shape = sputils.check_shape(shape, self.shape)
+        shape = _sputils.check_shape(shape, self.shape)
 
         if shape == self.shape:
             return self
@@ -494,7 +494,7 @@ class spmatrix(object):
            :meth:`scipy.sparse.spmatrix.sum`
 
         """
-        sputils.validateaxis(axis)
+        _sputils.validateaxis(axis)
 
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.

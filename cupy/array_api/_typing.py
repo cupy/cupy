@@ -7,7 +7,7 @@ valid for inputs that match the given type annotations.
 """
 
 from __future__ import annotations
-from cupy.cuda import Device as _Device
+from cupy.cuda import Device
 
 
 __all__ = [
@@ -52,7 +52,6 @@ class NestedSequence(Protocol[_T_co]):
     def __getitem__(self, key: int, /) -> _T_co | NestedSequence[_T_co]: ...
     def __len__(self, /) -> int: ...
 
-Device = _Device
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     Dtype = dtype[Union[
         int8,

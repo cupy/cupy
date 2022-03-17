@@ -28,6 +28,25 @@ Raw statistical functions
 .. autosummary::
    :toctree: generated/
 
+   bdtr
+   bdtrc
+   bdtri
+   btdtr
+   btdtri
+   fdtr
+   fdtrc
+   fdtri
+   gdtr
+   gdtrc
+   nbdtr
+   nbdtrc
+   nbdtri
+   pdtr
+   pdtrc
+   pdtri
+   chdtr
+   chdtrc
+   chdtri
    ndtr
    ndtri
    logit
@@ -64,6 +83,10 @@ Gamma and related functions
    gammaincinv
    gammaincc
    gammainccinv
+   beta
+   betaln
+   betainc
+   betaincinv
    psi
    polygamma
    digamma

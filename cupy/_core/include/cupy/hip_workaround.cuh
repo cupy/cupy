@@ -9,9 +9,11 @@
 #define __shfl_down_sync(mask, ...) __shfl_down(__VA_ARGS__)
 #define __shfl_xor_sync(mask, ...) __shfl_xor(__VA_ARGS__)
 
-// It is guaranteed to be safe on AMD's hardware, see
-// https://rocmdocs.amd.com/en/latest/Programming_Guides/HIP-GUIDE.html#warp-cross-lane-functions
-#define __syncwarp() {}
+// In ROCm, threads in a warp march in lock-step, so we don't need to
+// synchronize the threads. But it doesn't guarantee the memory order,
+// which still make us use memory fences.
+// https://rocmdocs.amd.com/en/latest/Programming_Guides/Kernel_language.html#warp-cross-lane-functions
+#define __syncwarp() { __threadfence_block(); }
 
 #endif  // __HIP_DEVICE_COMPILE__
 

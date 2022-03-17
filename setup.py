@@ -28,7 +28,7 @@ install_requires = [
 ]
 extras_require = {
     'all': [
-        'scipy>=1.4,<1.10',  # see #4773
+        'scipy>=1.4,<1.11',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
@@ -37,10 +37,13 @@ extras_require = {
         'flake8==3.8.4',
         'pbr==5.5.1',
         'pycodestyle==2.6.0',
+        'types-setuptools==57.4.8',
+        'mypy==0.931',
     ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
+        'hypothesis>=6.37.2',
     ],
     # TODO(kmaehashi): Remove 'jenkins' requirements.
     'jenkins': [

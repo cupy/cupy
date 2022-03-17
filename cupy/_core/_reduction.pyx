@@ -12,7 +12,7 @@ from cupy._core._kernel cimport _broadcast
 from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
 from cupy._core._kernel cimport _get_kernel_params
-from cupy._core._kernel cimport _get_out_args
+from cupy._core._kernel cimport _get_out_args_from_optionals
 from cupy._core._kernel cimport _get_out_args_with_params
 from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport _reduce_dims
@@ -183,14 +183,14 @@ cdef shape_t _set_permuted_args(
 
 
 cdef Py_ssize_t _get_contiguous_size(
-        list args, tuple params, Py_ssize_t ndim,
-        Py_ssize_t out_ndim) except -1:
+        list args, tuple params, list out_shape, Py_ssize_t ndim) except -1:
     '''
     get contiguous size in the *output* axis (not *reduce* axis!)
     '''
     cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
+    out_ndim = len(out_shape)
     contiguous_size = 1
     for i, a in enumerate(args):
         if not isinstance(a, ndarray):
@@ -203,7 +203,7 @@ cdef Py_ssize_t _get_contiguous_size(
         for j in range(out_ndim):
             if a._strides[ndim-j-1] != tmp_contiguous_size * itemsize:
                 break
-            tmp_contiguous_size *= a._shape[ndim-j-1]
+            tmp_contiguous_size *= out_shape[out_ndim-j-1]
         contiguous_size = max(contiguous_size, tmp_contiguous_size)
     return contiguous_size
 
@@ -368,7 +368,7 @@ cdef class _AbstractReductionKernel:
         if optimize_context is None:
             # Calculate manually
             contiguous_size = _get_contiguous_size(
-                in_args, self.in_params, in_shape.size(), out_shape.size())
+                in_args, self.in_params, out_shape, in_shape.size())
             block_size, block_stride, out_block_num = _get_block_specs(
                 internal.prod(in_shape),
                 internal.prod(out_shape),
@@ -407,7 +407,7 @@ cdef class _AbstractReductionKernel:
         out_args = [_optimizer_copy_arg(a) for a in out_args]
 
         contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, len(in_shape), len(out_shape))
+            in_args, self.in_params, out_shape, len(in_shape))
         block_size, block_stride, default_out_block_num = _get_block_specs(
             internal.prod(in_shape),
             internal.prod(out_shape),
@@ -546,6 +546,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
             arr = _convert_object_with_cuda_array_interface(a)
+        elif hasattr(a, '__cupy_get_ndarray__'):
+            arr = a.__cupy_get_ndarray__()
         else:
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
@@ -603,7 +605,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef list _get_out_args(
             self, list out_args, tuple out_types, const shape_t& out_shape):
-        return _get_out_args(
+        return _get_out_args_from_optionals(
             out_args, out_types, out_shape, 'unsafe')
 
     cdef function.Function _get_function(

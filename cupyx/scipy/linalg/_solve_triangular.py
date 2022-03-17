@@ -4,8 +4,10 @@ import cupy
 from cupy.cuda import cublas
 from cupy.cuda import device
 from cupy.linalg import _util
+from cupyx.scipy.linalg import _uarray
 
 
+@_uarray.implements('solve_triangular')
 def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
                      overwrite_b=False, check_finite=False):
     """Solve the equation a x = b for x, assuming a is a triangular matrix.

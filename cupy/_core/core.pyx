@@ -671,10 +671,26 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
+        if isinstance(value, cupy.ndarray):
+            if value.shape != ():
+                raise ValueError(
+                    'non-scalar cupy.ndarray cannot be used for fill')
+            if not cupy.can_cast(value, self.dtype):
+                raise TypeError(
+                    f'Cannot cast scalar from dtype(\'{value.dtype}\') to '
+                    f'dtype(\'{self.dtype}\') according to the rule \'safe\'')
+            value = value.astype(self.dtype, copy=False)
+            fill_kernel(value, self)
+            return
+
         if isinstance(value, numpy.ndarray):
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
+            if not numpy.can_cast(value, self.dtype):
+                raise TypeError(
+                    f'Cannot cast scalar from dtype(\'{value.dtype}\') to '
+                    f'dtype(\'{self.dtype}\') according to the rule \'safe\'')
             value = value.item()
 
         if value == 0 and self._c_contiguous:
@@ -1576,7 +1592,8 @@ cdef class ndarray:
                 # implicit host-to-device conversion.
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
-                check = hasattr(x, '__cuda_array_interface__')
+                check = (hasattr(x, '__cuda_array_interface__')
+                         or hasattr(x, '__cupy_get_ndarray__'))
                 if runtime._is_hip_environment and isinstance(x, ndarray):
                     check = True
                 if (not check
@@ -2282,6 +2299,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     if hasattr(obj, '__cuda_array_interface__'):
         return _array_from_cuda_array_interface(
             obj, dtype, copy, order, subok, ndmin)
+    if hasattr(obj, '__cupy_get_ndarray__'):
+        return _array_from_cupy_ndarray(
+            obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
 
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))

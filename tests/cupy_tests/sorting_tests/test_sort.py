@@ -192,6 +192,14 @@ class TestSort(unittest.TestCase):
         out = xp.sort(a, axis=2)
         return out
 
+    # Large case
+
+    @testing.slow
+    @testing.numpy_cupy_array_equal()
+    def test_large(self, xp):
+        a = testing.shaped_random((17, 1023, 1023), xp)
+        return xp.sort(a, axis=-1)
+
 
 @testing.gpu
 class TestLexsort(unittest.TestCase):

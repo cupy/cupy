@@ -6,6 +6,8 @@ from cupy._core import _routines_math as _math
 from cupy._core import fusion
 from cupy.lib import stride_tricks
 
+import numpy
+
 
 _dot_kernel = _core.ReductionKernel(
     'T x1, T x2',
@@ -33,7 +35,7 @@ def _choose_conv_method(in1, in2, mode):
 
 def _fftconv_faster(x, h, mode):
     """
-    .. seealso:: :func: `scipy.signal.signaltools._fftconv_faster`
+    .. seealso:: :func: `scipy.signal._signaltools._fftconv_faster`
 
     """
     # TODO(Dahlia-Chehata): replace with GPU-based constants.
@@ -388,15 +390,37 @@ def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
     .. seealso:: :func:`numpy.nan_to_num`
 
     """
-    dtype = x.dtype
+    if not isinstance(x, cupy.ndarray):
+        out = cupy.full((), x)
+    else:
+        out = cupy.empty_like(x) if copy else x
+    dtype = out.dtype
     nan = _check_nan_inf(nan, dtype)
     posinf = _check_nan_inf(posinf, dtype, False)
     neginf = _check_nan_inf(neginf, dtype, True)
-    out = None if copy else x
     return _nan_to_num(x, nan, posinf, neginf, out=out)
 
 
-# TODO(okuta): Implement real_if_close
+def real_if_close(a, tol=100):
+    """If input is complex with all imaginary parts close to zero, return real
+    parts.
+    "Close to zero" is defined as `tol` * (machine epsilon of the type for
+    `a`).
+
+    .. warning::
+
+            This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.real_if_close`
+    """
+    if not issubclass(a.dtype.type, cupy.complexfloating):
+        return a
+    if tol > 1:
+        f = numpy.finfo(a.dtype.type)
+        tol = f.eps * tol
+    if cupy.all(cupy.absolute(a.imag) < tol):
+        a = a.real
+    return a
 
 
 @cupy._util.memoize(for_each_device=True)
