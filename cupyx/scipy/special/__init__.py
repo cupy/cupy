@@ -95,3 +95,8 @@ from cupy import round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
 from cupy import sinc  # NOQA
+
+
+from cupyx.scipy.special._uarray import __ua_convert__  # NOQA
+from cupyx.scipy.special._uarray import __ua_domain__  # NOQA
+from cupyx.scipy.special._uarray import __ua_function__  # NOQA
