@@ -15,7 +15,7 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
 
 from cupy import _core
-
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 # Note: cast complex<single> to complex<double> or tests fail tolerance
 log1p = _core.create_ufunc(
@@ -37,6 +37,7 @@ log1p = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(log1p, 'log1p')
 
 cbrt = _core.create_ufunc(
     'cupyx_scipy_special_cbrt',
@@ -48,6 +49,7 @@ cbrt = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(cbrt, 'cbrt')
 
 exp2 = _core.create_ufunc(
     'cupyx_scipy_special_exp2',
@@ -59,6 +61,7 @@ exp2 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(exp2, 'exp2')
 
 exp10 = _core.create_ufunc(
     'cupyx_scipy_special_exp10',
@@ -70,6 +73,7 @@ exp10 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(exp10, 'exp10')
 
 expm1 = _core.create_ufunc(
     'cupyx_scipy_special_expm1',
@@ -81,6 +85,7 @@ expm1 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(expm1, 'expm1')
 
 pi180_preamble = """
     __constant__ double PI180 = 1.74532925199432957692E-2;  // pi/180
@@ -97,6 +102,7 @@ cosdg = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(cosdg, 'cosdg')
 
 sindg = _core.create_ufunc(
     'cupyx_scipy_special_sindg',
@@ -108,6 +114,8 @@ sindg = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.sindg`
 
     ''')
+
+implements_ufuncs(sindg, 'sindg')
 
 
 tancot_implementation = pi180_preamble + """
@@ -192,6 +200,7 @@ tandg = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(tandg, 'tandg')
 
 cotdg = _core.create_ufunc(
     'cupyx_scipy_special_cotdg', ('f->f', 'd->d'),
@@ -203,6 +212,7 @@ cotdg = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(cotdg, 'cotdg')
 
 radian_implementation = """
 /* 1 arc second, in radians*/
@@ -225,3 +235,5 @@ radian = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.radian`
 
     ''')
+
+implements_ufuncs(radian, 'radian')
