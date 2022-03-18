@@ -7,7 +7,7 @@ from ._array_object import Array
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ._typing import Literal, Optional, Sequence, Tuple, Union
+    from typing import Literal, Optional, Sequence, Tuple, Union
 
 from typing import NamedTuple
 
@@ -247,7 +247,7 @@ def pinv(x: Array, /, *, rtol: Optional[Union[float, Array]] = None) -> Array:
     # Note: this is different from np.linalg.pinv, which does not multiply the
     # default tolerance by max(M, N).
     if rtol is None:
-        rtol = max(x.shape[-2:]) * np.finfo(x.dtype).eps
+        rtol = max(x.shape[-2:]) * np.finfo(x.dtype).eps  # type: ignore
     return Array._new(np.linalg.pinv(x._array, rcond=rtol))
 
 def qr(x: Array, /, *, mode: Literal['reduced', 'complete'] = 'reduced') -> QRResult:

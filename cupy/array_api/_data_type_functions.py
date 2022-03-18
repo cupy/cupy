@@ -94,7 +94,7 @@ def finfo(type: Union[Dtype, Array], /) -> finfo_object:
 
     See its docstring for more information.
     """
-    fi = np.finfo(type)
+    fi = np.finfo(type)  # type: ignore
     # Note: The types of the float data here are float, whereas in NumPy they
     # are scalars of the corresponding float dtype.
     try:
@@ -116,7 +116,7 @@ def iinfo(type: Union[Dtype, Array], /) -> iinfo_object:
 
     See its docstring for more information.
     """
-    ii = np.iinfo(type)
+    ii = np.iinfo(type)  # type: ignore
     return iinfo_object(ii.bits, ii.max, ii.min)
 
 

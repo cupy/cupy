@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 import cupy as np
 from cupy.cuda import Device as _Device
+from cupy.cuda import stream as stream_module
 from cupy_backends.cuda.api import runtime
 
 from cupy import array_api
@@ -63,7 +64,7 @@ class Array:
     # Use a custom constructor instead of __init__, as manually initializing
     # this class is not supported API.
     @classmethod
-    def _new(cls, x, /):
+    def _new(cls, x: Union[np.ndarray, np.generic], /) -> Array:
         """
         This is a private method for initializing the array API Array
         object.
@@ -162,7 +163,7 @@ class Array:
         return other
 
     # Helper function to match the type promotion rules in the spec
-    def _promote_scalar(self, scalar):
+    def _promote_scalar(self, scalar: Union[bool, int, float]) -> Array:
         """
         Returns a promoted version of a Python scalar appropriate for use with
         operations on self.
@@ -440,7 +441,7 @@ class Array:
         """
         return self._array.__dlpack_device__()
 
-    def __eq__(self: Array, other: Union[int, float, bool, Array], /) -> Array:
+    def __eq__(self: Array, other: Union[int, float, bool, Array], /) -> Array:  # type: ignore
         """
         Performs the operation __eq__.
         """
@@ -612,7 +613,7 @@ class Array:
         res = self._array.__mul__(other._array)
         return self.__class__._new(res)
 
-    def __ne__(self: Array, other: Union[int, float, bool, Array], /) -> Array:
+    def __ne__(self: Array, other: Union[int, float, bool, Array], /) -> Array:  # type: ignore
         """
         Performs the operation __ne__.
         """
@@ -1025,7 +1026,7 @@ class Array:
         else:
             # see cupy/cupy#5985 for the reason how we handle device/stream here
             prev_device = runtime.getDevice()
-            prev_stream = None
+            prev_stream: stream_module.Stream = None
             if stream is not None:
                 prev_stream = stream_module.get_current_stream()
                 # stream can be an int as specified in __dlpack__, or a CuPy stream
