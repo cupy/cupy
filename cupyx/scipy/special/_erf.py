@@ -1,4 +1,5 @@
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 erf = _core.create_ufunc(
@@ -10,6 +11,7 @@ erf = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(erf, 'erf')
 
 erfc = _core.create_ufunc(
     'cupyx_scipy_special_erfc', ('f->f', 'd->d'),
@@ -20,6 +22,7 @@ erfc = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(erfc, 'erfc')
 
 erfcx = _core.create_ufunc(
     'cupyx_scipy_special_erfcx', ('f->f', 'd->d'),
@@ -30,6 +33,7 @@ erfcx = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(erfcx, 'erfcx')
 
 erfinv = _core.create_ufunc(
     'cupyx_scipy_special_erfinv', ('f->f', 'd->d'),
@@ -44,6 +48,7 @@ erfinv = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(erfinv, 'erfinv')
 
 erfcinv = _core.create_ufunc(
     'cupyx_scipy_special_erfcinv', ('f->f', 'd->d'),
@@ -57,3 +62,5 @@ erfcinv = _core.create_ufunc(
         SciPy v1.4.0+.
 
     ''')
+
+implements_ufuncs(erfcinv, 'erfcinv')

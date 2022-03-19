@@ -1,4 +1,5 @@
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 _float_preamble = '''
@@ -75,6 +76,7 @@ entr = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(entr, 'entr')
 
 kl_div = _core.create_ufunc(
     'cupyx_scipy_special_kl_div', ('ff->f', 'dd->d'),
@@ -86,6 +88,7 @@ kl_div = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(kl_div, 'kl_div')
 
 rel_entr = _core.create_ufunc(
     'cupyx_scipy_special_rel_entr', ('ff->f', 'dd->d'),
@@ -97,6 +100,7 @@ rel_entr = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(rel_entr, 'rel_entr')
 
 huber = _core.create_ufunc(
     'cupyx_scipy_special_huber', ('ff->f', 'dd->d'),
@@ -108,6 +112,7 @@ huber = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(huber, 'huber')
 
 pseudo_huber = _core.create_ufunc(
     'cupyx_scipy_special_pseudo_huber', ('ff->f', 'dd->d'),
@@ -118,3 +123,5 @@ pseudo_huber = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.pseudo_huber`
 
     ''')
+
+implements_ufuncs(pseudo_huber, 'pseudo_huber')

@@ -17,6 +17,7 @@ from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_definition
 from cupyx.scipy.special._gammainc import p1evl_definition
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 beta_preamble = """
@@ -422,6 +423,7 @@ beta = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(beta, 'beta')
 
 betaln = _core.create_ufunc(
     "cupyx_scipy_betaln",
@@ -459,6 +461,7 @@ betaln = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(betaln, 'betaln')
 
 incbet_definition = """
 
@@ -821,6 +824,7 @@ betainc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(betainc, 'betainc')
 
 incbi_definition = """
 
@@ -1089,3 +1093,5 @@ betaincinv = _core.create_ufunc(
 
     """,
 )
+
+implements_ufuncs(betaincinv, 'betaincinv')

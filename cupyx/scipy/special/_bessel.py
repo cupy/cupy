@@ -1,4 +1,5 @@
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 j0 = _core.create_ufunc(
@@ -10,6 +11,7 @@ j0 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(j0, 'j0')
 
 j1 = _core.create_ufunc(
     'cupyx_scipy_special_j1', ('f->f', 'd->d'),
@@ -20,6 +22,7 @@ j1 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(j1, 'j1')
 
 y0 = _core.create_ufunc(
     'cupyx_scipy_special_y0', ('f->f', 'd->d'),
@@ -30,6 +33,7 @@ y0 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(y0, 'y0')
 
 y1 = _core.create_ufunc(
     'cupyx_scipy_special_y1', ('f->f', 'd->d'),
@@ -40,6 +44,7 @@ y1 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(y1, 'y1')
 
 # Note: oddly, unlike for y0 or y1, SciPy always returns double for yn
 # dd->d because SciPy will accept 2.0
@@ -63,6 +68,7 @@ yn = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.yn`
     ''')
 
+implements_ufuncs(yn, 'yn')
 
 i0 = _core.create_ufunc(
     'cupyx_scipy_special_i0', ('f->f', 'd->d'),
@@ -73,6 +79,7 @@ i0 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(i0, 'i0')
 
 i0e = _core.create_ufunc(
     'cupyx_scipy_special_i0e', ('f->f', 'd->d'),
@@ -83,6 +90,7 @@ i0e = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(i0e, 'i0e')
 
 i1 = _core.create_ufunc(
     'cupyx_scipy_special_i1', ('f->f', 'd->d'),
@@ -93,6 +101,7 @@ i1 = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(i1, 'i1')
 
 i1e = _core.create_ufunc(
     'cupyx_scipy_special_i1e', ('f->f', 'd->d'),
@@ -102,3 +111,5 @@ i1e = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.i1e`
 
     ''')
+
+implements_ufuncs(i1e, 'i1e')

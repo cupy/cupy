@@ -14,6 +14,7 @@
 # LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 polevl_definition = '''
@@ -189,3 +190,5 @@ digamma = _core.create_ufunc(
     .. seealso:: :data:`scipy.special.digamma`
 
     """)
+
+implements_ufuncs(digamma, 'digamma')
