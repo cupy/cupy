@@ -32,8 +32,14 @@ class TestSpecial(unittest.TestCase):
     def test_i0(self):
         self.check_unary('i0')
 
+    def test_i0e(self):
+        self.check_unary('i0e')
+
     def test_i1(self):
         self.check_unary('i1')
+
+    def test_i1e(self):
+        self.check_unary('i1e')
 
 
 @testing.gpu
@@ -68,5 +74,11 @@ class TestFusionSpecial(unittest.TestCase):
     def test_i0(self):
         self.check_unary('i0')
 
+    def test_i0e(self):
+        self.check_unary('i0e')
+
     def test_i1(self):
         self.check_unary('i1')
+
+    def test_i1e(self):
+        self.check_unary('i1e')
