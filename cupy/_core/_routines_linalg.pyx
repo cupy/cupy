@@ -744,6 +744,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         ret_dtype = numpy.promote_types(a.dtype, b.dtype)
         if out._c_contiguous and ret_dtype == out.dtype:
             return dot(a, b, out)
+        if not numpy.can_cast(out.dtype, ret_dtype, 'safe'):
+            ret_dtype = numpy.promote_types(ret_dtype, out.dtype)
+            a = a.astype(ret_dtype)
+            b = b.astype(ret_dtype)
         c = _ndarray_init(out._shape, dtype=ret_dtype)
         dot(a, b, c)
         elementwise_copy(c, out)
