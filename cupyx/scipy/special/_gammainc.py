@@ -22,6 +22,8 @@ from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_definition
 from cupyx.scipy.special._zeta import zeta_definition
+from cupyx.scipy.special._uarray import implements_ufuncs
+
 
 _zeta_c = zeta_definition
 # comment out duplicate MACHEP definition
@@ -1101,6 +1103,7 @@ gammaincc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(gammaincc, 'gammaincc')
 
 gammainc = _core.create_ufunc(
     "cupyx_scipy_gammainc",
@@ -1115,6 +1118,7 @@ gammainc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(gammainc, 'gammainc')
 
 gammainccinv = _core.create_ufunc(
     "cupyx_scipy_gammainccinv",
@@ -1129,6 +1133,7 @@ gammainccinv = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(gammainccinv, 'gammainccinv')
 
 gammaincinv = _core.create_ufunc(
     "cupyx_scipy_gammaincinv",
@@ -1142,3 +1147,5 @@ gammaincinv = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.gammaincinv`
     """,
 )
+
+implements_ufuncs(gammaincinv, 'gammaincinv')

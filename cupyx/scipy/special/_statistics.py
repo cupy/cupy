@@ -1,4 +1,5 @@
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 logit_definition = """
@@ -28,6 +29,7 @@ logit = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(logit, 'logit')
 
 expit_definition = """
 template <typename T>
@@ -58,6 +60,7 @@ expit = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(expit, 'expit')
 
 # log_expit implemented based on log1p as in SciPy's scipy/special/_logit.h
 
@@ -96,6 +99,7 @@ log_expit = _core.create_ufunc(
         (positive or negative) magnitude.
     ''')
 
+implements_ufuncs(log_expit, 'log_expit')
 
 boxcox_definition = """
 static __device__ double boxcox(double x, double lmbda) {
@@ -132,6 +136,7 @@ boxcox = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(boxcox, 'boxcox')
 
 boxcox1p_definition = """
 static __device__ double boxcox1p(double x, double lmbda) {
@@ -168,6 +173,7 @@ boxcox1p = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(boxcox1p, 'boxcox1p')
 
 inv_boxcox_definition = """
 static __device__ double inv_boxcox(double x, double lmbda) {
@@ -198,6 +204,7 @@ inv_boxcox = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(inv_boxcox, 'inv_boxcox')
 
 inv_boxcox1p_definition = """
 static __device__ double inv_boxcox1p(double x, double lmbda) {
@@ -228,3 +235,5 @@ inv_boxcox1p = _core.create_ufunc(
 
     .. seealso:: :data:`scipy.special.inv_boxcox1p`
 ''')
+
+implements_ufuncs(inv_boxcox1p, 'inv_boxcox1p')

@@ -13,6 +13,7 @@ from cupy import _core
 
 from cupyx.scipy.special._gammasgn import gammasgn_definition
 from cupyx.scipy.special._gammainc import lgam_definition
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 poch_definition = (
@@ -117,3 +118,5 @@ poch = _core.create_ufunc(
 
     """,
 )
+
+implements_ufuncs(poch, 'poch')

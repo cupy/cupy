@@ -1,4 +1,5 @@
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 # Note: complex-valued isnan, log and log1p are all defined in
@@ -35,6 +36,7 @@ xlogy = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(xlogy, 'xlogy')
 
 xlog1py_definition = """
 
@@ -66,3 +68,5 @@ xlog1py = _core.create_ufunc(
     .. seealso:: :data:`scipy.special.xlog1py`
 
     ''')
+
+implements_ufuncs(xlog1py, 'xlog1py')

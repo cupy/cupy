@@ -1,5 +1,6 @@
 from cupy import _core
 from cupyx.scipy.special._loggamma import loggamma_definition
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 _gamma_body = """
@@ -213,3 +214,5 @@ rgamma = _core.create_ufunc(
     .. seealso:: :func:`scipy.special.rgamma`
 
     """)
+
+implements_ufuncs(gamma, 'gamma')

@@ -10,6 +10,7 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
 
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 gammasgn_definition = """
@@ -49,3 +50,5 @@ gammasgn = _core.create_ufunc(
 
     """,
 )
+
+implements_ufuncs(gammasgn, 'gammasgn')

@@ -17,6 +17,7 @@ Copyright 1984, 1995 by Stephen L. Moshier
 from cupy import _core
 from cupyx.scipy.special._beta import incbet_preamble, incbi_preamble
 from cupyx.scipy.special._gammainc import _igam_preamble, _igami_preamble
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 # Normal distribution functions
@@ -31,6 +32,7 @@ ndtr = _core.create_ufunc(
 
     ''')
 
+implements_ufuncs(ndtr, 'ndtr')
 
 ndtri = _core.create_ufunc(
     'cupyx_scipy_special_ndtri',
@@ -42,6 +44,7 @@ ndtri = _core.create_ufunc(
     .. seealso:: :data:`scipy.special.ndtri`
 ''')
 
+implements_ufuncs(ndtri, 'ndtri')
 
 # Binomial distribution functions
 
@@ -221,6 +224,7 @@ bdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(bdtr, 'bdtr')
 
 # Note: bdtrc ddd->d and fff->f are deprecated as of SciPy 1.7
 bdtrc = _core.create_ufunc(
@@ -259,6 +263,7 @@ bdtrc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(bdtrc, 'bdtrc')
 
 # Note: bdtri ddd->d and fff->f are deprecated as of SciPy 1.7
 bdtri = _core.create_ufunc(
@@ -294,6 +299,7 @@ bdtri = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(bdtri, 'bdtri')
 
 # Beta distribution functions
 
@@ -326,6 +332,7 @@ btdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(btdtr, 'btdtr')
 
 btdtri = _core.create_ufunc(
     "cupyx_scipy_btdtri",
@@ -358,6 +365,7 @@ btdtri = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(btdtri, 'btdtri')
 
 # Chi square distribution functions
 
@@ -431,6 +439,8 @@ chdtrc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(chdtrc, 'chdtrc')
+
 chdtri = _core.create_ufunc(
     "cupyx_scipy_chdtri",
     ("ff->f", "dd->d"),
@@ -460,6 +470,7 @@ chdtri = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(chdtri, 'chdtri')
 
 chdtr = _core.create_ufunc(
     "cupyx_scipy_chdtr",
@@ -487,6 +498,7 @@ chdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(chdtr, 'chdtr')
 
 # F distribution functions
 
@@ -580,6 +592,8 @@ fdtrc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(fdtrc, 'fdtrc')
+
 fdtri = _core.create_ufunc(
     "cupyx_scipy_fdtri",
     ("fff->f", "ddd->d"),
@@ -609,6 +623,8 @@ fdtri = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(fdtri, 'fdtri')
+
 
 fdtr = _core.create_ufunc(
     "cupyx_scipy_fdtr",
@@ -637,6 +653,7 @@ fdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(fdtr, 'fdtr')
 
 # Gamma distribution functions
 
@@ -697,6 +714,8 @@ gdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(gdtr, 'gdtr')
+
 
 gdtrc = _core.create_ufunc(
     "cupyx_scipy_gdtrc",
@@ -729,6 +748,7 @@ gdtrc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(gdtrc, 'gdtrc')
 
 # Negative Binomial distribution functions
 
@@ -847,6 +867,7 @@ nbdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(nbdtr, 'nbdtr')
 
 nbdtrc = _core.create_ufunc(
     "cupyx_scipy_nbdtrc",
@@ -881,6 +902,8 @@ nbdtrc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(nbdtrc, 'nbdtrc')
+
 nbdtri = _core.create_ufunc(
     "cupyx_scipy_nbdtri",
     (
@@ -914,6 +937,7 @@ nbdtri = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(nbdtri, 'nbdtri')
 
 # Poisson distribution functions
 
@@ -1006,6 +1030,7 @@ pdtr = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(pdtr, 'pdtr')
 
 pdtrc = _core.create_ufunc(
     "cupyx_scipy_pdtrc",
@@ -1037,6 +1062,7 @@ pdtrc = _core.create_ufunc(
     """,
 )
 
+implements_ufuncs(pdtrc, 'pdtrc')
 
 pdtri = _core.create_ufunc(
     "cupyx_scipy_pdtri",
@@ -1067,3 +1093,5 @@ pdtri = _core.create_ufunc(
 
     """,
 )
+
+implements_ufuncs(pdtri, 'pdtri')

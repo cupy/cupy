@@ -18,6 +18,7 @@ The fortran code in scipy originated in the following book.
 """
 
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 # May want to use CUDART_PI instead of redefining here.
 # The two seem to differ in the last didit, though.
@@ -415,3 +416,5 @@ lpmv = _core.create_ufunc(
 
     """,
 )
+
+implements_ufuncs(lpmv, 'lpmv')

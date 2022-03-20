@@ -2,8 +2,10 @@ import cupy
 from cupyx.scipy.special import _digamma
 from cupyx.scipy.special import _gamma
 from cupyx.scipy.special import _zeta
+from cupyx.scipy.special import _uarray
 
 
+@_uarray.implements('polygamma')
 def polygamma(n, x):
     """Polygamma function n.
 

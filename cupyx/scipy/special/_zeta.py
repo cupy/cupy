@@ -9,6 +9,7 @@
 # TODO(YoshikawaMasashi): float implementation of zeta function
 
 from cupy import _core
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 
 zeta_definition = '''
@@ -127,3 +128,5 @@ zeta = _core.create_ufunc(
     .. seealso:: :data:`scipy.special.zeta`
 
     """)
+
+implements_ufuncs(zeta, 'zeta')

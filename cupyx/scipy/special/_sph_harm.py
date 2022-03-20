@@ -9,6 +9,7 @@ from cupy import _core
 
 from cupyx.scipy.special._poch import poch_definition
 from cupyx.scipy.special._lpmv import lpmv_definition
+from cupyx.scipy.special._uarray import implements_ufuncs
 
 sph_harmonic_definition = (
     poch_definition
@@ -82,3 +83,5 @@ sph_harm = _core.create_ufunc(
 
     """,
 )
+
+implements_ufuncs(sph_harm, 'sph_harm')
