@@ -8,12 +8,12 @@ except ImportError:
 import cupy
 from cupy import _core
 from cupy import cusparse
-from cupyx.scipy.sparse import base
-from cupyx.scipy.sparse import csc
-from cupyx.scipy.sparse import csr
-from cupyx.scipy.sparse import data as sparse_data
+from cupyx.scipy.sparse import _base
+from cupyx.scipy.sparse import _csc
+from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _data as sparse_data
 from cupyx.scipy.sparse import _util
-from cupyx.scipy.sparse import sputils
+from cupyx.scipy.sparse import _sputils
 
 
 class coo_matrix(sparse_data._data_matrix):
@@ -65,7 +65,7 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
 
-        if base.issparse(arg1):
+        if _base.issparse(arg1):
             x = arg1.asformat(self.format)
             data = x.data
             row = x.row
@@ -110,9 +110,9 @@ class coo_matrix(sparse_data._data_matrix):
             except (TypeError, ValueError):
                 raise TypeError('invalid input format')
 
-            if not (base.isdense(data) and data.ndim == 1 and
-                    base.isdense(row) and row.ndim == 1 and
-                    base.isdense(col) and col.ndim == 1):
+            if not (_base.isdense(data) and data.ndim == 1 and
+                    _base.isdense(row) and row.ndim == 1 and
+                    _base.isdense(col) and col.ndim == 1):
                 raise ValueError('row, column, and data arrays must be 1-D')
             if not (len(data) == len(row) == len(col)):
                 raise ValueError(
@@ -120,7 +120,7 @@ class coo_matrix(sparse_data._data_matrix):
 
             self.has_canonical_format = False
 
-        elif base.isdense(arg1):
+        elif _base.isdense(arg1):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
             dense = cupy.atleast_2d(arg1)
@@ -205,9 +205,12 @@ class coo_matrix(sparse_data._data_matrix):
             row = self.row[diag_mask]
             data = self.data[diag_mask]
         else:
-            row, _, data = self._sum_duplicates(self.row[diag_mask],
-                                                self.col[diag_mask],
-                                                self.data[diag_mask])
+            diag_coo = coo_matrix((self.data[diag_mask],
+                                   (self.row[diag_mask], self.col[diag_mask])),
+                                  shape=self.shape)
+            diag_coo.sum_duplicates()
+            row = diag_coo.row
+            data = diag_coo.data
         diag[row + min(k, 0)] = data
 
         return diag
@@ -322,7 +325,7 @@ class coo_matrix(sparse_data._data_matrix):
 
         """
 
-        shape = sputils.check_shape(shape, self.shape)
+        shape = _sputils.check_shape(shape, self.shape)
 
         if shape == self.shape:
             return self
@@ -330,14 +333,14 @@ class coo_matrix(sparse_data._data_matrix):
         nrows, ncols = self.shape
 
         if order == 'C':  # C to represent matrix in row major format
-            dtype = sputils.get_index_dtype(maxval=(ncols * max(0, nrows - 1) +
-                                                    max(0, ncols - 1)))
+            dtype = _sputils.get_index_dtype(
+                maxval=(ncols * max(0, nrows - 1) + max(0, ncols - 1)))
             flat_indices = cupy.multiply(ncols, self.row,
                                          dtype=dtype) + self.col
             new_row, new_col = divmod(flat_indices, shape[1])
         elif order == 'F':
-            dtype = sputils.get_index_dtype(maxval=(ncols * max(0, nrows - 1) +
-                                                    max(0, ncols - 1)))
+            dtype = _sputils.get_index_dtype(
+                maxval=(ncols * max(0, nrows - 1) + max(0, ncols - 1)))
             flat_indices = cupy.multiply(ncols, self.row,
                                          dtype=dtype) + self.row
             new_col, new_row = divmod(flat_indices, shape[0])
@@ -487,7 +490,7 @@ class coo_matrix(sparse_data._data_matrix):
 
         """
         if self.nnz == 0:
-            return csc.csc_matrix(self.shape, dtype=self.dtype)
+            return _csc.csc_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
         x = self.copy()
@@ -510,7 +513,7 @@ class coo_matrix(sparse_data._data_matrix):
 
         """
         if self.nnz == 0:
-            return csr.csr_matrix(self.shape, dtype=self.dtype)
+            return _csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
         x = self.copy()

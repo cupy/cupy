@@ -14,14 +14,14 @@ from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import runtime
 from cupy import cusparse
-from cupyx.scipy.sparse import base
-from cupyx.scipy.sparse import compressed
-from cupyx.scipy.sparse import csc
+from cupyx.scipy.sparse import _base
+from cupyx.scipy.sparse import _compressed
+from cupyx.scipy.sparse import _csc
 from cupyx.scipy.sparse import SparseEfficiencyWarning
 from cupyx.scipy.sparse import _util
 
 
-class csr_matrix(compressed._compressed_sparse_matrix):
+class csr_matrix(_compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Row matrix.
 
@@ -152,27 +152,33 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm2'):
+            if cusparse.check_availability('spgemm'):
+                return cusparse.spgemm(self, other)
+            elif cusparse.check_availability('csrgemm2'):
                 return cusparse.csrgemm2(self, other)
             elif cusparse.check_availability('csrgemm'):
                 return cusparse.csrgemm(self, other)
             else:
                 raise NotImplementedError
-        elif csc.isspmatrix_csc(other):
+        elif _csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 return cusparse.csrgemm(self, other.T, transb=True)
+            elif cusparse.check_availability('spgemm'):
+                b = other.tocsr()
+                b.sum_duplicates()
+                return cusparse.spgemm(self, b)
             elif cusparse.check_availability('csrgemm2'):
                 b = other.tocsr()
                 b.sum_duplicates()
                 return cusparse.csrgemm2(self, b)
             else:
                 raise NotImplementedError
-        elif base.isspmatrix(other):
+        elif _base.isspmatrix(other):
             return self * other.tocsr()
-        elif base.isdense(other):
+        elif _base.isdense(other):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
@@ -239,7 +245,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             other = cupy.atleast_2d(other)
             check_shape_for_pointwise_op(self.shape, other.shape)
             return self.todense() / other
-        elif base.isspmatrix(other):
+        elif _base.isspmatrix(other):
             # Note: If broadcasting is needed, an exception is raised here for
             # compatibility with SciPy, as SciPy does not support broadcasting
             # in the "sparse / sparse" case.
@@ -512,7 +518,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        trans = csc.csc_matrix(
+        trans = _csc.csc_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
         trans.has_canonical_format = self.has_canonical_format
         return trans

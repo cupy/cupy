@@ -366,6 +366,76 @@ class TestCsrgemm2InvalidCases:
 
 
 @testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'shape': [(2, 3, 4), (4, 3, 2)]
+}))
+@testing.with_requires('scipy>=1.2.0')
+class TestSpgemm:
+
+    alpha = 0.5
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        m, n, k = self.shape
+        self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
+        self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
+
+    def test_spgemm_ab(self):
+        if not cupy.cusparse.check_availability('spgemm'):
+            pytest.skip('spgemm is not available.')
+
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
+        c = cupy.cusparse.spgemm(a, b, alpha=self.alpha)
+        expect = self.alpha * self.a.dot(self.b)
+        testing.assert_array_almost_equal(c.toarray(), expect.toarray())
+
+
+@testing.with_requires('scipy')
+class TestSpgemmInvalidCases:
+
+    dtype = numpy.float32
+    shape = (2, 3, 4)
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        m, n, k = self.shape
+        self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
+        self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
+
+    def test_spgemm_invalid_format(self):
+        if not cupy.cusparse.check_availability('spgemm'):
+            pytest.skip('spgemm is not available.')
+        a = sparse.csc_matrix(self.a)
+        b = sparse.csr_matrix(self.b)
+        with pytest.raises(TypeError):
+            cupy.cusparse.spgemm(a, b)
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csc_matrix(self.b)
+        with pytest.raises(TypeError):
+            cupy.cusparse.spgemm(a, b)
+
+    def test_spgemm_invalid_shape(self):
+        if not cupy.cusparse.check_availability('spgemm'):
+            pytest.skip('spgemm is not available.')
+        a = sparse.csc_matrix(self.a).T
+        b = sparse.csr_matrix(self.b)
+        with pytest.raises(ValueError):
+            cupy.cusparse.spgemm(a, b)
+        a = sparse.csr_matrix(self.a)
+        b = sparse.csc_matrix(self.b).T
+        with pytest.raises(ValueError):
+            cupy.cusparse.spgemm(a, b)
+
+    def test_spgemm_availability(self):
+        if not cupy.cusparse.check_availability('spgemm'):
+            a = sparse.csr_matrix(self.a)
+            b = sparse.csr_matrix(self.b)
+            with pytest.raises(RuntimeError):
+                cupy.cusparse.spgemm(a, b)
+
+
+@testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
     'transa': [False, True],
 }))

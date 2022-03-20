@@ -1,8 +1,11 @@
+from typing import Dict
+
 import ast
 
 import numpy
 import operator
 
+import cupy
 from cupy._logic import ops
 from cupy._math import arithmetic
 from cupy._logic import comparison
@@ -72,7 +75,7 @@ _py_ops = {
 }
 
 
-_numpy_ops = {
+_numpy_ops: Dict[type, cupy.ufunc] = {
     ast.And: ops.logical_and,
     ast.Or: ops.logical_or,
     ast.Add: arithmetic.add,

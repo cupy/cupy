@@ -47,22 +47,24 @@ cuda:
     full_version: "11.4.0"
   "11.5":
     full_version: "11.5.0"
+  "11.6":
+    full_version: "11.6.0"
 rocm:
   null:
     full_version: null
     packages: []
-  "4.0":
-    full_version: "4.0.1"
-    packages: ['rocm-dev', 'hipblas', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
   "4.2":
     full_version: "4.2"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "4.3":
-    full_version: "4.3"
+    full_version: "4.3.1"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "5.0":
+    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.1
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -106,6 +108,7 @@ nccl:
       "11.0":
       "11.4":
       "11.5":
+      "11.6":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -121,18 +124,20 @@ cutensor:
       "11.3":
       "11.4":
       "11.5":
+      "11.6":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.1.0":
-    spec: "0.1.0.*"
+  "0.2.0":
+    spec: "0.2.0.*"
     cuda:
       "11.2":
       "11.3":
       "11.4":
       "11.5":
+      "11.6":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -193,6 +198,8 @@ cudnn:
       "11.4":
         alias: "11.5"
       "11.5":
+        alias: "11.5"
+      "11.6":
         alias: "11.5"
 
 ###############################################################################
@@ -315,6 +322,19 @@ scipy:
       - "3.10"
     numpy:
       # - "1.16"
+      # - "1.17"
+      - "1.18"
+      - "1.19"
+      - "1.20"
+      - "1.21"
+      - "1.22"
+  "1.8":
+    spec: "==1.8.*"
+    python:
+      - "3.8"
+      - "3.9"
+      - "3.10"
+    numpy:
       # - "1.17"
       - "1.18"
       - "1.19"

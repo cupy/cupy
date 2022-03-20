@@ -108,6 +108,7 @@ _available_cusparse_version = {
     'csrilu02': (8000, None),
     'denseToSparse': (11300, None),
     'sparseToDense': (11300, None),
+    'spgemm': (11100, None),
 }
 
 
@@ -142,6 +143,7 @@ _available_hipsparse_version = {
     'csrilu02': (305, None),
     'denseToSparse': (402, None),
     'sparseToDense': (402, None),
+    'spgemm': (_numpy.inf, None),
 }
 
 
@@ -932,7 +934,7 @@ def coo2csr(x):
         _cusparse.xcoo2csr(
             handle, x.row.data.ptr, nnz, m,
             indptr.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    return cupyx.scipy.sparse.csr.csr_matrix(
+    return cupyx.scipy.sparse.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
 
 
@@ -947,7 +949,7 @@ def coo2csc(x):
         _cusparse.xcoo2csr(
             handle, x.col.data.ptr, nnz, n,
             indptr.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    return cupyx.scipy.sparse.csc.csc_matrix(
+    return cupyx.scipy.sparse.csc_matrix(
         (x.data, x.row, indptr), shape=x.shape)
 
 
@@ -1785,3 +1787,94 @@ def sparseToDense(x, out=None):
                             desc_out.desc, algo, buff.data.ptr)
 
     return out
+
+
+def spgemm(a, b, alpha=1):
+    """Matrix-matrix product for CSR-matrix.
+
+    math::
+       C = alpha * A * B
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix): Sparse matrix A.
+        b (cupyx.scipy.sparse.csr_matrix): Sparse matrix B.
+        alpha (scalar): Coefficient
+
+    Returns:
+        cupyx.scipy.sparse.csr_matrix
+
+    """
+    if not check_availability('spgemm'):
+        raise RuntimeError('spgemm is not available.')
+
+    assert a.ndim == b.ndim == 2
+    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(a)))
+    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+        raise TypeError('unsupported type (actual: {})'.format(type(b)))
+    assert a.has_canonical_format
+    assert b.has_canonical_format
+    if a.shape[1] != b.shape[0]:
+        raise ValueError('mismatched shape')
+
+    m, k = a.shape
+    _, n = b.shape
+    a, b = _cast_common_type(a, b)
+    c_shape = (m, n)
+    c = cupyx.scipy.sparse.csr_matrix((c_shape), dtype=a.dtype)
+
+    handle = _device.get_cusparse_handle()
+    mat_a = SpMatDescriptor.create(a)
+    mat_b = SpMatDescriptor.create(b)
+    mat_c = SpMatDescriptor.create(c)
+    spgemm_descr = _cusparse.spGEMM_createDescr()
+    op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    alpha = _numpy.array(alpha, dtype=c.dtype).ctypes
+    beta = _numpy.array(0, dtype=c.dtype).ctypes
+    cuda_dtype = _dtype.to_cuda_dtype(c.dtype)
+    algo = _cusparse.CUSPARSE_SPGEMM_DEFAULT
+    null_ptr = 0
+
+    # Analyze the matrices A and B to understand the memory requirement
+    buff1_size = _cusparse.spGEMM_workEstimation(
+        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+        mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
+    buff1 = _cupy.empty(buff1_size, _cupy.int8)
+    _cusparse.spGEMM_workEstimation(
+        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+        mat_c.desc, cuda_dtype, algo, spgemm_descr, buff1_size, buff1.data.ptr)
+
+    # Compute the intermediate product of A and B
+    buff2_size = _cusparse.spGEMM_compute(
+        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+        mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
+    buff2 = _cupy.empty(buff2_size, _cupy.int8)
+    _cusparse.spGEMM_compute(
+        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+        mat_c.desc, cuda_dtype, algo, spgemm_descr, buff2_size, buff2.data.ptr)
+
+    # Prepare the arrays for matrix C
+    c_num_rows = _numpy.array(0, dtype='int64')
+    c_num_cols = _numpy.array(0, dtype='int64')
+    c_nnz = _numpy.array(0, dtype='int64')
+    _cusparse.spMatGetSize(mat_c.desc, c_num_rows.ctypes.data,
+                           c_num_cols.ctypes.data, c_nnz.ctypes.data)
+    assert c_shape[0] == int(c_num_rows)
+    assert c_shape[1] == int(c_num_cols)
+    c_nnz = int(c_nnz)
+    c_indptr = c.indptr
+    c_indices = _cupy.empty(c_nnz, 'i')
+    c_data = _cupy.empty(c_nnz, c.dtype)
+    _cusparse.csrSetPointers(mat_c.desc, c_indptr.data.ptr, c_indices.data.ptr,
+                             c_data.data.ptr)
+
+    # Copy the final product to the matrix C
+    _cusparse.spGEMM_copy(
+        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+        mat_c.desc, cuda_dtype, algo, spgemm_descr)
+    c = cupyx.scipy.sparse.csr_matrix((c_data, c_indices, c_indptr),
+                                      shape=c_shape)
+
+    _cusparse.spGEMM_destroyDescr(spgemm_descr)
+    return c

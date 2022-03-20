@@ -7,7 +7,7 @@ import cupy
 
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _util
-from cupyx.scipy.ndimage import filters
+from cupyx.scipy.ndimage import _filters
 
 
 @cupy.memoize(for_each_device=True)
@@ -633,8 +633,8 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
     if size is None and footprint is None and structure is None:
         raise ValueError('size, footprint or structure must be specified')
 
-    return filters._min_or_max_filter(input, size, footprint, structure,
-                                      output, mode, cval, origin, 'min')
+    return _filters._min_or_max_filter(input, size, footprint, structure,
+                                       output, mode, cval, origin, 'min')
 
 
 def grey_dilation(input, size=None, footprint=None, structure=None,
@@ -693,8 +693,8 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         if sz % 2 == 0:
             origin[i] -= 1
 
-    return filters._min_or_max_filter(input, size, footprint, structure,
-                                      output, mode, cval, origin, 'max')
+    return _filters._min_or_max_filter(input, size, footprint, structure,
+                                       output, mode, cval, origin, 'max')
 
 
 def grey_closing(input, size=None, footprint=None, structure=None,

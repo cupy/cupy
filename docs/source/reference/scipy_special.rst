@@ -15,6 +15,7 @@ Bessel functions
    j1
    y0
    y1
+   yn
    i0
    i0e
    i1
@@ -29,10 +30,34 @@ Raw statistical functions
 .. autosummary::
    :toctree: generated/
 
+   bdtr
+   bdtrc
+   bdtri
+   btdtr
+   btdtri
+   fdtr
+   fdtrc
+   fdtri
+   gdtr
+   gdtrc
+   nbdtr
+   nbdtrc
+   nbdtri
+   pdtr
+   pdtrc
+   pdtri
+   chdtr
+   chdtrc
+   chdtri
    ndtr
+   ndtri
    logit
    expit
    log_expit
+   boxcox
+   boxcox1p
+   inv_boxcox
+   inv_boxcox1p
 
 
 Information Theory functions
@@ -60,6 +85,10 @@ Gamma and related functions
    gammaincinv
    gammaincc
    gammainccinv
+   beta
+   betaln
+   betainc
+   betaincinv
    psi
    polygamma
    digamma
@@ -104,6 +133,17 @@ Convenience functions
 .. autosummary::
    :toctree: generated/
 
+   cbrt
+   exp10
+   exp2
+   radian
+   cosdg
+   sindg
+   tandg
+   cotdg
    log1p
+   expm1
+   round
    xlogy
    xlog1py
+   sinc

@@ -142,6 +142,7 @@ Arithmetic operations
    subtract
    true_divide
    floor_divide
+   float_power
    fmod
    mod
    modf
@@ -181,4 +182,5 @@ Miscellaneous
    fmax
    fmin
    nan_to_num
+   real_if_close
    interp

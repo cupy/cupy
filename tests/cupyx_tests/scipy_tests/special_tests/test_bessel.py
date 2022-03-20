@@ -7,7 +7,7 @@ import cupyx.scipy.special  # NOQA
 
 @testing.gpu
 @testing.with_requires('scipy')
-class TestSpecial(unittest.TestCase):
+class TestSpecial:
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
@@ -40,6 +40,16 @@ class TestSpecial(unittest.TestCase):
 
     def test_i1e(self):
         self.check_unary('i1e')
+
+    @testing.for_dtypes('iId', name='order_dtype')
+    @testing.for_dtypes('efd')
+    @testing.numpy_cupy_allclose(atol=1e-12, scipy_name='scp')
+    def test_yn(self, xp, scp, dtype, order_dtype):
+        import scipy.special  # NOQA
+
+        n = xp.arange(0, 10, dtype=order_dtype)
+        a = xp.linspace(-10, 10, 100, dtype=dtype)
+        return scp.special.yn(n[:, xp.newaxis], a[xp.newaxis, :])
 
 
 @testing.gpu

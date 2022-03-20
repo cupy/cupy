@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.22 and SciPy 1.7, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v11 is based on NumPy 1.22 and SciPy 1.8, and has been tested against the following versions:
 
 * `NumPy <https://numpy.org/>`_: v1.18 / v1.19 / v1.20 / v1.21 / v1.22
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7 / v1.8
 
     * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate deep neural network computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.1.0
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.2.0
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -95,13 +95,15 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda114``
    * - v11.5
      - ``$ pip install cupy-cuda115``
+   * - v11.6
+     - ``$ pip install cupy-cuda116``
 
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
    If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
-    $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
+    $ python -m cupyx.tools.install_library --cuda 11.6 --library cutensor
 
 .. note::
 
@@ -378,7 +380,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -416,8 +418,6 @@ Package names are different depending on your ROCm version.
 
    * - ROCm
      - Command
-   * - v4.0
-     - ``$ pip install cupy-rocm-4-0``
    * - v4.2
      - ``$ pip install cupy-rocm-4-2``
    * - v4.3

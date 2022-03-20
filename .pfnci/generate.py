@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 import shlex  # requires Python 3.8
 import sys
 
 import yaml
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 
-SchemaType = Dict[str, Any]
+SchemaType = Mapping[str, Any]
 
 
 class Matrix:
-    def __init__(self, record: Dict[str, str]):
-        self._rec = record
+    def __init__(self, record: Mapping[str, Any]):
+        self._rec = {
+            '_inherits': None,
+            '_extern': False,
+        }
+        self._rec.update(record)
 
-    def env(self):
+    def env(self) -> Dict[str, Any]:
         envvars = {}
         for k, v in self._rec.items():
             if not k.startswith('env:') or v is None:
@@ -25,15 +30,15 @@ class Matrix:
             envvars[k.split(':', 2)[1]] = v
         return envvars
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if key in self._rec:
             return self._rec[key]
-        raise AttributeError
+        raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
-    def copy(self):
+    def copy(self) -> 'Matrix':
         return Matrix(self._rec.copy())
 
-    def update(self, matrix: 'Matrix'):
+    def update(self, matrix: 'Matrix') -> None:
         self._rec.update(matrix._rec)
 
 
@@ -219,7 +224,7 @@ class LinuxGenerator:
                         f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
             return packages
         elif matrix.rocm is not None:
-            return self.schema['rocm'][matrix.rocm]['packages']
+            return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
         raise AssertionError
 
     def generate_script(self) -> str:
@@ -287,13 +292,13 @@ class CoverageGenerator:
         self.schema = schema
         self.matrixes = matrixes
 
-    def generate_markdown(self) -> Tuple[str, List[str]]:
+    def generate_rst(self) -> Tuple[str, List[str]]:
         # Generate a matrix table.
         table = [
             ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
             ['', 'System'] + [m.system for m in self.matrixes] + [''],
             ['', 'Target'] + [
-                f'[{m.target}][t{i}][🐳][d{i}][📜][s{i}]'
+                f'`{m.target} <t{i}_>`_ `🐳 <d{i}_>`_ `📜 <s{i}_>`_'
                 for i, m in enumerate(self.matrixes)
             ] + [''],
             [''] * (len(self.matrixes) + 3)
@@ -316,33 +321,27 @@ class CoverageGenerator:
                 if count == 0:
                     coverage_warns.append(f'Uncovered axis: {key} = {value}')
 
-        # Prepare markdown output.
+        # Prepare reST output.
         lines = [
-            '<!-- AUTO GENERATED: DO NOT EDIT! -->',
+            '.. AUTO GENERATED: DO NOT EDIT!',
             '',
-            '# CuPy CI Test Coverage',
+            'CuPy CI Test Coverage',
+            '=====================',
+            '',
+            '.. list-table::',
+            '   :header-rows: 3',
+            '   :stub-columns: 2',
             '',
         ]
 
-        # Render the matrix table as markdown.
-        widths = [
-            max([len(row[col_idx]) for row in table])
-            for col_idx in range(len(table[0]))
-        ]
-        for row_idx, row in enumerate(table):
+        # Render the matrix table as reST.
+        for row in table:
+            col0 = row[0]
             lines += [
-                '| ' + ' | '.join([
-                    ('{:<' + str(widths[col_idx]) + '}').format(row[col_idx])
-                    for col_idx in range(len(row))
-                ]) + ' |',
+                f'   * - {col0}',
+            ] + [
+                f'     - {col}' for col in row[1:]
             ]
-            if row_idx == 0:
-                lines += [
-                    '| ' + ' | '.join([
-                        '-' * widths[col_idx]
-                        for col_idx in range(len(row))
-                    ]) + ' |',
-                ]
 
         # Add links to FlexCI projects.
         lines += ['']
@@ -351,16 +350,28 @@ class CoverageGenerator:
             if hasattr(m, '_url'):
                 url = m._url
             lines += [
-                f'[t{i}]:{url}',
-                f'[d{i}]:{m.system}/tests/{m.target}.Dockerfile',
-                f'[s{i}]:{m.system}/tests/{m.target}.sh',
+                f'.. _t{i}: {url}',
+                f'.. _d{i}: {m.system}/tests/{m.target}.Dockerfile',
+                f'.. _s{i}: {m.system}/tests/{m.target}.sh',
             ]
         lines += ['']
 
         return '\n'.join(lines), coverage_warns
 
 
-def validate_schema(schema: SchemaType):
+class TagGenerator:
+    def __init__(self, matrixes: List[Matrix]):
+        self.matrixes = matrixes
+
+    def generate(self) -> str:
+        output = {}
+        for matrix in self.matrixes:
+            if matrix.tags is not None:
+                output[matrix.project] = matrix.tags
+        return json.dumps(output, indent=4)
+
+
+def validate_schema(schema: SchemaType) -> None:
     # Validate schema consistency
     for key, key_schema in schema.items():
         if key == 'os':
@@ -416,8 +427,14 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
                 f'{matrix.system}/{matrix.target}')
         system_target_seen.add((matrix.system, matrix.target))
 
+        if not hasattr(matrix, 'tags'):
+            raise ValueError(f'{matrix.project}: tags is missing')
+
     # Validate consistency for each matrix
     for matrix in matrixes:
+        if matrix._extern:
+            continue
+
         if matrix.cuda is None and matrix.rocm is None:
             raise ValueError(
                 f'{matrix.project}: Either cuda nor rocm must be non-null')
@@ -457,10 +474,12 @@ def validate_matrixes(schema: SchemaType, matrixes: List[Matrix]) -> None:
 
 def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
     prj2mat = {m.project: m for m in matrixes}
-    for matrix in [m for m in matrixes if hasattr(m, '_inherits')]:
+    for matrix in matrixes:
+        if matrix._inherits is None:
+            continue
         parent = prj2mat[matrix._inherits]
         log(f'Project {matrix.project} inherits from {parent.project}')
-        assert not hasattr(parent, '_inherits'), 'no nested inheritance'
+        assert parent._inherits is None, 'no nested inheritance'
         # Fill values missing in the matrix with parent's values
         inherited = parent.copy()
         inherited.update(matrix)
@@ -473,8 +492,8 @@ def log(msg: str) -> None:
 
 def parse_args(argv: List[str]) -> Any:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--schema', type=str, required=True)
-    parser.add_argument('-m', '--matrix', type=str, required=True)
+    parser.add_argument('-s', '--schema', type=str, default=None)
+    parser.add_argument('-m', '--matrix', type=str, default=None)
     parser.add_argument('-d', '--directory', type=str)
     parser.add_argument('-D', '--dry-run', action='store_true', default=False)
     return parser.parse_args()
@@ -482,6 +501,12 @@ def parse_args(argv: List[str]) -> Any:
 
 def main(argv: List[str]) -> int:
     options = parse_args(argv)
+
+    basedir = os.path.abspath(os.path.dirname(argv[0]))
+    if options.schema is None:
+        options.schema = os.path.join(basedir, 'schema.yaml')
+    if options.matrix is None:
+        options.matrix = os.path.join(basedir, 'matrix.yaml')
 
     log(f'Loading schema: {options.schema}')
     with open(options.schema) as f:
@@ -497,7 +522,14 @@ def main(argv: List[str]) -> int:
     validate_matrixes(schema, matrixes)
 
     output = {}
+
+    # Generate test assets
     for matrix in matrixes:
+        if matrix._extern:
+            log(
+                f'Skipping unmanaged project matrix: {matrix.project} '
+                f'(system: {matrix.system}, target: {matrix.target})')
+            continue
         log(
             f'Processing project matrix: {matrix.project} '
             f'(system: {matrix.system}, target: {matrix.target})')
@@ -512,9 +544,10 @@ def main(argv: List[str]) -> int:
         else:
             raise AssertionError
 
-    covgen = CoverageGenerator(schema, matrixes)
-    covout, warns = covgen.generate_markdown()
-    output['coverage.md'] = covout
+    # Generate coverage matrix
+    covgen = CoverageGenerator(schema, [m for m in matrixes if not m._extern])
+    covout, warns = covgen.generate_rst()
+    output['coverage.rst'] = covout
     if len(warns) != 0:
         log('----------------------------------------')
         log('Test coverage warnings:')
@@ -522,13 +555,15 @@ def main(argv: List[str]) -> int:
             log(f'* {w}')
         log('----------------------------------------')
 
+    # Generate tags
+    taggen = TagGenerator(matrixes)
+    output['config.tags.json'] = taggen.generate()
+
     # Write output files.
-    base_dir = (
-        options.directory if options.directory else
-        os.path.abspath(os.path.dirname(argv[0])))
+    out_basedir = options.directory if options.directory else basedir
     retval = 0
     for filename, content in output.items():
-        filepath = f'{base_dir}/{filename}'
+        filepath = f'{out_basedir}/{filename}'
         if options.dry_run:
             with open(filepath) as f:
                 if f.read() != content:

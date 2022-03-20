@@ -6,14 +6,14 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx.scipy.sparse import csc
-from cupyx.scipy.sparse import data
+from cupyx.scipy.sparse import _csc
+from cupyx.scipy.sparse import _data
 from cupyx.scipy.sparse import _util
 
 
 # TODO(leofang): The current implementation is CSC-based, which is troublesome
 # on ROCm/HIP. We should convert it to CSR-based for portability.
-class dia_matrix(data._data_matrix):
+class dia_matrix(_data._data_matrix):
 
     """Sparse matrix with DIAgonal storage.
 
@@ -150,7 +150,7 @@ class dia_matrix(data._data_matrix):
 
         """
         if self.data.size == 0:
-            return csc.csc_matrix(self.shape, dtype=self.dtype)
+            return _csc.csc_matrix(self.shape, dtype=self.dtype)
 
         num_rows, num_cols = self.shape
         num_offsets, offset_len = self.data.shape
@@ -172,7 +172,7 @@ class dia_matrix(data._data_matrix):
         indptr[offset_len + 1:] = indptr[offset_len]
         indices = row.T[mask.T].astype('i', copy=False)
         data = self.data.T[mask.T]
-        return csc.csc_matrix(
+        return _csc.csc_matrix(
             (data, indices, indptr), shape=self.shape, dtype=self.dtype)
 
     def tocsr(self, copy=False):

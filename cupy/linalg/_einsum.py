@@ -1,5 +1,6 @@
 import copy
 import itertools
+import operator
 import string
 import warnings
 
@@ -55,12 +56,14 @@ def _parse_int_subscript(list_subscript):
     for s in list_subscript:
         if s is Ellipsis:
             str_subscript += '@'
-        elif isinstance(s, int):
-            str_subscript += einsum_symbols[s]
         else:
-            raise TypeError(
-                'each subscript must be either an integer or an ellipsis'
-                ' to provide subscripts strings as lists')
+            try:
+                s = operator.index(s)
+            except TypeError as e:
+                raise TypeError(
+                    'For this input type lists must contain '
+                    'either int or Ellipsis') from e
+            str_subscript += einsum_symbols[s]
     return str_subscript
 
 
