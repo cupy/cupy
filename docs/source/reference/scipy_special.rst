@@ -79,6 +79,7 @@ Gamma and related functions
 
    gamma
    gammaln
+   loggamma
    gammainc
    gammaincinv
    gammaincc
@@ -88,7 +89,9 @@ Gamma and related functions
    betainc
    betaincinv
    psi
+   rgamma
    polygamma
+   multigammaln
    digamma
    poch
 

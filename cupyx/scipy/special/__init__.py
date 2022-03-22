@@ -47,6 +47,7 @@ from cupyx.scipy.special._convex_analysis import rel_entr  # NOQA
 # Gamma and related functions
 from cupyx.scipy.special._gamma import gamma  # NOQA
 from cupyx.scipy.special._gammaln import gammaln  # NOQA
+from cupyx.scipy.special._loggamma import loggamma  # NOQA
 from cupyx.scipy.special._gammasgn import gammasgn  # NOQA
 from cupyx.scipy.special._gammainc import gammainc  # NOQA
 from cupyx.scipy.special._gammainc import gammaincinv  # NOQA
@@ -57,7 +58,9 @@ from cupyx.scipy.special._beta import betaln  # NOQA
 from cupyx.scipy.special._beta import betainc  # NOQA
 from cupyx.scipy.special._beta import betaincinv  # NOQA
 from cupyx.scipy.special._digamma import digamma as psi  # NOQA
+from cupyx.scipy.special._gamma import rgamma  # NOQA
 from cupyx.scipy.special._polygamma import polygamma  # NOQA
+from cupyx.scipy.special._gammaln import multigammaln  # NOQA
 from cupyx.scipy.special._digamma import digamma  # NOQA
 from cupyx.scipy.special._poch import poch  # NOQA
 

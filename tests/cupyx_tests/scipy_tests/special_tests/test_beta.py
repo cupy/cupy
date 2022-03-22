@@ -1,6 +1,7 @@
 import numpy
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 
@@ -30,6 +31,10 @@ class TestBeta:
         b = testing.shaped_arange((10, 1), xp, dtype)
         return func(a, b)
 
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.is_hip and
+        cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000,
+        reason='ROCm/HIP fails in ROCm 4.x')
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
