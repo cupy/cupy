@@ -52,6 +52,11 @@ class TestMayShareMemory(unittest.TestCase):
         b = x[7:10]
         assert xp.may_share_memory(a, b) is True
 
+    def test_negative_strides(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((3, 3))
+            assert xp.may_share_memory(a[:2, 1::-1], a[1:, 1:]) is True
+
     @testing.numpy_cupy_equal()
     def test_touch_edge_false(self, xp):
         x = xp.arange(12)
