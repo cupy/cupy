@@ -646,3 +646,21 @@ class TestRaw(unittest.TestCase):
         x = cupy.zeros((1,), dtype=cupy.uint32)
         f((1,), (1,), (x,))
         assert x == N
+
+    @testing.multi_gpu(2)
+    def test_device_cache(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+
+        with device.Device(0):
+            x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+            y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+            f((5,), (6,), (x, y))
+            assert bool((x == y).all())
+        with device.Device(1):
+            x = testing.shaped_random((30,), dtype=numpy.int32, seed=2)
+            y = testing.shaped_random((30,), dtype=numpy.int32, seed=3)
+            f((5,), (6,), (x, y))
+            assert bool((x == y).all())
