@@ -196,6 +196,16 @@ class TestRavel(unittest.TestCase):
         assert b.flags.c_contiguous
         return b
 
+    @testing.for_orders('CFAK')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel_broadcasted2(self, xp, order):
+        a = testing.shaped_arange((2, 1), xp)
+        b = xp.broadcast_to(a, (3, 2, 4))
+        assert not b.flags.c_contiguous and not b.flags.f_contiguous
+        b = b.ravel(order)
+        assert b.flags.c_contiguous
+        return b
+
     @testing.numpy_cupy_array_equal()
     def test_external_ravel(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
