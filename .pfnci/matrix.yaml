@@ -485,7 +485,7 @@
 - project: "cupy.win.cuda116"
   _extern: true
   target: "cuda116"
-  tags: ["windows"]
+  tags: ["@push", "full", "mini", "windows"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

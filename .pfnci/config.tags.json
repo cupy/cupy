@@ -111,6 +111,9 @@
         "windows"
     ],
     "cupy.win.cuda116": [
+        "@push",
+        "full",
+        "mini",
         "windows"
     ],
     "cupy.linux.cuda-rapids": [
