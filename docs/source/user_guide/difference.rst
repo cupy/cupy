@@ -178,3 +178,4 @@ counterparts:
 
 The reason is that internally the reduction is performed in a strided fashion, thus it does not ensure a proper
 comparison order and cannot follow NumPy's rule to always propagate the first-encountered NaN.
+Note that this difference does not apply when CUB is enabled (CuPy v11+)
