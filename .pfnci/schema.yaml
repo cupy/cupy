@@ -366,6 +366,7 @@ cuda-python:
 ###############################################################################
 env:CUPY_ACCELERATORS:
   null:
+  "":
   "cub":
   "cutensor":
   "cub,cutensor":
