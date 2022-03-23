@@ -86,16 +86,21 @@ class _JitRawKernel:
                 raise TypeError(f'{type(x)} is not supported for RawKernel')
             in_types.append(t)
         in_types = tuple(in_types)
+        device_id = cupy.cuda.get_device_id()
 
-        kern = self._cache.get(in_types)
+        kern = self._cache.get((in_types, device_id))
         if kern is None:
-            result = _compile.transpile(
-                self._func,
-                ['extern "C"', '__global__'],
-                self._mode,
-                in_types,
-                _cuda_types.void,
-            )
+            result = self._cached_codes.get(in_types)
+            if result is None:
+                result = _compile.transpile(
+                    self._func,
+                    ['extern "C"', '__global__'],
+                    self._mode,
+                    in_types,
+                    _cuda_types.void,
+                )
+                self._cached_codes[in_types] = result
+
             fname = result.func_name
             # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
             # recognize "-D", so we have to compile using hipcc...
@@ -105,8 +110,7 @@ class _JitRawKernel:
                 options=('-DCUPY_JIT_MODE', '--std=c++11'),
                 backend=backend)
             kern = module.get_function(fname)
-            self._cache[in_types] = kern
-            self._cached_codes[in_types] = result.code
+            self._cache[(in_types, device_id)] = kern
 
         kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
 
@@ -133,7 +137,7 @@ class _JitRawKernel:
             warnings.warn(
                 'No codes are cached because compilation is deferred until '
                 'the first function call.')
-        return self._cached_codes
+        return [result.code for result in self._cached_codes]
 
     @property
     def cached_code(self):
