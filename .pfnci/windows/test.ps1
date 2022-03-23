@@ -68,7 +68,7 @@ function Main {
     echo "Setting up test environment"
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools wheel
-    RunOrDie python -m pip install Cython scipy optuna
+    RunOrDie python -m pip install Cython scipy optuna hypothesis
     RunOrDie python -m pip freeze
 
     echo "Building..."
