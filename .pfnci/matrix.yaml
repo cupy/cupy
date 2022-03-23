@@ -105,7 +105,7 @@
   optuna: "2"
   cython: "0.29"
   cuda-python: null
-  env:CUPY_ACCELERATORS: null
+  env:CUPY_ACCELERATORS: ""
   test: "unit"
 
 # CUDA 11.2 (Multi-GPU) | Linux
@@ -359,7 +359,7 @@
   optuna: "2"
   cython: "0.29"
   cuda-python: null
-  env:CUPY_ACCELERATORS: null
+  env:CUPY_ACCELERATORS: ""
   test: "example"
 
 ###############################################################################
