@@ -71,7 +71,7 @@ Here are the environment variables that CuPy uses at runtime.
 
 .. envvar:: CUPY_ACCELERATORS
 
-  Default: ``"cub"`` (In ROCm HIP environment, the default value is ``""``. i.e., no accelerator is used.)
+  Default: ``"cub"`` (In ROCm HIP environment, the default value is ``""``. i.e., no accelerators are used.)
 
   A comma-separated string of backend names (``cub`` or ``cutensor``) which indicates the acceleration backends used in CuPy operations and its priority.
   All accelerators are disabled by default.

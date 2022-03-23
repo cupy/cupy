@@ -107,7 +107,7 @@ In any case, we recommend to perform some benchmarks to determine whether CUB/cu
 better performance or not.
 
 .. note::
-   CuPy v11 and above uses CUB by default. If you sets ``CUPY_ACCELERATORS=""`` it will be disabled.
+   CuPy v11 and above uses CUB by default. To turn it off, you need to explicitly specify the environment variable ``CUPY_ACCELERATORS=""``.
 
 
 Overlapping work using streams
