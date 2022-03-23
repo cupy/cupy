@@ -127,9 +127,9 @@ cdef ndarray _ndarray_flatten(ndarray self):
 
 
 cdef ndarray _ndarray_ravel(ndarray self, order):
-    # TODO(beam2d, grlee77): Support K ordering option
     cdef int order_char
     cdef shape_t shape
+    cdef vector.vector[Py_ssize_t] axes
     shape.push_back(self.size)
 
     order_char = internal._normalize_order(order, True)
@@ -143,8 +143,14 @@ cdef ndarray _ndarray_ravel(ndarray self, order):
     elif order_char == b'F':
         return _reshape(_T(self), shape)
     elif order_char == b'K':
-        raise NotImplementedError(
-            'ravel with order=\'K\' not yet implemented.')
+        # large abs stride comes first
+        stride_and_index = [
+            (-abs(s), i) for i, s in enumerate(self.strides)]
+        stride_and_index.sort()
+        axes.reserve(self.ndim)
+        for _, i in stride_and_index:
+            axes.push_back(i)
+        return _reshape(_transpose(self, axes), shape)
 
 
 cdef ndarray _ndarray_squeeze(ndarray self, axis):
