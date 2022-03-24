@@ -376,6 +376,19 @@ _exists_kernel = _core.ElementwiseKernel(
     ''', name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
 
 
+_exists_and_searchsorted_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool invert',
+    'bool out, int64 y',
+    '''
+    const bool assume_increasing = true;
+    const bool side_is_right = false;
+    '''
+    + _searchsorted_code + '''
+    out = (y == n_bins ? false : bins[y] == x);
+    if (invert) out = !out;
+    ''', name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
+
+
 def searchsorted(a, v, side='left', sorter=None):
     """Finds indices where elements should be inserted to maintain order.
 
