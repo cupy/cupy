@@ -1,6 +1,7 @@
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
+from cupy._sorting import search as _search
 from cupy import _util
 
 
@@ -115,9 +116,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
     # Use brilliant searchsorted trick
     # https://github.com/cupy/cupy/pull/4018#discussion_r495790724
     ar2 = cupy.sort(ar2)
-    v1 = cupy.searchsorted(ar2, ar1, 'left')
-    v2 = cupy.searchsorted(ar2, ar1, 'right')
-    return v1 == v2 if invert else v1 != v2
+    return _search._exists_kernel(ar1, ar2, ar2.size, invert)
 
 
 def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
