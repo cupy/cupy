@@ -10,6 +10,7 @@ from cupyx.jit import _compile
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _cuda_types
 from cupyx.jit import _internal_types
+from cupyx.jit import _simulate
 
 
 class _CudaFunction:
@@ -127,6 +128,11 @@ class _JitRawKernel:
             block = (block, 1, 1)
         return lambda *args, **kwargs: self(grid, block, args, **kwargs)
 
+    def simulate(self, grid, block, args, **kwargs):
+        grid = (grid + (1, 1))[:3]
+        block = (block + (1, 1))[:3]
+        return _simulate.simulate(self._func, args, grid, block)
+
     @property
     def cached_codes(self):
         """Returns a dict that has input types as keys and codes values.
@@ -168,9 +174,10 @@ def rawkernel(*, mode='cuda', device=False):
 
 class _Dim3:
     def __init__(self, name):
-        self.x = _internal_types.Data(f'{name}.x', _cuda_types.uint32)
-        self.y = _internal_types.Data(f'{name}.y', _cuda_types.uint32)
-        self.z = _internal_types.Data(f'{name}.z', _cuda_types.uint32)
+        self._name = name
+        self._x = _internal_types.Data(f'{name}.x', _cuda_types.uint32)
+        self._y = _internal_types.Data(f'{name}.y', _cuda_types.uint32)
+        self._z = _internal_types.Data(f'{name}.z', _cuda_types.uint32)
         self.__doc__ = f"""dim3 {name}
 
         A namedtuple of three integers represents {name}.
@@ -180,6 +187,27 @@ class _Dim3:
             y (uint32): {name}.y
             z (uint32): {name}.z
         """
+
+    @property
+    def x(self):
+        dims = getattr(_simulate._thread_local, self._name, None)
+        if dims is None:
+            return self._x
+        return dims[0]
+
+    @property
+    def y(self):
+        dims = getattr(_simulate._thread_local, self._name, None)
+        if dims is None:
+            return self._y
+        return dims[1]
+
+    @property
+    def z(self):
+        dims = getattr(_simulate._thread_local, self._name, None)
+        if dims is None:
+            return self._z
+        return dims[2]
 
 
 threadIdx = _Dim3('threadIdx')
