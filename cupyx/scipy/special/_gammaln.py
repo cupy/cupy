@@ -2,7 +2,7 @@ import math
 
 import cupy
 from cupy import _core
-from cupyx.scipy.special._uarray import implements_ufuncs
+from cupyx.scipy.special._uarray import implements_ufuncs, implements
 
 
 gammaln = _core.create_ufunc(
@@ -29,6 +29,8 @@ gammaln = _core.create_ufunc(
 
 implements_ufuncs(gammaln, 'gammaln')
 
+
+@implements('multigammaln')
 def multigammaln(a, d):
     r"""Returns the log of multivariate gamma, also sometimes called the
     generalized gamma.
@@ -65,5 +67,3 @@ def multigammaln(a, d):
     for j in range(2, d + 1):
         res += gammaln(a - (j - 1.0) / 2)
     return res
-
-implements_ufuncs(multigammaln, 'multigammaln')

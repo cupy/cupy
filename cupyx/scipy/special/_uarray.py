@@ -56,5 +56,9 @@ def implements(scipy_func_name):
 
 def implements_ufuncs(cp_func, func_name):
     """This adds function to the dictionary of implemented functions"""
-    scipy_func = getattr(_scipy_special, func_name)
-    _implemented[scipy_func] = cp_func
+    scipy_func = (
+        _scipy_special and getattr(_scipy_special, func_name, None))
+    if scipy_func:
+        _implemented[scipy_func] = cp_func
+    else:
+        _notfound.append(func_name)
