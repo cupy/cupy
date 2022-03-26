@@ -27,7 +27,7 @@ def __ua_convert__(dispatchables, coerce):
         replaced = [d.value for d in dispatchables]
 
     if not all(d.type is not np.ndarray or isinstance(r, cupy.ndarray)
-               for r, d in zip(replaced, dispatchables)):
+               or r is None for r, d in zip(replaced, dispatchables)):
         return NotImplemented
 
     return replaced
