@@ -3,6 +3,7 @@ import warnings
 import cupy
 from cupy._core import internal
 
+
 def insert(arr, obj, values, axis=None):
     arr = cupy.asarray(arr)
     ndim = arr.ndim
@@ -42,8 +43,9 @@ def insert(arr, obj, values, axis=None):
                              f'with size {N}')
         if (index < 0):
             index += N
-        
-        values = cupy.array(values, copy=False, ndmin=arr.ndim, dtype=arr.dtype)
+
+        values = cupy.array(values, copy=False,
+                            ndmin=arr.ndim, dtype=arr.dtype)
         if indices.ndim == 0:
             # broadcasting is very different here, since a[:,0,:] = ... behaves
             # very different from a[:,[0],:] = ...! This changes values so that
@@ -60,7 +62,7 @@ def insert(arr, obj, values, axis=None):
         slobj2 = [slice(None)] * ndim
         slobj2[axis] = slice(index, None)
         new[tuple(slobj)] = arr[tuple(slobj2)]
-    
+
         return new
 
     elif indices.size == 0 and not isinstance(obj, cupy.ndarray):
@@ -69,7 +71,7 @@ def insert(arr, obj, values, axis=None):
     indices[indices < 0] += N
 
     numnew = len(indices)
-    order = indices.argsort()   
+    order = indices.argsort()
     indices[order] += cupy.arange(numnew)
 
     newshape[axis] += numnew
@@ -84,4 +86,3 @@ def insert(arr, obj, values, axis=None):
     new[tuple(slobj2)] = arr
 
     return new
-        
