@@ -9,7 +9,7 @@ ACTIONS="$(dirname $0)/actions"
 
 export NVCC="ccache nvcc"
 
-export CUPY_ACCELERATORS="cub,cutensor"
+export CUPY_ACCELERATORS="cutensor,cub"
 
 "$ACTIONS/build.sh"
 "$ACTIONS/benchmark.sh"
