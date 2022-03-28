@@ -234,6 +234,16 @@ class TestCopytoFromNumPyScalar:
             xp.copyto(dst, src, casting=casting, where=mask)
         return dst
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto_size_one(self, xp, dtype, casting):
+        dst = xp.zeros((2, 3, 4), dtype=dtype)
+        src = numpy.array([1], dtype=dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting)
+        return dst
+
 
 @pytest.mark.parametrize('shape', [(3, 2), (0,)])
 @pytest.mark.parametrize('where', [
