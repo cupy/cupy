@@ -433,24 +433,7 @@ configs {
   }
 }
 
-# BENCHMARK + HEAD
-configs {
-  key: "cupy.linux.benchmark"
-  value {
-    requirement {
-      cpu: 8
-      memory: 50
-      disk: 10
-      gpu: 1
-    }
-    time_limit: {
-      seconds: 21600
-    }
-    environment_variables { key: "GPU" value: "1" }
-    command: ".pfnci/linux/main-flexci.sh benchmark"
-  }
-}
-
+# BENCHMARK
 configs {
   key: "cupy.linux.benchmark.pr"
   value {
