@@ -466,6 +466,9 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
     # x here can be either numpy.ndarray or cupy.ndarray
     cdef strides_t strides
     # strides used when order='K' for astype, empty_like, etc.
+
+    # Note that there is different semantics of order='K'.
+    # See also `_routines_manipulation._npyiter_k_order_axes`.
     stride_and_index = [
         (abs(s), -i) for i, s in enumerate(x.strides)]
     stride_and_index.sort()

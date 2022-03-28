@@ -150,27 +150,34 @@ class TestReshape(unittest.TestCase):
 @testing.gpu
 class TestRavel(unittest.TestCase):
 
-    @testing.for_orders('CFA')
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
     def test_ravel(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(2, 0, 1)
         return a.ravel(order)
 
-    @testing.for_orders('CFA')
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
     def test_ravel2(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.ravel(order)
 
-    @testing.for_orders('CFA')
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
     def test_ravel3(self, xp, order):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = xp.asfortranarray(a)
         return a.ravel(order)
 
-    @testing.for_orders('CFA')
+    @testing.for_orders('CFAK')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel4(self, xp, order):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        a = a.transpose(0, 2, 1)[:, ::-2]
+        return a.ravel(order)
+
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
     def test_ravel_non_contiguous(self, xp, order):
         a = xp.arange(10)[::2]
@@ -179,12 +186,32 @@ class TestRavel(unittest.TestCase):
         assert b.flags.c_contiguous
         return b
 
-    @testing.for_orders('CFA')
+    @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
     def test_ravel_broadcasted(self, xp, order):
         a = xp.array([1])
         b = xp.broadcast_to(a, (10,))
         assert not b.flags.c_contiguous and not b.flags.f_contiguous
+        b = b.ravel(order)
+        assert b.flags.c_contiguous
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel_broadcasted2(self, xp, order):
+        a = testing.shaped_arange((2, 1), xp)
+        b = xp.broadcast_to(a, (3, 2, 4))
+        assert not b.flags.c_contiguous and not b.flags.f_contiguous
+        b = b.ravel(order)
+        assert b.flags.c_contiguous
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.for_orders('CF', name='a_order')
+    @testing.numpy_cupy_array_equal()
+    def test_ravel_broadcasted3(self, xp, order, a_order):
+        a = testing.shaped_arange((2, 1, 3), xp, order=a_order)
+        b = xp.broadcast_to(a, (2, 4, 3))
         b = b.ravel(order)
         assert b.flags.c_contiguous
         return b
