@@ -40,7 +40,6 @@ set -eu
 
 main() {
   if (( $# < 2 )); then
-    echo $#
     echo "${USAGE}"
     exit 1;
   fi
