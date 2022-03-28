@@ -2102,6 +2102,6 @@ CuPy CI Test Coverage
 .. _t22: https://ci.preferred.jp/cupy.linux.cuda11x-cuda-python/
 .. _d22: linux/tests/cuda11x-cuda-python.Dockerfile
 .. _s22: linux/tests/cuda11x-cuda-python.sh
-.. _t23: https://ci.preferred.jp/cupy.linux.benchmark/
+.. _t23: https://ci.preferred.jp/cupy.linux.benchmark.pr/
 .. _d23: linux/tests/benchmark.Dockerfile
 .. _s23: linux/tests/benchmark.sh

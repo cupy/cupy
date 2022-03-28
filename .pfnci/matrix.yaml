@@ -478,7 +478,7 @@
   tags: ["array-api"]
   system: "linux"
 
-- project: "cupy.linux.benchmark"
+- project: "cupy.linux.benchmark.pr"
   _inherits: "cupy.linux.cuda114"
   target: "benchmark"
   tags: ["benchmark"]

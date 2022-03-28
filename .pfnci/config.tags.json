@@ -123,7 +123,7 @@
     "cupy.linux.array-api": [
         "array-api"
     ],
-    "cupy.linux.benchmark": [
+    "cupy.linux.benchmark.pr": [
         "benchmark"
     ]
 }
