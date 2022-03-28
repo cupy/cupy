@@ -44,6 +44,18 @@ cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
 
 
 @cython.profile(False)
+cpdef inline void _check_not_bool(object x) except *:
+    if isinstance(x, (bool, numpy.bool_)):
+        raise TypeError('an integer is required')
+    if (
+        isinstance(x, numpy.ndarray)
+        and x.shape == ()
+        and x.dtype == numpy.bool_
+    ):
+        raise TypeError('an integer is required')
+
+
+@cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
         warnings.warn(
@@ -53,10 +65,19 @@ cpdef inline tuple get_size(object size):
         )
         return ()
     if cpython.PySequence_Check(size):
-        return tuple(size)
-    if isinstance(size, int):
-        return size,
-    raise ValueError('size should be None, collections.abc.Sequence, or int')
+        # A numpy.ndarray unconditionally succeeds in PySequence_Check as
+        # it implements __getitem__, but zero-dim one is an unsized object
+        # and fails to make a tuple from it.
+        try:
+            ret = tuple(size)
+        except TypeError:
+            _check_not_bool(size)
+            return size,
+        for x in ret:
+            _check_not_bool(x)
+        return ret
+    _check_not_bool(size)
+    return size,
 
 
 @cython.profile(False)
