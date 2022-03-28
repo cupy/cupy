@@ -276,6 +276,8 @@ class LinuxGenerator:
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
+        elif matrix.test == 'benchmark':
+            lines += ['"$ACTIONS/benchmark.sh"']
         else:
             raise AssertionError
 
