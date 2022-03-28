@@ -3,7 +3,6 @@ import warnings
 import numpy
 import cupy
 
-from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
@@ -147,8 +146,13 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
-includes = r'''
-// workaround for older HIP: line begins with #include
+if runtime.is_hip:
+    includes = r'''
+// workaround for HIP: line begins with #include
+#include <cupy/math_constants.h>\n
+'''
+else:
+    includes = r'''
 #include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
 
@@ -290,9 +294,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         name += '_with_structure'
     if has_mask:
         name += '_with_mask'
-    preamble = _CAST_FUNCTION + preamble
-    if runtime.is_hip and driver.get_build_version() < 5_00_00000:
-        preamble = includes + preamble
+    preamble = includes + _CAST_FUNCTION + preamble
     options += ('--std=c++11', '-DCUPY_USE_JITIFY')
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
