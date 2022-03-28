@@ -106,6 +106,9 @@ contiguous axes.
 In any case, we recommend to perform some benchmarks to determine whether CUB/cuTENSOR offers
 better performance or not.
 
+.. note::
+   CuPy v11 and above uses CUB by default. To turn it off, you need to explicitly specify the environment variable ``CUPY_ACCELERATORS=""``.
+
 
 Overlapping work using streams
 ------------------------------

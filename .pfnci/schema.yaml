@@ -366,6 +366,7 @@ cuda-python:
 ###############################################################################
 env:CUPY_ACCELERATORS:
   null:
+  "":
   "cub":
   "cutensor":
   "cub,cutensor":
@@ -379,3 +380,4 @@ test:
   "unit-multi":
   "unit-slow":
   "example":
+  "benchmark":

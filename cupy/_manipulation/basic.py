@@ -37,7 +37,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         src_dtype = numpy.dtype(type(src))
         can_cast = numpy.can_cast(src, dst.dtype, casting)
     elif isinstance(src, numpy.ndarray):
-        if src.shape != ():
+        if src.size != 1:
             raise ValueError(
                 'non-scalar numpy.ndarray cannot be used for copyto')
         src_dtype = src.dtype
