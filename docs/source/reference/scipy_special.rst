@@ -17,7 +17,9 @@ Bessel functions
    y1
    yn
    i0
+   i0e
    i1
+   i1e
 
 
 Raw statistical functions
