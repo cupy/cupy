@@ -4,6 +4,7 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda import stream as stream_module
 import cupy
@@ -164,8 +165,6 @@ class TestNdarrayDeepCopy(unittest.TestCase):
 
 
 _test_copy_multi_device_with_stream_src = r'''
-#include <ctime>
-
 extern "C" __global__
 void wait_and_write(long long *x) {
   clock_t start = clock();
@@ -209,8 +208,10 @@ class TestNdarrayCopy:
         reason='ROCm may work differently in async D2D copy with streams')
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
-        kern = cupy.RawKernel(
-            _test_copy_multi_device_with_stream_src, 'wait_and_write')
+        src = _test_copy_multi_device_with_stream_src
+        if runtime.is_hip and driver.get_build_version() >= 5_00_00000:
+            src = '#include <ctime>\n' + src
+        kern = cupy.RawKernel(src, 'wait_and_write')
 
         # Allocates a memory and launches the kernel on a device with its
         # stream.
