@@ -14,7 +14,8 @@ mkdir pr
 mv *.csv pr/
 
 pip uninstall -y cupy
-pip install cupy-cuda115
+git checkout master
+pip install --user -v .
 
 # Run benchmarks for master
 python prof.py benchmarks/bench_ufunc_cupy.py -c
