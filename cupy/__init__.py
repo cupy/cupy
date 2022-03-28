@@ -232,6 +232,7 @@ from cupy._creation.matrix import vander  # NOQA
 from cupy._functional.piecewise import piecewise  # NOQA
 from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib._shape_base import apply_along_axis  # NOQA
+from cupy.lib._function_base import insert  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
