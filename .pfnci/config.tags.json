@@ -123,10 +123,10 @@
     "cupy.linux.array-api": [
         "array-api"
     ],
-    "cupy.linux.benchmark.pr": [
+    "cupy.linux.benchmark.head": [
         "benchmark"
     ],
-    "cupy.linux.benchmark.head": [
-        "tags"
+    "cupy.linux.benchmark.pr": [
+        "benchmark"
     ]
 }
