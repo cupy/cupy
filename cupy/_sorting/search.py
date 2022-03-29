@@ -386,7 +386,8 @@ _exists_and_searchsorted_kernel = _core.ElementwiseKernel(
     + _searchsorted_code + '''
     out = (y == n_bins ? false : bins[y] == x);
     if (invert) out = !out;
-    ''', name='cupy_exists_and_searchsorted_kernel', preamble=_preamble+_hip_preamble)
+    ''', name='cupy_exists_and_searchsorted_kernel',
+    preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):
