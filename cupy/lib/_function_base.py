@@ -6,7 +6,7 @@ from cupy._core import internal
 
 def insert(arr, obj, values, axis=None):
     """Insert values along the given axis before the given indices.
-    
+
     Parameters
     ----------
     arr : cupy.ndarray
@@ -22,14 +22,14 @@ def insert(arr, obj, values, axis=None):
     axis : int, optional
         Axis along which to insert `values`.  If `axis` is None then `arr`
         is flattened first.
-    
+
     Returns
     -------
     out : cupy.ndarray
         A copy of `arr` with `values` inserted.  Note that `insert`
         does not occur in-place: a new array is returned. If
         `axis` is None, `out` is a flattened array.
-    
+
     Notes
     -----
     Note that for higher dimensional inserts `obj=0` behaves very different
