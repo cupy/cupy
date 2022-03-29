@@ -9,19 +9,23 @@ ls
 pushd performance
 python prof.py benchmarks/bench_ufunc_cupy.py -c
 
-mkdir pr
-mv *.csv pr/
+mkdir target
+mv *.csv target/
 
 # Run benchmarks for master branch
 # Since GCP instance may change and use diff gen processsors/GPUs
 # we just recompile and run to avoid false errors
 pip uninstall -y cupy
-git checkout master
+if [[ "${PULL_REQUEST:-}" == "" ]]; then
+    # For branches we compare against the latest release
+    git checkout tags/v11.0.0a2 -b v11.0.0a2
+else
+    git checkout master
+fi
 pip install --user -v .
-
 python prof.py benchmarks/bench_ufunc_cupy.py -c
-mkdir master
-mv *.csv master/
+mkdir baseline
+mv *.csv baseline/
 
 # Compare with current branch
 for bench in *.csv

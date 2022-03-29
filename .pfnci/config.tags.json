@@ -125,5 +125,8 @@
     ],
     "cupy.linux.benchmark.pr": [
         "benchmark"
+    ],
+    "cupy.linux.benchmark.head": [
+        "tags"
     ]
 }
