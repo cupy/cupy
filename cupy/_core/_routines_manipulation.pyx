@@ -126,10 +126,40 @@ cdef ndarray _ndarray_flatten(ndarray self):
     return newarray
 
 
+cdef vector.vector[Py_ssize_t] _npyiter_k_order_axes(strides_t& strides):
+    # output transpose axes such that
+    # x.flatten(order="K") == x.transpose(axes).flatten(order="C")
+    # by reproducing `npyiter_find_best_axis_ordering`
+    # in numpy/core/src/multiarray/nditer_constr.c
+
+    # Note that `flatten` and `ravel` should use this function for order="K",
+    # while `copy(order="K")` should use `internal._get_strides_for_order_K`.
+    cdef vector.vector[Py_ssize_t] axes
+    cdef Py_ssize_t stride0, stride1
+    cdef int ndim, i0, i1, ipos, k
+    ndim = strides.size()
+    for i0 in reversed(range(ndim)):
+        stride0 = abs(strides[i0])
+        if stride0 == 0:  # ambiguous
+            axes.insert(axes.begin(), i0)
+            continue
+        ipos = 0
+        for k, i1 in enumerate(axes):
+            stride1 = abs(strides[i1])
+            if stride1 == 0:  # ambiguous
+                continue
+            elif stride1 <= stride0:  # shouldswap = false
+                break
+            else:  # shouldswap = true
+                ipos = k + 1
+        axes.insert(axes.begin() + ipos, i0)
+    return axes
+
+
 cdef ndarray _ndarray_ravel(ndarray self, order):
-    # TODO(beam2d, grlee77): Support K ordering option
     cdef int order_char
     cdef shape_t shape
+    cdef vector.vector[Py_ssize_t] axes
     shape.push_back(self.size)
 
     order_char = internal._normalize_order(order, True)
@@ -143,8 +173,8 @@ cdef ndarray _ndarray_ravel(ndarray self, order):
     elif order_char == b'F':
         return _reshape(_T(self), shape)
     elif order_char == b'K':
-        raise NotImplementedError(
-            'ravel with order=\'K\' not yet implemented.')
+        axes = _npyiter_k_order_axes(self.strides)
+        return _reshape(_transpose(self, axes), shape)
 
 
 cdef ndarray _ndarray_squeeze(ndarray self, axis):

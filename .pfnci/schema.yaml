@@ -380,3 +380,4 @@ test:
   "unit-multi":
   "unit-slow":
   "example":
+  "benchmark":

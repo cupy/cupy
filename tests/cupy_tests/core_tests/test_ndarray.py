@@ -32,6 +32,13 @@ class TestNdarrayInit(unittest.TestCase):
         a = cupy.ndarray(3)
         assert a.shape == (3,)
 
+    def test_shape_not_integer(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError):
+                xp.ndarray(1.0)
+            with pytest.raises(TypeError):
+                xp.ndarray((1.0,))
+
     def test_shape_int_with_strides(self):
         dummy = cupy.ndarray(3)
         a = cupy.ndarray(3, strides=(0,), memptr=dummy.data)
