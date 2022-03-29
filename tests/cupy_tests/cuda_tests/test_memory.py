@@ -85,7 +85,15 @@ class TestUnownedMemory(unittest.TestCase):
         if self.specify_device_id:
             kwargs = {'device_id': device_id}
 
-        unowned_mem = memory.UnownedMemory(*args, **kwargs)
+        if cupy.cuda.runtime.is_hip and self.allocator is memory._malloc:
+            # In ROCm, it seems that `hipPointerGetAttributes()`, which is
+            # called in `UnownedMemory()`, requires an unmanaged device pointer
+            # that the current device must be the one on which the memory
+            # referred to by the pointer physically resides.
+            with device.Device(device_id):
+                unowned_mem = memory.UnownedMemory(*args, **kwargs)
+        else:
+            unowned_mem = memory.UnownedMemory(*args, **kwargs)
         assert unowned_mem.size == size
         assert unowned_mem.ptr == src_ptr
         assert unowned_mem.device_id == device_id

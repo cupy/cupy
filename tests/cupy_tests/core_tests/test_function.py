@@ -13,7 +13,8 @@ from cupy import testing
 def _compile_func(kernel_name, code):
     # workaround for hipRTC
     extra_source = core._get_header_source() if runtime.is_hip else None
-    mod = compiler._compile_module_with_cache(code, extra_source=extra_source)
+    mod = compiler._compile_module_with_cache(
+        code, options=('--std=c++11',), extra_source=extra_source)
     return mod.get_function(kernel_name)
 
 
@@ -133,7 +134,7 @@ extern "C" __global__ void get_struct_layout(
                                 unsigned long long *itemsize,
                                 unsigned long long *sizes,
                                 unsigned long long *offsets) {{
-    const custom_user_struct* ptr = NULL;
+    const custom_user_struct* ptr = nullptr;
 
     itemsize[0] = sizeof(custom_user_struct);
 

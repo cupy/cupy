@@ -6,6 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
+from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import _base
@@ -118,7 +119,13 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmv') and not runtime.is_hip:
+                if (
+                    cusparse.check_availability('csrmv')
+                    and (
+                        not runtime.is_hip
+                        or driver.get_build_version() >= 5_00_00000
+                    )
+                ):
                     # trans=True is buggy as of ROCm 4.2.0
                     csrmv = cusparse.csrmv
                 elif (cusparse.check_availability('spmv')
@@ -131,8 +138,13 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                if (cusparse.check_availability('csrmm2')
-                        and not runtime.is_hip):
+                if (
+                    cusparse.check_availability('csrmm2')
+                    and (
+                        not runtime.is_hip
+                        or driver.get_build_version() >= 5_00_00000
+                    )
+                ):
                     # trans=True is buggy as of ROCm 4.2.0
                     csrmm = cusparse.csrmm2
                 elif cusparse.check_availability('spmm'):

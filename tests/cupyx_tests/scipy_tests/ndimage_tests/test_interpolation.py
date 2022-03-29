@@ -188,7 +188,7 @@ class TestAffineTransform:
         return self._affine_transform(xp, scp, a, matrix)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1e-6, atol=1e-5, scipy_name='scp')
     @testing.with_requires('scipy>=1.6.0')
     def test_affine_transform_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
