@@ -7,6 +7,7 @@ from ._array_object import Array
 import cupy as np
 
 
+# Note: the descending keyword argument is new in this function
 def argsort(
     x: Array, /, *, axis: int = -1, descending: bool = False, stable: bool = True
 ) -> Array:
@@ -33,7 +34,7 @@ def argsort(
         res = max_i - res
     return Array._new(res)
 
-
+# Note: the descending keyword argument is new in this function
 def sort(
     x: Array, /, *, axis: int = -1, descending: bool = False, stable: bool = True
 ) -> Array:
