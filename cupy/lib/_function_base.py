@@ -5,6 +5,40 @@ from cupy._core import internal
 
 
 def insert(arr, obj, values, axis=None):
+    """Insert values along the given axis before the given indices.
+    
+    Parameters
+    ----------
+    arr : cupy.ndarray
+        Input array.
+    obj : int, slice or sequence of ints
+        Object that defines the index or indices before which `values` is
+        inserted.
+    values : cupy.ndarray
+        Values to insert into `arr`. If the type of `values` is different
+        from that of `arr`, `values` is converted to the type of `arr`.
+        `values` should be shaped so that ``arr[...,obj,...] = values``
+        is legal.
+    axis : int, optional
+        Axis along which to insert `values`.  If `axis` is None then `arr`
+        is flattened first.
+    
+    Returns
+    -------
+    out : cupy.ndarray
+        A copy of `arr` with `values` inserted.  Note that `insert`
+        does not occur in-place: a new array is returned. If
+        `axis` is None, `out` is a flattened array.
+    
+    Notes
+    -----
+    Note that for higher dimensional inserts `obj=0` behaves very different
+    from `obj=[0]` just like `arr[:,0,:] = values` is different from
+    `arr[:,[0],:] = values`.
+
+    .. seealso:: :func:`numpy.insert`
+    """
+
     arr = cupy.asarray(arr)
     ndim = arr.ndim
     arrorder = 'F' if arr.flags.fnc else 'C'
