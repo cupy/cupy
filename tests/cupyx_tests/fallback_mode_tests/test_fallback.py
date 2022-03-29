@@ -455,7 +455,7 @@ class TestArrayUnaryMethodsArray(unittest.TestCase):
 @testing.gpu
 class TestArrayArithmeticMethods(unittest.TestCase):
 
-    @numpy_fallback_array_equal()
+    @numpy_fallback_array_allclose(rtol=1e-6)
     def test_arithmetic_methods(self, xp):
         a = testing.shaped_random(self.shape, xp=xp, dtype=self.dtype)
         b = testing.shaped_random(self.shape, xp=xp, dtype=self.dtype, seed=5)
