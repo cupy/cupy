@@ -733,7 +733,7 @@ cdef class ndarray:
         """
         return _manipulation._ndarray_swapaxes(self, axis1, axis2)
 
-    cpdef ndarray flatten(self):
+    cpdef ndarray flatten(self, order='C'):
         """Returns a copy of the array flatten into one dimension.
 
         It currently supports C-order only.
@@ -744,8 +744,7 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.flatten`
 
         """
-        # TODO(beam2d): Support ordering option
-        return _manipulation._ndarray_flatten(self)
+        return _manipulation._ndarray_flatten(self, order)
 
     cpdef ndarray ravel(self, order='C'):
         """Returns an array flattened into one dimension.
