@@ -75,7 +75,7 @@ cdef extern from '../../cupy_backend.h' nogil:
         block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
 
     # Stream
-    int cuStreamGetCtx (Stream hStream, Context* pctx)
+    int cuStreamGetCtx(Stream hStream, Context* pctx)
 
     # Build-time version
     enum: CUDA_VERSION
