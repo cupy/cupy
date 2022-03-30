@@ -34,7 +34,7 @@ mv *.csv baseline/
 # Compare with current branch
 for bench in *.csv
 do
-    python regresion_detect.py master/${bench} pr/${bench}
+    python regresion_detect.py baseline/${bench} target/${bench}
 done
 
 popd
