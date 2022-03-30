@@ -497,6 +497,21 @@ cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
     check_status(status)
     return <intptr_t>ptr
 
+cpdef intptr_t mallocFromPoolAsync(
+        size_t size, intptr_t pool, intptr_t stream) except? 0:
+    cdef void* ptr
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support mallocFromPoolAsync')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMallocFromPoolAsync(
+            &ptr, size, <MemPool>pool, <driver.Stream>stream)
+    check_status(status)
+    return <intptr_t>ptr
+
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:

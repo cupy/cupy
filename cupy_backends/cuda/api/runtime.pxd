@@ -192,6 +192,7 @@ cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
 cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
                            unsigned int flags=*) except? 0
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
+cpdef intptr_t mallocFromPoolAsync(size_t, intptr_t, intptr_t) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
