@@ -1156,8 +1156,9 @@ class TestLOBPCG:
                                                cupy: %s''' % (stdout_numpy,
                                                               stdout_cupy)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-3, sp_name='sp',
-                                 contiguous_check=False)
+    @testing.numpy_cupy_allclose(
+        rtol=1e-5, atol=5e-3 if runtime.is_hip else 1e-3, sp_name='sp',
+        contiguous_check=False)
     def test_random_initial_float32(self, xp, sp):
         """Check lobpcg in float32 for specific initial.
         """
