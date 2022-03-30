@@ -12,6 +12,14 @@ cdef class PointerAttributes:
         readonly intptr_t hostPointer
         readonly int type
 
+cdef class MemPoolProps:
+    # flatten the struct & list meaningful members
+    cdef:
+        int allocType
+        int handleType
+        int locationType
+        int devId
+
 
 ###############################################################################
 # Types and Enums
@@ -64,6 +72,8 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaMemPool_t MemPool
 
     ctypedef cudaMemPoolAttr MemPoolAttr
+
+    ctypedef cudaMemPoolProps _MemPoolProps
 
     ctypedef cudaPointerAttributes _PointerAttributes
 
@@ -237,6 +247,7 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)
+cpdef intptr_t memPoolCreate(MemPoolProps) except? 0
 cpdef memPoolTrimTo(intptr_t, size_t)
 cpdef memPoolGetAttribute(intptr_t, int)
 cpdef memPoolSetAttribute(intptr_t, int, object)

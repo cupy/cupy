@@ -10,6 +10,7 @@ There are four differences compared to the original C API.
 
 """
 from libc.stdint cimport uint64_t
+from libc.string cimport memset as c_memset
 
 import threading as _threading
 
@@ -743,6 +744,27 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
     with nogil:
         status = cudaDeviceSetMemPool(device, <MemPool>pool)
     check_status(status)
+
+cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolTrimTo')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+
+    cdef MemPool pool
+    cdef _MemPoolProps props_c
+    c_memset(&props_c, 0, sizeof(_MemPoolProps))
+    props_c.allocType = <MemAllocationType>props.allocType
+    props_c.handleTypes = <MemAllocationHandleType>props.handleType
+    props_c.location.type = <MemLocationType>props.locationType
+    props_c.location.id = props.devId
+
+    with nogil:
+        status = cudaMemPoolCreate(&pool, &props_c)
+    check_status(status)
+    return <intptr_t>pool
 
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
     if _is_hip_environment:

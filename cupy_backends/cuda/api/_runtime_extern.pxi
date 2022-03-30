@@ -95,6 +95,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaDeviceGetDefaultMemPool(MemPool*, int)
     int cudaDeviceGetMemPool(MemPool*, int)
     int cudaDeviceSetMemPool(int, MemPool)
+    int cudaMemPoolCreate(MemPool*, _MemPoolProps*)
     int cudaMemPoolTrimTo(MemPool, size_t)
     int cudaMemPoolGetAttribute(MemPool, MemPoolAttr, void*)
     int cudaMemPoolSetAttribute(MemPool, MemPoolAttr, void*)

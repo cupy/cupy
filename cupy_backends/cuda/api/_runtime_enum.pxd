@@ -79,6 +79,18 @@ cpdef enum:
     cudaMemPoolAttrUsedMemCurrent = 0x7
     cudaMemPoolAttrUsedMemHigh = 0x8
 
+    # cudaMemAllocationType
+    cudaMemAllocationTypePinned = 0x1
+
+    # cudaMemAllocationHandleType
+    cudaMemHandleTypeNone = 0x0
+    cudaMemHandleTypePosixFileDescriptor = 0x1
+    # cudaMemHandleTypeWin32 = 0x2
+    # cudaMemHandleTypeWin32Kmt = 0x4
+
+    # cudaMemLocationType
+    cudaMemLocationTypeDevice = 1
+
 
 # This was a legacy mistake: the prefix "cuda" should have been removed
 # so that we can directly assign their C counterparts here. Now because
