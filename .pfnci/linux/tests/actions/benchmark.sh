@@ -11,6 +11,7 @@ python3 prof.py benchmarks/bench_ufunc_cupy.py -c
 
 mkdir target
 mv *.csv target/
+popd
 
 # Run benchmarks for master branch
 # Since GCP instance may change and use diff gen processsors/GPUs
@@ -26,9 +27,11 @@ else
     git reset HEAD --hard
     git checkout master
 fi
+python3 -m pip install --user -v .
 
-python3 -m pip install --user -v ".[test]"
+pushd performance
 python3 prof.py benchmarks/bench_ufunc_cupy.py -c
+
 mkdir baseline
 mv *.csv baseline/
 
