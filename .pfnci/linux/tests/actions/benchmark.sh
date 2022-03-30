@@ -17,6 +17,9 @@ popd
 # Since GCP instance may change and use diff gen processsors/GPUs
 # we just recompile and run to avoid false errors
 python3 -m pip uninstall -y cupy
+
+git clone https://github.com/cupy/cupy cupy-baseline
+pushd cupy-baseline
 if [[ "${PULL_REQUEST:-}" == "" ]]; then
     # For branches we compare against the latest release
     # TODO(ecastill) find a programatical way of doing this
@@ -28,8 +31,8 @@ else
     git checkout master
 fi
 python3 -m pip install --user -v .
+popd
 
-pushd performance
 python3 prof.py benchmarks/bench_ufunc_cupy.py -c
 
 mkdir baseline
