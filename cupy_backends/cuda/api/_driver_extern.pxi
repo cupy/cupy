@@ -73,5 +73,8 @@ cdef extern from '../../cupy_backend.h' nogil:
         int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize
         block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
 
+    # Stream
+    int cuStreamGetCtx (Stream hStream, Context* pctx)
+
     # Build-time version
     enum: CUDA_VERSION

@@ -38,6 +38,12 @@ class TestDriver(unittest.TestCase):
         # context pointer.
         assert 0 != self._result1
 
+    def test_streamGetCtx(self):
+        s = cupy.cuda.Stream()
+        ctx = driver.streamGetCtx(s.ptr)
+        ctx2 = driver.ctxGetCurrent()
+        assert ctx == ctx2
+
 
 class TestExceptionPicklable(unittest.TestCase):
 

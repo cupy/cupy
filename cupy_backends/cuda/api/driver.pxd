@@ -109,3 +109,9 @@ cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
 
 cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
                                      int blockSizeLimit)
+
+###############################################################################
+# Stream management
+###############################################################################
+
+cpdef intptr_t streamGetCtx(intptr_t stream) except? 0

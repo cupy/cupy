@@ -388,3 +388,15 @@ cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
             NULL, dynamicSMemSize, blockSizeLimit)
     check_status(status)
     return minGridSize, blockSize
+
+
+###############################################################################
+# Stream management
+###############################################################################
+
+cpdef intptr_t streamGetCtx(intptr_t stream) except? 0:
+    cdef Context ctx
+    with nogil:
+        status = cuStreamGetCtx(<Stream>stream, &ctx)
+    check_status(status)
+    return <intptr_t>ctx
