@@ -147,6 +147,8 @@ to use these functions.
    cupy.cuda.runtime.deviceGetDefaultMemPool
    cupy.cuda.runtime.deviceGetMemPool
    cupy.cuda.runtime.deviceSetMemPool
+   cupy.cuda.runtime.memPoolCreate
+   cupy.cuda.runtime.memPoolDestroy
    cupy.cuda.runtime.memPoolTrimTo
    cupy.cuda.runtime.getDeviceCount
    cupy.cuda.runtime.setDevice
@@ -160,6 +162,7 @@ to use these functions.
    cupy.cuda.runtime.malloc3DArray
    cupy.cuda.runtime.mallocArray
    cupy.cuda.runtime.mallocAsync
+   cupy.cuda.runtime.mallocFromPoolAsync
    cupy.cuda.runtime.hostAlloc
    cupy.cuda.runtime.hostRegister
    cupy.cuda.runtime.hostUnregister

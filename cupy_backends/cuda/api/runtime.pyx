@@ -756,11 +756,11 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
 
 cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
     if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolTrimTo')
+        raise RuntimeError('HIP does not support memPoolCreate')
     if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+        raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
     if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
-        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+        raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
 
     cdef MemPool pool
     cdef _MemPoolProps props_c
@@ -777,11 +777,11 @@ cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
 
 cpdef memPoolDestroy(intptr_t pool):
     if _is_hip_environment:
-        raise RuntimeError('HIP does not support memPoolTrimTo')
+        raise RuntimeError('HIP does not support memPoolDestroy')
     if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+        raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
     if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
-        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+        raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
     with nogil:
         status = cudaMemPoolDestroy(<MemPool>pool)
     check_status(status)
