@@ -11,6 +11,7 @@ cdef extern from '../../cupy_backend.h' nogil:
     int cuCtxSetCurrent(Context ctx)
     int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
     int cuCtxDestroy(Context ctx)
+    int cuCtxGetDevice(Device*)
 
     # Module load and kernel execution
     int cuLinkCreate(unsigned int numOptions, CUjit_option* options,

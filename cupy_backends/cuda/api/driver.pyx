@@ -136,6 +136,13 @@ cpdef ctxDestroy(intptr_t ctx):
         status = cuCtxDestroy(<Context>ctx)
     check_status(status)
 
+cpdef int ctxGetDevice() except? -1:
+    cdef Device dev
+    with nogil:
+        status = cuCtxGetDevice(&dev)
+    check_status(status)
+    return dev
+
 
 ###############################################################################
 # Module load and kernel execution

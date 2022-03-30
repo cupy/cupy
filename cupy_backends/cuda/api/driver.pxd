@@ -50,6 +50,7 @@ cpdef intptr_t ctxGetCurrent() except? 0
 cpdef ctxSetCurrent(intptr_t ctx)
 cpdef intptr_t ctxCreate(Device dev) except? 0
 cpdef ctxDestroy(intptr_t ctx)
+cpdef int ctxGetDevice() except? -1
 
 ###############################################################################
 # Module load and kernel execution
