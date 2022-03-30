@@ -248,6 +248,7 @@ cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)
 cpdef intptr_t memPoolCreate(MemPoolProps) except? 0
+cpdef memPoolDestroy(intptr_t)
 cpdef memPoolTrimTo(intptr_t, size_t)
 cpdef memPoolGetAttribute(intptr_t, int)
 cpdef memPoolSetAttribute(intptr_t, int, object)

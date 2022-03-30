@@ -33,6 +33,15 @@ cdef class PointerAttributes:
         self.devicePointer = devicePointer
         self.hostPointer = hostPointer
 
+cdef class MemPoolProps:
+
+    def __init__(
+            self, int allocType, int handleType, int locationType, int devId):
+        self.allocType = allocType
+        self.handleType = handleType
+        self.locationType = locationType
+        self.devId = devId
+
 
 ###############################################################################
 # Thread-local storage
@@ -765,6 +774,17 @@ cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
         status = cudaMemPoolCreate(&pool, &props_c)
     check_status(status)
     return <intptr_t>pool
+
+cpdef memPoolDestroy(intptr_t pool):
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolTrimTo')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMemPoolDestroy(<MemPool>pool)
+    check_status(status)
 
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
     if _is_hip_environment:

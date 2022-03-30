@@ -23,3 +23,12 @@ class TestMemPool:
         ptr = runtime.mallocFromPoolAsync(128, pool, s.ptr)
         assert ptr > 0
         runtime.freeAsync(ptr, s.ptr)
+
+    def test_create_destroy(self):
+        props = runtime.MemPoolProps(
+            runtime.cudaMemAllocationTypePinned,
+            runtime.cudaMemHandleTypeNone,
+            runtime.cudaMemLocationTypeDevice,
+            0)  # on device 0
+        pool = runtime.memPoolCreate(props)
+        runtime.memPoolDestroy(pool)
