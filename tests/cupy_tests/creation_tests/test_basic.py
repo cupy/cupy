@@ -1,5 +1,6 @@
 import numpy
 import pytest
+import warnings
 
 import cupy
 from cupy import testing
@@ -255,10 +256,13 @@ class TestBasic:
     def test_full_default_dtype(self, xp, dtype, order):
         return xp.full((2, 3, 4), xp.array(1, dtype=dtype), order=order)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal()
-    def test_full_default_dtype_cpu_input(self, xp, dtype):
-        return xp.full((2, 3, 4), numpy.array(1, dtype=dtype))
+    def test_full_dtypes_cpu_input(self, xp, dtype1, dtype2):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            return xp.full(
+                (2, 3, 4), numpy.array(1, dtype=dtype1), dtype=dtype2)
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
@@ -266,6 +270,14 @@ class TestBasic:
     def test_full_like(self, xp, dtype, order):
         a = xp.ndarray((2, 3, 4), dtype=dtype)
         return xp.full_like(a, 1, order=order)
+
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal()
+    def test_full_like_dtypes_cpu_input(self, xp, dtype1, dtype2):
+        a = xp.ndarray((2, 3, 4), dtype=dtype1)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            return xp.full_like(a, numpy.array(1, dtype=dtype1))
 
     def test_full_like_subok(self):
         a = cupy.ndarray((2, 3, 4))

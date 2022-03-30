@@ -47,6 +47,15 @@ Discrete Cosine and Sine Transforms (DST and DCT)
    dstn
    idstn
 
+Fast Hankel Transforms
+----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   fht
+   ifht
+
 Helper functions
 ----------------
 

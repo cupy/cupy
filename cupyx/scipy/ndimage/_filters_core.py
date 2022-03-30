@@ -3,6 +3,7 @@ import warnings
 import numpy
 import cupy
 
+from cupy_backends.cuda.api import runtime
 from cupy import _core
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
@@ -146,20 +147,25 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
-includes = r'''
+if runtime.is_hip:
+    includes = r'''
 // workaround for HIP: line begins with #include
+#include <cupy/math_constants.h>\n
+'''
+else:
+    includes = r'''
 #include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
+
+template<> struct std::is_floating_point<float16> : std::true_type {};
+template<> struct std::is_signed<float16> : std::true_type {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 '''
 
 
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
-template<> struct std::is_floating_point<float16> : std::true_type {};
-template<> struct std::is_signed<float16> : std::true_type {};
-template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
-
 template <class B, class A>
 __device__ __forceinline__
 typename std::enable_if<(!std::is_floating_point<A>::value
