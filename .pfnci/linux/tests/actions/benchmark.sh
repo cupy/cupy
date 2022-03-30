@@ -27,9 +27,9 @@ if [[ "${PULL_REQUEST:-}" == "" ]]; then
     # stable & master branches
     git checkout tags/v11.0.0a2 -b v11.0.0a2
 else
-    git reset HEAD --hard
     git checkout master
 fi
+git submodule --init
 python3 -m pip install --user -v .
 popd
 
