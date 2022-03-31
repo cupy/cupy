@@ -29,7 +29,7 @@ if [[ "${PULL_REQUEST:-}" == "" ]]; then
 else
     git checkout master
 fi
-git submodule --init
+git submodule update --init
 python3 -m pip install --user -v .
 popd
 
