@@ -27,8 +27,8 @@ class TestMemPool:
                         and driver.get_build_version() < 11020,
                         reason='cudaMemPool_t is supported since CUDA 11.2')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
-                            runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0,
-                        reason='cudaMemPool_t is not supported on device 0')
+        runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0,
+        reason='cudaMemPool_t is not supported on device 0')
     def test_mallocFromPoolAsync(self):
         # also test create/destroy a pool
         props = runtime.MemPoolProps(
