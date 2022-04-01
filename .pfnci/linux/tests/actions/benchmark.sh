@@ -11,7 +11,6 @@ python3 prof.py benchmarks/bench_ufunc_cupy.py -c
 
 mkdir target
 mv *.csv target/
-popd
 
 # Run benchmarks for master branch
 # Since GCP instance may change and use diff gen processsors/GPUs
