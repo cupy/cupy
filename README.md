@@ -55,7 +55,7 @@ Choose the right package for your platform.
 
 (\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
 
-Use `-f https://pip.cupy.dev/pre` option to install pre-releases (e.g., `pip install cupy-cuda116 -f https://pip.cupy.dev/pre`).
+Use `--pre -f https://pip.cupy.dev/pre` option to install pre-releases (e.g., `pip install cupy-cuda116 --pre -f https://pip.cupy.dev/pre`).
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 
 ## Run on Docker
