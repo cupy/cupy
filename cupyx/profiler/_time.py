@@ -26,6 +26,14 @@ class _PerfCaseResult:
         self._ts = ts
         self._devices = devices
 
+    def __repr__(self) -> str:
+        """ Returns a string representation of the object.
+
+        Returns:
+            str: A string representation of the object.
+        """
+        return f'name: {self.name}, ts: {self._ts}, devices: {self._devices}'
+
     @property
     def cpu_times(self):
         """ Returns an array of CPU times of size ``n_repeat``. """
