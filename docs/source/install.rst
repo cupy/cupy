@@ -107,7 +107,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Use ``pip install cupy-cudaXXX -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
+   Use ``pip install cupy-cudaXXX --pre -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
@@ -380,7 +380,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3 / v5.0
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -422,6 +422,8 @@ Package names are different depending on your ROCm version.
      - ``$ pip install cupy-rocm-4-2``
    * - v4.3
      - ``$ pip install cupy-rocm-4-3``
+   * - v5.0
+     - ``$ pip install cupy-rocm-5-0``
 
 Building CuPy for ROCm From Source
 ----------------------------------

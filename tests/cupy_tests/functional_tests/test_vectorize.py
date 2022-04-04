@@ -79,7 +79,8 @@ class TestVectorizeOps(unittest.TestCase):
         return self.run_div(my_floor_div, xp, [dtype1, dtype2])
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(
+        rtol=1e-6, atol=1e-6, accept_error=TypeError)
     def test_vectorize_mod(self, xp, dtype1, dtype2):
         def my_mod(x, y):
             return x % y

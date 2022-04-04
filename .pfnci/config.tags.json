@@ -122,5 +122,8 @@
     ],
     "cupy.linux.array-api": [
         "array-api"
+    ],
+    "cupy.linux.benchmark.pr": [
+        "benchmark"
     ]
 }
