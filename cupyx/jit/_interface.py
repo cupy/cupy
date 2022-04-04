@@ -100,6 +100,11 @@ class _JitRawKernel:
                     in_types,
                     _cuda_types.void,
                 )
+
+                # TODO: auto detect this
+                code = '#include <cooperative_groups.h>\nnamespace cg = cooperative_groups;\n' + result.code
+                result = _compile.Result(result.func_name, code, result.return_type)
+
                 self._cached_codes[in_types] = result
 
             fname = result.func_name
