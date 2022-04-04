@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -7,27 +5,21 @@ import cupy
 from cupy import testing
 
 
-@testing.parameterize(*testing.product({
-    'shape': [(2, 3), (), (4,)],
-}))
-@testing.gpu
-class TestShape(unittest.TestCase):
+@pytest.mark.parametrize('shape', [(2, 3), (), (4,)])
+class TestShape:
 
-    def test_shape(self):
-        shape = self.shape
+    def test_shape(self, shape):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(shape, xp)
             assert cupy.shape(a) == shape
 
-    def test_shape_list(self):
-        shape = self.shape
+    def test_shape_list(self, shape):
         a = testing.shaped_arange(shape, numpy)
         a = a.tolist()
         assert cupy.shape(a) == shape
 
 
-@testing.gpu
-class TestReshape(unittest.TestCase):
+class TestReshape:
 
     def test_reshape_strides(self):
         def func(xp):
@@ -147,8 +139,7 @@ class TestReshape(unittest.TestCase):
                 self._test_ndim_limit(xp, 33, dtype, order)
 
 
-@testing.gpu
-class TestRavel(unittest.TestCase):
+class TestRavel:
 
     @testing.for_orders('CFAK')
     @testing.numpy_cupy_array_equal()
@@ -223,26 +214,27 @@ class TestRavel(unittest.TestCase):
         return xp.ravel(a)
 
 
-@testing.parameterize(*testing.product({
-    'order_init': ['C', 'F'],
-    'order_reshape': ['C', 'F', 'A', 'c', 'f', 'a'],
-    'shape_in_out': [((2, 3), (1, 6, 1)),  # (shape_init, shape_final)
-                     ((6,), (2, 3)),
-                     ((3, 3, 3), (9, 3))],
-}))
-@testing.gpu
-class TestReshapeOrder(unittest.TestCase):
+@pytest.mark.parametrize('order_init', ['C', 'F'])
+@pytest.mark.parametrize('order_reshape', ['C', 'F', 'A', 'c', 'f', 'a'])
+@pytest.mark.parametrize('shape_in_out', [
+    ((2, 3), (1, 6, 1)),  # (shape_init, shape_final)
+    ((6,), (2, 3)),
+    ((3, 3, 3), (9, 3)),
+])
+class TestReshapeOrder:
 
-    def test_reshape_contiguity(self):
-        shape_init, shape_final = self.shape_in_out
+    def test_reshape_contiguity(
+        self, order_init, order_reshape, shape_in_out
+    ):
+        shape_init, shape_final = shape_in_out
 
         a_cupy = testing.shaped_arange(shape_init, xp=cupy)
-        a_cupy = cupy.asarray(a_cupy, order=self.order_init)
-        b_cupy = a_cupy.reshape(shape_final, order=self.order_reshape)
+        a_cupy = cupy.asarray(a_cupy, order=order_init)
+        b_cupy = a_cupy.reshape(shape_final, order=order_reshape)
 
         a_numpy = testing.shaped_arange(shape_init, xp=numpy)
-        a_numpy = numpy.asarray(a_numpy, order=self.order_init)
-        b_numpy = a_numpy.reshape(shape_final, order=self.order_reshape)
+        a_numpy = numpy.asarray(a_numpy, order=order_init)
+        b_numpy = a_numpy.reshape(shape_final, order=order_reshape)
 
         assert b_cupy.flags.f_contiguous == b_numpy.flags.f_contiguous
         assert b_cupy.flags.c_contiguous == b_numpy.flags.c_contiguous

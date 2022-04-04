@@ -733,10 +733,18 @@ cdef class ndarray:
         """
         return _manipulation._ndarray_swapaxes(self, axis1, axis2)
 
-    cpdef ndarray flatten(self):
+    cpdef ndarray flatten(self, order='C'):
         """Returns a copy of the array flatten into one dimension.
 
-        It currently supports C-order only.
+        Args:
+            order ({'C', 'F', 'A', 'K'}):
+                'C' means to flatten in row-major (C-style) order.
+                'F' means to flatten in column-major (Fortran-
+                style) order. 'A' means to flatten in column-major
+                order if `self` is Fortran *contiguous* in memory,
+                row-major order otherwise. 'K' means to flatten
+                `self` in the order the elements occur in memory.
+                The default is 'C'.
 
         Returns:
             cupy.ndarray: A copy of the array with one dimension.
@@ -744,8 +752,7 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.flatten`
 
         """
-        # TODO(beam2d): Support ordering option
-        return _manipulation._ndarray_flatten(self)
+        return _manipulation._ndarray_flatten(self, order)
 
     cpdef ndarray ravel(self, order='C'):
         """Returns an array flattened into one dimension.
