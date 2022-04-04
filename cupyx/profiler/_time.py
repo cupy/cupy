@@ -32,7 +32,7 @@ class _PerfCaseResult:
         Returns:
             str: A string representation of the object.
         """
-        return f'name: {self.name}, ts: {self._ts}, devices: {self._devices}'
+        return self.to_str(show_gpu=True)
 
     @property
     def cpu_times(self):
