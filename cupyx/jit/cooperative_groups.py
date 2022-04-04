@@ -18,7 +18,17 @@ class ThreadGroup(TypeBase):
     def __str__(self):
         return f'{self.child_type}'
 
+    def _check_cg_include(self, env):
+        included = env.generated.cg_include
+        if included is False:
+            # prepend the header
+            env.generated.codes.insert(0,
+                "\n#include <cooperative_groups.h>\n"
+                "namespace cg = cooperative_groups;\n")
+            env.generated.cg_include = True
+
     def sync(self, env):
+        self._check_cg_include(env)
         return Data('sync()', void)
 
 
@@ -28,7 +38,13 @@ class GridGroup(ThreadGroup):
         self.child_type = 'cg::grid_group'
 
     def is_valid(self):
+        self._check_cg_include(env)
         raise NotImplementedError
+
+    def sync(self, env):
+        self._check_cg_include(env)
+        env.generated.enable_cg = True
+        return super().sync(env)
 
 
 class ThreadBlockGroup(ThreadGroup):

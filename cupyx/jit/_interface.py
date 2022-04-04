@@ -55,8 +55,7 @@ class _JitRawKernel:
         self._cached_codes = {}
 
     def __call__(
-            self, grid, block, args, shared_mem=0,
-            stream=None, enable_cooperative_groups=False):
+            self, grid, block, args, shared_mem=0, stream=None):
         """Calls the CUDA kernel.
 
         The compilation will be deferred until the first function call.
@@ -89,7 +88,7 @@ class _JitRawKernel:
         in_types = tuple(in_types)
         device_id = cupy.cuda.get_device_id()
 
-        kern = self._cache.get((in_types, device_id))
+        kern, enable_cg = self._cache.get((in_types, device_id), (None, None))
         if kern is None:
             result = self._cached_codes.get(in_types)
             if result is None:
@@ -100,14 +99,10 @@ class _JitRawKernel:
                     in_types,
                     _cuda_types.void,
                 )
-
-                # TODO: auto detect this
-                code = '#include <cooperative_groups.h>\nnamespace cg = cooperative_groups;\n' + result.code
-                result = _compile.Result(result.func_name, code, result.return_type)
-
                 self._cached_codes[in_types] = result
 
             fname = result.func_name
+            enable_cg = result.enable_cooperative_groups
             # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
             # recognize "-D", so we have to compile using hipcc...
             backend = 'nvcc' if runtime.is_hip else 'nvrtc'
@@ -116,9 +111,9 @@ class _JitRawKernel:
                 options=('-DCUPY_JIT_MODE', '--std=c++11'),
                 backend=backend)
             kern = module.get_function(fname)
-            self._cache[(in_types, device_id)] = kern
+            self._cache[(in_types, device_id)] = (kern, enable_cg)
 
-        kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
+        kern(grid, block, args, shared_mem, stream, enable_cg)
 
     def __getitem__(self, grid_and_block):
         """Numba-style kernel call.

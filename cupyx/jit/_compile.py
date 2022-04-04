@@ -27,7 +27,9 @@ _is_debug_mode = True
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
-Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
+Result = collections.namedtuple(
+    'Result',
+    ['func_name', 'code', 'return_type', 'enable_cooperative_groups'])
 
 
 class _JitCompileError(Exception):
@@ -140,6 +142,10 @@ class Generated:
         self.codes = []
         # (function, in_types) => Optional(function_name, return_type)
         self.device_function = {}
+        # whether to use cooperative launch
+        self.enable_cg = False
+        # whether to include cooperative_groups.h
+        self.cg_include = False
 
     def add_code(self, code: str) -> None:
         if code not in self.codes:
@@ -164,7 +170,10 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func, attributes, mode, in_types, ret_type, generated)
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
-    return Result(func_name=func_name, code=code, return_type=return_type)
+    enable_cg = generated.enable_cg
+    return Result(
+        func_name=func_name, code=code, return_type=return_type,
+        enable_cooperative_groups=enable_cg)
 
 
 def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
