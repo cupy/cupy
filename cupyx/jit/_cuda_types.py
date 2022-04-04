@@ -8,8 +8,13 @@ class TypeBase:
     def __str__(self):
         raise NotImplementedError
 
-    def declvar(self, x):
-        return f'{self} {x}'
+    def declvar(self, x, init):
+        if init is None:
+            return f'{self} {x}'
+        return f'{self} {x} = {init.code}'
+
+    def assign(self, var, value):
+        return f'{var.code} = {value.code}'
 
 
 class Void(TypeBase):
@@ -87,7 +92,8 @@ class SharedMem(ArrayBase):
         self._size = size
         super().__init__(child_type, 1)
 
-    def declvar(self, x):
+    def declvar(self, x, init):
+        assert init is None
         if self._size is None:
             return f'extern __shared__ {self.child_type} {x}[]'
         return f'__shared__ {self.child_type} {x}[{self._size}]'
