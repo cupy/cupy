@@ -1,4 +1,4 @@
-from cupyx.jit._cuda_types import TypeBase
+from cupyx.jit._cuda_types import TypeBase, void
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 
@@ -18,8 +18,8 @@ class ThreadGroup(TypeBase):
     def __str__(self):
         return f'{self.child_type}'
 
-    def sync(self):
-        raise NotImplementedError
+    def sync(self, env):
+        return Data('sync()', void)
 
 
 class GridGroup(ThreadGroup):

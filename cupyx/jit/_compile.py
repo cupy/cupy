@@ -15,13 +15,15 @@ from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
+from cupyx.jit.cooperative_groups import ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
+from cupyx.jit._internal_types import method_as_builtin_func
 from cupyx.jit import _builtin_funcs
 from cupyx.jit import _interface
 
 
-_is_debug_mode = False
+_is_debug_mode = True
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
@@ -676,6 +678,10 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+        # TODO(leofang): support arbitrary Python class methods
+        if isinstance(value.ctype, ThreadGroup):
+            return method_as_builtin_func(
+                value.code, getattr(value.ctype, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
