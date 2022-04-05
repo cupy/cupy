@@ -687,6 +687,9 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+        if isinstance(value.ctype, _interface._Dim3):
+            if expr.attr in ('x', 'y', 'z'):
+                return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)
         # TODO(leofang): support arbitrary Python class methods
         if isinstance(value.ctype, ThreadGroup):
             return method_as_builtin_func(

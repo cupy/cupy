@@ -166,20 +166,29 @@ def rawkernel(*, mode='cuda', device=False):
     return wrapper
 
 
-class _Dim3:
-    def __init__(self, name):
-        self.x = _internal_types.Data(f'{name}.x', _cuda_types.uint32)
-        self.y = _internal_types.Data(f'{name}.y', _cuda_types.uint32)
-        self.z = _internal_types.Data(f'{name}.z', _cuda_types.uint32)
-        self.__doc__ = f"""dim3 {name}
+class _Dim3(_cuda_types.TypeBase):
+    def __init__(self, name=None):
+        if name is not None:
+            self.x = _internal_types.Data(f'{name}.x', _cuda_types.uint32)
+            self.y = _internal_types.Data(f'{name}.y', _cuda_types.uint32)
+            self.z = _internal_types.Data(f'{name}.z', _cuda_types.uint32)
+            self.__doc__ = f"""dim3 {name}
 
-        A namedtuple of three integers represents {name}.
+            A namedtuple of three integers represents {name}.
 
-        Attributes:
-            x (uint32): {name}.x
-            y (uint32): {name}.y
-            z (uint32): {name}.z
-        """
+            Attributes:
+                x (uint32): {name}.x
+                y (uint32): {name}.y
+                z (uint32): {name}.z
+            """
+        else:
+            # a dim3 object is created via, e.g., a CUDA API call, in which
+            # case both the instance name and the attributes are resolved at
+            # the transpiling time
+            pass
+
+    def __str__(self):
+        return 'dim3'
 
 
 threadIdx = _Dim3('threadIdx')
