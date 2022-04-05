@@ -136,6 +136,7 @@ IF CUPY_HIP_VERSION > 0:
 
         cudaDevAttrCanMapHostMemory
         cudaDevAttrEccEnabled
+        cudaDevAttrMemoryPoolsSupported = 0
         # The following attributes do not exist in CUDA
         # hipDeviceAttributeCooperativeMultiDeviceUnmatchedFunc
         # hipDeviceAttributeCooperativeMultiDeviceUnmatchedGridDim
