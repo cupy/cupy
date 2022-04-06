@@ -2,6 +2,7 @@ import cupy
 from cupy.cuda import nccl
 from cupyx.distributed import _store
 from cupyx.distributed._comm import _Backend
+from cupyx.scipy.sparse import issparse
 
 
 try:
@@ -125,6 +126,12 @@ class NCCLBackend(_Backend):
                 'Only nccl.SUM is supported for complex arrays')
         return _nccl_ops[op]
 
+    def _dispatch_arg_type(self, function, args):
+        comm_class = _DenseNCCLCommunicator
+        if issparse(args[0]):
+            pass
+        getattr(comm_class, function)(self, *args)
+
     def all_reduce(self, in_array, out_array, op='sum', stream=None):
         """Performs an all reduce operation.
 
@@ -137,13 +144,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array)
-        op = self._get_op(op, in_array.dtype.char)
-        self._comm.allReduce(
-            in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
+        self._dispatch_arg_type(
+            'all_reduce', (in_array, out_array, op, stream))
 
     def reduce(self, in_array, out_array, root=0, op='sum', stream=None):
         """Performs a reduce operation.
@@ -160,15 +162,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(in_array)
-        if self.rank == root:
-            self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array)
-        op = self._get_op(op, in_array.dtype.char)
-        self._comm.reduce(
-            in_array.data.ptr, out_array.data.ptr,
-            count, dtype, op, root, stream)
+        self._dispatch_arg_type(
+            'reduce', (in_array, out_array, root, op, stream))
 
     def broadcast(self, in_out_array, root=0, stream=None):
         """Performs a broadcast operation.
@@ -182,12 +177,8 @@ class NCCLBackend(_Backend):
                 perform the communication.
         """
         # in_out_array for rank !=0 will be used as output
-        self._check_contiguous(in_out_array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_out_array)
-        self._comm.broadcast(
-            in_out_array.data.ptr, in_out_array.data.ptr,
-            count, dtype, root, stream)
+        self._dispatch_arg_type(
+            'broadcast', (in_out_array, root, stream))
 
     def reduce_scatter(
             self, in_array, out_array, count, op='sum', stream=None):
@@ -203,13 +194,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array, count)
-        op = self._get_op(op, in_array.dtype.char)
-        self._comm.reduceScatter(
-            in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
+        self._dispatch_arg_type(
+            'reduce_scatter', (in_array, out_array, count, op, stream))
 
     def all_gather(self, in_array, out_array, count, stream=None):
         """Performs an all gather operation.
@@ -224,12 +210,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array, count)
-        self._comm.allGather(
-            in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
+        self._dispatch_arg_type(
+            'all_gather', (in_array, out_array, count, stream))
 
     def send(self, array, peer, stream=None):
         """Performs a send operation.
@@ -240,13 +222,7 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(array)
-        self._send(array, peer, dtype, count, stream)
-
-    def _send(self, array, peer, dtype, count, stream=None):
-        self._comm.send(array.data.ptr, count, dtype, peer, stream)
+        self._dispatch_arg_type('send', (array, peer, stream))
 
     def recv(self, out_array, peer, stream=None):
         """Performs a receive operation.
@@ -257,16 +233,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        dtype, count = self._get_nccl_dtype_and_count(out_array)
-        self._recv(out_array, peer, dtype, count, stream)
+        self._dispatch_arg_type('recv', (out_array, peer, stream))
 
-    def _recv(self, out_array, peer, dtype, count, stream=None):
-        self._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
-
-    # TODO(ecastill) implement nccl missing calls combining the above ones
-    # AlltoAll, AllGather, and similar MPI calls that can be easily implemented
     def send_recv(self, in_array, out_array, peer, stream=None):
         """Performs a send and receive operation.
 
@@ -278,15 +246,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        idtype, icount = self._get_nccl_dtype_and_count(in_array)
-        odtype, ocount = self._get_nccl_dtype_and_count(out_array)
-        nccl.groupStart()
-        self._send(in_array, peer, idtype, icount, stream)
-        self._recv(out_array, peer, odtype, ocount, stream)
-        nccl.groupEnd()
+        self._dispatch_arg_type(
+            'send_recv', (in_array, out_array, peer, stream))
 
     def scatter(self, in_array, out_array, root=0, stream=None):
         """Performs a scatter operation.
@@ -299,22 +260,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        if in_array.shape[0] != self._n_devices:
-            raise RuntimeError(
-                f'scatter requires in_array to have {self._n_devices}'
-                f'elements in its first dimension, found {in_array.shape}')
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        nccl.groupStart()
-        if root == self.rank:
-            for i in range(self._n_devices):
-                array = in_array[i]
-                idtype, icount = self._get_nccl_dtype_and_count(array)
-                self._send(array, i, idtype, icount, stream)
-        dtype, count = self._get_nccl_dtype_and_count(out_array)
-        self._recv(out_array, root, dtype, count, stream)
-        nccl.groupEnd()
+        self._dispatch_arg_type(
+            'scatter', (in_array, out_array, root, stream))
 
     def gather(self, in_array, out_array, root=0, stream=None):
         """Performs a gather operation.
@@ -327,23 +274,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        # TODO(ecastill) out_array needs to have comm size in shape[0]
-        if out_array.shape[0] != self._n_devices:
-            raise RuntimeError(
-                f'gather requires out_array to have {self._n_devices}'
-                f'elements in its first dimension, found {out_array.shape}')
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        nccl.groupStart()
-        if root == self.rank:
-            for i in range(self._n_devices):
-                array = out_array[i]
-                odtype, ocount = self._get_nccl_dtype_and_count(array)
-                self._recv(array, i, odtype, ocount, stream)
-        dtype, count = self._get_nccl_dtype_and_count(in_array)
-        self._send(in_array, root, dtype, count, stream)
-        nccl.groupEnd()
+        self._dispatch_arg_type(
+            'gather', (in_array, out_array, root, stream))
 
     def all_to_all(self, in_array, out_array, stream=None):
         """Performs an all to all operation.
@@ -356,26 +288,8 @@ class NCCLBackend(_Backend):
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
-        # TODO(ecastill) out_array needs to have comm size in shape[0]
-        if out_array.shape[0] != self._n_devices:
-            raise RuntimeError(
-                f'all_to_all requires in_array to have {self._n_devices}'
-                f'elements in its first dimension, found {in_array.shape}')
-        if out_array.shape[0] != self._n_devices:
-            raise RuntimeError(
-                f'all_to_all requires out_array to have {self._n_devices}'
-                f'elements in its first dimension, found {out_array.shape}')
-        self._check_contiguous(in_array)
-        self._check_contiguous(out_array)
-        stream = self._get_stream(stream)
-        idtype, icount = self._get_nccl_dtype_and_count(in_array[0])
-        odtype, ocount = self._get_nccl_dtype_and_count(out_array[0])
-        # TODO check out dtypes are the same as in dtypes
-        nccl.groupStart()
-        for i in range(self._n_devices):
-            self._send(in_array[i], i, idtype, icount, stream)
-            self._recv(out_array[i], i, odtype, ocount, stream)
-        nccl.groupEnd()
+        self._dispatch_arg_type(
+            'all_to_all', (in_array, out_array, stream))
 
     def barrier(self):
         """Performs a barrier operation.
@@ -389,3 +303,153 @@ class NCCLBackend(_Backend):
             self._mpi_comm.Barrier()
         else:
             self._store_proxy.barrier()
+
+
+class _DenseNCCLCommunicator:
+
+    @classmethod
+    def all_reduce(cls, comm, in_array, out_array, op='sum', stream=None):
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(in_array)
+        op = comm._get_op(op, in_array.dtype.char)
+        comm._comm.allReduce(
+            in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
+
+    @classmethod
+    def reduce(cls, comm, in_array, out_array, root=0, op='sum', stream=None):
+        comm._check_contiguous(in_array)
+        if comm.rank == root:
+            comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(in_array)
+        op = comm._get_op(op, in_array.dtype.char)
+        comm._comm.reduce(
+            in_array.data.ptr, out_array.data.ptr,
+            count, dtype, op, root, stream)
+
+    @classmethod
+    def broadcast(cls, comm, in_out_array, root=0, stream=None):
+        comm._check_contiguous(in_out_array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(in_out_array)
+        comm._comm.broadcast(
+            in_out_array.data.ptr, in_out_array.data.ptr,
+            count, dtype, root, stream)
+
+    @classmethod
+    def reduce_scatter(
+            cls, comm, in_array, out_array, count, op='sum', stream=None):
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(in_array, count)
+        op = comm._get_op(op, in_array.dtype.char)
+        comm._comm.reduceScatter(
+            in_array.data.ptr, out_array.data.ptr, count, dtype, op, stream)
+
+    @classmethod
+    def all_gather(cls, comm, in_array, out_array, count, stream=None):
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(in_array, count)
+        comm._comm.allGather(
+            in_array.data.ptr, out_array.data.ptr, count, dtype, stream)
+
+    @classmethod
+    def send(cls, comm, array, peer, stream=None):
+        comm._check_contiguous(array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(array)
+        cls._send(comm, array, peer, dtype, count, stream)
+
+    @classmethod
+    def _send(cls, comm, array, peer, dtype, count, stream=None):
+        comm._comm.send(array.data.ptr, count, dtype, peer, stream)
+
+    @classmethod
+    def recv(cls, comm, out_array, peer, stream=None):
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        dtype, count = comm._get_nccl_dtype_and_count(out_array)
+        cls._recv(comm, out_array, peer, dtype, count, stream)
+
+    @classmethod
+    def _recv(cls, comm, out_array, peer, dtype, count, stream=None):
+        comm._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
+
+    @classmethod
+    def send_recv(cls, comm, in_array, out_array, peer, stream=None):
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        idtype, icount = comm._get_nccl_dtype_and_count(in_array)
+        odtype, ocount = comm._get_nccl_dtype_and_count(out_array)
+        nccl.groupStart()
+        cls._send(comm, in_array, peer, idtype, icount, stream)
+        cls._recv(comm, out_array, peer, odtype, ocount, stream)
+        nccl.groupEnd()
+
+    @classmethod
+    def scatter(cls, comm, in_array, out_array, root=0, stream=None):
+        if in_array.shape[0] != comm._n_devices:
+            raise RuntimeError(
+                f'scatter requires in_array to have {comm._n_devices}'
+                f'elements in its first dimension, found {in_array.shape}')
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        nccl.groupStart()
+        if root == comm.rank:
+            for i in range(comm._n_devices):
+                array = in_array[i]
+                idtype, icount = comm._get_nccl_dtype_and_count(array)
+                cls._send(comm, array, i, idtype, icount, stream)
+        dtype, count = comm._get_nccl_dtype_and_count(out_array)
+        cls._recv(comm, out_array, root, dtype, count, stream)
+        nccl.groupEnd()
+
+    @classmethod
+    def gather(cls, comm, in_array, out_array, root=0, stream=None):
+        # TODO(ecastill) out_array needs to have comm size in shape[0]
+        if out_array.shape[0] != comm._n_devices:
+            raise RuntimeError(
+                f'gather requires out_array to have {comm._n_devices}'
+                f'elements in its first dimension, found {out_array.shape}')
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        nccl.groupStart()
+        if root == comm.rank:
+            for i in range(comm._n_devices):
+                array = out_array[i]
+                odtype, ocount = comm._get_nccl_dtype_and_count(array)
+                cls._recv(comm, array, i, odtype, ocount, stream)
+        dtype, count = comm._get_nccl_dtype_and_count(in_array)
+        cls._send(comm, in_array, root, dtype, count, stream)
+        nccl.groupEnd()
+
+    @classmethod
+    def all_to_all(cls, comm, in_array, out_array, stream=None):
+        # TODO(ecastill) out_array needs to have comm size in shape[0]
+        if out_array.shape[0] != comm._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires in_array to have {comm._n_devices}'
+                f'elements in its first dimension, found {in_array.shape}')
+        if out_array.shape[0] != comm._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires out_array to have {comm._n_devices}'
+                f'elements in its first dimension, found {out_array.shape}')
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        idtype, icount = comm._get_nccl_dtype_and_count(in_array[0])
+        odtype, ocount = comm._get_nccl_dtype_and_count(out_array[0])
+        # TODO check out dtypes are the same as in dtypes
+        nccl.groupStart()
+        for i in range(comm._n_devices):
+            cls._send(comm, in_array[i], i, idtype, icount, stream)
+            cls._recv(comm, out_array[i], i, odtype, ocount, stream)
+        nccl.groupEnd()
