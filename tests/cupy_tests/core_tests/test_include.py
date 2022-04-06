@@ -39,8 +39,8 @@ class TestIncludesCompileCUDA:
     def _get_cuda_archs(self):
         cuda_ver = cupy.cuda.runtime.runtimeGetVersion()
         if cuda_ver < 11000:
-            # CUDA 10.2
-            archs = (30, 32, 35, 50, 52, 53, 60, 61, 62, 70, 72, 75)
+            # CUDA 10.2 (Tegra excluded)
+            archs = (30, 35, 50, 52, 60, 61, 70, 75)
         elif cuda_ver < 11010:
             # CUDA 11.0
             archs = (35, 37, 50, 52, 53, 60, 61, 62, 70, 72, 75, 80)
@@ -48,7 +48,7 @@ class TestIncludesCompileCUDA:
             # CUDA 11.1
             archs = (35, 37, 50, 52, 53, 60, 61, 62, 70, 72, 75, 80, 86)
         else:
-            # CUDA 11.2+.
+            # CUDA 11.2+
             archs = cupy.cuda.nvrtc.getSupportedArchs()
         return archs
 
@@ -65,6 +65,7 @@ class TestIncludesCompileCUDA:
                 _code_nvcc, options=options, arch=arch)
 
     def test_nvrtc(self):
+        cuda_ver = cupy.cuda.runtime.runtimeGetVersion()
         options = self._get_options()
         for arch in self._get_cuda_archs():
             with mock.patch(
@@ -72,8 +73,9 @@ class TestIncludesCompileCUDA:
                     lambda _: (f'-arch=compute_{arch}', 'ptx')):
                 cupy.cuda.compiler.compile_using_nvrtc(
                     _code_nvrtc, options=options)
-            with mock.patch(
-                    'cupy.cuda.compiler._get_arch_for_options_for_nvrtc',
-                    lambda _: (f'-arch=sm_{arch}', 'cubin')):
-                cupy.cuda.compiler.compile_using_nvrtc(
-                    _code_nvrtc, options=options)
+            if cuda_ver >= 11010:
+                with mock.patch(
+                        'cupy.cuda.compiler._get_arch_for_options_for_nvrtc',
+                        lambda _: (f'-arch=sm_{arch}', 'cubin')):
+                    cupy.cuda.compiler.compile_using_nvrtc(
+                        _code_nvrtc, options=options)
