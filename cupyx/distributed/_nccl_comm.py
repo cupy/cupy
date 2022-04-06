@@ -2,7 +2,7 @@ import cupy
 from cupy.cuda import nccl
 from cupyx.distributed import _store
 from cupyx.distributed._comm import _Backend
-from cupyx.scipy.sparse import issparse
+from cupyx.scipy import sparse
 
 
 try:
@@ -128,7 +128,7 @@ class NCCLBackend(_Backend):
 
     def _dispatch_arg_type(self, function, args):
         comm_class = _DenseNCCLCommunicator
-        if issparse(args[0]):
+        if sparse.issparse(args[0]):
             pass
         getattr(comm_class, function)(self, *args)
 
@@ -453,3 +453,111 @@ class _DenseNCCLCommunicator:
             cls._send(comm, in_array[i], i, idtype, icount, stream)
             cls._recv(comm, out_array[i], i, odtype, ocount, stream)
         nccl.groupEnd()
+
+
+class _SparseNCCLCommunicator:
+
+    @classmethod
+    def _get_internal_arrays(cls, array):
+        if sparse.isspmatrix_coo(array):
+            array.sum_duplicates()  # set it to cannonical form
+            return (array.data, array.row, array.col, array._shape)
+        elif sparse.isspmatrix_csr(array) or sparse.isspmatrix_csc(array):
+            return (array.data, array.indptr, array.indices, array._shape)
+        raise TypeError('NCCL is not supported for this type of sparse matrix')
+
+    @classmethod
+    def _send_shape_and_sizes(cls, comm, array, peer):
+        # We get the elements from the array and send them
+        # so that other process can create receiving arrays for it
+        # However, this exchange synchronizes the gpus
+        data, a, b = shape = cls._get_internal_arrays(array)
+        sizes_shape = (shape[0], shape[1], data.size[0], a.size[0], b.size[0])
+        cls._send(
+            comm,
+            cupy.array(sizes_shape, dtype=cupy.int64),
+            peer, nccl.NCCL_INT64, 5)
+        return data, a, b
+
+    @classmethod
+    def _recv_shape_and_sizes(cls, comm, peer):
+        sizes_shape = cupy.empty(5, dtype=cupy.int64)
+        cls._recv(
+            comm,
+            cupy.array(sizes_shape, dtype=cupy.int64),
+            peer, nccl.NCCL_INT64, 5)
+        # Warning: this syncs the device
+        sizes_shape = cupy.asnumpy(sizes_shape)
+        return ((sizes_shape[0], sizes_shape[1]),
+                sizes_shape[2], sizes_shape[3], sizes_shape[4])
+
+    @classmethod
+    def all_reduce(cls, comm, in_array, out_array, op='sum', stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def reduce(cls, comm, in_array, out_array, root=0, op='sum', stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def broadcast(cls, comm, in_out_array, root=0, stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def reduce_scatter(
+            cls, comm, in_array, out_array, count, op='sum', stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def all_gather(cls, comm, in_array, out_array, count, stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def send(cls, comm, array, peer, stream=None):
+        arrays = cls._send_shape_and_sizes(comm, array, peer)
+        # Now we send each of the subarrays one by one
+        for a in arrays:
+            cls._send(comm, a, peer, a.dtype, a.size[0], stream)
+
+    @classmethod
+    def _send(cls, comm, array, peer, dtype, count, stream=None):
+        comm._comm.send(array.data.ptr, count, dtype, peer, stream)
+
+    @classmethod
+    def recv(cls, comm, out_array, peer, stream=None):
+        shape, sizes = cls._recv_shape_and_sizes(comm, peer)
+        # Change the array sizes in out_array to match the sent ones
+        # Receive the three arrays
+        # TODO(ecastill) dtype is not correct, it must match the internal
+        # sparse matrix arrays dtype
+        arrs = [cupy.empty(s, dtype=out_array.dtype) for s in sizes]
+        for a in arrs:
+            cls._recv(comm, a, a.dtype, a.size[0], stream)
+
+    @classmethod
+    def _recv(cls, comm, out_array, peer, dtype, count, stream=None):
+        comm._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
+
+    @classmethod
+    def send_recv(cls, comm, in_array, out_array, peer, stream=None):
+        comm._check_contiguous(in_array)
+        comm._check_contiguous(out_array)
+        stream = comm._get_stream(stream)
+        idtype, icount = comm._get_nccl_dtype_and_count(in_array)
+        odtype, ocount = comm._get_nccl_dtype_and_count(out_array)
+        nccl.groupStart()
+        cls._send(comm, in_array, peer, idtype, icount, stream)
+        cls._recv(comm, out_array, peer, odtype, ocount, stream)
+        nccl.groupEnd()
+
+    @classmethod
+    def scatter(cls, comm, in_array, out_array, root=0, stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def gather(cls, comm, in_array, out_array, root=0, stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
+
+    @classmethod
+    def all_to_all(cls, comm, in_array, out_array, stream=None):
+        raise RuntimeError('Method not supported for sparse matrices')
