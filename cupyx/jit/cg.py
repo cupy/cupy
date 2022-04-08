@@ -38,7 +38,8 @@ class _GridGroup(_ThreadGroup):
 
     .. seealso:: `CUDA Grid Group API`_, :class:`numba.cuda.cg.GridGroup`
 
-    .. _CUDA Grid Group API: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#grid-group-cg
+    .. _CUDA Grid Group API:
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#grid-group-cg
     """
 
     def __init__(self):
@@ -108,12 +109,13 @@ class _GridGroup(_ThreadGroup):
 
 
 class _ThreadBlockGroup(_ThreadGroup):
-    """A handle to the current thread block group. Must be created via
-    :func:`this_thread_block`.
+    """A handle to the current thread block group. Must be
+    created via :func:`this_thread_block`.
 
     .. seealso:: `CUDA Thread Block Group API`_
 
-    .. _CUDA Thread Block Group API: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-block-group-cg
+    .. _CUDA Thread Block Group API:
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-block-group-cg
     """
 
     def __init__(self):
