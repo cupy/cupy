@@ -54,27 +54,40 @@ class _GridGroup(_ThreadGroup):
         return _Data('thread_rank()', _cuda_types.uint64)
 
     def block_rank(self, env):
+        if _runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("block_rank() is supported on CUDA 11.6+")
         return _Data('block_rank()', _cuda_types.uint64)
 
     def num_threads(self, env):
+        if _runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("num_threads() is supported on CUDA 11.6+")
         return _Data('num_threads()', _cuda_types.uint64)
 
     def num_blocks(self, env):
+        if _runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("num_blocks() is supported on CUDA 11.6+")
         return _Data('num_blocks()', _cuda_types.uint64)
 
     def dim_blocks(self, env):
+        if _runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("dim_blocks() is supported on CUDA 11.6+")
         from cupyx.jit._interface import _Dim3  # avoid circular import
         return _Data('dim_blocks()', _Dim3())
 
     def block_index(self, env):
+        if _runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("block_index() is supported on CUDA 11.6+")
         from cupyx.jit._interface import _Dim3  # avoid circular import
         return _Data('block_index()', _Dim3())
 
     def size(self, env):
-        return self.num_threads(env)
+        # despite it is an alias of num_threads, we need it for earlier 11.x
+        return _Data('size()', _cuda_types.uint64)
 
-    def grid_dim(self, env):
-        return self.dim_blocks(env)
+    def group_dim(self, env):
+        # despite it is an alias of dim_blocks, we need it for earlier 11.x
+        from cupyx.jit._interface import _Dim3  # avoid circular import
+        return _Data('group_dim()', _Dim3())
 
 
 class _ThreadBlockGroup(_ThreadGroup):

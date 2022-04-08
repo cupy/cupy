@@ -125,6 +125,7 @@ void = Void()
 bool_ = Scalar(numpy.bool_)
 int32 = Scalar(numpy.int32)
 uint32 = Scalar(numpy.uint32)
+uint64 = Scalar(numpy.uint64)
 
 
 _suffix_literals_dict = {
