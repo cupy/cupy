@@ -23,9 +23,9 @@ class _ThreadGroup(_cuda_types.TypeBase):
         included = env.generated.cg_include
         if included is False:
             # prepend the header
-            env.generated.codes.insert(0,
-                "\n#include <cooperative_groups.h>\n"
-                "namespace cg = cooperative_groups;\n")
+            env.generated.codes.insert(
+                0, "\n#include <cooperative_groups.h>\n"
+                   "namespace cg = cooperative_groups;\n")
             env.generated.cg_include = True
 
     def sync(self, env):
@@ -36,8 +36,6 @@ class _ThreadGroup(_cuda_types.TypeBase):
 class _GridGroup(_ThreadGroup):
 
     def __init__(self):
-        if _runtime.is_hip:
-            raise RuntimeError('cooperative group is not supported on HIP')
         self.child_type = 'cg::grid_group'
 
     def is_valid(self, env):
@@ -93,8 +91,6 @@ class _GridGroup(_ThreadGroup):
 class _ThreadBlockGroup(_ThreadGroup):
 
     def __init__(self):
-        if _runtime.is_hip:
-            raise RuntimeError('cooperative group is not supported on HIP')
         self.child_type = 'cg::thread_block'
 
     def thread_rank(self, env):
@@ -135,6 +131,8 @@ class _ThisCgGroup(_BuiltinFunc):
         self.group_type = group_type
 
     def call_const(self, env):
+        if _runtime.is_hip:
+            raise RuntimeError('cooperative group is not supported on HIP')
         if self.group_type == 'grid':
             cg_type = _GridGroup()
         elif self.group_type == 'thread_block':
