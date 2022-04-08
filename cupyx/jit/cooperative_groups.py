@@ -1,3 +1,5 @@
+from cupy.cuda import runtime
+
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
@@ -35,6 +37,8 @@ class ThreadGroup(_cuda_types.TypeBase):
 class GridGroup(ThreadGroup):
 
     def __init__(self):
+        if runtime.is_hip:
+            raise RuntimeError('cooperative group is not supported on HIP')
         self.child_type = 'cg::grid_group'
 
     def is_valid(self, env):
@@ -77,6 +81,8 @@ class GridGroup(ThreadGroup):
 class ThreadBlockGroup(ThreadGroup):
 
     def __init__(self):
+        if runtime.is_hip:
+            raise RuntimeError('cooperative group is not supported on HIP')
         self.child_type = 'cg::thread_block'
 
     def thread_rank(self, env):
@@ -91,17 +97,24 @@ class ThreadBlockGroup(ThreadGroup):
         return Data('thread_index()', _Dim3())
 
     def dim_threads(self, env):
+        if runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
         from cupyx.jit._interface import _Dim3  # avoid circular import
         return Data('dim_threads()', _Dim3())
 
     def num_threads(self, env):
+        if runtime.runtimeGetVersion() < 11060:
+            raise RuntimeError("num_threads() is supported on CUDA 11.6+")
         return Data('num_threads()', _cuda_types.uint32)
 
     def size(self, env):
-        return self.num_threads(env)
+        # despite it is an alias of num_threads, we need it for earlier 11.x
+        return Data('size()', _cuda_types.uint32)
 
     def group_dim(self, env):
-        return self.dim_threads(env)
+        # despite it is an alias of dim_threads, we need it for earlier 11.x
+        from cupyx.jit._interface import _Dim3  # avoid circular import
+        return Data('group_dim()', _Dim3())
 
 
 class ThisCgGroup(BuiltinFunc):

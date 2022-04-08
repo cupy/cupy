@@ -78,6 +78,8 @@ class BuiltinFunc(Expr):
 def method_as_builtin_func(instance_name, method):
     # - this helper wraps every class method as a BuiltinFunc
     # - method must return a valid Expr
+    # TODO(leofang): if performance is concerned, we could cache _Wrapper
+    # for each method.__func__, and overwrite with the provided instance
     class _Wrapper(BuiltinFunc):
 
         def call(self, env, *args, **kwargs):

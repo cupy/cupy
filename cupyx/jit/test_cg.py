@@ -8,6 +8,7 @@ def test_thread_block(x):
     y.sync()
     a = y.group_index()
     i = a.x
+    b = y.num_threads()
 
 @jit.rawkernel()
 def test_grid(x):
