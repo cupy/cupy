@@ -1,15 +1,14 @@
-from cupy.cuda import runtime
-
+from cupy.cuda import runtime as _runtime
 from cupyx.jit import _cuda_types
-from cupyx.jit._internal_types import BuiltinFunc
-from cupyx.jit._internal_types import Data
+from cupyx.jit._internal_types import BuiltinFunc as _BuiltinFunc
+from cupyx.jit._internal_types import Data as _Data
 
 
 # public interface of this module
 __all__ = ['this_grid', 'this_thread_block']
 
 
-class ThreadGroup(_cuda_types.TypeBase):
+class _ThreadGroup(_cuda_types.TypeBase):
     """ Base class for all cooperative groups. """
 
     child_type = None
@@ -31,19 +30,19 @@ class ThreadGroup(_cuda_types.TypeBase):
 
     def sync(self, env):
         self._check_cg_include(env)
-        return Data('sync()', _cuda_types.void)
+        return _Data('sync()', _cuda_types.void)
 
 
-class GridGroup(ThreadGroup):
+class _GridGroup(_ThreadGroup):
 
     def __init__(self):
-        if runtime.is_hip:
+        if _runtime.is_hip:
             raise RuntimeError('cooperative group is not supported on HIP')
         self.child_type = 'cg::grid_group'
 
     def is_valid(self, env):
         self._check_cg_include(env)
-        return Data('is_valid()', _cuda_types.bool_)
+        return _Data('is_valid()', _cuda_types.bool_)
 
     def sync(self, env):
         # when this methond is called, we need to use the cooperative
@@ -52,24 +51,24 @@ class GridGroup(ThreadGroup):
         return super().sync(env)
 
     def thread_rank(self, env):
-        return Data('thread_rank()', _cuda_types.uint64)
+        return _Data('thread_rank()', _cuda_types.uint64)
 
     def block_rank(self, env):
-        return Data('block_rank()', _cuda_types.uint64)
+        return _Data('block_rank()', _cuda_types.uint64)
 
     def num_threads(self, env):
-        return Data('num_threads()', _cuda_types.uint64)
+        return _Data('num_threads()', _cuda_types.uint64)
 
     def num_blocks(self, env):
-        return Data('num_blocks()', _cuda_types.uint64)
+        return _Data('num_blocks()', _cuda_types.uint64)
 
     def dim_blocks(self, env):
         from cupyx.jit._interface import _Dim3  # avoid circular import
-        return Data('dim_blocks()', _Dim3())
+        return _Data('dim_blocks()', _Dim3())
 
     def block_index(self, env):
         from cupyx.jit._interface import _Dim3  # avoid circular import
-        return Data('block_index()', _Dim3())
+        return _Data('block_index()', _Dim3())
 
     def size(self, env):
         return self.num_threads(env)
@@ -78,59 +77,59 @@ class GridGroup(ThreadGroup):
         return self.dim_blocks(env)
 
 
-class ThreadBlockGroup(ThreadGroup):
+class _ThreadBlockGroup(_ThreadGroup):
 
     def __init__(self):
-        if runtime.is_hip:
+        if _runtime.is_hip:
             raise RuntimeError('cooperative group is not supported on HIP')
         self.child_type = 'cg::thread_block'
 
     def thread_rank(self, env):
-        return Data('thread_rank()', _cuda_types.uint32)
+        return _Data('thread_rank()', _cuda_types.uint32)
 
     def group_index(self, env):
         from cupyx.jit._interface import _Dim3  # avoid circular import
-        return Data('group_index()', _Dim3())
+        return _Data('group_index()', _Dim3())
 
     def thread_index(self, env):
         from cupyx.jit._interface import _Dim3  # avoid circular import
-        return Data('thread_index()', _Dim3())
+        return _Data('thread_index()', _Dim3())
 
     def dim_threads(self, env):
-        if runtime.runtimeGetVersion() < 11060:
+        if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
         from cupyx.jit._interface import _Dim3  # avoid circular import
-        return Data('dim_threads()', _Dim3())
+        return _Data('dim_threads()', _Dim3())
 
     def num_threads(self, env):
-        if runtime.runtimeGetVersion() < 11060:
+        if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
-        return Data('num_threads()', _cuda_types.uint32)
+        return _Data('num_threads()', _cuda_types.uint32)
 
     def size(self, env):
         # despite it is an alias of num_threads, we need it for earlier 11.x
-        return Data('size()', _cuda_types.uint32)
+        return _Data('size()', _cuda_types.uint32)
 
     def group_dim(self, env):
         # despite it is an alias of dim_threads, we need it for earlier 11.x
         from cupyx.jit._interface import _Dim3  # avoid circular import
-        return Data('group_dim()', _Dim3())
+        return _Data('group_dim()', _Dim3())
 
 
-class ThisCgGroup(BuiltinFunc):
+class _ThisCgGroup(_BuiltinFunc):
 
     def __init__(self, group_type):
         self.group_type = group_type
 
     def call_const(self, env):
         if self.group_type == 'grid':
-            cg_type = GridGroup()
+            cg_type = _GridGroup()
         elif self.group_type == 'thread_block':
-            cg_type = ThreadBlockGroup()
+            cg_type = _ThreadBlockGroup()
         else:
             raise NotImplementedError
-        return Data(f'cg::this_{self.group_type}()', cg_type)
+        return _Data(f'cg::this_{self.group_type}()', cg_type)
 
 
-this_grid = ThisCgGroup('grid')
-this_thread_block = ThisCgGroup('thread_block')
+this_grid = _ThisCgGroup('grid')
+this_thread_block = _ThisCgGroup('thread_block')

@@ -15,7 +15,7 @@ from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
-from cupyx.jit.cooperative_groups import ThreadGroup
+from cupyx.jit.cooperative_groups import _ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import method_as_builtin_func
@@ -691,7 +691,7 @@ def _transpile_expr_internal(expr, env):
             if expr.attr in ('x', 'y', 'z'):
                 return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)
         # TODO(leofang): support arbitrary Python class methods
-        if isinstance(value.ctype, ThreadGroup):
+        if isinstance(value.ctype, _ThreadGroup):
             return method_as_builtin_func(
                 value.code, getattr(value.ctype, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
