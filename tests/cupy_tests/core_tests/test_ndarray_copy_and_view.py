@@ -124,9 +124,29 @@ class TestArrayCopyAndView:
         return b
 
     @testing.numpy_cupy_array_equal()
-    def test_transposed_flatten(self, xp):
+    def test_flatten_transposed(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
         return a.flatten()
+
+    @testing.for_orders('CFAK')
+    @testing.numpy_cupy_array_equal()
+    def test_flatten_order(self, xp, order):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return a.flatten(order)
+
+    @testing.for_orders('CFAK')
+    @testing.numpy_cupy_array_equal()
+    def test_flatten_order_copied(self, xp, order):
+        a = testing.shaped_arange((4,), xp)
+        b = a.flatten(order=order)
+        a[:] = 1
+        return b
+
+    @testing.for_orders('CFAK')
+    @testing.numpy_cupy_array_equal()
+    def test_flatten_order_transposed(self, xp, order):
+        a = testing.shaped_arange((2, 3, 4), xp).transpose(2, 0, 1)
+        return a.flatten(order=order)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

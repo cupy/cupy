@@ -4,29 +4,43 @@ set -uex
 
 git clone https://github.com/cupy/cupy-performance.git performance
 # TODO(ecastill): make this optional
-pip install seaborn
+python3 -m pip install seaborn
 ls
 pushd performance
-python prof.py benchmarks/bench_ufunc_cupy.py -c
+python3 prof.py benchmarks/bench_ufunc_cupy.py -c
 
-mkdir pr
-mv *.csv pr/
+mkdir target
+mv *.csv target/
 
 # Run benchmarks for master branch
 # Since GCP instance may change and use diff gen processsors/GPUs
 # we just recompile and run to avoid false errors
-pip uninstall -y cupy
-git checkout master
-pip install --user -v .
+python3 -m pip uninstall -y cupy
 
-python prof.py benchmarks/bench_ufunc_cupy.py -c
-mkdir master
-mv *.csv master/
+git clone https://github.com/cupy/cupy cupy-baseline
+pushd cupy-baseline
+if [[ "${PULL_REQUEST:-}" == "" ]]; then
+    # For branches we compare against the latest release
+    # TODO(ecastill) find a programatical way of doing this
+    # sorting tags, or just checking the dates may mix the
+    # stable & master branches
+    git checkout tags/v11.0.0a2 -b v11.0.0a2
+else
+    git checkout master
+fi
+git submodule update --init
+python3 -m pip install --user -v .
+popd
+
+python3 prof.py benchmarks/bench_ufunc_cupy.py -c
+
+mkdir baseline
+mv *.csv baseline/
 
 # Compare with current branch
 for bench in *.csv
 do
-    python regresion_detect.py master/${bench} pr/${bench}
+    python3 regresion_detect.py baseline/${bench} target/${bench}
 done
 
 popd

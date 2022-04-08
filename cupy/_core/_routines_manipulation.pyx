@@ -116,7 +116,26 @@ cdef ndarray _ndarray_swapaxes(
     return _transpose(self, axes)
 
 
-cdef ndarray _ndarray_flatten(ndarray self):
+cdef ndarray _ndarray_flatten(ndarray self, order):
+    cdef int order_char
+    cdef vector.vector[Py_ssize_t] axes
+
+    order_char = internal._normalize_order(order, True)
+    if order_char == b'A':
+        if self._f_contiguous and not self._c_contiguous:
+            order_char = b'F'
+        else:
+            order_char = b'C'
+    if order_char == b'C':
+        return _ndarray_flatten_order_c(self)
+    elif order_char == b'F':
+        return _ndarray_flatten_order_c(_T(self))
+    elif order_char == b'K':
+        axes = _npyiter_k_order_axes(self.strides)
+        return _ndarray_flatten_order_c(_transpose(self, axes))
+
+
+cdef ndarray _ndarray_flatten_order_c(ndarray self):
     newarray = self.copy(order='C')
     newarray._shape.assign(<Py_ssize_t>1, self.size)
     newarray._strides.assign(<Py_ssize_t>1,

@@ -45,15 +45,6 @@ extras_require = {
         'pytest>=6.2',
         'hypothesis>=6.37.2',
     ],
-    # TODO(kmaehashi): Remove 'jenkins' requirements.
-    'jenkins': [
-        'pytest>=6.2',
-        'pytest-timeout',
-        'pytest-cov',
-        'coveralls',
-        'codecov',
-        'coverage<5',  # Otherwise, Python must be built with sqlite
-    ],
 }
 tests_require = extras_require['test']
 

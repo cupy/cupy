@@ -235,6 +235,7 @@ class Environment:
         self.consts = consts
         self.params = params
         self.locals = {}
+        self.decls = {}
         self.ret_type = ret_type
         self.generated = generated
         self.count = 0
@@ -247,9 +248,6 @@ class Environment:
         if key in self.consts:
             return self.consts[key]
         return None
-
-    def __setitem__(self, key, value):
-        self.locals[key] = value
 
     def get_fresh_variable_name(self, prefix='', suffix=''):
         self.count += 1
@@ -326,8 +324,8 @@ def _transpile_function_internal(
     params = dict([(x, Data(x, t)) for x, t in zip(args, in_types)])
     env = Environment(mode, consts, params, ret_type, generated)
     body = _transpile_stmts(func.body, True, env)
-    params = ', '.join([env[a].ctype.declvar(a) for a in args])
-    local_vars = [v.ctype.declvar(n) + ';' for n, v in env.locals.items()]
+    params = ', '.join([env[a].ctype.declvar(a, None) for a in args])
+    local_vars = [v.ctype.declvar(n, None) + ';' for n, v in env.decls.items()]
 
     if env.ret_type is None:
         env.ret_type = _cuda_types.void
@@ -458,7 +456,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
                         'Cannot assign constant value not at top-level.')
 
         value = Data.init(value, env)
-        return _transpile_assign_stmt(target, env, value)
+        return _transpile_assign_stmt(target, env, value, is_toplevel)
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -469,7 +467,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
             raise TypeError('dtype mismatch')
-        return [f'{target.code} = {result.code};']
+        return [target.ctype.assign(target, result) + ';']
 
     if isinstance(stmt, ast.For):
         if len(stmt.orelse) > 0:
@@ -478,7 +476,9 @@ def _transpile_stmt(stmt, is_toplevel, env):
         iters = _transpile_expr(stmt.iter, env)
 
         if env[name] is None:
-            env[name] = Data(stmt.target.id, iters.ctype)
+            var = Data(stmt.target.id, iters.ctype)
+            env.locals[name] = var
+            env.decls[name] = var
         elif env[name].ctype.dtype != iters.ctype.dtype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
@@ -722,14 +722,17 @@ def _emit_assign_stmt(lvalue, rvalue, env):
             f'Data type mismatch of variable: `{lvalue.code}`: '
             f'{lvalue.ctype} != {rvalue.ctype}')
 
-    return [f'{lvalue.code} = {rvalue.code};']
+    return [lvalue.ctype.assign(lvalue, rvalue) + ';']
 
 
-def _transpile_assign_stmt(target, env, value, depth=0):
+def _transpile_assign_stmt(target, env, value, is_toplevel, depth=0):
     if isinstance(target, ast.Name):
         name = target.id
         if env[name] is None:
-            env[name] = Data(name, value.ctype)
+            env.locals[name] = Data(name, value.ctype)
+            if is_toplevel and depth == 0:
+                return [value.ctype.declvar(name, value) + ';']
+            env.decls[name] = Data(name, value.ctype)
         return _emit_assign_stmt(env[name], value, env)
 
     if isinstance(target, ast.Subscript):
@@ -744,12 +747,12 @@ def _transpile_assign_stmt(target, env, value, depth=0):
             raise ValueError(f'too many values to unpack (expected {size})')
         if len(value.ctype.types) < size:
             raise ValueError(f'not enough values to unpack (expected {size})')
-        codes = [f'{value.ctype} _temp{depth} = {value.code};']
+        codes = [value.ctype.declvar(f'_temp{depth}', value) + ';']
         for i in range(size):
             code = f'thrust::get<{i}>(_temp{depth})'
             ctype = value.ctype.types[i]
             stmt = _transpile_assign_stmt(
-                target.elts[i], env, Data(code, ctype), depth + 1)
+                target.elts[i], env, Data(code, ctype), is_toplevel, depth + 1)
             codes.extend(stmt)
         return [CodeBlock('', codes)]
 
