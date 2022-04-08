@@ -59,6 +59,9 @@ class TestCooperativeGroups:
         assert (x[1], x[2], x[3]) == (32, 1, 1)
         assert (x[4:] == -1).all()
 
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='we do not support it')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
         reason='cooperative launch is not supported on device 0')

@@ -272,6 +272,12 @@ class _ThisCgGroup(_BuiltinFunc):
         if _runtime.is_hip:
             raise RuntimeError('cooperative group is not supported on HIP')
         if self.group_type == 'grid':
+            if _runtime.runtimeGetVersion() < 11000:
+                raise RuntimeError(
+                    "For pre-CUDA 11, the grid group has very limited "
+                    "functionality (only group.sync() works), and so we "
+                    "disable the grid group support to prepare the transition "
+                    "to support CUDA 11+ only.")
             cg_type = _GridGroup()
         elif self.group_type == 'thread_block':
             cg_type = _ThreadBlockGroup()
