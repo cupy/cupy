@@ -121,3 +121,19 @@ class TestCooperativeGroups:
         assert x[6] == 2
         assert (x[7], x[8], x[9]) == (1, 0, 0)
         assert (x[10:] == 2**64-1).all()
+
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='we do not support it')
+    @pytest.mark.skipif(runtime.deviceGetAttribute(
+        runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
+        reason='cooperative launch is not supported on device 0')
+    def test_cg_sync(self):
+        @jit.rawkernel()
+        def test_sync():
+            b = jit.cg.this_thread_block()
+            g = jit.cg.this_grid()
+            jit.cg.sync(b)
+            jit.cg.sync(g)
+
+        test_sync[2, 64]()
