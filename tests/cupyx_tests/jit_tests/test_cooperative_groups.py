@@ -41,7 +41,7 @@ class TestCooperativeGroups:
     @pytest.mark.skipif(
         runtime.runtimeGetVersion() < 11060,
         reason='not supported until CUDA 11.6')
-    def test_thread_block_group_num_threads_dim_threads(self):
+    def test_thread_block_group_cu116_new_APIs(self):
         @jit.rawkernel()
         def test_thread_block(x):
             g = jit.cg.this_thread_block()

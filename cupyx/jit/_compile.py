@@ -15,7 +15,7 @@ from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
-from cupyx.jit.cooperative_groups import _ThreadGroup
+from cupyx.jit.cg import _ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import method_as_builtin_func
