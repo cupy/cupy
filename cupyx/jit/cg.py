@@ -1,21 +1,41 @@
 from cupy.cuda import runtime as _runtime
+from cupyx.jit import _compile
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc as _BuiltinFunc
+from cupyx.jit._internal_types import Constant as _Constant
 from cupyx.jit._internal_types import Data as _Data
 
 
 # public interface of this module
-__all__ = ['this_grid', 'this_thread_block']
+__all__ = ['this_grid', 'this_thread_block',
+           'sync', 'wait', 'wait_prior', 'memcpy_async']
 
 
-def _check_cg_include(env):
-    included = env.generated.cg_include
-    if included is False:
-        # prepend the header
-        env.generated.codes.insert(
-            0, "\n#include <cooperative_groups.h>\n"
-               "namespace cg = cooperative_groups;\n")
-        env.generated.cg_include = True
+def _check_cg_include(env, target='cg'):
+    if target == 'cg':
+        included = env.generated.include_cg
+        if included is False:
+            # prepend the header
+            env.generated.codes.insert(
+                0, "\n#include <cooperative_groups.h>")
+            env.generated.codes.insert(
+                1, "namespace cg = cooperative_groups;\n")
+            env.generated.include_cg = True
+    elif target == 'memcpy_async':
+        _check_cg_include(env)
+        included = env.generated.include_cg_memcpy_async
+        if included is False:
+            # prepend the header
+            env.generated.codes.insert(
+                1, "#include <cooperative_groups/memcpy_async.h>")
+            env.generated.include_cg_memcpy_async = True
+    elif target == 'cuda_barrier':
+        included = env.generated.include_cuda_barrier
+        if included is False:
+            # prepend the header
+            env.generated.codes.insert(
+                1, "#include <cuda/barrier>")
+            env.generated.include_cuda_barrier = True
 
 
 class _ThreadGroup(_cuda_types.TypeBase):
@@ -298,6 +318,73 @@ class _Sync(_BuiltinFunc):
         return _Data(f'cg::sync({group.code})', _cuda_types.void)
 
 
+class _MemcpySync(_BuiltinFunc):
+
+    def __call__(self):
+        """Calls ``cg::memcpy_sync()``.
+
+        """
+        super().__call__()
+
+    def call(self, env, group, dst, dst_idx, src, src_idx, size, *,
+             aligned_size=None):
+        _check_cg_include(env, target='memcpy_async')
+
+        dst = _Data.init(dst, env)
+        src = _Data.init(src, env)
+        for arr in (dst, src):
+            if not isinstance(arr.ctype,
+                    (_cuda_types.CArray, _cuda_types.Ptr)):
+                print(arr, arr.ctype)
+                raise TypeError('dst/src must be of array type.')
+        dst = _compile._indexing(dst, dst_idx, env)
+        src = _compile._indexing(src, src_idx, env)
+
+        size = _compile._astype_scalar(
+            # it's very unlikely that the size would exceed 2^32, so we just
+            # pick uint32 for simplicity
+            size, _cuda_types.uint32, 'same_kind', env)
+        size = _Data.init(size, env)
+        size_code = f'{size.code}'
+        if aligned_size:
+            if not isinstance(aligned_size, _Constant):
+                raise ValueError('aligned_size must be a compile-time constant')
+            _check_cg_include(env, target='cuda_barrier')
+            size_code = f'cuda::aligned_size_t<{aligned_size.obj}>({size_code})'
+        return _Data(f'cg::memcpy_async({group.code}, &({dst.code}), '
+                     f'&({src.code}), {size_code})', _cuda_types.void)
+
+
+class _Wait(_BuiltinFunc):
+
+    def __call__(self):
+        """Calls ``cg::wait()``.
+
+        """
+        super().__call__()
+
+    def call(self, env, group):
+        _check_cg_include(env)
+        return _Data(f'cg::wait({group.code})', _cuda_types.void)
+
+
+class _WaitPrior(_BuiltinFunc):
+
+    def __call__(self):
+        """Calls ``cg::wait_prior<N>()``.
+
+        """
+        super().__call__()
+
+    def call(self, env, group, step):
+        _check_cg_include(env)
+        assert isinstance(step, _Constant)
+        return _Data(f'cg::wait_prior<{step.obj}>({group.code})', _cuda_types.void)
+
+
 this_grid = _ThisCgGroup('grid')
 this_thread_block = _ThisCgGroup('thread_block')
 sync = _Sync()
+wait = _Wait()
+wait_prior = _WaitPrior()
+memcpy_async = _MemcpySync()

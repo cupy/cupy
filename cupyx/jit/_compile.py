@@ -23,7 +23,7 @@ from cupyx.jit import _builtin_funcs
 from cupyx.jit import _interface
 
 
-_is_debug_mode = False
+_is_debug_mode = True
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
@@ -145,7 +145,11 @@ class Generated:
         # whether to use cooperative launch
         self.enable_cg = False
         # whether to include cooperative_groups.h
-        self.cg_include = False
+        self.include_cg = False
+        # whether to include cooperative_groups/memcpy_async.h
+        self.include_cg_memcpy_async = False
+        # whether to include cuda/barrier
+        self.include_cuda_barrier = False
 
     def add_code(self, code: str) -> None:
         if code not in self.codes:
