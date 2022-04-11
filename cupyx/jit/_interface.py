@@ -138,7 +138,7 @@ class _JitRawKernel:
             warnings.warn(
                 'No codes are cached because compilation is deferred until '
                 'the first function call.')
-        return [result.code for result in self._cached_codes]
+        return dict([(k, v.code) for k, v in self._cached_codes.items()])
 
     @property
     def cached_code(self):
