@@ -272,11 +272,8 @@ class GridFunc(BuiltinFunc):
                 If ``ndim`` is 1, an integer is returned, otherwise a tuple.
 
         .. note::
-            This function follows the convention of Numba's `{self._link}`_.
-
-        .. _{self._link}:
-            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#{self._link}
-
+            This function follows the convention of Numba's
+            :func:`{self._link}`.
         """
         self.__doc__ = doc
 
@@ -367,11 +364,8 @@ class LaneID(BuiltinFunc):
         ``[0, jit.warpsize)``.
 
         .. note::
-            Unlike `numba.cuda.laneid`_, this is a callable function instead
-            of a property.
-
-        .. _numba.cuda.laneid:
-            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.laneid
+            Unlike :obj:`numba.cuda.laneid`, this is a callable function
+            instead of a property.
         """
         super().__call__()
 

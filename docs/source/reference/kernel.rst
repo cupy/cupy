@@ -44,7 +44,18 @@ JIT kernel definition
    cupyx.jit.atomic_and
    cupyx.jit.atomic_or
    cupyx.jit.atomic_xor
+   cupyx.jit.cg.this_grid
+   cupyx.jit.cg.this_thread_block
    cupyx.jit._interface._JitRawKernel
+
+Cooperative groups
+..................
+
+ .. autoclass:: cupyx.jit.cg._ThreadBlockGroup
+    :members:
+
+ .. autoclass:: cupyx.jit.cg._GridGroup
+    :members:
 
 
 Kernel binary memoization

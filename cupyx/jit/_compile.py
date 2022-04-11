@@ -15,6 +15,7 @@ from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
+from cupyx.jit.cg import _ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
@@ -25,7 +26,9 @@ _is_debug_mode = False
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
-Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
+Result = collections.namedtuple(
+    'Result',
+    ['func_name', 'code', 'return_type', 'enable_cooperative_groups'])
 
 
 class _JitCompileError(Exception):
@@ -138,6 +141,10 @@ class Generated:
         self.codes = []
         # (function, in_types) => Optional(function_name, return_type)
         self.device_function = {}
+        # whether to use cooperative launch
+        self.enable_cg = False
+        # whether to include cooperative_groups.h
+        self.cg_include = False
 
     def add_code(self, code: str) -> None:
         if code not in self.codes:
@@ -162,7 +169,10 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func, attributes, mode, in_types, ret_type, generated)
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
-    return Result(func_name=func_name, code=code, return_type=return_type)
+    enable_cg = generated.enable_cg
+    return Result(
+        func_name=func_name, code=code, return_type=return_type,
+        enable_cooperative_groups=enable_cg)
 
 
 def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
@@ -676,6 +686,13 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+        if isinstance(value.ctype, _interface._Dim3):
+            if expr.attr in ('x', 'y', 'z'):
+                return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)
+        # TODO(leofang): support arbitrary Python class methods
+        if isinstance(value.ctype, _ThreadGroup):
+            return _internal_types.BuiltinFunc.from_class_method(
+                value.code, getattr(value.ctype, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
