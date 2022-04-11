@@ -14,6 +14,10 @@ class Data(Expr):
         assert isinstance(ctype, _cuda_types.TypeBase)
         self.code = code
         self.ctype = ctype
+        try:
+            self.__doc__ = '{str(ctype)} {code}'
+        except NotImplementedError:
+            self.__doc__ = '{code}'
 
     @property
     def obj(self):

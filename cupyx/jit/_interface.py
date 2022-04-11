@@ -166,35 +166,10 @@ def rawkernel(*, mode='cuda', device=False):
     return wrapper
 
 
-class _Dim3(_cuda_types.TypeBase):
-    def __init__(self, name=None):
-        if name is not None:
-            self.x = _internal_types.Data(f'{name}.x', _cuda_types.uint32)
-            self.y = _internal_types.Data(f'{name}.y', _cuda_types.uint32)
-            self.z = _internal_types.Data(f'{name}.z', _cuda_types.uint32)
-            self.__doc__ = f"""dim3 {name}
-
-            A namedtuple of three integers represents {name}.
-
-            Attributes:
-                x (uint32): {name}.x
-                y (uint32): {name}.y
-                z (uint32): {name}.z
-            """
-        else:
-            # a dim3 object is created via, e.g., a CUDA API call, in which
-            # case both the instance name and the attributes are resolved at
-            # the transpiling time
-            pass
-
-    def __str__(self):
-        return 'dim3'
-
-
-threadIdx = _Dim3('threadIdx')
-blockDim = _Dim3('blockDim')
-blockIdx = _Dim3('blockIdx')
-gridDim = _Dim3('gridDim')
+threadIdx = _internal_types.Data('threadIdx', _cuda_types.dim3)
+blockDim = _internal_types.Data('blockDim', _cuda_types.dim3)
+blockIdx = _internal_types.Data('blockIdx', _cuda_types.dim3)
+gridDim = _internal_types.Data('gridDim', _cuda_types.dim3)
 
 warpsize = _internal_types.Data(
     '64' if runtime.is_hip else '32', _cuda_types.uint32)

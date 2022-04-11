@@ -117,9 +117,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("dim_blocks() is supported on CUDA 11.6+")
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('dim_blocks()', _Dim3())
+        return _Data('dim_blocks()', _cuda_types.dim3)
 
     def block_index(self, env):
         """
@@ -129,9 +128,8 @@ class _GridGroup(_ThreadGroup):
         """
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("block_index() is supported on CUDA 11.6+")
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('block_index()', _Dim3())
+        return _Data('block_index()', _cuda_types.dim3)
 
     def size(self, env):
         """
@@ -150,9 +148,8 @@ class _GridGroup(_ThreadGroup):
         Dimensions of the launched grid in units of blocks.
         """
         # despite it is an alias of dim_blocks, we need it for earlier 11.x
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('group_dim()', _Dim3())
+        return _Data('group_dim()', _cuda_types.dim3)
 
 
 class _ThreadBlockGroup(_ThreadGroup):
@@ -191,9 +188,8 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         3-Dimensional index of the block within the launched grid.
         """
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('group_index()', _Dim3())
+        return _Data('group_index()', _cuda_types.dim3)
 
     def thread_index(self, env):
         """
@@ -201,9 +197,8 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         3-Dimensional index of the thread within the launched block.
         """
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('thread_index()', _Dim3())
+        return _Data('thread_index()', _cuda_types.dim3)
 
     def dim_threads(self, env):
         """
@@ -213,9 +208,8 @@ class _ThreadBlockGroup(_ThreadGroup):
         """
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('dim_threads()', _Dim3())
+        return _Data('dim_threads()', _cuda_types.dim3)
 
     def num_threads(self, env):
         """
@@ -245,9 +239,8 @@ class _ThreadBlockGroup(_ThreadGroup):
         Dimensions of the launched block in units of threads.
         """
         # despite it is an alias of dim_threads, we need it for earlier 11.x
-        from cupyx.jit._interface import _Dim3  # avoid circular import
         self._check_cg_include(env)
-        return _Data('group_dim()', _Dim3())
+        return _Data('group_dim()', _cuda_types.dim3)
 
 
 class _ThisCgGroup(_BuiltinFunc):
