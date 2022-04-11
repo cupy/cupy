@@ -97,11 +97,14 @@ class SharedMem(ArrayBase):
 
     def declvar(self, x, init):
         assert init is None
-        if self._size is None:
-            code = f'extern __shared__ {self.child_type} {x}[]'
-        code = f'__shared__ {self.child_type} {x}[{self._size}]'
         if self._alignment is not None:
-            code = f'__align__({self._alignment}) ' + code
+            code = f'__align__({self._alignment})'
+        else:
+            code = ''
+        if self._size is None:
+            code = f'extern {code} __shared__ {self.child_type} {x}[]'
+        else:
+            code = f'{code} __shared__ {self.child_type} {x}[{self._size}]'
         return code
 
 
