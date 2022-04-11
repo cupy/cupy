@@ -310,6 +310,13 @@ class _Sync(_BuiltinFunc):
     def __call__(self):
         """Calls ``cg::sync()``.
 
+        Args:
+            group: a valid cooperative group
+
+        .. seealso:: `cg::sync`_
+
+        .. _cg::sync:
+            https://docs.nvidia.com/cuda/archive/11.6.0/cuda-c-programming-guide/index.html#collectives-cg-sync
         """
         super().__call__()
 
@@ -323,6 +330,24 @@ class _MemcpySync(_BuiltinFunc):
     def __call__(self):
         """Calls ``cg::memcpy_sync()``.
 
+        Args:
+            group: a valid cooperative group
+            dst: the destination array that can be viewed as a 1D
+                C-contiguous array
+            dst_idx: the start index of the destination array element
+            src: the source array that can be viewed as a 1D C-contiguous
+                array
+            src_idx: the start index of the source array element
+            size (int): the number of bytes to be copied from
+                ``src[src_index]`` to ``dst[dst_idx]``
+            aligned_size (int): Use ``cuda::aligned_size_t<N>`` to guarantee
+                the compiler that ``src``/``dst`` are at least N-bytes aligned.
+                The behavior is undefined if the guarantee is not held.
+
+        .. seealso:: `cg::memcpy_sync`_
+
+        .. _cg::memcpy_sync:
+            https://docs.nvidia.com/cuda/archive/11.6.0/cuda-c-programming-guide/index.html#collectives-cg-memcpy-async
         """
         super().__call__()
 
@@ -362,6 +387,13 @@ class _Wait(_BuiltinFunc):
     def __call__(self):
         """Calls ``cg::wait()``.
 
+        Args:
+            group: a valid cooperative group
+
+        .. seealso: `cg::wait`_
+
+        .. _cg::wait:
+            https://docs.nvidia.com/cuda/archive/11.6.0/cuda-c-programming-guide/index.html#collectives-cg-wait
         """
         super().__call__()
 
@@ -375,12 +407,21 @@ class _WaitPrior(_BuiltinFunc):
     def __call__(self):
         """Calls ``cg::wait_prior<N>()``.
 
+        Args:
+            group: a valid cooperative group
+            step (int): wait for the first ``N`` steps to finish
+
+        .. seealso: `cg::wait_prior`_
+
+        .. _cg::wait_prior:
+            https://docs.nvidia.com/cuda/archive/11.6.0/cuda-c-programming-guide/index.html#collectives-cg-wait
         """
         super().__call__()
 
     def call(self, env, group, step):
         _check_cg_include(env)
-        assert isinstance(step, _Constant)
+        if not isinstance(step, _Constant):
+            raise ValueError('step must be a compile-time constant')
         return _Data(f'cg::wait_prior<{step.obj}>({group.code})',
                      _cuda_types.void)
 
