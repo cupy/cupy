@@ -145,7 +145,10 @@ class TestCooperativeGroups:
         @jit.rawkernel()
         def test_copy(x, y):
             # do two batches of copies to test relevant APIs
-            smem = jit.shared_memory(cupy.int32, 32*2)
+            if test_aligned:
+                smem = jit.shared_memory(cupy.int32, 32*2, alignment=16)
+            else:
+                smem = jit.shared_memory(cupy.int32, 32*2)
             g = jit.cg.this_thread_block()
             tid = g.thread_rank()
             # int32 is 4 bytes
