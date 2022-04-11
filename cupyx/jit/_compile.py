@@ -22,7 +22,7 @@ from cupyx.jit import _builtin_funcs
 from cupyx.jit import _interface
 
 
-_is_debug_mode = True
+_is_debug_mode = False
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
