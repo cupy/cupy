@@ -333,8 +333,8 @@ class _MemcpySync(_BuiltinFunc):
         dst = _Data.init(dst, env)
         src = _Data.init(src, env)
         for arr in (dst, src):
-            if not isinstance(arr.ctype,
-                    (_cuda_types.CArray, _cuda_types.Ptr)):
+            if not isinstance(
+                    arr.ctype, (_cuda_types.CArray, _cuda_types.Ptr)):
                 print(arr, arr.ctype)
                 raise TypeError('dst/src must be of array type.')
         dst = _compile._indexing(dst, dst_idx, env)
@@ -348,9 +348,11 @@ class _MemcpySync(_BuiltinFunc):
         size_code = f'{size.code}'
         if aligned_size:
             if not isinstance(aligned_size, _Constant):
-                raise ValueError('aligned_size must be a compile-time constant')
+                raise ValueError(
+                    'aligned_size must be a compile-time constant')
             _check_cg_include(env, target='cuda_barrier')
-            size_code = f'cuda::aligned_size_t<{aligned_size.obj}>({size_code})'
+            size_code = (f'cuda::aligned_size_t<{aligned_size.obj}>'
+                         f'({size_code})')
         return _Data(f'cg::memcpy_async({group.code}, &({dst.code}), '
                      f'&({src.code}), {size_code})', _cuda_types.void)
 
@@ -379,7 +381,8 @@ class _WaitPrior(_BuiltinFunc):
     def call(self, env, group, step):
         _check_cg_include(env)
         assert isinstance(step, _Constant)
-        return _Data(f'cg::wait_prior<{step.obj}>({group.code})', _cuda_types.void)
+        return _Data(f'cg::wait_prior<{step.obj}>({group.code})',
+                     _cuda_types.void)
 
 
 this_grid = _ThisCgGroup('grid')
