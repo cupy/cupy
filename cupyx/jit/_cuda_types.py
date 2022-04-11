@@ -1,6 +1,5 @@
 import numpy
 from cupy._core._scalar import get_typename
-from cupyx.jit import _internal_types
 
 
 # Base class for cuda types.
@@ -132,12 +131,15 @@ uint64 = Scalar(numpy.uint64)
 class Dim3(TypeBase):
 
     def x(self, code: str):
+        from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{code}.x', uint32)
 
     def y(self, code: str):
+        from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{code}.y', uint32)
 
     def z(self, code: str):
+        from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{code}.z', uint32)
 
     def __str__(self):
