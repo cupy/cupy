@@ -52,6 +52,15 @@ JIT kernel definition
    cupyx.jit.cg.wait_prior
    cupyx.jit._interface._JitRawKernel
 
+Cooperative groups
+..................
+
+ .. autoclass:: cupyx.jit.cg._ThreadBlockGroup
+    :members:
+
+ .. autoclass:: cupyx.jit.cg._GridGroup
+    :members:
+
 
 Kernel binary memoization
 -------------------------

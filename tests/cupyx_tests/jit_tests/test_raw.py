@@ -664,3 +664,34 @@ class TestRaw(unittest.TestCase):
             y = testing.shaped_random((30,), dtype=numpy.int32, seed=3)
             f((5,), (6,), (x, y))
             assert bool((x == y).all())
+
+    def test_cached_code(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+
+        assert isinstance(f.cached_codes, dict)
+        assert len(f.cached_codes) == 0
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+        assert len(f.cached_codes) == 1
+        assert isinstance(f.cached_code, str)
+
+        x = testing.shaped_random((30,), dtype=numpy.float32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.float32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+        assert len(f.cached_codes) == 2
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+        assert len(f.cached_codes) == 2

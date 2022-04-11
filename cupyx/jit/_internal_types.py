@@ -74,16 +74,16 @@ class BuiltinFunc(Expr):
     def __call__(self):
         raise RuntimeError('Cannot call this function from Python layer.')
 
+    @classmethod
+    def from_class_method(cls, instance_name, method):
+        # - this helper wraps every class method as a BuiltinFunc
+        # - method must return a valid Expr
+        # TODO(leofang): if performance is concerned, we could cache _Wrapper
+        # for each method.__func__, and overwrite with the provided instance
+        class _Wrapper(BuiltinFunc):
 
-def method_as_builtin_func(instance_name, method):
-    # - this helper wraps every class method as a BuiltinFunc
-    # - method must return a valid Expr
-    # TODO(leofang): if performance is concerned, we could cache _Wrapper
-    # for each method.__func__, and overwrite with the provided instance
-    class _Wrapper(BuiltinFunc):
+            def call(self, env, *args, **kwargs):
+                data = method(env, *args, **kwargs)
+                return Data(f'{instance_name}.{data.code}', data.ctype)
 
-        def call(self, env, *args, **kwargs):
-            data = method(env, *args, **kwargs)
-            return Data(f'{instance_name}.{data.code}', data.ctype)
-
-    return _Wrapper()
+        return _Wrapper()
