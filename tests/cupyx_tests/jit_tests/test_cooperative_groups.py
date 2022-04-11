@@ -137,3 +137,37 @@ class TestCooperativeGroups:
             jit.cg.sync(g)
 
         test_sync[2, 64]()
+
+    @pytest.mark.parametrize(
+        'test_aligned', (True, False),
+    )
+    def test_cg_memcpy_async_wait_for_wait(self, test_aligned):
+        @jit.rawkernel()
+        def test_copy(x, y):
+            # do two batches of copies to test relevant APIs
+            smem = jit.shared_memory(cupy.int32, 32*2)
+            g = jit.cg.this_thread_block()
+            tid = g.thread_rank()
+            # int32 is 4 bytes
+            if test_aligned:
+                # CuPy ensures x is 256B-aligned
+                jit.cg.memcpy_async(
+                    g, smem, 0, x, 0, 4*32, aligned_size=16)
+                jit.cg.memcpy_async(
+                    g, smem, 32, x, 32, 4*32, aligned_size=16)
+            else:
+                jit.cg.memcpy_async(
+                    g, smem, 0, x, 0, 4*32)
+                jit.cg.memcpy_async(
+                    g, smem, 32, x, 32, 4*32)
+            jit.cg.wait_prior(g, 1)
+            if tid < 32:
+                y[tid] = smem[tid]
+            jit.cg.wait(g)
+            if 32 <= tid and tid < 64:  # can't do "32 <= tid < 64" yet...
+                y[tid] = smem[tid]
+
+        x = cupy.arange(64, dtype=cupy.int32)
+        y = cupy.zeros(64, dtype=cupy.int32)
+        test_copy[2, 64](x, y)
+        assert (x == y).all()
