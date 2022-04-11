@@ -1,6 +1,7 @@
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
+from cupy._sorting import search as _search
 from cupy import _util
 
 
@@ -115,9 +116,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
     # Use brilliant searchsorted trick
     # https://github.com/cupy/cupy/pull/4018#discussion_r495790724
     ar2 = cupy.sort(ar2)
-    v1 = cupy.searchsorted(ar2, ar1, 'left')
-    v2 = cupy.searchsorted(ar2, ar1, 'right')
-    return v1 == v2 if invert else v1 != v2
+    return _search._exists_kernel(ar1, ar2, ar2.size, invert)
 
 
 def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
@@ -164,28 +163,21 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
         arr1 = arr1.ravel()
         arr2 = arr2.ravel()
 
-    if return_indices:
-        arr2_sort_indices = cupy.argsort(arr2)
-        arr2 = arr2[arr2_sort_indices]
-    else:
-        arr2 = cupy.sort(arr2)
+    if not return_indices:
+        mask = _search._exists_kernel(arr1, arr2, arr2.size, False)
+        return arr1[mask]
 
-    v1 = cupy.searchsorted(arr2, arr1, 'left')
-    v2 = cupy.searchsorted(arr2, arr1, 'right')
-
-    mask = v1 != v2
+    mask, v1 = _search._exists_and_searchsorted_kernel(
+        arr1, arr2, arr2.size, False)
     int1d = arr1[mask]
+    arr1_indices = cupy.flatnonzero(mask)
+    arr2_indices = v1[mask]
 
-    if return_indices:
-        arr1_indices = cupy.flatnonzero(mask)
-        arr2_indices = arr2_sort_indices[v2[mask]-1]
-        if not assume_unique:
-            arr1_indices = ind1[arr1_indices]
-            arr2_indices = ind2[arr2_indices]
+    if not assume_unique:
+        arr1_indices = ind1[arr1_indices]
+        arr2_indices = ind2[arr2_indices]
 
-        return int1d, arr1_indices, arr2_indices
-    else:
-        return int1d
+    return int1d, arr1_indices, arr2_indices
 
 
 def isin(element, test_elements, assume_unique=False, invert=False):

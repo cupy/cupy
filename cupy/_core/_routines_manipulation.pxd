@@ -18,7 +18,7 @@ cdef ndarray _ndarray_reshape(ndarray self, tuple shape, order)
 cdef ndarray _ndarray_transpose(ndarray self, tuple axes)
 cdef ndarray _ndarray_swapaxes(
     ndarray self, Py_ssize_t axis1, Py_ssize_t axis2)
-cdef ndarray _ndarray_flatten(ndarray self)
+cdef ndarray _ndarray_flatten(ndarray self, order)
 cdef ndarray _ndarray_ravel(ndarray self, order)
 cdef ndarray _ndarray_squeeze(ndarray self, axis)
 cdef ndarray _ndarray_repeat(ndarray self, repeats, axis)

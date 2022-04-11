@@ -1,6 +1,8 @@
 # Bessel Functions
 from cupyx.scipy.special._bessel import i0  # NOQA
+from cupyx.scipy.special._bessel import i0e  # NOQA
 from cupyx.scipy.special._bessel import i1  # NOQA
+from cupyx.scipy.special._bessel import i1e  # NOQA
 from cupyx.scipy.special._bessel import j0  # NOQA
 from cupyx.scipy.special._bessel import j1  # NOQA
 from cupyx.scipy.special._bessel import y0  # NOQA
@@ -8,9 +10,27 @@ from cupyx.scipy.special._bessel import y1  # NOQA
 from cupyx.scipy.special._bessel import yn  # NOQA
 
 # Raw statistical functions
-
-from cupyx.scipy.special._statistics import ndtr  # NOQA
-from cupyx.scipy.special._statistics import ndtri  # NOQA
+from cupyx.scipy.special._stats_distributions import bdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import bdtrc  # NOQA
+from cupyx.scipy.special._stats_distributions import bdtri  # NOQA
+from cupyx.scipy.special._stats_distributions import btdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import btdtri  # NOQA
+from cupyx.scipy.special._stats_distributions import fdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import fdtrc  # NOQA
+from cupyx.scipy.special._stats_distributions import fdtri  # NOQA
+from cupyx.scipy.special._stats_distributions import gdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import gdtrc  # NOQA
+from cupyx.scipy.special._stats_distributions import nbdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import nbdtrc  # NOQA
+from cupyx.scipy.special._stats_distributions import nbdtri  # NOQA
+from cupyx.scipy.special._stats_distributions import pdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import pdtrc  # NOQA
+from cupyx.scipy.special._stats_distributions import pdtri  # NOQA
+from cupyx.scipy.special._stats_distributions import chdtr  # NOQA
+from cupyx.scipy.special._stats_distributions import chdtrc  # NOQA
+from cupyx.scipy.special._stats_distributions import chdtri  # NOQA
+from cupyx.scipy.special._stats_distributions import ndtr  # NOQA
+from cupyx.scipy.special._stats_distributions import ndtri  # NOQA
 from cupyx.scipy.special._statistics import logit  # NOQA
 from cupyx.scipy.special._statistics import expit  # NOQA
 from cupyx.scipy.special._statistics import log_expit  # NOQA
@@ -18,7 +38,6 @@ from cupyx.scipy.special._statistics import boxcox  # NOQA
 from cupyx.scipy.special._statistics import boxcox1p  # NOQA
 from cupyx.scipy.special._statistics import inv_boxcox  # NOQA
 from cupyx.scipy.special._statistics import inv_boxcox1p  # NOQA
-
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
@@ -30,6 +49,7 @@ from cupyx.scipy.special._convex_analysis import rel_entr  # NOQA
 # Gamma and related functions
 from cupyx.scipy.special._gamma import gamma  # NOQA
 from cupyx.scipy.special._gammaln import gammaln  # NOQA
+from cupyx.scipy.special._loggamma import loggamma  # NOQA
 from cupyx.scipy.special._gammasgn import gammasgn  # NOQA
 from cupyx.scipy.special._gammainc import gammainc  # NOQA
 from cupyx.scipy.special._gammainc import gammaincinv  # NOQA
@@ -40,7 +60,9 @@ from cupyx.scipy.special._beta import betaln  # NOQA
 from cupyx.scipy.special._beta import betainc  # NOQA
 from cupyx.scipy.special._beta import betaincinv  # NOQA
 from cupyx.scipy.special._digamma import digamma as psi  # NOQA
+from cupyx.scipy.special._gamma import rgamma  # NOQA
 from cupyx.scipy.special._polygamma import polygamma  # NOQA
+from cupyx.scipy.special._gammaln import multigammaln  # NOQA
 from cupyx.scipy.special._digamma import digamma  # NOQA
 from cupyx.scipy.special._poch import poch  # NOQA
 

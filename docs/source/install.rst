@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -95,17 +95,19 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda114``
    * - v11.5
      - ``$ pip install cupy-cuda115``
+   * - v11.6
+     - ``$ pip install cupy-cuda116``
 
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
    If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
-    $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
+    $ python -m cupyx.tools.install_library --cuda 11.6 --library cutensor
 
 .. note::
 
-   Use ``pip install cupy-cudaXXX -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
+   Use ``pip install cupy-cudaXXX --pre -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
@@ -378,7 +380,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3 / v5.0
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -420,6 +422,8 @@ Package names are different depending on your ROCm version.
      - ``$ pip install cupy-rocm-4-2``
    * - v4.3
      - ``$ pip install cupy-rocm-4-3``
+   * - v5.0
+     - ``$ pip install cupy-rocm-5-0``
 
 Building CuPy for ROCm From Source
 ----------------------------------

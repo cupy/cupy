@@ -74,11 +74,31 @@ i0 = _core.create_ufunc(
     ''')
 
 
+i0e = _core.create_ufunc(
+    'cupyx_scipy_special_i0e', ('f->f', 'd->d'),
+    'out0 = exp(-abs(in0)) * cyl_bessel_i0(in0)',
+    doc='''Exponentially scaled modified Bessel function of order 0.
+
+    .. seealso:: :meth:`scipy.special.i0e`
+
+    ''')
+
+
 i1 = _core.create_ufunc(
     'cupyx_scipy_special_i1', ('f->f', 'd->d'),
     'out0 = cyl_bessel_i1(in0)',
     doc='''Modified Bessel function of order 1.
 
     .. seealso:: :meth:`scipy.special.i1`
+
+    ''')
+
+
+i1e = _core.create_ufunc(
+    'cupyx_scipy_special_i1e', ('f->f', 'd->d'),
+    'out0 = exp(-abs(in0)) * cyl_bessel_i1(in0)',
+    doc='''Exponentially scaled modified Bessel function of order 1.
+
+    .. seealso:: :meth:`scipy.special.i1e`
 
     ''')

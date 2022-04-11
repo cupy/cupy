@@ -12,7 +12,7 @@ from cupy._core._kernel cimport _broadcast
 from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
 from cupy._core._kernel cimport _get_kernel_params
-from cupy._core._kernel cimport _get_out_args
+from cupy._core._kernel cimport _get_out_args_from_optionals
 from cupy._core._kernel cimport _get_out_args_with_params
 from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport _reduce_dims
@@ -605,7 +605,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef list _get_out_args(
             self, list out_args, tuple out_types, const shape_t& out_shape):
-        return _get_out_args(
+        return _get_out_args_from_optionals(
             out_args, out_types, out_shape, 'unsafe')
 
     cdef function.Function _get_function(

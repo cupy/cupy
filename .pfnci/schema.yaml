@@ -64,7 +64,7 @@ rocm:
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "5.0":
-    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.1
+    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -372,6 +372,7 @@ cuda-python:
 ###############################################################################
 env:CUPY_ACCELERATORS:
   null:
+  "":
   "cub":
   "cutensor":
   "cub,cutensor":
@@ -385,3 +386,4 @@ test:
   "unit-multi":
   "unit-slow":
   "example":
+  "benchmark":

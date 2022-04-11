@@ -43,15 +43,7 @@ extras_require = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
-    ],
-    # TODO(kmaehashi): Remove 'jenkins' requirements.
-    'jenkins': [
-        'pytest>=6.2',
-        'pytest-timeout',
-        'pytest-cov',
-        'coveralls',
-        'codecov',
-        'coverage<5',  # Otherwise, Python must be built with sqlite
+        'hypothesis>=6.37.2',
     ],
 }
 tests_require = extras_require['test']

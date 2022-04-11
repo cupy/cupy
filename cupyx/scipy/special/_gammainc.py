@@ -114,7 +114,12 @@ _unity_c_partial = (
 
 
 /* log(1 + x) - x */
+#ifdef __HIP_DEVICE_COMPILE__
+// For some reason ROCm 4.3 crashes with the noinline in this function
+__device__ double log1pmx(double x)
+#else
 __noinline__ __device__ double log1pmx(double x)
+#endif
 {
     if (fabs(x) < 0.5) {
         int n;
