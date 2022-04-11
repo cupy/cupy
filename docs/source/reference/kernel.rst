@@ -45,7 +45,9 @@ JIT kernel definition
    cupyx.jit.atomic_or
    cupyx.jit.atomic_xor
    cupyx.jit.cg.this_grid
+   cupyx.jit.cg._GridGroup
    cupyx.jit.cg.this_thread_block
+   cupyx.jit.cg._ThreadBlockGroup
    cupyx.jit._interface._JitRawKernel
 
 
