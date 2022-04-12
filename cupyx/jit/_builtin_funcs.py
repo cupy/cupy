@@ -21,18 +21,22 @@ class RangeFunc(BuiltinFunc):
 
         Args:
             start (int):
-                Same as that of built-in range.
+                Same as that of built-in :func:`range`.
             stop (int):
-                Same as that of built-in range.
+                Same as that of built-in :func:`range`.
             step (int):
-                Same as that of built-in range.
+                Same as that of built-in :func:`range`.
             unroll (int or bool or None):
-                If ``True``, add ``#pragma unroll`` directive before the loop.
-                If ``False``, add ``#pragma unroll(1)`` directive before the
-                loop to disable unrolling.
-                If ``int`` type, add ``#pragma unroll(n)`` directive before the
-                loop, where ``n`` means the number of iterations to unroll.
-                If ``None``, leave the control of loop unrolling to compiler.
+
+                - If `True`, add ``#pragma unroll`` directive before the
+                  loop.
+                - If `False`, add ``#pragma unroll(1)`` directive before
+                  the loop to disable unrolling.
+                - If an `int`, add ``#pragma unroll(n)`` directive before
+                  the loop, where the integer ``n`` means the number of
+                  iterations to unroll.
+                - If `None` (default), leave the control of loop unrolling
+                  to the compiler.
 
         .. seealso:: `#pragma unroll`_
 
@@ -97,7 +101,7 @@ class RangeFunc(BuiltinFunc):
         else:
             assert False
 
-        return Range(start, stop, step, ctype, step_is_positive, unroll)
+        return Range(start, stop, step, ctype, step_is_positive, unroll=unroll)
 
 
 class LenFunc(BuiltinFunc):

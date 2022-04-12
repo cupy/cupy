@@ -47,7 +47,8 @@ class Constant(Expr):
 
 class Range(Expr):
 
-    def __init__(self, start, stop, step, ctype, step_is_positive, unroll):
+    def __init__(self, start, stop, step, ctype, step_is_positive, *,
+                 unroll=None):
         self.start = start
         self.stop = stop
         self.step = step
