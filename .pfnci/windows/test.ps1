@@ -68,12 +68,11 @@ function Main {
     echo "Setting up test environment"
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools wheel
-    RunOrDie python -m pip install Cython scipy optuna hypothesis
     RunOrDie python -m pip freeze
 
     echo "Building..."
     $build_retval = 0
-    python -m pip install ".[all,jenkins]" -vvv > cupy_build_log.txt
+    python -m pip install ".[all,test]" -vvv > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
