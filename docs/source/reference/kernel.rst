@@ -14,6 +14,8 @@ Custom kernels
 JIT kernel definition
 ---------------------
 
+.. note:: If loop unrolling is needed, use :func:`cupyx.jit.range` instead of the built-in :obj:`range`.
+
 .. autosummary::
    :toctree: generated/
 
@@ -23,10 +25,10 @@ JIT kernel definition
    cupyx.jit.blockIdx
    cupyx.jit.gridDim
    cupyx.jit.grid
-   cupyx.jit.range
    cupyx.jit.gridsize
    cupyx.jit.laneid
    cupyx.jit.warpsize
+   cupyx.jit.range
    cupyx.jit.syncthreads
    cupyx.jit.syncwarp
    cupyx.jit.shfl_sync

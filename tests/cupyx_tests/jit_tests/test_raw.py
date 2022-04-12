@@ -704,7 +704,8 @@ class TestRaw:
         def f(x):
             tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
             y = x[tid]
-            if unroll == None:  # workaround: can't use "is" here...
+            # workaround: can't use "is" here...
+            if unroll == None:  # noqa: E711
                 for i in jit.range(5):
                     y += 2
             else:

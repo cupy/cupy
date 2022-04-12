@@ -21,11 +21,11 @@ class RangeFunc(BuiltinFunc):
 
         Args:
             start (int):
-                Same as that of built-in :func:`range`.
+                Same as that of built-in :obj:`range`.
             stop (int):
-                Same as that of built-in :func:`range`.
+                Same as that of built-in :obj:`range`.
             step (int):
-                Same as that of built-in :func:`range`.
+                Same as that of built-in :obj:`range`.
             unroll (int or bool or None):
 
                 - If `True`, add ``#pragma unroll`` directive before the
@@ -36,7 +36,7 @@ class RangeFunc(BuiltinFunc):
                   the loop, where the integer ``n`` means the number of
                   iterations to unroll.
                 - If `None` (default), leave the control of loop unrolling
-                  to the compiler.
+                  to the compiler (no ``#pragma``).
 
         .. seealso:: `#pragma unroll`_
 
