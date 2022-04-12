@@ -120,7 +120,7 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('53', '62', '72')
+_tegra_archs = (53, 62, 72)
 
 
 @_util.memoize()
@@ -128,16 +128,16 @@ def _get_max_compute_capability():
     major, minor = _get_nvrtc_version()
     if major < 11:
         # CUDA 10.2
-        nvrtc_max_compute_capability = '75'
+        nvrtc_max_compute_capability = 75
     elif major == 11 and minor == 0:
         # CUDA 11.0
-        nvrtc_max_compute_capability = '80'
+        nvrtc_max_compute_capability = 80
     elif major == 11 and minor < 4:
         # CUDA 11.1 / 11.2 / 11.3
-        nvrtc_max_compute_capability = '86'
+        nvrtc_max_compute_capability = 86
     else:
         # CUDA 11.4+
-        nvrtc_max_compute_capability = '87'
+        nvrtc_max_compute_capability = 87
 
     return nvrtc_max_compute_capability
 
@@ -148,7 +148,7 @@ def _get_arch():
     # the maximum value allowed for `--gpu-architecture`.
     nvrtc_max_compute_capability = _get_max_compute_capability()
 
-    arch = device.Device().compute_capability
+    arch = int(device.Device().compute_capability)
     if arch in _tegra_archs:
         return arch
     else:
