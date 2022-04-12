@@ -138,6 +138,9 @@ class TestCooperativeGroups:
 
         test_sync[2, 64]()
 
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='not supported until CUDA 11.0')
     @pytest.mark.parametrize(
         'test_aligned', (True, False),
     )

@@ -289,6 +289,9 @@ class _ThisCgGroup(_BuiltinFunc):
         if group_type == "grid":
             self.__doc__ += ", :func:`numba.cuda.cg.this_grid`"
 
+    def __call__(self):
+        super().__call__()
+
     def call_const(self, env):
         if _runtime.is_hip:
             raise RuntimeError('cooperative group is not supported on HIP')
@@ -307,7 +310,7 @@ class _ThisCgGroup(_BuiltinFunc):
 
 class _Sync(_BuiltinFunc):
 
-    def __call__(self):
+    def __call__(self, group):
         """Calls ``cg::sync()``.
 
         Args:
@@ -321,13 +324,16 @@ class _Sync(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
+        if _runtime.runtimeGetVersion() < 11000:
+            raise RuntimeError("not supported in CUDA < 11.0")
         _check_cg_include(env)
         return _Data(f'cg::sync({group.code})', _cuda_types.void)
 
 
 class _MemcpySync(_BuiltinFunc):
 
-    def __call__(self):
+    def __call__(self, group, dst, dst_idx, src, src_idx, size, *,
+                 aligned_size=None):
         """Calls ``cg::memcpy_sync()``.
 
         Args:
@@ -353,6 +359,8 @@ class _MemcpySync(_BuiltinFunc):
 
     def call(self, env, group, dst, dst_idx, src, src_idx, size, *,
              aligned_size=None):
+        if _runtime.runtimeGetVersion() < 11000:
+            raise RuntimeError("not supported in CUDA < 11.0")
         _check_cg_include(env, target='memcpy_async')
 
         dst = _Data.init(dst, env)
@@ -384,7 +392,7 @@ class _MemcpySync(_BuiltinFunc):
 
 class _Wait(_BuiltinFunc):
 
-    def __call__(self):
+    def __call__(self, group):
         """Calls ``cg::wait()``.
 
         Args:
@@ -398,13 +406,15 @@ class _Wait(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
+        if _runtime.runtimeGetVersion() < 11000:
+            raise RuntimeError("not supported in CUDA < 11.0")
         _check_cg_include(env)
         return _Data(f'cg::wait({group.code})', _cuda_types.void)
 
 
 class _WaitPrior(_BuiltinFunc):
 
-    def __call__(self):
+    def __call__(self, group):
         """Calls ``cg::wait_prior<N>()``.
 
         Args:
@@ -419,6 +429,8 @@ class _WaitPrior(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group, step):
+        if _runtime.runtimeGetVersion() < 11000:
+            raise RuntimeError("not supported in CUDA < 11.0")
         _check_cg_include(env)
         if not isinstance(step, _Constant):
             raise ValueError('step must be a compile-time constant')
