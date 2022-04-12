@@ -120,7 +120,7 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('53', '62', '72')
+_tegra_archs = ('32', '53', '62', '72')
 
 
 @_util.memoize()
