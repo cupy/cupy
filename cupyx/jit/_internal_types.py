@@ -56,6 +56,9 @@ class Range(Expr):
 
 
 class BuiltinFunc(Expr):
+    # subclasses must implement:
+    # - either call or call_const
+    # - `__call__` with a correct signature, which calls the parent's __call__
 
     def call(self, env, *args, **kwargs):
         for x in itertools.chain(args, kwargs.values()):
