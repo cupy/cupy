@@ -50,10 +50,7 @@ cdef ndarray _ndarray_real_getter(ndarray self):
 
 
 cdef ndarray _ndarray_real_setter(ndarray self, value):
-    if self.dtype.kind == 'c':
-        _real_setter(value, self)
-    else:
-        elementwise_copy(value, self)
+    elementwise_copy(value, _ndarray_real_getter(self))
 
 
 cdef ndarray _ndarray_imag_getter(ndarray self):
@@ -79,7 +76,7 @@ cdef ndarray _ndarray_imag_getter(ndarray self):
 
 cdef ndarray _ndarray_imag_setter(ndarray self, value):
     if self.dtype.kind == 'c':
-        _imag_setter(value, self)
+        elementwise_copy(value, _ndarray_imag_getter(self))
     else:
         raise TypeError('cupy.ndarray does not have imaginary part to set')
 
@@ -91,7 +88,8 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
         if result is not None:
@@ -109,7 +107,8 @@ cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
         if result is not None:
@@ -150,14 +149,6 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 
 _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
-_preamble = '' if not runtime._is_hip_environment else r'''
-    // ignore mask
-    #define __shfl_xor_sync(m, x, y, z) __shfl_xor(x, y, z)
-
-    // It is guaranteed to be safe on AMD's hardware, see
-    // https://rocmdocs.amd.com/en/latest/Programming_Guides/HIP-GUIDE.html#warp-cross-lane-functions  # NOQA
-    #define __syncwarp() {}
-    '''
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -213,8 +204,7 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_shfl', loop_prep=loop_prep,
-                                  preamble=_preamble)
+                                  'cupy_bsum_shfl', loop_prep=loop_prep)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -271,8 +261,7 @@ def _cupy_bsum_smem(op, chunk_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_smem', loop_prep=loop_prep,
-                                  preamble=_preamble)
+                                  'cupy_bsum_smem', loop_prep=loop_prep)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -339,8 +328,7 @@ def _cupy_scan_naive(op, chunk_size, warp_size=32):
     """).substitute(block_size=chunk_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_naive', loop_prep=loop_prep,
-                                  preamble=_preamble)
+                                  'cupy_scan_naive', loop_prep=loop_prep)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -435,8 +423,7 @@ def _cupy_scan_btree(op, chunk_size, warp_size=32):
     """).substitute(block_size=chunk_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_btree', loop_prep=loop_prep,
-                                  preamble=_preamble)
+                                  'cupy_scan_btree', loop_prep=loop_prep)
 
 
 cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
@@ -532,7 +519,7 @@ def _inclusive_batch_scan_kernel(
     """
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
-    name = 'inclusive_batch_scan_kernel'
+    name = 'cupy_inclusive_batch_scan_kernel'
     dtype = get_typename(dtype)
     source = string.Template("""
     extern "C" __global__ void ${name}(
@@ -617,7 +604,7 @@ def _inclusive_batch_scan_kernel(
 
 @_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
-    name = 'add_scan_blocked_sum_kernel'
+    name = 'cupy_add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
@@ -864,7 +851,7 @@ _nanprod_complex_dtype = create_reduction_func(
     ''',
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
-cdef create_arithmetic(name, op, boolop, doc):
+cdef create_arithmetic(name, op, boolop, doc, cutensor_op=None):
     # boolop is either
     #  - str (the operator for bool-bool inputs) or
     #  - callable (a function to raise an error for bool-bool inputs).
@@ -878,7 +865,8 @@ cdef create_arithmetic(name, op, boolop, doc):
          'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
          'DD->D'),
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc,
+        cutensor_op=cutensor_op)
 
 
 _add = create_arithmetic(
@@ -887,7 +875,8 @@ _add = create_arithmetic(
 
     .. seealso:: :data:`numpy.add`
 
-    ''')
+    ''',
+    cutensor_op=('OP_ADD', 1, 1))
 
 
 _conjugate = create_ufunc(
@@ -917,46 +906,21 @@ _angle = create_ufunc(
     ''')
 
 
-_real = create_ufunc(
-    'cupy_real',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = in0.real()'),
-     ('D->d', 'out0 = in0.real()')),
-    'out0 = in0',
-    doc='''Returns the real part of the elements of the array.
-
-    .. seealso:: :func:`numpy.real`
-
-    ''')
-
-_real_setter = create_ufunc(
-    'cupy_real_setter',
-    ('f->F', 'd->D'),
-    'out0.real(in0)',
-    doc='''Sets the real part of the elements of the array.
-    ''')
+def _positive_boolean_error():
+    raise TypeError(
+        'The cupy boolean positive, the `+` operator, is not supported.')
 
 
-_imag = create_ufunc(
-    'cupy_imag',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
-     ('F->f', 'out0 = in0.imag()'),
-     ('D->d', 'out0 = in0.imag()')),
-    'out0 = 0',
-    doc='''Returns the imaginary part of the elements of the array.
+_positive = create_ufunc(
+    'cupy_positive',
+    (('?->?', _positive_boolean_error),
+     'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = +in0',
+    doc='''Takes numerical positive elementwise.
 
-    .. seealso:: :func:`numpy.imag`
+    .. seealso:: :data:`numpy.positive`
 
-    ''')
-
-
-_imag_setter = create_ufunc(
-    'cupy_imag_setter',
-    ('f->F', 'd->D'),
-    'out0.imag(in0)',
-    doc='''Sets the imaginary part of the elements of the array.
     ''')
 
 
@@ -985,7 +949,8 @@ _multiply = create_arithmetic(
 
     .. seealso:: :data:`numpy.multiply`
 
-    ''')
+    ''',
+    cutensor_op=('OP_MUL', 1, 1))
 
 
 # `integral_power` should return somewhat appropriate values for negative
@@ -1045,7 +1010,8 @@ _subtract = create_arithmetic(
 
     .. seealso:: :data:`numpy.subtract`
 
-    ''')
+    ''',
+    cutensor_op=('OP_ADD', 1, -1))
 
 
 _true_divide = create_ufunc(
@@ -1136,8 +1102,7 @@ _clip = create_ufunc(
 add = _add
 conjugate = _conjugate
 angle = _angle
-real = _real
-imag = _imag
+positive = _positive
 negative = _negative
 multiply = _multiply
 divide = _divide

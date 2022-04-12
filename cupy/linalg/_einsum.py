@@ -1,5 +1,6 @@
 import copy
 import itertools
+import operator
 import string
 import warnings
 
@@ -34,8 +35,8 @@ def _transpose_ex(a, axeses):
         axeses (sequence of sequences of ints)
 
     Returns:
-        p: a with its axes permutated. A writeable view is returned whenever
-            possible.
+        ndarray: a with its axes permutated. A writeable view is returned
+        whenever possible.
     """
 
     shape = []
@@ -55,12 +56,14 @@ def _parse_int_subscript(list_subscript):
     for s in list_subscript:
         if s is Ellipsis:
             str_subscript += '@'
-        elif isinstance(s, int):
-            str_subscript += einsum_symbols[s]
         else:
-            raise TypeError(
-                'each subscript must be either an integer or an ellipsis'
-                ' to provide subscripts strings as lists')
+            try:
+                s = operator.index(s)
+            except TypeError as e:
+                raise TypeError(
+                    'For this input type lists must contain '
+                    'either int or Ellipsis') from e
+            str_subscript += einsum_symbols[s]
     return str_subscript
 
 
@@ -387,7 +390,8 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         return arr0 * arr1, sub_out
 
     for accelerator in _accelerator.get_routine_accelerators():
-        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cutensor is not None):
             if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
                              batch_dims, contract_dims):
                 if len(sub_out) == len(sub_others):

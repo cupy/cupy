@@ -1,11 +1,15 @@
+# mypy: ignore-errors
+
 from cupy._core import core  # NOQA
 from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
 
 # internal APIs for testing and developement
+from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
 from cupy._core._accelerator import set_routine_accelerators  # NOQA
+from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import get_reduction_accelerators  # NOQA
 from cupy._core._accelerator import get_routine_accelerators  # NOQA
 
@@ -48,11 +52,10 @@ from cupy._core._routines_math import angle  # NOQA
 from cupy._core._routines_math import conjugate  # NOQA
 from cupy._core._routines_math import divide  # NOQA
 from cupy._core._routines_math import floor_divide  # NOQA
-from cupy._core._routines_math import imag  # NOQA
 from cupy._core._routines_math import multiply  # NOQA
 from cupy._core._routines_math import negative  # NOQA
+from cupy._core._routines_math import positive  # NOQA
 from cupy._core._routines_math import power  # NOQA
-from cupy._core._routines_math import real  # NOQA
 from cupy._core._routines_math import remainder  # NOQA
 from cupy._core._routines_math import sqrt  # NOQA
 from cupy._core._routines_math import subtract  # NOQA
@@ -66,9 +69,9 @@ from cupy._core.core import ascontiguousarray  # NOQA
 from cupy._core.core import asfortranarray  # NOQA
 from cupy._core.core import divmod  # NOQA
 from cupy._core.core import elementwise_copy  # NOQA
-from cupy._core.core import elementwise_copy_where  # NOQA
 from cupy._core.core import ndarray  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
+from cupy._core.dlpack import from_dlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA
 from cupy._core.internal import get_size  # NOQA
 from cupy._core.raw import RawKernel  # NOQA

@@ -71,6 +71,10 @@ cudaError_t cudaDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
     return hipDeviceEnablePeerAccess(peerDeviceId, flags);
 }
 
+cudaError_t cudaDeviceDisablePeerAccess(int peerDeviceId) {
+    return hipDeviceDisablePeerAccess(peerDeviceId);
+}
+
 cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
     return hipDeviceGetLimit(pValue, limit);
 }
@@ -138,8 +142,12 @@ cudaError_t cudaHostUnregister(...) {
     return hipErrorUnknown;
 }
 
-cudaError_t cudaMallocManaged(...) {
+cudaError_t cudaMallocManaged(void** ptr, size_t size, unsigned int flags) {
+#if HIP_VERSION >= 40300000
+    return hipMallocManaged(ptr, size, flags);
+#else
     return hipErrorUnknown;
+#endif
 }
 
 int cudaFree(void* ptr) {
@@ -225,17 +233,42 @@ cudaError_t cudaMemsetAsync(void* dst, int value, size_t sizeBytes,
     return hipMemsetAsync(dst, value, sizeBytes, stream);
 }
 
-cudaError_t cudaMemAdvise(...) {
+cudaError_t cudaMemAdvise(const void *devPtr, size_t count,
+                          cudaMemoryAdvise advice, int device) {
+#if HIP_VERSION >= 40300000
+    return hipMemAdvise(devPtr, count, advice, device);
+#else
     return hipErrorUnknown;
+#endif
 }
 
-cudaError_t cudaMemPrefetchAsync(...) {
+cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
+				 int dstDevice, cudaStream_t stream) {
+#if HIP_VERSION >= 40300000
+    return hipMemPrefetchAsync(devPtr, count, dstDevice, stream);
+#else
     return hipErrorUnknown;
+#endif
 }
 
 cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
                                      const void* ptr) {
-    return hipPointerGetAttributes(attributes, ptr);
+    cudaError_t status = hipPointerGetAttributes(attributes, ptr);
+    if (status == cudaSuccess) {
+        switch (attributes->memoryType) {
+            case 0 /* hipMemoryTypeHost */:
+                attributes->memoryType = (hipMemoryType)1; /* cudaMemoryTypeHost */
+                return status;
+            case 1 /* hipMemoryTypeDevice */:
+                attributes->memoryType = (hipMemoryType)2; /* cudaMemoryTypeDevice */
+                return status;
+            default:
+                /* we don't care the rest of possibilities */
+                return status;
+        }
+    } else {
+        return status;
+    }
 }
 
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {

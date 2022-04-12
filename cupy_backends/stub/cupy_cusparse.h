@@ -6,9 +6,7 @@
 extern "C" {
 
 typedef enum {} cusparseIndexBase_t;
-typedef enum {
-  CUSPARSE_STATUS_SUCCESS=0,
-}  cusparseStatus_t;
+typedef enum { CUSPARSE_STATUS_SUCCESS=0, } cusparseStatus_t;  // one-liner for easy parsing
 
 typedef void* cusparseHandle_t;
 typedef void* cusparseMatDescr_t;
@@ -1173,6 +1171,28 @@ cusparseStatus_t cusparseCsr2cscEx2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+typedef void* cusparseSpGEMMDescr_t;
+typedef enum {} cusparseSpGEMMAlg_t;
+
+cusparseStatus_t cusparseSpGEMM_createDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_destroyDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_workEstimation(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_compute(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_copy(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Definitions are for compatibility

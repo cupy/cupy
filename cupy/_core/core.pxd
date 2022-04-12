@@ -35,7 +35,7 @@ cdef class ndarray:
     cpdef ndarray view(self, dtype=*)
     cpdef fill(self, value)
     cpdef ndarray swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2)
-    cpdef ndarray flatten(self)
+    cpdef ndarray flatten(self, order=*)
     cpdef ndarray ravel(self, order=*)
     cpdef ndarray squeeze(self, axis=*)
     cpdef ndarray take(self, indices, axis=*, out=*)
@@ -56,7 +56,7 @@ cdef class ndarray:
     cpdef ndarray argmin(self, axis=*, out=*, dtype=*,
                          keepdims=*)
     cpdef ndarray ptp(self, axis=*, out=*, keepdims=*)
-    cpdef ndarray clip(self, a_min=*, a_max=*, out=*)
+    cpdef ndarray clip(self, min=*, max=*, out=*)
     cpdef ndarray round(self, decimals=*, out=*)
 
     cpdef ndarray trace(self, offset=*, axis1=*, axis2=*, dtype=*,

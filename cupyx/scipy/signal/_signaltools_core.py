@@ -3,7 +3,7 @@ import math
 import cupy
 from cupy._core import internal
 from cupyx.scipy import fft
-from cupyx.scipy.ndimage import filters
+from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.ndimage import _util
 
 
@@ -61,14 +61,27 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
                             for x1, x2 in zip(in1.shape, in2.shape))
 
     # Check the output
+    # In SciPy, the output dtype is determined by inputs' dtypes
+    out_dtype = cupy.promote_types(in1, in2)
     if not isinstance(output, cupy.ndarray):
-        output = cupy.empty(out_shape, output)
+        if not cupy.can_cast(output, out_dtype):
+            raise ValueError('not available for this type')
+        output = cupy.empty(out_shape, out_dtype)
     elif output.shape != out_shape:
         raise ValueError('out has wrong shape')
+    elif output.dtype != out_dtype:
+        raise ValueError('out has wrong dtype')
+
+    # Check input dtypes
+    # Internally, the kernel accumulates in in2's type, so if in2 has lower
+    # precision (can_cast = True!) we hit overflow easier
+    # TODO(leofang): this is a band-aid fix for cupy/cupy#6047
+    if cupy.can_cast(in2, in1):
+        in2 = in2.astype(out_dtype)  # make a copy while upcasting
 
     # Get and run the CuPy kernel
     int_type = _util._get_inttype(in1)
-    kernel = filters._get_correlate_kernel(
+    kernel = _filters._get_correlate_kernel(
         boundary, in2.shape, int_type, offsets, fillvalue)
     in2 = _reverse(in2) if convolution else in2.conj()
     if not swapped_inputs or convolution:
@@ -90,7 +103,7 @@ def _reverse(x):
 
 
 def _inputs_swap_needed(mode, shape1, shape2, axes=None):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     if mode != 'valid' or not shape1:
         return False
     if axes is None:
@@ -104,7 +117,7 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
 
 
 def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     s1, s2 = in1.shape, in2.shape
     axes = _init_nd_and_axes(in1, axes)
     # Length-1 axes can rely on broadcasting rules, no fft needed
@@ -138,7 +151,11 @@ def _init_nd_and_axes(x, axes):
 
 
 def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
+    if not axes:
+        # rfftn/irfftn require an axis or more.
+        return in1 * in2
+
     real = (in1.dtype.kind != 'c' and in2.dtype.kind != 'c')
     fshape = ([fft.next_fast_len(shape[a], real) for a in axes]
               if calc_fast_len else shape)
@@ -153,7 +170,7 @@ def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
 
 
 def _apply_conv_mode(full, s1, s2, mode, axes):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
     if mode == 'full':
         return cupy.ascontiguousarray(full)
     if mode == 'valid':
@@ -202,7 +219,7 @@ def _optimal_oa_block_size(overlap):
 
 
 def _calc_oa_lens(s1, s2):
-    # See scipy's documentation in scipy.signal.signaltools
+    # See scipy's documentation in scipy.signal._signaltools
 
     # Set up the arguments for the conventional FFT approach.
     fallback = (s1+s2-1, None, s1, s2)

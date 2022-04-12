@@ -4,6 +4,8 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import _util
@@ -31,6 +33,13 @@ class TestNdarrayInit(unittest.TestCase):
     def test_shape_int(self):
         a = cupy.ndarray(3)
         assert a.shape == (3,)
+
+    def test_shape_not_integer(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError):
+                xp.ndarray(1.0)
+            with pytest.raises(TypeError):
+                xp.ndarray((1.0,))
 
     def test_shape_int_with_strides(self):
         dummy = cupy.ndarray(3)
@@ -125,6 +134,12 @@ class TestNdarrayInitRaise(unittest.TestCase):
         with pytest.raises(ValueError):
             _core.array(arr)
 
+    def test_excessive_ndim(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.ndarray(
+                    shape=[1 for i in range(33)], dtype=xp.int8)
+
 
 @testing.parameterize(
     *testing.product({
@@ -174,8 +189,7 @@ void wait_and_write(long long *x) {
 '''
 
 
-@testing.gpu
-class TestNdarrayCopy(unittest.TestCase):
+class TestNdarrayCopy:
 
     @testing.multi_gpu(2)
     @testing.for_orders('CFA')
@@ -191,15 +205,20 @@ class TestNdarrayCopy(unittest.TestCase):
     def test_copy_multi_device_non_contiguous_K(self):
         arr = _core.ndarray((20,))[::2]
         with cuda.Device(1):
-            with self.assertRaises(NotImplementedError):
+            with pytest.raises(NotImplementedError):
                 arr.copy('K')
 
     # See cupy/cupy#5004
     @testing.multi_gpu(2)
+    @pytest.mark.xfail(
+        runtime.is_hip,
+        reason='ROCm may work differently in async D2D copy with streams')
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
-        kern = cupy.RawKernel(
-            _test_copy_multi_device_with_stream_src, 'wait_and_write')
+        src = _test_copy_multi_device_with_stream_src
+        if runtime.is_hip and driver.get_build_version() >= 5_00_00000:
+            src = '#include <ctime>\n' + src
+        kern = cupy.RawKernel(src, 'wait_and_write')
 
         # Allocates a memory and launches the kernel on a device with its
         # stream.
@@ -239,6 +258,14 @@ class TestNdarrayShape(unittest.TestCase):
         arr = xp.ndarray((2, 3))
         arr.shape = 6
         return xp.array(arr.shape)
+
+    def test_shape_need_copy(self):
+        # from cupy/cupy#5470
+        for xp in (numpy, cupy):
+            arr = xp.ndarray((2, 3), order='F')
+            with pytest.raises(AttributeError) as e:
+                arr.shape = (3, 2)
+            assert 'incompatible shape' in str(e.value).lower()
 
 
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,

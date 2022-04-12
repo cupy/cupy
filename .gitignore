@@ -10,6 +10,7 @@ build
 .\#*
 .coverage
 .eggs/
+.mypy_cache
 _readthedocs_build
 /TAGS
 /docs/source/reference/**/generated
@@ -18,6 +19,7 @@ cupy.egg-info/
 dist/
 htmlcov/
 .idea/
+.vs/
 .cache/
 .pytest_cache/
 cupy/.data/

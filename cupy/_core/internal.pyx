@@ -18,9 +18,6 @@ cdef extern from 'halffloat.h':
     uint32_t npy_halfbits_to_floatbits(uint16_t h)
 
 
-cdef Py_ssize_t PY_SSIZE_T_MAX = sys.maxsize
-
-
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
     cdef Py_ssize_t n = 1
@@ -47,6 +44,18 @@ cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
 
 
 @cython.profile(False)
+cpdef inline void _check_not_bool(object x) except *:
+    if isinstance(x, (bool, numpy.bool_)):
+        raise TypeError('an integer is required')
+    if (
+        isinstance(x, numpy.ndarray)
+        and x.shape == ()
+        and x.dtype == numpy.bool_
+    ):
+        raise TypeError('an integer is required')
+
+
+@cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
         warnings.warn(
@@ -56,10 +65,19 @@ cpdef inline tuple get_size(object size):
         )
         return ()
     if cpython.PySequence_Check(size):
-        return tuple(size)
-    if isinstance(size, int):
-        return size,
-    raise ValueError('size should be None, collections.abc.Sequence, or int')
+        # A numpy.ndarray unconditionally succeeds in PySequence_Check as
+        # it implements __getitem__, but zero-dim one is an unsized object
+        # and fails to make a tuple from it.
+        try:
+            ret = tuple(size)
+        except TypeError:
+            _check_not_bool(size)
+            return size,
+        for x in ret:
+            _check_not_bool(x)
+        return ret
+    _check_not_bool(size)
+    return size,
 
 
 @cython.profile(False)
@@ -167,12 +185,14 @@ cpdef shape_t infer_unknown_dimension(
             index = i
         else:
             new_size *= shape[i]
-    if cnt == 0:
+    if cnt == 0 and new_size == size:
         return ret
     if cnt > 1:
-        raise ValueError('can only specify only one unknown dimension')
-    if (size != 0 and new_size == 0) or size % new_size != 0:
-        raise ValueError('total size of new array must be unchanged')
+        raise ValueError('can only specify one unknown dimension')
+    if cnt == 0 or new_size == 0 or size % new_size != 0:
+        # TODO(kataoka): print "newaxis" for unknown
+        raise ValueError(
+            f'cannot reshape array of size {size} into shape {tuple(shape)}')
     ret[index] = size // new_size
     return ret
 
@@ -237,6 +257,10 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
 
 @cython.profile(False)
 cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
+    warnings.warn(
+        'complete_slice_list is deprecated because the function sometimes '
+        'returns wrong result (#1512, #4799).',
+        DeprecationWarning)
     cdef Py_ssize_t i, n_newaxes, n_ellipses, ellipsis, n
     slice_list = list(slice_list)  # copy list
     # Expand ellipsis into empty slices
@@ -249,7 +273,7 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
             n_ellipses += 1
             ellipsis = i
     if n_ellipses > 1:
-        raise ValueError('Only one Ellipsis is allowed in index')
+        raise IndexError("an index can only have a single ellipsis ('...')")
 
     n = ndim - <Py_ssize_t>len(slice_list) + n_newaxes
     if n_ellipses > 0:
@@ -308,7 +332,7 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
 
 
 cdef _broadcast_core(list arrays, shape_t& shape):
-    cdef Py_ssize_t i, j, s, smin, smax, a_ndim, a_sh, nd
+    cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
     cdef strides_t strides
     cdef vector.vector[int] index
     cdef ndarray a
@@ -329,20 +353,24 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 
     shape.reserve(nd)
     for i in range(nd):
-        smin = PY_SSIZE_T_MAX
-        smax = 0
+        s = 1
         for j in index:
             a = arrays[j]
             a_ndim = <Py_ssize_t>a._shape.size()
-            if i >= nd - a_ndim:
-                s = a._shape[i - (nd - a_ndim)]
-                smin = min(smin, s)
-                smax = max(smax, s)
-        if smin == 0 and smax > 1:
+            if i < nd - a_ndim:
+                continue
+            a_sh = a._shape[i - (nd - a_ndim)]
+            if a_sh == s or a_sh == 1:
+                continue
+            if s == 1:
+                s = a_sh
+                continue
             raise ValueError(
-                'shape mismatch: objects cannot be broadcast to a '
-                'single shape')
-        shape.push_back(0 if smin == 0 else smax)
+                'operands could not be broadcast together with shapes {}'
+                .format(
+                    ' '.join([str(x.shape) if isinstance(x, ndarray)
+                              else '()' for x in arrays])))
+        shape.push_back(s)
 
     for i in index:
         a = arrays[i]
@@ -355,12 +383,6 @@ cdef _broadcast_core(list arrays, shape_t& shape):
             a_sh = a._shape[j]
             if a_sh == shape[j + nd - a_ndim]:
                 strides[j + nd - a_ndim] = a._strides[j]
-            elif a_sh != 1:
-                raise ValueError(
-                    'operands could not be broadcast together with shapes '
-                    '{}'.format(
-                        ', '.join([str(x.shape) if isinstance(x, ndarray)
-                                   else '()' for x in arrays])))
 
         # TODO(niboshi): Confirm update_x_contiguity flags
         arrays[i] = a._view(shape, strides, True, True)
@@ -433,7 +455,8 @@ cpdef tuple _normalize_axis_indices(
     for axis in axes:
         axis = _normalize_axis_index(axis, ndim)
         if axis in res:
-            raise ValueError('Duplicate value in \'axis\'')
+            # the message in `numpy/core/src/multiarray/conversion_utils.c`
+            raise ValueError('duplicate value in \'axis\'')
         res.append(axis)
 
     return tuple(sorted(res) if sort_axes else res)
@@ -443,6 +466,9 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
     # x here can be either numpy.ndarray or cupy.ndarray
     cdef strides_t strides
     # strides used when order='K' for astype, empty_like, etc.
+
+    # Note that there is different semantics of order='K'.
+    # See also `_routines_manipulation._npyiter_k_order_axes`.
     stride_and_index = [
         (abs(s), -i) for i, s in enumerate(x.strides)]
     stride_and_index.sort()
@@ -482,15 +508,16 @@ cpdef tuple _broadcast_shapes(shapes):
             Resulting shape of broadcasting shapes together.
     """
     out_ndim = max([len(shape) for shape in shapes])
-    shapes = [(1,) * (out_ndim - len(shape)) + shape for shape in shapes]
+    padded_shapes = [
+        (1,) * (out_ndim - len(shape)) + shape for shape in shapes]
 
     result_shape = []
-    for dims in zip(*shapes):
+    for dims in zip(*padded_shapes):
         dims = [dim for dim in dims if dim != 1]
         out_dim = 1 if len(dims) == 0 else dims[0]
         if any([dim != out_dim for dim in dims]):
             raise ValueError(
-                'Operands could not be broadcast together with shapes' +
+                'operands could not be broadcast together with shapes' +
                 ' '.join([str(shape) for shape in shapes]))
         result_shape.append(out_dim)
 

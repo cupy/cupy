@@ -108,10 +108,12 @@ cdef class Memory(BaseMemory):
 
 
 cdef inline void check_async_alloc_supported(int device_id) except*:
-    if CUDA_VERSION < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
+    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
     cdef list support
     try:
@@ -210,8 +212,11 @@ cdef class ManagedMemory(BaseMemory):
     """
 
     def __init__(self, size_t size):
-        if runtime._is_hip_environment:
-            raise RuntimeError('HIP does not support managed memory')
+        if (
+            runtime._is_hip_environment and
+            driver.get_build_version() < 40300000
+        ):
+            raise RuntimeError('Managed memory requires ROCm 4.3+')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
@@ -241,9 +246,6 @@ cdef class ManagedMemory(BaseMemory):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
             runtime.free(self.ptr)
-
-
-cdef set _peer_access_checked = set()
 
 
 @cython.final
@@ -404,8 +406,16 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDefault)
 
@@ -425,7 +435,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            MemoryPointer._set_peer_access(src.device_id, self.device_id)
+            device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDefault, stream_ptr)
 
@@ -443,6 +453,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpy(self.ptr, ptr, size,
@@ -463,6 +481,13 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so H2D transfers '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,
@@ -526,6 +551,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpy(ptr, self.ptr, size,
@@ -546,6 +579,13 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so D2H transfers '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(ptr, self.ptr, size,
@@ -565,6 +605,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             runtime.memset(self.ptr, value, size)
 
@@ -584,28 +632,6 @@ cdef class MemoryPointer:
             stream_ptr = stream.ptr
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream_ptr)
-
-    @staticmethod
-    cdef _set_peer_access(int device, int peer):
-        device_pair = device, peer
-
-        if device_pair in _peer_access_checked:
-            return
-        cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
-        _peer_access_checked.add(device_pair)
-        if not can_access:
-            return
-
-        cdef int current = runtime.getDevice()
-        runtime.setDevice(device)
-        try:
-            runtime.deviceEnablePeerAccess(peer)
-        # peer access could already be set by external libraries at this point
-        except CUDARuntimeError as e:
-            if e.status != runtime.errorPeerAccessAlreadyEnabled:
-                raise
-        finally:
-            runtime.setDevice(current)
 
 
 # cpdef because unit-tested
@@ -936,8 +962,8 @@ cdef class _Arena:
 
         Returns:
             bool: ``True`` if the chunk can successfully be removed from
-                the free list. ``False`` otherwise (e.g., the chunk could not
-                be found in the free list as the chunk is allocated.)
+            the free list. ``False`` otherwise (e.g., the chunk could not
+            be found in the free list as the chunk is allocated.)
         """
 
         cdef size_t index, bin_index
@@ -1514,9 +1540,6 @@ cdef class MemoryPool:
         return mp.get_limit()
 
 
-cdef bint MemoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
-
-
 cdef class MemoryAsyncPool:
     """(Experimental) CUDA memory pool for all GPU devices on the host.
 
@@ -1573,28 +1596,36 @@ cdef class MemoryAsyncPool:
     cdef:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
+        readonly bint memoryAsyncHasStat
 
     def __init__(self, pool_handles='current'):
         _util.experimental('cupy.cuda.MemoryAsyncPool')
-        cdef int dev_id, dev_counts
+        cdef int dev_id, prev_dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
         self._pools = []
-
+        self.memoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
+        prev_dev_id = runtime.getDevice()
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(prev_dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                with device.Device(dev_id):
+                try:
+                    runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
+                finally:
+                    runtime.setDevice(prev_dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool
@@ -1642,7 +1673,7 @@ cdef class MemoryAsyncPool:
         # to prevent CuPy from drawing too much memory from the pool; we cannot
         # do anything if other applications oversubscribe the pool.
         cdef size_t curr_total=-1, curr_free=0, total_limit=0
-        if MemoryAsyncHasStat:
+        if self.memoryAsyncHasStat:
             curr_total = self.total_bytes()
             curr_free = curr_total - self.used_bytes()
             if curr_free < rounded_size:  # need to increase pool size
@@ -1711,7 +1742,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes used by the pool.
         """
-        if not MemoryAsyncHasStat:
+        if not self.memoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
@@ -1732,7 +1763,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes acquired by the pool.
         """
-        if not MemoryAsyncHasStat:
+        if not self.memoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]

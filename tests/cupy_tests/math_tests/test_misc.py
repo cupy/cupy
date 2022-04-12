@@ -1,16 +1,13 @@
 import sys
-import unittest
 
 import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
 from cupy import testing
 
 
-@testing.gpu
-class TestMisc(unittest.TestCase):
+class TestMisc:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -41,7 +38,7 @@ class TestMisc(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_inf(self, name, xp, dtype):
+    def check_unary_inf(self, name, xp, dtype, **kwargs):
         inf = numpy.inf
         if numpy.dtype(dtype).kind != 'c':
             a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
@@ -50,11 +47,11 @@ class TestMisc(unittest.TestCase):
                           for x in [0, -1, 1, -inf, inf]
                           for y in [0, -1, 1, -inf, inf]],
                          dtype=dtype)
-        return getattr(xp, name)(a)
+        return getattr(xp, name)(a, **kwargs)
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_nan(self, name, xp, dtype):
+    def check_unary_nan(self, name, xp, dtype, **kwargs):
         nan = numpy.nan
         if numpy.dtype(dtype).kind != 'c':
             a = xp.array([0, -1, 1, -nan, nan], dtype=dtype)
@@ -63,7 +60,7 @@ class TestMisc(unittest.TestCase):
                           for x in [0, -1, 1, -nan, nan]
                           for y in [0, -1, 1, -nan, nan]],
                          dtype=dtype)
-        return getattr(xp, name)(a)
+        return getattr(xp, name)(a, **kwargs)
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -88,8 +85,8 @@ class TestMisc(unittest.TestCase):
                      dtype=dtype)
         return getattr(xp, name)(a, b)
 
-    @unittest.skipIf(
-        sys.platform == 'win32', 'dtype problem on Windows')
+    @pytest.mark.skipIf(
+        sys.platform == 'win32', reason='dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
@@ -121,8 +118,8 @@ class TestMisc(unittest.TestCase):
             with pytest.raises(ValueError):
                 a.clip(None, None)
 
-    @unittest.skipIf(
-        sys.platform == 'win32', 'dtype problem on Windows')
+    @pytest.mark.skipIf(
+        sys.platform == 'win32', reason='dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_external_clip1(self, xp, dtype):
@@ -160,6 +157,18 @@ class TestMisc(unittest.TestCase):
 
     def test_absolute_negative(self):
         self.check_unary_negative('absolute')
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_fabs(self, xp, dtype):
+        a = xp.array([2, 3, 4], dtype=dtype)
+        return xp.fabs(a)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_fabs_negative(self, xp, dtype):
+        a = xp.array([-2.0, -4.0, 0.0, 4.0], dtype=dtype)
+        return xp.fabs(a)
 
     def test_sign(self):
         self.check_unary('sign', no_bool=True)
@@ -209,8 +218,112 @@ class TestMisc(unittest.TestCase):
     def test_nan_to_num_nan(self):
         self.check_unary_nan('nan_to_num')
 
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_nan_to_num_scalar_nan(self, xp):
+        return xp.nan_to_num(xp.nan)
+
     def test_nan_to_num_inf_nan(self):
         self.check_unary_inf_nan('nan_to_num')
+
+    def test_nan_to_num_nan_arg(self):
+        self.check_unary_nan('nan_to_num', nan=1.0)
+
+    def test_nan_to_num_inf_arg(self):
+        self.check_unary_inf('nan_to_num', posinf=1.0, neginf=-1.0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_nan_to_num_copy(self, xp):
+        x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
+        y = xp.nan_to_num(x, copy=True)
+        assert x is not y
+        return y
+
+    @testing.numpy_cupy_array_equal()
+    def test_nan_to_num_inplace(self, xp):
+        x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
+        y = xp.nan_to_num(x, copy=False)
+        assert x is y
+        return y
+
+    @pytest.mark.parametrize('kwarg', ['nan', 'posinf', 'neginf'])
+    def test_nan_to_num_broadcast(self, kwarg):
+        for xp in (numpy, cupy):
+            x = xp.asarray([0, 1, xp.nan, 4], dtype=xp.float64)
+            y = xp.zeros((2, 4), dtype=xp.float64)
+            with pytest.raises(ValueError):
+                xp.nan_to_num(x, **{kwarg: y})
+            with pytest.raises(ValueError):
+                xp.nan_to_num(0.0, **{kwarg: y})
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_real_dtypes(self, xp, dtype):
+        x = testing.shaped_random((10,), xp, dtype)
+        return xp.real_if_close(x)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_tol_real_dtypes(self, xp, dtype):
+        x = testing.shaped_random((10,), xp, dtype)
+        return xp.real_if_close(x, tol=1e-6)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_true(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 90
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x)
+        assert x.dtype != out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_false(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 110
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x)
+        assert x.dtype == out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_integer_tol_true(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 140
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x, tol=150)
+        assert x.dtype != out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_integer_tol_false(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        tol = numpy.finfo(dtype).eps * 50
+        x = testing.shaped_random((10,), xp, dtype) + tol * 1j
+        out = xp.real_if_close(x, tol=30)
+        assert x.dtype == out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_float_tol_true(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        x = testing.shaped_random((10,), xp, dtype) + 3e-4j
+        out = xp.real_if_close(x, tol=1e-3)
+        assert x.dtype != out.dtype
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_real_if_close_with_float_tol_false(self, xp, dtype):
+        dtype = numpy.dtype(dtype).char.lower()
+        x = testing.shaped_random((10,), xp, dtype) + 3e-3j
+        out = xp.real_if_close(x, tol=1e-3)
+        assert x.dtype == out.dtype
+        return out
 
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_all_dtypes(name='dtype_y', no_bool=True)
@@ -340,13 +453,12 @@ class TestMisc(unittest.TestCase):
         return xp.interp(x, fx, fy)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full'],
     'shape1': [(), (5,), (6,), (20,), (21,)],
     'shape2': [(), (5,), (6,), (20,), (21,)],
 }))
-class TestConvolveShapeCombination(unittest.TestCase):
+class TestConvolveShapeCombination:
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-3)
@@ -356,41 +468,35 @@ class TestConvolveShapeCombination(unittest.TestCase):
         return xp.convolve(a, b, mode=self.mode)
 
 
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'mode': ['valid', 'same', 'full']
-}))
-class TestConvolve(unittest.TestCase):
+@pytest.mark.parametrize('mode', ['valid', 'same', 'full'])
+class TestConvolve:
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_convolve_non_contiguous(self, xp, dtype):
+    def test_convolve_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((300,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
-        return xp.convolve(a[::200], b[10::70], mode=self.mode)
+        return xp.convolve(a[::200], b[10::70], mode=mode)
 
     @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4)
-    def test_convolve_large_non_contiguous(self, xp, dtype):
+    def test_convolve_large_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
-        return xp.convolve(a[200::], b[10::70], mode=self.mode)
+        return xp.convolve(a[200::], b[10::70], mode=mode)
 
-    @pytest.mark.xfail(runtime.is_hip,
-                       reason='HIP/ROCm may have a bug with larger `b`')
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-2)
-    def test_convolve_diff_types(self, xp, dtype1, dtype2):
+    def test_convolve_diff_types(self, xp, dtype1, dtype2, mode):
         a = testing.shaped_random((200,), xp, dtype1)
         b = testing.shaped_random((100,), xp, dtype2)
-        return xp.convolve(a, b, mode=self.mode)
+        return xp.convolve(a, b, mode=mode)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
-class TestConvolveInvalid(unittest.TestCase):
+class TestConvolveInvalid:
 
     @testing.for_all_dtypes()
     def test_convolve_empty(self, dtype):

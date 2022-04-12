@@ -1,6 +1,5 @@
 import contextlib
 import pickle
-import unittest
 import warnings
 
 import numpy
@@ -12,6 +11,7 @@ except ImportError:
     scipy_available = False
 
 from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 import cupy
 from cupy._core import _accelerator
 from cupy import testing
@@ -133,8 +133,9 @@ def _make_shape(xp, sp, dtype):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-class TestCsrMatrix(unittest.TestCase):
+class TestCsrMatrix:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.m = _make(cupy, sparse, self.dtype)
 
@@ -206,6 +207,7 @@ class TestCsrMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, [1, 3, 2])
         cupy.testing.assert_array_equal(n.indptr, [0, 2, 2, 3])
 
+    @pytest.mark.xfail(runtime.is_hip, reason='hipSPARSE handles nnz=0 badly')
     def test_init_dense_empty(self):
         m = cupy.array([[0, 0, 0, 0],
                         [0, 0, 0, 0],
@@ -339,8 +341,9 @@ class TestCsrMatrix(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
-class TestCsrMatrixInit(unittest.TestCase):
+class TestCsrMatrixInit:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.shape = (3, 4)
 
@@ -468,7 +471,7 @@ class TestCsrMatrixInit(unittest.TestCase):
                     shape=self.shape)
 
     def test_unsupported_dtype(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             sparse.csr_matrix(
                 (self.data(cupy), self.indices(cupy), self.indptr(cupy)),
                 shape=self.shape, dtype='i')
@@ -486,7 +489,16 @@ class TestCsrMatrixInit(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
-class TestCsrMatrixScipyComparison(unittest.TestCase):
+class TestCsrMatrixScipyComparison:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        if runtime.is_hip:
+            if self.make_method in ('_make_empty', '_make_shape'):
+                # xcsr2coo, xcsrgemm2Nnz, csrmm2, nnz_compress, ... could raise
+                # HIPSPARSE_STATUS_INVALID_VALUE, maybe because we have a zero
+                # matrix (nnz=0)?
+                pytest.xfail('may be buggy')
 
     @property
     def make(self):
@@ -588,15 +600,19 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return n
 
     # dot
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_scalar(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.dot(2.0)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_numpy_scalar(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.dot(numpy.dtype(self.dtype).type(2.0)).toarray()
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_numpy_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
@@ -611,6 +627,8 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -623,11 +641,13 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_zero_dim(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        x = xp.array(2, dtype=self.dtype)
-        return m.dot(x)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_zero_dim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = xp.array(2, dtype=self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -788,6 +808,8 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m * x
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -862,6 +884,8 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -882,6 +906,14 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
+        if runtime.is_hip:
+            if driver.get_build_version() < 400:
+                pytest.skip('no working implementation')
+            # no idea what's wrong...
+            elif self.make_method in (
+                    '_make', '_make_unordered', '_make_duplicate'):
+                pytest.xfail('spMM raises HIPSPARSE_STATUS_INVALID_VALUE')
+
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
         return x * m
@@ -894,6 +926,11 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
                 x * m
 
     def test_rmul_unsupported(self):
+        if (
+            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
+            self.make_method not in ['_make_empty', '_make_shape']
+        ):
+            pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
             if m.nnz == 0:
@@ -1105,9 +1142,9 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    @unittest.skipIf(
-        cupy.cuda.runtime.runtimeGetVersion() < 8000,
-        'CUDA <8 cannot keep number of non-zero entries ')
+    @pytest.mark.skipif(
+        not runtime.is_hip and cupy.cuda.runtime.runtimeGetVersion() < 8000,
+        reason='CUDA <8 cannot keep number of non-zero entries ')
     def test_eliminate_zeros_nnz(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.eliminate_zeros()
@@ -1208,7 +1245,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
-class TestCsrMatrixPowScipyComparison(unittest.TestCase):
+class TestCsrMatrixPowScipyComparison:
 
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
@@ -1262,7 +1299,17 @@ class TestCsrMatrixPowScipyComparison(unittest.TestCase):
     'axis': [None, 0, 1, -1, -2],
 }))
 @testing.with_requires('scipy')
-class TestCsrMatrixSum(unittest.TestCase):
+class TestCsrMatrixSum:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        if runtime.is_hip and self.axis in (0, -2):
+            HIP_version = driver.get_build_version()
+            if HIP_version < 400:
+                pytest.skip('no working implementation')
+            elif HIP_version < 5_00_00000:
+                # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
+                pytest.xfail('spmv is buggy (trans=True)')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum(self, xp, sp):
@@ -1311,7 +1358,7 @@ class TestCsrMatrixSum(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
-class TestCsrMatrixScipyCompressed(unittest.TestCase):
+class TestCsrMatrixScipyCompressed:
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_get_shape(self, xp, sp):
@@ -1328,7 +1375,7 @@ class TestCsrMatrixScipyCompressed(unittest.TestCase):
     'dense': [False, True],  # means a sparse matrix but all elements filled
 }))
 @testing.with_requires('scipy>=0.19.0')
-class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
+class TestCsrMatrixScipyCompressedMinMax:
     def _make_data_min(self, xp, sp, dense=False):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
         if not dense:
@@ -1427,7 +1474,7 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
-class TestCsrMatrixData(unittest.TestCase):
+class TestCsrMatrixData:
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_dtype(self, xp, sp):
@@ -1478,6 +1525,14 @@ class TestCsrMatrixData(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mean_axis_0(self, xp, sp):
+        if runtime.is_hip:
+            HIP_version = driver.get_build_version()
+            if HIP_version < 400:
+                pytest.skip('no working implementation')
+            elif HIP_version < 5_00_00000:
+                # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
+                pytest.xfail('spmv is buggy (trans=True)')
+
         m = _make(xp, sp, self.dtype)
         return m.mean(axis=0)
 
@@ -1493,6 +1548,14 @@ class TestCsrMatrixData(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mean_axis_negative_2(self, xp, sp):
+        if runtime.is_hip:
+            HIP_version = driver.get_build_version()
+            if HIP_version < 400:
+                pytest.skip('no working implementation')
+            elif HIP_version < 5_00_00000:
+                # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
+                pytest.xfail('spmv is buggy (trans=True)')
+
         m = _make(xp, sp, self.dtype)
         return m.mean(axis=-2)
 
@@ -1506,7 +1569,7 @@ class TestCsrMatrixData(unittest.TestCase):
     ],
 }))
 @testing.with_requires('scipy')
-class TestUfunc(unittest.TestCase):
+class TestUfunc:
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_ufun(self, xp, sp):
@@ -1516,14 +1579,14 @@ class TestUfunc(unittest.TestCase):
         complex_unsupported = {'ceil', 'deg2rad', 'floor', 'rad2deg', 'trunc'}
         if (numpy.dtype(self.dtype).kind == 'c' and
                 self.ufunc in complex_unsupported):
-            with self.assertRaises(TypeError):
+            with pytest.raises(TypeError):
                 func()
             return numpy.array(0)
         else:
             return func()
 
 
-class TestIsspmatrixCsr(unittest.TestCase):
+class TestIsspmatrixCsr:
 
     def test_csr(self):
         x = sparse.csr_matrix(
@@ -1546,7 +1609,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
 @testing.with_requires('scipy>=1.4.0')
-class TestCsrMatrixGetitem(unittest.TestCase):
+class TestCsrMatrixGetitem:
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_getitem_int_int(self, xp, sp):
@@ -1681,7 +1744,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
 @testing.with_requires('scipy>=1.4.0')
-class TestCsrMatrixGetitem2(unittest.TestCase):
+class TestCsrMatrixGetitem2:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_too_small(self, xp, sp):
@@ -1707,17 +1770,21 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-@unittest.skipIf(driver.get_build_version() >= 11000,
-                 'CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
-class TestCubSpmv(unittest.TestCase):
+@pytest.mark.skipif(
+    cupy.cuda.cub._get_cuda_build_version() >= 11000,
+    reason='CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
+@pytest.mark.skipif(runtime.is_hip, reason='hipCUB does not provide spmv')
+@pytest.mark.skipif(
+    not cupy.cuda.cub.available,
+    reason='The CUB routine is not enabled')
+class TestCubSpmv:
 
-    def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
+    @pytest.fixture(autouse=True, scope='class')
+    def cub(self):
+        old_accelerators = _accelerator.get_routine_accelerators()
         _accelerator.set_routine_accelerators(['cub'])
-
-    def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        yield
+        _accelerator.set_routine_accelerators(old_accelerators)
 
     @property
     def make(self):
@@ -1731,7 +1798,7 @@ class TestCubSpmv(unittest.TestCase):
             return m * x
 
         # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
+        func = 'cupyx.scipy.sparse._csr.cub.device_csrmv'
         with testing.AssertFunctionIsCalled(func):
             m * x
         # ...then perform the actual computation
@@ -1747,7 +1814,7 @@ class TestCubSpmv(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-class TestCsrMatrixMaximumMinimum(unittest.TestCase):
+class TestCsrMatrixMaximumMinimum:
 
     def _make_array(self, shape, dtype, xp):
         dtype = numpy.dtype(dtype)
@@ -1847,7 +1914,7 @@ class TestCsrMatrixMaximumMinimum(unittest.TestCase):
         for i, j in ((-1, 0), (1, 0), (0, -1), (0, 1)):
             shape = self.shape[0] + i, self.shape[1] + j
             b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 getattr(a, self.opt)(b)
 
 
@@ -1859,7 +1926,7 @@ class TestCsrMatrixMaximumMinimum(unittest.TestCase):
 }))
 @testing.with_requires('scipy>=1.2')
 @testing.gpu
-class TestCsrMatrixComparison(unittest.TestCase):
+class TestCsrMatrixComparison:
     nz_rate = 0.3
 
     def _make_array(self, shape, dtype, xp):
@@ -2012,7 +2079,7 @@ class TestCsrMatrixComparison(unittest.TestCase):
         for i, j in ((-1, 0), (1, 0), (0, -1), (0, 1)):
             shape = self.shape[0] + i, self.shape[1] + j
             b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 with self._ignore_efficiency_warning():
                     self._compare(a, b)
 
@@ -2022,7 +2089,7 @@ class TestCsrMatrixComparison(unittest.TestCase):
 }))
 @testing.with_requires('scipy>=1.5.0')
 @testing.gpu
-class TestCsrMatrixDiagonal(unittest.TestCase):
+class TestCsrMatrixDiagonal:
     density = 0.5
 
     def _make_matrix(self, dtype):
@@ -2078,7 +2145,7 @@ class TestCsrMatrixDiagonal(unittest.TestCase):
         x = numpy.array(1.0, dtype=dtype)
         m, n = self.shape
         for k in (-m, n):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 scipy_a.setdiag(x, k=k)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 cupyx_a.setdiag(x, k=k)

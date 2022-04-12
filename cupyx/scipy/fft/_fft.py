@@ -9,17 +9,9 @@ from cupy.cuda import cufft
 from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
                            ihfft as _ihfft, _size_last_transform_axis,
                            _swap_direction)
-from cupy.fft import fftshift, ifftshift, fftfreq, rfftfreq
-
-from cupyx.scipy.fftpack import get_fft_plan
-
-__all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
-           'rfft', 'irfft', 'rfft2', 'irfft2', 'rfftn', 'irfftn',
-           'hfft', 'ihfft', 'hfft2', 'ihfft2', 'hfftn', 'ihfftn',
-           'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq',
-           'get_fft_plan']
 
 _scipy_150 = False
+_scipy_160 = False
 try:
     import scipy
     import scipy.fft as _scipy_fft
@@ -32,13 +24,14 @@ except ImportError:
 else:
     from numpy.lib import NumpyVersion as Version
     _scipy_150 = Version(scipy.__version__) >= Version('1.5.0')
+    _scipy_160 = Version(scipy.__version__) >= Version('1.6.0')
     del Version
     del scipy
 
 # Backend support for scipy.fft
 
 __ua_domain__ = 'numpy.scipy.fft'
-_implemented = {}
+_implemented: dict = {}
 
 
 def __ua_convert__(dispatchables, coerce):

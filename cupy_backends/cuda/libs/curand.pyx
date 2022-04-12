@@ -3,7 +3,7 @@
 """Thin wrapper of cuRAND."""
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
@@ -11,13 +11,15 @@ from cupy_backends.cuda cimport stream as stream_module
 ###############################################################################
 
 cdef extern from '../../cupy_rand.h' nogil:
+    ctypedef void* Stream 'cudaStream_t'
+
     # Generator
     int curandCreateGenerator(Generator* generator, int rng_type)
     int curandDestroyGenerator(Generator generator)
     int curandGetVersion(int* version)
 
     # Stream
-    int curandSetStream(Generator generator, driver.Stream stream)
+    int curandSetStream(Generator generator, Stream stream)
     int curandSetPseudoRandomGeneratorSeed(
         Generator generator, unsigned long long seed)
     int curandSetGeneratorOffset(
@@ -111,7 +113,14 @@ cpdef int getVersion() except? -1:
 
 
 cpdef setStream(size_t generator, size_t stream):
-    status = curandSetStream(<Generator>generator, <driver.Stream>stream)
+    # TODO(leofang): The support of stream capture is not mentioned at all in
+    # the cuRAND docs (as of CUDA 11.5), so we disable this functionality.
+    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+        raise NotImplementedError(
+            'calling cuRAND API during stream capture is currently '
+            'unsupported')
+
+    status = curandSetStream(<Generator>generator, <Stream>stream)
     check_status(status)
 
 

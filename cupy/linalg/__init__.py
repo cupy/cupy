@@ -1,5 +1,5 @@
 # Functions from the following NumPy document
-# https://docs.scipy.org/doc/numpy/reference/routines.linalg.html
+# https://numpy.org/doc/stable/reference/routines.linalg.html
 
 # -----------------------------------------------------------------------------
 # Matrix and vector products
@@ -36,3 +36,8 @@ from cupy.linalg._solve import lstsq  # NOQA
 from cupy.linalg._solve import inv  # NOQA
 from cupy.linalg._solve import pinv  # NOQA
 from cupy.linalg._solve import tensorinv  # NOQA
+
+# -----------------------------------------------------------------------------
+# Exceptions
+# -----------------------------------------------------------------------------
+from numpy.linalg import LinAlgError  # NOQA

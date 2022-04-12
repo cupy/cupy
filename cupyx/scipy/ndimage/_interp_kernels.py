@@ -480,7 +480,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     operation = '\n'.join(ops)
 
     mode_str = mode.replace('-', '_')  # avoid hyphen in kernel name
-    name = 'interpolate_{}_order{}_{}_{}d_y{}'.format(
+    name = 'cupyx_scipy_ndimage_interpolate_{}_order{}_{}_{}d_y{}'.format(
         name, order, mode_str, ndim, '_'.join([f'{j}' for j in yshape]),
     )
     if uint_t == 'size_t':
@@ -501,7 +501,7 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         mode=mode,
         cval=cval,
         order=order,
-        name='shift',
+        name='map',
         integer_output=integer_output,
         nprepad=nprepad,
         omit_in_coord=True,  # input image coordinates are not needed

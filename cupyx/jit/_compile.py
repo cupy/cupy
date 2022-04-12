@@ -1,6 +1,7 @@
 import ast
 import collections
 import inspect
+import linecache
 import numbers
 import re
 import sys
@@ -14,16 +15,20 @@ from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
+from cupyx.jit.cg import _ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
+from cupyx.jit import _interface
 
 
 _is_debug_mode = False
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
-Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
+Result = collections.namedtuple(
+    'Result',
+    ['func_name', 'code', 'return_type', 'enable_cooperative_groups'])
 
 
 class _JitCompileError(Exception):
@@ -54,8 +59,103 @@ def transpile_function_wrapper(func):
     return new_func
 
 
+def _parse_function_object(func):
+    """Returns the tuple of ``ast.FunctionDef`` object and the source string
+    for the given callable ``func``.
+
+    ``func`` can be a ``def`` function or a ``lambda`` expression.
+
+    The source is returned only for informational purposes (i.e., rendering
+    an exception message in case of an error).
+    """
+    if not callable(func):
+        raise ValueError('`func` must be a callable object.')
+
+    try:
+        # ``filename`` can be any of:
+        # - A "real" file path on the filesystem
+        # - "<stdin>" (within Python interpreter)
+        # - "<ipython-input-XXXXXXXX>" (within IPython interpreter)
+        filename = inspect.getsourcefile(func)
+    except TypeError:
+        # Built-in function or method, or inside Doctest
+        filename = None
+
+    if filename == '<stdin>':
+        raise RuntimeError(
+            f'JIT needs access to the Python source code for {func}'
+            ' but it cannot be retrieved within the Python interactive'
+            ' interpreter. Consider using IPython instead.')
+
+    if func.__name__ != '<lambda>':
+        lines, _ = inspect.getsourcelines(func)
+        num_indent = len(lines[0]) - len(lines[0].lstrip())
+        source = ''.join([
+            line.replace(' ' * num_indent, '', 1) for line in lines])
+        tree = ast.parse(source)
+        assert isinstance(tree, ast.Module)
+        assert len(tree.body) == 1
+        return tree.body[0], source
+
+    if filename is None:
+        # filename is needed for lambdas.
+        raise ValueError(
+            f'JIT needs access to Python source code for {func}'
+            ' but could not be located.\n'
+            '(hint: it is likely you passed a built-in function or method)')
+
+    # Extract the AST of the lambda from the AST of the whole source file
+    # that defines that lambda.
+    # This is needed because ``inspect.getsourcelines(lambda_expr)`` may
+    # return unparsable code snippet.
+
+    # Use ``linecache.getlines`` instead of directly opening a file to
+    # support notebook environments.
+    full_source = ''.join(linecache.getlines(filename))
+    source, start_line = inspect.getsourcelines(func)
+    end_line = start_line + len(source)
+    source = ''.join(source)
+
+    tree = ast.parse(full_source)
+
+    nodes = [node for node in ast.walk(tree)
+             if isinstance(node, ast.Lambda)
+             and start_line <= node.lineno < end_line]
+    if len(nodes) > 1:
+        # TODO(kmaehashi): can be improved by heuristics (e.g. number of args)
+        raise ValueError('Multiple callables are found near the'
+                         f' definition of {func}, and JIT could not'
+                         ' identify the source code for it.')
+    node = nodes[0]
+    return ast.FunctionDef(
+        name='_lambda_kernel', args=node.args,
+        body=[ast.Return(node.body)],
+        decorator_list=[], returns=None, type_comment=None,
+    ), source
+
+
+class Generated:
+
+    def __init__(self):
+        # list of str
+        self.codes = []
+        # (function, in_types) => Optional(function_name, return_type)
+        self.device_function = {}
+        # whether to use cooperative launch
+        self.enable_cg = False
+        # whether to include cooperative_groups.h
+        self.cg_include = False
+
+    def add_code(self, code: str) -> None:
+        if code not in self.codes:
+            self.codes.append(code)
+            if len(self.codes) > jit._n_functions_upperlimit:
+                raise ValueError("Number of functions exceeds upper limit.")
+
+
 def transpile(func, attributes, mode, in_types, ret_type):
-    """Transpile the target function
+    """Transpiles the target function.
+
     Args:
         func (function): Target function.
         attributes (list of str): Attributes of the generated CUDA function.
@@ -63,35 +163,43 @@ def transpile(func, attributes, mode, in_types, ret_type):
         in_types (list of _cuda_types.TypeBase): Types of the arguments.
         ret_type (_cuda_types.TypeBase or None): Type of the return value.
     """
+    generated = Generated()
+    in_types = tuple(in_types)
+    name, return_type = _transpile_func_obj(
+        func, attributes, mode, in_types, ret_type, generated)
+    func_name, _ = generated.device_function[(func, in_types)]
+    code = '\n'.join(generated.codes)
+    enable_cg = generated.enable_cg
+    return Result(
+        func_name=func_name, code=code, return_type=return_type,
+        enable_cooperative_groups=enable_cg)
 
-    if not callable(func):
-        raise ValueError('`func` must be a callable object.')
 
-    if func.__name__ == '<lambda>':
-        raise NotImplementedError('Lambda function is not supported.')
+def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
+    if (func, in_types) in generated.device_function:
+        result = generated.device_function[(func, in_types)]
+        if result is None:
+            raise ValueError("Recursive function is not supported.")
+        return result
 
-    attributes = ' '.join(attributes)
-    source = jit._getsource_func(func)
-    lines = source.split('\n')
-    num_indent = len(lines[0]) - len(lines[0].lstrip())
-    source = '\n'.join([
-        line.replace(' ' * num_indent, '', 1) for line in lines])
+    # Do sanity check first.
+    tree, source = _parse_function_object(func)
 
     cvars = inspect.getclosurevars(func)
     consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
-    tree = ast.parse(source)
-    assert isinstance(tree, ast.Module)
-    assert len(tree.body) == 1
+    attributes = ' '.join(attributes)
+    name = tree.name
+    if len(generated.device_function) > 0:
+        name += '_' + str(len(generated.device_function))
+    generated.device_function[(func, in_types)] = None
+
     cuda_code, env = _transpile_function(
-        tree.body[0], attributes, mode, consts, in_types, ret_type,
-        source=source
-    )
-    cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
-    return Result(
-        func_name=func.__name__,
-        code=cuda_code,
-        return_type=env.ret_type,
-    )
+        tree, name, attributes, mode, consts,
+        in_types, ret_type, generated, source=source)
+
+    generated.device_function[(func, in_types)] = (name, env.ret_type)
+    generated.add_code(cuda_code)
+    return name, env.ret_type
 
 
 def _indent(lines, spaces='  '):
@@ -118,15 +226,17 @@ class Environment:
             The type of return value of the function.
             If it is initialized to be ``None``, the return type must be
             inferred until the end of transpilation of the function.
+        generated (Generated): Generated CUDA functions.
     """
 
-    def __init__(self, mode, consts, params, ret_type):
+    def __init__(self, mode, consts, params, ret_type, generated):
         self.mode = mode
         self.consts = consts
         self.params = params
         self.locals = {}
+        self.decls = {}
         self.ret_type = ret_type
-        self.preambles = set()
+        self.generated = generated
         self.count = 0
 
     def __getitem__(self, key):
@@ -138,19 +248,18 @@ class Environment:
             return self.consts[key]
         return None
 
-    def __setitem__(self, key, value):
-        self.locals[key] = value
-
     def get_fresh_variable_name(self, prefix='', suffix=''):
         self.count += 1
         return f'{prefix}{self.count}{suffix}'
 
 
 def _transpile_function(
-        func, attributes, mode, consts, in_types, ret_type, *, source):
+        func, name, attributes, mode, consts,
+        in_types, ret_type, generated, *, source):
     """Transpile the function
     Args:
         func (ast.FunctionDef): Target function.
+        name (str): Function name.
         attributes (str): The attributes of target function.
         mode ('numpy' or 'cuda'): The rule for typecast.
         consts (dict): The dictionary with keys as variable names and
@@ -165,7 +274,8 @@ def _transpile_function(
     """
     try:
         return _transpile_function_internal(
-            func, attributes, mode, consts, in_types, ret_type)
+            func, name, attributes, mode, consts,
+            in_types, ret_type, generated)
     except _JitCompileError as e:
         exc = e
         if _is_debug_mode:
@@ -177,7 +287,7 @@ def _transpile_function(
 
 
 def _transpile_function_internal(
-        func, attributes, mode, consts, in_types, ret_type):
+        func, name, attributes, mode, consts, in_types, ret_type, generated):
     consts = dict([(k, Constant(v)) for k, v, in consts.items()])
 
     if not isinstance(func, ast.FunctionDef):
@@ -208,18 +318,18 @@ def _transpile_function_internal(
     args = [arg.arg for arg in arguments.args]
     if len(args) != len(in_types):
         raise TypeError(
-            f'{func.name}() takes {len(args)} positional arguments '
+            f'{name}() takes {len(args)} positional arguments '
             f'but {len(in_types)} were given.')
     params = dict([(x, Data(x, t)) for x, t in zip(args, in_types)])
-    env = Environment(mode, consts, params, ret_type)
+    env = Environment(mode, consts, params, ret_type, generated)
     body = _transpile_stmts(func.body, True, env)
-    params = ', '.join([env[a].ctype.declvar(a) for a in args])
-    local_vars = [v.ctype.declvar(n) + ';' for n, v in env.locals.items()]
+    params = ', '.join([env[a].ctype.declvar(a, None) for a in args])
+    local_vars = [v.ctype.declvar(n, None) + ';' for n, v in env.decls.items()]
 
     if env.ret_type is None:
         env.ret_type = _cuda_types.void
 
-    head = f'{attributes} {env.ret_type} {func.name}({params})'
+    head = f'{attributes} {env.ret_type} {name}({params})'
     code = CodeBlock(head, local_vars + body)
     return str(code), env
 
@@ -274,7 +384,7 @@ def _call_ufunc(ufunc, args, dtype, env):
             for i, x in enumerate(in_params):
                 expr = expr.replace(f'in{i}', x.code)
             expr = '(' + expr.replace('out0_type', str(out_type)) + ')'
-            env.preambles.add(ufunc._preamble)
+            env.generated.add_code(ufunc._preamble)
         else:
             template_typenames = ', '.join([
                 f'typename T{i}' for i in range(ufunc.nin)])
@@ -285,7 +395,7 @@ __device__ {out_type} {ufunc_name}({params}) {{
     return {expr};
 }}
 """
-            env.preambles.add(ufunc_code)
+            env.generated.add_code(ufunc_code)
             in_params = ', '.join([a.code for a in in_params])
             expr = f'{ufunc_name}({in_params})'
         return Data(expr, out_type)
@@ -345,7 +455,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
                         'Cannot assign constant value not at top-level.')
 
         value = Data.init(value, env)
-        return _transpile_assign_stmt(target, env, value)
+        return _transpile_assign_stmt(target, env, value, is_toplevel)
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -356,7 +466,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
             raise TypeError('dtype mismatch')
-        return [f'{target.code} = {result.code};']
+        return [target.ctype.assign(target, result) + ';']
 
     if isinstance(stmt, ast.For):
         if len(stmt.orelse) > 0:
@@ -365,7 +475,9 @@ def _transpile_stmt(stmt, is_toplevel, env):
         iters = _transpile_expr(stmt.iter, env)
 
         if env[name] is None:
-            env[name] = Data(stmt.target.id, iters.ctype)
+            var = Data(stmt.target.id, iters.ctype)
+            env.locals[name] = var
+            env.decls[name] = var
         elif env[name].ctype.dtype != iters.ctype.dtype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
@@ -489,9 +601,8 @@ def _transpile_expr_internal(expr, env):
         if isinstance(expr, Constant):
             return x if expr.obj else y
         if cond.ctype.dtype.kind == 'c':
-            raise NotImplementedError('')
-        x = Data.init(x, env)
-        y = Data.init(y, env)
+            raise TypeError("Complex type value cannot be boolean condition.")
+        x, y = _infer_type(x, y, env), _infer_type(y, x, env)
         if x.ctype.dtype != y.ctype.dtype:
             raise TypeError(
                 'Type mismatch in conditional expression.: '
@@ -513,8 +624,7 @@ def _transpile_expr_internal(expr, env):
             return func.call(env, *args, **kwargs)
 
         if not is_constants(func):
-            raise NotImplementedError(
-                'device function call is not implemented.')
+            raise TypeError(f"'{func}' is not callable.")
 
         func = func.obj
 
@@ -541,8 +651,16 @@ def _transpile_expr_internal(expr, env):
             ctype = _cuda_types.Scalar(func)
             return _astype_scalar(args[0], ctype, 'unsafe', env)
 
-        raise NotImplementedError(
-            f'function call of `{func.__name__}` is not implemented')
+        if isinstance(func, _interface._JitRawKernel) and func._device:
+            args = [Data.init(x, env) for x in args]
+            in_types = tuple([x.ctype for x in args])
+            fname, return_type = _transpile_func_obj(
+                func._func, ['__device__'], env.mode,
+                in_types, None, env.generated)
+            in_params = ', '.join([x.code for x in args])
+            return Data(f'{fname}({in_params})', return_type)
+
+        raise TypeError(f"Invalid function call '{fname}'.")
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
@@ -575,6 +693,13 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+        if isinstance(value.ctype, _interface._Dim3):
+            if expr.attr in ('x', 'y', 'z'):
+                return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)
+        # TODO(leofang): support arbitrary Python class methods
+        if isinstance(value.ctype, _ThreadGroup):
+            return _internal_types.BuiltinFunc.from_class_method(
+                value.code, getattr(value.ctype, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
@@ -603,14 +728,17 @@ def _emit_assign_stmt(lvalue, rvalue, env):
             f'Data type mismatch of variable: `{lvalue.code}`: '
             f'{lvalue.ctype} != {rvalue.ctype}')
 
-    return [f'{lvalue.code} = {rvalue.code};']
+    return [lvalue.ctype.assign(lvalue, rvalue) + ';']
 
 
-def _transpile_assign_stmt(target, env, value, depth=0):
+def _transpile_assign_stmt(target, env, value, is_toplevel, depth=0):
     if isinstance(target, ast.Name):
         name = target.id
         if env[name] is None:
-            env[name] = Data(name, value.ctype)
+            env.locals[name] = Data(name, value.ctype)
+            if is_toplevel and depth == 0:
+                return [value.ctype.declvar(name, value) + ';']
+            env.decls[name] = Data(name, value.ctype)
         return _emit_assign_stmt(env[name], value, env)
 
     if isinstance(target, ast.Subscript):
@@ -625,12 +753,12 @@ def _transpile_assign_stmt(target, env, value, depth=0):
             raise ValueError(f'too many values to unpack (expected {size})')
         if len(value.ctype.types) < size:
             raise ValueError(f'not enough values to unpack (expected {size})')
-        codes = [f'{value.ctype} _temp{depth} = {value.code};']
+        codes = [value.ctype.declvar(f'_temp{depth}', value) + ';']
         for i in range(size):
             code = f'thrust::get<{i}>(_temp{depth})'
             ctype = value.ctype.types[i]
             stmt = _transpile_assign_stmt(
-                target.elts[i], env, Data(code, ctype), depth + 1)
+                target.elts[i], env, Data(code, ctype), is_toplevel, depth + 1)
             codes.extend(stmt)
         return [CodeBlock('', codes)]
 
@@ -707,3 +835,11 @@ def _astype_scalar(x, ctype, casting, env):
                 numpy.ComplexWarning)
         return Data(f'({ctype})({x.code}.real())', ctype)
     return Data(f'({ctype})({x.code})', ctype)
+
+
+def _infer_type(x, hint, env) -> Data:
+    if not isinstance(x, Constant) or isinstance(x.obj, numpy.generic):
+        return Data.init(x, env)
+    hint = Data.init(hint, env)
+    cast_x = _astype_scalar(x, hint.ctype, 'same_kind', env)
+    return Data.init(cast_x, env)

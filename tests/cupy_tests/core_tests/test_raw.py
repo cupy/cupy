@@ -633,7 +633,15 @@ class TestRaw(unittest.TestCase):
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        if self.backend == 'nvrtc' and not cupy.cuda.runtime.is_hip:
+        use_ptx = os.environ.get(
+            'CUPY_COMPILE_WITH_PTX', False)
+        if self.backend == 'nvrtc' and (
+                use_ptx or
+                (cupy.cuda.driver._is_cuda_python()
+                 and cupy.cuda.runtime.runtimeGetVersion() < 11010) or
+                (not cupy.cuda.driver._is_cuda_python()
+                 and not cupy.cuda.runtime.is_hip
+                 and cupy.cuda.driver.get_build_version() < 11010)):
             # raised when calling ls.complete()
             error = cupy.cuda.driver.CUDADriverError
         else:  # nvcc, hipcc, hiprtc
@@ -800,8 +808,15 @@ class TestRaw(unittest.TestCase):
             self.skipTest('skip a potential hiprtc bug')
 
         # compile code
-        name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
-                            'my_sqrt<complex<double>>', 'my_func']
+        if cupy.cuda.runtime.is_hip:
+            # ROCm 5.0 returns HIP_HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID for
+            # my_sqrt<complex<double>>, so we use thrust::complex<double>
+            # instead.
+            name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
+                                'my_sqrt<thrust::complex<double>>', 'my_func']
+        else:
+            name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
+                                'my_sqrt<complex<double>>', 'my_func']
         mod = cupy.RawModule(code=test_cxx_template,
                              options=('--std=c++11',),
                              name_expressions=name_expressions,
@@ -1087,6 +1102,7 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
     'Requires compute capability 6.0 or later')
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Skip on HIP')
 class TestRawGridSync(unittest.TestCase):
 
     def test_grid_sync_rawkernel(self):
@@ -1270,13 +1286,13 @@ class TestRawJitify(unittest.TestCase):
         ker((1,), (N,), (a, N))
         assert cupy.allclose(a, b+100)
 
-    @pytest.mark.xfail(sys.platform.startswith('win32'),
-                       reason='macro preprocessing in NVRTC is likely buggy')
     def test_jitify1(self):
         # simply prepend an unused header
         hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'
 
         if self.jitify:
+            if sys.platform.startswith('win32'):
+                pytest.xfail('macro preprocessing in NVRTC is likely buggy')
             # Jitify will make it work
             self._helper(hdr)
         else:

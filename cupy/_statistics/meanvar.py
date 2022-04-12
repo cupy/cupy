@@ -12,8 +12,8 @@ def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to compute the median.
-        axis (int): Axis along which the medians are computed. The flattened
-            array is used by default.
+        axis (int, sequence of int or None): Axis along which the medians are
+             computed. The flattened array is used by default.
         out (cupy.ndarray): Output array.
         overwrite_input (bool): If ``True``, then allow use of memory of input
             array a for calculations. The input array will be modified by the
@@ -41,8 +41,8 @@ def nanmedian(a, axis=None, out=None, overwrite_input=False, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to compute the median.
-        axis (int): Axis along which the medians are computed. The flattened
-            array is used by default.
+        axis (int, sequence of int or None): Axis along which the medians are
+            computed. The flattened array is used by default.
         out (cupy.ndarray): Output array.
         overwrite_input (bool): If ``True``, then allow use of memory of input
             array a for calculations. The input array will be modified by the
@@ -82,7 +82,7 @@ def average(a, axis=None, weights=None, returned=False):
 
     Returns:
         cupy.ndarray or tuple of cupy.ndarray: The average of the input array
-            along the axis and the sum of weights.
+        along the axis and the sum of weights.
 
     .. warning::
 
@@ -142,8 +142,8 @@ def mean(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to compute mean.
-        axis (int): Along which axis to compute mean. The flattened array is
-            used by default.
+        axis (int, sequence of int or None): Along which axis to compute mean.
+            The flattened array is used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
@@ -210,8 +210,8 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to compute mean.
-        axis (int): Along which axis to compute mean. The flattened array is
-            used by default.
+        axis (int, sequence of int or None): Along which axis to compute mean.
+            The flattened array is used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of

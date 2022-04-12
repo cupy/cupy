@@ -9,10 +9,10 @@ from cupy._core cimport _cub_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
-from cupy._core._kernel cimport _check_array_device_id
+from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
 from cupy._core._kernel cimport _get_kernel_params
-from cupy._core._kernel cimport _get_out_args
+from cupy._core._kernel cimport _get_out_args_from_optionals
 from cupy._core._kernel cimport _get_out_args_with_params
 from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport _reduce_dims
@@ -133,10 +133,11 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     else:
         axis = axis,
 
-    # TODO(kataoka): detect duplicate value
     reduce_axis = tuple(sorted(
         [internal._normalize_axis_index(dim, ndim) for dim in axis]))
     out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
+    if len(reduce_axis) + len(out_axis) != ndim:
+        raise ValueError("duplicate value in 'axis'")
     return reduce_axis, out_axis
 
 
@@ -182,14 +183,14 @@ cdef shape_t _set_permuted_args(
 
 
 cdef Py_ssize_t _get_contiguous_size(
-        list args, tuple params, Py_ssize_t ndim,
-        Py_ssize_t out_ndim) except -1:
+        list args, tuple params, list out_shape, Py_ssize_t ndim) except -1:
     '''
     get contiguous size in the *output* axis (not *reduce* axis!)
     '''
     cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
+    out_ndim = len(out_shape)
     contiguous_size = 1
     for i, a in enumerate(args):
         if not isinstance(a, ndarray):
@@ -202,13 +203,16 @@ cdef Py_ssize_t _get_contiguous_size(
         for j in range(out_ndim):
             if a._strides[ndim-j-1] != tmp_contiguous_size * itemsize:
                 break
-            tmp_contiguous_size *= a._shape[ndim-j-1]
+            tmp_contiguous_size *= out_shape[out_ndim-j-1]
         contiguous_size = max(contiguous_size, tmp_contiguous_size)
     return contiguous_size
 
 
 cdef Py_ssize_t _default_block_size = (
     256 if runtime._is_hip_environment else 512)
+cdef Py_ssize_t _min_block_size_log = 5
+cdef Py_ssize_t _max_block_size_log = (
+    8 if runtime._is_hip_environment else 9)
 
 
 cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
@@ -364,7 +368,7 @@ cdef class _AbstractReductionKernel:
         if optimize_context is None:
             # Calculate manually
             contiguous_size = _get_contiguous_size(
-                in_args, self.in_params, in_shape.size(), out_shape.size())
+                in_args, self.in_params, out_shape, in_shape.size())
             block_size, block_stride, out_block_num = _get_block_specs(
                 internal.prod(in_shape),
                 internal.prod(out_shape),
@@ -403,7 +407,7 @@ cdef class _AbstractReductionKernel:
         out_args = [_optimizer_copy_arg(a) for a in out_args]
 
         contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, len(in_shape), len(out_shape))
+            in_args, self.in_params, out_shape, len(in_shape))
         block_size, block_stride, default_out_block_num = _get_block_specs(
             internal.prod(in_shape),
             internal.prod(out_shape),
@@ -418,7 +422,8 @@ cdef class _AbstractReductionKernel:
                 post_map_expr, reduce_type, stream, self._params)
 
         def suggest_func(trial):
-            block_size_log = trial.suggest_int('block_size_log', 5, 9)
+            block_size_log = trial.suggest_int(
+                'block_size_log', _min_block_size_log, _max_block_size_log)
             block_size = 2 ** block_size_log
             block_stride_log = trial.suggest_int(
                 'block_stride_log', 0, block_size_log)
@@ -541,6 +546,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
             arr = _convert_object_with_cuda_array_interface(a)
+        elif hasattr(a, '__cupy_get_ndarray__'):
+            arr = a.__cupy_get_ndarray__()
         else:
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
@@ -548,12 +555,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         in_args = [arr]
 
         dev_id = device.get_device_id()
-        _check_array_device_id(arr, dev_id)
+        _check_peer_access(arr, dev_id)
 
         if out is None:
             out_args = []
         else:
-            _check_array_device_id(out, dev_id)
+            _check_peer_access(out, dev_id)
             out_args = [out]
 
         reduce_dims = True
@@ -598,7 +605,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef list _get_out_args(
             self, list out_args, tuple out_types, const shape_t& out_shape):
-        return _get_out_args(
+        return _get_out_args_from_optionals(
             out_args, out_types, out_shape, 'unsafe')
 
     cdef function.Function _get_function(

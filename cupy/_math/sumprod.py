@@ -329,9 +329,9 @@ def gradient(f, *varargs, axis=None, edge_order=1):
 
     Returns:
         gradient (cupy.ndarray or list of cupy.ndarray): A set of ndarrays
-            (or a single ndarray if there is only one dimension) corresponding
-            to the derivatives of f with respect to each dimension. Each
-            derivative has the same shape as f.
+        (or a single ndarray if there is only one dimension) corresponding
+        to the derivatives of f with respect to each dimension. Each
+        derivative has the same shape as f.
 
     .. seealso:: :func:`numpy.gradient`
     """
@@ -507,10 +507,120 @@ def gradient(f, *varargs, axis=None, edge_order=1):
         return outvals
 
 
-# TODO(okuta): Implement ediff1d
+def ediff1d(arr, to_end=None, to_begin=None):
+    """
+    Calculates the difference between consecutive elements of an array.
+
+    Args:
+        arr (cupy.ndarray): Input array.
+        to_end (cupy.ndarray, optional): Numbers to append at the end
+            of the returend differences.
+        to_begin (cupy.ndarray, optional): Numbers to prepend at the
+            beginning of the returned differences.
+
+    Returns:
+        cupy.ndarray: New array consisting differences among succeeding
+        elements.
+
+    .. seealso:: :func:`numpy.ediff1d`
+    """
+    if not isinstance(arr, cupy.ndarray):
+        raise TypeError('`arr` should be of type cupy.ndarray')
+
+    # to flattened array.
+    arr = arr.ravel()
+
+    # to ensure the dtype of the output array is same as that of input.
+    dtype_req = arr.dtype
+
+    # if none optional cases are given
+    if to_begin is None and to_end is None:
+        return arr[1:] - arr[:-1]
+
+    if to_begin is None:
+        l_begin = 0
+    else:
+        if not isinstance(to_begin, cupy.ndarray):
+            raise TypeError('`to_begin` should be of type cupy.ndarray')
+        if not cupy.can_cast(to_begin, dtype_req, casting="same_kind"):
+            raise TypeError("dtype of `to_begin` must be compatible "
+                            "with input `arr` under the `same_kind` rule.")
+
+        to_begin = to_begin.ravel()
+        l_begin = len(to_begin)
+
+    if to_end is None:
+        l_end = 0
+    else:
+        if not isinstance(to_end, cupy.ndarray):
+            raise TypeError('`to_end` should be of type cupy.ndarray')
+        if not cupy.can_cast(to_end, dtype_req, casting="same_kind"):
+            raise TypeError("dtype of `to_end` must be compatible "
+                            "with input `arr` under the `same_kind` rule.")
+
+        to_end = to_end.ravel()
+        l_end = len(to_end)
+
+    # calulating using in place operation
+    l_diff = max(len(arr) - 1, 0)
+    result = cupy.empty(l_diff + l_begin + l_end, dtype=arr.dtype)
+    # Cupy does not support subclassing a ndarray
+    # result = arr.__array_wrap__(result)
+    if l_begin > 0:
+        result[:l_begin] = to_begin
+    if l_end > 0:
+        result[l_begin + l_diff:] = to_end
+    cupy.subtract(arr[1:], arr[:-1], result[l_begin:l_begin + l_diff])
+    return result
 
 
 # TODO(okuta): Implement cross
 
 
-# TODO(okuta): Implement trapz
+def trapz(y, x=None, dx=1.0, axis=-1):
+    """
+    Integrate along the given axis using the composite trapezoidal rule.
+    Integrate `y` (`x`) along the given axis.
+
+    Args:
+        y (cupy.ndarray): Input array to integrate.
+        x (cupy.ndarray): Sample points over which to integrate. If None equal
+            spacing `dx` is assumed.
+        dx (float): Spacing between sample points, used if `x` is None, default
+            is 1.
+        axis (int): The axis along which the integral is taken, default is
+            the last axis.
+
+    Returns:
+        cupy.ndarray: Definite integral as approximated by the trapezoidal
+        rule.
+
+    .. seealso:: :func:`numpy.trapz`
+    """
+    if not isinstance(y, cupy.ndarray):
+        raise TypeError('`y` should be of type cupy.ndarray')
+
+    if x is None:
+        d = dx
+    else:
+        if not isinstance(x, cupy.ndarray):
+            raise TypeError('`x` should be of type cupy.ndarray')
+        if x.ndim == 1:
+            d = diff(x)
+            # reshape to correct shape
+            shape = [1] * y.ndim
+            shape[axis] = d.shape[0]
+            d = d.reshape(shape)
+        else:
+            d = diff(x, axis=axis)
+    nd = y.ndim
+    slice1 = [slice(None)] * nd
+    slice2 = [slice(None)] * nd
+    slice1[axis] = slice(1, None)
+    slice2[axis] = slice(None, -1)
+    product = d * (y[tuple(slice1)] + y[tuple(slice2)]) / 2.0
+    try:
+        ret = product.sum(axis)
+    except ValueError:
+        ret = cupy.add.reduce(product, axis)
+    return ret

@@ -45,6 +45,9 @@ def f(x):
 
 class C(object):
 
+    def __repr__(self):
+        return '<C object>'
+
     def __call__(self, x):
         return x
 

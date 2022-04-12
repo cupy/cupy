@@ -8,8 +8,13 @@ class TypeBase:
     def __str__(self):
         raise NotImplementedError
 
-    def declvar(self, x):
-        return f'{self} {x}'
+    def declvar(self, x, init):
+        if init is None:
+            return f'{self} {x}'
+        return f'{self} {x} = {init.code}'
+
+    def assign(self, var, value):
+        return f'{var.code} = {value.code}'
 
 
 class Void(TypeBase):
@@ -87,7 +92,8 @@ class SharedMem(ArrayBase):
         self._size = size
         super().__init__(child_type, 1)
 
-    def declvar(self, x):
+    def declvar(self, x, init):
+        assert init is None
         if self._size is None:
             return f'extern __shared__ {self.child_type} {x}[]'
         return f'__shared__ {self.child_type} {x}[{self._size}]'
@@ -119,24 +125,23 @@ void = Void()
 bool_ = Scalar(numpy.bool_)
 int32 = Scalar(numpy.int32)
 uint32 = Scalar(numpy.uint32)
+uint64 = Scalar(numpy.uint64)
 
 
 _suffix_literals_dict = {
-    numpy.dtype('float64'): '',
-    numpy.dtype('float32'): 'f',
-    numpy.dtype('int64'): 'll',
-    numpy.dtype('longlong'): 'll',
-    numpy.dtype('int32'): '',
-    numpy.dtype('uint64'): 'ull',
-    numpy.dtype('ulonglong'): 'ull',
-    numpy.dtype('uint32'): 'u',
-    numpy.dtype('bool'): '',
+    'float64': '',
+    'float32': 'f',
+    'int64': 'll',
+    'int32': '',
+    'uint64': 'ull',
+    'uint32': 'u',
+    'bool': '',
 }
 
 
 def get_cuda_code_from_constant(x, ctype):
     dtype = ctype.dtype
-    suffix_literal = _suffix_literals_dict.get(dtype)
+    suffix_literal = _suffix_literals_dict.get(dtype.name)
     if suffix_literal is not None:
         s = str(x).lower()
         return f'{s}{suffix_literal}'

@@ -5,8 +5,6 @@ from numpy import linalg
 
 import cupy
 from cupy._core import internal
-from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
@@ -22,7 +20,7 @@ def solve(a, b):
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(..., M, M)``.
-        b (cupy.ndarray): The matrix with dimension ``(...,M)`` or
+        b (cupy.ndarray): The matrix with dimension ``(..., M)`` or
             ``(..., M, K)``.
 
     Returns:
@@ -43,16 +41,24 @@ def solve(a, b):
         # large, so it is not used in such cases.
         return batched_gesv(a, b)
 
+    # TODO(kataoka): Move the checks to the beginning
     _util._assert_cupy_array(a, b)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
-    if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
-            a.shape[:-1] == b.shape[:a.ndim - 1]):
+    # TODO(kataoka): Support broadcast
+    if not (
+        (a.ndim == b.ndim or a.ndim == b.ndim + 1)
+        and a.shape[:-1] == b.shape[:a.ndim - 1]
+    ):
         raise ValueError(
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
+    if b.size == 0:
+        return cupy.empty(b.shape, out_dtype)
+
     if a.ndim == 2:
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
@@ -71,78 +77,6 @@ def solve(a, b):
         cupyx.lapack.gesv(a[index], bi)
         x[index] = bi
     return x
-
-
-def _solve(a, b, cublas_handle, cusolver_handle):
-    a = cupy.asfortranarray(a)
-    b = cupy.asfortranarray(b)
-    dtype = a.dtype
-    m, k = (b.size, 1) if b.ndim == 1 else b.shape
-    dev_info = cupy.empty(1, dtype=numpy.int32)
-
-    if dtype == 'f':
-        geqrf = cusolver.sgeqrf
-        geqrf_bufferSize = cusolver.sgeqrf_bufferSize
-        ormqr = cusolver.sormqr
-        ormqr_bufferSize = cusolver.sormqr_bufferSize
-        trans = cublas.CUBLAS_OP_T
-        trsm = cublas.strsm
-    elif dtype == 'd':
-        geqrf = cusolver.dgeqrf
-        geqrf_bufferSize = cusolver.dgeqrf_bufferSize
-        ormqr = cusolver.dormqr
-        ormqr_bufferSize = cusolver.dormqr_bufferSize
-        trans = cublas.CUBLAS_OP_T
-        trsm = cublas.dtrsm
-    elif dtype == 'F':
-        geqrf = cusolver.cgeqrf
-        geqrf_bufferSize = cusolver.cgeqrf_bufferSize
-        ormqr = cusolver.cormqr
-        ormqr_bufferSize = cusolver.cunmqr_bufferSize
-        trans = cublas.CUBLAS_OP_C
-        trsm = cublas.ctrsm
-    elif dtype == 'D':
-        geqrf = cusolver.zgeqrf
-        geqrf_bufferSize = cusolver.zgeqrf_bufferSize
-        ormqr = cusolver.zormqr
-        ormqr_bufferSize = cusolver.zunmqr_bufferSize
-        trans = cublas.CUBLAS_OP_C
-        trsm = cublas.ztrsm
-    else:
-        raise NotImplementedError(dtype)
-
-    # 1. QR decomposition (A = Q * R)
-    buffersize = geqrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-    tau = cupy.empty(m, dtype=dtype)
-    geqrf(
-        cusolver_handle, m, m, a.data.ptr, m, tau.data.ptr, workspace.data.ptr,
-        buffersize, dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        geqrf, dev_info)
-    # Explicitly free the space allocated by geqrf
-    del workspace
-    # 2. ormqr (Q^T * B)
-    buffersize = ormqr_bufferSize(
-        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
-        m, tau.data.ptr, b.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-    ormqr(
-        cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
-        m, tau.data.ptr, b.data.ptr, m, workspace.data.ptr, buffersize,
-        dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        ormqr, dev_info)
-
-    # Explicitly free the space allocated by ormqr
-    del workspace
-    # 3. trsm (X = R^{-1} * (Q^T * B))
-    one = numpy.array(1, dtype=dtype)
-    trsm(
-        cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
-        cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
-        m, k, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
-    return b
 
 
 def tensorsolve(a, b, axes=None):
@@ -243,7 +177,8 @@ def lstsq(a, b, rcond='warn'):
         rcond = -1
 
     _util._assert_cupy_array(a, b)
-    _util._assert_rank2(a)
+    _util._assert_2d(a)
+    # TODO(kataoka): Fix 0-dim
     if b.ndim > 2:
         raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
                                  ' most two-dimensional'.format(b.ndim))
@@ -261,11 +196,13 @@ def lstsq(a, b, rcond='warn'):
         rcond = numpy.finfo(s.dtype).eps
 
     # number of singular values and matrix rank
-    cutoff = rcond * s.max()
     s1 = 1 / s
-    sing_vals = s <= cutoff
-    s1[sing_vals] = 0
-    rank = s.size - sing_vals.sum(dtype=numpy.int32)
+    rank = cupy.array(s.size, numpy.int32)
+    if s.size > 0:
+        cutoff = rcond * s.max()
+        sing_vals = s <= cutoff
+        s1[sing_vals] = 0
+        rank -= sing_vals.sum(dtype=numpy.int32)
 
     # Solve the least-squares solution
     # x = vh.T.conj() @ diag(s1) @ u.T.conj() @ b
@@ -301,14 +238,17 @@ def inv(a):
 
     .. seealso:: :func:`numpy.linalg.inv`
     """
+    _util._assert_cupy_array(a)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
+
     if a.ndim >= 3:
         return _batched_inv(a)
 
-    _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
-    _util._assert_nd_squareness(a)
-
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
+
     order = 'F' if a._f_contiguous else 'C'
     # prevent 'a' to be overwritten
     a = a.astype(dtype, copy=True, order=order)
@@ -321,11 +261,10 @@ def inv(a):
 
 
 def _batched_inv(a):
-
-    assert(a.ndim >= 3)
-    _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    # a.ndim must be >= 3
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     if dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
@@ -399,7 +338,7 @@ def pinv(a, rcond=1e-15):
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension
-            ``(..., N, M)``.
+        ``(..., N, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield

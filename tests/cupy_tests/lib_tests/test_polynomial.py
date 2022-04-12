@@ -1,9 +1,8 @@
-import unittest
-
-import pytest
 import numpy
+import pytest
 
 import cupy
+from cupy.cuda import driver
 from cupy.cuda import runtime
 import cupyx
 from cupy import testing
@@ -14,7 +13,7 @@ from cupy import testing
     {'variable': 'y'},
 )
 @testing.gpu
-class TestPoly1dInit(unittest.TestCase):
+class TestPoly1dInit:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -101,7 +100,7 @@ class TestPoly1dInit(unittest.TestCase):
 
 
 @testing.gpu
-class TestPoly1d(unittest.TestCase):
+class TestPoly1d:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -127,7 +126,8 @@ class TestPoly1d(unittest.TestCase):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         return xp.poly1d(a).order
 
-    @pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
+                        reason='syevj not available')
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_poly1d_roots(self, xp, dtype):
@@ -241,7 +241,7 @@ class TestPoly1d(unittest.TestCase):
     'shape': [(), (0,), (5,)],
     'exp': [0, 4, 5, numpy.int32(5), numpy.int64(5)],
 }))
-class TestPoly1dPow(unittest.TestCase):
+class TestPoly1dPow:
 
     @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
@@ -256,7 +256,7 @@ class TestPoly1dPow(unittest.TestCase):
     'shape': [(5,), (5, 2)],
     'exp': [-10, 3.5, [1, 2, 3]],
 }))
-class TestPoly1dPowInvalidValue(unittest.TestCase):
+class TestPoly1dPowInvalidValue:
 
     @testing.for_all_dtypes()
     def test_poly1d_pow(self, dtype):
@@ -270,7 +270,7 @@ class TestPoly1dPowInvalidValue(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'exp': [3.0, numpy.float64(5)],
 }))
-class TestPoly1dPowInvalidType(unittest.TestCase):
+class TestPoly1dPowInvalidType:
 
     @testing.for_all_dtypes()
     def test_poly1d_pow(self, dtype):
@@ -280,7 +280,7 @@ class TestPoly1dPowInvalidType(unittest.TestCase):
                 xp.poly1d(a) ** self.exp
 
 
-class Poly1dTestBase(unittest.TestCase):
+class Poly1dTestBase:
 
     def _get_input(self, xp, in_type, dtype):
         if in_type == 'poly1d':
@@ -321,8 +321,6 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d'],
 }))
-@pytest.mark.xfail(runtime.is_hip,
-                   reason='HIP/ROCm does not support cuda array interface')
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
@@ -379,7 +377,7 @@ class TestPoly1dRoutines(Poly1dTestBase):
 
 
 @testing.gpu
-class TestPoly1dEquality(unittest.TestCase):
+class TestPoly1dEquality:
 
     def make_poly1d1(self, xp, dtype):
         a1 = testing.shaped_arange((4,), xp, dtype)
@@ -426,7 +424,7 @@ class TestPoly1dEquality(unittest.TestCase):
     'shape1': [(), (0,), (3,), (5,)],
     'shape2': [(), (0,), (3,), (5,)],
 }))
-class TestPolyArithmeticShapeCombination(unittest.TestCase):
+class TestPolyArithmeticShapeCombination:
 
     @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes(no_bool=True)
@@ -442,7 +440,7 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul'],
 }))
-class TestPolyArithmeticDiffTypes(unittest.TestCase):
+class TestPolyArithmeticDiffTypes:
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     def test_polyroutine_diff_types_array(self, dtype1, dtype2):
@@ -487,7 +485,7 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
     'rcond': [None, 0.5, 1e-15],
     'weighted': [True, False]
 }))
-class TestPolyfitParametersCombinations(unittest.TestCase):
+class TestPolyfitParametersCombinations:
 
     def _full_fit(self, xp, dtype):
         x = testing.shaped_arange(self.shape1, xp, dtype)
@@ -530,7 +528,7 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
     'weighted': [True, False],
     'cov': ['unscaled', True]
 }))
-class TestPolyfitCovMode(unittest.TestCase):
+class TestPolyfitCovMode:
 
     def _cov_fit(self, xp, dtype):
         x = xp.array([0.008, 0.01, 0.015], dtype)
@@ -549,7 +547,7 @@ class TestPolyfitCovMode(unittest.TestCase):
 
 
 @testing.gpu
-class TestPolyfit(unittest.TestCase):
+class TestPolyfit:
 
     @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_poor_fit(self, dtype):
@@ -564,7 +562,7 @@ class TestPolyfit(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (5, 3, 3)],
 }))
-class TestPolyfitInvalidShapes(unittest.TestCase):
+class TestPolyfitInvalidShapes:
 
     @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_x_invalid_shape(self, dtype):
@@ -592,7 +590,7 @@ class TestPolyfitInvalidShapes(unittest.TestCase):
 
 
 @testing.gpu
-class TestPolyfitInvalid(unittest.TestCase):
+class TestPolyfitInvalid:
 
     @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_neg_degree(self, dtype):
@@ -642,7 +640,7 @@ class TestPolyfitInvalid(unittest.TestCase):
 
 
 @testing.gpu
-class TestPolyfitDiffTypes(unittest.TestCase):
+class TestPolyfitDiffTypes:
 
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_bool=True, full=True)
@@ -698,7 +696,7 @@ class TestPolyvalInvalidTypes(Poly1dTestBase):
     'shape1': [(0,), (3,), (5,)],
     'shape2': [(), (0,), (3,), (5,)]
 }))
-class TestPolyvalShapeCombination(unittest.TestCase):
+class TestPolyvalShapeCombination:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -712,7 +710,7 @@ class TestPolyvalShapeCombination(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (3,), (5,)]
 }))
-class TestPolyvalInvalidShapeCombination(unittest.TestCase):
+class TestPolyvalInvalidShapeCombination:
 
     @testing.for_all_dtypes()
     def test_polyval(self, dtype):
@@ -724,7 +722,7 @@ class TestPolyvalInvalidShapeCombination(unittest.TestCase):
 
 
 @testing.gpu
-class TestPolyvalDtypesCombination(unittest.TestCase):
+class TestPolyvalDtypesCombination:
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -742,7 +740,7 @@ class TestPolyvalDtypesCombination(unittest.TestCase):
 
 
 @testing.gpu
-class TestPolyvalNotImplemented(unittest.TestCase):
+class TestPolyvalNotImplemented:
 
     @testing.for_all_dtypes()
     def test_polyval_ndim_values(self, dtype):
@@ -764,7 +762,7 @@ class TestPolyvalNotImplemented(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul', 'polyval'],
 }))
-class TestPolyRoutinesNdim(unittest.TestCase):
+class TestPolyRoutinesNdim:
 
     @testing.for_all_dtypes()
     def test_polyroutine_ndim(self, dtype):
@@ -780,8 +778,9 @@ class TestPolyRoutinesNdim(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [[2, -1, -2], [-4, 10, 4]],
 }))
-@pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
-class TestRootsReal(unittest.TestCase):
+@pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
+                    reason='syevj not available')
+class TestRootsReal:
 
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -802,7 +801,7 @@ class TestRootsReal(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [[3j, 1.5j, -3j], [3 + 2j, 5], [3j, 0], [0, 3j]],
 }))
-class TestRootsComplex(unittest.TestCase):
+class TestRootsComplex:
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -827,7 +826,7 @@ class TestRootsComplex(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [[5, 10], [5, 0], [0, 5], [0, 0], [5]],
 }))
-class TestRootsSpecialCases(unittest.TestCase):
+class TestRootsSpecialCases:
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -843,7 +842,7 @@ class TestRootsSpecialCases(unittest.TestCase):
 
 
 @testing.gpu
-class TestRoots(unittest.TestCase):
+class TestRoots:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()

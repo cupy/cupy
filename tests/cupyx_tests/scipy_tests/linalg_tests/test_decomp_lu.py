@@ -9,6 +9,13 @@ if cupyx.scipy._scipy_available:
     import scipy.linalg
 
 
+# TODO: After the feature is released
+# requires_scipy_linalg_backend = testing.with_requires('scipy>=1.x.x')
+requires_scipy_linalg_backend = unittest.skip(
+    'scipy.linalg backend feature has not been released'
+)
+
+
 @testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
@@ -20,8 +27,8 @@ class TestLUFactor(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_lu_factor(self, dtype):
         if self.shape[0] != self.shape[1]:
-            # skip non-square tests since scipy.lu_factor requires square
-            return unittest.SkipTest()
+            self.skipTest(
+                'skip non-square tests since scipy.lu_factor requires square')
         a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
         a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
@@ -65,7 +72,8 @@ class TestLUFactor(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_lu_factor_reconstruction_singular(self, dtype):
         if self.shape[0] != self.shape[1]:
-            return unittest.SkipTest()
+            self.skipTest(
+                'skip non-square tests since scipy.lu_factor requires square')
         A = testing.shaped_random(self.shape, cupy, dtype=dtype)
         A -= A.mean(axis=0, keepdims=True)
         A -= A.mean(axis=1, keepdims=True)
@@ -131,3 +139,20 @@ class TestLUSolve(unittest.TestCase):
         b = testing.shaped_random(b_shape, xp, dtype=dtype)
         lu = scp.linalg.lu_factor(A)
         return scp.linalg.lu_solve(lu, b, trans=self.trans)
+
+    @requires_scipy_linalg_backend
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_lu_solve_backend(self, xp, dtype):
+        a_shape, b_shape = self.shapes
+        A = testing.shaped_random(a_shape, xp, dtype=dtype)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype)
+        if xp is numpy:
+            lu = scipy.linalg.lu_factor(A)
+            backend = 'scipy'
+        else:
+            lu = cupyx.scipy.linalg.lu_factor(A)
+            backend = cupyx.scipy.linalg
+        with scipy.linalg.set_backend(backend):
+            out = scipy.linalg.lu_solve(lu, b, trans=self.trans)
+        return out

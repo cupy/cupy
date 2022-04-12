@@ -16,16 +16,27 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.zeros_pinned
    cupyx.zeros_like_pinned
 
+Profiling utilities
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupyx.profiler.benchmark
+   cupyx.profiler.time_range
+   cupyx.profiler.profile
+
 DLPack utilities
 ----------------
 
-This is a helper function for creating a :class:`cupy.ndarray` from a DLPack tensor.
+Below are helper functions for creating a :class:`cupy.ndarray` from either a DLPack tensor
+or any object supporting the DLPack data exchange protocol.
 For further detail see :ref:`dlpack`.
 
 .. autosummary::
    :toctree: generated/
 
-   cupy.fromDlpack
+   cupy.from_dlpack
 
 
 .. _kernel_param_opt:

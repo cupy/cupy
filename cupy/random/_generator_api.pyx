@@ -7,12 +7,15 @@ import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy_backends.cuda.api import runtime
 
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 cdef extern from 'cupy_distributions.cuh' nogil:
+    cppclass rk_binomial_state:
+        pass
     void init_curand_generator(
         int generator, intptr_t state_ptr, uint64_t seed,
         ssize_t size, intptr_t stream)
@@ -30,10 +33,19 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         ssize_t size, intptr_t stream, int64_t mx, int64_t mask)
     void beta(
         int generator, intptr_t state, intptr_t out,
-        ssize_t size, intptr_t stream, double a, double b)
+        ssize_t size, intptr_t stream, intptr_t a, intptr_t b)
     void exponential(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void geometric(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t arg1)
+    void hypergeometric(
+        int generator, intptr_t state, intptr_t out, ssize_t size,
+        intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
+    void logseries(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t arg1)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -51,6 +63,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void poisson(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
+    void binomial(
+        int generator, intptr_t state, intptr_t out, ssize_t size,
+        intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
 
 
 cdef ndarray _array_data(ndarray x):
@@ -79,7 +94,11 @@ class Generator:
 
     """
     def __init__(self, bit_generator):
+        if runtime.is_hip and int(str(runtime.runtimeGetVersion())[:3]) < 403:
+            raise RuntimeError('Generator API not supported in ROCm<4.3,'
+                               ' please use the legacy one or update ROCm.')
         self.bit_generator = bit_generator
+        self._binomial_state = None
 
     def _check_output_array(self, dtype, size, out, check_only_c_cont=False):
         # Checks borrowed from NumPy
@@ -201,8 +220,7 @@ class Generator:
                 f'high - low must be within uint64 range (actual: {diff})')
 
         y = ndarray(size if size is not None else (), pdtype)
-
-        if dtype is numpy.uint32:
+        if pdtype is numpy.uint32:
             _launch_dist(self.bit_generator, interval_32, y, (diff, mask))
         else:
             _launch_dist(self.bit_generator, interval_64, y, (diff, mask))
@@ -232,12 +250,129 @@ class Generator:
             :meth:`numpy.random.Generator.beta`
         """
         cdef ndarray y
-        y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, beta, y, (a, b))
+        cdef a_arr, b_arr
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                ' or a scalar')
+        if not isinstance(b, ndarray):
+            if type(b) in (float, int):
+                b = cupy.asarray(b, numpy.float64)
+            else:
+                raise TypeError('b is required to be a cupy.ndarray'
+                                ' or a scalar')
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = cupy.broadcast(a, b).shape
+
+        y = ndarray(size, numpy.float64)
+
+        a = cupy.broadcast_to(a, y.shape)
+        b = cupy.broadcast_to(b, y.shape)
+        a_arr = _array_data(a)
+        b_arr = _array_data(b)
+        a_ptr = a_arr.data.ptr
+        b_ptr = b_arr.data.ptr
+
+        _launch_dist(self.bit_generator, beta, y, (a_ptr, b_ptr))
         # we cast the array to a python object because
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+    def chisquare(self, df, size=None):
+        """Chi-square distribution.
+
+        Returns an array of samples drawn from the chi-square distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)}x^{k/2-1}e^{-x/2}.
+
+        Args:
+            df (float or array_like of floats): Degree of freedom :math:`k`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the chi-square distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.chisquare`
+        """
+
+        cdef ndarray y
+
+        if not isinstance(df, ndarray):
+            if type(df) in (float, int):
+                df = cupy.asarray(df, numpy.float64)
+            else:
+                raise TypeError('df is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            df = df.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        if size is None:
+            size = df.shape
+
+        y = ndarray(size, numpy.float64)
+
+        df = cupy.broadcast_to(df, y.shape)
+        y = self.standard_gamma(df / 2)
+        y *= 2
+        return y
+
+    def dirichlet(self, alpha, size=None):
+        """Dirichlet distribution.
+
+        Returns an array of samples drawn from the dirichlet distribution. Its
+        probability density function is defined as
+
+        .. math::
+            f(x) = \\frac{\\Gamma(\\sum_{i=1}^K\\alpha_i)} \
+                {\\prod_{i=1}^{K}\\Gamma(\\alpha_i)} \
+                \\prod_{i=1}^Kx_i^{\\alpha_i-1}.
+
+        Args:
+            alpha (array): Parameters of the dirichlet distribution
+                :math:`\\alpha`.
+            size (int or tuple of ints): The shape of the array. If ``None``,
+                array of ``alpha.shape`` is generated
+
+        Returns:
+            cupy.ndarray: Samples drawn from the dirichlet distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.dirichlet`
+        """
+
+        if not isinstance(alpha, ndarray):
+            if type(alpha) in (float, int):
+                alpha = cupy.asarray(alpha, numpy.float64)
+            else:
+                raise TypeError('alpha is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            alpha = alpha.astype('d', copy=False)
+
+        if size is not None:
+            if not isinstance(size, tuple):
+                size = (size,)
+            size += alpha.shape
+
+        elif size is None:
+            size = alpha.shape
+
+        y = self.standard_gamma(alpha, size)
+        y /= y.sum(axis=-1, keepdims=True)
+        return y
 
     def exponential(self, scale=1.0, size=None):
         """Exponential distribution.
@@ -262,6 +397,236 @@ class Generator:
         """
         return self.standard_exponential(size) * scale
 
+    def f(self, dfnum, dfden, size=None):
+        """F distribution.
+
+        Returns an array of samples drawn from the f distribution. Its
+        probability density function is defined as
+
+        .. math::
+            f(x) = \\frac{1}{B(\\frac{d_1}{2},\\frac{d_2}{2})} \
+                \\left(\\frac{d_1}{d_2}\\right)^{\\frac{d_1}{2}} \
+                x^{\\frac{d_1}{2}-1} \
+                \\left(1+\\frac{d_1}{d_2}x\\right) \
+                ^{-\\frac{d_1+d_2}{2}}.
+
+        Args:
+            dfnum (float or array_like of floats): Degrees of freedom in
+                numerator, :math:`d_1`.
+            dfden (float or array_like of floats): Degrees of freedom in
+                denominator, :math:`d_2`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the f distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.f`
+        """
+        if not isinstance(dfnum, ndarray):
+            if type(dfnum) in (float, int):
+                dfnum = cupy.asarray(dfnum, numpy.float64)
+            else:
+                raise TypeError('dfnum is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            dfnum = dfnum.astype('d', copy=False)
+
+        if not isinstance(dfden, ndarray):
+            if type(dfden) in (float, int):
+                dfden = cupy.asarray(dfden, numpy.float64)
+            else:
+                raise TypeError('dfden is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            dfden = dfden.astype('d', copy=False)
+
+        if size is None:
+            size = cupy.broadcast(dfnum, dfden).shape
+
+        y = (self.chisquare(dfnum, size) * dfden) / (
+            self.chisquare(dfden, size) * dfnum)
+        return y
+
+    def geometric(self, p, size=None):
+        """Geometric distribution.
+
+        Returns an array of samples drawn from the geometric distribution. Its
+        probability mass function is defined as
+
+        .. math::
+            f(x) = p(1-p)^{k-1}.
+
+        Args:
+            p (float or cupy.ndarray of floats): Success probability of
+                the geometric distribution.
+            size (int or tuple of ints, optional): The shape of the output
+                array. If ``None`` (default), a single value is returned if
+                ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the geometric distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.geometric`
+        """
+        cdef ndarray y
+        cdef ndarray p_arr
+
+        if not isinstance(p, ndarray):
+            if type(p) in (float, int):
+                p_a = ndarray((), numpy.float64)
+                p_a.fill(p)
+                p = p_a
+            else:
+                raise TypeError('p is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            p = p.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = p.shape
+        y = ndarray(size if size is not None else (), numpy.int64)
+
+        p = cupy.broadcast_to(p, y.shape)
+        p_arr = _array_data(p)
+        p_ptr = p_arr.data.ptr
+        _launch_dist(self.bit_generator, geometric, y, (p_ptr,))
+        return y
+
+    def hypergeometric(self, ngood, nbad, nsample, size=None):
+        """Hypergeometric distribution.
+
+        Returns an array of samples drawn from the hypergeometric distribution.
+        Its probability mass function is defined as
+
+        .. math::
+            f(x) = \\frac{\\binom{m}{n}\\binom{N-m}{n-x}}{\\binom{N}{n}}.
+
+        Args:
+            ngood (int or array_like of ints): Parameter of the hypergeometric
+                distribution :math:`n`.
+            nbad (int or array_like of ints): Parameter of the hypergeometric
+                distribution :math:`m`.
+            nsample (int or array_like of ints): Parameter of the
+                hypergeometric distribution :math:`N`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the hypergeometric distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.hypergeometric`
+        """
+        cdef ndarray y
+        cdef ndarray ngood_arr
+        cdef ndarray nbad_arr
+        cdef ndarray nsample_arr
+
+        if not isinstance(ngood, ndarray):
+            if type(ngood) in (float, int):
+                ngood_a = ndarray((), numpy.int64)
+                ngood_a.fill(ngood)
+                ngood = ngood_a
+            else:
+                raise TypeError('ngood is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            ngood = ngood.astype(numpy.int64, copy=False)
+
+        if not isinstance(nbad, ndarray):
+            if type(nbad) in (float, int):
+                nbad_a = ndarray((), numpy.int64)
+                nbad_a.fill(nbad)
+                nbad = nbad_a
+            else:
+                raise TypeError('nbad is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            nbad = nbad.astype(numpy.int64, copy=False)
+
+        if not isinstance(nsample, ndarray):
+            if type(nsample) in (float, int):
+                nsample_a = ndarray((), numpy.int64)
+                nsample_a.fill(nsample)
+                nsample = nsample_a
+            else:
+                raise TypeError('nsample is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            nsample = nsample.astype(numpy.int64, copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        if size is None:
+            size = cupy.broadcast(ngood, nbad, nsample).shape
+        y = ndarray(size, numpy.int64)
+
+        ngood = cupy.broadcast_to(ngood, y.shape)
+        nbad = cupy.broadcast_to(nbad, y.shape)
+        nsample = cupy.broadcast_to(nsample, y.shape)
+        ngood_arr = _array_data(ngood)
+        nbad_arr = _array_data(nbad)
+        nsample_arr = _array_data(nsample)
+        ngood_ptr = ngood_arr.data.ptr
+        nbad_ptr = nbad_arr.data.ptr
+        nsample_ptr = nsample_arr.data.ptr
+
+        _launch_dist(self.bit_generator, hypergeometric, y,
+                     (ngood_ptr, nbad_ptr, nsample_ptr))
+        return y
+
+    def logseries(self, p, size=None):
+        """Log series distribution.
+
+        Returns an array of samples drawn from the log series distribution.
+        Its probability mass function is defined as
+
+        .. math::
+           f(x) = \\frac{-p^x}{x\\ln(1-p)}.
+
+        Args:
+            p (float or cupy.ndarray of floats): Parameter of the log series
+                distribution. Must be in the range (0, 1).
+            size (int or tuple of ints, optional): The shape of the output
+                array. If ``None`` (default), a single value is returned if
+                ``p`` is scalar. Otherwise, ``p.size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the log series distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.logseries`
+        """
+        cdef ndarray y
+        cdef ndarray p_arr
+
+        if not isinstance(p, ndarray):
+            if type(p) in (float, int):
+                p = cupy.asarray(p, numpy.float64)
+            else:
+                raise TypeError('p is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            p = p.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = p.shape
+
+        y = ndarray(size, numpy.int64)
+
+        p = cupy.broadcast_to(p, y.shape)
+        p_arr = _array_data(p)
+        p_ptr = p_arr.data.ptr
+        _launch_dist(self.bit_generator, logseries, y, (p_ptr,))
+        return y
+
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
             method='inv', out=None):
@@ -278,13 +643,13 @@ class Generator:
                 a zero-dimensional array is generated.
             dtype: Data type specifier. Only :class:`numpy.float32` and
                 :class:`numpy.float64` types are allowed.
-            method (str): Method to sample, Currently onlu 'inv', sample from
-                the default inverse CDF is supported.
+            method (str): Method to sample. Currently only ``'inv'``, sampling
+                from the default inverse CDF, is supported.
             out (cupy.ndarray, optional): If specified, values will be written
                 to this array
         Returns:
             cupy.ndarray: Samples drawn from the standard exponential
-                distribution.
+            distribution.
 
         .. seealso::
             :meth:`numpy.random.Generator.standard_exponential`
@@ -317,10 +682,11 @@ class Generator:
             f(x) = \\frac{\\lambda^xe^{-\\lambda}}{x!}.
 
         Args:
-            lam (array_like of floats): Parameter of the poisson distribution
+            lam (float or array_like of floats): Parameter of
+                the poisson distribution
                 :math:`\\lambda`.
             size (int or tuple of ints): The shape of the array. If ``None``,
-            this function generate an array whose shape is `lam.shape`.
+                this function generate an array whose shape is ``lam.shape``.
 
         Returns:
             cupy.ndarray: Samples drawn from the poisson distribution.
@@ -356,6 +722,48 @@ class Generator:
         lam_ptr = lam_arr.data.ptr
         _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
         return y
+
+    def power(self, a, size=None):
+        """Power distribution.
+
+        Returns an array of samples drawn from the power distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = ax^{a-1}.
+
+        Args:
+            a (float or array_like of floats): Parameter of the power
+                distribution :math:`a`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the power distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.power`
+        """
+
+        if not isinstance(a, ndarray):
+            if type(a) in (float, int):
+                a = cupy.asarray(a, numpy.float64)
+            else:
+                raise TypeError('a is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            a = a.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size, )
+        elif size is None:
+            size = a.shape
+
+        x = self.standard_exponential(size)
+        cupy.exp(-x, out=x)
+        cupy.add(1, -x, out=x)
+        cupy.power(x, 1./a, out=x)
+        return x
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Standard normal distribution.
@@ -495,6 +903,73 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def binomial(self, n, p, size=None):
+        """Binomial distribution.
+
+        Returns an array of samples drawn from the binomial distribution. Its
+        probability mass function is defined as
+
+        .. math::
+           f(x) = \\binom{n}{x}p^x(1-p)^(n-x).
+
+        Args:
+            n (int or cupy.ndarray of ints): Parameter of the distribution,
+                >= 0. Floats are also accepted, but they will be truncated to
+                integers.
+            p (float or cupy.ndarray of floats): Parameter of the distribution,
+                >= 0 and <= 1.
+            size (int or tuple of ints, optional): The shape of the output
+                array. If ``None`` (default), a single value is returned if
+                ``n`` and ``p`` are both scalars. Otherwise,
+                ``cupy.broadcast(n, p).size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the binomial distribution.
+
+        .. seealso::
+           :meth:`numpy.random.Generator.binomial`
+        """
+        cdef ndarray y
+        cdef ndarray n_arr
+        cdef ndarray p_arr
+        cdef intptr_t binomial_state_ptr
+
+        if isinstance(n, ndarray):
+            n = n.astype(numpy.int64, copy=False)
+        elif type(n) in (float, int):
+            n = cupy.asarray(n, numpy.int64)
+        else:
+            raise TypeError('n is required to be a cupy.ndarray or a scalar')
+
+        if isinstance(p, ndarray):
+            p = p.astype(numpy.float64, copy=False)
+        elif type(p) is float:
+            p = cupy.asarray(p, numpy.float64)
+        else:
+            raise TypeError('p is required to be a cupy.ndarray or a scalar')
+
+        if size is None:
+            size = cupy.broadcast(n, p).shape
+
+        y = ndarray(size if size is not None else (), numpy.int64)
+
+        n = cupy.broadcast_to(n, y.shape)
+        p = cupy.broadcast_to(p, y.shape)
+        n_arr = _array_data(n)
+        p_arr = _array_data(p)
+        n_ptr = n_arr.data.ptr
+        p_ptr = p_arr.data.ptr
+
+        if self._binomial_state is None:
+            state_size = self.bit_generator._state_size()
+            self._binomial_state = cupy.zeros(
+                sizeof(rk_binomial_state) * state_size, dtype=numpy.int8)
+        binomial_state_ptr = <intptr_t>self._binomial_state.data.ptr
+        _launch_dist(
+            self.bit_generator, binomial, y,
+            (n_ptr, p_ptr, binomial_state_ptr))
+        return y
+
 
 def init_curand(generator, state, seed, size):
     init_curand_generator(
@@ -521,9 +996,11 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef ssize_t size = out.size
     cdef ndarray chunk
     cdef int generator = bit_generator.generator
-
+    # out is always contiguous, when out parameter is specified the checks
+    # ensure it
+    out = out.ravel(order='A')
     cdef bsize = bit_generator._state_size()
-    if out.shape == () or bsize == 0:
+    if bsize == 0:
         func(generator, state, y_ptr, out.size, strm, *args)
     else:
         chunks = (out.size + bsize - 1) // bsize

@@ -30,7 +30,25 @@ namespace cupy {
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#ifdef __HIPCC__
+#ifdef __HIPCC_RTC__
+
+#include <hip/hip_version.h>
+#if HIP_VERSION >= 40400000
+// HIP runtime headers can be no longer explicitly included since ROCm 4.5 so
+// we only include necessary standard headers.
+#include <cassert>
+#include <cstddef>
+
+// Confirmed to AMD, ROCm 5.0 doesn't recognize __forceinline__ and
+// __noinline__.
+#define __noinline__ __attribute__((noinline))
+#define __forceinline__ inline __attribute__((always_inline))
+
+#else
+#include <hip/hip_fp16.h>
+#endif  // #if HIP_VERSION >= 40400000
+
+#elif __HIPCC__
 
 #include <hip/hip_fp16.h>
 
@@ -107,6 +125,14 @@ public:
   __device__ int signbit() const {
     return (__half_raw(data_).x & 0x8000u) != 0;
   }
+
+#ifdef __HIPCC__ && HIP_VERSION >= 50000000
+
+  __device__ float16 operator-() {
+    return float16(-data_);
+  }
+
+#endif
 
   template<typename T>
   inline __device__ float16& operator+=(const T& rhs) {
@@ -213,7 +239,6 @@ class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
-  static const bool use_32bit_indexing = _use_32bit_indexing;
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 private:
   T* data_;
@@ -326,12 +351,12 @@ public:
 
   template <typename Int>
   __device__ const T& operator[](const Int (&idx)[ndim]) const {
-    const char* ptr = reinterpret_cast<const char*>(data_);
+    index_t diff = 0;
     for (int dim = 0; dim < ndim; ++dim) {
-      index_t i = static_cast<index_t>(idx[dim]);
-      ptr += static_cast<index_t>(strides_[dim]) * i;
+      diff += static_cast<index_t>(strides_[dim]) * static_cast<index_t>(idx[dim]);
     }
-    return *reinterpret_cast<const T*>(ptr);
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    return *reinterpret_cast<const T*>(ptr + diff);
   }
 
   __device__ T& operator[](ptrdiff_t i) {
@@ -371,15 +396,16 @@ public:
     } else {
       // 64-bit mults and divs are pretty expensive and can lead to severe
       // performance degradation in computation bound kernels
-      const char* ptr = reinterpret_cast<const char*>(data_);
+      index_t diff = 0;
       index_t i = static_cast<index_t>(idx);
       for (int dim = ndim; --dim > 0; ) {
           index_t shape_dim = static_cast<index_t>(shape_[dim]);
-          ptr += static_cast<index_t>(strides_[dim]) * (i % shape_dim);
+          diff += static_cast<index_t>(strides_[dim]) * (i % shape_dim);
           i /= shape_dim;
       }
-      ptr += static_cast<index_t>(strides_[0]) * i;
-      return *reinterpret_cast<const T*>(ptr);
+      diff += static_cast<index_t>(strides_[0]) * i;
+      const char* ptr = reinterpret_cast<const char*>(data_);
+      return *reinterpret_cast<const T*>(ptr + diff);
     }
   }
 };
@@ -441,7 +467,7 @@ public:
   }
 };
 
-template <int _ndim>
+template <int _ndim, bool _use_32bit_indexing=false>
 class CIndexer {
 public:
   static const int ndim = _ndim;
@@ -515,7 +541,7 @@ public:
     // ndim == 0 case uses partial template specialization
     if (ndim == 1) {
       index_[0] = i;
-    } else if (size_ > 1LL << 31) {
+    } else if (!_use_32bit_indexing && size_ > 1LL << 31) {
       // 64-bit division is very slow on GPU
       this->_set(static_cast<unsigned long long int>(i));
     } else {
@@ -545,8 +571,8 @@ private:
   static unsigned long long int __device__ _log2(unsigned long long int x) { return __popcll(x-1); }
 };
 
-template <>
-class CIndexer<0> {
+template <bool _use_32bit_indexing>
+class CIndexer<0, _use_32bit_indexing> {
 private:
   ptrdiff_t size_;
 

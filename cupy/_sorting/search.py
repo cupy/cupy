@@ -49,7 +49,7 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The indices of the maximum of ``a``
-            along an axis ignoring NaN values.
+        along an axis ignoring NaN values.
 
     .. note:: For performance reasons, ``cupy.nanargmax`` returns
             ``out of range values`` for all-NaN slice
@@ -104,7 +104,7 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The indices of the minimum of ``a``
-            along an axis ignoring NaN values.
+        along an axis ignoring NaN values.
 
     .. note:: For performance reasons, ``cupy.nanargmin`` returns
             ``out of range values`` for all-NaN slice
@@ -186,9 +186,9 @@ def where(condition, x=None, y=None):
 
     Returns:
         cupy.ndarray: Each element of output contains elements of ``x`` when
-            ``condition`` is ``True``, otherwise elements of ``y``. If only
-            ``condition`` is given, return the tuple ``condition.nonzero()``,
-            the indices where ``condition`` is True.
+        ``condition`` is ``True``, otherwise elements of ``y``. If only
+        ``condition`` is given, return the tuple ``condition.nonzero()``,
+        the indices where ``condition`` is True.
 
     .. warning::
 
@@ -256,21 +256,17 @@ _hip_preamble = r'''
 '''
 
 
-_searchsorted_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool side_is_right, '
-    'bool assume_increassing',
-    'int64 y',
-    '''
+_searchsorted_code = '''
     #ifdef __HIP_DEVICE_COMPILE__
     bool is_done = false;
     #endif
 
     // Array is assumed to be monotonically
     // increasing unless a check is requested with the
-    // `assume_increassing = False` parameter.
+    // `assume_increasing = False` parameter.
     // `digitize` allows increasing and decreasing arrays.
     bool inc = true;
-    if (!assume_increassing && n_bins >= 2) {
+    if (!assume_increasing && n_bins >= 2) {
         // In the case all the bins are nan the array is considered
         // to be decreasing in numpy
         inc = (bins[0] <= bins[n_bins-1])
@@ -336,7 +332,62 @@ _searchsorted_kernel = _core.ElementwiseKernel(
         }
     }
     no_thread_divergence( y = right , false )
-    ''', preamble=_preamble+_hip_preamble)
+'''
+
+
+_searchsorted_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool side_is_right, '
+    'bool assume_increasing',
+    'int64 y',
+    _searchsorted_code,
+    name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
+
+
+_hip_preamble = r'''
+#ifdef __HIP_DEVICE_COMPILE__
+  #define no_thread_divergence(do_work, to_return) \
+    if (!is_done) {                                \
+      do_work;                                     \
+      is_done = true;                              \
+    }
+#else
+  #define no_thread_divergence(do_work, to_return) \
+    do_work;                                       \
+    if (to_return) {                               \
+      out = (y == n_bins ? false : bins[y] == x);  \
+      if (invert) out = !out;                      \
+      return;                                      \
+    }
+#endif
+'''
+
+
+_exists_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool invert',
+    'bool out',
+    '''
+    const bool assume_increasing = true;
+    const bool side_is_right = false;
+    long long y;
+    '''
+    + _searchsorted_code + '''
+    out = (y == n_bins ? false : bins[y] == x);
+    if (invert) out = !out;
+    ''', name='cupy_exists_kernel', preamble=_preamble+_hip_preamble)
+
+
+_exists_and_searchsorted_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool invert',
+    'bool out, int64 y',
+    '''
+    const bool assume_increasing = true;
+    const bool side_is_right = false;
+    '''
+    + _searchsorted_code + '''
+    out = (y == n_bins ? false : bins[y] == x);
+    if (invert) out = !out;
+    ''', name='cupy_exists_and_searchsorted_kernel',
+    preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):

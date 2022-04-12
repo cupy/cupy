@@ -21,6 +21,9 @@ reciprocal = _core.create_ufunc(
     ''')
 
 
+positive = _core.positive
+
+
 negative = _core.negative
 
 
@@ -30,6 +33,38 @@ conjugate = _core.conjugate
 angle = _core.angle
 
 
+# cupy.real is not a ufunc because it returns a view.
+# The ufunc implementation is used by fusion.
+_real_ufunc = _core.create_ufunc(
+    'cupy_real',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.real()'),
+     ('D->d', 'out0 = in0.real()')),
+    'out0 = in0',
+    doc='''Returns the real part of the elements of the array.
+
+    .. seealso:: :func:`numpy.real`
+
+    ''')
+
+
+# cupy.imag is not a ufunc because it may return a view.
+# The ufunc implementation is used by fusion.
+_imag_ufunc = _core.create_ufunc(
+    'cupy_imag',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = in0.imag()'),
+     ('D->d', 'out0 = in0.imag()')),
+    'out0 = 0',
+    doc='''Returns the imaginary part of the elements of the array.
+
+    .. seealso:: :func:`numpy.imag`
+
+    ''')
+
+
 def real(val):
     '''Returns the real part of the elements of the array.
 
@@ -37,7 +72,7 @@ def real(val):
 
     '''
     if fusion._is_fusing():
-        return fusion._call_ufunc(_core.real, val)
+        return fusion._call_ufunc(_real_ufunc, val)
     if not isinstance(val, _core.ndarray):
         val = _core.array(val)
     return val.real
@@ -50,7 +85,7 @@ def imag(val):
 
     '''
     if fusion._is_fusing():
-        return fusion._call_ufunc(_core.imag, val)
+        return fusion._call_ufunc(_imag_ufunc, val)
     if not isinstance(val, _core.ndarray):
         val = _core.array(val)
     return val.imag
@@ -76,6 +111,17 @@ true_divide = _core.true_divide
 
 floor_divide = _core.floor_divide
 
+float_power = _core.create_ufunc(
+    'cupy_float_power',
+    ('dd->d', 'FF->D',
+     ('DD->D', 'out0 = in1 == in1_type(0) ? in1_type(1): pow(in0, in1)')),
+    'out0 = pow(in0, in1)',
+    doc='''First array elements raised to powers from second array, element-wise.
+
+    .. seealso:: :data:`numpy.float_power`
+
+    '''
+)
 
 fmod = _core.create_ufunc(
     'cupy_fmod',

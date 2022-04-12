@@ -4,8 +4,10 @@ import numpy
 import pytest
 
 import cupy
-from cupy._core.internal import prod
 from cupy import cusolver
+from cupy.cuda import driver
+from cupy.cuda import runtime
+from cupy.linalg import _util
 from cupy import testing
 from cupy.testing import _condition
 import cupyx
@@ -46,8 +48,7 @@ def random_matrix(shape, dtype, scale, sym=False):
     return new_a.astype(dtype)
 
 
-@testing.gpu
-class TestCholeskyDecomposition(unittest.TestCase):
+class TestCholeskyDecomposition:
 
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_L(self, array, xp):
@@ -75,6 +76,21 @@ class TestCholeskyDecomposition(unittest.TestCase):
         Ab2 = random_matrix((2, 2, 5, 5), dtype, scale=(10, 10000), sym=True)
         self.check_L(Ab2)
 
+    @pytest.mark.parametrize('shape', [
+        # empty square
+        (0, 0),
+        (3, 0, 0),
+        # empty batch
+        (2, 0, 3, 4, 4),
+    ])
+    @testing.for_dtypes([
+        numpy.int32, numpy.uint16,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
+    @testing.numpy_cupy_allclose()
+    def test_empty(self, shape, xp, dtype):
+        a = xp.empty(shape, dtype)
+        return xp.linalg.cholesky(a)
+
 
 @testing.gpu
 class TestCholeskyInvalid(unittest.TestCase):
@@ -97,15 +113,25 @@ class TestCholeskyInvalid(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
-@testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def check_mode(self, array, mode, dtype):
+        if runtime.is_hip and driver.get_build_version() < 307:
+            if dtype in (numpy.complex64, numpy.complex128):
+                pytest.skip('ungqr unsupported')
+
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
-        result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
+        if (
+            mode != 'raw' or
+            numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0rc1'
+        ):
+            result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
+            self._check_result(result_cpu, result_gpu)
+
+    def _check_result(self, result_cpu, result_gpu):
         if isinstance(result_cpu, tuple):
             for b_cpu, b_gpu in zip(result_cpu, result_gpu):
                 assert b_cpu.dtype == b_gpu.dtype
@@ -121,10 +147,36 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
+    @testing.with_requires('numpy>=1.22')
+    @testing.fix_random()
+    def test_mode_rank3(self):
+        self.check_mode(numpy.random.randn(3, 2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(4, 3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 5, 4), mode=self.mode)
+
+    @testing.with_requires('numpy>=1.22')
+    @testing.fix_random()
+    def test_mode_rank4(self):
+        self.check_mode(numpy.random.randn(2, 3, 2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 4, 3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 2, 5, 4), mode=self.mode)
+
     @testing.with_requires('numpy>=1.16')
     def test_empty_array(self):
         self.check_mode(numpy.empty((0, 3)), mode=self.mode)
         self.check_mode(numpy.empty((3, 0)), mode=self.mode)
+
+    @testing.with_requires('numpy>=1.22')
+    def test_empty_array_rank3(self):
+        self.check_mode(numpy.empty((0, 3, 2)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0, 2)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 2, 0)), mode=self.mode)
+        self.check_mode(numpy.empty((0, 3, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((3, 3, 0)), mode=self.mode)
+        self.check_mode(numpy.empty((0, 2, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((2, 0, 3)), mode=self.mode)
+        self.check_mode(numpy.empty((2, 3, 0)), mode=self.mode)
 
 
 @testing.parameterize(*testing.product({
@@ -175,37 +227,16 @@ class TestSVD(unittest.TestCase):
         cupy.testing.assert_allclose(a_gpu, a_gpu_usv, rtol=1e-4, atol=1e-4)
 
         # assert unitary
-        if len(shape) == 2:
-            cupy.testing.assert_allclose(
-                cupy.matmul(u_gpu.T.conj(), u_gpu),
-                numpy.eye(u_gpu.shape[1]),
-                atol=1e-4)
-            cupy.testing.assert_allclose(
-                cupy.matmul(vh_gpu, vh_gpu.T.conj()),
-                numpy.eye(vh_gpu.shape[0]),
-                atol=1e-4)
-        else:
-            batch = prod(shape[:-2])
-            u_len = u_gpu.shape[-1]
-            vh_len = vh_gpu.shape[-2]
-
-            if batch == 0:
-                id_u_cpu = numpy.empty(shape[:-2] + (u_len, u_len))
-                id_vh_cpu = numpy.empty(shape[:-2] + (vh_len, vh_len))
-            else:
-                id_u_cpu = [numpy.eye(u_len) for _ in range(batch)]
-                id_u_cpu = numpy.stack(id_u_cpu, axis=0).reshape(
-                    *(shape[:-2]), u_len, u_len)
-                id_vh_cpu = [numpy.eye(vh_len) for _ in range(batch)]
-                id_vh_cpu = numpy.stack(id_vh_cpu, axis=0).reshape(
-                    *(shape[:-2]), vh_len, vh_len)
-
-            cupy.testing.assert_allclose(
-                cupy.matmul(u_gpu.swapaxes(-1, -2).conj(), u_gpu),
-                id_u_cpu, atol=1e-4)
-            cupy.testing.assert_allclose(
-                cupy.matmul(vh_gpu, vh_gpu.swapaxes(-1, -2).conj()),
-                id_vh_cpu, atol=1e-4)
+        u_len = u_gpu.shape[-1]
+        vh_len = vh_gpu.shape[-2]
+        cupy.testing.assert_allclose(
+            cupy.matmul(u_gpu.swapaxes(-1, -2).conj(), u_gpu),
+            _util.stacked_identity(shape[:-2], u_len, dtype),
+            atol=1e-4)
+        cupy.testing.assert_allclose(
+            cupy.matmul(vh_gpu, vh_gpu.swapaxes(-1, -2).conj()),
+            _util.stacked_identity(shape[:-2], vh_len, dtype),
+            atol=1e-4)
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,

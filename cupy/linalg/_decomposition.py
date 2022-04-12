@@ -8,6 +8,7 @@ from cupy._core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
 from cupy.cusolver import _gesvdj_batched, _gesvd_batched
+from cupy.cusolver import _geqrf_orgqr_batched
 from cupy.linalg import _util
 
 
@@ -23,11 +24,15 @@ def _lu_factor(a_t, dtype):
         dtype (numpy.dtype): float32, float64, complex64, or complex128.
 
     Returns:
-        lu_t (cupy.ndarray): ``L`` without its unit diagonal and ``U`` with
+        tuple:
+        lu_t (cupy.ndarray):
+            ``L`` without its unit diagonal and ``U`` with
             dimension ``(..., N, N)``.
-        piv (cupy.ndarray): 1-origin pivot indices with dimension
+        piv (cupy.ndarray):
+            1-origin pivot indices with dimension
             ``(..., N)``.
-        dev_info (cupy.ndarray): ``getrf`` info with dimension ``(...)``.
+        dev_info (cupy.ndarray):
+            ``getrf`` info with dimension ``(...)``.
 
     .. seealso:: :func:`scipy.linalg.lu_factor`
 
@@ -118,6 +123,8 @@ def _potrf_batched(a):
         raise RuntimeError('potrfBatched is not available')
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -148,15 +155,16 @@ def _potrf_batched(a):
 def cholesky(a):
     """Cholesky decomposition.
 
-    Decompose a given two-dimensional square matrix into ``L * L.T``,
-    where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
+    Decompose a given two-dimensional square matrix into ``L * L.H``,
+    where ``L`` is a lower-triangular matrix and ``.H`` is a conjugate
     transpose operator.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(N, N)``
+        a (cupy.ndarray): Hermitian (symmetric if all elements are real),
+            positive-definite input matrix with dimension ``(..., M, M)``.
 
     Returns:
-        cupy.ndarray: The lower-triangular matrix.
+        cupy.ndarray: The lower-triangular matrix of shape ``(..., M, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
@@ -168,12 +176,15 @@ def cholesky(a):
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
     _util._assert_cupy_array(a)
-    _util._assert_nd_squareness(a)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
     if a.ndim > 2:
         return _potrf_batched(a)
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
@@ -206,6 +217,42 @@ def cholesky(a):
     return x.astype(out_dtype, copy=False)
 
 
+def _qr_batched(a, mode):
+    batch_shape = a.shape[:-2]
+    batch_size = internal.prod(batch_shape)
+    m, n = a.shape[-2:]
+    k = min(m, n)
+
+    # first handle any 0-size inputs
+    if batch_size == 0 or k == 0:
+        # support float32, float64, complex64, and complex128
+        dtype, out_dtype = _util.linalg_common_type(a)
+
+        if mode == 'reduced':
+            return (cupy.empty(batch_shape + (m, k), out_dtype),
+                    cupy.empty(batch_shape + (k, n), out_dtype))
+        elif mode == 'complete':
+            q = _util.stacked_identity(batch_shape, m, out_dtype)
+            return (q, cupy.empty(batch_shape + (m, n), out_dtype))
+        elif mode == 'r':
+            return cupy.empty(batch_shape + (k, n), out_dtype)
+        elif mode == 'raw':
+            return (cupy.empty(batch_shape + (n, m), out_dtype),
+                    cupy.empty(batch_shape + (k,), out_dtype))
+
+    # ...then delegate real computation to cuSOLVER/rocSOLVER
+    a = a.reshape(-1, *(a.shape[-2:]))
+    out = _geqrf_orgqr_batched(a, mode)
+
+    if mode == 'r':
+        return out.reshape(batch_shape + out.shape[-2:])
+    q, r = out
+    q = q.reshape(batch_shape + q.shape[-2:])
+    idx = -1 if mode == 'raw' else -2
+    r = r.reshape(batch_shape + r.shape[idx:])
+    return (q, r)
+
+
 def qr(a, mode='reduced'):
     """QR decomposition.
 
@@ -216,9 +263,9 @@ def qr(a, mode='reduced'):
         a (cupy.ndarray): The input matrix.
         mode (str): The mode of decomposition. Currently 'reduced',
             'complete', 'r', and 'raw' modes are supported. The default mode
-            is 'reduced', in which matrix ``A = (M, N)`` is decomposed into
-            ``Q``, ``R`` with dimensions ``(M, K)``, ``(K, N)``, where
-            ``K = min(M, N)``.
+            is 'reduced', in which matrix ``A = (..., M, N)`` is decomposed
+            into ``Q``, ``R`` with dimensions ``(..., M, K)``, ``(..., K, N)``,
+            where ``K = min(M, N)``.
 
     Returns:
         cupy.ndarray, or tuple of ndarray:
@@ -235,26 +282,23 @@ def qr(a, mode='reduced'):
 
     .. seealso:: :func:`numpy.linalg.qr`
     """
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):
             msg = 'The deprecated mode \'{}\' is not supported'.format(mode)
-            raise ValueError(msg)
         else:
-            raise ValueError('Unrecognized mode \'{}\''.format(mode))
+            msg = 'Unrecognized mode \'{}\''.format(mode)
+        raise ValueError(msg)
+    if a.ndim > 2:
+        return _qr_batched(a, mode)
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _util.linalg_common_type(a)
-    if mode == 'raw':
-        # compatibility with numpy.linalg.qr
-        out_dtype = numpy.promote_types(out_dtype, 'd')
 
     m, n = a.shape
-    mn = min(m, n)
-    if mn == 0:
+    k = min(m, n)
+    if k == 0:
         if mode == 'reduced':
             return cupy.empty((m, 0), out_dtype), cupy.empty((0, n), out_dtype)
         elif mode == 'complete':
@@ -288,14 +332,14 @@ def qr(a, mode='reduced'):
     # compute working space of geqrf and solve R
     buffersize = geqrf_bufferSize(handle, m, n, x.data.ptr, n)
     workspace = cupy.empty(buffersize, dtype=dtype)
-    tau = cupy.empty(mn, dtype=dtype)
+    tau = cupy.empty(k, dtype=dtype)
     geqrf(handle, m, n, x.data.ptr, m,
           tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
 
     if mode == 'r':
-        r = x[:, :mn].transpose()
+        r = x[:, :k].transpose()
         return _util._triu(r).astype(out_dtype, copy=False)
 
     if mode == 'raw':
@@ -307,7 +351,7 @@ def qr(a, mode='reduced'):
         mc = m
         q = cupy.empty((m, m), dtype)
     else:
-        mc = mn
+        mc = k
         q = cupy.empty((n, m), dtype)
     q[:n] = x
 
@@ -326,10 +370,10 @@ def qr(a, mode='reduced'):
         orgqr = cusolver.zungqr
 
     buffersize = orgqr_bufferSize(
-        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+        handle, m, mc, k, q.data.ptr, m, tau.data.ptr)
     workspace = cupy.empty(buffersize, dtype=dtype)
     orgqr(
-        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        handle, m, mc, k, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
         buffersize, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         orgqr, dev_info)
@@ -367,10 +411,8 @@ def _svd_batched(a, full_matrices, compute_uv):
         s = cupy.empty(batch_shape + (0,), s_dtype)
         if compute_uv:
             if full_matrices:
-                u = cupy.empty(batch_shape + (n, n), dtype=uv_dtype)
-                u[...] = cupy.identity(n, dtype=uv_dtype)
-                vt = cupy.empty(batch_shape + (m, m), dtype=uv_dtype)
-                vt[...] = cupy.identity(m, dtype=uv_dtype)
+                u = _util.stacked_identity(batch_shape, n, uv_dtype)
+                vt = _util.stacked_identity(batch_shape, m, uv_dtype)
             else:
                 u = cupy.empty(batch_shape + (n, 0), dtype=uv_dtype)
                 vt = cupy.empty(batch_shape + (0, m), dtype=uv_dtype)
@@ -389,6 +431,7 @@ def _svd_batched(a, full_matrices, compute_uv):
         # copy (via possible type casting) is done in _gesvd_batched
         # note: _gesvd_batched returns V, not V^H
         out = _gesvd_batched(a, dtype.char, full_matrices, compute_uv, False)
+
     if compute_uv:
         u, s, v = out
         u = u.astype(uv_dtype, copy=False)

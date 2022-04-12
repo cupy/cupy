@@ -11,10 +11,13 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport core
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
+from cupy._core._kernel cimport _check_peer_access
+
 from cupy.cuda import device
 
 
@@ -58,10 +61,10 @@ cdef _ndarray_shape_setter(ndarray self, newshape):
     shape = internal.infer_unknown_dimension(newshape, self.size)
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() != shape.size():
-        raise AttributeError('incompatible shape')
-    self._shape = shape
-    self._strides = strides
-    self._update_f_contiguity()
+        raise AttributeError(
+            'Incompatible shape for in-place modification. Use `.reshape()` '
+            'to make a copy with the desired shape.')
+    self._set_shape_and_strides(shape, strides, False, True)
 
 
 cdef ndarray _ndarray_reshape(ndarray self, tuple shape, order):
@@ -113,7 +116,26 @@ cdef ndarray _ndarray_swapaxes(
     return _transpose(self, axes)
 
 
-cdef ndarray _ndarray_flatten(ndarray self):
+cdef ndarray _ndarray_flatten(ndarray self, order):
+    cdef int order_char
+    cdef vector.vector[Py_ssize_t] axes
+
+    order_char = internal._normalize_order(order, True)
+    if order_char == b'A':
+        if self._f_contiguous and not self._c_contiguous:
+            order_char = b'F'
+        else:
+            order_char = b'C'
+    if order_char == b'C':
+        return _ndarray_flatten_order_c(self)
+    elif order_char == b'F':
+        return _ndarray_flatten_order_c(_T(self))
+    elif order_char == b'K':
+        axes = _npyiter_k_order_axes(self.strides)
+        return _ndarray_flatten_order_c(_transpose(self, axes))
+
+
+cdef ndarray _ndarray_flatten_order_c(ndarray self):
     newarray = self.copy(order='C')
     newarray._shape.assign(<Py_ssize_t>1, self.size)
     newarray._strides.assign(<Py_ssize_t>1,
@@ -123,10 +145,40 @@ cdef ndarray _ndarray_flatten(ndarray self):
     return newarray
 
 
+cdef vector.vector[Py_ssize_t] _npyiter_k_order_axes(strides_t& strides):
+    # output transpose axes such that
+    # x.flatten(order="K") == x.transpose(axes).flatten(order="C")
+    # by reproducing `npyiter_find_best_axis_ordering`
+    # in numpy/core/src/multiarray/nditer_constr.c
+
+    # Note that `flatten` and `ravel` should use this function for order="K",
+    # while `copy(order="K")` should use `internal._get_strides_for_order_K`.
+    cdef vector.vector[Py_ssize_t] axes
+    cdef Py_ssize_t stride0, stride1
+    cdef int ndim, i0, i1, ipos, k
+    ndim = strides.size()
+    for i0 in reversed(range(ndim)):
+        stride0 = abs(strides[i0])
+        if stride0 == 0:  # ambiguous
+            axes.insert(axes.begin(), i0)
+            continue
+        ipos = 0
+        for k, i1 in enumerate(axes):
+            stride1 = abs(strides[i1])
+            if stride1 == 0:  # ambiguous
+                continue
+            elif stride1 <= stride0:  # shouldswap = false
+                break
+            else:  # shouldswap = true
+                ipos = k + 1
+        axes.insert(axes.begin() + ipos, i0)
+    return axes
+
+
 cdef ndarray _ndarray_ravel(ndarray self, order):
-    # TODO(beam2d, grlee77): Support K ordering option
     cdef int order_char
     cdef shape_t shape
+    cdef vector.vector[Py_ssize_t] axes
     shape.push_back(self.size)
 
     order_char = internal._normalize_order(order, True)
@@ -140,8 +192,8 @@ cdef ndarray _ndarray_ravel(ndarray self, order):
     elif order_char == b'F':
         return _reshape(_T(self), shape)
     elif order_char == b'K':
-        raise NotImplementedError(
-            'ravel with order=\'K\' not yet implemented.')
+        axes = _npyiter_k_order_axes(self.strides)
+        return _reshape(_transpose(self, axes), shape)
 
 
 cdef ndarray _ndarray_squeeze(ndarray self, axis):
@@ -299,19 +351,12 @@ cpdef ndarray _reshape(ndarray self, const shape_t &shape_spec):
     if internal.vector_equal(shape, self._shape):
         return self.view()
 
-    cdef Py_ssize_t shape_size = internal.prod(shape)
-    if self.size != shape_size:
-        raise ValueError('cannot reshape array of size {}'
-                         ' into shape {}'.format(self.size, shape_size))
-
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
         return self._view(shape, strides, False, True)
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 
-    if shape.size() != strides.size():
-        raise ValueError('total size of new array must be unchanged')
     # TODO(niboshi): Confirm update_x_contiguity flags
     newarray._set_shape_and_strides(shape, strides, False, True)
     return newarray
@@ -338,17 +383,17 @@ cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes):
 
     ndim = self._shape.size()
     if axes_size != ndim:
-        raise ValueError('Invalid axes value: %s' % str(axes))
+        raise ValueError("axes don't match array")
 
     axis_flags.resize(ndim, 0)
     for i in range(axes_size):
         axis = axes[i]
         if axis < -ndim or axis >= ndim:
-            raise IndexError('Axes overrun')
+            raise numpy.AxisError(axis, ndim)
         axis %= ndim
         a_axes.push_back(axis)
         if axis_flags[axis]:
-            raise ValueError('Invalid axes value: %s' % str(axes))
+            raise ValueError('repeated axis in transpose')
         axis_flags[axis] = 1
         is_normal &= i == axis
         is_trans &= ndim - 1 - i == axis
@@ -535,50 +580,80 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     return ret
 
 
-cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
-    cdef int ndim, a_ndim
+cpdef ndarray concatenate_method(tup, int axis, ndarray out=None, dtype=None,
+                                 casting='same_kind'):
+    cdef int ndim0
     cdef int i
-    cdef ndarray a
-    cdef bint have_same_types
+    cdef ndarray a, a0
     cdef shape_t shape
 
-    ndim = -1
-    dtype = None
-    have_same_types = True
+    if dtype is not None:
+        dtype = get_dtype(dtype)
+
     arrays = list(tup)
+
+    # Check if the input is not an empty sequence
+    if len(arrays) == 0:
+        raise ValueError('Cannot concatenate from empty tuple')
+
+    # Check types of the input arrays
     for o in arrays:
         if not isinstance(o, ndarray):
             raise TypeError('Only cupy arrays can be concatenated')
-        a = o
-        a_ndim = a._shape.size()
-        if a_ndim == 0:
-            raise TypeError('zero-dimensional arrays cannot be concatenated')
-        if ndim == -1:
-            ndim = a_ndim
-            shape = a._shape
-            axis = internal._normalize_axis_index(axis, ndim)
-            dtype = a.dtype
-            continue
 
-        have_same_types = have_same_types and (a.dtype == dtype)
-        if a_ndim != ndim:
+    # Check ndim > 0 for the input arrays
+    for o in arrays:
+        a = o
+        if a._shape.size() == 0:
+            raise TypeError('zero-dimensional arrays cannot be concatenated')
+
+    # Check ndim consistency of the input arrays
+    a0 = arrays[0]
+    ndim0 = a0._shape.size()
+    for o in arrays[1:]:
+        a = o
+        if a._shape.size() != ndim0:
             raise ValueError(
                 'All arrays to concatenate must have the same ndim')
-        for i in range(ndim):
-            if i != axis and shape[i] != a._shape[i]:
+
+    # Check shape consistency of the input arrays, and compute the output shape
+    shape0 = a0._shape
+    axis = internal._normalize_axis_index(axis, ndim0)
+    for o in arrays[1:]:
+        a = o
+        for i in range(ndim0):
+            if i != axis and shape0[i] != a._shape[i]:
                 raise ValueError(
                     'All arrays must have same shape except the axis to '
                     'concatenate')
-        shape[axis] += a._shape[axis]
+        shape0[axis] += a._shape[axis]
 
-    if ndim == -1:
-        raise ValueError('Cannot concatenate from empty tuple')
-
-    shape_t = tuple(shape)
+    # Compute the output dtype
     if out is None:
-        if not have_same_types:
-            dtype = functools.reduce(numpy.promote_types,
-                                     set([a.dtype for a in arrays]))
+        if dtype is None:
+            dtype = a0.dtype
+            have_same_types = True
+            for o in arrays[1:]:
+                have_same_types = have_same_types and (o.dtype == dtype)
+            if not have_same_types:
+                dtype = functools.reduce(
+                    numpy.promote_types, set([a.dtype for a in arrays]))
+    else:
+        if dtype is not None:
+            raise TypeError('concatenate() only takes `out` or `dtype` as an '
+                            'argument, but both were provided.')
+        dtype = out.dtype
+
+    # Check casting rule
+    for o in arrays:
+        if not _can_cast(o.dtype, dtype, casting):
+            msg = (f"Cannot cast array data from dtype('{o.dtype}') to "
+                   f"dtype('{dtype}') according to the rule '{casting}'")
+            raise TypeError(msg)
+
+    # Prpare the output array
+    shape_t = tuple(shape0)
+    if out is None:
         out = ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
@@ -586,12 +661,12 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
         if out.shape != shape_t:
             raise ValueError('Output array is the wrong shape')
 
-    return _concatenate(arrays, axis, shape_t, out)
+    return _concatenate(arrays, axis, shape_t, out, casting)
 
 
 cpdef ndarray _concatenate(
-        list arrays, Py_ssize_t axis, tuple shape, ndarray out):
-    cdef ndarray a
+        list arrays, Py_ssize_t axis, tuple shape, ndarray out, str casting):
+    cdef ndarray a, b
     cdef Py_ssize_t i, aw, itemsize, axis_size
     cdef bint all_same_type, same_shape_and_contiguous
     # If arrays are large, Issuing each copy method is efficient.
@@ -623,8 +698,8 @@ cpdef ndarray _concatenate(
     for a in arrays:
         aw = a._shape[axis]
         slice_list[axis] = slice(i, i + aw)
-        elementwise_copy(
-            a, _indexing._simple_getitem(out, slice_list), casting='same_kind')
+        b = out[tuple(slice_list)]
+        elementwise_copy(a, b, casting=casting)
         i += aw
     return out
 
@@ -657,6 +732,15 @@ cpdef Py_ssize_t size(ndarray a, axis=None) except? -1:
 # private
 
 
+cdef _numpy_can_cast = numpy.can_cast
+
+
+cdef bint _can_cast(d1, d2, casting):
+    if casting == 'same_kind' and d1.kind == d2.kind:  # most cases
+        return True
+    return _numpy_can_cast(d1, d2, casting=casting)
+
+
 cdef bint _has_element(const shape_t &source, Py_ssize_t n):
     for i in range(source.size()):
         if source[i] == n:
@@ -669,12 +753,14 @@ cdef _get_strides_for_nocopy_reshape(
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
     size = a.size
     newstrides.clear()
-    if size != internal.prod(newshape):
-        return
 
     itemsize = a.itemsize
     if size == 1:
         newstrides.assign(<Py_ssize_t>newshape.size(), itemsize)
+        return
+    if size == 0:
+        internal.get_contiguous_strides_inplace(
+            newshape, newstrides, itemsize, True)
         return
 
     cdef shape_t shape
@@ -704,7 +790,7 @@ cdef _get_strides_for_nocopy_reshape(
 cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
     """Normalizes an axis argument into a tuple of non-negative integer axes.
 
-    Arguments `allow_duplicate` and `axis_name` are not supported.
+    Arguments `argname` and `allow_duplicate` are not supported.
 
     """
     if numpy.isscalar(axis):
@@ -713,7 +799,8 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
     for ax in axis:
         ax = internal._normalize_axis_index(ax, ndim)
         if _has_element(ret, ax):
-            raise numpy.AxisError('repeated axis')
+            # the message in `numpy.core.numeric.normalize_axis_tuple`
+            raise ValueError('repeated axis')
         ret.push_back(ax)
 
 
@@ -732,12 +819,8 @@ cdef ndarray _concatenate_single_kernel(
 
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
+        _check_peer_access(a, device_id)
         ptrs[i] = a.data.ptr
-        if a.data.device_id != device_id:
-            raise ValueError(
-                'Array device must be same as the current '
-                'device: array device = %d while current = %d'
-                % (a.data.device_id, device_id))
     x = core.array(ptrs)
 
     if same_shape_and_contiguous:

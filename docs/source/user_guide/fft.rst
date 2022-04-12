@@ -16,6 +16,48 @@ or may be absent in `hipFFT`_/`rocFFT`_ targeting AMD GPUs.
 .. _rocFFT: https://rocfft.readthedocs.io/en/latest/
 
 
+.. _scipy_fft_backend:
+
+SciPy FFT backend
+-----------------
+
+Since SciPy v1.4 a backend mechanism is provided so that users can register different FFT backends and use SciPy's API to perform the actual transform
+with the target backend, such as CuPy's :mod:`cupyx.scipy.fft` module. For a one-time only usage, a context manager :func:`scipy.fft.set_backend` can be used:
+
+.. code-block:: python
+
+    import cupy as cp
+    import cupyx.scipy.fft as cufft
+    import scipy.fft
+
+    a = cp.random.random(100).astype(cp.complex64)
+    with scipy.fft.set_backend(cufft):
+        b = scipy.fft.fft(a)  # equivalent to cufft.fft(a)
+
+However, such usage can be tedious. Alternatively, users can register a backend through :func:`scipy.fft.register_backend` or :func:`scipy.fft.set_global_backend`
+to avoid using context managers:
+
+.. code-block:: python
+
+    import cupy as cp
+    import cupyx.scipy.fft as cufft
+    import scipy.fft
+    scipy.fft.set_global_backend(cufft)
+
+    a = cp.random.random(100).astype(cp.complex64)
+    b = scipy.fft.fft(a)  # equivalent to cufft.fft(a)
+
+.. note::
+
+    Please refer to `SciPy FFT documentation`_ for further information.
+
+.. note::
+    To use the backend together with an explicit ``plan`` argument requires SciPy version 1.5.0 or higher.
+    See below for how to create FFT plans.
+
+.. _SciPy FFT documentation: https://docs.scipy.org/doc/scipy/reference/fft.html#backend-control
+
+
 User-managed FFT plans
 ----------------------
 

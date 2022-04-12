@@ -61,6 +61,12 @@ class TestStream(unittest.TestCase):
         assert null1 == null2
         assert null2 != null3
 
+    def test_hash(self):
+        hash(self.stream)
+        hash(cuda.Stream(True))
+        hash(cuda.Stream(False))
+        mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
+
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
         assert stream is cuda.get_current_stream()
@@ -115,8 +121,6 @@ class TestStream(unittest.TestCase):
 
     @unittest.skipIf(cuda.runtime.is_hip,
                      'HIP does not support launch_host_func')
-    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
-                     'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -268,8 +272,6 @@ class TestExternalStream(unittest.TestCase):
 
     @unittest.skipIf(cuda.runtime.is_hip,
                      'HIP does not support launch_host_func')
-    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
-                     'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]

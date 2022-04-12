@@ -1,5 +1,4 @@
 import pickle
-import unittest
 
 import numpy
 import pytest
@@ -11,6 +10,8 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
 
@@ -111,8 +112,9 @@ def _make_sum_dup(xp, sp, dtype):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-class TestCooMatrix(unittest.TestCase):
+class TestCooMatrix:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.m = _make(cupy, sparse, self.dtype)
 
@@ -143,7 +145,7 @@ class TestCooMatrix(unittest.TestCase):
         n = sparse.coo_matrix(self.m.tocsr())
         cupy.testing.assert_array_equal(n.toarray(), self.m.toarray())
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_init_copy_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
         n = sparse.coo_matrix(m)
@@ -155,7 +157,7 @@ class TestCooMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.col, m.col)
         assert n.shape == m.shape
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_init_copy_other_scipy_sparse(self, xp, sp):
         m = _make(numpy, scipy.sparse, self.dtype)
@@ -190,7 +192,7 @@ class TestCooMatrix(unittest.TestCase):
     def test_has_canonical_format(self):
         assert self.m.has_canonical_format is False
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_get(self):
         m = self.m.get()
         assert isinstance(m, scipy.sparse.coo_matrix)
@@ -201,7 +203,7 @@ class TestCooMatrix(unittest.TestCase):
         ]
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @unittest.skipUnless(scipy_available, 'requires scipy')
+    @testing.with_requires('scipy')
     def test_str(self):
         if numpy.dtype(self.dtype).kind == 'f':
             expect = '''  (0, 0)\t0.0
@@ -242,9 +244,10 @@ class TestCooMatrix(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestCooMatrixInit(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestCooMatrixInit:
 
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.shape = (3, 4)
 
@@ -344,7 +347,7 @@ class TestCooMatrixInit(unittest.TestCase):
                     shape=(2,))
 
     def test_data_invalid(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             sparse.coo_matrix(
                 ('invalid', (self.row(cupy), self.col(cupy))),
                 shape=self.shape)
@@ -357,7 +360,7 @@ class TestCooMatrixInit(unittest.TestCase):
                     shape=self.shape)
 
     def test_row_invalid(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             sparse.coo_matrix(
                 (self.data(cupy), ('invalid', self.col(cupy))),
                 shape=self.shape)
@@ -370,7 +373,7 @@ class TestCooMatrixInit(unittest.TestCase):
                     shape=self.shape)
 
     def test_col_invalid(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             sparse.coo_matrix(
                 (self.data(cupy), (self.row(cupy), 'invalid')),
                 shape=self.shape)
@@ -447,7 +450,7 @@ class TestCooMatrixInit(unittest.TestCase):
                     shape=self.shape)
 
     def test_unsupported_dtype(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             sparse.coo_matrix(
                 (self.data(cupy), (self.row(cupy), self.col(cupy))),
                 shape=self.shape, dtype='i')
@@ -464,8 +467,8 @@ class TestCooMatrixInit(unittest.TestCase):
         '_make_shape'],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestCooMatrixScipyComparison(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestCooMatrixScipyComparison:
 
     @property
     def make(self):
@@ -541,15 +544,19 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n
 
     # dot
-    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
-    def test_dot_scalar(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        return m.dot(2.0)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
-    def test_dot_numpy_scalar(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        return m.dot(numpy.dtype(self.dtype).type(2.0))
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_numpy_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
@@ -564,6 +571,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -576,11 +585,13 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
-    def test_dot_zero_dim(self, xp, sp):
-        m = _make(xp, sp, self.dtype)
-        x = xp.array(2, dtype=self.dtype)
-        return m.dot(x)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_zero_dim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = _make(xp, sp, self.dtype)
+            x = xp.array(2, dtype=self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -741,6 +752,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m * x
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -815,6 +828,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -846,6 +861,9 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 x * m
 
+    @pytest.mark.xfail(
+        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1',
+        reason='See scipy/15210')
     def test_rmul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -949,8 +967,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
     'ret_dtype': [None, numpy.float32, numpy.float64],
     'axis': [None, 0, 1, -1, -2],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestCooMatrixSum(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestCooMatrixSum:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum(self, xp, sp):
@@ -977,8 +995,8 @@ class TestCooMatrixSum(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestCooMatrixSumDuplicates(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestCooMatrixSumDuplicates:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates(self, xp, sp):
@@ -1041,8 +1059,8 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
         'tan', 'tanh', 'trunc',
     ],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestUfunc(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestUfunc:
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
     def test_ufun(self, xp, sp):
@@ -1052,14 +1070,14 @@ class TestUfunc(unittest.TestCase):
         complex_unsupported = {'ceil', 'deg2rad', 'floor', 'rad2deg', 'trunc'}
         if (numpy.dtype(self.dtype).kind == 'c' and
                 self.ufunc in complex_unsupported):
-            with self.assertRaises(TypeError):
+            with pytest.raises(TypeError):
                 func()
             return xp.array(0)
         else:
             return func()
 
 
-class TestIsspmatrixCoo(unittest.TestCase):
+class TestIsspmatrixCoo:
 
     def test_coo(self):
         x = sparse.coo_matrix(
@@ -1082,7 +1100,7 @@ class TestIsspmatrixCoo(unittest.TestCase):
 }))
 @testing.with_requires('scipy>=1.5.0')
 @testing.gpu
-class TestCooMatrixDiagonal(unittest.TestCase):
+class TestCooMatrixDiagonal:
     density = 0.5
 
     def _make_matrix(self, dtype):
@@ -1097,6 +1115,12 @@ class TestCooMatrixDiagonal(unittest.TestCase):
     def test_diagonal(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
+        for k in range(-m, n+1):
+            scipy_diag = scipy_a.diagonal(k=k)
+            cupyx_diag = cupyx_a.diagonal(k=k)
+            testing.assert_allclose(scipy_diag, cupyx_diag)
+        scipy_a.has_canonical_format = False
+        cupyx_a.has_canonical_format = False
         for k in range(-m, n+1):
             scipy_diag = scipy_a.diagonal(k=k)
             cupyx_diag = cupyx_a.diagonal(k=k)
@@ -1138,7 +1162,7 @@ class TestCooMatrixDiagonal(unittest.TestCase):
         x = numpy.array(1.0, dtype=dtype)
         m, n = self.shape
         for k in (-m, n):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 scipy_a.setdiag(x, k=k)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 cupyx_a.setdiag(x, k=k)

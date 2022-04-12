@@ -2,6 +2,8 @@ import pickle
 import unittest
 from unittest import mock
 
+import pytest
+
 import cupy
 from cupy.cuda import compiler
 from cupy import testing
@@ -11,7 +13,7 @@ def cuda_version():
     return cupy.cuda.runtime.runtimeGetVersion()
 
 
-@testing.gpu
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'CUDA specific tests')
 class TestNvrtcArch(unittest.TestCase):
     def setUp(self):
         cupy.clear_memo()  # _get_arch result is cached
@@ -125,3 +127,12 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+class TestCompileWithCache:
+    def test_compile_module_with_cache(self):
+        compiler._compile_module_with_cache('__device__ void func() {}')
+
+    def test_deprecated_compile_with_cache(self):
+        with pytest.warns(DeprecationWarning):
+            compiler.compile_with_cache('__device__ void func() {}')

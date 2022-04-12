@@ -2,7 +2,48 @@ import cupy
 from cupy import _core
 
 
-# TODO(okuta): Implement asfarray
+def asarray_chkfinite(a, dtype=None, order=None):
+    """Converts the given input to an array,
+    and raises an error if the input contains NaNs or Infs.
+
+    Args:
+        a: array like.
+        dtype: data type, optional
+        order: {'C', 'F', 'A', 'K'}, optional
+
+    Returns:
+        cupy.ndarray: An array on the current device.
+
+    .. note::
+        This function performs device synchronization.
+
+    .. seealso:: :func:`numpy.asarray_chkfinite`
+
+    """
+
+    a = cupy.asarray(a, dtype=dtype, order=order)
+    if not cupy.isfinite(a).all():
+        raise ValueError(
+            "array must not contain Infs or NaNs")
+    return a
+
+
+def asfarray(a, dtype=cupy.float_):
+    """Converts array elements to float type.
+
+    Args:
+        a (cupy.ndarray): Source array.
+        dtype: str or dtype object, optional
+
+    Returns:
+        cupy.ndarray: The input array ``a`` as a float ndarray.
+
+    .. seealso:: :func:`numpy.asfarray`
+
+    """
+    if not cupy.issubdtype(dtype, cupy.inexact):
+        dtype = cupy.float_
+    return cupy.asarray(a, dtype=dtype)
 
 
 def asfortranarray(a, dtype=None):
@@ -20,9 +61,6 @@ def asfortranarray(a, dtype=None):
 
     """
     return _core.asfortranarray(a, dtype)
-
-
-# TODO(okuta): Implement asarray_chkfinite
 
 
 def require(a, dtype=None, requirements=None):
@@ -44,7 +82,7 @@ def require(a, dtype=None, requirements=None):
 
     Returns:
         ~cupy.ndarray: The input array ``a`` with specified requirements and
-            type if provided.
+        type if provided.
 
     .. seealso:: :func:`numpy.require`
 

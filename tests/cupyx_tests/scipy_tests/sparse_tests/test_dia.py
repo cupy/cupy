@@ -12,6 +12,8 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
 
@@ -58,6 +60,9 @@ class TestDiaMatrix(unittest.TestCase):
             self.m.data, cupy.array([[0, 1, 2], [3, 4, 5]], self.dtype))
 
     def test_offsets(self):
+        if (runtime.is_hip and self.dtype == numpy.float32
+                and driver.get_build_version() == 400):
+            pytest.xfail('generated wrong result -- may be buggy?')
         assert self.m.offsets.dtype == numpy.int32
         testing.assert_array_equal(
             self.m.offsets, cupy.array([0, -1], self.dtype))
@@ -207,6 +212,13 @@ class TestDiaMatrixInit(unittest.TestCase):
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixScipyComparison(unittest.TestCase):
 
+    def setUp(self):
+        if runtime.is_hip:
+            if self.make_method in ('_make_empty',):
+                # xcsr2coo could raise HIPSPARSE_STATUS_INVALID_VALUE, maybe
+                # because we have a zero matrix (nnz=0)?
+                pytest.xfail('may be buggy')
+
     @property
     def make(self):
         return globals()[self.make_method]
@@ -309,6 +321,14 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixSum(unittest.TestCase):
+
+    def setUp(self):
+        if runtime.is_hip and self.axis in (0, -2):
+            HIP_version = driver.get_build_version()
+            if HIP_version < 5_00_00000:
+                # internally a temporary CSC matrix is generated and thus
+                # casues problems (see test_csc.py)
+                pytest.xfail('spmv is buggy (trans=True)')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum(self, xp, sp):

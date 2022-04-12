@@ -181,7 +181,7 @@ def choice(a, size=None, replace=True, p=None):
 
     Returns:
         cupy.ndarray: An array of ``a`` values distributed according to
-                      ``p`` or uniformly.
+        ``p`` or uniformly.
 
     .. seealso:: :meth:`numpy.random.choice`
 

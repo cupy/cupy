@@ -51,7 +51,8 @@ class vectorize(object):
 
         if signature is not None:
             raise NotImplementedError(
-                'cupy.vectorize does not support `excluded` option currently.')
+                'cupy.vectorize does not support `signature`'
+                ' option currently.')
 
     @staticmethod
     def _parse_out_param(return_type):
@@ -89,13 +90,13 @@ class vectorize(object):
                 f'{t.dtype} in{i}' for i, t in enumerate(in_types))
             in_args = ', '.join([f'in{i}' for i in range(len(in_types))])
             out_params, out_lval = self._parse_out_param(result.return_type)
-            body = '{} = {}({})'.format(out_lval, func.name, in_args)
+            body = '{} = {}({})'.format(out_lval, result.func_name, in_args)
             # note: we don't worry about -D not working on ROCm here, because
             # we unroll all headers for HIP and so thrust::tuple et al are all
             # defined regardless if CUPY_JIT_MODE is defined or not
             kern = _core.ElementwiseKernel(
-                in_params, out_params, body, preamble=result.code,
-                options=('-DCUPY_JIT_MODE',))
+                in_params, out_params, body, 'cupy_vectorize',
+                preamble=result.code, options=('-DCUPY_JIT_MODE',))
             self._kernel_cache[itypes] = kern
 
         return kern(*args)

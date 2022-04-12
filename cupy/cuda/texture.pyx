@@ -472,12 +472,15 @@ cdef class CUDAarray:
         '''
         # ensure the array is C-contiguous
         if isinstance(in_arr, ndarray):
-            if stream is None:
-                s = stream_module.get_current_stream()
-            else:
-                s = stream
-            with s:
+            prev_stream = None
+            if stream is not None:
+                prev_stream = stream_module.get_current_stream()
+                stream.use()
+            try:
                 in_arr = _internal_ascontiguousarray(in_arr)
+            finally:
+                if stream is not None:
+                    prev_stream.use()
         elif isinstance(in_arr, numpy.ndarray):
             in_arr = numpy.ascontiguousarray(in_arr)
         self._prepare_copy(in_arr, stream, direction='in')

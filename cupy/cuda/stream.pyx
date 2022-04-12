@@ -3,6 +3,7 @@ import threading
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as backends_stream
+from cupy.cuda cimport graph
 
 from cupy import _util
 
@@ -182,7 +183,8 @@ cdef int check_stream_device_match(int device_id) except? -1:
         device_id = curr_dev
     if device_id != curr_dev:
         raise RuntimeError(
-            f'This stream was not created on device {curr_dev}')
+            f'The device that the stream is created on ({device_id})'
+            f' does not match with the current device ({curr_dev})')
     return device_id
 
 
@@ -205,9 +207,13 @@ class _BaseStream:
         # This operator needed as the ptr may be shared between multiple Stream
         # instances (e.g, `Stream.null` singleton and `Stream(null=True)` or
         # `ExternalStream`s).
-        return self.ptr == other.ptr
+        if isinstance(other, _BaseStream):
+            return self.ptr == other.ptr
+        return False
 
     def __enter__(self):
+        # N.B. for maintainers: do not use this context manager in CuPy
+        # codebase. See #5943 and #5963.
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
         device_id = check_stream_device_match(device_id)
@@ -221,6 +227,9 @@ class _BaseStream:
     def __repr__(self):
         return '<{} {} (device {})>'.format(
             type(self).__name__, self.ptr, self.device_id)
+
+    def __hash__(self):
+        return self.ptr
 
     def use(self):
         """Makes this stream current.
@@ -314,6 +323,103 @@ class _BaseStream:
 
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
+
+    def begin_capture(self, mode=None):
+        """Begin stream capture to construct a CUDA graph.
+
+        A call to this function must be paired with a call to
+        :meth:`end_capture` to complete the capture.
+
+        .. code-block:: python
+
+            # create a non-blocking stream for the purpose of capturing
+            s1 = cp.cuda.Stream(non_blocking=True)
+            with s1:
+                s1.begin_capture()
+                # ... perform operations to construct a graph ...
+                g = s1.end_capture()
+
+            # the returned graph can be launched on any stream (including s1)
+            g.launch(stream=s1)
+            s1.synchronize()
+
+            s2 = cp.cuda.Stream()
+            with s2:
+                g.launch()
+            s2.synchronize()
+
+        Args:
+            mode (int): The stream capture mode. Default is
+                :data:`~cupy.cuda.runtime.streamCaptureModeRelaxed`.
+
+        .. note:: During the stream capture, synchronous device-host transfers
+            are not allowed. This has a particular implication for CuPy APIs,
+            as some functions that internally require synchronous transfer
+            would not work as expected and an exception would be raised. For
+            further constraints of CUDA stream capture, please refer to the
+            CUDA Programming Guide.
+
+        .. note:: Currently this capability is not supported on HIP.
+
+        .. seealso:: `cudaStreamBeginCapture()`_
+
+        .. _cudaStreamBeginCapture():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1g793d7d4e474388ddfda531603dc34aa3
+
+        """
+        if runtime._is_hip_environment:
+            raise RuntimeError('This function is not supported on HIP')
+        if self.ptr == 0 or self.ptr == 1:
+            raise RuntimeError('cannot capture on the default (legacy) stream')
+        if mode is None:
+            # We default to the relaxed mode for the following reason: During
+            # the capture the memory pool might need to increase size. If it's
+            # backed by cudaMalloc, which is an "unsafe" API, other modes would
+            # not permit such a (legitimate) operation. See the API doc for
+            # "cudaThreadExchangeStreamCaptureMode" for further detail.
+            # (Though, ideally stream capture should be used together with
+            # the async APIs, such as cudaMallocAsync.)
+            mode = runtime.streamCaptureModeRelaxed
+        runtime.streamBeginCapture(self.ptr, mode)
+
+    def end_capture(self):
+        """End stream capture and retrieve the constructed CUDA graph.
+
+        Returns:
+            cupy.cuda.Graph:
+                A CUDA graph object that encapsulates the captured work.
+
+        .. note:: Currently this capability is not supported on HIP.
+
+        .. seealso:: `cudaStreamEndCapture()`_
+
+        .. _cudaStreamEndCapture():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html#group__CUDART__STREAM_1gf5a0efebc818054ceecd1e3e5e76d93e
+
+        """
+        if runtime._is_hip_environment:
+            raise RuntimeError('This function is not supported on HIP')
+        cdef intptr_t g = runtime.streamEndCapture(self.ptr)
+        return graph.Graph.from_stream(g)
+
+    def is_capturing(self):
+        """Check if the stream is capturing.
+
+        Returns:
+            bool:
+                If the capturing status is successfully queried, the returned
+                value indicates the capturing status. An exception could be
+                raised if such a query is illegal, please refer to the CUDA
+                Programming Guide for detail.
+
+        """
+        # TODO(leofang): is it better to be a property?
+        if runtime._is_hip_environment:
+            raise RuntimeError('This function is not supported on HIP')
+        try:
+            return runtime.streamIsCapturing(self.ptr)
+        except RuntimeError:  # can be RuntimeError or CUDARuntimeError
+            raise
 
 
 class Stream(_BaseStream):
