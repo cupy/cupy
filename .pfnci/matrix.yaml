@@ -395,7 +395,7 @@
 # CUDA 11.x / CUDA Python | Linux
 - project: "cupy.linux.cuda11x-cuda-python"
   target: "cuda11x-cuda-python"
-  tags: ["@push", "full", "cuda-python"]
+  tags: ["@push", "full", "mini", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.5"
