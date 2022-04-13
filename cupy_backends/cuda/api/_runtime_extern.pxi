@@ -45,6 +45,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaMallocArray(Array* array, const ChannelFormatDesc* desc,
                         size_t width, size_t height, unsigned int flags)
     int cudaMallocAsync(void**, size_t, driver.Stream)
+    int cudaMallocFromPoolAsync(void**, size_t, MemPool, driver.Stream)
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
     int cudaHostRegister(void *ptr, size_t size, unsigned int flags)
     int cudaHostUnregister(void *ptr)
@@ -94,6 +95,8 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaDeviceGetDefaultMemPool(MemPool*, int)
     int cudaDeviceGetMemPool(MemPool*, int)
     int cudaDeviceSetMemPool(int, MemPool)
+    int cudaMemPoolCreate(MemPool*, _MemPoolProps*)
+    int cudaMemPoolDestroy(MemPool)
     int cudaMemPoolTrimTo(MemPool, size_t)
     int cudaMemPoolGetAttribute(MemPool, MemPoolAttr, void*)
     int cudaMemPoolSetAttribute(MemPool, MemPoolAttr, void*)
