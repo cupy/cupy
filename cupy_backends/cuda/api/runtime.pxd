@@ -69,6 +69,10 @@ IF CUPY_USE_CUDA_PYTHON:
 
     ctypedef cudaDeviceProp DeviceProp
 
+    ctypedef cudaMemAllocationType MemAllocationType
+    ctypedef cudaMemAllocationHandleType MemAllocationHandleType
+    ctypedef cudaMemLocationType MemLocationType
+
 ELSE:
     include "_runtime_typedef.pxi"
     from cupy_backends.cuda.api._runtime_enum cimport *
