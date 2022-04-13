@@ -39,7 +39,9 @@ class TestCooperativeGroups:
         assert (x[11:] == -1).all()
 
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11060,
+        runtime.runtimeGetVersion() < 11060
+        or (cupy.cuda.driver._is_cuda_python()
+            and cupy.cuda.nvrtc.get_version() < (11, 6)),
         reason='not supported until CUDA 11.6')
     def test_thread_block_group_cu116_new_APIs(self):
         @jit.rawkernel()
@@ -89,7 +91,9 @@ class TestCooperativeGroups:
         assert (x[5:] == 2**64-1).all()
 
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11060,
+        runtime.runtimeGetVersion() < 11060
+        or (cupy.cuda.driver._is_cuda_python()
+            and cupy.cuda.nvrtc.get_version() < (11, 6)),
         reason='not supported until CUDA 11.6')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
