@@ -496,11 +496,25 @@ class _SparseNCCLCommunicator:
                 raise RuntimeError('Unsupported method')
         else:
             warnings.warn(
-                'Using NCCL for transferring sparse arrays metadata.'
+                'Using NCCL for transferring sparse arrays metadata. '
                 'This will cause device synchronization and a huge performance'
-                'degradation. Please install MPI and `mpi4py` in order to'
-                'avoid this issue.'
+                ' degradation. Please install MPI and `mpi4py` in order to'
+                ' avoid this issue.'
             )
+            if method == 'send':
+                sizes_shape = cupy.array(sizes_shape, dtype='q')
+                cls._send(
+                    comm, sizes_shape, peer, sizes_shape.dtype, 5, stream)
+                return None
+            if method == 'recv':
+                # Shape is a tuple of two elements, and a single scalar per
+                # each array (5)
+                sizes_shape = cupy.empty(5, dtype='q')
+                cls._recv(
+                    comm, sizes_shape, peer, sizes_shape.dtype, 5, stream)
+                return cupy.asnumpy(sizes_shape)
+            else:
+                raise RuntimeError('Unsupported method')
 
     def _assign_arrays(matrix, arrays, shape):
         if sparse.isspmatrix_coo(matrix):
@@ -516,18 +530,6 @@ class _SparseNCCLCommunicator:
         else:
             raise TypeError(
                 'NCCL is not supported for this type of sparse matrix')
-
-    @classmethod
-    def _recv_shape_and_sizes(cls, comm, peer):
-        sizes_shape = cupy.empty(5, dtype=cupy.int64)
-        cls._recv(
-            comm,
-            cupy.array(sizes_shape, dtype=cupy.int64),
-            peer, nccl.NCCL_INT64, 5)
-        # Warning: this syncs the device
-        sizes_shape = cupy.asnumpy(sizes_shape)
-        return ((sizes_shape[0], sizes_shape[1]),
-                sizes_shape[2], sizes_shape[3], sizes_shape[4])
 
     @classmethod
     def all_reduce(cls, comm, in_array, out_array, op='sum', stream=None):
