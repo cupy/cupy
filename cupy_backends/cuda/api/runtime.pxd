@@ -12,6 +12,14 @@ cdef class PointerAttributes:
         readonly intptr_t hostPointer
         readonly int type
 
+cdef class MemPoolProps:
+    # flatten the struct & list meaningful members
+    cdef:
+        int allocType
+        int handleType
+        int locationType
+        int devId
+
 
 ###############################################################################
 # Types and Enums
@@ -65,6 +73,8 @@ IF CUPY_USE_CUDA_PYTHON:
 
     ctypedef cudaMemPoolAttr MemPoolAttr
 
+    ctypedef cudaMemPoolProps _MemPoolProps
+
     ctypedef cudaPointerAttributes _PointerAttributes
 
     ctypedef cudaDeviceProp DeviceProp
@@ -74,6 +84,10 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaGraph_t Graph
     ctypedef cudaGraphExec_t GraphExec
     ctypedef cudaGraphNode_t GraphNode
+
+    ctypedef cudaMemAllocationType MemAllocationType
+    ctypedef cudaMemAllocationHandleType MemAllocationHandleType
+    ctypedef cudaMemLocationType MemLocationType
 
 ELSE:
     include "_runtime_typedef.pxi"
@@ -192,6 +206,7 @@ cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
 cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
                            unsigned int flags=*) except? 0
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
+cpdef intptr_t mallocFromPoolAsync(size_t, intptr_t, intptr_t) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
@@ -236,6 +251,8 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)
+cpdef intptr_t memPoolCreate(MemPoolProps) except? 0
+cpdef memPoolDestroy(intptr_t)
 cpdef memPoolTrimTo(intptr_t, size_t)
 cpdef memPoolGetAttribute(intptr_t, int)
 cpdef memPoolSetAttribute(intptr_t, int, object)

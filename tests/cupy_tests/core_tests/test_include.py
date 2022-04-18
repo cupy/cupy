@@ -38,6 +38,7 @@ __device__ void kernel() {
 class TestIncludesCompileCUDA:
     def _get_cuda_archs(self):
         cuda_ver = cupy.cuda.runtime.runtimeGetVersion()
+        to_exclude = set((int(a) for a in cupy.cuda.compiler._tegra_archs))
         if cuda_ver < 11000:
             # CUDA 10.2 (Tegra excluded)
             archs = (30, 35, 50, 52, 60, 61, 70, 75)
@@ -50,6 +51,10 @@ class TestIncludesCompileCUDA:
         else:
             # CUDA 11.2+
             archs = cupy.cuda.nvrtc.getSupportedArchs()
+            if cuda_ver == 11020:
+                to_exclude.add(69)
+        archs = tuple(set(archs) - to_exclude)
+
         return archs
 
     def _get_options(self):

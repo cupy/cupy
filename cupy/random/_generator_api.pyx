@@ -4,6 +4,7 @@ import numpy
 from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 
 import cupy
+from cupy import _core
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
 from cupy._core cimport internal
@@ -151,7 +152,7 @@ class Generator:
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, random_uniform, y, ())
         if out is not None:
-            out[...] = y
+            _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
         # cython cant call astype with the default values for
@@ -665,7 +666,7 @@ class Generator:
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, exponential, y, ())
         if out is not None:
-            out[...] = y
+            _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
         # cython cant call astype with the default values for
@@ -896,7 +897,7 @@ class Generator:
 
         _launch_dist(self.bit_generator, standard_gamma, y, (shape_ptr,))
         if out is not None and y is not out:
-            out[...] = y
+            _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
         # cython cant call astype with the default values for
