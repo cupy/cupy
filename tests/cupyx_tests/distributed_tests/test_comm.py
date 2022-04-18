@@ -10,6 +10,8 @@ from cupy.cuda import nccl
 from cupy import testing
 
 from cupyx.distributed import init_process_group
+from cupyx.distributed._nccl_comm import _mpi_available
+
 
 nccl_available = nccl.available
 
@@ -18,7 +20,23 @@ def _run_test(test_name, dtype=None):
     # subprocess is required not to interfere with cupy module imported in top
     # of this file
     runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
-    args = [sys.executable, runner_path, test_name]
+    args = [sys.executable, runner_path, test_name, 'store']
+    if dtype is not None:
+        args.append(numpy.dtype(dtype).char)
+    proc = subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    stdoutdata, stderrdata = proc.communicate()
+    assert stderrdata.decode() == ''
+    assert proc.returncode == 0
+
+
+def _run_test_with_mpi(test_name, dtype=None):
+    # subprocess is required not to interfere with cupy module imported in top
+    # of this file
+    runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
+    args = ['mpiexec', '-n 2', runner_path, test_name, 'mpi']
     if dtype is not None:
         args.append(numpy.dtype(dtype).char)
     proc = subprocess.Popen(
@@ -75,6 +93,53 @@ class TestNCCLBackend:
 
     def test_barrier(self):
         _run_test('barrier')
+
+
+@pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
+@testing.multi_gpu(2)
+class TestNCCLBackendWithMPI:
+    @testing.for_all_dtypes(no_bool=True)
+    def test_broadcast(self, dtype):
+        _run_test_with_mpi('broadcast', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_reduce(self, dtype):
+        _run_test_with_mpi('reduce', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_all_reduce(self, dtype):
+        _run_test_with_mpi('all_reduce', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_reduce_scatter(self, dtype):
+        _run_test_with_mpi('reduce_scatter', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_all_gather(self, dtype):
+        _run_test_with_mpi('all_gather', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_send_and_recv(self, dtype):
+        _run_test_with_mpi('send_and_recv', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_send_recv(self, dtype):
+        _run_test_with_mpi('send_recv', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_scatter(self, dtype):
+        _run_test_with_mpi('scatter', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_gather(self, dtype):
+        _run_test_with_mpi('gather', dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_all_to_all(self, dtype):
+        _run_test_with_mpi('all_to_all', dtype)
+
+    def test_barrier(self):
+        _run_test_with_mpi('barrier')
 
 
 @pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
