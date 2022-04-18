@@ -96,7 +96,7 @@ class TestNCCLBackend:
         self._run_test('all_to_all', dtype)
 
     def test_barrier(self):
-        self._run_test('barrier')
+        self._run_test('barrier', None)
 
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
