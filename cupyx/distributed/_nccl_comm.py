@@ -69,13 +69,13 @@ class NCCLBackend(_Backend):
     def _init_with_mpi(self, n_devices, rank):
         # MPI is used only for management purposes
         # so the rank may be different than the one specified
-        self._comm = MPI.COMM_WORLD
-        self._mpi_rank = self._comm.Get_rank()
-        self._comm.Barrier()
+        self._mpi_comm = MPI.COMM_WORLD
+        self._mpi_rank = self._mpi_comm.Get_rank()
+        self._mpi_comm.Barrier()
         nccl_id = None
         if self._mpi_rank == 0:
             nccl_id = nccl.get_unique_id()
-        nccl_id = self._comm.bcast(nccl_id, root=0)
+        nccl_id = self._mpi_comm.bcast(nccl_id, root=0)
         # Initialize devices
         self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
@@ -386,6 +386,6 @@ class NCCLBackend(_Backend):
         # implements a barrier CPU side
         # TODO allow multiple barriers to be executed
         if self._use_mpi:
-            self._comm.Barrier()
+            self._mpi_comm.Barrier()
         else:
             self._store_proxy.barrier()

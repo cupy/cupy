@@ -109,7 +109,7 @@ def reduce_scatter(dtype, use_mpi=False):
     def run_reduce_scatter(rank, dtype, force_store=True):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
         in_array = 1 + cupy.arange(
             N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
         out_array = cupy.zeros((10,), dtype='f')
@@ -132,7 +132,7 @@ def all_gather(dtype, use_mpi=False):
     def run_all_gather(rank, dtype, force_store=True):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
         in_array = (rank + 1) * cupy.arange(
             N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
         out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
