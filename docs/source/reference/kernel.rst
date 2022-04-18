@@ -14,6 +14,8 @@ Custom kernels
 JIT kernel definition
 ---------------------
 
+Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`max`, :func:`min`
+
 .. autosummary::
    :toctree: generated/
 
