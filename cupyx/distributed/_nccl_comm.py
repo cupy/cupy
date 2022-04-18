@@ -1,3 +1,6 @@
+import numpy
+import warnings
+
 import cupy
 from cupy.cuda import nccl
 from cupyx.distributed import _store
@@ -129,7 +132,7 @@ class NCCLBackend(_Backend):
     def _dispatch_arg_type(self, function, args):
         comm_class = _DenseNCCLCommunicator
         if sparse.issparse(args[0]):
-            pass
+            comm_class = _SparseNCCLCommunicator
         getattr(comm_class, function)(self, *args)
 
     def all_reduce(self, in_array, out_array, op='sum', stream=None):
@@ -461,23 +464,58 @@ class _SparseNCCLCommunicator:
     def _get_internal_arrays(cls, array):
         if sparse.isspmatrix_coo(array):
             array.sum_duplicates()  # set it to cannonical form
-            return (array.data, array.row, array.col, array._shape)
+            return (array.data, array.row, array.col)
         elif sparse.isspmatrix_csr(array) or sparse.isspmatrix_csc(array):
-            return (array.data, array.indptr, array.indices, array._shape)
+            return (array.data, array.indptr, array.indices)
         raise TypeError('NCCL is not supported for this type of sparse matrix')
 
     @classmethod
-    def _send_shape_and_sizes(cls, comm, array, peer):
+    def _get_shape_and_sizes(cls, arrays, shape):
         # We get the elements from the array and send them
         # so that other process can create receiving arrays for it
         # However, this exchange synchronizes the gpus
-        data, a, b = shape = cls._get_internal_arrays(array)
-        sizes_shape = (shape[0], shape[1], data.size[0], a.size[0], b.size[0])
-        cls._send(
-            comm,
-            cupy.array(sizes_shape, dtype=cupy.int64),
-            peer, nccl.NCCL_INT64, 5)
-        return data, a, b
+        sizes_shape = shape + tuple((a.size for a in arrays))
+        return sizes_shape
+
+    @classmethod
+    def _exchange_shape_and_sizes(
+            cls, comm, peer, sizes_shape, method, stream):
+        if comm._use_mpi:
+            # Sends the metadata for the arrays using MPI
+            if method == 'send':
+                sizes_shape = numpy.array(sizes_shape, dtype='q')
+                comm._mpi_comm.Send(sizes_shape, dest=peer, tag=1)
+                return None
+            if method == 'recv':
+                # Shape is a tuple of two elements, and a single scalar per
+                # each array (5)
+                sizes_shape = numpy.empty(5, dtype='q')
+                comm._mpi_comm.Recv(sizes_shape, source=peer, tag=1)
+                return sizes_shape
+            else:
+                raise RuntimeError('Unsupported method')
+        else:
+            warnings.warn(
+                'Using NCCL for transferring sparse arrays metadata.'
+                'This will cause device synchronization and a huge performance'
+                'degradation. Please install MPI and `mpi4py` in order to'
+                'avoid this issue.'
+            )
+
+    def _assign_arrays(matrix, arrays, shape):
+        if sparse.isspmatrix_coo(matrix):
+            matrix.data = arrays[0]
+            matrix.row = arrays[1]
+            matrix.col = arrays[2]
+            matrix._shape = tuple(shape)
+        elif sparse.isspmatrix_csr(matrix) or sparse.isspmatrix_csc(matrix):
+            matrix.data = arrays[0]
+            matrix.indptr = arrays[1]
+            matrix.indices = arrays[2]
+            matrix._shape = tuple(shape)
+        else:
+            raise TypeError(
+                'NCCL is not supported for this type of sparse matrix')
 
     @classmethod
     def _recv_shape_and_sizes(cls, comm, peer):
@@ -514,28 +552,48 @@ class _SparseNCCLCommunicator:
 
     @classmethod
     def send(cls, comm, array, peer, stream=None):
-        arrays = cls._send_shape_and_sizes(comm, array, peer)
-        # Now we send each of the subarrays one by one
+        arrays = cls._get_internal_arrays(array)
+        shape_and_sizes = cls._get_shape_and_sizes(arrays, array.shape)
+        cls._exchange_shape_and_sizes(
+            comm, peer, shape_and_sizes, 'send', stream)
+        # Naive approach, we send each of the subarrays one by one
         for a in arrays:
-            cls._send(comm, a, peer, a.dtype, a.size[0], stream)
+            cls._send(comm, a, peer, a.dtype, a.size, stream)
 
     @classmethod
     def _send(cls, comm, array, peer, dtype, count, stream=None):
+        dtype = array.dtype.char
+        if dtype not in _nccl_dtypes:
+            raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
+        dtype = _nccl_dtypes[dtype]
+        stream = comm._get_stream(stream)
         comm._comm.send(array.data.ptr, count, dtype, peer, stream)
 
     @classmethod
     def recv(cls, comm, out_array, peer, stream=None):
-        shape, sizes = cls._recv_shape_and_sizes(comm, peer)
+        shape_and_sizes = cls._exchange_shape_and_sizes(
+            comm, peer, (), 'recv', stream)
         # Change the array sizes in out_array to match the sent ones
         # Receive the three arrays
         # TODO(ecastill) dtype is not correct, it must match the internal
         # sparse matrix arrays dtype
-        arrs = [cupy.empty(s, dtype=out_array.dtype) for s in sizes]
+        arrays = cls._get_internal_arrays(out_array)
+        shape = tuple(shape_and_sizes[0:2])
+        sizes = shape_and_sizes[2:]
+        # TODO(use the out_array datatypes)
+        arrs = [cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
         for a in arrs:
-            cls._recv(comm, a, a.dtype, a.size[0], stream)
+            cls._recv(comm, a, peer, a.dtype, a.size, stream)
+        # Create a sparse matrix from the received arrays
+        cls._assign_arrays(out_array, arrs, shape)
 
     @classmethod
     def _recv(cls, comm, out_array, peer, dtype, count, stream=None):
+        dtype = dtype.char
+        if dtype not in _nccl_dtypes:
+            raise TypeError(f'Unknown dtype {out_array.dtype} for NCCL')
+        dtype = _nccl_dtypes[dtype]
+        stream = comm._get_stream(stream)
         comm._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
 
     @classmethod
