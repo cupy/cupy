@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 
+from cupy import _core
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters_core
@@ -509,7 +510,7 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
                                     _util._check_mode)
     output = _util._get_output(output, input)
     if ndim == 0:
-        output[...] = input
+        _core.elementwise_copy(input, output)
         return output
     derivative2(input, 0, output, modes[0], cval,
                 *extra_arguments, **extra_keywords)
@@ -636,7 +637,7 @@ def generic_gradient_magnitude(input, derivative, output=None,
                                     _util._check_mode)
     output = _util._get_output(output, input)
     if ndim == 0:
-        output[...] = input
+        _core.elementwise_copy(input, output)
         return output
     derivative(input, 0, output, modes[0], cval,
                *extra_arguments, **extra_keywords)

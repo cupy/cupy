@@ -4,6 +4,7 @@ import numpy
 import cupy
 
 from cupy_backends.cuda.api import runtime
+from cupy import _core
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 
@@ -86,7 +87,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
-        output[...] = input
+        _core.elementwise_copy(input, output)
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
     temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
@@ -99,7 +100,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
         input, output = output, temp if first else input
         first = False
     if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
-        output_orig[...] = input
+        _core.elementwise_copy(input, output_orig)
         input = output_orig
     return input
 
@@ -141,7 +142,7 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     args.append(output)
     kernel(*args)
     if needs_temp:
-        temp[...] = output[...]
+        _core.elementwise_copy(temp, output)
         output = temp
     return output
 

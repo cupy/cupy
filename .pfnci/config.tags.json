@@ -83,6 +83,7 @@
     "cupy.linux.cuda11x-cuda-python": [
         "@push",
         "full",
+        "mini",
         "cuda-python"
     ],
     "cupy.win.cuda102": [

@@ -105,6 +105,7 @@ class RangeFunc(BuiltinFunc):
 
 
 class LenFunc(BuiltinFunc):
+
     def call(self, env, *args, **kwds):
         if len(args) != 1:
             raise TypeError(f'len() expects only 1 argument, got {len(args)}')
@@ -120,6 +121,7 @@ class LenFunc(BuiltinFunc):
 
 
 class MinFunc(BuiltinFunc):
+
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
@@ -131,6 +133,7 @@ class MinFunc(BuiltinFunc):
 
 
 class MaxFunc(BuiltinFunc):
+
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
@@ -194,7 +197,7 @@ class SyncWarp(BuiltinFunc):
 class SharedMemory(BuiltinFunc):
 
     def __call__(self, dtype, size):
-        """Allocates shared memory and returns the 1-dim array.
+        """Allocates shared memory and returns a 1-D array.
 
         Args:
             dtype (dtype):

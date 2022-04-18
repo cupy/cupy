@@ -14,6 +14,8 @@ Custom kernels
 JIT kernel definition
 ---------------------
 
+Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`max`, :func:`min`.
+
 .. note:: If loop unrolling is needed, use :func:`cupyx.jit.range` instead of the built-in :obj:`range`.
 
 .. autosummary::
