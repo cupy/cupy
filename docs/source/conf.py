@@ -481,5 +481,11 @@ def remove_array_api_module_docstring(app, what, name, obj, options, lines):
     if what == "module" and 'array_api' in name:
         del lines[:]
 
+def fix_jit_callable_signature(
+        app, what, name, obj, options, signature, return_annotation):
+    if 'cupyx.jit' in name and callable(obj) and signature is None:
+        return (f'{inspect.signature(obj)}', None)
+
 def setup(app):
     app.connect("autodoc-process-docstring", remove_array_api_module_docstring)
+    app.connect("autodoc-process-signature", fix_jit_callable_signature)
