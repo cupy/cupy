@@ -772,7 +772,8 @@ def _indexing(array, index, env):
     if isinstance(array.ctype, _cuda_types.Tuple):
         if is_constants(index):
             i = index.obj
-            return Data(f'thrust::get<{i}>({array.code})', array.types[i])
+            t = array.ctype.types[i]
+            return Data(f'thrust::get<{i}>({array.code})', t)
         raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
