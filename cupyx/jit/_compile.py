@@ -686,6 +686,10 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+            if expr.attr in ('shape', 'strides'):
+                types = [_cuda_types.PtrDiff()]*value.ctype.ndim
+                return Data(f'{value.code}.get_{expr.attr}()',
+                            _cuda_types.Tuple(types))
         if isinstance(value.ctype, _interface._Dim3):
             if expr.attr in ('x', 'y', 'z'):
                 return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)

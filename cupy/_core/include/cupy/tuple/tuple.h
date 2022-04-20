@@ -959,3 +959,27 @@ inline bool operator>=(const detail::cons<T1, T2>& lhs, const detail::cons<S1, S
 
 } // end thrust
 
+namespace cupy {
+
+template <int ndim, typename... Args>
+struct as_tuple {
+    using ChildClass = as_tuple<ndim - 1, ptrdiff_t, Args...>;
+    using type = typename ChildClass::type;
+
+    template <typename Ints>
+    __device__ static type call(Ints ints, Args... args) {
+        return ChildClass::call(ints, ints[ndim - 1], args...);
+    }
+};
+
+template <typename... Args>
+struct as_tuple<0, Args...> {
+    using type = thrust::tuple<Args...>;
+
+    template <typename Ints>
+    __device__ static type call(Ints ints, Args... args) {
+        return thrust::make_tuple(args...);
+    }
+};
+
+}  // namespace cupy
