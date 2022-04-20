@@ -54,7 +54,7 @@ Context Initialization
 ......................
 
 It may take several seconds when calling a CuPy function for the first time in a process.
-This is because CUDA driver creates a CUDA context during the first CUDA API call in CUDA applications.
+This is because the CUDA driver creates a CUDA context during the first CUDA API call in CUDA applications.
 
 Kernel Compilation
 ..................

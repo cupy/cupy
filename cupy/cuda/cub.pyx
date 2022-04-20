@@ -13,6 +13,7 @@ from cupy.cuda cimport device
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 
+import cupy
 import numpy
 
 
@@ -186,7 +187,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     if keepdims:
         y = y.reshape(out_shape)
     if out is not None:
-        out[...] = y
+        cupy._core.elementwise_copy(y, out)
         y = out
     return y
 
@@ -231,9 +232,9 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
         if out is not None:
             y = out
         if op == CUPY_CUB_SUM:
-            y[...] = 0
+            y.fill(0)
         elif op == CUPY_CUB_PROD:
-            y[...] = 1
+            y.fill(1)
         return y
     n_segments = x.size//contiguous_size
     s = <Stream_t>stream.get_current_stream_ptr()
@@ -250,7 +251,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
                                     contiguous_size, s, op_code, dtype_id)
 
     if out is not None:
-        out[...] = y
+        cupy._core.elementwise_copy(y, out)
         y = out
     return y
 

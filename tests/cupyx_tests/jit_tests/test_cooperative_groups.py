@@ -39,7 +39,9 @@ class TestCooperativeGroups:
         assert (x[11:] == -1).all()
 
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11060,
+        runtime.runtimeGetVersion() < 11060
+        or (cupy.cuda.driver._is_cuda_python()
+            and cupy.cuda.nvrtc.getVersion() < (11, 6)),
         reason='not supported until CUDA 11.6')
     def test_thread_block_group_cu116_new_APIs(self):
         @jit.rawkernel()
@@ -89,7 +91,9 @@ class TestCooperativeGroups:
         assert (x[5:] == 2**64-1).all()
 
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11060,
+        runtime.runtimeGetVersion() < 11060
+        or (cupy.cuda.driver._is_cuda_python()
+            and cupy.cuda.nvrtc.getVersion() < (11, 6)),
         reason='not supported until CUDA 11.6')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
@@ -121,3 +125,59 @@ class TestCooperativeGroups:
         assert x[6] == 2
         assert (x[7], x[8], x[9]) == (1, 0, 0)
         assert (x[10:] == 2**64-1).all()
+
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='we do not support it')
+    @pytest.mark.skipif(runtime.deviceGetAttribute(
+        runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
+        reason='cooperative launch is not supported on device 0')
+    def test_cg_sync(self):
+        @jit.rawkernel()
+        def test_sync():
+            b = jit.cg.this_thread_block()
+            g = jit.cg.this_grid()
+            jit.cg.sync(b)
+            jit.cg.sync(g)
+
+        test_sync[2, 64]()
+
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='not supported until CUDA 11.0')
+    @pytest.mark.parametrize(
+        'test_aligned', (True, False),
+    )
+    def test_cg_memcpy_async_wait_for_wait(self, test_aligned):
+        @jit.rawkernel()
+        def test_copy(x, y):
+            # do two batches of copies to test relevant APIs
+            if test_aligned:
+                smem = jit.shared_memory(cupy.int32, 32*2, alignment=16)
+            else:
+                smem = jit.shared_memory(cupy.int32, 32*2)
+            g = jit.cg.this_thread_block()
+            tid = g.thread_rank()
+            # int32 is 4 bytes
+            if test_aligned:
+                # CuPy ensures x is 256B-aligned
+                jit.cg.memcpy_async(
+                    g, smem, 0, x, 0, 4*32, aligned_size=16)
+                jit.cg.memcpy_async(
+                    g, smem, 32, x, 32, 4*32, aligned_size=16)
+            else:
+                jit.cg.memcpy_async(
+                    g, smem, 0, x, 0, 4*32)
+                jit.cg.memcpy_async(
+                    g, smem, 32, x, 32, 4*32)
+            jit.cg.wait_prior(g, 1)
+            if tid < 32:
+                y[tid] = smem[tid]
+            jit.cg.wait(g)
+            if 32 <= tid and tid < 64:  # can't do "32 <= tid < 64" yet...
+                y[tid] = smem[tid]
+
+        x = cupy.arange(64, dtype=cupy.int32)
+        y = cupy.zeros(64, dtype=cupy.int32)
+        test_copy[2, 64](x, y)
+        assert (x == y).all()

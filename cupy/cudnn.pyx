@@ -7,6 +7,7 @@ import warnings as _warnings
 
 import numpy as _numpy
 
+from cupy import _core
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport core
@@ -1175,7 +1176,7 @@ def rnn_backward_weights(
         rnn_desc, length, xs_descs)
 
     cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
-    dw[...] = 0
+    dw.fill(0)
     cdef Descriptor dw_desc = create_filter_descriptor(dw)
 
     cudnn.RNNBackwardWeights(
@@ -2268,8 +2269,8 @@ cdef _batch_normalization_forward_training(
         cudnn.destroyTensorDescriptor(x_desc)
         cudnn.destroyTensorDescriptor(derivedBnDesc)
     if running_mean is not running_mean_tmp:
-        running_mean[...] = running_mean_tmp
-        running_var[...] = running_var_tmp
+        _core.elementwise_copy(running_mean_tmp, running_mean)
+        _core.elementwise_copy(running_var_tmp, running_var)
     return reserve_space, y, save_mean, save_inv_std
 
 

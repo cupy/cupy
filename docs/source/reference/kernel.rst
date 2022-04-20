@@ -14,6 +14,8 @@ Custom kernels
 JIT kernel definition
 ---------------------
 
+Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`max`, :func:`min`
+
 .. autosummary::
    :toctree: generated/
 
@@ -46,6 +48,10 @@ JIT kernel definition
    cupyx.jit.atomic_xor
    cupyx.jit.cg.this_grid
    cupyx.jit.cg.this_thread_block
+   cupyx.jit.cg.sync
+   cupyx.jit.cg.memcpy_async
+   cupyx.jit.cg.wait
+   cupyx.jit.cg.wait_prior
    cupyx.jit._interface._JitRawKernel
 
 Cooperative groups

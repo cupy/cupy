@@ -37,6 +37,8 @@ ELSE:
         int nvrtcGetPTX(Program prog, char *ptx)
         int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
         int nvrtcGetCUBIN(Program prog, char *cubin)
+        int nvrtcGetNVVMSize(Program, size_t*)
+        int nvrtcGetNVVM(Program, char*)
         int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
         int nvrtcGetProgramLog(Program prog, char* log)
         int nvrtcAddNameExpression(Program, const char*)
@@ -196,6 +198,32 @@ cpdef bytes getCUBIN(intptr_t prog):
 
     # Strip the trailing NULL.
     return cubin_ptr[:cubinSizeRet-1]
+
+
+cpdef bytes getNVVM(intptr_t prog):
+    if runtime._is_hip_environment:
+        raise RuntimeError("HIP does not support getNVVM")
+    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11040:
+        raise RuntimeError("getNVVM is supported since CUDA 11.4")
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11040:
+        raise RuntimeError("getNVVM is supported since CUDA 11.4")
+
+    cdef size_t nvvmSizeRet = 0
+    cdef vector.vector[char] nvvm
+    cdef char* nvvm_ptr = NULL
+
+    with nogil:
+        status = nvrtcGetNVVMSize(<Program>prog, &nvvmSizeRet)
+    check_status(status)
+
+    nvvm.resize(nvvmSizeRet)
+    nvvm_ptr = nvvm.data()
+    with nogil:
+        status = nvrtcGetNVVM(<Program>prog, nvvm_ptr)
+    check_status(status)
+
+    # Strip the trailing NULL.
+    return nvvm_ptr[:nvvmSizeRet-1]
 
 
 cpdef unicode getProgramLog(intptr_t prog):

@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import _core
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy import special
@@ -60,7 +61,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     axis = internal._normalize_axis_index(axis, ndim)
     sigmas = _util._fix_sequence_arg(sigma, ndim, 'sigma')
 
-    output[...] = input
+    _core.elementwise_copy(input, output)
     for ax, (sigmak, ax_size) in enumerate(zip(sigmas, output.shape)):
 
         # compute the frequency grid in Hz
@@ -112,7 +113,7 @@ def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     axis = internal._normalize_axis_index(axis, ndim)
     sizes = _util._fix_sequence_arg(size, ndim, 'size')
 
-    output[...] = input
+    _core.elementwise_copy(input, output)
     for ax, (size, ax_size) in enumerate(zip(sizes, output.shape)):
 
         # compute the frequency grid in Hz
@@ -163,7 +164,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     axis = internal._normalize_axis_index(axis, ndim)
     shifts = _util._fix_sequence_arg(shift, ndim, 'shift')
 
-    output[...] = input
+    _core.elementwise_copy(input, output)
     for ax, (shiftk, ax_size) in enumerate(zip(shifts, output.shape)):
         if shiftk == 0:
             continue
@@ -219,7 +220,7 @@ def fourier_ellipsoid(input, size, n=-1, axis=-1, output=None):
     axis = internal._normalize_axis_index(axis, ndim)
     sizes = _util._fix_sequence_arg(size, ndim, 'size')
 
-    output[...] = input
+    _core.elementwise_copy(input, output)
 
     # compute the distance from the origin for all samples in Fourier space
     distance = 0
