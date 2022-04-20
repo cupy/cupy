@@ -327,12 +327,12 @@ public:
   }
 
 #ifdef CUPY_JIT_MODE
-  __device__ typename cupy::as_tuple<_ndim>::type get_shape() const {
-    return cupy::as_tuple<_ndim>::call(shape_);
+  __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_shape() const {
+    return cupy::as_tuple<_ndim, ptrdiff_t>::call(shape_);
   }
 
-  __device__ typename cupy::as_tuple<_ndim>::type get_strides() const {
-    return cupy::as_tuple<_ndim>::call(strides_);
+  __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_strides() const {
+    return cupy::as_tuple<_ndim, ptrdiff_t>::call(strides_);
   }
 #endif  // CUPY_JIT_MODE
 
