@@ -149,8 +149,8 @@ class SyncWarp(BuiltinFunc):
 
 class SharedMemory(BuiltinFunc):
 
-    def __call__(self, dtype, size):
-        """Allocates shared memory and returns a 1-D array.
+    def __call__(self, dtype, size, alignment=None):
+        """Allocates shared memory and returns it as a 1-D array.
 
         Args:
             dtype (dtype):
@@ -158,15 +158,16 @@ class SharedMemory(BuiltinFunc):
             size (int or None):
                 If ``int`` type, the size of static shared memory.
                 If ``None``, declares the shared memory with extern specifier.
+            alignment (int or None): Enforce the alignment via __align__(N).
         """
         super().__call__()
 
-    def call_const(self, env, dtype, size):
+    def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_smem')
         child_type = _cuda_types.Scalar(dtype)
         while env[name] is not None:
             name = env.get_fresh_variable_name(prefix='_smem')  # retry
-        var = Data(name, _cuda_types.SharedMem(child_type, size))
+        var = Data(name, _cuda_types.SharedMem(child_type, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
         return Data(name, _cuda_types.Ptr(child_type))
