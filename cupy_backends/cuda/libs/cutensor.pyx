@@ -705,10 +705,10 @@ cpdef contraction(
 
 
 cpdef uint64_t contractionGetWorkspaceSize(
-    Handle handle,
-    ContractionDescriptor desc,
-    ContractionFind find,
-    int pref):
+        Handle handle,
+        ContractionDescriptor desc,
+        ContractionFind find,
+        int pref):
     """Determines the required workspaceSize for a given tensor contraction
 
     Args:
@@ -758,7 +758,7 @@ cpdef uint64_t contractionGetWorkspace(
     Return:
         workspaceSize (uint64_t): The workspace size (in bytes) that is
             required for the given tensor contraction.
-    """
+    """  # NOQA
     cdef uint64_t workspaceSize = 0
     status = cutensorContractionGetWorkspace(
         <cutensorHandle_t*> handle._ptr,
@@ -929,7 +929,7 @@ cpdef uint64_t reductionGetWorkspace(
     Returns:
         workspaceSize (uint64_t): The workspace size (in bytes) that is
         required for the given tensor reduction.
-    """
+    """  # NOQA
     cdef uint64_t workspaceSize = 0
     status = cutensorReductionGetWorkspace(
         <cutensorHandle_t*> handle._ptr,
