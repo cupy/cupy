@@ -959,6 +959,7 @@ inline bool operator>=(const detail::cons<T1, T2>& lhs, const detail::cons<S1, S
 
 } // end thrust
 
+#ifdef CUPY_JIT_MODE
 namespace cupy {
 
 /*
@@ -999,3 +1000,4 @@ struct as_tuple {
 };
 
 }  // namespace cupy
+#endif  // CUPY_JIT_MODE
