@@ -16,7 +16,36 @@ from functools import reduce
 
 class RangeFunc(BuiltinFunc):
 
-    def call(self, env, *args, **kwargs):
+    def __call__(self, *args, unroll=None):
+        """Range with loop unrolling support.
+
+        Args:
+            start (int):
+                Same as that of built-in :obj:`range`.
+            stop (int):
+                Same as that of built-in :obj:`range`.
+            step (int):
+                Same as that of built-in :obj:`range`.
+            unroll (int or bool or None):
+
+                - If `True`, add ``#pragma unroll`` directive before the
+                  loop.
+                - If `False`, add ``#pragma unroll(1)`` directive before
+                  the loop to disable unrolling.
+                - If an `int`, add ``#pragma unroll(n)`` directive before
+                  the loop, where the integer ``n`` means the number of
+                  iterations to unroll.
+                - If `None` (default), leave the control of loop unrolling
+                  to the compiler (no ``#pragma``).
+
+        .. seealso:: `#pragma unroll`_
+
+        .. _#pragma unroll:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#pragma-unroll
+        """
+        super().__call__()
+
+    def call(self, env, *args, unroll=None):
         if len(args) == 0:
             raise TypeError('range expected at least 1 argument, got 0')
         elif len(args) == 1:
@@ -28,6 +57,24 @@ class RangeFunc(BuiltinFunc):
         else:
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
+
+        if unroll is not None:
+            if not all(isinstance(x, Constant)
+                       for x in (start, stop, step, unroll)):
+                raise TypeError(
+                    'loop unrolling requires constant start, stop, step and '
+                    'unroll value')
+            unroll = unroll.obj
+            if not (isinstance(unroll, int) or isinstance(unroll, bool)):
+                raise TypeError(
+                    'unroll value expected to be of type int, '
+                    f'got {type(unroll).__name__}')
+            if unroll is False:
+                unroll = 1
+            if not (unroll is True or 0 < unroll < 1 << 31):
+                warnings.warn(
+                    'loop unrolling is ignored as the unroll value is '
+                    'non-positive or greater than INT_MAX')
 
         if isinstance(step, Constant):
             step_is_positive = step.obj >= 0
@@ -54,7 +101,7 @@ class RangeFunc(BuiltinFunc):
         else:
             assert False
 
-        return Range(start, stop, step, ctype, step_is_positive)
+        return Range(start, stop, step, ctype, step_is_positive, unroll=unroll)
 
 
 class LenFunc(BuiltinFunc):
@@ -401,6 +448,7 @@ builtin_functions_dict = {
     max: MaxFunc(),
 }
 
+range_ = RangeFunc()
 syncthreads = SyncThreads()
 syncwarp = SyncWarp()
 shared_memory = SharedMemory()

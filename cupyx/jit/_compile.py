@@ -487,11 +487,11 @@ def _transpile_stmt(stmt, is_toplevel, env):
                 f'Data type mismatch of variable: `{name}`: '
                 f'{env[name].ctype.dtype} != {iters.ctype.dtype}')
 
-        body = _transpile_stmts(stmt.body, False, env)
-
         if not isinstance(iters, _internal_types.Range):
             raise NotImplementedError(
                 'for-loop is supported only for range iterator.')
+
+        body = _transpile_stmts(stmt.body, False, env)
 
         init_code = (f'{iters.ctype} '
                      f'__it = {iters.start.code}, '
@@ -504,7 +504,14 @@ def _transpile_stmt(stmt, is_toplevel, env):
             cond = '__it > __stop'
 
         head = f'for ({init_code}; {cond}; __it += __step)'
-        return [CodeBlock(head, [f'{name} = __it;'] + body)]
+        result = [CodeBlock(head, [f'{name} = __it;'] + body)]
+
+        unroll = iters.unroll
+        if unroll is True:
+            result = ['#pragma unroll'] + result
+        elif unroll is not None:
+            result = [f'#pragma unroll({unroll})'] + result
+        return result
 
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')

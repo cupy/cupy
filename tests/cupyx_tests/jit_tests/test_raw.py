@@ -1,4 +1,3 @@
-import unittest
 import numpy
 
 import pytest
@@ -11,7 +10,7 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 
 
-class TestRaw(unittest.TestCase):
+class TestRaw:
 
     def test_raw_grid_1D(self):
         @jit.rawkernel()
@@ -695,3 +694,34 @@ class TestRaw(unittest.TestCase):
         assert bool((x == y).all())
 
         assert len(f.cached_codes) == 2
+
+    @pytest.mark.parametrize(
+        'unroll', (True, False, None, 5)
+    )
+    def test_range(self, unroll):
+
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y = x[tid]
+            # workaround: can't use "is" here...
+            if unroll == None:  # noqa: E711
+                for i in jit.range(5):
+                    y += 2
+            else:
+                for i in jit.range(5, unroll=unroll):
+                    y += 2
+            x[tid] = y
+
+        x = testing.shaped_random((30,), dtype=numpy.float32, seed=0)
+        y = x.copy()
+        f[3, 10](x)
+        assert (x == y + 10).all()
+        if unroll is True:
+            assert '#pragma unroll\n' in f.cached_code
+        elif unroll is False:
+            assert '#pragma unroll(1)\n' in f.cached_code
+        elif unroll is None:
+            assert 'unroll' not in f.cached_code
+        elif unroll >= 0:
+            assert f'#pragma unroll({unroll})\n' in f.cached_code
