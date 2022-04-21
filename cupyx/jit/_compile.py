@@ -691,6 +691,12 @@ def _transpile_expr_internal(expr, env):
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
             if expr.attr in ('shape', 'strides'):
+                # this guard is needed to avoid NVRTC from throwing an
+                # obsecure error
+                if value.ctype.ndim > 10:
+                    raise NotImplementedError(
+                        'getting shape/strides for an array with ndim > 10 '
+                        'is not supported yet')
                 types = [_cuda_types.PtrDiff()]*value.ctype.ndim
                 return Data(f'{value.code}.get_{expr.attr}()',
                             _cuda_types.Tuple(types))
