@@ -5,6 +5,7 @@ except ImportError:
     cutensornet = None
 
 import cupy
+from cupy._core import _accelerator
 
 
 def _get_einsum_operands(args):
@@ -50,16 +51,22 @@ def _try_use_cutensornet(*args, **kwargs):
     if cutensornet is None:
         return None
 
+    if (_accelerator.ACCELERATOR_CUTENSORNET not in
+            _accelerator.get_routine_accelerators()):
+        return None
+
     if cupy.cuda.runtime.is_hip:
         return None
 
     dtype = kwargs.get('dtype', None)
     optimize = kwargs.get('optimize', None)
-    # raise warning: we don't care optmizie for now?
+    # TODO(leofang): raise warning: we don't care optmizie for now?
 
+    # we do very lightweight pre-processing here just to inspect the
+    # operands; the actual input verification is deferred to cuTensorNet
+    # which can generate far better diagonostic messages
     args = _get_einsum_operands(args)
     operands = [cupy.asarray(op) for op in args[1]]
-    #print("operands dtypes:", [op.dtype for op in operands])
 
     if len(operands) == 1:
         # As of cuTENSOR 1.5.0 it still chokes with some common operations
@@ -72,6 +79,7 @@ def _try_use_cutensornet(*args, **kwargs):
         # To cuTensorNet the shape is invalid
         return None
 
+    # all input dtypes must be identical (to a numerical dtype)
     result_dtype = cupy.result_type(*operands) if dtype is None else dtype
     if result_dtype not in (
             cupy.float32, cupy.float64, cupy.complex64, cupy.complex128):
@@ -82,7 +90,7 @@ def _try_use_cutensornet(*args, **kwargs):
     handle = cutn_handle_cache.get(
         device, cutensornet.create())
     cutn_options = {'device_id': device, 'handle': handle,
-                    'memory_limit': 2**31}
+                    'memory_limit': 2**31}  # TODO(kataoka): fix?
     if len(args) == 2:
         out = cutensornet.contract(args[0], *operands, options=cutn_options)
     elif len(args) == 3:
