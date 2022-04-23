@@ -9,6 +9,7 @@ from cupy._core import _accelerator
 from cupy import _util
 from cupy.linalg._einsum_opt import _greedy_path
 from cupy.linalg._einsum_opt import _optimal_path
+from cupy.linalg._einsum_cutn import _try_use_cutensornet
 
 
 try:
@@ -467,6 +468,9 @@ def einsum(*operands, **kwargs):
     .. seealso:: :func:`numpy.einsum`
 
     """
+    out = _try_use_cutensornet(*operands, **kwargs)
+    if out is not None:
+        return out
 
     input_subscripts, output_subscript, operands = \
         _parse_einsum_input(operands)
