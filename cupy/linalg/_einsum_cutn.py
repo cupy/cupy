@@ -41,6 +41,7 @@ def _get_einsum_operands(args):
             inputs.append(args.pop(0))
         if len(args) == 1:
             output = args.pop(0)
+        assert not args
 
     return inputs, operands, output
 
@@ -60,6 +61,12 @@ def _try_use_cutensornet(*args, **kwargs):
     operands = [cupy.asarray(op) for op in args[1]]
     #print("operands dtypes:", [op.dtype for op in operands])
 
+    if len(operands) == 1:
+        # As of cuTENSOR 1.5.0 it still chokes with some common operations
+        # like trace ("ii->") so it's easier to just skip all single-operand
+        # cases instead of whitelisting what could be done explicitly
+        return None
+
     if (any(op.size == 0 for op in operands) or
             any(len(op.shape) == 0 for op in operands)):
         # To cuTensorNet the shape is invalid
@@ -76,18 +83,14 @@ def _try_use_cutensornet(*args, **kwargs):
         device, cutensornet.create())
     cutn_options = {'device_id': device, 'handle': handle,
                     'memory_limit': 2**31}
-    #print("using cutn... operands dtypes:", [op.dtype for op in operands])
-    #assert all(operands[0].dtype == op.dtype for op in operands[1:])
     if len(args) == 2:
         out = cutensornet.contract(args[0], *operands, options=cutn_options)
     elif len(args) == 3:
-        out = cutensornet.contract(
-            *([i for pair in zip(operands, args[0]) for i in pair] + [args[2]]),
-            options=cutn_options)
+        inputs = [i for pair in zip(operands, args[0]) for i in pair]
+        if args[2] is not None:
+            inputs.append(args[2])
+        out = cutensornet.contract(*inputs, options=cutn_options)
     else:
         assert False
-    #except:
-    #    print([op.shape for op in operands])
-    #    raise
 
     return out
