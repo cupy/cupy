@@ -10,7 +10,9 @@ import cupy
 setup = _from_install_import('universal_pkg.setup')
 
 
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='for CUDA')
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip or cupy.cuda.driver._is_cuda_python(),
+    reason='for CUDA')
 def test_get_cuda_version():
     assert setup._get_cuda_version() == cupy.cuda.runtime.runtimeGetVersion()
 
