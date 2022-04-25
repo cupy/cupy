@@ -97,7 +97,8 @@ class vectorize(object):
             kern = _core.ElementwiseKernel(
                 in_params, out_params, body, 'cupy_vectorize',
                 preamble=result.code,
-                options=('-DCUPY_JIT_MODE', '--std=c++14'))
+                options=('-DCUPY_JIT_MODE', '--std=c++14'),
+            )
             self._kernel_cache[itypes] = kern
 
         return kern(*args)
