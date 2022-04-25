@@ -64,7 +64,6 @@ class NCCLBackend(_Backend):
                  use_mpi=False):
         super().__init__(n_devices, rank, host, port)
         self._use_mpi = _mpi_available and use_mpi
-
         if self._use_mpi:
             self._init_with_mpi(n_devices, rank)
         else:
@@ -496,8 +495,8 @@ class _SparseNCCLCommunicator:
                 raise RuntimeError('Unsupported method')
         else:
             warnings.warn(
-                'Using NCCL for transferring sparse arrays metadata. '
-                'This will cause device synchronization and a huge performance'
+                'Using NCCL for transferring sparse arrays metadata. This'
+                ' will cause device synchronization and a huge performance'
                 ' degradation. Please install MPI and `mpi4py` in order to'
                 ' avoid this issue.'
             )
@@ -567,7 +566,7 @@ class _SparseNCCLCommunicator:
         dtype = array.dtype.char
         if dtype not in _nccl_dtypes:
             raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
-        dtype = _nccl_dtypes[dtype]
+        dtype, count = comm._get_nccl_dtype_and_count(array)
         stream = comm._get_stream(stream)
         comm._comm.send(array.data.ptr, count, dtype, peer, stream)
 
@@ -594,21 +593,13 @@ class _SparseNCCLCommunicator:
         dtype = dtype.char
         if dtype not in _nccl_dtypes:
             raise TypeError(f'Unknown dtype {out_array.dtype} for NCCL')
-        dtype = _nccl_dtypes[dtype]
+        dtype, count = comm._get_nccl_dtype_and_count(out_array)
         stream = comm._get_stream(stream)
         comm._comm.recv(out_array.data.ptr, count, dtype, peer, stream)
 
     @classmethod
     def send_recv(cls, comm, in_array, out_array, peer, stream=None):
-        comm._check_contiguous(in_array)
-        comm._check_contiguous(out_array)
-        stream = comm._get_stream(stream)
-        idtype, icount = comm._get_nccl_dtype_and_count(in_array)
-        odtype, ocount = comm._get_nccl_dtype_and_count(out_array)
-        nccl.groupStart()
-        cls._send(comm, in_array, peer, idtype, icount, stream)
-        cls._recv(comm, out_array, peer, odtype, ocount, stream)
-        nccl.groupEnd()
+        raise RuntimeError('Method not supported for sparse matrices')
 
     @classmethod
     def scatter(cls, comm, in_array, out_array, root=0, stream=None):
