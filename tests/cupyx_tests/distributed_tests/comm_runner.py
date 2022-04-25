@@ -333,10 +333,10 @@ def _make_sparse_empty(dtype):
 
 
 def sparse_send_and_recv(dtype, use_mpi=False):
-    def run_send_and_recv(rank, dtype, force_store=True):
+    def run_send_and_recv(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = _make_sparse(dtype)
         out_array = _make_sparse_empty(dtype)
         warnings.filterwarnings(
