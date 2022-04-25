@@ -1,3 +1,5 @@
+import warnings
+
 try:
     from cuquantum import cutensornet
     cutn_handle_cache = {}
@@ -9,17 +11,8 @@ from cupy._core import _accelerator
 
 
 def _get_einsum_operands(args):
-    """Parse einsum operands.
-
-    Parameters
-    ----------
-    args : tuple
-        The non-keyword arguments to einsum
-
-    Returns
-    -------
-    operands : list of array_like
-        The operands to use in the contraction
+    """Parse & retrieve einsum operands, assuming ``args`` is in either
+    "subscript" or "interleaved" format.
     """
 
     if len(args) == 0:
@@ -43,8 +36,7 @@ def _get_einsum_operands(args):
         if len(args) == 1:
             output = args.pop(0)
         assert not args
-
-    return inputs, operands, output
+        return inputs, operands, output
 
 
 def _try_use_cutensornet(*args, **kwargs):
@@ -58,9 +50,17 @@ def _try_use_cutensornet(*args, **kwargs):
     if cupy.cuda.runtime.is_hip:
         return None
 
+    # cannot pop as we might still need kwargs later
     dtype = kwargs.get('dtype', None)
-    optimize = kwargs.get('optimize', None)
-    # TODO(leofang): raise warning: we don't care optmizie for now?
+    path = kwargs.get('optimize', None)
+    if path and path[0] == 'einsum_path':
+        path = path[1:]
+    else:
+        path = None
+        warnings.warn(
+            'the cuTensorNet backend ignores the "optimize" option '
+            'except when an explicit contraction path is provided',
+            UserWarning, stacklevel=3)
 
     # we do very lightweight pre-processing here just to inspect the
     # operands; the actual input verification is deferred to cuTensorNet
@@ -90,14 +90,18 @@ def _try_use_cutensornet(*args, **kwargs):
     handle = cutn_handle_cache.get(
         device, cutensornet.create())
     cutn_options = {'device_id': device, 'handle': handle,
-                    'memory_limit': 2**31}  # TODO(kataoka): fix?
+                    'memory_limit': 4**31}  # TODO(leofang): fix?
+    cutn_optimizer = {'path': path} if path else None
+
     if len(args) == 2:
-        out = cutensornet.contract(args[0], *operands, options=cutn_options)
+        out = cutensornet.contract(
+            args[0], *operands, options=cutn_options, optimize=cutn_optimizer)
     elif len(args) == 3:
         inputs = [i for pair in zip(operands, args[0]) for i in pair]
         if args[2] is not None:
             inputs.append(args[2])
-        out = cutensornet.contract(*inputs, options=cutn_options)
+        out = cutensornet.contract(
+            *inputs, options=cutn_options, optimize=cutn_optimizer)
     else:
         assert False
 
