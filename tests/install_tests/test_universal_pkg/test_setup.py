@@ -1,0 +1,51 @@
+from .. import _from_install_import
+
+import subprocess
+import sys
+
+import pytest
+import cupy
+
+
+setup = _from_install_import('universal_pkg.setup')
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='for CUDA')
+def test_get_cuda_version():
+    assert setup._get_cuda_version() == cupy.cuda.runtime.runtimeGetVersion()
+
+
+@pytest.mark.skipif(not cupy.cuda.runtime.is_hip, reason='for HIP')
+def test_get_rocm_version():
+    assert setup._get_rocm_version() == cupy.cuda.runtime.runtimeGetVersion()
+
+
+def test_find_installed_packages():
+    assert setup._find_installed_packages() == ['cupy']
+
+
+def test_cuda_version_to_package():
+    with pytest.raises(setup.AutoDetectionFailed):
+        assert setup._cuda_version_to_package(10019)
+    assert setup._cuda_version_to_package(10020) == 'cupy-cuda102'
+    assert setup._cuda_version_to_package(11060) == 'cupy-cuda116'
+    with pytest.raises(setup.AutoDetectionFailed):
+        assert setup._cuda_version_to_package(99999)
+
+
+def test_rocm_version_to_package():
+    with pytest.raises(setup.AutoDetectionFailed):
+        assert setup._rocm_version_to_package(399)
+    assert setup._rocm_version_to_package(400) == 'cupy-rocm-4-0'
+    assert setup._rocm_version_to_package(5_00_13601) == 'cupy-rocm-5-0'
+    with pytest.raises(setup.AutoDetectionFailed):
+        assert setup._rocm_version_to_package(9_00_00000)
+
+
+def test_infer_best_package():
+    setup.infer_best_package()
+
+
+def test_execute():
+    proc = subprocess.run([sys.executable, setup.__file__, 'help'])
+    assert proc.returncode == 1
