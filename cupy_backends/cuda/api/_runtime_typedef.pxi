@@ -107,6 +107,24 @@ cdef extern from *:
     ctypedef void* MemPool 'cudaMemPool_t'
     ctypedef int MemPoolAttr 'cudaMemPoolAttr'
 
+    ctypedef int MemAllocationType 'cudaMemAllocationType'
+    ctypedef int MemAllocationHandleType 'cudaMemAllocationHandleType'
+    ctypedef int MemLocationType 'cudaMemLocationType'
+    IF CUPY_CUDA_VERSION > 0:
+        # This is for the annoying nested struct, which is not
+        # perfectly supprted in Cython
+        ctypedef struct _MemLocation 'cudaMemLocation':
+            MemLocationType type
+            int id
+
+        ctypedef struct _MemPoolProps 'cudaMemPoolProps':
+            MemAllocationType allocType
+            MemAllocationHandleType handleTypes
+            _MemLocation location
+    ELSE:
+        ctypedef struct _MemPoolProps 'cudaMemPoolProps':
+            pass  # for HIP & RTD
+
     IF CUPY_CUDA_VERSION > 0:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
             int type

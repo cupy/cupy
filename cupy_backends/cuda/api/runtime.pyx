@@ -10,6 +10,7 @@ There are four differences compared to the original C API.
 
 """
 from libc.stdint cimport uint64_t
+from libc.string cimport memset as c_memset
 
 import threading as _threading
 
@@ -31,6 +32,15 @@ cdef class PointerAttributes:
         self.device = device
         self.devicePointer = devicePointer
         self.hostPointer = hostPointer
+
+cdef class MemPoolProps:
+
+    def __init__(
+            self, int allocType, int handleType, int locationType, int devId):
+        self.allocType = allocType
+        self.handleType = handleType
+        self.locationType = locationType
+        self.devId = devId
 
 
 ###############################################################################
@@ -497,6 +507,21 @@ cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
     check_status(status)
     return <intptr_t>ptr
 
+cpdef intptr_t mallocFromPoolAsync(
+        size_t size, intptr_t pool, intptr_t stream) except? 0:
+    cdef void* ptr
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support mallocFromPoolAsync')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMallocFromPoolAsync(
+            &ptr, size, <MemPool>pool, <driver.Stream>stream)
+    check_status(status)
+    return <intptr_t>ptr
+
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:
@@ -727,6 +752,38 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
                            'CUDA 11.2')
     with nogil:
         status = cudaDeviceSetMemPool(device, <MemPool>pool)
+    check_status(status)
+
+cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolCreate')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
+
+    cdef MemPool pool
+    cdef _MemPoolProps props_c
+    c_memset(&props_c, 0, sizeof(_MemPoolProps))
+    props_c.allocType = <MemAllocationType>props.allocType
+    props_c.handleTypes = <MemAllocationHandleType>props.handleType
+    props_c.location.type = <MemLocationType>props.locationType
+    props_c.location.id = props.devId
+
+    with nogil:
+        status = cudaMemPoolCreate(&pool, &props_c)
+    check_status(status)
+    return <intptr_t>pool
+
+cpdef memPoolDestroy(intptr_t pool):
+    if _is_hip_environment:
+        raise RuntimeError('HIP does not support memPoolDestroy')
+    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
+        raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
+    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+        raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMemPoolDestroy(<MemPool>pool)
     check_status(status)
 
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
