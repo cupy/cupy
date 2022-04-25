@@ -350,8 +350,10 @@ class _MemcpySync(_BuiltinFunc):
 
     def call(self, env, group, dst, dst_idx, src, src_idx, size, *,
              aligned_size=None):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
+        if _runtime.runtimeGetVersion() < 11010:
+            # the overloaded version of memcpy_async that we use does not yet
+            # exist in CUDA 11.0
+            raise RuntimeError("not supported in CUDA < 11.1")
         _check_include(env, 'cg')
         _check_include(env, 'cg_memcpy_async')
 
@@ -370,6 +372,7 @@ class _MemcpySync(_BuiltinFunc):
             size, _cuda_types.uint32, 'same_kind', env)
         size = _Data.init(size, env)
         size_code = f'{size.code}'
+
         if aligned_size:
             if not isinstance(aligned_size, _Constant):
                 raise ValueError(
