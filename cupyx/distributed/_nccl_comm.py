@@ -4,6 +4,13 @@ from cupyx.distributed import _store
 from cupyx.distributed._comm import _Backend
 
 
+try:
+    from mpi4py import MPI
+    _mpi_available = True
+except ImportError:
+    _mpi_available = False
+
+
 if nccl.available:
     # types are not compliant with windows on long/int32 issue
     # but nccl does not support windows so we don't care
@@ -44,25 +51,49 @@ class NCCLBackend(_Backend):
             initialization. Defaults to `"127.0.0.1"`.
         port (int, optional): port used for the process rendezvous on
             initialization. Defaults to `13333`.
+        use_mpi(bool, optional): switch between MPI and use the included TCP
+            server for initialization & synchronization. Defaults to `False`.
     """
 
     def __init__(self, n_devices, rank,
-                 host=_store._DEFAULT_HOST, port=_store._DEFAULT_PORT):
+                 host=_store._DEFAULT_HOST, port=_store._DEFAULT_PORT,
+                 use_mpi=False):
         super().__init__(n_devices, rank, host, port)
+        self._use_mpi = _mpi_available and use_mpi
+
+        if self._use_mpi:
+            self._init_with_mpi(n_devices, rank)
+        else:
+            self._init_with_tcp_store(n_devices, rank, host, port)
+
+    def _init_with_mpi(self, n_devices, rank):
+        # MPI is used only for management purposes
+        # so the rank may be different than the one specified
+        self._mpi_comm = MPI.COMM_WORLD
+        self._mpi_rank = self._mpi_comm.Get_rank()
+        self._mpi_comm.Barrier()
+        nccl_id = None
+        if self._mpi_rank == 0:
+            nccl_id = nccl.get_unique_id()
+        nccl_id = self._mpi_comm.bcast(nccl_id, root=0)
+        # Initialize devices
+        self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
+
+    def _init_with_tcp_store(self, n_devices, rank, host, port):
+        nccl_id = None
         if rank == 0:
             self._store.run(host, port)
             nccl_id = nccl.get_unique_id()
             # get_unique_id return negative values due to cython issues
             # with bytes && c strings. We shift them by 128 to
-            # avoid issues
-            nccl_id = bytes([b + 128 for b in nccl_id])
-            self._store_proxy['nccl_id'] = nccl_id
+            # make them positive and send them as bytes to the proxy store
+            shifted_nccl_id = bytes([b + 128 for b in nccl_id])
+            self._store_proxy['nccl_id'] = shifted_nccl_id
             self._store_proxy.barrier()
         else:
             self._store_proxy.barrier()
             nccl_id = self._store_proxy['nccl_id']
-        # Initialize devices
-        nccl_id = tuple([int(b) - 128 for b in nccl_id])
+            nccl_id = tuple([int(b) - 128 for b in nccl_id])
         self._comm = nccl.NcclCommunicator(n_devices, nccl_id, rank)
 
     def _check_contiguous(self, array):
@@ -354,4 +385,7 @@ class NCCLBackend(_Backend):
         """
         # implements a barrier CPU side
         # TODO allow multiple barriers to be executed
-        self._store_proxy.barrier()
+        if self._use_mpi:
+            self._mpi_comm.Barrier()
+        else:
+            self._store_proxy.barrier()
