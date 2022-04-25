@@ -457,6 +457,8 @@ def einsum(*operands, **kwargs):
        - Memory contiguity of the returned array is not always compatible with
          :func:`numpy.einsum`.
        - ``out``, ``order``, and ``casting`` options are not supported.
+       - If :envvar:`CUPY_ACCELERATORS` includes ``cutensornet``, the `einsum`
+         calculation will be performed by the cuTensorNet backend if possible.
        - If :envvar:`CUPY_ACCELERATORS` includes ``cutensor``, `einsum` will be
          accelerated by the cuTENSOR backend whenever possible.
 
