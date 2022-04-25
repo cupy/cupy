@@ -40,14 +40,20 @@ def _get_einsum_operands(args):
 
 
 def _try_use_cutensornet(*args, **kwargs):
-    if cutensornet is None:
+    if cupy.cuda.runtime.is_hip:
         return None
 
     if (_accelerator.ACCELERATOR_CUTENSORNET not in
             _accelerator.get_routine_accelerators()):
         return None
 
-    if cupy.cuda.runtime.is_hip:
+    if cutensornet is None:
+        warnings.warn(
+            'using the cuTensorNet backend was requested but it cannot be '
+            'imported -- maybe you forgot to install cuQuantum Python? '
+            'Please do "pip install cuquantum-python" or "conda install '
+            '-c conda-forge cuquantum-python" and retry',
+            stacklevel=2)
         return None
 
     # cannot pop as we might still need kwargs later
