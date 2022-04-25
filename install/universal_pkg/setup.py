@@ -214,7 +214,7 @@ def infer_best_package() -> str:
 # Entrypoint
 #
 
-def main():
+def main() -> None:
     if os.environ.get('CUPY_UNIVERSAL_PKG_BUILD', None) is None:
         package = infer_best_package()
         requires = f'{package}=={VERSION}'
