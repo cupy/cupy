@@ -51,15 +51,15 @@ class NCCLBackend(_Backend):
             initialization. Defaults to `"127.0.0.1"`.
         port (int, optional): port used for the process rendezvous on
             initialization. Defaults to `13333`.
-        force_store(bool, optional): Ignore MPI and use the included TCP
+        use_mpi(bool, optional): switch between MPI and use the included TCP
             server for initialization & synchronization. Defaults to `False`.
     """
 
     def __init__(self, n_devices, rank,
                  host=_store._DEFAULT_HOST, port=_store._DEFAULT_PORT,
-                 force_store=False):
+                 use_mpi=False):
         super().__init__(n_devices, rank, host, port)
-        self._use_mpi = _mpi_available and not force_store
+        self._use_mpi = _mpi_available and use_mpi
 
         if self._use_mpi:
             self._init_with_mpi(n_devices, rank)

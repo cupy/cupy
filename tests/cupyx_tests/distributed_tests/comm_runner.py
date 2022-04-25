@@ -34,10 +34,10 @@ def broadcast(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_broadcast(rank, root, dtype, force_store=True):
+    def run_broadcast(rank, root, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         expected = cupy.arange(2 * 3 * 4, dtype=dtype).reshape((2, 3, 4))
         if rank == root:
             in_array = expected
@@ -60,10 +60,10 @@ def reduce(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_reduce(rank, root, dtype, force_store=True):
+    def run_reduce(rank, root, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(2 * 3 * 4, dtype='f').reshape(2, 3, 4)
         out_array = cupy.zeros((2, 3, 4), dtype='f')
         comm.reduce(in_array, out_array, root)
@@ -84,10 +84,10 @@ def all_reduce(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_all_reduce(rank, dtype, force_store=True):
+    def run_all_reduce(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(2 * 3 * 4, dtype='f').reshape(2, 3, 4)
         out_array = cupy.zeros((2, 3, 4), dtype='f')
 
@@ -106,10 +106,10 @@ def reduce_scatter(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_reduce_scatter(rank, dtype, force_store=True):
+    def run_reduce_scatter(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = 1 + cupy.arange(
             N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
         out_array = cupy.zeros((10,), dtype='f')
@@ -129,10 +129,10 @@ def all_gather(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_all_gather(rank, dtype, force_store=True):
+    def run_all_gather(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = (rank + 1) * cupy.arange(
             N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
         out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
@@ -154,10 +154,10 @@ def send_and_recv(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_send_and_recv(rank, dtype, force_store=True):
+    def run_send_and_recv(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(10, dtype='f')
         out_array = cupy.zeros((10,), dtype='f')
         if rank == 0:
@@ -178,10 +178,10 @@ def send_recv(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_send_recv(rank, dtype, force_store=True):
+    def run_send_recv(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(10, dtype='f')
         for i in range(N_WORKERS):
             out_array = cupy.zeros((10,), dtype='f')
@@ -200,10 +200,10 @@ def scatter(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_scatter(rank, root, dtype, force_store=True):
+    def run_scatter(rank, root, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = 1 + cupy.arange(
             N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
         out_array = cupy.zeros((10,), dtype='f')
@@ -226,10 +226,10 @@ def gather(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_gather(rank, root, dtype, force_store=True):
+    def run_gather(rank, root, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = (rank + 1) * cupy.arange(10, dtype='f')
         out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
         comm.gather(in_array, out_array, root)
@@ -253,10 +253,10 @@ def all_to_all(dtype, use_mpi=False):
     if dtype in 'hH':
         return  # nccl does not support int16
 
-    def run_all_to_all(rank, dtype, force_store=True):
+    def run_all_to_all(rank, dtype, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(
             N_WORKERS * 10, dtype='f').reshape(N_WORKERS, 10)
         out_array = cupy.zeros((N_WORKERS, 10), dtype='f')
@@ -274,10 +274,10 @@ def all_to_all(dtype, use_mpi=False):
 
 
 def barrier(use_mpi=False):
-    def run_barrier(rank, force_store=True):
+    def run_barrier(rank, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = NCCLBackend(N_WORKERS, rank, force_store=force_store)
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         comm.barrier()
         before = time.time()
         if rank == 0:
@@ -295,10 +295,10 @@ def barrier(use_mpi=False):
 
 
 def init(use_mpi=False):
-    def run_init(rank, force_store=True):
+    def run_init(rank, use_mpi=False):
         dev = cuda.Device(rank)
         dev.use()
-        comm = init_process_group(N_WORKERS, rank, force_store=force_store)
+        comm = init_process_group(N_WORKERS, rank, use_mpi=use_mpi)
         # Do a simple call to verify we got a valid comm
         in_array = cupy.zeros(1)
         if rank == 0:
