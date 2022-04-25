@@ -459,6 +459,12 @@ def einsum(*operands, **kwargs):
        - ``out``, ``order``, and ``casting`` options are not supported.
        - If :envvar:`CUPY_ACCELERATORS` includes ``cutensornet``, the `einsum`
          calculation will be performed by the cuTensorNet backend if possible.
+
+           - The support of the ``optimize`` option is limited (currently, only
+             `False`, 'cutensornet', or a custom path for pairwise contraction
+             is supported, and the maximum intermediate size is ignored).
+           - Requires `cuQuantum Python`_ (v22.03+).
+
        - If :envvar:`CUPY_ACCELERATORS` includes ``cutensor``, `einsum` will be
          accelerated by the cuTENSOR backend whenever possible.
 
@@ -471,14 +477,16 @@ def einsum(*operands, **kwargs):
             Controls if intermediate optimization should occur. No optimization
             will occur if `False`, and `True` will default to the 'greedy'
             algorithm. Also accepts an explicit contraction list from
-            :func:`numpy.einsum_path`. Defaults to `False`.
+            :func:`numpy.einsum_path`. Defaults to `False`. If a pair is
+            supplied, the second argument is assumed to be the maximum
+            intermediate size created.
 
     Returns:
         cupy.ndarray:
             The calculation based on the Einstein summation convention.
 
     .. seealso:: :func:`numpy.einsum`
-
+    .. _cuQuantum Python: https://docs.nvidia.com/cuda/cuquantum/python/
     """
     out = _try_use_cutensornet(*operands, **kwargs)
     if out is not None:

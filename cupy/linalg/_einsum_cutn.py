@@ -52,7 +52,9 @@ def _try_use_cutensornet(*args, **kwargs):
 
     # cannot pop as we might still need kwargs later
     dtype = kwargs.get('dtype', None)
-    path = kwargs.get('optimize', None)
+    path = kwargs.get('optimize', False)
+    if path is True:
+        path = 'greedy'
 
     # we do very lightweight pre-processing here just to inspect the
     # operands; the actual input verification is deferred to cuTensorNet
@@ -78,29 +80,44 @@ def _try_use_cutensornet(*args, **kwargs):
         return None
     operands = [op.astype(result_dtype, copy=False) for op in operands]
 
-    # TODO(leofang): support a new optimize option to turn on cutn pathfinder
-    if path is False:
-        # following the same convention (contracting from the right) as would
-        # be produced by _iter_path_pairs(), but converting to a list of pairs
-        # due to cuTensorNet's requirement
-        path = [(i-1, i-2) for i in range(len(operands), 1, -1)]
-    elif (path is not None) and (path is not True) and (
-            path[0] == 'einsum_path'):
-        # let cuTensorNet check if the format is correct
-        path = path[1:]
-    else:
-        path = None
-        warnings.warn(
-            'the cuTensorNet backend ignores the "optimize" option '
-            'except when an explicit contraction path is provided '
-            'or when optimize=False (disable optimization)',
-            UserWarning, stacklevel=3)
-
+    # prepare cutn inputs
     device = cupy.cuda.runtime.getDevice()
     handle = cutn_handle_cache.get(
         device, cutensornet.create())
     cutn_options = {'device_id': device, 'handle': handle,
                     'memory_limit': 4**31}  # TODO(leofang): fix?
+
+    # TODO(leofang): support all valid combinations:
+    # - path from user, contract with cutn (done)
+    # - path from cupy, contract with cutn (not yet)
+    # - path from cutn, contract with cutn (done)
+    # - path from cutn, contract with cupy (not yet)
+    raise_warning = False
+    if path is False:
+        # following the same convention (contracting from the right) as would
+        # be produced by _iter_path_pairs(), but converting to a list of pairs
+        # due to cuTensorNet's requirement
+        path = [(i-1, i-2) for i in range(len(operands), 1, -1)]
+    elif len(path) and path[0] == 'einsum_path':
+        # let cuTensorNet check if the format is correct
+        path = path[1:]
+    elif len(path) == 2:
+        if isinstance(path[1], (int, float)):
+            raise_warning = True
+        if path[0] != 'cutensornet':
+            raise_warning = True
+        path = None
+    else:  # path is a string
+        if path != 'cutensornet':
+            raise_warning = True
+        path = None
+    if raise_warning:
+        warnings.warn(
+            'the cuTensorNet backend ignores the "optimize" option '
+            'except when an explicit contraction path is provided '
+            'or when optimize=False (disable optimization); also, '
+            'the maximum intermediate size, if set, is ignored',
+            stacklevel=2)
     cutn_optimizer = {'path': path} if path else None
 
     if len(args) == 2:
