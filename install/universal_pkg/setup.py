@@ -1,5 +1,6 @@
 import ctypes
 import pkg_resources
+import os
 import sys
 from typing import List, Optional
 
@@ -214,14 +215,19 @@ def infer_best_package() -> str:
 #
 
 def main():
-    package = infer_best_package()
-    requires = f'{package}=={VERSION}'
-    _log(f'Installing package: {requires}')
+    if os.environ.get('CUPY_UNIVERSAL_PKG_BUILD', None) is None:
+        package = infer_best_package()
+        requires = f'{package}=={VERSION}'
+        _log(f'Installing package: {requires}')
+        install_requires = [requires]
+    else:
+        _log('Building cupy-wheel package for release.')
+        install_requires = []
 
     setup(
         name='cupy-wheel',
         version=VERSION,
-        install_requires=[requires],
+        install_requires=install_requires,
     )
 
 
