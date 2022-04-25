@@ -20,10 +20,6 @@ def test_get_rocm_version():
     assert setup._get_rocm_version() == cupy.cuda.runtime.runtimeGetVersion()
 
 
-def test_find_installed_packages():
-    assert setup._find_installed_packages() == ['cupy']
-
-
 def test_cuda_version_to_package():
     with pytest.raises(setup.AutoDetectionFailed):
         assert setup._cuda_version_to_package(10019)
@@ -43,7 +39,12 @@ def test_rocm_version_to_package():
 
 
 def test_infer_best_package():
-    setup.infer_best_package()
+    pkgs = setup._find_installed_packages()
+    if 1 < len(pkgs) or pkgs == ['cupy']:
+        with pytest.raises(setup.AutoDetectionFailed):
+            setup.infer_best_package()
+    else:
+        assert setup.infer_best_package() == pkgs[0]
 
 
 def test_execute():
