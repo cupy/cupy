@@ -445,7 +445,7 @@ def _tuple_sorted_by_0(zs):
 
 
 def einsum(*operands, **kwargs):
-    """einsum(subscripts, *operands, dtype=False)
+    """einsum(subscripts, *operands, dtype=None, optimize=False)
 
     Evaluates the Einstein summation convention on the operands.
     Using the Einstein summation convention, many common multi-dimensional
@@ -453,13 +453,21 @@ def einsum(*operands, **kwargs):
     provides a way to compute such summations.
 
     .. note::
-       Memory contiguity of calculation result is not always compatible with
-       `numpy.einsum`.
-       ``out``, ``order``, and ``casting`` options are not supported.
+
+       - Memory contiguity of the returned array is not always compatible with
+         :func:`numpy.einsum`.
+       - ``out``, ``order``, and ``casting`` options are not supported.
 
     Args:
         subscripts (str): Specifies the subscripts for summation.
         operands (sequence of arrays): These are the arrays for the operation.
+        dtype: If provided, forces the calculation to use the data type
+            specified. Default is None.
+        optimize: Valid options include {`False`, `True`, 'greedy', 'optimal'}.
+            Controls if intermediate optimization should occur. No optimization
+            will occur if `False`, and `True` will default to the 'greedy'
+            algorithm. Also accepts an explicit contraction list from
+            :func:`numpy.einsum_path`. Defaults to `False`.
 
     Returns:
         cupy.ndarray:
