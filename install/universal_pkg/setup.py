@@ -88,7 +88,7 @@ def _get_cuda_version() -> Optional[int]:
     if sys.platform == 'linux':
         libnames = ['libcudart.so']
     elif sys.platform == 'win32':
-        libnames = ['cudart64.dll']
+        libnames = ['cudart64_110.dll', 'cudart64_102.dll']
     else:
         _log(f'CUDA detection unsupported on platform: {sys.platform}')
         return None
