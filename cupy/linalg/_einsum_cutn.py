@@ -53,14 +53,6 @@ def _try_use_cutensornet(*args, **kwargs):
     # cannot pop as we might still need kwargs later
     dtype = kwargs.get('dtype', None)
     path = kwargs.get('optimize', None)
-    if path and path[0] == 'einsum_path':
-        path = path[1:]
-    else:
-        path = None
-        warnings.warn(
-            'the cuTensorNet backend ignores the "optimize" option '
-            'except when an explicit contraction path is provided',
-            UserWarning, stacklevel=3)
 
     # we do very lightweight pre-processing here just to inspect the
     # operands; the actual input verification is deferred to cuTensorNet
@@ -85,6 +77,24 @@ def _try_use_cutensornet(*args, **kwargs):
             cupy.float32, cupy.float64, cupy.complex64, cupy.complex128):
         return None
     operands = [op.astype(result_dtype, copy=False) for op in operands]
+
+    # TODO(leofang): support a new optimize option to turn on cutn pathfinder
+    if path is False:
+        # following the same convention (contracting from the right) as would
+        # be produced by _iter_path_pairs(), but converting to a list of pairs
+        # due to cuTensorNet's requirement
+        path = [(i-1, i-2) for i in range(len(operands), 1, -1)]
+    elif (path is not None) and (path is not True) and (
+            path[0] == 'einsum_path'):
+        # let cuTensorNet check if the format is correct
+        path = path[1:]
+    else:
+        path = None
+        warnings.warn(
+            'the cuTensorNet backend ignores the "optimize" option '
+            'except when an explicit contraction path is provided '
+            'or when optimize=False (disable optimization)',
+            UserWarning, stacklevel=3)
 
     device = cupy.cuda.runtime.getDevice()
     handle = cutn_handle_cache.get(
