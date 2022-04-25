@@ -646,6 +646,26 @@ class TestRaw:
         f((1,), (1,), (x,))
         assert x == N
 
+    @testing.for_CF_orders()
+    def test_shape_strides(self, order):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            if x == 0:
+                shapes = arr.shape
+                strides = arr.strides
+                arr[0, 0, 0] = shapes[0]
+                arr[0, 0, 1] = shapes[1]
+                arr[0, 0, 2] = shapes[2]
+                arr[0, 0, 3] = strides[0]
+                arr[0, 0, 4] = strides[1]
+                arr[0, 0, 5] = strides[2]
+
+        a = cupy.zeros((3, 4, 6), order=order)
+        f[1, 1](a)
+        assert (a[0, 0, 0:3] == cupy.asarray(a.shape)).all()
+        assert (a[0, 0, 3:6] == cupy.asarray(a.strides)).all()
+
     @testing.multi_gpu(2)
     def test_device_cache(self):
         @jit.rawkernel()
