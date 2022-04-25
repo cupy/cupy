@@ -326,6 +326,16 @@ public:
     return strides_;
   }
 
+#ifdef CUPY_JIT_MODE
+  __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_shape() const {
+    return cupy::as_tuple<_ndim, ptrdiff_t>::call(shape_);
+  }
+
+  __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_strides() const {
+    return cupy::as_tuple<_ndim, ptrdiff_t>::call(strides_);
+  }
+#endif  // CUPY_JIT_MODE
+
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int>
   __device__ T& operator[](const std::initializer_list<Int> idx_) {

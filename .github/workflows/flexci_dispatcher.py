@@ -54,7 +54,7 @@ def _forward_to_flexci(
     elif 'message' in response:
         _log(f'Failed to submit webhook payload: {response["message"]}')
         return False
-    raise RuntimeError('unexpected response: {response}')
+    raise RuntimeError(f'unexpected response: {response}')
 
 
 def _complement_commit_status(

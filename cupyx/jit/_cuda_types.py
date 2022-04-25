@@ -45,6 +45,14 @@ class Scalar(TypeBase):
         return hash(self.dtype)
 
 
+class PtrDiff(Scalar):
+    def __init__(self):
+        super().__init__('q')
+
+    def __str__(self):
+        return 'ptrdiff_t'
+
+
 class ArrayBase(TypeBase):
 
     def __init__(self, child_type: TypeBase, ndim: int):

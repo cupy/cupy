@@ -14,7 +14,9 @@ Custom kernels
 JIT kernel definition
 ---------------------
 
-Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`max`, :func:`min`
+Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`max`, :func:`min`.
+
+.. note:: If loop unrolling is needed, use :func:`cupyx.jit.range` instead of the built-in :obj:`range`.
 
 .. autosummary::
    :toctree: generated/
@@ -28,6 +30,7 @@ Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`m
    cupyx.jit.gridsize
    cupyx.jit.laneid
    cupyx.jit.warpsize
+   cupyx.jit.range
    cupyx.jit.syncthreads
    cupyx.jit.syncwarp
    cupyx.jit.shfl_sync

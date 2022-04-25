@@ -487,11 +487,11 @@ def _transpile_stmt(stmt, is_toplevel, env):
                 f'Data type mismatch of variable: `{name}`: '
                 f'{env[name].ctype.dtype} != {iters.ctype.dtype}')
 
-        body = _transpile_stmts(stmt.body, False, env)
-
         if not isinstance(iters, _internal_types.Range):
             raise NotImplementedError(
                 'for-loop is supported only for range iterator.')
+
+        body = _transpile_stmts(stmt.body, False, env)
 
         init_code = (f'{iters.ctype} '
                      f'__it = {iters.start.code}, '
@@ -504,7 +504,14 @@ def _transpile_stmt(stmt, is_toplevel, env):
             cond = '__it > __stop'
 
         head = f'for ({init_code}; {cond}; __it += __step)'
-        return [CodeBlock(head, [f'{name} = __it;'] + body)]
+        result = [CodeBlock(head, [f'{name} = __it;'] + body)]
+
+        unroll = iters.unroll
+        if unroll is True:
+            result = ['#pragma unroll'] + result
+        elif unroll is not None:
+            result = [f'#pragma unroll({unroll})'] + result
+        return result
 
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')
@@ -690,6 +697,16 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+            if expr.attr in ('shape', 'strides'):
+                # this guard is needed to avoid NVRTC from throwing an
+                # obsecure error
+                if value.ctype.ndim > 10:
+                    raise NotImplementedError(
+                        'getting shape/strides for an array with ndim > 10 '
+                        'is not supported yet')
+                types = [_cuda_types.PtrDiff()]*value.ctype.ndim
+                return Data(f'{value.code}.get_{expr.attr}()',
+                            _cuda_types.Tuple(types))
         if isinstance(value.ctype, _cuda_types.Dim3):
             if expr.attr in ('x', 'y', 'z'):
                 return getattr(value.ctype, expr.attr)(value.code)
@@ -772,7 +789,8 @@ def _indexing(array, index, env):
     if isinstance(array.ctype, _cuda_types.Tuple):
         if is_constants(index):
             i = index.obj
-            return Data(f'thrust::get<{i}>({array.code})', array.types[i])
+            t = array.ctype.types[i]
+            return Data(f'thrust::get<{i}>({array.code})', t)
         raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):

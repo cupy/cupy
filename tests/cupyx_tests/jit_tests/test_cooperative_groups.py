@@ -142,8 +142,10 @@ class TestCooperativeGroups:
 
         test_sync[2, 64]()
 
+    # We also skip CUDA 11.0 due to missing support of memcpy_async
+    # and aligned_size_t...
     @pytest.mark.skipif(
-        runtime.runtimeGetVersion() < 11000,
+        runtime.runtimeGetVersion() < 11010,
         reason='not supported until CUDA 11.0')
     @pytest.mark.parametrize(
         'test_aligned', (True, False),
