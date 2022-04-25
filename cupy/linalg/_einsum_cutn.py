@@ -2,7 +2,7 @@ import warnings
 
 try:
     from cuquantum import cutensornet
-    cutn_handle_cache = {}
+    cutn_handle_cache = {}  # type: ignore  # noqa
 except ImportError:
     cutensornet = None
 
