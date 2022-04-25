@@ -91,7 +91,7 @@ def _get_cuda_version() -> Optional[int]:
     else:
         _log(f'CUDA detection unsupported on platform: {sys.platform}')
         return None
-    _log(f'Trying to detect CUDA version from candidates: {libnames}')
+    _log(f'Trying to detect CUDA version from libraries: {libnames}')
     version = _get_version_from_library(libnames, 'cudaRuntimeGetVersion')
     return version
 
@@ -185,13 +185,13 @@ def infer_best_package() -> str:
             'Please uninstall all of them first, then try reinstalling.')
 
     elif 1 == len(installed):
-        if installed in PACKAGES_SDIST:
+        if installed[0] in PACKAGES_SDIST:
             raise AutoDetectionFailed(
                 'You already have CuPy installed via source'
                 ' (pip install cupy).')
-        if installed in PACKAGES_OUTDATED:
+        if installed[0] in PACKAGES_OUTDATED:
             raise AutoDetectionFailed(
-                f'You have CuPy package "{installed}" installed, but the'
+                f'You have CuPy package "{installed[0]}" installed, but the'
                 f' package is not available for version {VERSION}.')
         return installed[0]
 
@@ -215,13 +215,13 @@ def infer_best_package() -> str:
 
 def main():
     package = infer_best_package()
-    _log(f'Installing package: {package}')
+    requires = f'{package}=={VERSION}'
+    _log(f'Installing package: {requires}')
 
     setup(
         name='cupy-wheel',
         version=VERSION,
-        install_requires=[
-            f'{infer_best_package()}=={VERSION}'],
+        install_requires=[requires],
     )
 
 
