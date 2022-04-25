@@ -368,6 +368,7 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'numba': ('https://numba.readthedocs.io/en/stable', None),
+    'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/', None),
 }
 
 doctest_global_setup = '''

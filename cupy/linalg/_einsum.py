@@ -455,14 +455,16 @@ def einsum(*operands, **kwargs):
     .. note::
 
        - Memory contiguity of the returned array is not always compatible with
-         :func:`numpy.einsum`.
+         that of :func:`numpy.einsum`.
        - ``out``, ``order``, and ``casting`` options are not supported.
        - If :envvar:`CUPY_ACCELERATORS` includes ``cutensornet``, the `einsum`
          calculation will be performed by the cuTensorNet backend if possible.
 
            - The support of the ``optimize`` option is limited (currently, only
              `False`, 'cutensornet', or a custom path for pairwise contraction
-             is supported, and the maximum intermediate size is ignored).
+             is supported, and the maximum intermediate size is ignored). If
+             you need finer control for path optimization, consider replacing
+             :func:`cupy.einsum` by :func:`cuquantum.contract` instead.
            - Requires `cuQuantum Python`_ (v22.03+).
 
        - If :envvar:`CUPY_ACCELERATORS` includes ``cutensor``, `einsum` will be
