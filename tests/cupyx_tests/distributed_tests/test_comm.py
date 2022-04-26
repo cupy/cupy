@@ -107,6 +107,24 @@ class TestNCCLBackendWithMPI(TestNCCLBackend):
 
 
 @pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
+@testing.multi_gpu(2)
+class TestNCCLBackendSparse:
+    def _run_test(self, test, dtype):
+        _run_test(test, dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_send_and_recv(self, dtype):
+        self._run_test('sparse_send_and_recv', dtype)
+
+
+@pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
+@testing.multi_gpu(2)
+class TestNCCLBackendSparseWithMPI(TestNCCLBackendSparse):
+    def _run_test(self, test, dtype):
+        _run_test_with_mpi(test, dtype)
+
+
+@pytest.mark.skipif(not nccl_available, reason='nccl is not installed')
 class TestInitDistributed(unittest.TestCase):
 
     @testing.multi_gpu(2)

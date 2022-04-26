@@ -1,5 +1,6 @@
 import sys
 import time
+import warnings
 
 import cupy
 from cupy import cuda
@@ -9,6 +10,8 @@ from cupy import testing
 from cupyx.distributed import init_process_group
 from cupyx.distributed._nccl_comm import NCCLBackend
 from cupyx.distributed._store import ExceptionAwareProcess
+from cupyx.scipy import sparse
+
 
 nccl_available = nccl.available
 
@@ -313,6 +316,43 @@ def init(use_mpi=False):
         run_init(MPI.COMM_WORLD.Get_rank(), dtype, False)
     else:
         _launch_workers(run_init)
+
+
+def _make_sparse(dtype):
+    data = cupy.array([0, 1, 2, 3], dtype)
+    indices = cupy.array([0, 1, 3, 2], 'i')
+    indptr = cupy.array([0, 2, 3, 4], 'i')
+    return sparse.csr_matrix((data, indices, indptr), shape=(3, 4))
+
+
+def _make_sparse_empty(dtype):
+    data = cupy.array([0], dtype)
+    indices = cupy.array([0], 'i')
+    indptr = cupy.array([0], 'i')
+    return sparse.csr_matrix((data, indices, indptr), shape=(0, 0))
+
+
+def sparse_send_and_recv(dtype, use_mpi=False):
+    def run_send_and_recv(rank, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = _make_sparse(dtype)
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        if rank == 0:
+            comm.send(in_array, 1)
+        else:
+            comm.recv(out_array, 0)
+            testing.assert_allclose(out_array.todense(), in_array.todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
+    else:
+        _launch_workers(run_send_and_recv, (dtype,))
 
 
 if __name__ == '__main__':
