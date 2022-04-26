@@ -4,6 +4,8 @@ import operator
 import string
 import warnings
 
+import numpy
+
 import cupy
 from cupy._core import _accelerator
 from cupy import _util
@@ -444,6 +446,47 @@ def _tuple_sorted_by_0(zs):
     return tuple(i for _, i in sorted(zs))
 
 
+def einsum_path(*operands, optimize='greedy'):
+    """einsum_path(subscripts, *operands, optimize=False)
+
+    Parameters
+    ----------
+    subscripts : str
+        Specifies the subscripts for summation.
+    operands : sequence of arrays
+        These are the arrays for the operation.
+    optimize
+        Valid options include {`False`, `True`, 'greedy', 'optimal'}.
+        Controls if intermediate optimization should occur. If `False`, no
+        optimization will occur, and `True` will default to the 'greedy'
+        algorithm. Also accepts an explicit contraction list in the same
+        format as returned by :func:`numpy.einsum_path`. Defaults to
+        `False`. If a pair is supplied, the second argument is assumed to
+        be the maximum intermediate size created.
+
+    Returns
+    -------
+    path : list of tuples
+        A list representation of the einsum path.
+    string_repr : str
+        A printable representation of the einsum path.
+    """
+    args = _get_einsum_operands(operands)
+    # create dummy NumPy arrays to bypass the __array_function__ dispatcher
+    operands = [numpy.broadcast_to(0, arr.shape) for arr in args[1]]
+
+    if len(args) == 2:
+        out = numpy.einsum_path(args[0], *operands, optimize=optimize)
+    elif len(args) == 3:
+        inputs = [i for pair in zip(operands, args[0]) for i in pair]
+        if args[2] is not None:
+            inputs.append(args[2])
+        out = numpy.einsum_path(*inputs, optimize=optimize)
+    else:
+        assert False
+    return out
+
+
 def einsum(*operands, **kwargs):
     """einsum(subscripts, *operands, dtype=None, optimize=False)
 
@@ -479,7 +522,7 @@ def einsum(*operands, **kwargs):
             Controls if intermediate optimization should occur. No optimization
             will occur if `False`, and `True` will default to the 'greedy'
             algorithm. Also accepts an explicit contraction list from
-            :func:`numpy.einsum_path`. Defaults to `False`. If a pair is
+            :func:`einsum_path`. Defaults to `False`. If a pair is
             supplied, the second argument is assumed to be the maximum
             intermediate size created.
 

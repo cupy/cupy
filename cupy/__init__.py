@@ -467,6 +467,7 @@ from numpy import set_string_function  # NOQA
 # Linear algebra
 # -----------------------------------------------------------------------------
 from cupy.linalg._einsum import einsum  # NOQA
+from cupy.linalg._einsum import einsum_path  # NOQA
 
 from cupy.linalg._product import cross  # NOQA
 from cupy.linalg._product import dot  # NOQA
