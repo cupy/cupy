@@ -63,7 +63,7 @@ jobs:
       run: |
         pip install mypy types-setuptools
         pushd install
-        mypy cupy_builder
+        mypy cupy_builder universal_pkg
 
     - name: Test - CI Tools
       run: |
