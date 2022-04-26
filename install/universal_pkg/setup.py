@@ -61,7 +61,6 @@ def _get_version_from_library(
             break
         except Exception as e:
             _log(f'Failed to open {libname}: {e}')
-            return None
     else:
         _log('No more candidate library to find')
         return None
