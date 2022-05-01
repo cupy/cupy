@@ -99,7 +99,7 @@ class TestPoly1dInit:
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
     def test_poly1d_roots(self, xp, dtype):
         a = testing.shaped_arange((4,), xp, dtype)
         out = xp.poly1d(a, True, variable=self.variable)

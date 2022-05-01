@@ -80,9 +80,9 @@ def convolve(a, v, mode='full'):
 def _fft_convolve(a1, a2, mode):
 
     offset = 0
-    if a1.size < a2.size:
+    if a1.shape[-1] < a2.shape[-1]:
         a1, a2 = a2, a1
-        offset = 1 - a2.size % 2
+        offset = 1 - a2.shape[-1] % 2
 
     # if either of them is complex, the dtype after multiplication will also be
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
@@ -91,7 +91,7 @@ def _fft_convolve(a1, a2, mode):
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
 
     dtype = cupy.result_type(a1, a2)
-    n1, n2 = a1.size, a2.size
+    n1, n2 = a1.shape[-1], a2.shape[-1]
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
     fa1 = fft(a1, out_size)
     fa2 = fft(a2, out_size)
@@ -108,7 +108,7 @@ def _fft_convolve(a1, a2, mode):
         raise ValueError(
             'acceptable mode flags are `valid`, `same`, or `full`.')
 
-    out = out[start:end]
+    out = out[..., start:end]
 
     if dtype.kind in 'iu':
         out = cupy.around(out)

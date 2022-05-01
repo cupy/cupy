@@ -34,16 +34,6 @@ def _wraps_polyroutine(func):
     return functools.update_wrapper(wrapper, func)
 
 
-def _fft_poly(seq):
-    n = seq.shape[0]
-    if n == 1:
-        return seq[0]
-    if n == 2:
-        return cupy._math.misc._fft_convolve(seq[0], seq[1], 'full')
-    return cupy._math.misc._fft_convolve(_fft_poly(seq[:n/2]),
-                                        _fft_poly(seq[n/2:]), 'full')
-
-
 def poly(seq_of_zeros):
     """Computes the coefficients of a polynomial with the given roots sequence.
 
@@ -77,7 +67,14 @@ def poly(seq_of_zeros):
     if x.size == 0:
         return 1.0
 
-    return _fft_poly(cupy.column_stack((cupy.ones(x.size, x.dtype), -x)))
+    size = 2 ** (x.size - 1).bit_length()
+    a = cupy.zeros((size, 2), x.dtype)
+    a[:, 0].fill(1)
+    cupy.negative(x, out=a[:x.size, 1])
+    while size > 1:
+        size = size // 2
+        a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    return a[0, :x.size + 1]
 
 
 @_wraps_polyroutine
