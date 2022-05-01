@@ -29,7 +29,7 @@ no_complex_types = [numpy.bool_] + float_types + int_types
         'nargs': [2],
         'name': [
             'add', 'multiply', 'divide', 'power', 'subtract', 'true_divide',
-            'floor_divide', 'fmod', 'remainder'],
+            'floor_divide', 'float_power', 'fmod', 'remainder'],
     })
 ))
 class TestArithmeticRaisesWithNumpyInput:
@@ -191,7 +191,7 @@ class ArithmeticBinaryBase:
         dtype1 = np1.dtype
         dtype2 = np2.dtype
 
-        if self.name == 'power':
+        if self.name == 'power' or self.name == 'float_power':
             # TODO(niboshi): Fix this: power(0, 1j)
             #     numpy => 1+0j
             #     cupy => 0j
@@ -228,7 +228,8 @@ class ArithmeticBinaryBase:
         # TODO(niboshi): Fix this. If rhs is a Python complex,
         #    numpy returns complex64
         #    cupy returns complex128
-        if xp is cupy and isinstance(arg2, complex):
+        if (xp is cupy and isinstance(arg2, complex)
+                and self.name != 'float_power'):
             if dtype1 in (numpy.float16, numpy.float32):
                 y = y.astype(numpy.complex64)
 
@@ -255,7 +256,7 @@ class ArithmeticBinaryBase:
         'arg2': [testing.shaped_reverse_arange((2, 3), numpy, dtype=d)
                  for d in all_types
                  ] + [0, 0.0, 0j, 2, 2.0, 2j, True, False],
-        'name': ['add', 'multiply', 'power', 'subtract'],
+        'name': ['add', 'multiply', 'power', 'subtract', 'float_power'],
     }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in negative_types
@@ -290,7 +291,7 @@ class TestArithmeticBinary(ArithmeticBinaryBase):
                  for d in float_types] + [0.0, 2.0, -2.0],
         'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
                  for d in float_types] + [0.0, 2.0, -2.0],
-        'name': ['power', 'true_divide', 'subtract'],
+        'name': ['power', 'true_divide', 'subtract', 'float_power'],
         'dtype': [numpy.float64],
         'use_dtype': [True, False],
     }) + testing.product({

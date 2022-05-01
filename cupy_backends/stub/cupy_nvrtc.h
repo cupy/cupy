@@ -48,6 +48,14 @@ nvrtcResult nvrtcGetCUBIN(...) {
     return NVRTC_SUCCESS;
 }
 
+nvrtcResult nvrtcGetNVVMSize(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetNVVM(...) {
+    return NVRTC_SUCCESS;
+}
+
 nvrtcResult nvrtcGetNumSupportedArchs(...) {
     return NVRTC_SUCCESS;
 }

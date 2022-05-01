@@ -120,7 +120,7 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('53', '62', '72')
+_tegra_archs = ('32', '53', '62', '72')
 
 
 @_util.memoize()
@@ -452,7 +452,7 @@ def get_cache_dir():
     return os.environ.get('CUPY_CACHE_DIR', _default_cache_dir)
 
 
-_empty_file_preprocess_cache = {}
+_empty_file_preprocess_cache: dict = {}
 
 
 def compile_with_cache(*args, **kwargs):
@@ -695,6 +695,8 @@ class _NVRTCProgram(object):
                 return nvrtc.getCUBIN(self.ptr), mapping
             elif self.method == 'ptx':
                 return nvrtc.getPTX(self.ptr), mapping
+            # TODO(leofang): support JIT LTO using nvrtc.getNVVM()?
+            # need -dlto and -arch=compute_XX
             else:
                 raise RuntimeError('Unknown NVRTC compile method')
         except nvrtc.NVRTCError:
@@ -764,12 +766,20 @@ def _preprocess_hipcc(source, options):
 
 def _preprocess_hiprtc(source, options):
     # source is ignored
-    prog = _NVRTCProgram(
+    if _cuda_hip_version >= 40400000:
+        # HIP runtime headers can be no longer explicitly included on ROCm 4.5+
+        code = '''
+        // hiprtc segfaults if the input code is empty
+        __global__ void _cupy_preprocess_dummy_kernel_() { }
         '''
+    else:
+        code = '''
         // hiprtc segfaults if the input code is empty
         #include <hip/hip_runtime.h>
         __global__ void _cupy_preprocess_dummy_kernel_() { }
-        ''')
+        '''
+
+    prog = _NVRTCProgram(code)
     try:
         result, _ = prog.compile(options)
     except CompileException as e:
@@ -786,7 +796,12 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    if (not is_hiprtc) or (is_hiprtc and _cuda_hip_version >= 402):
+    if not is_hiprtc:
+        return '#include <hip/hip_runtime.h>\n' + source
+    if _cuda_hip_version >= 40400000:
+        # HIP runtime headers can be no longer explicitly included on ROCm 4.5+
+        return source
+    if _cuda_hip_version >= 402:
         # "-I" is fixed on ROCm 4.2.0+
         return '#include <hip/hip_runtime.h>\n' + source
 

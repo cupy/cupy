@@ -1,5 +1,6 @@
 import contextlib
 import inspect
+from typing import Callable
 import unittest
 from unittest import mock
 import warnings
@@ -16,7 +17,7 @@ from cupy.testing._pytest_impl import is_available
 
 if is_available():
     import pytest
-    _skipif = pytest.mark.skipif
+    _skipif: Callable[..., Callable[[Callable], Callable]] = pytest.mark.skipif
 else:
     _skipif = unittest.skipIf
 

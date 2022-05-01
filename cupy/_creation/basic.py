@@ -113,7 +113,7 @@ def eye(N, M=None, k=0, dtype=float, order='C'):
     ret = zeros((N, M), dtype=dtype, order=order)
     if k <= -N or k >= M:
         return ret
-    ret.diagonal(k)[:] = 1
+    ret.diagonal(k).fill(1)
     return ret
 
 
@@ -273,7 +273,7 @@ def full(shape, fill_value, dtype=None, order='C'):
         else:
             dtype = numpy.array(fill_value).dtype
     a = cupy.ndarray(shape, dtype, order=order)
-    a.fill(fill_value)
+    cupy.copyto(a, fill_value, casting='unsafe')
     return a
 
 
@@ -310,5 +310,5 @@ def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
                                                          shape)
     shape = shape if shape else a.shape
     a = cupy.ndarray(shape, dtype, memptr, strides, order)
-    a.fill(fill_value)
+    cupy.copyto(a, fill_value, casting='unsafe')
     return a

@@ -34,3 +34,9 @@ class TestFormatting(unittest.TestCase):
         b = testing.shaped_arange((1,), numpy)
         assert cupy.format_float_positional(
             a) == numpy.format_float_positional(b)
+
+    def test_format_float_scientific(self):
+        a = testing.shaped_arange((1,), cupy)
+        b = testing.shaped_arange((1,), numpy)
+        assert cupy.format_float_scientific(
+            a) == numpy.format_float_scientific(b)

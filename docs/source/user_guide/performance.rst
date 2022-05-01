@@ -54,7 +54,7 @@ Context Initialization
 ......................
 
 It may take several seconds when calling a CuPy function for the first time in a process.
-This is because CUDA driver creates a CUDA context during the first CUDA API call in CUDA applications.
+This is because the CUDA driver creates a CUDA context during the first CUDA API call in CUDA applications.
 
 Kernel Compilation
 ..................
@@ -105,6 +105,9 @@ depending on the data layout. In particular, the CUB reduction only supports red
 contiguous axes.
 In any case, we recommend to perform some benchmarks to determine whether CUB/cuTENSOR offers
 better performance or not.
+
+.. note::
+   CuPy v11 and above uses CUB by default. To turn it off, you need to explicitly specify the environment variable ``CUPY_ACCELERATORS=""``.
 
 
 Overlapping work using streams

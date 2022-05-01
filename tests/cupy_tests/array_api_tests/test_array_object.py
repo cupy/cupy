@@ -98,7 +98,7 @@ def test_operators():
         "__mul__": "numeric",
         "__ne__": "all",
         "__or__": "integer_or_boolean",
-        "__pow__": "floating",
+        "__pow__": "numeric",
         "__rshift__": "integer",
         "__sub__": "numeric",
         "__truediv__": "floating",
@@ -305,3 +305,11 @@ def test_array_properties():
     assert a.mT.shape == (1, 3, 2)
     assert isinstance(b.mT, Array)
     assert b.mT.shape == (3, 2)
+
+
+def test___array__():
+    a = ones((2, 3), dtype=int16)
+    assert cp.asarray(a) is a._array
+    b = cp.asarray(a, dtype=cp.float64)
+    assert cp.all(cp.equal(b, cp.ones((2, 3), dtype=cp.float64)))
+    assert b.dtype == cp.float64

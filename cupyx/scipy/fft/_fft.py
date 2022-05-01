@@ -31,7 +31,7 @@ else:
 # Backend support for scipy.fft
 
 __ua_domain__ = 'numpy.scipy.fft'
-_implemented = {}
+_implemented: dict = {}
 
 
 def __ua_convert__(dispatchables, coerce):

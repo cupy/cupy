@@ -509,7 +509,7 @@ cpdef ndarray tensordot_core(
             b = _internal_ascontiguousarray(b)
         _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
         if copy_to_out is not None:
-            out[...] = copy_to_out
+            elementwise_copy(copy_to_out, out)
         return out
 
     global _cuda_runtime_version
@@ -523,7 +523,7 @@ cpdef ndarray tensordot_core(
     ):
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         if copy_to_out is not None:
-            out[...] = copy_to_out
+            elementwise_copy(copy_to_out, out)
         return out
 
     handle = device.get_cublas_handle()
@@ -586,7 +586,7 @@ cpdef ndarray tensordot_core(
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
     if copy_to_out is not None:
-        out[...] = copy_to_out
+        elementwise_copy(copy_to_out, out)
     return out
 
 

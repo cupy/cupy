@@ -1307,7 +1307,7 @@ class TestCsrMatrixSum:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1529,7 +1529,7 @@ class TestCsrMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1552,7 +1552,7 @@ class TestCsrMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1798,7 +1798,7 @@ class TestCubSpmv:
             return m * x
 
         # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
+        func = 'cupyx.scipy.sparse._csr.cub.device_csrmv'
         with testing.AssertFunctionIsCalled(func):
             m * x
         # ...then perform the actual computation

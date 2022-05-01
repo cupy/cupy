@@ -42,20 +42,24 @@ cdef extern from *:
     ctypedef int Order 'cusparseOrder_t'
     ctypedef int SpMVAlg 'cusparseSpMVAlg_t'
     ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
+    ctypedef int SpGEMMAlg 'cusparseSpGEMMAlg_t'
     ctypedef int DataType 'cudaDataType'
 
     ctypedef void* SpVecDescr 'cusparseSpVecDescr_t'
     ctypedef void* DnVecDescr 'cusparseDnVecDescr_t'
     ctypedef void* SpMatDescr 'cusparseSpMatDescr_t'
     ctypedef void* DnMatDescr 'cusparseDnMatDescr_t'
+    ctypedef void* SpGEMMDescr 'cusparseSpGEMMDescr_t'
 
     ctypedef void* cusparseSpVecDescr_t
     ctypedef void* cusparseDnVecDescr_t
     ctypedef void* cusparseSpMatDescr_t
     ctypedef void* cusparseDnMatDescr_t
+    ctypedef void* cusparseSpGEMMDescr_t
 
     ctypedef int cusparseSparseToDenseAlg_t
     ctypedef int cusparseDenseToSparseAlg_t
+    ctypedef int cusparseSpGEMMAlg_t
 
     # CSR2CSC
     ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
@@ -123,6 +127,9 @@ cpdef enum:
     # CSR2CSC
     CUSPARSE_CSR2CSC_ALG1 = 1  # faster than ALG2 (in general), deterministc
     CUSPARSE_CSR2CSC_ALG2 = 2  # low memory requirement, non-deterministc
+
+    # ...
+    CUSPARSE_SPGEMM_DEFAULT = 0
 
     # cusparseSparseToDenseAlg_t
     CUSPARSE_SPARSETODENSE_ALG_DEFAULT = 0

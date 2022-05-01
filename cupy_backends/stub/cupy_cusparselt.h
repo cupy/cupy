@@ -14,7 +14,9 @@ typedef enum {} cudaDataType;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseOperation_t;
 typedef enum {} cusparseLtSparsity_t;
+typedef enum {} cusparseLtMatDescAttribute_t;
 typedef enum {} cusparseComputeType;
+typedef enum {} cusparseLtMatmulDescAttribute_t;
 typedef enum {} cusparseLtMatmulAlg_t;
 typedef enum {} cusparseLtMatmulAlgAttribute_t;
 typedef enum {} cusparseLtPruneAlg_t;
@@ -46,7 +48,23 @@ cusparseStatus_t cusparseLtMatDescriptorDestroy(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseLtMatDescSetAttribute(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtMatDescGetAttribute(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseLtMatmulDescriptorInit(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtMatmulDescSetAttribute(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtMatmulDescGetAttribute(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 

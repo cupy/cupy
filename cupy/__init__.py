@@ -16,15 +16,15 @@ _environment._preload_library('nccl')  # NOQA
 
 try:
     from cupy import _core  # NOQA
-except ImportError as e:
+except ImportError as exc:
     raise ImportError(f'''
 ================================================================
 {_environment._diagnose_import_error()}
 
 Original error:
-  {type(e).__name__}: {e}
+  {type(exc).__name__}: {exc}
 ================================================================
-''') from e
+''') from exc
 
 
 from cupy import cuda  # NOQA
@@ -442,6 +442,7 @@ from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
 from cupy._io.formatting import array2string  # NOQA
 from cupy._io.formatting import format_float_positional  # NOQA
+from cupy._io.formatting import format_float_scientific  # NOQA
 
 from cupy._io.text import savetxt  # NOQA
 
@@ -489,6 +490,8 @@ from cupy._logic.comparison import isclose  # NOQA
 from cupy._logic.content import isfinite  # NOQA
 from cupy._logic.content import isinf  # NOQA
 from cupy._logic.content import isnan  # NOQA
+from cupy._logic.content import isneginf  # NOQA
+from cupy._logic.content import isposinf  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
@@ -500,7 +503,9 @@ from cupy._logic.type_test import isreal  # NOQA
 from cupy._logic.type_test import isrealobj  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import intersect1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
+from cupy._logic.truth import setdiff1d  # NOQA
 from cupy._logic.truth import union1d  # NOQA
 
 
@@ -623,6 +628,7 @@ from cupy._math.arithmetic import add  # NOQA
 from cupy._math.arithmetic import divide  # NOQA
 from cupy._math.arithmetic import divmod  # NOQA
 from cupy._math.arithmetic import floor_divide  # NOQA
+from cupy._math.arithmetic import float_power  # NOQA
 from cupy._math.arithmetic import fmod  # NOQA
 from cupy._math.arithmetic import modf  # NOQA
 from cupy._math.arithmetic import multiply  # NOQA
@@ -652,6 +658,7 @@ from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
+from cupy._math.misc import real_if_close  # NOQA
 from cupy._math.misc import sign  # NOQA
 from cupy._math.misc import sqrt  # NOQA
 from cupy._math.misc import square  # NOQA
