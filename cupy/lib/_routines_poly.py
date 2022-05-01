@@ -34,6 +34,53 @@ def _wraps_polyroutine(func):
     return functools.update_wrapper(wrapper, func)
 
 
+def _fft_poly(seq):
+    n = seq.shape[0]
+    if n == 1:
+        return seq[0]
+    if n == 2:
+        return cupy.math.misc._fft_convolve(seq[0], seq[1], 'full')
+    return cupy.math.misc._fft_convolve(_fft_poly(seq[:n/2]),
+                                        _fft_poly(seq[n/2:]), 'full')
+
+
+def poly(seq):
+    """Computes the coefficients of a polynomial with the given roots sequence.
+
+    Args:
+        seq (cupy.ndarray): a sequence of polynomial roots.
+
+    Returns:
+        cupy.ndarray: polynomial coefficients from highest to lowest degree.
+
+    .. warning::
+
+        This function doesn't support general 2d square arrays currently.
+        Only complex Hermitian and real symmetric 2d arrays are allowed.
+
+    .. seealso:: :func:`numpy.poly`
+
+    """
+    if seq.ndim == 2 and seq.shape[0] == seq.shape[1] and seq.shape[0] != 0:
+        if cupy.array_equal(seq, seq.conj().T):
+            seq = cupy.linalg.eigvalsh(seq)
+        else:
+            raise NotImplementedError('Only complex Hermitian and real '
+                                      'symmetric 2d arrays are supported '
+                                      'currently')
+    elif seq.ndim == 1:
+        seq = seq.astype(cupy.mintypecode(seq.dtype.char), copy=False)
+    elif seq.ndim == 0:
+        raise TypeError('Input must be 1d or non-empty square 2d array.')
+    else:
+        raise ValueError('Input must be 1d or non-empty square 2d array.')
+
+    if seq.size == 0:
+        return 1.0
+
+    return _fft_poly(cupy.column_stack((cupy.ones(seq.size, seq.dtype), -seq)))
+
+
 @_wraps_polyroutine
 def polyadd(a1, a2):
     """Computes the sum of two polynomials.
