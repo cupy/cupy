@@ -102,6 +102,13 @@ _METRIC_ALIAS = dict((alias, info)
 _METRICS_NAMES = list(_METRICS.keys())
 
 
+def minkowski(u, v, p):
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    return pairwise_distance(u, v, output_arr, "minkowski", p)
+
+
 def pdist(X, metric='euclidean', *, out=None, **kwargs):
     """
     Pairwise distances between observations in n-dimensional space.
@@ -404,3 +411,38 @@ def cdist(XA, XB, metric='euclidean', *, out=None, **kwargs):
             raise ValueError('Unknown Distance Metric: %s' % mstr)
     else:
         raise TypeError('2nd argument metric must be a string identifier')
+
+
+def distance_matrix(x, y, p=2):
+    """Compute the distance matrix.
+    Returns the matrix of all pair-wise distances.
+    Parameters
+    ----------
+    x : (M, K) array_like
+        Matrix of M vectors in K dimensions.
+    y : (N, K) array_like
+        Matrix of N vectors in K dimensions.
+    p : float, 1 <= p <= infinity
+        Which Minkowski p-norm to use.
+    Returns
+    -------
+    result : (M, N) ndarray
+        Matrix containing the distance from every vector in `x` to every vector
+        in `y`.
+    Examples
+    --------
+    >>> from cupyx.scipy.spatial import distance_matrix
+    >>> distance_matrix([[0,0],[0,1]], [[1,0],[1,1]])
+    array([[ 1.        ,  1.41421356],
+           [ 1.41421356,  1.        ]])
+    """
+
+    x = cupy.asarray(x)
+    m, k = x.shape
+    y = cupy.asarray(y)
+    n, kk = y.shape
+
+    if k != kk:
+        raise ValueError("x contains %d-dimensional vectors but y contains %d-dimensional vectors" % (k, kk))
+
+    return cdist(x, y, metric="minkowski", p)
