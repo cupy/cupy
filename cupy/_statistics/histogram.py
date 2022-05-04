@@ -551,7 +551,19 @@ def bincount(x, weights=None, minlength=None):
 
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
-        _bincount_kernel(x, b)
+        #_bincount_kernel(x, b)
+
+        for accelerator in _accelerator.get_routine_accelerators():
+            # CUB uses int for bin counts
+            # TODO(leofang): support >= 2^31 elements in x?
+            if (accelerator == _accelerator.ACCELERATOR_CUB
+                    and x.size <= 0x7fffffff and size <= 0x7fffffff):
+                bin_edges = cupy.arange(0, size+1, dtype=cupy.float64)
+                bin_edges -= 0.001
+                b = cub.device_histogram(x, bin_edges, b)
+                break
+        else:
+            _bincount_kernel(x, b)
     else:
         b = cupy.zeros((size,), dtype=numpy.float64)
         _bincount_with_weight_kernel(x, weights, b)
