@@ -715,6 +715,25 @@ struct _cub_histogram_range {
     }
 };
 
+//
+// **** CUB histogram even ****
+//
+struct _cub_histogram_even {
+    template <typename sampleT>
+    void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
+        int& n_bins, int& lower, int& upper, size_t n_samples, cudaStream_t s) const
+    {
+        // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
+        // The If and Equals templates are from cub/util_type.cuh.
+        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
+                            int,
+                            sampleT>::Type h_sampleT;
+        int num_samples = n_samples;
+        static_assert(sizeof(long long) == sizeof(intptr_t), "not supported");
+        DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),
+            static_cast<long long*>(output), n_bins, lower, upper, num_samples, s);
+    }
+};
 
 //
 // APIs exposed to CuPy
@@ -870,5 +889,22 @@ size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bin
     size_t workspace_size = 0;
     cub_device_histogram_range(NULL, workspace_size, x, y, n_bins, bins, n_samples,
                                stream, dtype_id);
+    return workspace_size;
+}
+
+void cub_device_histogram_even(void* workspace, size_t& workspace_size, void* x, void* y,
+    int n_bins, int lower, int upper, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
+    return dtype_dispatcher(dtype_id, _cub_histogram_even(),
+                            workspace, workspace_size, x, y, n_bins, lower, upper, n_samples, stream);
+}
+
+size_t cub_device_histogram_even_get_workspace_size(void* x, void* y, int n_bins,
+    int lower, int upper, size_t n_samples, cudaStream_t stream, int dtype_id)
+{
+    size_t workspace_size = 0;
+    cub_device_histogram_even(NULL, workspace_size, x, y, n_bins, lower, upper, n_samples,
+                              stream, dtype_id);
     return workspace_size;
 }

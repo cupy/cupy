@@ -246,7 +246,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                     acc_bin_edge[-1] = cupy.nextafter(last, last + 1)
                 if runtime.is_hip:
                     y = y.astype(cupy.uint64, copy=False)
-                y = cub.device_histogram(x, acc_bin_edge, y)
+                y = cub.device_histogram(x, y, acc_bin_edge)
                 if runtime.is_hip:
                     y = y.astype(cupy.int64, copy=False)
                 break
@@ -551,16 +551,13 @@ def bincount(x, weights=None, minlength=None):
 
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
-        #_bincount_kernel(x, b)
 
         for accelerator in _accelerator.get_routine_accelerators():
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
             if (accelerator == _accelerator.ACCELERATOR_CUB
                     and x.size <= 0x7fffffff and size <= 0x7fffffff):
-                bin_edges = cupy.arange(0, size+1, dtype=cupy.float64)
-                bin_edges -= 0.001
-                b = cub.device_histogram(x, bin_edges, b)
+                b = cub.device_histogram(x, b, size+1)
                 break
         else:
             _bincount_kernel(x, b)
