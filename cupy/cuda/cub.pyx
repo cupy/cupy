@@ -368,11 +368,11 @@ def device_histogram(ndarray x, ndarray y, bins):
         bins = _internal_ascontiguousarray(bins)
         bins_ptr = <void*><intptr_t>bins.data.ptr
         n_bins = bins.size
-        assert y.size == n_bins - 1
         is_even = False
     else:
         n_bins = bins
         is_even = True
+    assert y.size == n_bins - 1
 
     x_ptr = <void*>x.data.ptr
     y_ptr = <void*>y.data.ptr
@@ -382,7 +382,7 @@ def device_histogram(ndarray x, ndarray y, bins):
 
     if is_even:
         ws_size = cub_device_histogram_even_get_workspace_size(
-            x_ptr, y_ptr, n_bins, 0, n_bins, n_samples, s, dtype_id)
+            x_ptr, y_ptr, n_bins, 0, n_bins-1, n_samples, s, dtype_id)
     else:
         ws_size = cub_device_histogram_range_get_workspace_size(
             x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
@@ -392,7 +392,7 @@ def device_histogram(ndarray x, ndarray y, bins):
     with nogil:
         if is_even:
             cub_device_histogram_even(
-                ws_ptr, ws_size, x_ptr, y_ptr, n_bins, 0, n_bins,
+                ws_ptr, ws_size, x_ptr, y_ptr, n_bins, 0, n_bins-1,
                 n_samples, s, dtype_id)
         else:
             cub_device_histogram_range(
