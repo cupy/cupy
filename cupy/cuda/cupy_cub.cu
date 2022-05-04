@@ -895,9 +895,10 @@ size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bin
 void cub_device_histogram_even(void* workspace, size_t& workspace_size, void* x, void* y,
     int n_bins, int lower, int upper, size_t n_samples, cudaStream_t stream, int dtype_id)
 {
-    // TODO(leofang): n_samples is of type size_t, but if it's < 2^31 we cast it to int later
+    #ifndef CUPY_USE_HIP
     return dtype_dispatcher(dtype_id, _cub_histogram_even(),
                             workspace, workspace_size, x, y, n_bins, lower, upper, n_samples, stream);
+    #endif
 }
 
 size_t cub_device_histogram_even_get_workspace_size(void* x, void* y, int n_bins,

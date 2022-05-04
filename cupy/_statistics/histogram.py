@@ -555,7 +555,8 @@ def bincount(x, weights=None, minlength=None):
         for accelerator in _accelerator.get_routine_accelerators():
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
-            if (accelerator == _accelerator.ACCELERATOR_CUB
+            if (not runtime.is_hip
+                    and accelerator == _accelerator.ACCELERATOR_CUB
                     and x.size <= 0x7fffffff and size <= 0x7fffffff):
                 b = cub.device_histogram(x, b, size+1)
                 break
