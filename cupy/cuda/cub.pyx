@@ -374,6 +374,8 @@ def device_histogram(ndarray x, ndarray y, bins):
         is_even = True
         if runtime._is_hip_environment:
             raise RuntimeError("not supported yet")
+        if x.dtype.kind not in 'bui':
+            raise ValueError("only integer input is supported")
     assert y.size == n_bins - 1
 
     x_ptr = <void*>x.data.ptr
