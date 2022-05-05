@@ -723,15 +723,16 @@ struct _cub_histogram_even {
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
         int& n_bins, int& lower, int& upper, size_t n_samples, cudaStream_t s) const
     {
-        // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
-        // The If and Equals templates are from cub/util_type.cuh.
-        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
-                            int,
-                            sampleT>::Type h_sampleT;
+        #ifndef CUPY_USE_HIP
+        // Ugly hack to avoid specializing numerical types
+        typedef typename If<std::is_integral<sampleT>::value, sampleT, int>::Type h_sampleT;
         int num_samples = n_samples;
         static_assert(sizeof(long long) == sizeof(intptr_t), "not supported");
         DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),
             static_cast<long long*>(output), n_bins, lower, upper, num_samples, s);
+        #else
+        throw std::runtime_error("HIP is not supported yet");
+        #endif
     }
 };
 
