@@ -75,7 +75,7 @@ class TestCdist(unittest.TestCase):
     'dtype': ['float32', 'float64'],
     'rows': [20, 100],
     'cols': [20, 100],
-    'p': [2.0],
+    'p': [1.0, 2.0, 3.0],
     'order': ["C", "F"]
 }))
 @unittest.skipUnless(scipy_available and pylibraft_available,
