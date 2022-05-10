@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import cupy
 try:
     import scipy.spatial  # NOQA
     import scipy.spatial.distance  # NOQA
@@ -20,10 +21,10 @@ from cupy import testing
 @testing.with_requires("scipy")
 @testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64'],
-    'rows': [5, 10, 20],
-    'cols': [5, 10, 20],
+    'rows': [20, 100],
+    'cols': [20, 100],
     'metric': ['euclidean', 'cityblock', 'canberra', 'chebyshev',
-               'hamming', 'correlation']
+               'hamming', 'correlation', 'jensenshannon', 'russellrao']
 }))
 @unittest.skipUnless(scipy_available and pylibraft_available,
                      'requires scipy and pylibcugraph')
@@ -37,6 +38,25 @@ class TestCdist(unittest.TestCase):
     def test_cdist_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype)
+
+        # RussellRao expects boolean arrays
+        if self.metric == "russellrao":
+            a[a < 0.5] = 0
+            a[a >= 0.5] = 1
+
+        # JensenShannon expects probability arrays
+        elif self.metric == "jensenshannon":
+            a_n = a
+            if xp == cupy:
+                a_n = a_n.get()
+
+            # l1 normalization is different between cupy and numpy
+            # so use numpy.
+            norm = numpy.sum(a_n, axis=1)
+            a = (a_n.T / norm).T
+            if xp == cupy:
+                a = cupy.asarray(a)
+
         out = scp.spatial.distance.cdist(a, a, metric=self.metric).astype(self.dtype)
 
         print(str(out.shape))

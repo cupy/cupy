@@ -386,8 +386,8 @@ def cdist(XA, XB, metric='euclidean', *, out=None, **kwargs):
            [ 2.1],
            [ 2.3]])
     """
-    XA = cupy.asarray(XA)
-    XB = cupy.asarray(XB)
+    XA = cupy.asarray(XA, dtype='float32')
+    XB = cupy.asarray(XB, dtype='float32')
 
     s = XA.shape
     sB = XB.shape
