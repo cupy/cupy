@@ -24,7 +24,9 @@ from cupy import testing
     'rows': [20, 100],
     'cols': [20, 100],
     'metric': ['euclidean', 'cityblock', 'canberra', 'chebyshev',
-               'hamming', 'correlation', 'jensenshannon', 'russellrao']
+               'hamming', 'correlation', 'jensenshannon', 'russellrao',
+               "minkowski"],
+    'p': [2.0]
 }))
 @unittest.skipUnless(scipy_available and pylibraft_available,
                      'requires scipy and pylibcugraph')
@@ -57,7 +59,10 @@ class TestCdist(unittest.TestCase):
             if xp == cupy:
                 a = cupy.asarray(a)
 
-        out = scp.spatial.distance.cdist(a, a, metric=self.metric).astype(self.dtype)
+        if self.metric == 'minkowski':
+            out = scp.spatial.distance.cdist(a, a, metric=self.metric, p=self.p).astype(self.dtype)
+        else:
+            out = scp.spatial.distance.cdist(a, a, metric=self.metric).astype(self.dtype)
 
         print(str(out.shape))
         return out
