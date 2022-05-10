@@ -26,20 +26,21 @@ from cupy import testing
     'metric': ['euclidean', 'cityblock', 'canberra', 'chebyshev',
                'hamming', 'correlation', 'jensenshannon', 'russellrao',
                "minkowski"],
-    'p': [2.0]
+    'p': [2.0],
+    'order': ["C", "F"]
 }))
 @unittest.skipUnless(scipy_available and pylibraft_available,
                      'requires scipy and pylibcugraph')
 class TestCdist(unittest.TestCase):
 
-    def _make_matrix(self, xp, dtype):
+    def _make_matrix(self, xp, dtype, order):
         shape = (self.rows, self.cols)
-        return testing.shaped_random(shape, xp, dtype=dtype, scale=1)
+        return testing.shaped_random(shape, xp, dtype=dtype, scale=1, order=order)
 
     @testing.numpy_cupy_array_almost_equal(decimal=4, scipy_name='scp')
     def test_cdist_(self, xp, scp):
 
-        a = self._make_matrix(xp, self.dtype)
+        a = self._make_matrix(xp, self.dtype, self.order)
 
         # RussellRao expects boolean arrays
         if self.metric == "russellrao":
