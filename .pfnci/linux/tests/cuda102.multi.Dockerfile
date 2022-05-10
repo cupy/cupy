@@ -2,7 +2,10 @@
 ARG BASE_IMAGE="nvidia/cuda:10.2-devel-ubuntu18.04"
 FROM ${BASE_IMAGE}
 
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub && \
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qqy update && \
+    apt-get -qqy install software-properties-common && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub && \
     add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/ /"
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
