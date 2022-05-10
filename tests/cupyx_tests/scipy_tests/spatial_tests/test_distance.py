@@ -6,13 +6,13 @@ try:
     import scipy.spatial  # NOQA
     import scipy.spatial.distance  # NOQA
     scipy_available = True
-except ImportError:
+except ModuleNotFoundError:
     scipy_available = False
 import cupyx.scipy.spatial.distance  # NOQA
 try:
     import pylibraft  # NOQA
     pylibraft_available = True
-except ImportError:
+except ModuleNotFoundError:
     pylibraft_available = False
 from cupy import testing
 
@@ -93,3 +93,26 @@ class TestDistanceMatrix(unittest.TestCase):
         out = scp.spatial.distance_matrix(a, a, p=self.p).astype(self.dtype)
         return out
 
+
+@testing.gpu
+@testing.with_requires("scipy")
+@testing.parameterize(*testing.product({
+    'dtype': ['float32', 'float64'],
+    'cols': [20, 100],
+    'p': [1.0, 2.0, 3.0],
+    'order': ["C", "F"]
+}))
+@unittest.skipUnless(scipy_available and pylibraft_available,
+                     'requires scipy and pylibcugraph')
+class TestMinkowski(unittest.TestCase):
+
+    def _make_matrix(self, xp, dtype, order):
+        shape = (1, self.cols)
+        return testing.shaped_random(shape, xp, dtype=dtype, scale=1, order=order)
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_minkowski_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.minkowski(a, a, p=self.p)
+        return out

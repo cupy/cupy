@@ -106,7 +106,8 @@ def minkowski(u, v, p):
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
-    return pairwise_distance(u, v, output_arr, "minkowski", p)
+    pairwise_distance(u, v, output_arr, "minkowski", p)
+    return output_arr[0]
 
 
 def cdist(XA, XB, metric='euclidean', *, out=None, **kwargs):
