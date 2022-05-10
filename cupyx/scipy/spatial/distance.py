@@ -28,7 +28,7 @@ def _validate_pdist_input(X, m, n, metric_info, **kwargs):
 
 class MetricInfo:
 
-    def __init__(self, canonical_name, aka, validator=None, types=None):
+    def __init__(self, canonical_name=None, aka=None, validator=None, types=None):
         self.canonical_name_ = canonical_name
         self.aka_ = aka
         self.validator_ = validator
@@ -74,7 +74,7 @@ _METRIC_INFOS = [
         aka={"minkowski", "mi", "m", "pnorm"}
     ),
     MetricInfo(
-        canonincal_name="russellrao",
+        canonical_name="russellrao",
         aka={"russellrao"},
         types=["bool"]
     ),
@@ -94,10 +94,10 @@ _METRIC_INFOS = [
 
 ]
 
-_METRICS = {info.canonical_name: info for info in _METRIC_INFOS}
+_METRICS = {info.canonical_name_: info for info in _METRIC_INFOS}
 _METRIC_ALIAS = dict((alias, info)
                      for info in _METRIC_INFOS
-                     for alias in info.aka)
+                     for alias in info.aka_)
 
 _METRICS_NAMES = list(_METRICS.keys())
 
@@ -229,8 +229,10 @@ def pdist(X, metric='euclidean', *, out=None, **kwargs):
         mstr = metric.lower()
         metric_info = _METRIC_ALIAS.get(mstr, None)
         if metric_info is not None:
+
             output_arr = out if out is not None else cupy.zeros((m, m), dtype=X.dtype)
-            return pairwise_distance(X, X, output_arr, metric)
+            pairwise_distance(X, X, output_arr, metric)
+            return output_arr
         else:
             raise ValueError('Unknown Distance Metric: %s' % mstr)
     else:
@@ -406,7 +408,8 @@ def cdist(XA, XB, metric='euclidean', *, out=None, **kwargs):
         metric_info = _METRIC_ALIAS.get(mstr, None)
         if metric_info is not None:
             output_arr = out if out is not None else cupy.zeros((mA, mB), dtype=XA.dtype)
-            return pairwise_distance(XA, XB, output_arr, metric)
+            pairwise_distance(XA, XB, output_arr, metric)
+            return output_arr
         else:
             raise ValueError('Unknown Distance Metric: %s' % mstr)
     else:
@@ -445,4 +448,4 @@ def distance_matrix(x, y, p=2):
     if k != kk:
         raise ValueError("x contains %d-dimensional vectors but y contains %d-dimensional vectors" % (k, kk))
 
-    return cdist(x, y, metric="minkowski", p)
+    return cdist(x, y, metric="minkowski", p=p)
