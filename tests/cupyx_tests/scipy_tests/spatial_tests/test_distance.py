@@ -67,3 +67,29 @@ class TestCdist(unittest.TestCase):
 
         print(str(out.shape))
         return out
+
+
+@testing.gpu
+@testing.with_requires("scipy")
+@testing.parameterize(*testing.product({
+    'dtype': ['float32', 'float64'],
+    'rows': [20, 100],
+    'cols': [20, 100],
+    'p': [2.0],
+    'order': ["C", "F"]
+}))
+@unittest.skipUnless(scipy_available and pylibraft_available,
+                     'requires scipy and pylibcugraph')
+class TestDistanceMatrix(unittest.TestCase):
+
+    def _make_matrix(self, xp, dtype, order):
+        shape = (self.rows, self.cols)
+        return testing.shaped_random(shape, xp, dtype=dtype, scale=1, order=order)
+
+    @testing.numpy_cupy_array_almost_equal(decimal=4, scipy_name='scp')
+    def test_distance_matrix_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance_matrix(a, a, p=self.p).astype(self.dtype)
+        return out
+
