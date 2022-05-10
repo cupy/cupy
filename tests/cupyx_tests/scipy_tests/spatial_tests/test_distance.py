@@ -21,7 +21,9 @@ from cupy import testing
 @testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64'],
     'rows': [5, 10, 20],
-    'cols': [5, 10, 20]
+    'cols': [5, 10, 20],
+    'metric': ['euclidean', 'cityblock', 'canberra', 'chebyshev',
+               'hamming', 'correlation']
 }))
 @unittest.skipUnless(scipy_available and pylibraft_available,
                      'requires scipy and pylibcugraph')
@@ -35,7 +37,7 @@ class TestCdist(unittest.TestCase):
     def test_cdist_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype)
-        out = scp.spatial.distance.cdist(a, a).astype(self.dtype)
+        out = scp.spatial.distance.cdist(a, a, metric=self.metric).astype(self.dtype)
 
         print(str(out.shape))
         return out
