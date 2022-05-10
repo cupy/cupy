@@ -35,7 +35,8 @@ class TestCdist(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
         shape = (self.rows, self.cols)
-        return testing.shaped_random(shape, xp, dtype=dtype, scale=1, order=order)
+        return testing.shaped_random(shape, xp, dtype=dtype,
+                                     scale=1, order=order)
 
     @testing.numpy_cupy_array_almost_equal(decimal=4, scipy_name='scp')
     def test_cdist_(self, xp, scp):
@@ -61,9 +62,11 @@ class TestCdist(unittest.TestCase):
                 a = cupy.asarray(a)
 
         if self.metric == 'minkowski':
-            out = scp.spatial.distance.cdist(a, a, metric=self.metric, p=self.p).astype(self.dtype)
+            out = scp.spatial.distance.cdist(a, a, metric=self.metric,
+                                             p=self.p).astype(self.dtype)
         else:
-            out = scp.spatial.distance.cdist(a, a, metric=self.metric).astype(self.dtype)
+            out = scp.spatial.distance.cdist(a, a, metric=self.metric)\
+                .astype(self.dtype)
 
         print(str(out.shape))
         return out
@@ -84,7 +87,8 @@ class TestDistanceMatrix(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
         shape = (self.rows, self.cols)
-        return testing.shaped_random(shape, xp, dtype=dtype, scale=1, order=order)
+        return testing.shaped_random(shape, xp, dtype=dtype,
+                                     scale=1, order=order)
 
     @testing.numpy_cupy_array_almost_equal(decimal=4, scipy_name='scp')
     def test_distance_matrix_(self, xp, scp):
@@ -108,7 +112,8 @@ class TestDistanceFunction(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
         shape = (1, self.cols)
-        return testing.shaped_random(shape, xp, dtype=dtype, scale=1, order=order)
+        return testing.shaped_random(shape, xp, dtype=dtype,
+                                     scale=1, order=order)
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_minkowski_(self, xp, scp):

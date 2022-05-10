@@ -1,5 +1,4 @@
 import cupy
-import cupyx.scipy.sparse
 try:
     from pylibraft.distance import pairwise_distance
     pylibraft_available = True
@@ -28,7 +27,8 @@ def _validate_pdist_input(X, m, n, metric_info, **kwargs):
 
 class MetricInfo:
 
-    def __init__(self, canonical_name=None, aka=None, validator=None, types=None):
+    def __init__(self, canonical_name=None, aka=None,
+                 validator=None, types=None):
         self.canonical_name_ = canonical_name
         self.aka_ = aka
         self.validator_ = validator
@@ -321,6 +321,7 @@ def distance_matrix(x, y, p=2):
     n, kk = y.shape
 
     if k != kk:
-        raise ValueError("x contains %d-dimensional vectors but y contains %d-dimensional vectors" % (k, kk))
+        raise ValueError("x contains %d-dimensional vectors but y "
+                         "contains %d-dimensional vectors" % (k, kk))
 
     return cdist(x, y, metric="minkowski", p=p)

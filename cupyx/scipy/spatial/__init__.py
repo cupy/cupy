@@ -1,1 +1,1 @@
-from cupyx.scipy.spatial.distance import distance_matrix
+from cupyx.scipy.spatial.distance import distance_matrix   # NOQA
