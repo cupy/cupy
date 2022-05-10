@@ -104,7 +104,7 @@ class TestDistanceMatrix(unittest.TestCase):
 }))
 @unittest.skipUnless(scipy_available and pylibraft_available,
                      'requires scipy and pylibcugraph')
-class TestMinkowski(unittest.TestCase):
+class TestDistanceFunction(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
         shape = (1, self.cols)
