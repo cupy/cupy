@@ -25,7 +25,7 @@ from cupy import testing
     'cols': [20, 100],
     'metric': ['euclidean', 'cityblock', 'canberra', 'chebyshev',
                'hamming', 'correlation', 'jensenshannon', 'russellrao',
-               "minkowski"],
+               "minkowski", "cosine", "sqeuclidean"],
     'p': [2.0],
     'order': ["C", "F"]
 }))
