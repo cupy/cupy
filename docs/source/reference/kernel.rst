@@ -50,9 +50,7 @@ Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`m
    cupyx.jit.atomic_or
    cupyx.jit.atomic_xor
    cupyx.jit.cg.this_grid
-   cupyx.jit.cg._GridGroup
    cupyx.jit.cg.this_thread_block
-   cupyx.jit.cg._ThreadBlockGroup
    cupyx.jit.cg.sync
    cupyx.jit.cg.memcpy_async
    cupyx.jit.cg.wait
