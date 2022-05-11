@@ -96,7 +96,9 @@ class vectorize(object):
             # defined regardless if CUPY_JIT_MODE is defined or not
             kern = _core.ElementwiseKernel(
                 in_params, out_params, body, 'cupy_vectorize',
-                preamble=result.code, options=('-DCUPY_JIT_MODE',))
+                preamble=result.code,
+                options=('-DCUPY_JIT_MODE', '-std=c++11')
+            )
             self._kernel_cache[itypes] = kern
 
         return kern(*args)

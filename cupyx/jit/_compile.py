@@ -697,6 +697,16 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return Data(f'static_cast<long long>({value.code}.size())',
                             _cuda_types.Scalar('q'))
+            if expr.attr in ('shape', 'strides'):
+                # this guard is needed to avoid NVRTC from throwing an
+                # obsecure error
+                if value.ctype.ndim > 10:
+                    raise NotImplementedError(
+                        'getting shape/strides for an array with ndim > 10 '
+                        'is not supported yet')
+                types = [_cuda_types.PtrDiff()]*value.ctype.ndim
+                return Data(f'{value.code}.get_{expr.attr}()',
+                            _cuda_types.Tuple(types))
         if isinstance(value.ctype, _interface._Dim3):
             if expr.attr in ('x', 'y', 'z'):
                 return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)
@@ -779,7 +789,8 @@ def _indexing(array, index, env):
     if isinstance(array.ctype, _cuda_types.Tuple):
         if is_constants(index):
             i = index.obj
-            return Data(f'thrust::get<{i}>({array.code})', array.types[i])
+            t = array.ctype.types[i]
+            return Data(f'thrust::get<{i}>({array.code})', t)
         raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
