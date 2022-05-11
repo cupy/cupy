@@ -130,8 +130,9 @@ class DeviceCompilerBase:
         incdirs = ext.include_dirs[:]  # type: ignore
         macros = ext.define_macros[:]  # type: ignore
         for undef in ext.undef_macros:  # type: ignore
-            macros.append((undef,))
-        return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
+            macros.append((undef,))  # type: ignore
+        return distutils.ccompiler.gen_preprocess_options(
+            macros, incdirs)  # type: ignore
 
     def spawn(self, commands: List[str]) -> None:
         print('Command:', commands)
