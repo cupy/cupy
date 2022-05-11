@@ -65,13 +65,12 @@ jobs:
 
     - name: Test - Installer
       run: |
-        pip install mypy types-setuptools
         pushd install
         mypy cupy_builder universal_pkg
 
     - name: Test - CI Tools
       run: |
-        pip install PyYAML types-PyYAML pygithub mypy
+        pip install PyYAML types-PyYAML pygithub
         pushd .pfnci
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
