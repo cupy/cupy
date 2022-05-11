@@ -15,9 +15,9 @@ class Data(Expr):
         self.code = code
         self.ctype = ctype
         try:
-            self.__doc__ = '{str(ctype)} {code}'
+            self.__doc__ = f'{str(ctype)} {code}\n{ctype.__doc__}'
         except NotImplementedError:
-            self.__doc__ = '{code}'
+            self.__doc__ = f'{code}'
 
     @property
     def obj(self):

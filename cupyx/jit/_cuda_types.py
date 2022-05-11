@@ -146,6 +146,14 @@ uint64 = Scalar(numpy.uint64)
 
 
 class Dim3(TypeBase):
+    """
+    An integer vector type based on uint3 that is used to specify dimensions.
+
+    Attributes:
+        x (uint32)
+        y (uint32)
+        z (uint32)
+    """
 
     def x(self, code: str):
         from cupyx.jit import _internal_types  # avoid circular import
