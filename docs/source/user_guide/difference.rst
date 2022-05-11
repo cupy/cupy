@@ -1,5 +1,5 @@
-Difference between CuPy and NumPy
-=================================
+Differences between CuPy and NumPy
+==================================
 
 The interface of CuPy is designed to obey that of NumPy.
 However, there are some differences.
