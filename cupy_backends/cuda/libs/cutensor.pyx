@@ -87,6 +87,13 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         cutensorContractionFind_t* find,
         Algo algo)
 
+    int cutensorContractionGetWorkspaceSize(
+        cutensorHandle_t* handle,
+        cutensorContractionDescriptor_t* desc,
+        cutensorContractionFind_t* find,
+        WorksizePreference pref,
+        uint64_t *workspaceSize)
+
     int cutensorContractionGetWorkspace(
         cutensorHandle_t* handle,
         cutensorContractionDescriptor_t* desc,
@@ -120,6 +127,14 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         void* workspace, uint64_t workspaceSize,
         driver.Stream stream)
 
+    int cutensorReductionGetWorkspaceSize(
+        cutensorHandle_t* handle,
+        void* A, cutensorTensorDescriptor_t* descA, int32_t* modeA,
+        void* C, cutensorTensorDescriptor_t* descC, int32_t* modeC,
+        void* D, cutensorTensorDescriptor_t* descD, int32_t* modeD,
+        Operator opReduce, ComputeType typeCompute,
+        uint64_t* workspaceSize)
+
     int cutensorReductionGetWorkspace(
         cutensorHandle_t* handle,
         void* A, cutensorTensorDescriptor_t* descA, int32_t* modeA,
@@ -135,6 +150,9 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         uint32_t* alignmentReq)
 
     size_t cutensorGetVersion()
+
+    # build-time version
+    int CUTENSOR_VERSION
 
 
 available = True
@@ -686,7 +704,7 @@ cpdef contraction(
     check_status(status)
 
 
-cpdef uint64_t contractionGetWorkspace(
+cpdef uint64_t contractionGetWorkspaceSize(
         Handle handle,
         ContractionDescriptor desc,
         ContractionFind find,
@@ -706,6 +724,41 @@ cpdef uint64_t contractionGetWorkspace(
         workspaceSize (uint64_t): The workspace size (in bytes) that is
             required for the given tensor contraction.
     """
+    if CUTENSOR_VERSION < 10500:
+        raise RuntimeError(
+            'cutensorContractionGetWorkspaceSize is supported '
+            'since cuTENSOR 1.5')
+    cdef uint64_t workspaceSize = 0
+    status = cutensorContractionGetWorkspaceSize(
+        <cutensorHandle_t*> handle._ptr,
+        <cutensorContractionDescriptor_t*> desc._ptr,
+        <cutensorContractionFind_t*> find._ptr,
+        <WorksizePreference> pref,
+        &workspaceSize)
+    check_status(status)
+    return workspaceSize
+
+
+cpdef uint64_t contractionGetWorkspace(
+        Handle handle,
+        ContractionDescriptor desc,
+        ContractionFind find,
+        int pref):
+    """DEPRECATED: Determines the required workspaceSize for a given tensor contraction
+
+    Args:
+        handle (Handle): Opaque handle holding CUTENSOR's library
+            context.
+        desc (ContractionDescriptor): This opaque struct encodes the
+            given tensor contraction problem.
+        find (ContractionFind): This opaque struct restricts the
+            search space of viable candidates.
+        pref (cutensorWorksizePreference_t): User preference for the workspace.
+
+    Return:
+        workspaceSize (uint64_t): The workspace size (in bytes) that is
+            required for the given tensor contraction.
+    """  # NOQA
     cdef uint64_t workspaceSize = 0
     status = cutensorContractionGetWorkspace(
         <cutensorHandle_t*> handle._ptr,
@@ -800,9 +853,10 @@ cpdef reduction(
             usingthis data type (i.e., it affects the accuracy and
             performance).
         workspace (void*): Scratchpad (device) memory.
-        workspaceSize (uint64_t): Please use cutensorReductionGetWorkspace() to
-            query the required workspace. While lower values, including zero,
-            are valid, they may lead to grossly suboptimal performance.
+        workspaceSize (uint64_t): Please use
+            cutensorReductionGetWorkspaceSize() to query the required
+            workspace. While lower values, including zero, are valid, they may
+            lead to grossly suboptimal performance.
     """
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
     status = cutensorReduction(
@@ -817,7 +871,7 @@ cpdef reduction(
     check_status(status)
 
 
-cpdef uint64_t reductionGetWorkspace(
+cpdef uint64_t reductionGetWorkspaceSize(
         Handle handle,
         intptr_t A,
         TensorDescriptor descA,
@@ -839,6 +893,43 @@ cpdef uint64_t reductionGetWorkspace(
         workspaceSize (uint64_t): The workspace size (in bytes) that is
         required for the given tensor reduction.
     """
+    if CUTENSOR_VERSION < 10500:
+        raise RuntimeError(
+            'cutensorReductionGetWorkspaceSize is supported '
+            'since cuTENSOR 1.5')
+    cdef uint64_t workspaceSize = 0
+    status = cutensorReductionGetWorkspace(
+        <cutensorHandle_t*> handle._ptr,
+        <void*> A, <cutensorTensorDescriptor_t*> descA._ptr, <int32_t*> modeA,
+        <void*> C, <cutensorTensorDescriptor_t*> descC._ptr, <int32_t*> modeC,
+        <void*> D, <cutensorTensorDescriptor_t*> descD._ptr, <int32_t*> modeD,
+        <Operator> opReduce, <ComputeType> typeCompute, &workspaceSize)
+    check_status(status)
+    return workspaceSize
+
+
+cpdef uint64_t reductionGetWorkspace(
+        Handle handle,
+        intptr_t A,
+        TensorDescriptor descA,
+        intptr_t modeA,
+        intptr_t C,
+        TensorDescriptor descC,
+        intptr_t modeC,
+        intptr_t D,
+        TensorDescriptor descD,
+        intptr_t modeD,
+        int opReduce,
+        int typeCompute):
+    """DEPRECATED: Determines the required workspaceSize for a given tensor reduction
+
+    Args:
+        See reduction() about args.
+
+    Returns:
+        workspaceSize (uint64_t): The workspace size (in bytes) that is
+        required for the given tensor reduction.
+    """  # NOQA
     cdef uint64_t workspaceSize = 0
     status = cutensorReductionGetWorkspace(
         <cutensorHandle_t*> handle._ptr,
