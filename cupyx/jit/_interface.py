@@ -108,7 +108,7 @@ class _JitRawKernel:
             backend = 'nvcc' if runtime.is_hip else 'nvrtc'
             module = core.compile_with_cache(
                 source=result.code,
-                options=('-DCUPY_JIT_MODE', '--std=c++11'),
+                options=('-DCUPY_JIT_MODE', '--std=c++14'),
                 backend=backend)
             kern = module.get_function(fname)
             self._cache[(in_types, device_id)] = (kern, enable_cg)
