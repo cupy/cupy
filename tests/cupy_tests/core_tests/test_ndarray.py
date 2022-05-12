@@ -641,3 +641,25 @@ class TestNdarrayImplicitConversion(unittest.TestCase):
         a = testing.shaped_arange((3, 4, 5), cupy, numpy.int64)
         with pytest.raises(TypeError):
             numpy.asarray(a)
+
+
+class C(cupy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
+class TestNdarraySubclass:
+
+    def test_explicit_constructor_call(self):
+        a = C([0, 1, 2, 3], info='information')
+        assert type(a) is C
+        assert issubclass(type(a), cupy.ndarray)
+        assert a.info == 'information'

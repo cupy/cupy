@@ -182,7 +182,7 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_arg(object arg):
         typ = type(arg)
-        if typ is ndarray:
+        if issubclass(typ, ndarray):
             return _ArgInfo.from_ndarray(arg)
         if typ is _scalar.CScalar:
             return _ArgInfo.from_scalar(arg)

@@ -92,6 +92,26 @@ cdef tuple _HANDLED_TYPES
 cdef object _null_context = contextlib.nullcontext()
 
 
+class _ndarray(ndarray):
+    def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
+        x = super().__new__(cls, *args, **kwargs)
+        if _no_init:
+            return x
+        x._init(*args, **kwargs)
+        if cls is not _ndarray:
+            x.__array_finalize__(_obj)
+        return x
+
+    def __init__(self, *args, **kwargs):
+        # Prevent from calling the super class `ndarray.__init__()` as
+        # it is used to check accidental direct instantiation of underlaying
+        # `ndarray` extention.
+        pass
+
+    def __array_finalize__(self, obj):
+        pass
+
+
 cdef class ndarray:
 
     """Multi-dimensional array on a CUDA device.
@@ -125,8 +145,14 @@ cdef class ndarray:
 
     """
 
-    def __init__(self, shape, dtype=float, memptr=None, strides=None,
-                 order='C'):
+    def __init__(self, *args, **kwargs):
+        # Raise an error if underlaying `ndarray` extension type is directly
+        # instantiated. We must instantiate `_ndarray` class instead for our
+        # ndarray subclassing mechanism.
+        raise RuntimeError('Must not be directly instantiated')
+
+    def _init(self, shape, dtype=float, memptr=None, strides=None,
+              order='C'):
         cdef Py_ssize_t x, itemsize
         cdef tuple s = internal.get_size(shape)
         del shape
@@ -1919,8 +1945,8 @@ cdef class ndarray:
                        bint update_c_contiguity,
                        bint update_f_contiguity):
         cdef ndarray v
-        # Use __new__ instead of __init__ to skip recomputation of contiguity
-        v = ndarray.__new__(ndarray)
+        # Use `_no_init=True`  to skip recomputation of contiguity.
+        v = _ndarray.__new__(_ndarray, _no_init=True)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         v.dtype = self.dtype
@@ -1995,7 +2021,7 @@ cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
     return carr
 
 
-_HANDLED_TYPES = (ndarray, numpy.ndarray)
+_HANDLED_TYPES = (_ndarray, numpy.ndarray)
 
 
 # =============================================================================
@@ -2691,7 +2717,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
 
 
 cdef ndarray _ndarray_init(const shape_t& shape, dtype):
-    cdef ndarray ret = ndarray.__new__(ndarray)
+    cdef ndarray ret = _ndarray.__new__(_ndarray, _no_init=True)
     ret._init_fast(shape, dtype, True)
     return ret
 
