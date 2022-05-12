@@ -139,8 +139,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
         XB (array_like): An :math:`m_B` by :math:`n` array of :math:`m_B`
             original observations in an :math:`n`-dimensional space.
             Inputs are converted to float type.
-        metric (str or callable, optional): The distance metric to use.
-            If a string, the distance function can be 'canberra', 'chebyshev',
+        metric (str, optional): The distance metric to use.
+            The distance function can be 'canberra', 'chebyshev',
             'cityblock', 'correlation', 'cosine', 'euclidean', 'hamming',
             'hellinger', 'jensenshannon', 'kl_divergence', 'matching',
             'minkowski', 'russellrao', 'sqeuclidean'.
