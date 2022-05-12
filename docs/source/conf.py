@@ -367,6 +367,8 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    # blocked by data-apis/array-api#428
+    #'array-api': ('https://data-apis.org/array-api/2021.12/', None),
 }
 
 doctest_global_setup = '''
