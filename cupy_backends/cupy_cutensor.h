@@ -9,8 +9,7 @@
 
 #elif !defined(CUPY_NO_CUDA)
 
-#include <library_types.h>
-#include <cutensor.h>
+#include "cuda/cupy_cutensor.h"
 
 #else
 

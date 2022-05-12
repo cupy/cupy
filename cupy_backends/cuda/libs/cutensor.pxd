@@ -211,6 +211,12 @@ cpdef contraction(
     intptr_t workspace,
     uint64_t workspaceSize)
 
+cpdef uint64_t contractionGetWorkspaceSize(
+    Handle handle,
+    ContractionDescriptor desc,
+    ContractionFind find,
+    int pref)
+
 cpdef uint64_t contractionGetWorkspace(
     Handle handle,
     ContractionDescriptor desc,
@@ -236,6 +242,20 @@ cpdef reduction(
     int minTypeCompute,
     intptr_t workspace,
     uint64_t workspaceSize)
+
+cpdef uint64_t reductionGetWorkspaceSize(
+    Handle handle,
+    intptr_t A,
+    TensorDescriptor descA,
+    intptr_t modeA,
+    intptr_t C,
+    TensorDescriptor descC,
+    intptr_t modeC,
+    intptr_t D,
+    TensorDescriptor descD,
+    intptr_t modeD,
+    int opReduce,
+    int typeCompute)
 
 cpdef uint64_t reductionGetWorkspace(
     Handle handle,

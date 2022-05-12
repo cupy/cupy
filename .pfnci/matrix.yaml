@@ -180,7 +180,7 @@
   cuda: "11.5"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"
@@ -209,7 +209,7 @@
   cuda: "11.6"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"
@@ -342,7 +342,7 @@
   cuda: "11.4"
   rocm: null
   nccl: "2.10"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.9"
@@ -372,7 +372,7 @@
   cuda: "11.4"
   rocm: null
   nccl: "2.10"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.8"
@@ -398,7 +398,7 @@
   cuda: "11.5"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.9"
@@ -423,7 +423,7 @@
   cuda: "11.5"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.3"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"
