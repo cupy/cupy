@@ -103,10 +103,29 @@ _METRICS_NAMES = list(_METRICS.keys())
 
 
 def minkowski(u, v, p):
+    """
+    Compute the Minkowski distance between two 1-D arrays.
+    The Minkowski distance between 1-D arrays `u` and `v`,
+    is defined as
+    .. math::
+       {\\|u-v\\|}_p = (\\sum{|u_i - v_i|^p})^{1/p}.
+       \\left(\\sum{w_i(|(u_i - v_i)|^p)}\\right)^{1/p}.
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+        p (float): The order of the norm of the difference
+            :math:`{\\|u-v\\|}_p`. Note that for :math:`0 < p < 1`,
+            the triangle inequality only holds with an additional
+            multiplicative factor, i.e. it is only a quasi-metric.
+
+    Returns:
+        minkowski (double): The Minkowski distance between vectors `u` and `v`.
+    """
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
     pairwise_distance(u, v, output_arr, "minkowski", p)
+
     return output_arr[0]
 
 
