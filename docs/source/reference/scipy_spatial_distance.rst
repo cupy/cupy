@@ -1,7 +1,7 @@
 .. module:: cupyx.scipy.spatial.distance
 
-Spatial and distance routines (:mod:`cupyx.scipy.spatial.distance`)
-====================================================================
+Distance computations (:mod:`cupyx.scipy.spatial.distance`)
+===========================================================
 
 .. note::
 
@@ -13,13 +13,25 @@ Spatial and distance routines (:mod:`cupyx.scipy.spatial.distance`)
 
 .. Hint:: `SciPy API Reference: Spatial distance routines (scipy.spatial.distance) <https://docs.scipy.org/doc/scipy/reference/spatial.distance.html>`_
 
-Contents
----------------------
+
+Distance matrix computations
+----------------------------
+
+Distance matrix computation from a collection of raw observation vectors stored in a rectangular array.
 
 .. autosummary::
    :toctree: generated/
 
    cdist
-   distance_matrix
+
+
+Distance functions
+------------------
+
+Distance functions between two numeric vectors `u` and `v`. Computing distances over a large collection of vectors is inefficient for these functions. Use `cdist` for this purpose.
+
+.. autosummary::
+   :toctree: generated/
+
    minkowski
 
