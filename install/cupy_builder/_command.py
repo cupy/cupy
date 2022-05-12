@@ -37,10 +37,10 @@ def compile_device_code(
     - list of compiled object files for device code ("*.o")
     """
     sources_cu, sources_cpp = filter_files_by_extension(
-        ext.sources, '.cu')  # type: ignore[attr-defined]
+        ext.sources, '.cu')
     if len(sources_cu) == 0:
         # No device code used in this extension.
-        return ext.sources, []  # type: ignore[attr-defined]
+        return ext.sources, []
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
@@ -49,15 +49,15 @@ def compile_device_code(
 
     objects = []
     for src in sources_cu:
-        print(f'{ext.name}: Device code: {src}')  # type: ignore[attr-defined]
+        print(f'{ext.name}: Device code: {src}')
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
         # TODO(kmaehashi): embed CUDA version in path
         obj = f'build/temp.device_objects/{src}.{obj_ext}'
         if os.path.exists(obj) and (_get_timestamp(src) < _get_timestamp(obj)):
-            print(f'{ext.name}: Reusing cached object file: {obj}')  # type: ignore[attr-defined] # NOQA
+            print(f'{ext.name}: Reusing cached object file: {obj}')
         else:
             os.makedirs(os.path.dirname(obj), exist_ok=True)
-            print(f'{ext.name}: Building: {obj}')  # type: ignore[attr-defined]
+            print(f'{ext.name}: Building: {obj}')
             compiler.compile(obj, src, ext)
         objects.append(obj)
 
@@ -69,7 +69,7 @@ def _get_timestamp(path: str) -> float:
     return max(stat.st_atime, stat.st_mtime, stat.st_ctime)
 
 
-class custom_build_ext(setuptools.command.build_ext.build_ext):  # type: ignore[misc] # NOQA
+class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
 
@@ -114,8 +114,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):  # type: ignore[
 
         # Remove device code from list of sources, and instead add compiled
         # object files to link.
-        ext.sources = sources_cpp  # type: ignore[attr-defined]
-        ext.extra_objects += extra_objects  # type: ignore[attr-defined]
+        ext.sources = sources_cpp
+        ext.extra_objects += extra_objects
 
         # Let setuptools do the rest of the build process, i.e., compile
         # "*.cpp" files and link object files generated from "*.cu".
