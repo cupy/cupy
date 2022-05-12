@@ -103,13 +103,8 @@ _METRICS_NAMES = list(_METRICS.keys())
 
 
 def minkowski(u, v, p):
-    """
-    Compute the Minkowski distance between two 1-D arrays.
-    The Minkowski distance between 1-D arrays `u` and `v`,
-    is defined as
-    .. math::
-        {\\|u-v\\|}_p = (\\sum{|u_i - v_i|^p})^{1/p}.
-        \\left(\\sum{w_i(|(u_i - v_i)|^p)}\\right)^{1/p}.
+    """Compute the Minkowski distance between two 1-D arrays.
+
     Args:
         u (array_like): Input array of size (N,)
         v (array_like): Input array of size (N,)
