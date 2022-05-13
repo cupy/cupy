@@ -545,7 +545,7 @@ cdef class ndarray:
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
-            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
+            newarray = _ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
         if self.size == 0:
             # skip copy
@@ -2435,7 +2435,7 @@ cdef ndarray _array_from_nested_numpy_sequence(
             get_dtype(src_dtype),
             a_dtype,
             src_cpu)
-        a = ndarray(shape, dtype=a_dtype, order=order)
+        a = _ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
@@ -2443,7 +2443,7 @@ cdef ndarray _array_from_nested_numpy_sequence(
         # Note: a_cpu.ndim is always >= 1
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
-        a = ndarray(shape, dtype=a_dtype, order=order)
+        a = _ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
@@ -2474,7 +2474,7 @@ cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
-    cdef ndarray a = ndarray(a_shape, dtype=a_dtype, order=order)
+    cdef ndarray a = _ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
         a.fill(a_cpu)
         return a
@@ -2602,7 +2602,7 @@ cpdef ndarray _internal_asfortranarray(ndarray a):
     if a._f_contiguous:
         return a
 
-    newarray = ndarray(a.shape, a.dtype, order='F')
+    newarray = _ndarray(a.shape, a.dtype, order='F')
     if (a._c_contiguous and a._shape.size() == 2 and
             (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
@@ -2644,7 +2644,7 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
         return a
 
     shape = (1,) if zero_dim else a.shape
-    newarray = ndarray(shape, dtype)
+    newarray = _ndarray(shape, dtype)
     elementwise_copy(a, newarray)
     return newarray
 
@@ -2670,7 +2670,7 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
     if same_dtype and not zero_dim:
         return _internal_asfortranarray(a)
 
-    newarray = ndarray((1,) if zero_dim else a.shape, dtype, order='F')
+    newarray = _ndarray((1,) if zero_dim else a.shape, dtype, order='F')
     elementwise_copy(a, newarray)
     return newarray
 
@@ -2713,7 +2713,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     if stream_ptr is not None:
         if _util.CUDA_ARRAY_INTERFACE_SYNC:
             runtime.streamSynchronize(stream_ptr)
-    return ndarray(shape, dtype, memptr, strides)
+    return _ndarray(shape, dtype, memptr, strides)
 
 
 cdef ndarray _ndarray_init(const shape_t& shape, dtype):
@@ -2733,4 +2733,4 @@ cdef ndarray _create_ndarray_from_shape_strides(
         elif strides[i] < 0:
             begin += strides[i] * (shape[i] - 1)
     ptr = memory.alloc(end - begin) + begin
-    return ndarray(shape, dtype, memptr=ptr, strides=strides)
+    return _ndarray(shape, dtype, memptr=ptr, strides=strides)

@@ -199,7 +199,7 @@ cdef class _ArgInfo:
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
             ARG_KIND_NDARRAY,
-            ndarray,
+            ndarray,  # TODO(takagi) investigate in detail!
             arg.dtype.type,
             arg._shape.size(),
             arg._c_contiguous,
