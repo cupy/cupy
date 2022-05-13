@@ -2399,7 +2399,7 @@ cdef ndarray _array_from_nested_sequence(
     if concat_type is numpy.ndarray:
         return _array_from_nested_numpy_sequence(
             obj, concat_dtype, dtype, concat_shape, order, ndmin)
-    elif concat_type is ndarray:
+    elif concat_type is _ndarray:  # TODO(takagi) Consider subclases
         return _array_from_nested_cupy_sequence(
             obj, dtype, concat_shape, order)
     else:
