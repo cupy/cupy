@@ -1663,7 +1663,10 @@ cdef class ndarray:
             # avoid NumPy func
             return NotImplemented
         for t in types:
-            if t not in _HANDLED_TYPES:
+            for handled_type in _HANDLED_TYPES:
+                if issubclass(t, handled_type):
+                    break
+            else:
                 return NotImplemented
         return cupy_func(*args, **kwargs)
 
