@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import _core
 from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import _sputils
 
@@ -515,7 +516,7 @@ class spmatrix(object):
         if out is not None:
             if out.shape != ret.shape:
                 raise ValueError('dimensions do not match')
-            out[:] = ret
+            _core.elementwise_copy(ret, out)
             return out
         elif dtype is not None:
             return ret.astype(dtype, copy=False)

@@ -4,6 +4,7 @@ import warnings
 import cupy
 import numpy
 
+from cupy import _core
 from cupy._core import internal
 from cupy.cuda import runtime
 from cupyx import _texture
@@ -57,7 +58,7 @@ def _get_spline_output(input, output):
             and output.dtype == float_dtype == output_dtype
             and output.flags.c_contiguous):
         if output is not input:
-            output[...] = input[...]
+            _core.elementwise_copy(input, output)
         temp = output
     else:
         temp = input.astype(float_dtype, copy=False)
@@ -105,7 +106,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     run_kernel = not (order < 2 or x.ndim == 0 or x.shape[axis] == 1)
     if not run_kernel:
         output = _util._get_output(output, input)
-        output[...] = x[...]
+        _core.elementwise_copy(x, output)
         return output
 
     temp, data_dtype, output_dtype = _get_spline_output(x, output)
@@ -146,7 +147,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
 
     if isinstance(output, cupy.ndarray) and temp is not output:
         # copy kernel output into the user-provided output array
-        output[...] = temp[...]
+        _core.elementwise_copy(temp, output)
         return output
     return temp.astype(output_dtype, copy=False)
 
@@ -181,7 +182,7 @@ def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
             spline_filter1d(x, order, axis, output=temp, mode=mode)
             x = temp
     if isinstance(output, cupy.ndarray):
-        output[...] = temp[...]
+        _core.elementwise_copy(temp, output)
     else:
         output = temp
     if output.dtype != output_dtype:

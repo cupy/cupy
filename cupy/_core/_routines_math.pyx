@@ -698,7 +698,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
     else:
         if (out.flags.c_contiguous or out.flags.f_contiguous):
             result = out
-            result[...] = a
+            elementwise_copy(a, result)
         else:
             result = a.astype(out.dtype, order='C')
 
@@ -727,7 +727,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         result = _proc_as_batch(result, axis, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
-        out[...] = result.reshape(out.shape)
+        elementwise_copy(result.reshape(out.shape), out)
     else:
         out = result
     return out

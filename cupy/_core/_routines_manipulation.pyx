@@ -548,7 +548,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
             a = _reshape(a, (-1, 1))
             ret = ndarray((a.size, repeats[0]), dtype=a.dtype)
             if ret.size:
-                ret[...] = a
+                elementwise_copy(a, ret)
             return ret.ravel()
         else:
             a = a.ravel()

@@ -47,15 +47,20 @@ class Constant(Expr):
 
 class Range(Expr):
 
-    def __init__(self, start, stop, step, ctype, step_is_positive):
+    def __init__(self, start, stop, step, ctype, step_is_positive, *,
+                 unroll=None):
         self.start = start
         self.stop = stop
         self.step = step
         self.ctype = ctype
         self.step_is_positive = step_is_positive  # True, False or None
+        self.unroll = unroll
 
 
 class BuiltinFunc(Expr):
+    # subclasses must implement:
+    # - either call or call_const
+    # - `__call__` with a correct signature, which calls the parent's __call__
 
     def call(self, env, *args, **kwargs):
         for x in itertools.chain(args, kwargs.values()):
@@ -73,3 +78,17 @@ class BuiltinFunc(Expr):
 
     def __call__(self):
         raise RuntimeError('Cannot call this function from Python layer.')
+
+    @classmethod
+    def from_class_method(cls, instance_name, method):
+        # - this helper wraps every class method as a BuiltinFunc
+        # - method must return a valid Expr
+        # TODO(leofang): if performance is concerned, we could cache _Wrapper
+        # for each method.__func__, and overwrite with the provided instance
+        class _Wrapper(BuiltinFunc):
+
+            def call(self, env, *args, **kwargs):
+                data = method(env, *args, **kwargs)
+                return Data(f'{instance_name}.{data.code}', data.ctype)
+
+        return _Wrapper()

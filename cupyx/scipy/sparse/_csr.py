@@ -351,8 +351,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         values = values.astype(self.dtype)
         if values.ndim == 0:
             # broadcast
-            x_data = cupy.empty((x_len,), dtype=self.dtype)
-            x_data[...] = values
+            x_data = cupy.full((x_len,), values, dtype=self.dtype)
         else:
             x_len = min(x_len, values.size)
             x_data = values[:x_len]
