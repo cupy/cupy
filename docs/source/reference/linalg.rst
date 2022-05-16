@@ -22,6 +22,7 @@ Matrix and vector products
    matmul
    tensordot
    einsum
+   einsum_path
    linalg.matrix_power
    kron
 
