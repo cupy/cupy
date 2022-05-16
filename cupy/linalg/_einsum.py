@@ -11,6 +11,7 @@ from cupy._core import _accelerator
 from cupy import _util
 from cupy.linalg._einsum_opt import _greedy_path
 from cupy.linalg._einsum_opt import _optimal_path
+from cupy.linalg._einsum_cutn import _get_einsum_operands
 from cupy.linalg._einsum_cutn import _try_use_cutensornet
 
 

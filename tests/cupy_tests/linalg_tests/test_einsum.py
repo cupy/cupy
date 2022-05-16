@@ -348,6 +348,18 @@ class TestEinSumUnaryOperation:
             testing.assert_allclose(optimized_out, out)
         return out
 
+    @pytest.mark.parametrize('optimize', [False, True, 'optimal', 'greedy'])
+    def test_einsum_path_unary(self, optimize):
+        # dtype doesn't matter in path computation, so just pick one
+        a_np = testing.shaped_arange(self.shape_a, numpy, numpy.float32)
+        path_np, info_np = numpy.einsum_path(
+            self.subscripts, a_np, optimize=optimize)
+        a_cp = testing.shaped_arange(self.shape_a, cupy, cupy.float32)
+        path_cp, info_cp = cupy.einsum_path(
+            self.subscripts, a_cp, optimize=optimize)
+        assert path_np == path_cp
+        assert info_np == info_cp
+
     @testing.for_all_dtypes(no_bool=False)
     @testing.numpy_cupy_equal()
     def test_einsum_unary_views(self, xp, dtype):
@@ -442,6 +454,20 @@ class TestEinSumBinaryOperation:
         b = testing.shaped_arange(self.shape_b, xp, dtype_b)
         return xp.einsum(self.subscripts, a, b)
 
+    @pytest.mark.parametrize('optimize', [False, True, 'optimal', 'greedy'])
+    def test_einsum_path_binary(self, optimize):
+        # dtype doesn't matter in path computation, so just pick one
+        a_np = testing.shaped_arange(self.shape_a, numpy, numpy.float32)
+        b_np = testing.shaped_arange(self.shape_b, numpy, numpy.float32)
+        path_np, info_np = numpy.einsum_path(
+            self.subscripts, a_np, b_np, optimize=optimize)
+        a_cp = testing.shaped_arange(self.shape_a, cupy, cupy.float32)
+        b_cp = testing.shaped_arange(self.shape_b, cupy, cupy.float32)
+        path_cp, info_cp = cupy.einsum_path(
+            self.subscripts, a_cp, b_cp, optimize=optimize)
+        assert path_np == path_cp
+        assert info_np == info_cp
+
 
 class TestEinSumBinaryOperationWithScalar:
     @testing.for_all_dtypes()
@@ -507,6 +533,22 @@ class TestEinSumTernaryOperation:
                 testing.assert_allclose(optimized_out, out)
         return out
 
+    @pytest.mark.parametrize('optimize', [False, True, 'optimal', 'greedy'])
+    def test_einsum_path_ternary(self, optimize):
+        # dtype doesn't matter in path computation, so just pick one
+        a_np = testing.shaped_arange(self.shape_a, numpy, numpy.float32)
+        b_np = testing.shaped_arange(self.shape_b, numpy, numpy.float32)
+        c_np = testing.shaped_arange(self.shape_c, numpy, numpy.float32)
+        path_np, info_np = numpy.einsum_path(
+            self.subscripts, a_np, b_np, c_np, optimize=optimize)
+        a_cp = testing.shaped_arange(self.shape_a, cupy, cupy.float32)
+        b_cp = testing.shaped_arange(self.shape_b, cupy, cupy.float32)
+        c_cp = testing.shaped_arange(self.shape_c, cupy, cupy.float32)
+        path_cp, info_cp = cupy.einsum_path(
+            self.subscripts, a_cp, b_cp, c_cp, optimize=optimize)
+        assert path_np == path_cp
+        assert info_np == info_cp
+
 
 @testing.parameterize(*([
     # memory constraint
@@ -558,3 +600,19 @@ class TestEinSumLarge:
             else:
                 assert len(ws) == 0
         return out
+
+    def test_einsum_path(self, shapes):
+        arrays_np = [
+            testing.shaped_random(shape, numpy, float, scale=1)
+            for shape in shapes
+        ]
+        path_np, info_np = numpy.einsum_path(
+            self.subscript, *arrays_np, optimize=self.opt)
+        arrays_cp = [
+            testing.shaped_random(shape, cupy, float, scale=1)
+            for shape in shapes
+        ]
+        path_cp, info_cp = cupy.einsum_path(
+            self.subscript, *arrays_cp, optimize=self.opt)
+        assert path_np == path_cp
+        assert info_np == info_cp
