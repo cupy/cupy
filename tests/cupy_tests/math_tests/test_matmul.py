@@ -206,6 +206,13 @@ class TestMatmulOverflow(unittest.TestCase):
         b = xp.array([value - 10]).astype(dtype)
         return xp.matmul(a, b)
 
+    # See cupy/#6715
+    @testing.numpy_cupy_array_equal()
+    def test_gh6715(self, xp):
+        x = xp.asarray([51307], dtype=xp.uint16)
+        y = xp.asarray([[[327]]], dtype=xp.uint16)
+        return x @ y
+
 
 class _TestMatmulComputeTypes(unittest.TestCase):
 

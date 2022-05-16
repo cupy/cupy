@@ -738,10 +738,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
 
     ndim = max(orig_a_ndim, orig_b_ndim)
-    if ndim <= 2:
+    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
+    if ndim <= 2 or ret_dtype.kind not in 'fc':
         if out is None:
             return dot(a, b, out)
-        ret_dtype = numpy.promote_types(a.dtype, b.dtype)
         if out._c_contiguous and ret_dtype == out.dtype:
             return dot(a, b, out)
         c = _ndarray_init(out._shape, dtype=ret_dtype)
@@ -780,7 +780,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             (0,) * (ndim - b_ndim) + b.strides,
             True, True)
 
-    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = numpy.promote_types(ret_dtype, 'f')
 
     a = ascontiguousarray(a, dtype)
