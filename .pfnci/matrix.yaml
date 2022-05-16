@@ -68,7 +68,7 @@
   cuda: "11.1"
   rocm: null
   nccl: "2.8"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: null
   cudnn: "8.0"
   python: "3.7"
@@ -124,7 +124,7 @@
   cuda: "11.3"
   rocm: null
   nccl: "2.9"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: null
   cudnn: "8.2"
   python: "3.8"
@@ -180,7 +180,7 @@
   cuda: "11.5"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"
@@ -209,7 +209,7 @@
   cuda: "11.6"
   rocm: null
   nccl: "2.12"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"
@@ -320,7 +320,7 @@
   cuda: "11.4"
   rocm: null
   nccl: "2.10"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.9"
@@ -350,7 +350,7 @@
   cuda: "11.4"
   rocm: null
   nccl: "2.10"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.8"
@@ -376,7 +376,7 @@
   cuda: "11.5"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.9"
@@ -395,13 +395,13 @@
 # CUDA 11.x / CUDA Python | Linux
 - project: "cupy.linux.cuda11x-cuda-python"
   target: "cuda11x-cuda-python"
-  tags: ["@push", "full", "cuda-python"]
+  tags: ["@push", "full", "mini", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.5"
   rocm: null
   nccl: "2.11"
-  cutensor: "1.4"
+  cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.3"
   python: "3.10"

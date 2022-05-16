@@ -50,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.4
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.4 / v1.5
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 

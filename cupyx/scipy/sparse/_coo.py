@@ -257,8 +257,7 @@ class coo_matrix(sparse_data._data_matrix):
         if values.ndim:
             new_data = values[:max_index]
         else:
-            new_data = cupy.empty(max_index, dtype=self.dtype)
-            new_data[:] = values
+            new_data = cupy.full(max_index, values, dtype=self.dtype)
 
         # Update the internal structure.
         self.row = cupy.concatenate((self.row[keep], new_row))

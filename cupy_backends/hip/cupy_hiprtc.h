@@ -50,6 +50,14 @@ nvrtcResult nvrtcGetCUBIN(...) {
     return HIPRTC_ERROR_COMPILATION;
 }
 
+nvrtcResult nvrtcGetNVVMSize(...) {
+    return HIPRTC_ERROR_COMPILATION;
+}
+
+nvrtcResult nvrtcGetNVVM(...) {
+    return HIPRTC_ERROR_COMPILATION;
+}
+
 nvrtcResult nvrtcGetNumSupportedArchs(...) {
     return HIPRTC_ERROR_INTERNAL_ERROR;
 }
