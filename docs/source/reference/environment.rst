@@ -73,8 +73,8 @@ Here are the environment variables that CuPy uses at runtime.
 
   Default: ``"cub"`` (In ROCm HIP environment, the default value is ``""``. i.e., no accelerators are used.)
 
-  A comma-separated string of backend names (``cub`` or ``cutensor``) which indicates the acceleration backends used in CuPy operations and its priority.
-  All accelerators are disabled by default.
+  A comma-separated string of backend names (``cub``, ``cutensor``, or ``cutensornet``) which indicates the acceleration backends used in CuPy operations and its priority (in descending order).
+  By default, all accelerators are disabled on HIP and only CUB is enabled on CUDA.
 
 .. envvar:: CUPY_TF32
 
