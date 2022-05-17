@@ -176,23 +176,23 @@ class Dim3(TypeBase):
         z (uint32)
     """
 
-    def x(self, code: str):
+    def x(self, code: str) -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{code}.x', uint32)
 
-    def y(self, code: str):
+    def y(self, code: str) -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{code}.y', uint32)
 
-    def z(self, code: str):
+    def z(self, code: str) -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
         return _internal_types.Data(f'{code}.z', uint32)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return 'dim3'
 
 
-dim3 = Dim3()
+dim3: Dim3 = Dim3()
 
 
 _suffix_literals_dict: Mapping[str, str] = {
@@ -208,7 +208,7 @@ _suffix_literals_dict: Mapping[str, str] = {
 
 def get_cuda_code_from_constant(
         x: Union[bool, int, float, complex],
-        ctype: TypeBase,
+        ctype: Scalar,
 ) -> str:
     dtype = ctype.dtype
     suffix_literal = _suffix_literals_dict.get(dtype.name)
