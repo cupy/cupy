@@ -74,12 +74,12 @@ class CArray(ArrayBase):
 
     def __init__(
             self,
-            dtype: numpy.dtype,
+            dtype: npt.DTypeLike,
             ndim: int,
             is_c_contiguous: bool,
             index_32_bits: bool,
     ) -> None:
-        self.dtype = dtype
+        self.dtype = numpy.dtype(dtype)
         self._c_contiguous = is_c_contiguous
         self._index_32_bits = index_32_bits
         super().__init__(Scalar(dtype), ndim)
