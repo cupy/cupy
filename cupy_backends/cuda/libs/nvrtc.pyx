@@ -11,10 +11,13 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
+import sys as _sys
+
 cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda._softlink cimport SoftLink
 
 
 ###############################################################################
@@ -43,8 +46,31 @@ ELSE:
         int nvrtcGetProgramLog(Program prog, char* log)
         int nvrtcAddNameExpression(Program, const char*)
         int nvrtcGetLoweredName(Program, const char*, const char**)
-        int nvrtcGetNumSupportedArchs(int* numArchs)
-        int nvrtcGetSupportedArchs(int* supportedArchs)
+
+    # APIs added after CUDA 11.2+.
+    cdef void* _nvrtcGetNumSupportedArchs = NULL
+    cdef int nvrtcGetNumSupportedArchs(int* numArchs) nogil:
+        return (<int(*)(...) nogil>_nvrtcGetNumSupportedArchs)(numArchs)
+
+    cdef void* _nvrtcGetSupportedArchs = NULL
+    cdef int nvrtcGetSupportedArchs(int* supportedArchs) nogil:
+        return (<int(*)(...) nogil>_nvrtcGetSupportedArchs)(supportedArchs)
+
+    cdef load_functions(libname):
+        global _nvrtcGetNumSupportedArchs
+        global _nvrtcGetSupportedArchs
+        _nvrtc = SoftLink(libname, 'nvrtc')
+        _nvrtcGetNumSupportedArchs = _nvrtc.get_func('GetNumSupportedArchs')
+        _nvrtcGetSupportedArchs = _nvrtc.get_func('GetSupportedArchs')
+
+    IF 11020 <= CUPY_CUDA_VERSION < 12000:
+        if _sys.platform == 'linux':
+            _libname = 'libnvrtc.so.11.2'
+        else:
+            _libname = 'nvrtc64_112_0.dll'
+        load_functions(_libname)
+    ELSE:
+        load_functions(None)
 
 
 ###############################################################################
