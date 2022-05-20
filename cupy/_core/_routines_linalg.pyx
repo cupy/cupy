@@ -303,7 +303,12 @@ __global__ void _tensordot_core_int_kernel_strided_batched(
         T * C, long long strideC)
 {
     int batchid = blockIdx.z;
-    _tensordot_core_int_kernel(M, N, K, &A[batchid * strideA], &B[batchid * strideB], &C[batchid * strideC]);
+    _tensordot_core_int_kernel(
+        M, N, K,
+        &A[batchid * strideA],
+        &B[batchid * strideB],
+        &C[batchid * strideC]
+    );
 }
 '''
     for k, v in config:
@@ -313,12 +318,14 @@ __global__ void _tensordot_core_int_kernel_strided_batched(
     for batched in ['', '_batched', '_strided_batched']:
         for ctype in ['bool', 'char', 'short', 'int', 'long', 'long long']:
             if ctype == 'bool':
-                name_expressions.append(f'_tensordot_core_int_kernel{batched}<bool>')
+                name_expressions.append(
+                    f'_tensordot_core_int_kernel{batched}<bool>')
                 continue
             for sign in ['', 'unsigned ']:
                 if ctype == 'char' and sign == '':
                     sign = 'signed '  # consult `get_typename()`
-                name_expressions.append(f'_tensordot_core_int_kernel{batched}<{sign}{ctype}>')
+                name_expressions.append(
+                    f'_tensordot_core_int_kernel{batched}<{sign}{ctype}>')
 
     mod = cupy.RawModule(code=code, options=('--std=c++11',),
                          name_expressions=name_expressions)
@@ -344,8 +351,9 @@ def _tensordot_core_int_kernel_batched(config, dtype):
 @cupy._util.memoize(for_each_device=True)
 def _tensordot_core_int_kernel_strided_batched(config, dtype):
     mod = _tensordot_core_int_kernel_module(config)
-    ker = mod.get_function(
-        '_tensordot_core_int_kernel_strided_batched<' + get_typename(dtype) + '>')
+    name = ('_tensordot_core_int_kernel_strided_batched<'
+            + get_typename(dtype) + '>')
+    ker = mod.get_function(name)
     return ker
 
 
@@ -395,7 +403,9 @@ cdef ndarray _integral_tensordot_core_batched(
     max_batch_count = 65000
     for i in range(0, batch_count, max_batch_count):
         ibatch = min(max_batch_count, batch_count - i)
-        args = (m, n, k, matPtrA[i:i + ibatch], matPtrB[i:i + ibatch], matPtrOut[i:i + ibatch])
+        args = (
+            m, n, k, matPtrA[i:i + ibatch], matPtrB[i:i + ibatch],
+            matPtrOut[i:i + ibatch])
         grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), ibatch)
         kern(grid, block, args=args)
     return out
@@ -417,7 +427,9 @@ cdef ndarray _integral_tensordot_core_strided_batched(
     max_batch_count = 65000
     for i in range(0, batch_count, max_batch_count):
         ibatch = min(max_batch_count, batch_count - i)
-        args = (m, n, k, a[i:i + ibatch], strideA, b[i:i + ibatch], strideB, out[i:i + ibatch], strideOut)
+        args = (
+            m, n, k, a[i:i + ibatch], strideA, b[i:i + ibatch], strideB,
+            out[i:i + ibatch], strideOut)
         grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), ibatch)
         kern(grid, block, args=args)
     return out
@@ -966,9 +978,11 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     if dtype.char not in 'efdFD':
         if not use_broadcast:
-            _integral_tensordot_core_strided_batched(a, b, c_view, n, m, ka, dtype.char, batchCount)
+            _integral_tensordot_core_strided_batched(
+                a, b, c_view, n, m, ka, dtype.char, batchCount)
         else:
-            _integral_tensordot_core_batched(a, b, c_view, n, m, ka, dtype.char, batchCount)
+            _integral_tensordot_core_batched(
+                a, b, c_view, n, m, ka, dtype.char, batchCount)
         if out is not c:
             elementwise_copy(c, out)
         return out

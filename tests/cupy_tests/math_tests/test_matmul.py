@@ -196,9 +196,11 @@ class TestMatmulLarge(unittest.TestCase):
         return xp.matmul(x1, x2)
 
 
-@pytest.mark.parametrize('shape1,shape2', [((256, 256, 3, 2), (256, 256, 2, 4)),
-                                           ((256, 256, 3, 2), (2, 4)),
-                                           ((3, 2), (256, 256, 2, 4))])
+@pytest.mark.parametrize('shape1,shape2', [
+    ((256, 256, 3, 2), (256, 256, 2, 4)),
+    ((256, 256, 3, 2), (2, 4)),
+    ((3, 2), (256, 256, 2, 4))
+])
 class TestMatmulIntegralLargeBatch:
 
     @testing.for_int_dtypes(name='dtype')
