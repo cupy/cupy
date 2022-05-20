@@ -448,6 +448,8 @@ class TestPlanCache(unittest.TestCase):
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
     @unittest.skipIf(runtime.is_hip, "rocFFT has different plan sizes")
+    @unittest.skipIf(runtime.runtimeGetVersion() >= 11080,
+                     "CUDA 11.8 has different plan size")
     def test_LRU_cache13(self):
         # test if plan insertion respect the memory size limit
         cache = config.get_plan_cache()
