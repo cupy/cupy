@@ -600,19 +600,17 @@ class TestCsrMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(2.0)
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_numpy_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(numpy.dtype(self.dtype).type(2.0))
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
