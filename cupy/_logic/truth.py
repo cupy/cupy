@@ -287,10 +287,25 @@ def setxor1d(ar1, ar2, assume_unique=False):
         return aux
 
     aux.sort()
-    flag = aux
-    flag = cupy.concatenate((cupy.asanyarray([True]), cupy.asanyarray(
-        aux[1:] != aux[:-1]), cupy.asanyarray([True])), axis=None)
-    return aux[flag[1:] & flag[:-1]]
+
+    setxorkernel = cupy.ElementwiseKernel(
+        'raw T X, int32 len',
+        'bool z',
+        '''
+            if (i == 0) {
+                z = (X[0] != X[1]);
+            }
+            else if (i == len - 1) {
+                z = (X[i] != X[i-1]);
+            }
+            else {
+                z = X[i] != X[i-1] && X[i] != X[i+1];
+            }
+        ''',
+        'setxorkernel'
+    )
+
+    return aux[setxorkernel(aux, aux.size, cupy.zeros(aux.size, dtype=cupy.bool8))]
 
 
 def union1d(arr1, arr2):
