@@ -305,7 +305,8 @@ def setxor1d(ar1, ar2, assume_unique=False):
         'setxorkernel'
     )
 
-    return aux[setxorkernel(aux, aux.size, cupy.zeros(aux.size, dtype=cupy.bool8))]
+    return aux[setxorkernel(aux, aux.size,
+                            cupy.zeros(aux.size, dtype=cupy.bool8))]
 
 
 def union1d(arr1, arr2):
