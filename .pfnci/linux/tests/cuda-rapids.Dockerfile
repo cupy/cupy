@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="rapidsai/rapidsai-dev-nightly:22.06-cuda11.2-devel-ubuntu20.04-py3.8"
+ARG BASE_IMAGE="rapidsai/rapidsai-dev-nightly:22.06-cuda11.5-devel-ubuntu20.04-py3.8"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
