@@ -66,8 +66,17 @@
         "mini",
         "multi"
     ],
-    "cupy.linux.cuda116": [],
-    "cupy.linux.cuda116.multi": [],
+    "cupy.linux.cuda116": [
+        "@push",
+        "full",
+        "mini"
+    ],
+    "cupy.linux.cuda116.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi"
+    ],
     "cupy.linux.cuda-slow": [
         "slow"
     ],

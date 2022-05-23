@@ -203,7 +203,7 @@
 # The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda116"
   target: "cuda116"
-  tags: []  # TODO: to be filled when adding this matrix to CI
+  tags: ["@push", "full", "mini"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.6"
@@ -224,7 +224,7 @@
 # CUDA 11.6 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda116.multi"
   _inherits: "cupy.linux.cuda116"
-  tags: []  # TODO: to be filled when adding this matrix to CI
+  tags: ["@push", "full", "mini", "multi"]
   target: "cuda116.multi"
   test: "unit-multi"
 
