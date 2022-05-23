@@ -544,7 +544,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         else:
             warnings.warn('Changing the sparsity structure of a '
                           '{}_matrix is expensive.'.format(self.format),
-                          _base.SparseEfficiencyWarning)
+                          base.SparseEfficiencyWarning)
             # replace where possible
             mask = offsets > -1
             self.data[offsets[mask]] = x[mask]
