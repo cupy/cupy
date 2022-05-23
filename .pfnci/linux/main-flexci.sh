@@ -23,6 +23,7 @@ if [[ "${TARGET}" == cuda116* || "${TARGET}" == cuda117* ]]; then
         killall Xorg
         nvidia-smi -pm 0
 
+        apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
         add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
         apt-get purge -qqy "cuda-drivers*" "*nvidia*-495"
         apt-get install -qqy "cuda-drivers"
