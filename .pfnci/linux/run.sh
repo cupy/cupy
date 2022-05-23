@@ -16,6 +16,7 @@ Arguments:
   - test: Run tests.
   - shell: Start an interactive shell in the docker image for debugging.
            The source tree will be read-write mounted for convenience.
+  - benchmark: Run performance benchmarks.
 
 Environment variables:
 
@@ -27,6 +28,7 @@ Environment variables:
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
 - DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
                       image.
+- BENCHMARK_DIR: Path to the directory to store benchmark results.
 "
 
 set -eu
@@ -118,7 +120,7 @@ main() {
       rm -f "${cache_archive}"
       ;;
 
-    test | shell )
+    test | shell | benchmark)
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
@@ -145,7 +147,12 @@ main() {
       fi
 
       test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
-      if [[ "${stage}" = "test" ]]; then
+      if [[ "${stage}" = "benchmark" ]]; then
+        mkdir -p ${BENCHMARK_DIR}
+        docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
+      fi
+
+      if [[ "${stage}" = "test" || "${stage}" = "benchmark" ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
             "${docker_image}" timeout 8h "${test_command[@]}" &
         docker_pid=$!
@@ -159,7 +166,6 @@ main() {
             "${docker_image}" bash
       fi
       ;;
-
     * )
       echo "Unsupported stage: ${stage}" >&2
       exit 1

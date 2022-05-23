@@ -546,19 +546,17 @@ class TestCscMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(2.0)
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_numpy_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(numpy.dtype(self.dtype).type(2.0))
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
                         reason='no working implementation')
@@ -607,7 +605,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -620,7 +618,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -809,7 +807,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1134,7 +1132,7 @@ class TestCscMatrixSum:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1331,7 +1329,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1349,7 +1347,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1362,7 +1360,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 

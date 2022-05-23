@@ -538,6 +538,7 @@ from cupy._logic.truth import any as sometrue  # NOQA
 # Polynomial functions
 # ------------------------------------------------------------------------------
 from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import poly  # NOQA
 from cupy.lib._routines_poly import polyadd  # NOQA
 from cupy.lib._routines_poly import polysub  # NOQA
 from cupy.lib._routines_poly import polymul  # NOQA

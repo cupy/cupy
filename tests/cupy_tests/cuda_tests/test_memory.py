@@ -10,6 +10,7 @@ import pytest
 import cupy.cuda
 from cupy.cuda import device
 from cupy.cuda import memory
+from cupy.cuda import runtime
 from cupy.cuda import stream as stream_module
 from cupy import testing
 
@@ -59,13 +60,18 @@ class TestUnownedMemory(unittest.TestCase):
             if self.allocator is memory.malloc_async:
                 raise unittest.SkipTest('HIP does not support async mempool')
         else:
-            if cupy.cuda.driver._is_cuda_python():
-                version = cupy.cuda.runtime.runtimeGetVersion()
-            else:
-                version = cupy.cuda.driver.get_build_version()
-            if version < 11020:
-                raise unittest.SkipTest('malloc_async is supported since '
-                                        'CUDA 11.2')
+            if self.allocator is memory.malloc_async:
+                if cupy.cuda.driver._is_cuda_python():
+                    version = cupy.cuda.runtime.runtimeGetVersion()
+                else:
+                    version = cupy.cuda.driver.get_build_version()
+                if version < 11020:
+                    raise unittest.SkipTest('malloc_async is supported since '
+                                            'CUDA 11.2')
+                elif runtime.deviceGetAttribute(
+                        runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
+                    raise unittest.SkipTest(
+                        'malloc_async is not supported on device 0')
 
         size = 24
         shape = (2, 3)
@@ -79,7 +85,15 @@ class TestUnownedMemory(unittest.TestCase):
         if self.specify_device_id:
             kwargs = {'device_id': device_id}
 
-        unowned_mem = memory.UnownedMemory(*args, **kwargs)
+        if cupy.cuda.runtime.is_hip and self.allocator is memory._malloc:
+            # In ROCm, it seems that `hipPointerGetAttributes()`, which is
+            # called in `UnownedMemory()`, requires an unmanaged device pointer
+            # that the current device must be the one on which the memory
+            # referred to by the pointer physically resides.
+            with device.Device(device_id):
+                unowned_mem = memory.UnownedMemory(*args, **kwargs)
+        else:
+            unowned_mem = memory.UnownedMemory(*args, **kwargs)
         assert unowned_mem.size == size
         assert unowned_mem.ptr == src_ptr
         assert unowned_mem.device_id == device_id
@@ -1004,6 +1018,9 @@ class TestExceptionPicklable(unittest.TestCase):
 class TestMallocAsync(unittest.TestCase):
 
     def setUp(self):
+        if cupy.cuda.runtime.deviceGetAttribute(
+                cupy.cuda.runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
+            pytest.skip('malloc_async is not supported on device 0')
         self.old_pool = cupy.get_default_memory_pool()
         memory.set_allocator(memory.malloc_async)
 
@@ -1074,6 +1091,9 @@ class TestMallocAsync(unittest.TestCase):
 class TestMemoryAsyncPool(unittest.TestCase):
 
     def setUp(self):
+        if cupy.cuda.runtime.deviceGetAttribute(
+                cupy.cuda.runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
+            pytest.skip('malloc_async is not supported on device 0')
         self.pool = memory.MemoryAsyncPool()
         self.unit = memory._allocation_unit_size
         self.stream = stream_module.Stream()

@@ -17,7 +17,9 @@ Bessel functions
    y1
    yn
    i0
+   i0e
    i1
+   i1e
 
 
 Raw statistical functions
@@ -79,6 +81,7 @@ Gamma and related functions
 
    gamma
    gammaln
+   loggamma
    gammainc
    gammaincinv
    gammaincc
@@ -88,7 +91,9 @@ Gamma and related functions
    betainc
    betaincinv
    psi
+   rgamma
    polygamma
+   multigammaln
    digamma
    poch
 

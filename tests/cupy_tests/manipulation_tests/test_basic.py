@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import numpy
 import pytest
@@ -204,6 +205,46 @@ class TestCopytoFromScalar:
         mask = (testing.shaped_arange(
             self.dst_shape, xp, dtype) % 2).astype(xp.bool_)
         xp.copyto(dst, self.src, where=mask)
+        return dst
+
+
+@pytest.mark.parametrize(
+    'casting', ['no', 'equiv', 'safe', 'same_kind', 'unsafe'])
+class TestCopytoFromNumpyScalar:
+
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto(self, xp, dtype1, dtype2, casting):
+        dst = xp.zeros((2, 3, 4), dtype=dtype1)
+        src = numpy.array(1, dtype=dtype2)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting)
+        return dst
+
+    @testing.for_all_dtypes()
+    @pytest.mark.parametrize('make_src',
+                             [lambda dtype: numpy.array([1], dtype=dtype),
+                              lambda dtype: dtype(1)])
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto2(self, xp, make_src, dtype, casting):
+        dst = xp.zeros((2, 3, 4), dtype=dtype)
+        src = make_src(dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting)
+        return dst
+
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto_where(self, xp, dtype1, dtype2, casting):
+        shape = (2, 3, 4)
+        dst = xp.ones(shape, dtype=dtype1)
+        src = numpy.array(1, dtype=dtype2)
+        mask = (testing.shaped_arange(shape, xp, dtype1) % 2).astype(xp.bool_)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting=casting, where=mask)
         return dst
 
 

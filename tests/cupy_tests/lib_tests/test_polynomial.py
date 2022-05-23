@@ -98,6 +98,14 @@ class TestPoly1dInit:
         assert out.variable == (self.variable or 'x')
         return out
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
+    def test_poly1d_roots(self, xp, dtype):
+        a = testing.shaped_arange((4,), xp, dtype)
+        out = xp.poly1d(a, True, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
+
 
 @testing.gpu
 class TestPoly1d:
@@ -234,6 +242,63 @@ class TestPoly1d:
         a = testing.shaped_arange((5,), xp, dtype)
         b = xp.poly1d(a)
         return b(a)
+
+
+@testing.gpu
+class TestPoly:
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_poly_1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_poly_2d_symmetric_real(self, xp, dtype):
+        a = xp.array([[6, 3, 1],
+                      [3, 0, 5],
+                      [1, 5, 6]], dtype)
+        return xp.poly(a)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_poly_2d_hermitian_complex(self, xp, dtype):
+        a = xp.array([[2, -1j], [1j, 1]], dtype)
+        return xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly_2d_square(self, dtype):
+        a = testing.shaped_arange((3, 3), cupy, dtype)
+        with pytest.raises(NotImplementedError):
+            cupy.poly(a)
+
+    @testing.for_all_dtypes()
+    def test_poly_2d_general(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly(a)
+
+    @testing.for_all_dtypes()
+    def test_poly_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((5, 4, 3), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly_zero_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp, dtype)
+            with pytest.raises(TypeError):
+                numpy.poly(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly_empty(self, xp, dtype):
+        a = xp.zeros((0), dtype)
+        return xp.poly(a)
 
 
 @testing.gpu
@@ -728,14 +793,14 @@ class TestPolyvalDtypesCombination:
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_polyval_diff_types_array_array(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
-        b = testing.shaped_arange((5,), xp, dtype2)
+        b = testing.shaped_arange((3,), xp, dtype2)
         return xp.polyval(a, b)
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_polyval_diff_types_array_scalar(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
-        b = dtype2(5)
+        b = dtype2(3)
         return xp.polyval(a, b)
 
 
@@ -744,18 +809,16 @@ class TestPolyvalNotImplemented:
 
     @testing.for_all_dtypes()
     def test_polyval_ndim_values(self, dtype):
-        a = testing.shaped_arange((2, ), cupy, dtype)
+        a = testing.shaped_arange((10,), cupy, dtype)
         b = testing.shaped_arange((2, 4), cupy, dtype)
-        with pytest.raises(NotImplementedError):
-            cupy.polyval(a, b)
+        return cupy.polyval(a, b)
 
     @testing.for_all_dtypes()
     def test_polyval_poly1d_values(self, dtype):
         a = testing.shaped_arange((5,), cupy, dtype)
         b = testing.shaped_arange((3,), cupy, dtype)
         b = cupy.poly1d(b)
-        with pytest.raises(NotImplementedError):
-            cupy.polyval(a, b)
+        return cupy.polyval(a, b)
 
 
 @testing.gpu

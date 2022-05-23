@@ -6,6 +6,7 @@ import numpy
 
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -116,7 +117,26 @@ cdef ndarray _ndarray_swapaxes(
     return _transpose(self, axes)
 
 
-cdef ndarray _ndarray_flatten(ndarray self):
+cdef ndarray _ndarray_flatten(ndarray self, order):
+    cdef int order_char
+    cdef vector.vector[Py_ssize_t] axes
+
+    order_char = internal._normalize_order(order, True)
+    if order_char == b'A':
+        if self._f_contiguous and not self._c_contiguous:
+            order_char = b'F'
+        else:
+            order_char = b'C'
+    if order_char == b'C':
+        return _ndarray_flatten_order_c(self)
+    elif order_char == b'F':
+        return _ndarray_flatten_order_c(_T(self))
+    elif order_char == b'K':
+        axes = _npyiter_k_order_axes(self.strides)
+        return _ndarray_flatten_order_c(_transpose(self, axes))
+
+
+cdef ndarray _ndarray_flatten_order_c(ndarray self):
     newarray = self.copy(order='C')
     newarray._shape.assign(<Py_ssize_t>1, self.size)
     newarray._strides.assign(<Py_ssize_t>1,
@@ -126,10 +146,40 @@ cdef ndarray _ndarray_flatten(ndarray self):
     return newarray
 
 
+cdef vector.vector[Py_ssize_t] _npyiter_k_order_axes(strides_t& strides):
+    # output transpose axes such that
+    # x.flatten(order="K") == x.transpose(axes).flatten(order="C")
+    # by reproducing `npyiter_find_best_axis_ordering`
+    # in numpy/core/src/multiarray/nditer_constr.c
+
+    # Note that `flatten` and `ravel` should use this function for order="K",
+    # while `copy(order="K")` should use `internal._get_strides_for_order_K`.
+    cdef vector.vector[Py_ssize_t] axes
+    cdef Py_ssize_t stride0, stride1
+    cdef int ndim, i0, i1, ipos, k
+    ndim = strides.size()
+    for i0 in reversed(range(ndim)):
+        stride0 = abs(strides[i0])
+        if stride0 == 0:  # ambiguous
+            axes.insert(axes.begin(), i0)
+            continue
+        ipos = 0
+        for k, i1 in enumerate(axes):
+            stride1 = abs(strides[i1])
+            if stride1 == 0:  # ambiguous
+                continue
+            elif stride1 <= stride0:  # shouldswap = false
+                break
+            else:  # shouldswap = true
+                ipos = k + 1
+        axes.insert(axes.begin() + ipos, i0)
+    return axes
+
+
 cdef ndarray _ndarray_ravel(ndarray self, order):
-    # TODO(beam2d, grlee77): Support K ordering option
     cdef int order_char
     cdef shape_t shape
+    cdef vector.vector[Py_ssize_t] axes
     shape.push_back(self.size)
 
     order_char = internal._normalize_order(order, True)
@@ -143,8 +193,8 @@ cdef ndarray _ndarray_ravel(ndarray self, order):
     elif order_char == b'F':
         return _reshape(_T(self), shape)
     elif order_char == b'K':
-        raise NotImplementedError(
-            'ravel with order=\'K\' not yet implemented.')
+        axes = _npyiter_k_order_axes(self.strides)
+        return _reshape(_transpose(self, axes), shape)
 
 
 cdef ndarray _ndarray_squeeze(ndarray self, axis):
@@ -497,9 +547,9 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     if axis is None:
         if broadcast:
             a = _reshape(a, (-1, 1))
-            ret = ndarray((a.size, repeats[0]), dtype=a.dtype)
+            ret = core._ndarray((a.size, repeats[0]), dtype=a.dtype)
             if ret.size:
-                ret[...] = a
+                elementwise_copy(a, ret)
             return ret.ravel()
         else:
             a = a.ravel()
@@ -516,7 +566,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 
     ret_shape = list(a.shape)
     ret_shape[axis] = sum(repeats)
-    ret = ndarray(ret_shape, dtype=a.dtype)
+    ret = core._ndarray(ret_shape, dtype=a.dtype)
     a_index = [slice(None)] * len(ret_shape)
     ret_index = list(a_index)
     offset = 0
@@ -605,7 +655,7 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None, dtype=None,
     # Prpare the output array
     shape_t = tuple(shape0)
     if out is None:
-        out = ndarray(shape_t, dtype=dtype)
+        out = core._ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
             raise ValueError('Output array has wrong dimensionality')

@@ -80,6 +80,18 @@ class LinuxGenerator:
                     '    apt-get -qqy install ca-certificates && \\',
                     '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
+            elif matrix.cudnn is not None:
+                major = matrix.cudnn.split('.')[0]
+                if major == '7':
+                    ubuntu_version = os_version.replace('.', '')
+                    lines += [
+                        'RUN export DEBIAN_FRONTEND=noninteractive && \\',
+                        '    apt-get -qqy update && \\',
+                        '    apt-get -qqy install software-properties-common && \\',  # NOQA
+                        f'    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu{ubuntu_version}/x86_64/7fa2af80.pub && \\',  # NOQA
+                        f'    add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu{ubuntu_version}/x86_64/ /"',  # NOQA
+                        '']
+
             lines += [
                 'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                 '    apt-get -qqy update && \\',
@@ -276,6 +288,8 @@ class LinuxGenerator:
             lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
+        elif matrix.test == 'benchmark':
+            lines += ['"$ACTIONS/benchmark.sh"']
         else:
             raise AssertionError
 

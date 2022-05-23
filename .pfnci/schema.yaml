@@ -64,7 +64,7 @@ rocm:
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "5.0":
-    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.1
+    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -116,6 +116,17 @@ cutensor:
     spec: null
   "1.4":
     spec: "1.4.*"
+    cuda:
+      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
+      "11.0":
+      "11.1":
+      "11.2":
+      "11.3":
+      "11.4":
+      "11.5":
+      "11.6":
+  "1.5":
+    spec: "1.5.*"
     cuda:
       # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
       "11.0":
@@ -201,6 +212,24 @@ cudnn:
         alias: "11.5"
       "11.6":
         alias: "11.5"
+  "8.4":
+    spec: "8.4.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.6"
+      "11.1":
+        alias: "11.6"
+      "11.2":
+        alias: "11.6"
+      "11.3":
+        alias: "11.6"
+      "11.4":
+        alias: "11.6"
+      "11.5":
+        alias: "11.6"
+      "11.6":
+        alias: "11.6"
 
 ###############################################################################
 # Python
@@ -366,6 +395,7 @@ cuda-python:
 ###############################################################################
 env:CUPY_ACCELERATORS:
   null:
+  "":
   "cub":
   "cutensor":
   "cub,cutensor":
@@ -379,3 +409,4 @@ test:
   "unit-multi":
   "unit-slow":
   "example":
+  "benchmark":
