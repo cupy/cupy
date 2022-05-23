@@ -17,9 +17,9 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 fi
 
-# TODO(kmaehashi): Hack for CUDA 11.6 until FlexCI base image update
-if [[ "${TARGET}" == cuda116* ]]; then
-    if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 495.* ]]; then
+# TODO(kmaehashi): Hack for CUDA 11.6+ until FlexCI base image update
+if [[ "${TARGET}" == cuda116* || "${TARGET}" == cuda117* ]]; then
+    if dpkg -s cuda-drivers-495; then
         killall Xorg
         nvidia-smi -pm 0
 
