@@ -1,8 +1,10 @@
+import sys as _sys
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda._softlink cimport SoftLink
 
 
 cdef extern from '../../cupy_complex.h':
@@ -1246,12 +1248,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
                              IndexType csrRowOffsetsType,
                              IndexType csrColIndType, IndexBase idxBase,
                              DataType valueType)
-    Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
-                             int64_t cols, int64_t nnz, void* cscColOffsets,
-                             void* cscRowInd, void* cscValues,
-                             IndexType cscColOffsetsType,
-                             IndexType cscRowIndType, IndexBase idxBase,
-                             DataType valueType)
     Status cusparseDestroySpMat(SpMatDescr spMatDescr)
     Status cusparseCooGet(SpMatDescr spMatDescr, int64_t* rows, int64_t* cols,
                           int64_t* nnz, void** cooRowInd, void** cooColInd,
@@ -1385,6 +1381,40 @@ cdef extern from '../../cupy_sparse.h' nogil:
 
     # Build-time version
     int CUSPARSE_VERSION
+
+
+# APIs added after CUDA 11.2+.
+cdef void* _cusparseCreateCsc = NULL
+cdef Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
+                         int64_t cols, int64_t nnz, void* cscColOffsets,
+                         void* cscRowInd, void* cscValues,
+                         IndexType cscColOffsetsType,
+                         IndexType cscRowIndType, IndexBase idxBase,
+                         DataType valueType):
+    return (<Status(*)(...) nogil>_cusparseCreateCsc)(
+        spMatDescr, rows,
+        cols, nnz, cscColOffsets,
+        cscRowInd, cscValues,
+        cscColOffsetsType,
+        cscRowIndType, idxBase,
+        valueType)
+
+
+cdef load_functions(libname, prefix):
+    lib = SoftLink(libname, prefix)
+    global _cusparseCreateCsc
+    _cusparseCreateCsc = lib.get_func('CreateCsc')
+
+IF 11020 <= CUPY_CUDA_VERSION < 12000:
+    if _sys.platform == 'linux':
+        _libname = 'libcusparse.so.11'
+    else:
+        _libname = 'cusparse64_11.dll'
+    load_functions(_libname, 'cusparse')
+ELIF 0 < CUPY_HIP_VERSION:
+    load_functions(__file__, 'cusparse')
+ELSE:
+    load_functions(None, 'cusparse')
 
 
 cdef dict STATUS = {
