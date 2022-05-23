@@ -16,8 +16,8 @@
   cusparselt: null
   cudnn: "7.6"
   python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
@@ -72,7 +72,7 @@
   cusparselt: null
   cudnn: "8.0"
   python: "3.7"
-  numpy: "1.19"
+  numpy: "1.20"
   scipy: null
   optuna: "2"
   cython: "0.29"
@@ -100,8 +100,8 @@
   cusparselt: "0.2.0"
   cudnn: "8.1"
   python: "3.7"
-  numpy: "1.18"
-  scipy: "1.5"
+  numpy: "1.21"
+  scipy: "1.7"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
@@ -128,7 +128,7 @@
   cusparselt: null
   cudnn: "8.2"
   python: "3.8"
-  numpy: "1.18"
+  numpy: "1.20"
   scipy: "1.6"
   optuna: "2"
   cython: "0.29"
@@ -253,8 +253,8 @@
   cusparselt: null
   cudnn: null
   python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
