@@ -6,6 +6,7 @@ import string
 import numpy
 
 import cupy
+import cupy._core.core as core
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 
@@ -101,7 +102,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         count_nonzero = int(scan_index[-1])  # synchronize!
 
     ndim = self._shape.size()
-    dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
+    dst = core._ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
 
@@ -183,7 +184,7 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
     ba, bcs = _manipulation.broadcast(a, choices).values
 
     if out is None:
-        out = ndarray(ba.shape[1:], choices.dtype)
+        out = core._ndarray(ba.shape[1:], choices.dtype)
 
     n_channel = numpy.prod(bcs[0].shape)
     if mode == 'raise':
@@ -787,7 +788,7 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
-    out = ndarray(masked_shape, dtype=a.dtype)
+    out = core._ndarray(masked_shape, dtype=a.dtype)
     if out.size == 0:
         return out
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
@@ -831,7 +832,7 @@ cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
             index_range *= a._shape[i]
 
     if out is None:
-        out = ndarray(out_shape, dtype=a.dtype)
+        out = core._ndarray(out_shape, dtype=a.dtype)
     else:
         if out.dtype != a.dtype:
             raise TypeError('Output dtype mismatch')
@@ -1036,7 +1037,7 @@ cdef ndarray _diagonal(
     diag_size = max(0, min(a.shape[-2], a.shape[-1] - offset))
     ret_shape = a.shape[:-2] + (diag_size,)
     if diag_size == 0:
-        return ndarray(ret_shape, dtype=a.dtype)
+        return core._ndarray(ret_shape, dtype=a.dtype)
 
     a = a[..., :diag_size, offset:offset + diag_size]
 
@@ -1079,7 +1080,7 @@ cdef tuple _prepare_multiple_array_indexing(
     # br = _manipulation.broadcast(*indices)
     # indices = list(br.values)
 
-    reduced_idx = ndarray(
+    reduced_idx = core._ndarray(
         internal._broadcast_shapes(shapes), dtype=numpy.int64)
     reduced_idx.fill(0)
     stride = 1

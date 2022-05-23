@@ -182,7 +182,7 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_arg(object arg):
         typ = type(arg)
-        if typ is ndarray:
+        if issubclass(typ, ndarray):
             return _ArgInfo.from_ndarray(arg)
         if typ is _scalar.CScalar:
             return _ArgInfo.from_scalar(arg)
@@ -199,7 +199,7 @@ cdef class _ArgInfo:
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
             ARG_KIND_NDARRAY,
-            ndarray,
+            type(arg),
             arg.dtype.type,
             arg._shape.size(),
             arg._c_contiguous,
@@ -270,7 +270,7 @@ cdef class _ArgInfo:
         if self.ndim == ndim:
             return self
         return _ArgInfo(
-            ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False, False)
+            ARG_KIND_NDARRAY, self.dtype, self.dtype, ndim, False, False)
 
     cdef bint is_ndarray(self):
         return self.arg_kind == ARG_KIND_NDARRAY
