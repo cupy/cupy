@@ -274,6 +274,9 @@ cdef class PlanCache:
         self._reset()
         self.dev = dev if dev != -1 else runtime.getDevice()
 
+    def __dealloc__(self):
+        self._cleanup()
+
     def __getitem__(self, tuple key):
         # no-op if cache is disabled
         if not self.is_enabled:
@@ -281,8 +284,6 @@ cdef class PlanCache:
             return
 
         cdef _Node node
-        cdef int dev
-        cdef PlanCache cache
         cdef list gpus
 
         node = self.cache.get(key)
