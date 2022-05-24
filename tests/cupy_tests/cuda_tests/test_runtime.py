@@ -46,6 +46,8 @@ class TestMemPool:
         runtime.memPoolDestroy(pool)
 
 
+@pytest.mark.skipif(runtime.is_hip,
+                    reason='This assumption is correct only in CUDA')
 def test_assumed_runtime_version():
     # When CUDA Python is enabled, CuPy calculates the CUDA runtime version
     # from NVRTC version. This test ensures that the assumption is correct
