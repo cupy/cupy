@@ -5,7 +5,6 @@ set -uex
 ACTIONS="$(dirname $0)/actions"
 . "$ACTIONS/_environment.sh"
 
-export DISABLE_JUPYTER=true
 export CUPY_NVCC_GENERATE_CODE="current"
 export NVCC="ccache nvcc"
 

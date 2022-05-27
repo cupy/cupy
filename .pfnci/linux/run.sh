@@ -135,7 +135,7 @@ main() {
         docker_args+=(--volume="${CACHE_DIR}:${CACHE_DIR}" --env "CACHE_DIR=${CACHE_DIR}")
       fi
       if [[ "${DISABLE_JUPYTER:-}" != "" ]]; then
-	docker_args+=(--end "DISABLE_JUPYTER=${DISABLE_JUPYTER}")
+	docker_args+=(--env "DISABLE_JUPYTER=${DISABLE_JUPYTER}")
       fi
       if [[ "${PULL_REQUEST:-}" != "" ]]; then
         docker_args+=(--env "PULL_REQUEST=${PULL_REQUEST}")
