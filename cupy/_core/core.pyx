@@ -93,6 +93,9 @@ cdef object _null_context = contextlib.nullcontext()
 
 
 class _ndarray(ndarray):
+    __module__ = 'cupy'
+    __doc__ = ndarray.__doc__
+
     def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
         x = super().__new__(cls, *args, **kwargs)
         if _no_init:
