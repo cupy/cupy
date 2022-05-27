@@ -448,14 +448,27 @@ def linkcode_resolve(domain, info):
         # obj is not a module, class, function, ..etc.
         return None
 
-    # `inspect.getsourcefile` returns None for C-extension objects
-    if filename is None:
+    def get_pyx_file(obj):
         filename = inspect.getfile(obj)
         for ext in importlib.machinery.EXTENSION_SUFFIXES:
             if filename.endswith(ext):
                 filename = filename[:-len(ext)] + '.pyx'
-                break
+                return filename
         else:
+            return None
+
+    # `cupy.ndarray` (aka. `cupy._core.core.ndarray`) has `__module__`
+    # attribute overwritten and `inspect.getsourcefile` doesn't work on it,
+    # so use `cupy._core.core`'s source location instead
+    if obj is cupy.ndarray:
+        filename = get_pyx_file(cupy._core.core)
+        if filename is None:
+            return None
+        linenum = None
+    # `inspect.getsourcefile` returns None for C-extension objects
+    elif filename is None:
+        filename = get_pyx_file(obj)
+        if filename is None:
             return None
         linenum = None
     else:
@@ -490,6 +503,14 @@ def fix_jit_callable_signature(
     if 'cupyx.jit' in name and callable(obj) and signature is None:
         return (f'{inspect.signature(obj)}', None)
 
+# Replace `-> _ndarray_base` return annoation on document to `-> ndarray`
+def fix_ndarray_return_annotation(
+        app, what, name, obj, options, signature, return_annotation):
+    if return_annotation == '_ndarray_base':
+        return (signature, 'ndarray')
+    return (signature, return_annotation)
+
 def setup(app):
     app.connect("autodoc-process-docstring", remove_array_api_module_docstring)
     app.connect("autodoc-process-signature", fix_jit_callable_signature)
+    app.connect("autodoc-process-signature", fix_ndarray_return_annotation)

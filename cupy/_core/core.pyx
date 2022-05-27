@@ -93,6 +93,9 @@ cdef object _null_context = contextlib.nullcontext()
 
 
 class _ndarray(ndarray):
+    __module__ = 'cupy'
+    __doc__ = ndarray.__doc__
+
     def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
         x = super().__new__(cls, *args, **kwargs)
         if _no_init:
@@ -102,7 +105,8 @@ class _ndarray(ndarray):
             x.__array_finalize__(_obj)
         return x
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self, shape, dtype=float, memptr=None, strides=None, order='C'):
         # Prevent from calling the super class `ndarray.__init__()` as
         # it is used to check accidental direct instantiation of underlaying
         # `ndarray` extention.
@@ -145,7 +149,8 @@ cdef class ndarray:
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self, shape, dtype=float, memptr=None, strides=None, order='C'):
         # Raise an error if underlaying `ndarray` extension type is directly
         # instantiated. We must instantiate `_ndarray` class instead for our
         # ndarray subclassing mechanism.
