@@ -4,7 +4,7 @@ from cupy._core cimport _optimize_config
 from cupy._core cimport _reduction
 from cupy._core cimport _scalar
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core cimport internal
 from cupy.cuda cimport cub
@@ -288,7 +288,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     parameters, otherwise returns None.
     '''
     cdef tuple axis_permutes_cub
-    cdef ndarray in_arr, out_arr
+    cdef _ndarray_base in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
     cdef str order
 
@@ -431,7 +431,7 @@ cdef inline void _cub_two_pass_launch(
     cdef list inout_args
     cdef tuple cub_params
     cdef size_t gridx, blockx
-    cdef ndarray in_arr
+    cdef _ndarray_base in_arr
 
     # fair share
     contiguous_size = min(segment_size, block_size * items_per_thread)
@@ -607,7 +607,7 @@ cdef bint _try_to_call_cub_reduction(
         map_expr, reduce_expr, post_map_expr,
         reduce_type, _kernel._TypeMap type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
-        ndarray ret) except *:
+        _ndarray_base ret) except *:
     """Try to use cub.
 
     Updates `ret` and returns a boolean value whether cub is used.

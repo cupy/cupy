@@ -106,7 +106,7 @@ def _guess_routine(func, args, dtype):
             obj = x.dtype.type(0)
         else:
             assert isinstance(x, _TraceArray)
-            obj = core._ndarray((0,), x.dtype)
+            obj = core.ndarray((0,), x.dtype)
         dummy_args.append(obj)
 
     op = func._ops.guess_routine(
