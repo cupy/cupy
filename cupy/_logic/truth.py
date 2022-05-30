@@ -296,8 +296,8 @@ def setxor1d(ar1, ar2, assume_unique=False):
 
     aux.sort()
 
-    return aux[setxorkernel(aux, aux.size,
-                            cupy.zeros(aux.size, dtype=cupy.bool_))]
+    return aux[_setxorkernel(aux, aux.size,
+                             cupy.zeros(aux.size, dtype=cupy.bool_))]
 
 
 def union1d(arr1, arr2):
