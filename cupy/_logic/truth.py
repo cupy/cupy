@@ -4,6 +4,14 @@ from cupy._core import _fusion_thread_local
 from cupy import _util
 
 
+setxorkernel = cupy._core.ElementwiseKernel(
+    'raw T X, int64 len',
+    'bool z',
+    'z = (i == 0 || X[i] != X[i-1]) && (i == len - 1 || X[i] != X[i+1])',
+    'setxorkernel'
+)
+
+
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
@@ -288,25 +296,8 @@ def setxor1d(ar1, ar2, assume_unique=False):
 
     aux.sort()
 
-    setxorkernel = cupy.ElementwiseKernel(
-        'raw T X, int32 len',
-        'bool z',
-        '''
-            if (i == 0) {
-                z = (X[0] != X[1]);
-            }
-            else if (i == len - 1) {
-                z = (X[i] != X[i-1]);
-            }
-            else {
-                z = X[i] != X[i-1] && X[i] != X[i+1];
-            }
-        ''',
-        'setxorkernel'
-    )
-
     return aux[setxorkernel(aux, aux.size,
-                            cupy.zeros(aux.size, dtype=cupy.bool8))]
+                            cupy.zeros(aux.size, dtype=cupy.bool_))]
 
 
 def union1d(arr1, arr2):
