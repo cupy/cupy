@@ -4,7 +4,7 @@ from cupy._core import _fusion_thread_local
 from cupy import _util
 
 
-setxorkernel = cupy._core.ElementwiseKernel(
+_setxorkernel = cupy._core.ElementwiseKernel(
     'raw T X, int64 len',
     'bool z',
     'z = (i == 0 || X[i] != X[i-1]) && (i == len - 1 || X[i] != X[i+1])',
