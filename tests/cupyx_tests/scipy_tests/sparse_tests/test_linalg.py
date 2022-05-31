@@ -1172,19 +1172,33 @@ class TestLOBPCG:
                                          verbosityLevel=1)
         return eigvals, _eigen_vec_transform(vecs, xp)
 
+    @pytest.mark.xfail(
+        runtime.is_hip and driver.get_build_version() >= 5_00_00000,
+        reason='ROCm 5.0+ may have a bug')
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should
         be the number of iterations plus 2 (initial and final values).
         """
+        def make(xp, sp):
+            vals = -xp.arange(1, n + 1)
+            A = sp.diags([vals], [0], (n, n))
+            A = A.astype(xp.float32)
+            X = testing.shaped_random((n, m), xp=xp, seed=1566950023)
+            return A, X
         n = 50
         m = 4
-        vals = -cupy.arange(1, n + 1)
-        A = sparse.diags([vals], [0], (n, n))
-        A = A.astype(cupy.float32)
-        X = testing.shaped_random((n, m), xp=cupy, seed=1566950023)
-        _, _, l_h = sparse.linalg.lobpcg(A, X, tol=1e-8, maxiter=None,
-                                         retLambdaHistory=True)
+        A, X = make(cupy, sparse)
+        w, _, l_h = sparse.linalg.lobpcg(
+            A, X, tol=1e-8, maxiter=None, retLambdaHistory=True)
+
+        # Assert the eigenavlues against SciPy
+        A_np, X_np = make(numpy, scipy.sparse)
+        w_np, _ = scipy.sparse.linalg.lobpcg(
+            A_np, X_np, tol=1e-8, maxiter=None)
+        testing.assert_allclose(w, w_np, rtol=1e-5)
+
+        # Assert the number of iterations
         assert len(l_h) == 22
 
 

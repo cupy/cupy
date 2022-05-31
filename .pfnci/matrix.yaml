@@ -16,8 +16,8 @@
   cusparselt: null
   cudnn: "7.6"
   python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
@@ -72,7 +72,7 @@
   cusparselt: null
   cudnn: "8.0"
   python: "3.7"
-  numpy: "1.19"
+  numpy: "1.20"
   scipy: null
   optuna: "2"
   cython: "0.29"
@@ -100,8 +100,8 @@
   cusparselt: "0.2.0"
   cudnn: "8.1"
   python: "3.7"
-  numpy: "1.18"
-  scipy: "1.5"
+  numpy: "1.21"
+  scipy: "1.7"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
@@ -128,7 +128,7 @@
   cusparselt: null
   cudnn: "8.2"
   python: "3.8"
-  numpy: "1.18"
+  numpy: "1.20"
   scipy: "1.6"
   optuna: "2"
   cython: "0.29"
@@ -182,7 +182,7 @@
   nccl: "2.11"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.3"
+  cudnn: "8.4"
   python: "3.10"
   numpy: "1.22"
   scipy: "1.8"
@@ -211,7 +211,7 @@
   nccl: "2.11"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.3"
+  cudnn: "8.4"
   python: "3.10"
   numpy: "1.21"
   scipy: "1.7"
@@ -238,30 +238,8 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 4.2 | Linux
-# The lowest ROCm version matrix is intended to cover the lowest supported combination.
-- project: "cupy.linux.rocm-4-2"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-2,label=mnj-mi50/"
-  tags: null  # Jenkins
-  target: "rocm-4-2"
-  system: "linux"
-  os: "ubuntu:20.04"
-  cuda: null
-  rocm: '4.2'
-  nccl: null
-  cutensor: null
-  cusparselt: null
-  cudnn: null
-  python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
-  optuna: "2"
-  cython: "0.29"
-  cuda-python: null
-  env:CUPY_ACCELERATORS: null
-  test: "unit"
-
 # ROCm 4.3 | Linux
+# The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-3"
   _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
   tags: null  # Jenkins
@@ -274,9 +252,9 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.9"
-  numpy: "1.21"
-  scipy: "1.7"
+  python: "3.7"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "2"
   cython: "0.29"
   cuda-python: null
@@ -322,7 +300,7 @@
   nccl: "2.10"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.3"
+  cudnn: "8.4"
   python: "3.9"
   numpy: "1.21"
   scipy: "1.7"
@@ -352,7 +330,7 @@
   nccl: "2.10"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.3"
+  cudnn: "8.4"
   python: "3.8"
   numpy: "1.20"
   scipy: "1.7"
@@ -378,7 +356,7 @@
   nccl: "2.11"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.3"
+  cudnn: "8.4"
   python: "3.9"
   numpy: "pre"
   scipy: "pre"
@@ -403,7 +381,7 @@
   nccl: "2.11"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.3"
+  cudnn: "8.4"
   python: "3.10"
   numpy: "1.21"
   scipy: "1.7"

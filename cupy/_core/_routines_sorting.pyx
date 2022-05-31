@@ -5,6 +5,7 @@ import numpy
 import cupy
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 from cupy import _util
 from cupy.cuda import thrust
 
@@ -43,7 +44,8 @@ cdef _ndarray_sort(ndarray self, int axis):
         thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
     else:
         max_size = max(min(1 << 22, data.size) // data.shape[-1], 1)
-        keys_array = ndarray((max_size * data.shape[-1],), dtype=numpy.intp)
+        keys_array = core._ndarray(
+            (max_size * data.shape[-1],), dtype=numpy.intp)
         stop = data.size // data.shape[-1]
         for offset in range(0, stop, max_size):
             width = min(max_size, stop - offset)
@@ -88,13 +90,13 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         data = _manipulation.rollaxis(data, _axis, ndim).copy()
     shape = data.shape
 
-    idx_array = ndarray(shape, dtype=numpy.intp)
+    idx_array = core._ndarray(shape, dtype=numpy.intp)
 
     if ndim == 1:
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
                        shape)
     else:
-        keys_array = ndarray(shape, dtype=numpy.intp)
+        keys_array = core._ndarray(shape, dtype=numpy.intp)
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
                        keys_array.data.ptr, shape)
 

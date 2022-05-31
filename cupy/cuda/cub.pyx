@@ -15,6 +15,7 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 
 import cupy
+import cupy._core as _core
 import numpy
 
 
@@ -165,11 +166,11 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     x = _internal_ascontiguousarray(x)
 
     if op in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
-        y = ndarray((), x.dtype)
+        y = _core.ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
         kv_bytes = (4 + x.dtype.itemsize)
-        y = ndarray((kv_bytes,), numpy.int8)
+        y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = common._get_dtype_id(x.dtype)
@@ -228,7 +229,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     # prepare input
     out_shape = _get_output_shape(x, out_axis, keepdims)
     x_ptr = <void*>x.data.ptr
-    y = ndarray(out_shape, dtype=x.dtype, order=order)
+    y = _core.ndarray(out_shape, dtype=x.dtype, order=order)
     y_ptr = <void*>y.data.ptr
     if out is not None and out.shape != out_shape:
         raise ValueError(
@@ -297,7 +298,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     x_ptr = <void*>x.data.ptr
 
     # prepare output array
-    y = ndarray((n_rows,), dtype=dtype)
+    y = _core.ndarray((n_rows,), dtype=dtype)
     y_ptr = <void*>y.data.ptr
 
     s = <Stream_t>stream.get_current_stream_ptr()

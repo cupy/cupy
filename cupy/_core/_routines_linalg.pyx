@@ -9,6 +9,7 @@ import cupy
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 
 
 from libc.stdint cimport intptr_t
@@ -794,12 +795,12 @@ cpdef ndarray _mat_ptrs(ndarray a):
     cdef ndarray idx
     idx = _mat_ptrs_kernel(
         a.data.ptr, a._strides[0],
-        ndarray((a._shape[0],), dtype=numpy.uintp))
+        core._ndarray((a._shape[0],), dtype=numpy.uintp))
 
     for i in range(1, ndim - 2):
         idx = _mat_ptrs_kernel(
             idx[:, None], a._strides[i],
-            ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+            core._ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
         idx = idx.ravel()
     return idx
 
@@ -956,12 +957,12 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     ):
         c = out
     else:
-        c = ndarray(out_shape, dtype=dtype)
+        c = core._ndarray(out_shape, dtype=dtype)
         if out is None:
             if dtype == ret_dtype:
                 out = c
             else:
-                out = ndarray(out_shape, dtype=ret_dtype)
+                out = core._ndarray(out_shape, dtype=ret_dtype)
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
         c_view = c.view()
