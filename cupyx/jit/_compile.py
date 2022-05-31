@@ -707,9 +707,9 @@ def _transpile_expr_internal(expr, env):
                 types = [_cuda_types.PtrDiff()]*value.ctype.ndim
                 return Data(f'{value.code}.get_{expr.attr}()',
                             _cuda_types.Tuple(types))
-        if isinstance(value.ctype, _interface._Dim3):
+        if isinstance(value.ctype, _cuda_types.Dim3):
             if expr.attr in ('x', 'y', 'z'):
-                return Data(f'{value.code}.{expr.attr}', _cuda_types.uint32)
+                return getattr(value.ctype, expr.attr)(value.code)
         # TODO(leofang): support arbitrary Python class methods
         if isinstance(value.ctype, _ThreadGroup):
             return _internal_types.BuiltinFunc.from_class_method(

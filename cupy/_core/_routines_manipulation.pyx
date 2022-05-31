@@ -6,6 +6,7 @@ import numpy
 
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -546,7 +547,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     if axis is None:
         if broadcast:
             a = _reshape(a, (-1, 1))
-            ret = ndarray((a.size, repeats[0]), dtype=a.dtype)
+            ret = core._ndarray((a.size, repeats[0]), dtype=a.dtype)
             if ret.size:
                 elementwise_copy(a, ret)
             return ret.ravel()
@@ -565,7 +566,7 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
 
     ret_shape = list(a.shape)
     ret_shape[axis] = sum(repeats)
-    ret = ndarray(ret_shape, dtype=a.dtype)
+    ret = core._ndarray(ret_shape, dtype=a.dtype)
     a_index = [slice(None)] * len(ret_shape)
     ret_index = list(a_index)
     offset = 0
@@ -654,7 +655,7 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None, dtype=None,
     # Prpare the output array
     shape_t = tuple(shape0)
     if out is None:
-        out = ndarray(shape_t, dtype=dtype)
+        out = core._ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
             raise ValueError('Output array has wrong dimensionality')

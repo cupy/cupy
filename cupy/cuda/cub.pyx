@@ -3,6 +3,7 @@
 """Wrapper of CUB functions for CuPy API."""
 
 from cpython cimport sequence
+from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
@@ -14,6 +15,7 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 
 import cupy
+import cupy._core as _core
 import numpy
 
 
@@ -58,6 +60,8 @@ cdef extern from 'cupy_cub.h' nogil:
     void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
     void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
                                     size_t, Stream_t, int)
+    void cub_device_histogram_even(void*, size_t&, void*, void*, int, int, int,
+                                   size_t, Stream_t, int)
     size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
@@ -68,6 +72,8 @@ cdef extern from 'cupy_cub.h' nogil:
         void*, void*, int, Stream_t, int, int)
     size_t cub_device_histogram_range_get_workspace_size(
         void*, void*, int, void*, size_t, Stream_t, int)
+    size_t cub_device_histogram_even_get_workspace_size(
+        void*, void*, int, int, int, size_t, Stream_t, int)
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
@@ -160,11 +166,11 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     x = _internal_ascontiguousarray(x)
 
     if op in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
-        y = ndarray((), x.dtype)
+        y = _core.ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
         kv_bytes = (4 + x.dtype.itemsize)
-        y = ndarray((kv_bytes,), numpy.int8)
+        y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = common._get_dtype_id(x.dtype)
@@ -223,7 +229,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     # prepare input
     out_shape = _get_output_shape(x, out_axis, keepdims)
     x_ptr = <void*>x.data.ptr
-    y = ndarray(out_shape, dtype=x.dtype, order=order)
+    y = _core.ndarray(out_shape, dtype=x.dtype, order=order)
     y_ptr = <void*>y.data.ptr
     if out is not None and out.shape != out_shape:
         raise ValueError(
@@ -292,7 +298,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     x_ptr = <void*>x.data.ptr
 
     # prepare output array
-    y = ndarray((n_rows,), dtype=dtype)
+    y = _core.ndarray((n_rows,), dtype=dtype)
     y_ptr = <void*>y.data.ptr
 
     s = <Stream_t>stream.get_current_stream_ptr()
@@ -345,7 +351,7 @@ def device_scan(ndarray x, op):
     return x
 
 
-def device_histogram(ndarray x, ndarray bins, ndarray y):
+def device_histogram(ndarray x, ndarray y, bins):
     cdef memory.MemoryPointer ws
     cdef size_t ws_size, n_samples
     cdef int dtype_id, n_bins
@@ -354,28 +360,49 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     cdef void* y_ptr
     cdef void* ws_ptr
     cdef Stream_t s
+    cdef bint is_even
 
     # TODO(leofang): perhaps not needed?
     # y is guaranteed contiguous
     x = _internal_ascontiguousarray(x)
-    bins = _internal_ascontiguousarray(bins)
+    if isinstance(bins, ndarray):
+        bins = _internal_ascontiguousarray(bins)
+        bins_ptr = <void*><intptr_t>bins.data.ptr
+        n_bins = bins.size
+        is_even = False
+    else:
+        n_bins = bins
+        is_even = True
+        if runtime._is_hip_environment:
+            raise RuntimeError("not supported yet")
+        if x.dtype.kind not in 'bui':
+            raise ValueError("only integer input is supported")
+    assert y.size == n_bins - 1
 
     x_ptr = <void*>x.data.ptr
     y_ptr = <void*>y.data.ptr
-    n_bins = bins.size
-    bins_ptr = <void*>bins.data.ptr
     n_samples = x.size
     s = <Stream_t>stream.get_current_stream_ptr()
     dtype_id = common._get_dtype_id(x.dtype)
-    assert y.size == n_bins - 1
-    ws_size = cub_device_histogram_range_get_workspace_size(
-        x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
 
+    if is_even:
+        ws_size = cub_device_histogram_even_get_workspace_size(
+            x_ptr, y_ptr, n_bins, 0, n_bins-1, n_samples, s, dtype_id)
+    else:
+        ws_size = cub_device_histogram_range_get_workspace_size(
+            x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
+
     with nogil:
-        cub_device_histogram_range(ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
-                                   bins_ptr, n_samples, s, dtype_id)
+        if is_even:
+            cub_device_histogram_even(
+                ws_ptr, ws_size, x_ptr, y_ptr, n_bins, 0, n_bins-1,
+                n_samples, s, dtype_id)
+        else:
+            cub_device_histogram_range(
+                ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
+                bins_ptr, n_samples, s, dtype_id)
     return y
 
 

@@ -34,6 +34,49 @@ def _wraps_polyroutine(func):
     return functools.update_wrapper(wrapper, func)
 
 
+def poly(seq_of_zeros):
+    """Computes the coefficients of a polynomial with the given roots sequence.
+
+    Args:
+        seq_of_zeros (cupy.ndarray): a sequence of polynomial roots.
+
+    Returns:
+        cupy.ndarray: polynomial coefficients from highest to lowest degree.
+
+    .. warning::
+
+        This function doesn't support general 2d square arrays currently.
+        Only complex Hermitian and real symmetric 2d arrays are allowed.
+
+    .. seealso:: :func:`numpy.poly`
+
+    """
+    x = seq_of_zeros
+    if x.ndim == 2 and x.shape[0] == x.shape[1] and x.shape[0] != 0:
+        if cupy.array_equal(x, x.conj().T):
+            x = cupy.linalg.eigvalsh(x)
+        else:
+            raise NotImplementedError('Only complex Hermitian and real '
+                                      'symmetric 2d arrays are supported '
+                                      'currently')
+    elif x.ndim == 1:
+        x = x.astype(cupy.mintypecode(x.dtype.char), copy=False)
+    else:
+        raise ValueError('Input must be 1d or non-empty square 2d array.')
+
+    if x.size == 0:
+        return 1.0
+
+    size = 2 ** (x.size - 1).bit_length()
+    a = cupy.zeros((size, 2), x.dtype)
+    a[:, 0].fill(1)
+    cupy.negative(x, out=a[:x.size, 1])
+    while size > 1:
+        size = size // 2
+        a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    return a[0, :x.size + 1]
+
+
 @_wraps_polyroutine
 def polyadd(a1, a2):
     """Computes the sum of two polynomials.

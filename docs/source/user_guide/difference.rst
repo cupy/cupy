@@ -1,5 +1,5 @@
-Difference between CuPy and NumPy
-=================================
+Differences between CuPy and NumPy
+==================================
 
 The interface of CuPy is designed to obey that of NumPy.
 However, there are some differences.
@@ -95,7 +95,7 @@ If you want to use scalar values, cast the returned arrays explicitly.
 
   >>> type(np.sum(np.arange(3))) == np.int64
   True
-  >>> type(cupy.sum(cupy.arange(3))) == cupy._core.core.ndarray
+  >>> type(cupy.sum(cupy.arange(3))) == cupy.ndarray
   True
 
 

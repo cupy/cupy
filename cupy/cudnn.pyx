@@ -262,7 +262,7 @@ cpdef core.ndarray _ascontiguousarray_normalized_strides(core.ndarray a):
         newarray = a.view()
         newarray._set_contiguous_strides(newarray.itemsize, True)
     else:
-        newarray = core.ndarray(a.shape, a.dtype)
+        newarray = _core.ndarray(a.shape, a.dtype)
         _elementwise_copy(a, newarray)
     return newarray
 
@@ -387,10 +387,10 @@ def rnn_forward_inference_ex(
     cdef int n_units = hx._shape[2]
 
     cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
-    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef core.ndarray hy = _core.ndarray(hx.shape, hx.dtype)
     if cx is None:
-        cx = core.ndarray(0, dtype=xs.dtype)
-    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+        cx = _core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = _core.ndarray(cx.shape, cx.dtype)
 
     cdef size_t handle = get_handle()
 
@@ -455,10 +455,10 @@ def rnn_forward_training_ex(
         rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
     cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
-    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef core.ndarray hy = _core.ndarray(hx.shape, hx.dtype)
     if cx is None:
-        cx = core.ndarray(0, dtype=xs.dtype)
-    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+        cx = _core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = _core.ndarray(cx.shape, cx.dtype)
 
     cdef Descriptor x_data_desc = _make_unpacked_rnn_data_descriptor(
         xs, lengths)
@@ -522,11 +522,11 @@ def rnn_backward_data_ex(
     cudnn.setRNNPaddingMode(
         rnn_desc.value, cudnn.CUDNN_RNN_PADDED_IO_ENABLED)
 
-    cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
-    cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
+    cdef core.ndarray dxs = _core.ndarray(xs.shape, xs.dtype)
+    cdef core.ndarray dhx = _core.ndarray(hx.shape, hx.dtype)
     if cx is None:
-        cx = dcy = core.ndarray(0, dtype=xs.dtype)
-    cdef core.ndarray dcx = core.ndarray(cx.shape, cx.dtype)
+        cx = dcy = _core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray dcx = _core.ndarray(cx.shape, cx.dtype)
 
     cdef Descriptor y_data_desc = _make_unpacked_rnn_data_descriptor(
         ys, lengths)
@@ -600,7 +600,7 @@ def rnn_backward_weights_ex(
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
-    cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
+    cdef core.ndarray dw = _core.ndarray(w.shape, w.dtype)
     dw.fill(0)
     cdef Descriptor dw_desc = create_filter_descriptor(dw)
 
@@ -636,7 +636,7 @@ def activation_forward(core.ndarray x, int mode, double coef=0.0):
         one = <size_t>&float_one
 
     x = core._internal_ascontiguousarray(x)
-    y = core.ndarray(x._shape, x.dtype)
+    y = _core.ndarray(x._shape, x.dtype)
 
     handle = get_handle()
     desc = cudnn.createTensorDescriptor()
@@ -667,7 +667,7 @@ def activation_backward(core.ndarray x, core.ndarray y, core.ndarray gy,
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    gx = core.ndarray(x._shape, x.dtype)
+    gx = _core.ndarray(x._shape, x.dtype)
     x = core._internal_ascontiguousarray(x)
     y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
@@ -724,7 +724,7 @@ def softmax_forward(core.ndarray x, int axis, int algorithm):
         one = <size_t>&float_one
 
     x = core._internal_ascontiguousarray(x)
-    y = core.ndarray(x._shape, x.dtype)
+    y = _core.ndarray(x._shape, x.dtype)
 
     handle = get_handle()
     desc = cudnn.createTensorDescriptor()
@@ -750,7 +750,7 @@ def softmax_backward(core.ndarray y, core.ndarray gy, int axis, int algorithm):
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    gx = core.ndarray(y._shape, y.dtype)
+    gx = _core.ndarray(y._shape, y.dtype)
     y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
 
@@ -799,8 +799,8 @@ def ctc_loss(core.ndarray probs, labels,
                           _py_cudnn.destroyCTCLossDescriptor)
     cudnn.setCTCLossDescriptor(ctc_desc.value, data_type)
 
-    gradients = core.ndarray(probs._shape, probs.dtype)
-    loss = core.ndarray((batch_size, ), 'f')
+    gradients = _core.ndarray(probs._shape, probs.dtype)
+    loss = _core.ndarray((batch_size, ), 'f')
     probs_desc = create_tensor_descriptor(probs)
     gradients_desc = create_tensor_descriptor(gradients)
 
@@ -808,7 +808,7 @@ def ctc_loss(core.ndarray probs, labels,
         handle, probs_desc.value, gradients_desc.value,
         labels_ptr, label_length_ptr,
         input_length_ptr, algo, ctc_desc.value)
-    workspace = core.ndarray((work_size,), 'b')
+    workspace = _core.ndarray((work_size,), 'b')
 
     cudnn.CTCLoss(handle, probs_desc.value, probs.data.ptr,
                   labels_ptr, label_length_ptr,
@@ -983,7 +983,7 @@ cdef core.ndarray _make_rnn_result_array(
         output_units = n_units
 
     shape = xs.shape[:-1] + (output_units,)
-    return core.ndarray(shape, dtype=xs.dtype)
+    return _core.ndarray(shape, dtype=xs.dtype)
 
 
 def rnn_forward_inference(
@@ -1008,10 +1008,10 @@ def rnn_forward_inference(
         rnn_mode, get_data_type(xs.dtype))
 
     cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
-    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef core.ndarray hy = _core.ndarray(hx.shape, hx.dtype)
     if cx is None:
-        cx = core.ndarray(0, dtype=xs.dtype)
-    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+        cx = _core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = _core.ndarray(cx.shape, cx.dtype)
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
@@ -1056,10 +1056,10 @@ def rnn_forward_training(
         rnn_mode, get_data_type(xs.dtype))
 
     cdef core.ndarray ys = _make_rnn_result_array(direction_mode, n_units, xs)
-    cdef core.ndarray hy = core.ndarray(hx.shape, hx.dtype)
+    cdef core.ndarray hy = _core.ndarray(hx.shape, hx.dtype)
     if cx is None:
-        cx = core.ndarray(0, dtype=xs.dtype)
-    cdef core.ndarray cy = core.ndarray(cx.shape, cx.dtype)
+        cx = _core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray cy = _core.ndarray(cx.shape, cx.dtype)
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
@@ -1112,11 +1112,11 @@ def rnn_backward_data(
         cudnn.CUDNN_LINEAR_INPUT, direction_mode,
         rnn_mode, get_data_type(xs.dtype))
 
-    cdef core.ndarray dxs = core.ndarray(xs.shape, xs.dtype)
-    cdef core.ndarray dhx = core.ndarray(hx.shape, hx.dtype)
+    cdef core.ndarray dxs = _core.ndarray(xs.shape, xs.dtype)
+    cdef core.ndarray dhx = _core.ndarray(hx.shape, hx.dtype)
     if cx is None:
-        cx = dcy = core.ndarray(0, dtype=xs.dtype)
-    cdef core.ndarray dcx = core.ndarray(cx.shape, cx.dtype)
+        cx = dcy = _core.ndarray(0, dtype=xs.dtype)
+    cdef core.ndarray dcx = _core.ndarray(cx.shape, cx.dtype)
 
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
     cdef _DescriptorArray dys_descs = _make_tensor_descriptor_array(
@@ -1175,7 +1175,7 @@ def rnn_backward_weights(
     cdef memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
-    cdef core.ndarray dw = core.ndarray(w.shape, w.dtype)
+    cdef core.ndarray dw = _core.ndarray(w.shape, w.dtype)
     dw.fill(0)
     cdef Descriptor dw_desc = create_filter_descriptor(dw)
 
@@ -1193,7 +1193,7 @@ def create_dropout_states(handle):
                    'Please use DropoutStates class instead.',
                    DeprecationWarning)
     state_size = cudnn.dropoutGetStatesSize(handle)
-    return core.ndarray((state_size,), 'b')
+    return _core.ndarray((state_size,), 'b')
 
 
 def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
@@ -1280,13 +1280,13 @@ cdef class DropoutStates:
         set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
         x = core._internal_ascontiguousarray(x)
-        y = core.ndarray(x._shape, x.dtype)
+        y = _core.ndarray(x._shape, x.dtype)
 
         x_desc = cudnn.createTensorDescriptor()
         try:
             _create_tensor_descriptor_as4darray(x_desc, x)
             reserve_size = cudnn.getDropoutReserveSpaceSize(x_desc)
-            reserve_space = core.ndarray((reserve_size,), 'b')
+            reserve_space = _core.ndarray((reserve_size,), 'b')
 
             cudnn.dropoutForward(cudnn_handle, self._desc.value,
                                  x_desc, x.data.ptr, x_desc, y.data.ptr,
@@ -1307,7 +1307,7 @@ cdef class DropoutStates:
         set_dropout_descriptor(self._desc, cudnn_handle, dropout_ratio)
 
         dy = core._internal_ascontiguousarray(dy)
-        dx = core.ndarray(dy._shape, dy.dtype)
+        dx = _core.ndarray(dy._shape, dy.dtype)
 
         dy_desc = cudnn.createTensorDescriptor()
         try:
@@ -2014,7 +2014,7 @@ def pooling_backward(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
 
-    gx = core.ndarray(x._shape, x.dtype)
+    gx = _core.ndarray(x._shape, x.dtype)
     x = core._internal_ascontiguousarray(x)
     y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
@@ -2137,7 +2137,7 @@ cdef _batch_normalization_forward_training(
 
     x = core._internal_ascontiguousarray(x)
     dtype = x.dtype
-    y = core.ndarray(x._shape, dtype)
+    y = _core.ndarray(x._shape, dtype)
 
     cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
@@ -2166,8 +2166,8 @@ cdef _batch_normalization_forward_training(
             gamma = core._internal_ascontiguousarray(gamma)
             beta = core._internal_ascontiguousarray(beta)
         if mean is None:
-            save_mean = core.ndarray(gamma.shape, dtype_param)
-            save_inv_std = core.ndarray(gamma.shape, dtype_param)
+            save_mean = _core.ndarray(gamma.shape, dtype_param)
+            save_inv_std = _core.ndarray(gamma.shape, dtype_param)
         else:
             save_mean = mean
             save_inv_std = inv_std
@@ -2281,7 +2281,7 @@ def batch_normalization_forward_inference(
         int d_layout=cudnn.CUDNN_TENSOR_NCHW):
     x = core._internal_ascontiguousarray(x)
     dtype = x.dtype
-    y = core.ndarray(x._shape, dtype)
+    y = _core.ndarray(x._shape, dtype)
 
     cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
@@ -2334,7 +2334,7 @@ def batch_normalization_backward(
     x = core._internal_ascontiguousarray(x)
     gy = core._internal_ascontiguousarray(gy)
     dtype = x.dtype
-    gx = core.ndarray(x._shape, dtype)
+    gx = _core.ndarray(x._shape, dtype)
 
     cdef float float_one = 1
     cdef double double_zero = 0, double_one = 1
@@ -2357,8 +2357,8 @@ def batch_normalization_backward(
             gamma = gamma.astype(dtype_param)
         else:
             gamma = core._internal_ascontiguousarray(gamma)
-        ggamma = core.ndarray(gamma._shape, dtype_param)
-        gbeta = core.ndarray(gamma._shape, dtype_param)
+        ggamma = _core.ndarray(gamma._shape, dtype_param)
+        gbeta = _core.ndarray(gamma._shape, dtype_param)
 
         if cudnn_version() >= 7401:
             bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN

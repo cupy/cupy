@@ -24,4 +24,4 @@ RUN pyenv install 3.7.11 && \
     pyenv global 3.7.11 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.18.*' 'scipy==1.5.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.21.*' 'scipy==1.7.*' 'optuna==2.*' 'cython==0.29.*'

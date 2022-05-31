@@ -5,7 +5,7 @@ import platform
 import shutil
 import sys
 import subprocess
-from typing import Optional, List
+from typing import Any, Optional, List
 
 import setuptools
 import setuptools.msvc
@@ -127,9 +127,9 @@ class DeviceCompilerBase:
     def _get_preprocess_options(self, ext: Extension) -> List[str]:
         # https://setuptools.pypa.io/en/latest/deprecated/distutils/apiref.html#distutils.core.Extension
         # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/command/build_ext.py#L524-L526
-        incdirs = ext.include_dirs[:]  # type: ignore
-        macros = ext.define_macros[:]  # type: ignore
-        for undef in ext.undef_macros:  # type: ignore
+        incdirs = ext.include_dirs[:]
+        macros: List[Any] = ext.define_macros[:]
+        for undef in ext.undef_macros:
             macros.append((undef,))
         return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
 
