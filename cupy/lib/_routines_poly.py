@@ -168,6 +168,20 @@ def polymul(a1, a2):
     return cupy.convolve(a1, a2)
 
 
+_polyder_kernel = cupy._core.ElementwiseKernel(
+    'raw T p, int64 m',
+    'T z',
+    '''
+    T y = p[:-1] * p[_ind.size() - i - 1][1:];
+    if (m == 0) {
+        z = p;
+    } else {
+        z = polyder(y, m - 1);
+    }
+    ''',
+    '_polyder_kernel')
+
+
 def polyder(p, m=1):
     """Returns the derivative of the specified order of a polynomial.
 
@@ -194,12 +208,7 @@ def polyder(p, m=1):
 
     truepoly = isinstance(p, cupy.poly1d)
     p = cupy.asarray(p)
-    n = len(p) - 1
-    y = p[:-1] * cupy.arange(n, 0, -1)
-    if m == 0:
-        val = p
-    else:
-        val = polyder(y, m - 1)
+    val = _polyder_kernel(p, m)
     if truepoly:
         val = cupy.poly1d(val)
     return val
