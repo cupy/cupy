@@ -64,6 +64,7 @@ class NCCLBackend(_Backend):
                  use_mpi=False):
         super().__init__(n_devices, rank, host, port)
         self._use_mpi = _mpi_available and use_mpi
+        self._rank = rank
         if self._use_mpi:
             self._init_with_mpi(n_devices, rank)
         else:
@@ -485,12 +486,15 @@ class _SparseNCCLCommunicator:
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
                 comm._mpi_comm.Send(sizes_shape, dest=peer, tag=1)
                 return None
-            if method == 'recv':
+            elif method == 'recv':
                 # Shape is a tuple of two elements, and a single scalar per
                 # each array (5)
                 sizes_shape = numpy.empty(5, dtype='q')
                 comm._mpi_comm.Recv(sizes_shape, source=peer, tag=1)
                 return sizes_shape
+            elif method == 'bcast':
+                sizes_shape = numpy.array(sizes_shape, dtype='q')
+                return comm._mpi_comm.bcast(sizes_shape, root=peer)
             else:
                 raise RuntimeError('Unsupported method')
         else:
@@ -505,12 +509,20 @@ class _SparseNCCLCommunicator:
                 cls._send(
                     comm, sizes_shape, peer, sizes_shape.dtype, 5, stream)
                 return None
-            if method == 'recv':
+            elif method == 'recv':
                 # Shape is a tuple of two elements, and a single scalar per
                 # each array (5)
                 sizes_shape = cupy.empty(5, dtype='q')
                 cls._recv(
                     comm, sizes_shape, peer, sizes_shape.dtype, 5, stream)
+                return cupy.asnumpy(sizes_shape)
+            elif method == 'bcast':
+                if comm._rank == peer:
+                    sizes_shape = cupy.array(sizes_shape, dtype='q')
+                else:
+                    sizes_shape = cupy.empty(5, dtype='q')
+                _DenseNCCLCommunicator.broadcast(
+                    comm, sizes_shape, root=peer, stream=stream)
                 return cupy.asnumpy(sizes_shape)
             else:
                 raise RuntimeError('Unsupported method')
@@ -540,7 +552,24 @@ class _SparseNCCLCommunicator:
 
     @classmethod
     def broadcast(cls, comm, in_out_array, root=0, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        arrays = cls._get_internal_arrays(in_out_array)
+        if comm._rank == root:
+            shape_and_sizes = cls._get_shape_and_sizes(
+                arrays, in_out_array.shape)
+        else:
+            shape_and_sizes = ()
+
+        shape_and_sizes = cls._exchange_shape_and_sizes(
+            comm, root, shape_and_sizes, 'bcast', stream)
+        shape = tuple(shape_and_sizes[0:2])
+        sizes = shape_and_sizes[2:]
+        # Naive approach, we send each of the subarrays one by one
+        if comm._rank != root:
+            arrays = [
+                cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
+        for a in arrays:
+            _DenseNCCLCommunicator.broadcast(comm, a, root, stream)
+        cls._assign_arrays(in_out_array, arrays, shape)
 
     @classmethod
     def reduce_scatter(

@@ -52,8 +52,8 @@ def broadcast(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_broadcast(MPI.COMM_WORLD.Get_rank(), 0, dtype, False)
-        run_broadcast(MPI.COMM_WORLD.Get_rank(), 1, dtype, False)
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
     else:
         _launch_workers(run_broadcast, (0, dtype))
         _launch_workers(run_broadcast, (1, dtype))
@@ -353,6 +353,32 @@ def sparse_send_and_recv(dtype, use_mpi=False):
         run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
     else:
         _launch_workers(run_send_and_recv, (dtype,))
+
+
+def sparse_broadcast(dtype, use_mpi=False):
+
+    def run_broadcast(rank, root, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        expected = _make_sparse(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        if rank == root:
+            in_array = expected
+        else:
+            in_array = _make_sparse_empty(dtype)
+        comm.broadcast(in_array, root)
+        testing.assert_allclose(in_array.todense(), expected.todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
+    else:
+        _launch_workers(run_broadcast, (0, dtype,))
+        _launch_workers(run_broadcast, (1, dtype,))
 
 
 if __name__ == '__main__':
