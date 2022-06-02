@@ -779,4 +779,22 @@ class _SparseNCCLCommunicator:
     @classmethod
     def all_to_all(cls, comm, in_array, out_array, stream=None):
         # in_array & out_array is a list of sparse matrices
-        raise RuntimeError('Method not supported for sparse matrices')
+        if len(in_array) != comm._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires in_array to have {comm._n_devices}'
+                f'elements, found {len(in_array)}')
+        # TODO(ecastill) assert the types
+        for _ in range(comm._n_devices):
+            out_array.append(_make_sparse_empty(
+                    in_array[comm.rank].dtype,
+                    _get_sparse_type(in_array[comm.rank])))
+        # TODO check out dtypes are the same as in dtypes
+        for i in range(comm._n_devices):
+            if i != comm.rank:
+                cls.send(comm, in_array[i], i, stream)
+                cls.recv(comm, out_array[i], i, stream)
+            else:
+                cls._assign_arrays(
+                    out_array[i],
+                    cls._get_internal_arrays(in_array[i]),
+                    in_array[i].shape)

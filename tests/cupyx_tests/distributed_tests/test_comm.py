@@ -140,6 +140,10 @@ class TestNCCLBackendSparse:
     def test_all_gather(self, dtype):
         self._run_test('sparse_all_gather', dtype)
 
+    @testing.for_dtypes('fdFD')
+    def test_all_to_all(self, dtype):
+        self._run_test('sparse_all_gather', dtype)
+
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
 @testing.multi_gpu(2)
