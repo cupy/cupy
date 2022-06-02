@@ -464,6 +464,61 @@ def sparse_scatter(dtype, use_mpi=False):
         _launch_workers(run_scatter, (1, dtype))
 
 
+def sparse_gather(dtype, use_mpi=False):
+
+    def run_gather(rank, root, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = (rank + 1) * _make_sparse(dtype)
+        out_arrays = []
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.gather(in_array, out_arrays, root)
+        if rank == root:
+            expected = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
+            testing.assert_allclose(
+                out_arrays[0].todense(), expected[0].todense())
+            testing.assert_allclose(
+                out_arrays[1].todense(), expected[1].todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_gather(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_gather(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
+    else:
+        _launch_workers(run_gather, (0, dtype))
+        _launch_workers(run_gather, (1, dtype))
+
+
+def sparse_all_gather(dtype, use_mpi=False):
+
+    def run_all_gather(rank, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = (rank + 1) * _make_sparse(dtype)
+        out_arrays = []
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.all_gather(in_array, out_arrays, 0)
+        expected = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
+        testing.assert_allclose(
+            out_arrays[0].todense(), expected[0].todense())
+        testing.assert_allclose(
+            out_arrays[1].todense(), expected[1].todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_all_gather(MPI.COMM_WORLD.Get_rank(), dtype, True)
+        run_all_gather(MPI.COMM_WORLD.Get_rank(), dtype, True)
+    else:
+        _launch_workers(run_all_gather, (dtype,))
+        _launch_workers(run_all_gather, (dtype,))
+
+
 if __name__ == '__main__':
     # Run the templatized test
     func = globals()[sys.argv[1]]
