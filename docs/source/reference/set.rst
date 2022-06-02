@@ -24,3 +24,4 @@ Boolean operations
    intersect1d
    isin
    setdiff1d
+   setxor1d
