@@ -124,6 +124,10 @@ class TestNCCLBackendSparse:
     def test_reduce(self, dtype):
         self._run_test('sparse_reduce', dtype)
 
+    @testing.for_dtypes('fdFD')
+    def test_all_reduce(self, dtype):
+        self._run_test('sparse_all_reduce', dtype)
+
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
 @testing.multi_gpu(2)
