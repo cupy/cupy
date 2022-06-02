@@ -64,7 +64,6 @@ class NCCLBackend(_Backend):
                  use_mpi=False):
         super().__init__(n_devices, rank, host, port)
         self._use_mpi = _mpi_available and use_mpi
-        self._rank = rank
         if self._use_mpi:
             self._init_with_mpi(n_devices, rank)
         else:
@@ -131,7 +130,10 @@ class NCCLBackend(_Backend):
 
     def _dispatch_arg_type(self, function, args):
         comm_class = _DenseNCCLCommunicator
-        if sparse.issparse(args[0]):
+        if (
+            (isinstance(args[0], list) and sparse.issparse(args[0][0]))
+            or sparse.issparse(args[0])
+        ):
             comm_class = _SparseNCCLCommunicator
         getattr(comm_class, function)(self, *args)
 
@@ -549,7 +551,7 @@ class _SparseNCCLCommunicator:
                     comm, sizes_shape, peer, sizes_shape.dtype, 5, stream)
                 return cupy.asnumpy(sizes_shape)
             elif method == 'bcast':
-                if comm._rank == peer:
+                if comm.rank == peer:
                     sizes_shape = cupy.array(sizes_shape, dtype='q')
                 else:
                     sizes_shape = cupy.empty(5, dtype='q')
@@ -595,7 +597,7 @@ class _SparseNCCLCommunicator:
         shape_and_sizes = cls._get_shape_and_sizes(arrays, in_array.shape)
         shape_and_sizes = cls._exchange_shape_and_sizes(
             comm, root, shape_and_sizes, 'gather', stream)
-        if comm._rank == root:
+        if comm.rank == root:
             if _get_sparse_type(in_array) != _get_sparse_type(out_array):
                 raise ValueError(
                     'in_array and out_array must be the same format')
@@ -637,7 +639,7 @@ class _SparseNCCLCommunicator:
     @classmethod
     def broadcast(cls, comm, in_out_array, root=0, stream=None):
         arrays = cls._get_internal_arrays(in_out_array)
-        if comm._rank == root:
+        if comm.rank == root:
             shape_and_sizes = cls._get_shape_and_sizes(
                 arrays, in_out_array.shape)
         else:
@@ -648,7 +650,7 @@ class _SparseNCCLCommunicator:
         shape = tuple(shape_and_sizes[0:2])
         sizes = shape_and_sizes[2:]
         # Naive approach, we send each of the subarrays one by one
-        if comm._rank != root:
+        if comm.rank != root:
             arrays = [
                 cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
         # TODO(ecastill): measure if its faster to just contatenate
@@ -724,10 +726,21 @@ class _SparseNCCLCommunicator:
 
     @classmethod
     def scatter(cls, comm, in_array, out_array, root=0, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # In array is a list of sparse matrices
+        if comm.rank == root:
+            nccl.groupStart()
+            for peer, s_a in enumerate(in_array):
+                if peer != root:
+                    cls.send(comm, s_a, peer, stream)
+            nccl.groupEnd()
+            cls._assign_arrays(
+                out_array, cls._get_internal_arrays(s_a[root]), s_a.shape)
+        else:
+            cls.recv(comm, out_array, root, stream)
 
     @classmethod
     def gather(cls, comm, in_array, out_array, root=0, stream=None):
+        # Out array is a list of sparse matrices
         raise RuntimeError('Method not supported for sparse matrices')
 
     @classmethod

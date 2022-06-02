@@ -440,6 +440,30 @@ def sparse_all_reduce(dtype, use_mpi=False):
         _launch_workers(run_all_reduce, (dtype, 'prod'))
 
 
+def sparse_scatter(dtype, use_mpi=False):
+
+    def run_scatter(rank, root, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_arrays = [_make_sparse(dtype), 2*_make_sparse(dtype)]
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.scatter(in_arrays, out_array, root)
+        testing.assert_allclose(
+            out_array.todense(), in_arrays[rank].todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_scatter(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_scatter(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
+    else:
+        _launch_workers(run_scatter, (0, dtype))
+        _launch_workers(run_scatter, (1, dtype))
+
+
 if __name__ == '__main__':
     # Run the templatized test
     func = globals()[sys.argv[1]]
