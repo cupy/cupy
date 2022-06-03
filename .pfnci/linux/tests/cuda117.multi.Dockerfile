@@ -23,4 +23,4 @@ RUN pyenv install 3.10.0 && \
     pyenv global 3.10.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.8.*' 'optuna==2.*' 'cython==0.29.*'

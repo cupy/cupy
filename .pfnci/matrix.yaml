@@ -200,7 +200,6 @@
   test: "unit-multi"
 
 # CUDA 11.6 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda116"
   target: "cuda116"
   tags: []  # TODO: to be filled when adding this matrix to CI
@@ -226,6 +225,35 @@
   _inherits: "cupy.linux.cuda116"
   tags: []  # TODO: to be filled when adding this matrix to CI
   target: "cuda116.multi"
+  test: "unit-multi"
+
+# CUDA 11.7 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda117"
+  target: "cuda117"
+  tags: ["@push", "full", "mini"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.7"
+  rocm: null
+  nccl: "2.11"
+  cutensor: "1.5"
+  cusparselt: "0.2.0"
+  cudnn: "8.4"
+  python: "3.10"
+  numpy: "1.22"
+  scipy: "1.8"
+  optuna: "2"
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.7 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda117.multi"
+  _inherits: "cupy.linux.cuda117"
+  tags: ["@push", "full", "mini", "multi"]
+  target: "cuda117.multi"
   test: "unit-multi"
 
 ###############################################################################
@@ -351,13 +379,13 @@
   tags: ["head"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.5"
+  cuda: "11.7"
   rocm: null
   nccl: "2.11"
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.4"
-  python: "3.9"
+  python: "3.10"
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
