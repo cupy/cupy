@@ -403,7 +403,7 @@ class _GUFunc:
                 if isinstance(fouts, cupy.ndarray):
                     fouts = (fouts,)
                 for o, fo in zip(outs, fouts):
-                    o[...] = fo
+                    cupy._core.elementwise_copy(fo, o)
         else:
             dim_size = sizes[dims[dim]][0]
             for i in range(dim_size):

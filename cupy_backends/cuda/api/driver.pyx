@@ -136,6 +136,13 @@ cpdef ctxDestroy(intptr_t ctx):
         status = cuCtxDestroy(<Context>ctx)
     check_status(status)
 
+cpdef int ctxGetDevice() except? -1:
+    cdef Device dev
+    with nogil:
+        status = cuCtxGetDevice(&dev)
+    check_status(status)
+    return dev
+
 
 ###############################################################################
 # Module load and kernel execution
@@ -388,3 +395,15 @@ cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
             NULL, dynamicSMemSize, blockSizeLimit)
     check_status(status)
     return minGridSize, blockSize
+
+
+###############################################################################
+# Stream management
+###############################################################################
+
+cpdef intptr_t streamGetCtx(intptr_t stream) except? 0:
+    cdef Context ctx
+    with nogil:
+        status = cuStreamGetCtx(<Stream>stream, &ctx)
+    check_status(status)
+    return <intptr_t>ctx

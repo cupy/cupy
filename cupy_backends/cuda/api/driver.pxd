@@ -50,6 +50,7 @@ cpdef intptr_t ctxGetCurrent() except? 0
 cpdef ctxSetCurrent(intptr_t ctx)
 cpdef intptr_t ctxCreate(Device dev) except? 0
 cpdef ctxDestroy(intptr_t ctx)
+cpdef int ctxGetDevice() except? -1
 
 ###############################################################################
 # Module load and kernel execution
@@ -109,3 +110,9 @@ cpdef int occupancyMaxActiveBlocksPerMultiprocessor(
 
 cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
                                      int blockSizeLimit)
+
+###############################################################################
+# Stream management
+###############################################################################
+
+cpdef intptr_t streamGetCtx(intptr_t stream) except? 0

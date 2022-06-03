@@ -7,6 +7,7 @@ from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 from cupy._core cimport internal
 from cupy import _util
 
@@ -41,10 +42,10 @@ cdef ndarray _ndarray_conj(ndarray self):
 
 cdef ndarray _ndarray_real_getter(ndarray self):
     if self.dtype.kind == 'c':
-        view = ndarray(
+        view = core._ndarray(
             shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
             memptr=self.data, strides=self._strides)
-        view.base = self.base if self.base is not None else self
+        (<ndarray>view).base = self.base if self.base is not None else self
         return view
     return self
 
@@ -64,12 +65,12 @@ cdef ndarray _ndarray_imag_getter(ndarray self):
         # aligning with NumPy behavior.
         if memptr.ptr != 0:
             memptr = memptr + self.dtype.itemsize // 2
-        view = ndarray(
+        view = core._ndarray(
             shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
-        view.base = self.base if self.base is not None else self
+        (<ndarray>view).base = self.base if self.base is not None else self
         return view
-    new_array = ndarray(self.shape, dtype=self.dtype)
+    new_array = core._ndarray(self.shape, dtype=self.dtype)
     new_array.fill(0)
     return new_array
 
@@ -698,7 +699,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
     else:
         if (out.flags.c_contiguous or out.flags.f_contiguous):
             result = out
-            result[...] = a
+            elementwise_copy(a, result)
         else:
             result = a.astype(out.dtype, order='C')
 
@@ -727,7 +728,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         result = _proc_as_batch(result, axis, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
-        out[...] = result.reshape(out.shape)
+        elementwise_copy(result.reshape(out.shape), out)
     else:
         out = result
     return out

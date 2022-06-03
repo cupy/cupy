@@ -25,9 +25,9 @@ Python Dependencies
 
 NumPy/SciPy-compatible API in CuPy v11 is based on NumPy 1.22 and SciPy 1.8, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.18 / v1.19 / v1.20 / v1.21 / v1.22
+* `NumPy <https://numpy.org/>`_: v1.20 / v1.21 / v1.22
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7 / v1.8
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.6 / v1.7 / v1.8
 
     * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
@@ -50,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.4
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.4 / v1.5
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2 / v8.3
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2 / v8.3 / v8.4
 
     * The library to accelerate deep neural network computations.
 
@@ -107,7 +107,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Use ``pip install cupy-cudaXXX -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
+   Use ``pip install cupy-cudaXXX --pre -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
@@ -380,7 +380,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.3 / v5.0
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -418,10 +418,10 @@ Package names are different depending on your ROCm version.
 
    * - ROCm
      - Command
-   * - v4.2
-     - ``$ pip install cupy-rocm-4-2``
    * - v4.3
      - ``$ pip install cupy-rocm-4-3``
+   * - v5.0
+     - ``$ pip install cupy-rocm-5-0``
 
 Building CuPy for ROCm From Source
 ----------------------------------

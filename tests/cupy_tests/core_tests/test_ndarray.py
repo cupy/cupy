@@ -4,6 +4,8 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import _util
@@ -187,8 +189,7 @@ void wait_and_write(long long *x) {
 '''
 
 
-@testing.gpu
-class TestNdarrayCopy(unittest.TestCase):
+class TestNdarrayCopy:
 
     @testing.multi_gpu(2)
     @testing.for_orders('CFA')
@@ -204,15 +205,20 @@ class TestNdarrayCopy(unittest.TestCase):
     def test_copy_multi_device_non_contiguous_K(self):
         arr = _core.ndarray((20,))[::2]
         with cuda.Device(1):
-            with self.assertRaises(NotImplementedError):
+            with pytest.raises(NotImplementedError):
                 arr.copy('K')
 
     # See cupy/cupy#5004
     @testing.multi_gpu(2)
+    @pytest.mark.xfail(
+        runtime.is_hip,
+        reason='ROCm may work differently in async D2D copy with streams')
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
-        kern = cupy.RawKernel(
-            _test_copy_multi_device_with_stream_src, 'wait_and_write')
+        src = _test_copy_multi_device_with_stream_src
+        if runtime.is_hip and driver.get_build_version() >= 5_00_00000:
+            src = '#include <ctime>\n' + src
+        kern = cupy.RawKernel(src, 'wait_and_write')
 
         # Allocates a memory and launches the kernel on a device with its
         # stream.
@@ -635,3 +641,25 @@ class TestNdarrayImplicitConversion(unittest.TestCase):
         a = testing.shaped_arange((3, 4, 5), cupy, numpy.int64)
         with pytest.raises(TypeError):
             numpy.asarray(a)
+
+
+class C(cupy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
+class TestNdarraySubclass:
+
+    def test_explicit_constructor_call(self):
+        a = C([0, 1, 2, 3], info='information')
+        assert type(a) is C
+        assert issubclass(type(a), cupy.ndarray)
+        assert a.info == 'information'

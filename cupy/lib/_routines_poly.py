@@ -34,6 +34,49 @@ def _wraps_polyroutine(func):
     return functools.update_wrapper(wrapper, func)
 
 
+def poly(seq_of_zeros):
+    """Computes the coefficients of a polynomial with the given roots sequence.
+
+    Args:
+        seq_of_zeros (cupy.ndarray): a sequence of polynomial roots.
+
+    Returns:
+        cupy.ndarray: polynomial coefficients from highest to lowest degree.
+
+    .. warning::
+
+        This function doesn't support general 2d square arrays currently.
+        Only complex Hermitian and real symmetric 2d arrays are allowed.
+
+    .. seealso:: :func:`numpy.poly`
+
+    """
+    x = seq_of_zeros
+    if x.ndim == 2 and x.shape[0] == x.shape[1] and x.shape[0] != 0:
+        if cupy.array_equal(x, x.conj().T):
+            x = cupy.linalg.eigvalsh(x)
+        else:
+            raise NotImplementedError('Only complex Hermitian and real '
+                                      'symmetric 2d arrays are supported '
+                                      'currently')
+    elif x.ndim == 1:
+        x = x.astype(cupy.mintypecode(x.dtype.char), copy=False)
+    else:
+        raise ValueError('Input must be 1d or non-empty square 2d array.')
+
+    if x.size == 0:
+        return 1.0
+
+    size = 2 ** (x.size - 1).bit_length()
+    a = cupy.zeros((size, 2), x.dtype)
+    a[:, 0].fill(1)
+    cupy.negative(x, out=a[:x.size, 1])
+    while size > 1:
+        size = size // 2
+        a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    return a[0, :x.size + 1]
+
+
 @_wraps_polyroutine
 def polyadd(a1, a2):
     """Computes the sum of two polynomials.
@@ -255,34 +298,22 @@ def polyval(p, x):
     """
     if isinstance(p, cupy.poly1d):
         p = p.coeffs
+    if isinstance(x, cupy.poly1d):
+        x = x.coeffs
     if not isinstance(p, cupy.ndarray) or p.ndim == 0:
-        raise TypeError('p can be 1d ndarray or poly1d object only')
-    if p.ndim != 1:
-        # to be consistent with polyarithmetic routines' behavior of
-        # not allowing multidimensional polynomial inputs.
-        raise ValueError('p can be 1d ndarray or poly1d object only')
-        # TODO(Dahlia-Chehata): Support poly1d x
-    if (isinstance(x, cupy.ndarray) and x.ndim <= 1) or numpy.isscalar(x):
-        val = cupy.asarray(x).reshape(-1, 1)
-    else:
-        raise NotImplementedError(
-            'poly1d or non 1d values are not currently supported')
-    out = p[::-1] * cupy.power(val, cupy.arange(p.size))
-    out = out.sum(axis=1)
-    dtype = cupy.result_type(p, val)
-    if cupy.isscalar(x) or x.ndim == 0:
-        return out.astype(dtype, copy=False).reshape()
-    if p.dtype == numpy.complex128 and val.dtype in [
-       numpy.float16, numpy.float32, numpy.complex64]:
-        return out.astype(numpy.complex64, copy=False)
-    p_kind_score = numpy.dtype(p.dtype.char.lower()).kind
-    x_kind_score = numpy.dtype(val.dtype.char.lower()).kind
-    if (p.dtype.kind not in 'c' and (p_kind_score == x_kind_score
-                                     or val.dtype.kind in 'c')) or (
-            issubclass(p.dtype.type, numpy.integer)
-            and issubclass(val.dtype.type, numpy.floating)):
-        return out.astype(val.dtype, copy=False)
-    return out.astype(dtype, copy=False)
+        raise TypeError('p must be 1d ndarray or poly1d object')
+    if p.ndim > 1:
+        raise ValueError('p must be 1d array')
+    dtype = numpy.result_type(p.dtype.type(0), x)
+    p = p.astype(dtype, copy=False)
+    if p.size == 0:
+        return cupy.zeros(x.shape, dtype)
+    if dtype == numpy.bool_:
+        return p.any() * x + p[-1]
+    if not cupy.isscalar(x):
+        x = cupy.asarray(x, dtype=dtype)[..., None]
+    x = x ** cupy.arange(p.size, dtype=dtype)
+    return (p[::-1] * x).sum(axis=-1, dtype=dtype)
 
 
 def roots(p):

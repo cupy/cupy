@@ -17,6 +17,7 @@ from cupy.cuda cimport memory
 import warnings
 
 import cupy
+import cupy._core.core as core
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
@@ -317,7 +318,7 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
     if mem.dlm_tensor.dl_tensor.strides is NULL:
         # Make sure this capsule will never be used again.
         cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
-        return ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
+        return core._ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
@@ -325,7 +326,7 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
 
     # Make sure this capsule will never be used again.
     cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
-    return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
+    return core._ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
 # TODO(leofang): this function is exposed to the cupy namespace, so it returns

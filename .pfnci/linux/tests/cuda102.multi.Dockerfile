@@ -4,6 +4,12 @@ FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
+    apt-get -qqy install software-properties-common && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub && \
+    add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/ /"
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qqy update && \
     apt-get -qqy install \
        make build-essential libssl-dev zlib1g-dev \
        libbz2-dev libreadline-dev libsqlite3-dev wget \
@@ -23,4 +29,4 @@ RUN pyenv install 3.7.11 && \
     pyenv global 3.7.11 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.18.*' 'scipy==1.4.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.20.*' 'scipy==1.6.*' 'optuna==2.*' 'cython==0.29.*'

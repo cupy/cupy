@@ -5,6 +5,14 @@ from cupy._sorting import search as _search
 from cupy import _util
 
 
+_setxorkernel = cupy._core.ElementwiseKernel(
+    'raw T X, int64 len',
+    'bool z',
+    'z = (i == 0 || X[i] != X[i-1]) && (i == len - 1 || X[i] != X[i+1])',
+    'setxorkernel'
+)
+
+
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
@@ -163,28 +171,21 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
         arr1 = arr1.ravel()
         arr2 = arr2.ravel()
 
-    if return_indices:
-        arr2_sort_indices = cupy.argsort(arr2)
-        arr2 = arr2[arr2_sort_indices]
-    else:
-        arr2 = cupy.sort(arr2)
+    if not return_indices:
+        mask = _search._exists_kernel(arr1, arr2, arr2.size, False)
+        return arr1[mask]
 
-    v1 = cupy.searchsorted(arr2, arr1, 'left')
-    v2 = cupy.searchsorted(arr2, arr1, 'right')
-
-    mask = v1 != v2
+    mask, v1 = _search._exists_and_searchsorted_kernel(
+        arr1, arr2, arr2.size, False)
     int1d = arr1[mask]
+    arr1_indices = cupy.flatnonzero(mask)
+    arr2_indices = v1[mask]
 
-    if return_indices:
-        arr1_indices = cupy.flatnonzero(mask)
-        arr2_indices = arr2_sort_indices[v2[mask]-1]
-        if not assume_unique:
-            arr1_indices = ind1[arr1_indices]
-            arr2_indices = ind2[arr2_indices]
+    if not assume_unique:
+        arr1_indices = ind1[arr1_indices]
+        arr2_indices = ind2[arr2_indices]
 
-        return int1d, arr1_indices, arr2_indices
-    else:
-        return int1d
+    return int1d, arr1_indices, arr2_indices
 
 
 def isin(element, test_elements, assume_unique=False, invert=False):
@@ -252,6 +253,43 @@ def setdiff1d(ar1, ar2, assume_unique=False):
         ar1 = cupy.unique(ar1)
         ar2 = cupy.unique(ar2)
     return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
+
+
+def setxor1d(ar1, ar2, assume_unique=False):
+    """Find the set exclusive-or of two arrays.
+
+    Parameters
+    ----------
+    ar1, ar2 : cupy.ndarray
+        Input arrays. They are flattend if they are not already 1-D.
+    assume_unique : bool
+        By default, False, i.e. input arrays are not unique.
+        If True, input arrays are assumed to be unique. This can
+        speed up the calculation.
+
+    Returns
+    -------
+    setxor1d : cupy.ndarray
+        Return the sorted, unique values that are in only one
+        (not both) of the input arrays.
+
+    See Also
+    --------
+    numpy.setxor1d
+
+    """
+    if not assume_unique:
+        ar1 = cupy.unique(ar1)
+        ar2 = cupy.unique(ar2)
+
+    aux = cupy.concatenate((ar1, ar2), axis=None)
+    if aux.size == 0:
+        return aux
+
+    aux.sort()
+
+    return aux[_setxorkernel(aux, aux.size,
+                             cupy.zeros(aux.size, dtype=cupy.bool_))]
 
 
 def union1d(arr1, arr2):

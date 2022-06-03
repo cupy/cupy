@@ -8,8 +8,13 @@ class TypeBase:
     def __str__(self):
         raise NotImplementedError
 
-    def declvar(self, x):
-        return f'{self} {x}'
+    def declvar(self, x, init):
+        if init is None:
+            return f'{self} {x}'
+        return f'{self} {x} = {init.code}'
+
+    def assign(self, var, value):
+        return f'{var.code} = {value.code}'
 
 
 class Void(TypeBase):
@@ -38,6 +43,14 @@ class Scalar(TypeBase):
 
     def __hash__(self):
         return hash(self.dtype)
+
+
+class PtrDiff(Scalar):
+    def __init__(self):
+        super().__init__('q')
+
+    def __str__(self):
+        return 'ptrdiff_t'
 
 
 class ArrayBase(TypeBase):
@@ -81,16 +94,26 @@ class CArray(ArrayBase):
 
 class SharedMem(ArrayBase):
 
-    def __init__(self, child_type, size):
+    def __init__(self, child_type, size, alignment=None):
         if not (isinstance(size, int) or size is None):
             raise 'size of shared_memory must be integer or `None`'
+        if not (isinstance(alignment, int) or alignment is None):
+            raise 'alignment must be integer or `None`'
         self._size = size
+        self._alignment = alignment
         super().__init__(child_type, 1)
 
-    def declvar(self, x):
+    def declvar(self, x, init):
+        assert init is None
+        if self._alignment is not None:
+            code = f'__align__({self._alignment})'
+        else:
+            code = ''
         if self._size is None:
-            return f'extern __shared__ {self.child_type} {x}[]'
-        return f'__shared__ {self.child_type} {x}[{self._size}]'
+            code = f'extern {code} __shared__ {self.child_type} {x}[]'
+        else:
+            code = f'{code} __shared__ {self.child_type} {x}[{self._size}]'
+        return code
 
 
 class Ptr(ArrayBase):
@@ -119,6 +142,36 @@ void = Void()
 bool_ = Scalar(numpy.bool_)
 int32 = Scalar(numpy.int32)
 uint32 = Scalar(numpy.uint32)
+uint64 = Scalar(numpy.uint64)
+
+
+class Dim3(TypeBase):
+    """
+    An integer vector type based on uint3 that is used to specify dimensions.
+
+    Attributes:
+        x (uint32)
+        y (uint32)
+        z (uint32)
+    """
+
+    def x(self, code: str):
+        from cupyx.jit import _internal_types  # avoid circular import
+        return _internal_types.Data(f'{code}.x', uint32)
+
+    def y(self, code: str):
+        from cupyx.jit import _internal_types  # avoid circular import
+        return _internal_types.Data(f'{code}.y', uint32)
+
+    def z(self, code: str):
+        from cupyx.jit import _internal_types  # avoid circular import
+        return _internal_types.Data(f'{code}.z', uint32)
+
+    def __str__(self):
+        return 'dim3'
+
+
+dim3 = Dim3()
 
 
 _suffix_literals_dict = {

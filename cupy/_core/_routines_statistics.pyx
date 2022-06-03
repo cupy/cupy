@@ -8,6 +8,7 @@ from cupy._core import _reduction
 from cupy._core._reduction import create_reduction_func
 from cupy._core._reduction import ReductionKernel
 from cupy._core._kernel import ElementwiseKernel
+from cupy._core._ufuncs import elementwise_copy
 
 from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
@@ -374,6 +375,10 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble, sort_reduce_axis=False)
 
 
+cdef _exists_nan = ReductionKernel(
+    'T x', 'bool y', 'isnan(x)', 'a || b', 'y = a', 'false', '_exists_nan')
+
+
 cpdef ndarray _median(
         ndarray a, axis, out, overwrite_input, keepdims):
 
@@ -437,6 +442,9 @@ cpdef ndarray _median(
 
     out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+    if part.dtype.kind in 'fc':
+        isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
+        out = cupy.where(isnan, numpy.nan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
@@ -468,15 +476,13 @@ cpdef ndarray _nanmedian(
     a = cupy.ascontiguousarray(a)
 
     n_reduce = numpy.prod(reduce_shape)
-    n_reduce_each = cupy.empty(out_shape, dtype='int32')
-    n_reduce_each[...] = n_reduce
+    n_reduce_each = cupy.full(out_shape, n_reduce, dtype='int32')
     if a_data_ptr == a.data.ptr and overwrite_input is False:
         a = a.copy()
     _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
     a = cupy.sort(a, axis=-1)
 
-    b = cupy.empty(out_shape, dtype=a.dtype)
-    b[...] = cupy.nan
+    b = cupy.full(out_shape, cupy.nan, dtype=a.dtype)
     _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
 
     if keepdims:
@@ -489,7 +495,7 @@ cpdef ndarray _nanmedian(
     if out is None:
         out = b
     else:
-        out[...] = b
+        elementwise_copy(b, out)
     return out
 
 

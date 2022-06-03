@@ -15,7 +15,7 @@ _readthedocs_build
 /TAGS
 /docs/source/reference/**/generated
 /tags
-cupy.egg-info/
+*.egg-info/
 dist/
 htmlcov/
 .idea/
