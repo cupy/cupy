@@ -116,6 +116,14 @@ class TestNCCLBackendSparse:
     def test_send_and_recv(self, dtype):
         self._run_test('sparse_send_and_recv', dtype)
 
+    @testing.for_dtypes('fdFD')
+    def test_broadcast(self, dtype):
+        self._run_test('sparse_broadcast', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_reduce(self, dtype):
+        self._run_test('sparse_reduce', dtype)
+
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
 @testing.multi_gpu(2)

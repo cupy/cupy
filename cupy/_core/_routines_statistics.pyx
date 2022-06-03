@@ -382,6 +382,10 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble, sort_reduce_axis=False)
 
 
+cdef _exists_nan = ReductionKernel(
+    'T x', 'bool y', 'isnan(x)', 'a || b', 'y = a', 'false', '_exists_nan')
+
+
 cpdef _ndarray_base _median(
         _ndarray_base a, axis, out, overwrite_input, keepdims):
 
@@ -445,6 +449,9 @@ cpdef _ndarray_base _median(
 
     out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+    if part.dtype.kind in 'fc':
+        isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
+        out = cupy.where(isnan, numpy.nan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
