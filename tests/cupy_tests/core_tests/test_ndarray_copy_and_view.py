@@ -343,3 +343,24 @@ class TestNumPyArrayCopyView:
         b = xp.empty(a.shape, dtype=dtype, order=order)
         b[:] = a
         return b
+
+
+class C(cupy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
+class TestSubclassArrayView:
+
+    def test_view_casting(self):
+        a = cupy.arange(5).view(typ=C)
+        assert type(a) is C
+        assert a.info == None

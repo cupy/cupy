@@ -385,7 +385,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
                 strides[j + nd - a_ndim] = a._strides[j]
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(shape, strides, True, True)
+        arrays[i] = a._view(type(a), shape, strides, True, True)
 
 
 @cython.boundscheck(False)

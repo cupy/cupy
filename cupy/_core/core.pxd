@@ -33,7 +33,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base copy(self, order=*)
-    cpdef _ndarray_base view(self, dtype=*)
+    cpdef _ndarray_base view(self, dtype=*, typ=*)
     cpdef fill(self, value)
     cpdef _ndarray_base swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2)
     cpdef _ndarray_base flatten(self, order=*)
@@ -80,7 +80,7 @@ cdef class _ndarray_base:
                                  const strides_t& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity)
-    cdef _ndarray_base _view(self, const shape_t& shape,
+    cdef _ndarray_base _view(self, subtype, const shape_t& shape,
                              const strides_t& strides,
                              bint update_c_contiguity,
                              bint update_f_contiguity)

@@ -618,7 +618,7 @@ cdef class _ndarray_base:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
         return newarray
 
-    cpdef _ndarray_base view(self, dtype=None):
+    cpdef _ndarray_base view(self, dtype=None, typ=None):
         """Returns a view of the array.
 
         Args:
@@ -635,7 +635,8 @@ cdef class _ndarray_base:
         """
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
-        v = self._view(self._shape, self._strides, False, False)
+        subtype = typ if typ is not None else type(self)
+        v = self._view(subtype, self._shape, self._strides, False, False)
         if dtype is None:
             return v
 
@@ -1899,7 +1900,7 @@ cdef class _ndarray_base:
             return self
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        return self._view(shape, strides, False, True)
+        return self._view(type(self), shape, strides, False, True)
 
     cpdef _update_c_contiguity(self):
         if self.size == 0:
@@ -1949,13 +1950,14 @@ cdef class _ndarray_base:
         if update_f_contiguity:
             self._update_f_contiguity()
 
-    cdef _ndarray_base _view(self, const shape_t& shape,
+    cdef _ndarray_base _view(self, subtype, const shape_t& shape,
                              const strides_t& strides,
                              bint update_c_contiguity,
                              bint update_f_contiguity):
         cdef _ndarray_base v
-        # Use `_no_init=True`  to skip recomputation of contiguity.
-        v = ndarray.__new__(ndarray, _no_init=True)
+        # Use `_no_init=True` to skip recomputation of contiguity. Now
+        # calling `__array_finalize__` is responsibility of this method.`
+        v = ndarray.__new__(subtype, _no_init=True)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         v.dtype = self.dtype
@@ -1964,6 +1966,8 @@ cdef class _ndarray_base:
         v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
+        if subtype is not _ndarray:
+            v.__array_finalize__(self)
         return v
 
     cpdef _set_contiguous_strides(
@@ -2726,8 +2730,12 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
 
 
 cdef _ndarray_base _ndarray_init(const shape_t& shape, dtype):
+    # Use `_no_init=True` for fast init. Now calling `__array_finalize__` is
+    # responsibility of this function.
     cdef _ndarray_base ret = ndarray.__new__(ndarray, _no_init=True)
     ret._init_fast(shape, dtype, True)
+    #if subtype is not _ndarray:
+    #    ret.__array_finalize__(obj)
     return ret
 
 
