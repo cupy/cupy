@@ -544,7 +544,7 @@ cdef class _ndarray_base:
 
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
-            newarray = _ndarray_init(self._shape, dtype)
+            newarray = _ndarray_init(ndarray, self._shape, dtype, None)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
@@ -598,7 +598,7 @@ cdef class _ndarray_base:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(prev_device)
-        newarray = _ndarray_init(x._shape, x.dtype)
+        newarray = _ndarray_init(ndarray, x._shape, x.dtype, None)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
                 'CuPy cannot copy non-contiguous array between devices.')
@@ -1966,7 +1966,7 @@ cdef class _ndarray_base:
         v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
-        if subtype is not _ndarray:
+        if subtype is not ndarray:
             v.__array_finalize__(self)
         return v
 
@@ -2602,7 +2602,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
 cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
     if a._c_contiguous:
         return a
-    newarray = _ndarray_init(a._shape, a.dtype)
+    newarray = _ndarray_init(ndarray, a._shape, a.dtype, None)
     elementwise_copy(a, newarray)
     return newarray
 
@@ -2729,13 +2729,13 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     return ndarray(shape, dtype, memptr, strides)
 
 
-cdef _ndarray_base _ndarray_init(const shape_t& shape, dtype):
+cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj):
     # Use `_no_init=True` for fast init. Now calling `__array_finalize__` is
     # responsibility of this function.
-    cdef _ndarray_base ret = ndarray.__new__(ndarray, _no_init=True)
+    cdef _ndarray_base ret = ndarray.__new__(subtype, _no_init=True)
     ret._init_fast(shape, dtype, True)
-    #if subtype is not _ndarray:
-    #    ret.__array_finalize__(obj)
+    if subtype is not ndarray:
+        ret.__array_finalize__(obj)
     return ret
 
 

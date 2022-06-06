@@ -108,7 +108,7 @@ cpdef _ndarray_base array(
     obj, dtype=*, bint copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
-cdef _ndarray_base _ndarray_init(const shape_t& shape, dtype)
+cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
     const shape_t& shape, const strides_t& strides, dtype)

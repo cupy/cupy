@@ -633,7 +633,8 @@ cdef list _get_out_args_from_optionals(
 
     for i, a in enumerate(out_args):
         if a is None:
-            out_args[i] = _ndarray_init(out_shape, out_types[i])
+            out_args[i] = _ndarray_init(
+                cupy.ndarray, out_shape, out_types[i], None)
             continue
 
         if not isinstance(a, _ndarray_base):
@@ -679,7 +680,8 @@ cdef list _get_out_args_with_params(
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
-        return [_ndarray_init(out_shape, t) for t in out_types]
+        return [_ndarray_init(
+            cupy.ndarray, out_shape, t, None) for t in out_types]
 
     for i, p in enumerate(out_params):
         a = out_args[i]

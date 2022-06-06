@@ -15,6 +15,7 @@ from cupy.cuda cimport function
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _reduction
 
+import cupy as _cupy
 from cupy._core import _dtype
 from cupy import _util
 from cupy._core import _codeblock
@@ -191,7 +192,8 @@ cdef class FusedKernel:
             elif isinstance(param, _TraceScalar):
                 array = None
             elif self._is_base[i]:
-                array = _ndarray_init(shape, self._dtypes[i])
+                array = _ndarray_init(
+                    _cupy.ndarray, shape, self._dtypes[i], None)
             else:
                 view_of = ndarray_list[<Py_ssize_t>self._view_of[i]]
                 if param.is_broadcast:
