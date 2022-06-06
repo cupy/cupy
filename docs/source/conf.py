@@ -367,6 +367,10 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    'numba': ('https://numba.readthedocs.io/en/stable', None),
+    'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/', None),
+    # blocked by data-apis/array-api#428
+    #'array-api': ('https://data-apis.org/array-api/2021.12/', None),
 }
 
 doctest_global_setup = '''
@@ -481,5 +485,11 @@ def remove_array_api_module_docstring(app, what, name, obj, options, lines):
     if what == "module" and 'array_api' in name:
         del lines[:]
 
+def fix_jit_callable_signature(
+        app, what, name, obj, options, signature, return_annotation):
+    if 'cupyx.jit' in name and callable(obj) and signature is None:
+        return (f'{inspect.signature(obj)}', None)
+
 def setup(app):
     app.connect("autodoc-process-docstring", remove_array_api_module_docstring)
+    app.connect("autodoc-process-signature", fix_jit_callable_signature)

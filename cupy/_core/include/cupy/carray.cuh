@@ -126,9 +126,13 @@ public:
     return (__half_raw(data_).x & 0x8000u) != 0;
   }
 
-  __device__ float16 operator-() {
-    return float16(-data_);
-  }
+#ifdef __HIPCC__
+
+__device__ float16 operator-() {
+  return float16(-data_);
+}
+
+#endif
 
   template<typename T>
   inline __device__ float16& operator+=(const T& rhs) {
@@ -321,6 +325,16 @@ public:
   __device__ const ptrdiff_t* strides() const {
     return strides_;
   }
+
+#ifdef CUPY_JIT_MODE
+  __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_shape() const {
+    return cupy::as_tuple<_ndim, ptrdiff_t>::call(shape_);
+  }
+
+  __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_strides() const {
+    return cupy::as_tuple<_ndim, ptrdiff_t>::call(strides_);
+  }
+#endif  // CUPY_JIT_MODE
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int>

@@ -83,6 +83,7 @@
     "cupy.linux.cuda11x-cuda-python": [
         "@push",
         "full",
+        "mini",
         "cuda-python"
     ],
     "cupy.win.cuda102": [
@@ -122,6 +123,9 @@
     ],
     "cupy.linux.array-api": [
         "array-api"
+    ],
+    "cupy.linux.benchmark.head": [
+        "benchmark"
     ],
     "cupy.linux.benchmark.pr": [
         "benchmark"

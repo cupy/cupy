@@ -1365,7 +1365,7 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     elif len(y) != m:
         raise ValueError('dimension mismatch')
     if a.nnz == 0:
-        y[...] = 0
+        y.fill(0)
         return y
 
     desc_a = SpMatDescriptor.create(a)
@@ -1439,7 +1439,7 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     elif c.shape[0] != m or c.shape[1] != n:
         raise ValueError('dimension mismatch')
     if a.nnz == 0:
-        c[...] = 0
+        c.fill(0)
         return c
 
     desc_a = SpMatDescriptor.create(a)
