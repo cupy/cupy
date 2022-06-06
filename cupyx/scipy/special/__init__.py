@@ -94,4 +94,5 @@ from cupyx.scipy.special._basic import expm1  # NOQA
 from cupy import round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
+from cupyx.scipy.special._logsumexp import logsumexp  # NOQA
 from cupy import sinc  # NOQA

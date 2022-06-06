@@ -149,4 +149,5 @@ Convenience functions
    round
    xlogy
    xlog1py
+   logsumexp
    sinc
