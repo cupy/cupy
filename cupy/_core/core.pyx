@@ -618,7 +618,7 @@ cdef class _ndarray_base:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
         return newarray
 
-    cpdef _ndarray_base view(self, dtype=None, typ=None):
+    cpdef _ndarray_base view(self, dtype=None, array_class=None):
         """Returns a view of the array.
 
         Args:
@@ -635,7 +635,7 @@ cdef class _ndarray_base:
         """
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
-        subtype = typ if typ is not None else type(self)
+        subtype = array_class if array_class is not None else type(self)
         v = self._view(subtype, self._shape, self._strides, False, False)
         if dtype is None:
             return v
