@@ -101,7 +101,7 @@ def _tensordot_core_int_kernel_module(config):
 #define fetch(arr, col, m, n, bound) arr[min(n*col + m, bound)]
 
 template<typename T>
-__global__ void _tensordot_core_int_kernel(
+__device__ void _tensordot_core_int_kernel_impl(
         int M, int N, int K,
         const T* A,
         const T* B,
@@ -287,13 +287,23 @@ __global__ void _tensordot_core_int_kernel(
 }
 
 template<typename T>
+__global__ void _tensordot_core_int_kernel(
+        int M, int N, int K,
+        const T* A,
+        const T* B,
+        T * C)
+{
+    _tensordot_core_int_kernel_impl(M, N, K, A, B, C);
+}
+
+template<typename T>
 __global__ void _tensordot_core_int_kernel_batched(
         int M, int N, int K,
         const T* A[], const T* B[],
         T* C[])
 {
     int batchid = blockIdx.z;
-    _tensordot_core_int_kernel(M, N, K, A[batchid], B[batchid], C[batchid]);
+    _tensordot_core_int_kernel_impl(M, N, K, A[batchid], B[batchid], C[batchid]);
 }
 
 template<typename T>
@@ -304,7 +314,7 @@ __global__ void _tensordot_core_int_kernel_strided_batched(
         T * C, long long strideC)
 {
     int batchid = blockIdx.z;
-    _tensordot_core_int_kernel(
+    _tensordot_core_int_kernel_impl(
         M, N, K,
         &A[batchid * strideA],
         &B[batchid * strideB],
