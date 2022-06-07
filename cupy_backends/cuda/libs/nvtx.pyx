@@ -146,8 +146,8 @@ cpdef RangePushC(message, uint32_t color=0):
 
     Ranges are used to describe events over a time span during execution of the
     application. This is particularly useful when profiling with Nsight Systems
-    to help connect user-specified ranges with cupy-internal CUDA-kernels. The
-    duration of a range is defined by the corresponding pair of
+    to help connect user-specified ranges with CuPy's internal CUDA-kernels.
+    The duration of a range is defined by the corresponding pair of
     ``RangePushC()`` to ``RangePop()`` calls, which can be nested.
 
     Example:
@@ -192,9 +192,9 @@ cpdef RangePush(message, int id_color=-1):
 
     Ranges are used to describe events over a time span during execution of the
     application. This is particularly useful when profiling with Nsight Systems
-    to help connect user-specified ranges with cupy-internal CUDA-kernels. The
-    duration of a range is defined by the corresponding pair of ``RangePush()``
-    to ``RangePop()`` calls, which can be nested.
+    to help connect user-specified ranges with CuPy's internal CUDA-kernels.
+    The duration of a range is defined by the corresponding pair of
+    ``RangePush()`` to ``RangePop()`` calls, which can be nested.
 
     Example:
 
@@ -222,11 +222,7 @@ cpdef RangePush(message, int id_color=-1):
 
 cpdef RangePop():
     """
-    Ends a nested range.
-
-    Ranges are used to describe events over a time span during execution of
-    the application. The duration of a range is defined by the corresponding
-    pair of ``RangePush*()`` to ``RangePop()`` calls.
+    Ends a nested range started by a ``RangePush*()`` call.
     """
     nvtxRangePop()
 
