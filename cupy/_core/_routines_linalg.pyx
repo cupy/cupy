@@ -93,8 +93,7 @@ cpdef compute_type_to_str(compute_type):
         return compute_type
 
 
-@cupy._util.memoize(for_each_device=True)
-def _tensordot_core_int_kernel_module(config):
+def _tensordot_core_int_kernel_impl(config, dtype, code, name):
     # This code is based in the GEMM implementation from MAGMA
     # (http://icl.cs.utk.edu/magma/)
     code = '''
@@ -285,7 +284,29 @@ __device__ void _tensordot_core_int_kernel_impl(
         }
     }
 }
+''' + code
+    for k, v in config:
+        code = '#define ' + k + ' ' + str(v) + '\n' + code
+    name_expressions = [f'{name}<bool>',
+                        f'{name}<signed char>',
+                        f'{name}<unsigned char>',
+                        f'{name}<short>',
+                        f'{name}<unsigned short>',
+                        f'{name}<int>',
+                        f'{name}<unsigned int>',
+                        f'{name}<long>',
+                        f'{name}<unsigned long>',
+                        f'{name}<long long>',
+                        f'{name}<unsigned long long>']
+    mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                         name_expressions=name_expressions)
+    ker = mod.get_function(name + '<' + get_typename(dtype) + '>')
+    return ker
 
+
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_kernel(config, dtype):
+    code = '''
 template<typename T>
 __global__ void _tensordot_core_int_kernel(
         int M, int N, int K,
@@ -295,19 +316,35 @@ __global__ void _tensordot_core_int_kernel(
 {
     _tensordot_core_int_kernel_impl(M, N, K, A, B, C);
 }
+'''
+    name = '_tensordot_core_int_kernel'
+    return _tensordot_core_int_kernel_impl(config, dtype, code, name)
 
+
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_batched_kernel(config, dtype):
+    code = '''
 template<typename T>
-__global__ void _tensordot_core_int_kernel_batched(
+__global__ void _tensordot_core_int_batched_kernel(
         int M, int N, int K,
         const T* A[], const T* B[],
         T* C[])
 {
     int batchid = blockIdx.z;
-    _tensordot_core_int_kernel_impl(M, N, K, A[batchid], B[batchid], C[batchid]);
+    _tensordot_core_int_kernel_impl(
+        M, N, K, A[batchid], B[batchid], C[batchid]
+    );
 }
+'''
+    name = '_tensordot_core_int_batched_kernel'
+    return _tensordot_core_int_kernel_impl(config, dtype, code, name)
 
+
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_strided_batched_kernel(config, dtype):
+    code = '''
 template<typename T>
-__global__ void _tensordot_core_int_kernel_strided_batched(
+__global__ void _tensordot_core_int_strided_batched_kernel(
         int M, int N, int K,
         const T* A, long long strideA,
         const T* B, long long strideB,
@@ -322,50 +359,8 @@ __global__ void _tensordot_core_int_kernel_strided_batched(
     );
 }
 '''
-    for k, v in config:
-        code = '#define ' + k + ' ' + str(v) + '\n' + code
-
-    name_expressions = []
-    for batched in ['', '_batched', '_strided_batched']:
-        for ctype in ['bool', 'char', 'short', 'int', 'long', 'long long']:
-            if ctype == 'bool':
-                name_expressions.append(
-                    f'_tensordot_core_int_kernel{batched}<bool>')
-                continue
-            for sign in ['', 'unsigned ']:
-                if ctype == 'char' and sign == '':
-                    sign = 'signed '  # consult `get_typename()`
-                name_expressions.append(
-                    f'_tensordot_core_int_kernel{batched}<{sign}{ctype}>')
-
-    mod = cupy.RawModule(code=code, options=('--std=c++11',),
-                         name_expressions=name_expressions)
-    return mod
-
-
-@cupy._util.memoize(for_each_device=True)
-def _tensordot_core_int_kernel(config, dtype):
-    mod = _tensordot_core_int_kernel_module(config)
-    ker = mod.get_function(
-        '_tensordot_core_int_kernel<' + get_typename(dtype) + '>')
-    return ker
-
-
-@cupy._util.memoize(for_each_device=True)
-def _tensordot_core_int_kernel_batched(config, dtype):
-    mod = _tensordot_core_int_kernel_module(config)
-    ker = mod.get_function(
-        '_tensordot_core_int_kernel_batched<' + get_typename(dtype) + '>')
-    return ker
-
-
-@cupy._util.memoize(for_each_device=True)
-def _tensordot_core_int_kernel_strided_batched(config, dtype):
-    mod = _tensordot_core_int_kernel_module(config)
-    name = ('_tensordot_core_int_kernel_strided_batched<'
-            + get_typename(dtype) + '>')
-    ker = mod.get_function(name)
-    return ker
+    name = '_tensordot_core_int_strided_batched_kernel'
+    return _tensordot_core_int_kernel_impl(config, dtype, code, name)
 
 
 cdef tuple _integral_tensordot_core_config():
@@ -406,7 +401,7 @@ cdef ndarray _integral_tensordot_core_batched(
         Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
     config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
-    kern = _tensordot_core_int_kernel_batched(config, dtype)
+    kern = _tensordot_core_int_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
     matPtrA = _mat_ptrs(a)
     matPtrB = _mat_ptrs(b)
@@ -427,7 +422,7 @@ cdef ndarray _integral_tensordot_core_strided_batched(
         Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
     config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
-    kern = _tensordot_core_int_kernel_strided_batched(config, dtype)
+    kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
     a = a.reshape((-1,) + a.shape[-2:])
     b = b.reshape((-1,) + b.shape[-2:])
