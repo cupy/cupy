@@ -161,10 +161,6 @@ cpdef RangePushC(message, uint32_t color=0):
             RangePop()
         RangePop()
 
-    Ranges are used to describe events over a time span during execution of
-    the application. The duration of a range is defined by the corresponding
-    pair of ``RangePushC()`` to ``RangePop()`` calls.
-
     Args:
         message (str): Name of a range.
         color (uint32): ARGB color for a range.
