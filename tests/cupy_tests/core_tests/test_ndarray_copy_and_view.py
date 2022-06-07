@@ -361,6 +361,16 @@ class C(cupy.ndarray):
 class TestSubclassArrayView:
 
     def test_view_casting(self):
-        a = cupy.arange(5).view(typ=C)
+        a = cupy.arange(5).view(array_class=C)
         assert type(a) is C
-        assert a.info == None
+        assert a.info is None
+
+        a = cupy.arange(5).view(C)
+        assert type(a) is C
+        assert a.info is None
+
+        with pytest.raises(ValueError):
+            cupy.arange(5).view(array_class=numpy.ndarray)
+
+        with pytest.raises(ValueError):
+            cupy.arange(5).view(numpy.ndarray)
