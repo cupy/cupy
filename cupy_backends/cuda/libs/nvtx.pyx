@@ -153,7 +153,7 @@ cpdef RangePushC(message, uint32_t color=0):
     Example:
 
         from cupy.cuda.nvtx import RangePushC, RangePop
-    
+
         RangePush("Nested Powers of A")
         for i in range(N):
             RangePushC("Iter {}: Double A".format(i))
@@ -199,7 +199,7 @@ cpdef RangePush(message, int id_color=-1):
     Example:
 
         from cupy.cuda.nvtx import RangePush, RangePop
-    
+
         RangePush("Nested Powers of A")
         for i in range(N):
             RangePush("Iter {}: Double A".format(i))
