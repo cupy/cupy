@@ -635,14 +635,26 @@ cdef class _ndarray_base:
         """
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
-        if type(dtype) is type:
-            array_class = dtype
-            dtype = None
-        if array_class is not None:
-            if not issubclass(array_class, ndarray):
-                raise ValueError('Type must be a sub-type of ndarray type')
-        subtype = array_class if array_class is not None else type(self)
-        v = self._view(subtype, self._shape, self._strides, False, False)
+
+        if dtype is not None:
+            if type(dtype) is type and issubclass(dtype, ndarray):
+                if array_class is not None:
+                    raise ValueError('Cannot specify output type twice.')
+                array_class = dtype
+                dtype = None
+
+        if (
+            array_class is not None and (
+                type(array_class) is not type or
+                not issubclass(array_class, ndarray)
+            )
+        ):
+            raise ValueError('Type must be a sub-type of ndarray type')
+
+        if array_class is None:
+            array_class = type(self)
+
+        v = self._view(array_class, self._shape, self._strides, False, False)
         if dtype is None:
             return v
 

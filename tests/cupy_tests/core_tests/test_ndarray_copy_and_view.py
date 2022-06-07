@@ -371,6 +371,3 @@ class TestSubclassArrayView:
 
         with pytest.raises(ValueError):
             cupy.arange(5).view(array_class=numpy.ndarray)
-
-        with pytest.raises(ValueError):
-            cupy.arange(5).view(numpy.ndarray)
