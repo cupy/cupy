@@ -625,7 +625,8 @@ cdef void _complex_warning(dtype_from, dtype_to):
 
 
 cdef list _get_out_args_from_optionals(
-    list out_args, tuple out_types, const shape_t& out_shape, casting
+    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
+    obj
 ):
     cdef _ndarray_base arr
 
@@ -635,7 +636,7 @@ cdef list _get_out_args_from_optionals(
     for i, a in enumerate(out_args):
         if a is None:
             out_args[i] = _ndarray_init(
-                cupy.ndarray, out_shape, out_types[i], None)
+                subtype, out_shape, out_types[i], obj)
             continue
 
         if not isinstance(a, _ndarray_base):
@@ -1267,8 +1268,22 @@ cdef class ufunc:
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
+
+        # Determine a template object from which we initialize the output when
+        # inputs have subclass instances
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = cupy.ndarray
+        template = None
+        for in_arg in in_args:
+            in_arg_type = type(in_arg)
+            if issubclass1(in_arg_type, cupy.ndarray):
+                subtype = in_arg_type
+                template = in_arg
+                break
+
         out_args = _get_out_args_from_optionals(
-            out_args, op.out_types, shape, casting)
+            subtype, out_args, op.out_types, shape, casting, template)
         if self.nout == 1:
             ret = out_args[0]
         else:
