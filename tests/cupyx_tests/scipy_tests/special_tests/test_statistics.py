@@ -11,6 +11,9 @@ class _TestBase:
     def test_ndtr(self):
         self.check_unary_linspace0_1('ndtr')
 
+    def test_log_ndtr(self):
+        self.check_unary_linspace0_2('log_ndtr')
+
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
@@ -58,6 +61,12 @@ class TestSpecial(_TestBase):
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
+        p = xp.linspace(0, 1, 1000, dtype=dtype)
+        return self._check_unary(p, name, scp)
+
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(rtol=1e-6, scipy_name='scp')
+    def check_unary_linspace0_2(self, name, xp, scp, dtype):
         p = xp.linspace(0, 1, 1000, dtype=dtype)
         return self._check_unary(p, name, scp)
 
@@ -139,6 +148,12 @@ class TestFusionSpecial(_TestBase):
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         a = xp.linspace(0, 1, 1000, dtype)
         return self._check_unary(a, name, scp)
+
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(rtol=1e-6, scipy_name='scp')
+    def check_unary_linspace0_2(self, name, xp, scp, dtype):
+        p = xp.linspace(0, 1, 1000, dtype=dtype)
+        return self._check_unary(p, name, scp)
 
 
 class _TestDistributionsBase:
