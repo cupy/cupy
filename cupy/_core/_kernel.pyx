@@ -384,7 +384,8 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
             arr = args[i]
             newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
-            args[i] = arr._view(type(arr), newshape, newstrides, False, True)
+            args[i] = arr._view(
+                type(arr), newshape, newstrides, False, True, arr)
         return newshape
 
     axes.reserve(ndim)
@@ -421,7 +422,7 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
         # TODO(niboshi): Confirm update_x_contiguity flags
-        args[i] = arr._view(type(arr), newshape, newstrides, False, True)
+        args[i] = arr._view(type(arr), newshape, newstrides, False, True, arr)
     return newshape
 
 
