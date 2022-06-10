@@ -96,6 +96,9 @@ class BuiltinFunc(Expr):
     def __call__(self) -> NoReturn:
         raise RuntimeError('Cannot call this function from Python layer.')
 
+    def __repr__(self) -> str:
+        return '<cupyx.jit function>'
+
     @classmethod
     def from_class_method(cls, instance_name, method):
         # - this helper wraps every class method as a BuiltinFunc
