@@ -411,6 +411,35 @@ def sparse_reduce(dtype, use_mpi=False):
         _launch_workers(run_reduce, (1, dtype, 'prod'))
 
 
+def sparse_all_reduce(dtype, use_mpi=False):
+
+    def run_all_reduce(rank, dtype, op, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = _make_sparse(dtype)
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.all_reduce(in_array, out_array, op)
+        if op == 'sum':
+            testing.assert_allclose(
+                out_array.todense(), 2 * in_array.todense())
+        else:
+            testing.assert_allclose(
+                out_array.todense(),
+                cupy.matmul(in_array.todense(), in_array.todense()))
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, 'sum', True)
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, 'prod', True)
+    else:
+        _launch_workers(run_all_reduce, (dtype, 'sum'))
+        _launch_workers(run_all_reduce, (dtype, 'prod'))
+
+
 if __name__ == '__main__':
     # Run the templatized test
     func = globals()[sys.argv[1]]

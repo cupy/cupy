@@ -582,7 +582,11 @@ class _SparseNCCLCommunicator:
 
     @classmethod
     def all_reduce(cls, comm, in_array, out_array, op='sum', stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # TODO(ecastill) find a way to better determine the root, maybe random?
+        # super naive algorithm
+        root = 0
+        cls.reduce(comm, in_array, out_array, root, op, stream)
+        cls.broadcast(comm, out_array, root, stream)
 
     @classmethod
     def reduce(cls, comm, in_array, out_array, root=0, op='sum', stream=None):
@@ -606,8 +610,10 @@ class _SparseNCCLCommunicator:
                     cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)
                 ]
                 if peer != root:
+                    nccl.groupStart()
                     for a in arrays:
                         cls._recv(comm, a, peer, a.dtype, a.size, stream)
+                    nccl.groupEnd()
                     cls._assign_arrays(partial, arrays, shape)
                     if op == 'sum':
                         result = result + partial
@@ -622,9 +628,11 @@ class _SparseNCCLCommunicator:
             cls._assign_arrays(
                 out_array, cls._get_internal_arrays(result), result.shape)
         else:
+            nccl.groupStart()
             for a in arrays:
                 cls._send(
                     comm, a, root, a.dtype, a.size, stream)
+            nccl.groupEnd()
 
     @classmethod
     def broadcast(cls, comm, in_out_array, root=0, stream=None):
@@ -643,8 +651,12 @@ class _SparseNCCLCommunicator:
         if comm._rank != root:
             arrays = [
                 cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
+        # TODO(ecastill): measure if its faster to just contatenate
+        # the arrays in a single one and send it
+        nccl.groupStart()
         for a in arrays:
             _DenseNCCLCommunicator.broadcast(comm, a, root, stream)
+        nccl.groupEnd()
         cls._assign_arrays(in_out_array, arrays, shape)
 
     @classmethod
@@ -663,8 +675,10 @@ class _SparseNCCLCommunicator:
         cls._exchange_shape_and_sizes(
             comm, peer, shape_and_sizes, 'send', stream)
         # Naive approach, we send each of the subarrays one by one
+        nccl.groupStart()
         for a in arrays:
             cls._send(comm, a, peer, a.dtype, a.size, stream)
+        nccl.groupEnd()
 
     @classmethod
     def _send(cls, comm, array, peer, dtype, count, stream=None):
@@ -688,8 +702,10 @@ class _SparseNCCLCommunicator:
         sizes = shape_and_sizes[2:]
         # TODO(use the out_array datatypes)
         arrs = [cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
+        nccl.groupStart()
         for a in arrs:
             cls._recv(comm, a, peer, a.dtype, a.size, stream)
+        nccl.groupEnd()
         # Create a sparse matrix from the received arrays
         cls._assign_arrays(out_array, arrs, shape)
 
