@@ -347,11 +347,15 @@ class TestPoly1dPowInvalidType:
 
 class Poly1dTestBase:
 
-    def _get_input(self, xp, in_type, dtype):
-        if in_type == 'poly1d':
-            return xp.poly1d(testing.shaped_arange((10,), xp, dtype) + 1)
-        if in_type == 'ndarray':
-            return testing.shaped_arange((10,), xp, dtype)
+    def _get_input(self, xp, in_type, dtype, *, size=10):
+        if in_type in ('ndarray', 'poly1d'):
+            array = testing.shaped_arange((size,), xp, dtype)
+            if array.dtype == numpy.bool_:
+                # Avoid leading zero-coefficients.
+                array = xp.logical_not(array)
+            if in_type == 'poly1d':
+                array = xp.poly1d(array)
+            return array
         if in_type == 'python_scalar':
             return dtype(5).item()
         if in_type == 'numpy_scalar':
@@ -366,7 +370,7 @@ class Poly1dTestBase:
         lambda x, y: x - y,
         lambda x, y: x * y,
     ],
-    'type_l': ['poly1d', 'python_scalar', 'ndarray'],
+    'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
@@ -375,6 +379,8 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
+        if self.type_l == 'numpy_scalar' and self.type_r == 'poly1d':
+            pytest.skip('Avoid numpy bug.')
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
         return self.func(a1, a2)
@@ -384,43 +390,17 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 @testing.parameterize(*testing.product({
     'fname': ['add', 'subtract', 'multiply', 'divide', 'power'],
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
-    'type_r': ['poly1d'],
+    'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_poly1d_arithmetic(self, xp, dtype):
         func = getattr(xp, self.fname)
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
         return func(a1, a2)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': [
-        lambda x, y: x + y,
-        lambda x, y: x - y,
-        lambda x, y: x * y,
-    ],
-    'type_l': ['numpy_scalar'],
-    'type_r': ['poly1d'],
-}))
-class TestPoly1dArithmeticInvalid(Poly1dTestBase):
-
-    @testing.for_all_dtypes()
-    def test_poly1d_arithmetic_invalid(self, dtype):
-        # CuPy does not support them because device-to-host synchronization is
-        # needed to convert the return value to cupy.ndarray type.
-        n1 = self._get_input(numpy, self.type_l, dtype)
-        n2 = self._get_input(numpy, self.type_r, dtype)
-        assert type(self.func(n1, n2)) is numpy.ndarray
-
-        c1 = self._get_input(cupy, self.type_l, dtype)
-        c2 = self._get_input(cupy, self.type_r, dtype)
-        with pytest.raises(TypeError):
-            self.func(c1, c2)
 
 
 @testing.gpu
@@ -728,15 +708,15 @@ class TestPolyfitDiffTypes:
 @testing.gpu
 @testing.parameterize(*testing.product({
     'type_l': ['poly1d', 'ndarray'],
-    'type_r': ['ndarray', 'numpy_scalar', 'python_scalar'],
+    'type_r': ['poly1d', 'ndarray', 'numpy_scalar', 'python_scalar'],
 }))
 class TestPolyval(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=1e-3)
     def test_polyval(self, xp, dtype):
-        a1 = self._get_input(xp, self.type_l, dtype)
-        a2 = self._get_input(xp, self.type_r, dtype)
+        a1 = self._get_input(xp, self.type_l, dtype, size=5)
+        a2 = self._get_input(xp, self.type_r, dtype, size=5)
         return xp.polyval(a1, a2)
 
 
@@ -805,7 +785,7 @@ class TestPolyvalDtypesCombination:
 
 
 @testing.gpu
-class TestPolyvalNotImplemented:
+class TestPolyvalMultiDimensional:
 
     @testing.for_all_dtypes()
     def test_polyval_ndim_values(self, dtype):
