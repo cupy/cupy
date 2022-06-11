@@ -399,6 +399,11 @@ class TestRaw(unittest.TestCase):
 
     def setUp(self):
         if hasattr(self, 'clean_up'):
+            if cupy.cuda.runtime.is_hip:
+                # Clearing memo triggers recompiling kernels using name
+                # expressions in other tests, e.g. dot and matmul, which
+                # hits a nvrtc bug. See #5843, #5945 and #6725.
+                self.skipTest('Clearing memo hits a nvrtc bug in other tests')
             _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
