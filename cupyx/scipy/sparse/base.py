@@ -331,7 +331,10 @@ class spmatrix(object):
 
     def dot(self, other):
         """Ordinary dot product"""
-        return self @ other
+        if numpy.isscalar(other):
+            return self * other
+        else:
+            return self @ other
 
     def getH(self):
         return self.transpose().conj()
