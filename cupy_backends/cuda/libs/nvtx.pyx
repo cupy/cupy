@@ -150,7 +150,7 @@ cpdef RangePushC(message, uint32_t color=0):
     The duration of a range is defined by the corresponding pair of
     ``RangePushC()`` to ``RangePop()`` calls, which can be nested.
 
-    Example:
+    .. code-block:: python
 
         from cupy.cuda.nvtx import RangePushC, RangePop
 
@@ -192,7 +192,7 @@ cpdef RangePush(message, int id_color=-1):
     The duration of a range is defined by the corresponding pair of
     ``RangePush()`` to ``RangePop()`` calls, which can be nested.
 
-    Example:
+    .. code-block:: python
 
         from cupy.cuda.nvtx import RangePush, RangePop
 
