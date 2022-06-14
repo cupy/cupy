@@ -298,12 +298,19 @@ def polyval(p, x):
     """
     if isinstance(p, cupy.poly1d):
         p = p.coeffs
-    if isinstance(x, cupy.poly1d):
-        x = x.coeffs
     if not isinstance(p, cupy.ndarray) or p.ndim == 0:
         raise TypeError('p must be 1d ndarray or poly1d object')
     if p.ndim > 1:
         raise ValueError('p must be 1d array')
+    if isinstance(x, cupy.poly1d):
+        # TODO(asi1024): Needs performance improvement.
+        dtype = numpy.result_type(x.coeffs, 1)
+        res = cupy.poly1d(cupy.array([0], dtype=dtype))
+        prod = cupy.poly1d(cupy.array([1], dtype=dtype))
+        for c in p[::-1]:
+            res = res + prod * c
+            prod = prod * x
+        return res
     dtype = numpy.result_type(p.dtype.type(0), x)
     p = p.astype(dtype, copy=False)
     if p.size == 0:

@@ -9,6 +9,7 @@ import cupy
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 
 
 from libc.stdint cimport intptr_t
@@ -92,15 +93,14 @@ cpdef compute_type_to_str(compute_type):
         return compute_type
 
 
-@cupy._util.memoize(for_each_device=True)
-def _tensordot_core_int_kernel(config, dtype):
+def _tensordot_core_int_kernel_impl(config, dtype, code, name):
     # This code is based in the GEMM implementation from MAGMA
     # (http://icl.cs.utk.edu/magma/)
     code = '''
 #define fetch(arr, col, m, n, bound) arr[min(n*col + m, bound)]
 
 template<typename T>
-__global__ void _tensordot_core_int_kernel(
+__device__ void _tensordot_core_int_kernel_impl(
         int M, int N, int K,
         const T* A,
         const T* B,
@@ -284,31 +284,86 @@ __global__ void _tensordot_core_int_kernel(
         }
     }
 }
-'''
+''' + code
     for k, v in config:
         code = '#define ' + k + ' ' + str(v) + '\n' + code
-    name_expressions = ['_tensordot_core_int_kernel<bool>',
-                        '_tensordot_core_int_kernel<signed char>',
-                        '_tensordot_core_int_kernel<unsigned char>',
-                        '_tensordot_core_int_kernel<short>',
-                        '_tensordot_core_int_kernel<unsigned short>',
-                        '_tensordot_core_int_kernel<int>',
-                        '_tensordot_core_int_kernel<unsigned int>',
-                        '_tensordot_core_int_kernel<long>',
-                        '_tensordot_core_int_kernel<unsigned long>',
-                        '_tensordot_core_int_kernel<long long>',
-                        '_tensordot_core_int_kernel<unsigned long long>']
+    name_expressions = [f'{name}<bool>',
+                        f'{name}<signed char>',
+                        f'{name}<unsigned char>',
+                        f'{name}<short>',
+                        f'{name}<unsigned short>',
+                        f'{name}<int>',
+                        f'{name}<unsigned int>',
+                        f'{name}<long>',
+                        f'{name}<unsigned long>',
+                        f'{name}<long long>',
+                        f'{name}<unsigned long long>']
     mod = cupy.RawModule(code=code, options=('--std=c++11',),
                          name_expressions=name_expressions)
-    ker = mod.get_function(
-        '_tensordot_core_int_kernel<'+get_typename(dtype)+'>')
+    ker = mod.get_function(name + '<' + get_typename(dtype) + '>')
     return ker
 
 
-cdef ndarray _integral_tensordot_core(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
-        Py_ssize_t k, str dtype, const shape_t& ret_shape):
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_kernel(config, dtype):
+    code = '''
+template<typename T>
+__global__ void _tensordot_core_int_kernel(
+        int M, int N, int K,
+        const T* A,
+        const T* B,
+        T * C)
+{
+    _tensordot_core_int_kernel_impl(M, N, K, A, B, C);
+}
+'''
+    name = '_tensordot_core_int_kernel'
+    return _tensordot_core_int_kernel_impl(config, dtype, code, name)
 
+
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_batched_kernel(config, dtype):
+    code = '''
+template<typename T>
+__global__ void _tensordot_core_int_batched_kernel(
+        int M, int N, int K,
+        const T* A[], const T* B[],
+        T* C[])
+{
+    int batchid = blockIdx.z;
+    _tensordot_core_int_kernel_impl(
+        M, N, K, A[batchid], B[batchid], C[batchid]
+    );
+}
+'''
+    name = '_tensordot_core_int_batched_kernel'
+    return _tensordot_core_int_kernel_impl(config, dtype, code, name)
+
+
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_strided_batched_kernel(config, dtype):
+    code = '''
+template<typename T>
+__global__ void _tensordot_core_int_strided_batched_kernel(
+        int M, int N, int K,
+        const T* A, long long strideA,
+        const T* B, long long strideB,
+        T * C, long long strideC)
+{
+    int batchid = blockIdx.z;
+    _tensordot_core_int_kernel_impl(
+        M, N, K,
+        &A[batchid * strideA],
+        &B[batchid * strideB],
+        &C[batchid * strideC]
+    );
+}
+'''
+    name = '_tensordot_core_int_strided_batched_kernel'
+    return _tensordot_core_int_kernel_impl(config, dtype, code, name)
+
+
+cdef tuple _integral_tensordot_core_config():
     # TODO(leofang): autotune the tuning parameters here? See the discussion
     # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
@@ -325,11 +380,64 @@ cdef ndarray _integral_tensordot_core(
               ('DIM_XA', dim_xa), ('DIM_YA', dim_ya),
               ('DIM_XB', dim_xb), ('DIM_YB', dim_yb),
               ('THR_M', blk_m // dim_x), ('THR_N', blk_n // dim_y))
+    return config, dim_x, dim_y, blk_m, blk_n
+
+
+cdef ndarray _integral_tensordot_core(
+        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
+        Py_ssize_t k, str dtype, const shape_t& ret_shape):
+
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
     kern = _tensordot_core_int_kernel(config, dtype)
     args = (m, n, k, a, b, out)
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)
     kern(grid, block, args=args)
+    return out
+
+
+cdef ndarray _integral_tensordot_core_batched(
+        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
+        Py_ssize_t k, str dtype, Py_ssize_t batch_count):
+
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    kern = _tensordot_core_int_batched_kernel(config, dtype)
+    block = (dim_x, dim_y, 1)
+    matPtrA = _mat_ptrs(a)
+    matPtrB = _mat_ptrs(b)
+    matPtrOut = _mat_ptrs(out)
+    max_batch_count = 65000
+    for i in range(0, batch_count, max_batch_count):
+        ibatch = min(max_batch_count, batch_count - i)
+        args = (
+            m, n, k, matPtrA[i:i + ibatch], matPtrB[i:i + ibatch],
+            matPtrOut[i:i + ibatch])
+        grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), ibatch)
+        kern(grid, block, args=args)
+    return out
+
+
+cdef ndarray _integral_tensordot_core_strided_batched(
+        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
+        Py_ssize_t k, str dtype, Py_ssize_t batch_count):
+
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
+    block = (dim_x, dim_y, 1)
+    a = a.reshape((-1,) + a.shape[-2:])
+    b = b.reshape((-1,) + b.shape[-2:])
+    out = out.reshape((-1,) + out.shape[-2:])
+    strideA = _get_stride_for_strided_batched_gemm(a)
+    strideB = _get_stride_for_strided_batched_gemm(b)
+    strideOut = _get_stride_for_strided_batched_gemm(out)
+    max_batch_count = 65000
+    for i in range(0, batch_count, max_batch_count):
+        ibatch = min(max_batch_count, batch_count - i)
+        args = (
+            m, n, k, a[i:i + ibatch], strideA, b[i:i + ibatch], strideB,
+            out[i:i + ibatch], strideOut)
+        grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), ibatch)
+        kern(grid, block, args=args)
     return out
 
 
@@ -680,7 +788,7 @@ cpdef ndarray _mat_ptrs(ndarray a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.
-           shape: (A, B, C) -> A ptrs to mat o size (B, C)
+           shape: (A, B, C) -> A ptrs to mat of size (B, C)
            shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
                   size (B, C)
     Returns:
@@ -692,12 +800,12 @@ cpdef ndarray _mat_ptrs(ndarray a):
     cdef ndarray idx
     idx = _mat_ptrs_kernel(
         a.data.ptr, a._strides[0],
-        ndarray((a._shape[0],), dtype=numpy.uintp))
+        core._ndarray((a._shape[0],), dtype=numpy.uintp))
 
     for i in range(1, ndim - 2):
         idx = _mat_ptrs_kernel(
             idx[:, None], a._strides[i],
-            ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+            core._ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
         idx = idx.ravel()
     return idx
 
@@ -781,7 +889,9 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
             True, True)
 
     ret_dtype = numpy.promote_types(a.dtype, b.dtype)
-    dtype = numpy.promote_types(ret_dtype, 'f')
+    dtype = ret_dtype
+    if dtype.char == 'e':
+        dtype = numpy.dtype('f')
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -852,12 +962,12 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     ):
         c = out
     else:
-        c = ndarray(out_shape, dtype=dtype)
+        c = core._ndarray(out_shape, dtype=dtype)
         if out is None:
             if dtype == ret_dtype:
                 out = c
             else:
-                out = ndarray(out_shape, dtype=ret_dtype)
+                out = core._ndarray(out_shape, dtype=ret_dtype)
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
         c_view = c.view()
@@ -871,6 +981,17 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         c_view._update_f_contiguity()
     else:
         c_view = c
+
+    if dtype.char not in 'efdFD':
+        if not use_broadcast:
+            _integral_tensordot_core_strided_batched(
+                a, b, c_view, n, m, ka, dtype.char, batchCount)
+        else:
+            _integral_tensordot_core_batched(
+                a, b, c_view, n, m, ka, dtype.char, batchCount)
+        if out is not c:
+            elementwise_copy(c, out)
+        return out
 
     global _cuda_runtime_version
     if _cuda_runtime_version < 0:

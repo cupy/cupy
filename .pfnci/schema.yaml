@@ -53,11 +53,6 @@ rocm:
   null:
     full_version: null
     packages: []
-  "4.2":
-    full_version: "4.2"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
   "4.3":
     full_version: "4.3.1"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
@@ -218,6 +213,24 @@ cudnn:
         alias: "11.5"
       "11.6":
         alias: "11.5"
+  "8.4":
+    spec: "8.4.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.6"
+      "11.1":
+        alias: "11.6"
+      "11.2":
+        alias: "11.6"
+      "11.3":
+        alias: "11.6"
+      "11.4":
+        alias: "11.6"
+      "11.5":
+        alias: "11.6"
+      "11.6":
+        alias: "11.6"
 
 ###############################################################################
 # Python
@@ -246,20 +259,6 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.18":
-    spec: "==1.18.*"
-    python:
-      # - "3.5"
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-  "1.19":
-    spec: "==1.19.*"
-    python:
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-      - "3.9"
   "1.20":
     spec: "==1.20.*"
     python:
@@ -283,39 +282,9 @@ numpy:
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
+  # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
     spec: null
-  "1.4":
-    spec: "==1.4.*"
-    python:
-      # - "3.5"
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-    numpy:
-      # - "1.13"
-      # - "1.14"
-      # - "1.15"
-      # - "1.16"
-      # - "1.17"
-      - "1.18"
-      - "1.19"
-      - "1.20"
-      - "1.21"
-  "1.5":
-    spec: "==1.5.*"
-    python:
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-      - "3.9"
-    numpy:
-      # - "1.16"
-      # - "1.17"
-      - "1.18"
-      - "1.19"
-      - "1.20"
-      - "1.21"
   "1.6":
     spec: "==1.6.*"
     python:
@@ -325,11 +294,9 @@ scipy:
     numpy:
       # - "1.16"
       # - "1.17"
-      - "1.18"
-      - "1.19"
+      # - "1.18"
+      # - "1.19"
       - "1.20"
-      - "1.21"
-      - "1.22"
   "1.7":
     spec: "==1.7.*"
     python:
@@ -340,8 +307,8 @@ scipy:
     numpy:
       # - "1.16"
       # - "1.17"
-      - "1.18"
-      - "1.19"
+      # - "1.18"
+      # - "1.19"
       - "1.20"
       - "1.21"
       - "1.22"
@@ -353,8 +320,8 @@ scipy:
       - "3.10"
     numpy:
       # - "1.17"
-      - "1.18"
-      - "1.19"
+      # - "1.18"
+      # - "1.19"
       - "1.20"
       - "1.21"
       - "1.22"

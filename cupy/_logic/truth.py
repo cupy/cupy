@@ -5,6 +5,14 @@ from cupy._sorting import search as _search
 from cupy import _util
 
 
+_setxorkernel = cupy._core.ElementwiseKernel(
+    'raw T X, int64 len',
+    'bool z',
+    'z = (i == 0 || X[i] != X[i-1]) && (i == len - 1 || X[i] != X[i+1])',
+    'setxorkernel'
+)
+
+
 def all(a, axis=None, out=None, keepdims=False):
     """Tests whether all array elements along a given axis evaluate to True.
 
@@ -245,6 +253,43 @@ def setdiff1d(ar1, ar2, assume_unique=False):
         ar1 = cupy.unique(ar1)
         ar2 = cupy.unique(ar2)
     return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
+
+
+def setxor1d(ar1, ar2, assume_unique=False):
+    """Find the set exclusive-or of two arrays.
+
+    Parameters
+    ----------
+    ar1, ar2 : cupy.ndarray
+        Input arrays. They are flattend if they are not already 1-D.
+    assume_unique : bool
+        By default, False, i.e. input arrays are not unique.
+        If True, input arrays are assumed to be unique. This can
+        speed up the calculation.
+
+    Returns
+    -------
+    setxor1d : cupy.ndarray
+        Return the sorted, unique values that are in only one
+        (not both) of the input arrays.
+
+    See Also
+    --------
+    numpy.setxor1d
+
+    """
+    if not assume_unique:
+        ar1 = cupy.unique(ar1)
+        ar2 = cupy.unique(ar2)
+
+    aux = cupy.concatenate((ar1, ar2), axis=None)
+    if aux.size == 0:
+        return aux
+
+    aux.sort()
+
+    return aux[_setxorkernel(aux, aux.size,
+                             cupy.zeros(aux.size, dtype=cupy.bool_))]
 
 
 def union1d(arr1, arr2):

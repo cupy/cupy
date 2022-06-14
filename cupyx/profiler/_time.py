@@ -112,7 +112,8 @@ def benchmark(
             the timing test. If not given, the current device is used.
 
     Returns:
-        :class:`_PerfCaseResult`: an object collecting all test results.
+        :class:`~cupyx.profiler._time._PerfCaseResult`:
+            an object collecting all test results.
 
     """
 
