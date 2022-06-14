@@ -16,7 +16,7 @@ from cupy_backends.cuda.libs.cusolver cimport (  # noqa
 
 from cupy.cuda cimport memory
 from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.core cimport _ndarray_init, ndarray
+from cupy._core.core cimport _ndarray_init, _ndarray_base
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -288,7 +288,7 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     # TODO(leofang): try overlapping using a small stream pool?
 
-    cdef ndarray x, s, u, vt, dev_info
+    cdef _ndarray_base x, s, u, vt, dev_info
     cdef int n, m, k, batch_size, i, buffersize, d_size, status
     cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
     cdef str s_dtype
