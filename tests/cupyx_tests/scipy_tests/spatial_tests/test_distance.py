@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy
 import cupy
@@ -17,7 +18,6 @@ except ModuleNotFoundError:
 from cupy import testing
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 @testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64'],
@@ -29,8 +29,9 @@ from cupy import testing
     'p': [2.0],
     'order': ["C", "F"]
 }))
-@unittest.skipUnless(scipy_available and pylibraft_available,
-                     'requires scipy and pylibcugraph')
+@pytest.mark.skipif(cupy.cuda.is_hip, reason="tests for CUDA only")
+@pytest.mark.skipif(not scipy_available and not pylibraft_available,
+                    reason='requires scipy and pylibraft')
 class TestCdist(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
@@ -72,7 +73,6 @@ class TestCdist(unittest.TestCase):
         return out
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 @testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64'],
@@ -81,8 +81,9 @@ class TestCdist(unittest.TestCase):
     'p': [1.0, 2.0, 3.0],
     'order': ["C", "F"]
 }))
-@unittest.skipUnless(scipy_available and pylibraft_available,
-                     'requires scipy and pylibcugraph')
+@pytest.mark.skipif(cupy.cuda.is_hip, reason="tests for CUDA only")
+@pytest.mark.skipif(not scipy_available and not pylibraft_available,
+                    reason='requires scipy and pylibraft')
 class TestDistanceMatrix(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
@@ -98,7 +99,6 @@ class TestDistanceMatrix(unittest.TestCase):
         return out
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 @testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64'],
@@ -106,8 +106,9 @@ class TestDistanceMatrix(unittest.TestCase):
     'p': [1.0, 2.0, 3.0],
     'order': ["C", "F"]
 }))
-@unittest.skipUnless(scipy_available and pylibraft_available,
-                     'requires scipy and pylibcugraph')
+@pytest.mark.skipif(cupy.cuda.is_hip, reason="tests for CUDA only")
+@pytest.mark.skipif(not scipy_available and not pylibraft_available,
+                    reason='requires scipy and pylibraft')
 class TestDistanceFunction(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
