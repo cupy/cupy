@@ -41,9 +41,9 @@ static __device__ T log_ndtr(T x)
 {
     T t = x * NPY_SQRT1_2;
     if (x < -1.0) {
-        return log(erfcx(-t) / 2) - t * t;
+        return logf(erfcxf(-t) / 2) - t * t;
     } else {
-        return log1p(-erfc(t) / 2);
+        return log1pf(-erfcf(t) / 2);
     }
 }
 
