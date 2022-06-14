@@ -46,7 +46,8 @@ class Scalar(TypeBase):
             dtype = numpy.dtype('float32')
         return get_typename(dtype)
 
-    def __eq__(self, other: TypeBase) -> bool:  # type: ignore[override]
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, TypeBase)
         return isinstance(other, Scalar) and self.dtype == other.dtype
 
     def __hash__(self) -> int:
@@ -94,7 +95,8 @@ class CArray(ArrayBase):
         index_32_bits = get_cuda_code_from_constant(self._index_32_bits, bool_)
         return f'CArray<{ctype}, {self.ndim}, {c_contiguous}, {index_32_bits}>'
 
-    def __eq__(self, other: TypeBase) -> bool:  # type: ignore[override]
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, TypeBase)
         return (
             isinstance(other, CArray) and
             self.dtype == other.dtype and
@@ -155,7 +157,8 @@ class Tuple(TypeBase):
         types = ', '.join([str(t) for t in self.types])
         return f'thrust::tuple<{types}>'
 
-    def __eq__(self, other: TypeBase) -> bool:  # type: ignore[override]
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, TypeBase)
         return isinstance(other, Tuple) and self.types == other.types
 
 
