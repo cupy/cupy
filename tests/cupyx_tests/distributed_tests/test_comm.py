@@ -142,7 +142,15 @@ class TestNCCLBackendSparse:
 
     @testing.for_dtypes('fdFD')
     def test_all_to_all(self, dtype):
-        self._run_test('sparse_all_gather', dtype)
+        self._run_test('sparse_all_to_all', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_reduce_scatter(self, dtype):
+        self._run_test('sparse_reduce_scatter', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_send_recv(self, dtype):
+        self._run_test('sparse_send_recv', dtype)
 
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
