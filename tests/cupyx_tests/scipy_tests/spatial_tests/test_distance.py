@@ -29,7 +29,7 @@ from cupy import testing
     'p': [2.0],
     'order': ["C", "F"]
 }))
-@pytest.mark.skipif(cupy.cuda.is_hip, reason="tests for CUDA only")
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
 @pytest.mark.skipif(not scipy_available and not pylibraft_available,
                     reason='requires scipy and pylibraft')
 class TestCdist(unittest.TestCase):
@@ -81,7 +81,7 @@ class TestCdist(unittest.TestCase):
     'p': [1.0, 2.0, 3.0],
     'order': ["C", "F"]
 }))
-@pytest.mark.skipif(cupy.cuda.is_hip, reason="tests for CUDA only")
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
 @pytest.mark.skipif(not scipy_available and not pylibraft_available,
                     reason='requires scipy and pylibraft')
 class TestDistanceMatrix(unittest.TestCase):
@@ -106,7 +106,7 @@ class TestDistanceMatrix(unittest.TestCase):
     'p': [1.0, 2.0, 3.0],
     'order': ["C", "F"]
 }))
-@pytest.mark.skipif(cupy.cuda.is_hip, reason="tests for CUDA only")
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
 @pytest.mark.skipif(not scipy_available and not pylibraft_available,
                     reason='requires scipy and pylibraft')
 class TestDistanceFunction(unittest.TestCase):
