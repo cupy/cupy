@@ -315,10 +315,10 @@ cdef ndarray _integral_tensordot_core(
     dim_y=16
     blk_m=128
     blk_n=128
-    blk_k=16
+    blk_k=2
     dim_xa=128
-    dim_ya=16
-    dim_xb=16
+    dim_ya=2
+    dim_xb=2
     dim_yb=128
     config = (('DIM_X', dim_x), ('DIM_Y', dim_y),
               ('BLK_M', blk_m), ('BLK_N', blk_n), ('BLK_K', blk_k),
