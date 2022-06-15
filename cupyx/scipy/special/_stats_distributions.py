@@ -41,9 +41,9 @@ static __device__ T log_ndtr(T x)
 {
     T t = x * NPY_SQRT1_2;
     if (x < -1.0) {
-        return logf(erfcxf(-t) / 2) - t * t;
+        return log(erfcx(-t) / 2) - t * t;
     } else {
-        return log1pf(-erfcf(t) / 2);
+        return log1p(-erfc(t) / 2);
     }
 }
 
@@ -52,7 +52,7 @@ static __device__ T log_ndtr(T x)
 
 log_ndtr = _core.create_ufunc(
     'cupyx_scipy_special_log_ndtr',
-    (('f->f', 'out0 = log_ndtr(in0)'), 'd->d'),
+    (('f->f', 'out0 = log_ndtrf(in0)'), 'd->d'),
     'out0 = log_ndtr(in0)',
     preamble=log_ndtr_definition,
     doc="""Logarithm of Gaussian cumulative distribution function.
