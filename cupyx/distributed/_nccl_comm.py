@@ -131,7 +131,8 @@ class NCCLBackend(_Backend):
     def _dispatch_arg_type(self, function, args):
         comm_class = _DenseNCCLCommunicator
         if (
-            (isinstance(args[0], list) and sparse.issparse(args[0][0]))
+            (isinstance(args[0], (list, tuple))
+             and sparse.issparse(args[0][0]))
             or sparse.issparse(args[0])
         ):
             comm_class = _SparseNCCLCommunicator
@@ -523,12 +524,13 @@ class _SparseNCCLCommunicator:
                 return sizes_shape
             elif method == 'bcast':
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
-                return comm._mpi_comm.bcast(sizes_shape, root=peer)
+                comm._mpi_comm.Bcast(sizes_shape, root=peer)
+                return sizes_shape
             elif method == 'gather':
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
-                # recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
-                return comm._mpi_comm.gather(sizes_shape, peer)
-                # return recv_buf
+                recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
+                comm._mpi_comm.Gather(sizes_shape, recv_buf, peer)
+                return recv_buf
             else:
                 raise RuntimeError('Unsupported method')
         else:
