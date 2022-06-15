@@ -9,7 +9,7 @@ cimport cython
 from libcpp cimport vector
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
 from cupy._core._carray cimport shape_t
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.libs.cutensor cimport Handle
 from cupy_backends.cuda.libs.cutensor cimport TensorDescriptor
@@ -181,7 +181,7 @@ def create_mode(*mode):
     return Mode(integer_mode)
 
 
-cdef inline Mode _auto_create_mode(ndarray array, mode):
+cdef inline Mode _auto_create_mode(_ndarray_base array, mode):
     if not isinstance(mode, Mode):
         mode = create_mode(*mode)
     if array.ndim != mode.ndim:
@@ -224,7 +224,7 @@ cdef inline Mode _create_mode_with_cache(axis_or_ndim):
 
 
 cpdef TensorDescriptor create_tensor_descriptor(
-        ndarray a, int uop=cutensor.OP_IDENTITY, Handle handle=None):
+        _ndarray_base a, int uop=cutensor.OP_IDENTITY, Handle handle=None):
     """Create a tensor descriptor
 
     Args:
@@ -257,10 +257,10 @@ cpdef TensorDescriptor create_tensor_descriptor(
 
 
 def elementwise_trinary(
-        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
-        beta, ndarray B, TensorDescriptor desc_B, mode_B,
-        gamma, ndarray C, TensorDescriptor desc_C, mode_C,
-        ndarray out=None,
+        alpha, _ndarray_base A, TensorDescriptor desc_A, mode_A,
+        beta, _ndarray_base B, TensorDescriptor desc_B, mode_B,
+        gamma, _ndarray_base C, TensorDescriptor desc_C, mode_C,
+        _ndarray_base out=None,
         op_AB=cutensor.OP_ADD, op_ABC=cutensor.OP_ADD, compute_dtype=None):
     """Element-wise tensor operation for three input tensors
 
@@ -331,12 +331,12 @@ def elementwise_trinary(
         _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
-cdef inline ndarray _elementwise_trinary_impl(
+cdef inline _ndarray_base _elementwise_trinary_impl(
         Handle handle,
-        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
-        _Scalar beta, ndarray B, TensorDescriptor desc_B, Mode mode_B,
-        _Scalar gamma, ndarray C, TensorDescriptor desc_C, Mode mode_C,
-        ndarray out, int op_AB, int op_ABC, int compute_type):
+        _Scalar alpha, _ndarray_base A, TensorDescriptor desc_A, Mode mode_A,
+        _Scalar beta, _ndarray_base B, TensorDescriptor desc_B, Mode mode_B,
+        _Scalar gamma, _ndarray_base C, TensorDescriptor desc_C, Mode mode_C,
+        _ndarray_base out, int op_AB, int op_ABC, int compute_type):
     cutensor.elementwiseTrinary(
         handle,
         alpha.ptr, A.data.ptr, desc_A, mode_A.data,
@@ -348,9 +348,9 @@ cdef inline ndarray _elementwise_trinary_impl(
 
 
 def elementwise_binary(
-        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
-        gamma, ndarray C, TensorDescriptor desc_C, mode_C,
-        ndarray out=None,
+        alpha, _ndarray_base A, TensorDescriptor desc_A, mode_A,
+        gamma, _ndarray_base C, TensorDescriptor desc_C, mode_C,
+        _ndarray_base out=None,
         op_AC=cutensor.OP_ADD, compute_dtype=None):
     """Element-wise tensor operation for two input tensors
 
@@ -391,11 +391,11 @@ def elementwise_binary(
         out, op_AC, _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
-cdef inline ndarray _elementwise_binary_impl(
+cdef inline _ndarray_base _elementwise_binary_impl(
         Handle handle,
-        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
-        _Scalar gamma, ndarray C, TensorDescriptor desc_C, Mode mode_C,
-        ndarray out, int op_AC, int compute_type):
+        _Scalar alpha, _ndarray_base A, TensorDescriptor desc_A, Mode mode_A,
+        _Scalar gamma, _ndarray_base C, TensorDescriptor desc_C, Mode mode_C,
+        _ndarray_base out, int op_AC, int compute_type):
     # stride and mode of `out` and `C` must be the same.
     cutensor.elementwiseBinary(
         handle,
@@ -408,9 +408,9 @@ cdef inline ndarray _elementwise_binary_impl(
 
 cdef inline ContractionDescriptor _create_contraction_descriptor(
         Handle handle,
-        ndarray A, TensorDescriptor desc_A, Mode mode_A,
-        ndarray B, TensorDescriptor desc_B, Mode mode_B,
-        ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        _ndarray_base A, TensorDescriptor desc_A, Mode mode_A,
+        _ndarray_base B, TensorDescriptor desc_B, Mode mode_B,
+        _ndarray_base C, TensorDescriptor desc_C, Mode mode_C,
         int cutensor_compute_type):
     """Create a contraction descriptor"""
     cdef uint32_t alignment_req_A = cutensor.getAlignmentRequirement(
@@ -522,9 +522,9 @@ cdef _get_scalar_dtype(out_dtype):
 
 
 def contraction(
-        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
-        ndarray B, TensorDescriptor desc_B, mode_B,
-        beta, ndarray C, TensorDescriptor desc_C, mode_C,
+        alpha, _ndarray_base A, TensorDescriptor desc_A, mode_A,
+        _ndarray_base B, TensorDescriptor desc_B, mode_B,
+        beta, _ndarray_base C, TensorDescriptor desc_C, mode_C,
         compute_dtype=None,
         int algo=cutensor.ALGO_DEFAULT,
         int ws_pref=cutensor.WORKSPACE_RECOMMENDED):
@@ -583,17 +583,17 @@ def contraction(
         compute_type, algo, ws_pref)
 
 
-cdef inline ndarray _contraction_impl(
+cdef inline _ndarray_base _contraction_impl(
         Handle handle,
-        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
-        ndarray B, TensorDescriptor desc_B, Mode mode_B,
-        _Scalar beta, ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        _Scalar alpha, _ndarray_base A, TensorDescriptor desc_A, Mode mode_A,
+        _ndarray_base B, TensorDescriptor desc_B, Mode mode_B,
+        _Scalar beta, _ndarray_base C, TensorDescriptor desc_C, Mode mode_C,
         int cutensor_compute_type, int algo, int ws_pref):
     cdef ContractionDescriptor desc
     cdef ContractionFind find
     cdef ContractionPlan plan
     cdef uint64_t ws_size
-    cdef ndarray out, ws
+    cdef _ndarray_base out, ws
 
     out = C
 
@@ -637,8 +637,8 @@ def contraction_max_algos():
 
 
 def reduction(
-        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
-        beta, ndarray C, TensorDescriptor desc_C, mode_C,
+        alpha, _ndarray_base A, TensorDescriptor desc_A, mode_A,
+        beta, _ndarray_base C, TensorDescriptor desc_C, mode_C,
         int reduce_op=cutensor.OP_ADD, compute_dtype=None):
     """Tensor reduction
 
@@ -690,13 +690,13 @@ def reduction(
     )
 
 
-cdef inline ndarray _reduction_impl(
+cdef inline _ndarray_base _reduction_impl(
         Handle handle,
-        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
-        _Scalar beta, ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        _Scalar alpha, _ndarray_base A, TensorDescriptor desc_A, Mode mode_A,
+        _Scalar beta, _ndarray_base C, TensorDescriptor desc_C, Mode mode_C,
         int reduce_op, int cutensor_compute_type):
     cdef uint64_t ws_size
-    cdef ndarray ws, out
+    cdef _ndarray_base ws, out
 
     out = C
     ws_size = cutensor.reductionGetWorkspace(
@@ -733,9 +733,10 @@ _cutensor_dtypes = [
 
 
 def _try_reduction_routine(
-        ndarray x, axis, dtype, ndarray out, keepdims, reduce_op, alpha, beta):
+        _ndarray_base x, axis, dtype, _ndarray_base out, keepdims, reduce_op,
+        alpha, beta):
     cdef Handle handle
-    cdef ndarray in_arg, out_arg
+    cdef _ndarray_base in_arg, out_arg
     cdef shape_t out_shape
     cdef tuple reduce_axis, out_axis
     cdef TensorDescriptor desc_in, desc_out
@@ -825,7 +826,8 @@ cdef inline bint _all_positive(const vector.vector[Py_ssize_t]& args):
 
 
 def _try_elementwise_binary_routine(
-        ndarray a, ndarray c, dtype, ndarray out, op, alpha, gamma):
+        _ndarray_base a, _ndarray_base c, dtype, _ndarray_base out, op, alpha,
+        gamma):
     cdef Handle handle
     cdef TensorDescriptor desc_a, desc_c, desc_out
 

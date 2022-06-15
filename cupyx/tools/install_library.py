@@ -65,48 +65,48 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
-    '11.6', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.6', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.5', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.5', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.4', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.4', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.3', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.3', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.2', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.2', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.1', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.1', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.0', '8.3.2', '11.5',
-    'cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda11.5-archive.zip'))
+    '11.0', '8.4.0', '11.6',
+    'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.2', '8.3.2', '10.2',
-    'cudnn-linux-x86_64-8.3.2.44_cuda10.2-archive.tar.xz',
-    'cudnn-windows-x86_64-8.3.2.44_cuda10.2-archive.zip'))
+    '10.2', '8.4.0', '10.2',
+    'cudnn-linux-x86_64-8.4.0.27_cuda10.2-archive.tar.xz',
+    'cudnn-windows-x86_64-8.4.0.27_cuda10.2-archive.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
 def _make_cutensor_url(platform, filename):
-    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.5.0.3-archive.tar.xz
     return (
         'https://developer.download.nvidia.com/compute/cutensor/' +
         f'redist/libcutensor/{platform}-x86_64/{filename}')
 
 
-def _make_cutensor_record(
+def __make_cutensor_record(
         cuda_version, public_version, filename_linux, filename_windows):
     return {
         'cuda': cuda_version,
@@ -124,38 +124,21 @@ def _make_cutensor_record(
     }
 
 
-_cutensor_records.append(_make_cutensor_record(
-    '11.6', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '11.5', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '11.4', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '11.3', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '11.2', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '11.1', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '11.0', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
-_cutensor_records.append(_make_cutensor_record(
-    '10.2', '1.4.0',
-    'libcutensor-linux-x86_64-1.4.0.6-archive.tar.xz',
-    'libcutensor-windows-x86_64-1.4.0.6-archive.zip'))
+def _make_cutensor_record(cuda_version):
+    return __make_cutensor_record(
+        cuda_version, '1.5.0',
+        'libcutensor-linux-x86_64-1.5.0.3-archive.tar.xz',
+        'libcutensor-windows-x86_64-1.5.0.3-archive.zip')
+
+
+_cutensor_records.append(_make_cutensor_record('11.6'))
+_cutensor_records.append(_make_cutensor_record('11.5'))
+_cutensor_records.append(_make_cutensor_record('11.4'))
+_cutensor_records.append(_make_cutensor_record('11.3'))
+_cutensor_records.append(_make_cutensor_record('11.2'))
+_cutensor_records.append(_make_cutensor_record('11.1'))
+_cutensor_records.append(_make_cutensor_record('11.0'))
+_cutensor_records.append(_make_cutensor_record('10.2'))
 library_records['cutensor'] = _cutensor_records
 
 

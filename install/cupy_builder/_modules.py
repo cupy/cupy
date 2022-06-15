@@ -24,6 +24,7 @@ _cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
+    'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
     'cupy._core._carray',
     'cupy._core._cub_reduction',
