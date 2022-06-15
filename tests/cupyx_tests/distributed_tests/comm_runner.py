@@ -52,8 +52,8 @@ def broadcast(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_broadcast(MPI.COMM_WORLD.Get_rank(), 0, dtype, False)
-        run_broadcast(MPI.COMM_WORLD.Get_rank(), 1, dtype, False)
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
     else:
         _launch_workers(run_broadcast, (0, dtype))
         _launch_workers(run_broadcast, (1, dtype))
@@ -319,10 +319,10 @@ def init(use_mpi=False):
 
 
 def _make_sparse(dtype):
-    data = cupy.array([0, 1, 2, 3], dtype)
-    indices = cupy.array([0, 1, 3, 2], 'i')
-    indptr = cupy.array([0, 2, 3, 4], 'i')
-    return sparse.csr_matrix((data, indices, indptr), shape=(3, 4))
+    data = cupy.array([1, 3, 2, 5, 1, 2], dtype)
+    indices = cupy.array([0, 3, 1, 3, 0, 2], 'i')
+    indptr = cupy.array([0, 2, 3, 4, 6], 'i')
+    return sparse.csr_matrix((data, indices, indptr), shape=(4, 4))
 
 
 def _make_sparse_empty(dtype):
@@ -353,6 +353,91 @@ def sparse_send_and_recv(dtype, use_mpi=False):
         run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
     else:
         _launch_workers(run_send_and_recv, (dtype,))
+
+
+def sparse_broadcast(dtype, use_mpi=False):
+
+    def run_broadcast(rank, root, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        expected = _make_sparse(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        if rank == root:
+            in_array = expected
+        else:
+            in_array = _make_sparse_empty(dtype)
+        comm.broadcast(in_array, root)
+        testing.assert_allclose(in_array.todense(), expected.todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_broadcast(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
+    else:
+        _launch_workers(run_broadcast, (0, dtype,))
+        _launch_workers(run_broadcast, (1, dtype,))
+
+
+def sparse_reduce(dtype, use_mpi=False):
+
+    def run_reduce(rank, root, dtype, op, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = _make_sparse(dtype)
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.reduce(in_array, out_array, root, op)
+        if rank == root:
+            if op == 'sum':
+                testing.assert_allclose(
+                    out_array.todense(), 2 * in_array.todense())
+            else:
+                testing.assert_allclose(
+                    out_array.todense(),
+                    cupy.matmul(in_array.todense(), in_array.todense()))
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_reduce(MPI.COMM_WORLD.Get_rank(), 0, dtype, 'sum', True)
+        run_reduce(MPI.COMM_WORLD.Get_rank(), 1, dtype, 'prod', True)
+    else:
+        _launch_workers(run_reduce, (0, dtype, 'sum'))
+        _launch_workers(run_reduce, (1, dtype, 'prod'))
+
+
+def sparse_all_reduce(dtype, use_mpi=False):
+
+    def run_all_reduce(rank, dtype, op, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = _make_sparse(dtype)
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.all_reduce(in_array, out_array, op)
+        if op == 'sum':
+            testing.assert_allclose(
+                out_array.todense(), 2 * in_array.todense())
+        else:
+            testing.assert_allclose(
+                out_array.todense(),
+                cupy.matmul(in_array.todense(), in_array.todense()))
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, 'sum', True)
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, 'prod', True)
+    else:
+        _launch_workers(run_all_reduce, (dtype, 'sum'))
+        _launch_workers(run_all_reduce, (dtype, 'prod'))
 
 
 if __name__ == '__main__':

@@ -183,6 +183,64 @@ class TestSetdiff1d:
         return xp.setdiff1d(x, y)
 
 
+class TestSetxor1d:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_same_arrays(self, xp, dtype):
+        x = xp.array([1, 2, 3, 4, 5], dtype=dtype)
+        y = xp.array([1, 2, 3, 4, 5], dtype=dtype)
+        return xp.setxor1d(x, y, assume_unique=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_diff_size_arr_inputs(self, xp, dtype):
+        x = xp.array([3, 4, 9, 1, 5, 4], dtype=dtype)
+        y = xp.array([8, 7, 3, 9, 0], dtype=dtype)
+        return xp.setxor1d(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_diff_elements(self, xp, dtype):
+        x = xp.array([3, 4, 9, 1, 5, 4], dtype=dtype)
+        y = xp.array([8, 7, 3, 9, 0], dtype=dtype)
+        return xp.setxor1d(x, y, assume_unique=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_with_2d(self, xp, dtype):
+        x = testing.shaped_random((2, 3), xp, dtype=dtype)
+        y = testing.shaped_random((3, 5), xp, dtype=dtype)
+        return xp.setxor1d(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_with_duplicate_elements(self, xp, dtype):
+        x = xp.array([1, 2, 3, 2, 2, 6], dtype=dtype)
+        y = xp.array([3, 4, 2, 1, 1, 9], dtype=dtype)
+        return xp.setxor1d(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_empty_arr(self, xp, dtype):
+        x = xp.array([], dtype=dtype)
+        y = xp.array([], dtype=dtype)
+        return xp.setxor1d(x, y)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_more_dim(self, xp, dtype):
+        x = testing.shaped_arange((2, 3, 4, 8), xp, dtype=dtype)
+        y = testing.shaped_arange((5, 4, 2), xp, dtype=dtype)
+        return xp.setxor1d(x, y)
+
+    @testing.numpy_cupy_array_equal()
+    def test_setxor1d_bool_val(self, xp):
+        x = xp.array([True, False, True])
+        y = xp.array([False])
+        return xp.setxor1d(x, y)
+
+
 class TestIntersect1d:
 
     @testing.for_all_dtypes(no_bool=True)

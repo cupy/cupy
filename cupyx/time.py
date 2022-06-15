@@ -51,7 +51,8 @@ def repeat(
             the timing test. If not given, the current device is used.
 
     Returns:
-        :class:`_PerfCaseResult`: an object collecting all test results.
+        :class:`~cupyx.profiler._time._PerfCaseResult`:
+            an object collecting all test results.
 
     .. warning::
         This API is moved to :func:`cupyx.profiler.benchmark` since CuPy v10.

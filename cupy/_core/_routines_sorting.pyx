@@ -5,18 +5,19 @@ import numpy
 import cupy
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 from cupy import _util
 from cupy.cuda import thrust
 
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 
-cdef _ndarray_sort(ndarray self, int axis):
+cdef _ndarray_sort(_ndarray_base self, int axis):
     cdef int ndim = self._shape.size()
-    cdef ndarray data
+    cdef _ndarray_base data
 
     if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.sort. Please '
@@ -43,7 +44,8 @@ cdef _ndarray_sort(ndarray self, int axis):
         thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
     else:
         max_size = max(min(1 << 22, data.size) // data.shape[-1], 1)
-        keys_array = ndarray((max_size * data.shape[-1],), dtype=numpy.intp)
+        keys_array = core.ndarray(
+            (max_size * data.shape[-1],), dtype=numpy.intp)
         stop = data.size // data.shape[-1]
         for offset in range(0, stop, max_size):
             width = min(max_size, stop - offset)
@@ -61,9 +63,9 @@ cdef _ndarray_sort(ndarray self, int axis):
         elementwise_copy(data, self)
 
 
-cdef ndarray _ndarray_argsort(ndarray self, axis):
+cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
     cdef int _axis, ndim
-    cdef ndarray data
+    cdef _ndarray_base data
 
     if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
@@ -88,13 +90,13 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         data = _manipulation.rollaxis(data, _axis, ndim).copy()
     shape = data.shape
 
-    idx_array = ndarray(shape, dtype=numpy.intp)
+    idx_array = core.ndarray(shape, dtype=numpy.intp)
 
     if ndim == 1:
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
                        shape)
     else:
-        keys_array = ndarray(shape, dtype=numpy.intp)
+        keys_array = core.ndarray(shape, dtype=numpy.intp)
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
                        keys_array.data.ptr, shape)
 
@@ -104,7 +106,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         return _manipulation.rollaxis(idx_array, -1, _axis)
 
 
-cdef _ndarray_partition(ndarray self, kth, int axis):
+cdef _ndarray_partition(_ndarray_base self, kth, int axis):
     """Partitions an array.
 
     Args:
@@ -123,7 +125,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     cdef int ndim = self._shape.size()
     cdef Py_ssize_t k, max_k, length, s, sz, t
-    cdef ndarray data
+    cdef _ndarray_base data
 
     if ndim == 0:
         raise numpy.AxisError('Sorting arrays with the rank of zero is not '
@@ -197,7 +199,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
         elementwise_copy(data, self)
 
 
-cdef ndarray _ndarray_argpartition(self, kth, axis):
+cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
     """Returns the indices that would partially sort an array.
 
     Args:
@@ -218,7 +220,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     """
     cdef int _axis, ndim
     cdef Py_ssize_t k, length
-    cdef ndarray data
+    cdef _ndarray_base data
     if axis is None:
         data = self.ravel()
         _axis = -1
