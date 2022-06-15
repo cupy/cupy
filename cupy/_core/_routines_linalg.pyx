@@ -368,13 +368,13 @@ cdef tuple _integral_tensordot_core_config():
     # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
     dim_y=16
-    blk_m=64
-    blk_n=64
-    blk_k=4
-    dim_xa=64
-    dim_ya=4
-    dim_xb=4
-    dim_yb=64
+    blk_m=128
+    blk_n=128
+    blk_k=2
+    dim_xa=128
+    dim_ya=2
+    dim_xb=2
+    dim_yb=128
     config = (('DIM_X', dim_x), ('DIM_Y', dim_y),
               ('BLK_M', blk_m), ('BLK_N', blk_n), ('BLK_K', blk_k),
               ('DIM_XA', dim_xa), ('DIM_YA', dim_ya),
