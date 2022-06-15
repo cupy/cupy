@@ -64,7 +64,6 @@ class TestSpecial(_TestBase):
         p = xp.linspace(0, 1, 1000, dtype=dtype)
         return self._check_unary(p, name, scp)
 
-
     def test_logit_nonfinite(self):
         logit = cupyx.scipy.special.logit
         assert float(logit(0)) == -numpy.inf
