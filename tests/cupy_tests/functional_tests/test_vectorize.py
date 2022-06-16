@@ -424,7 +424,7 @@ class TestVectorizeStmts(unittest.TestCase):
             res = 0
             for i in range(x, y, z):
                 res += i * i
-            return x
+            return res
 
         f = xp.vectorize(func_for)
         start = xp.array([0, 1, 2, 3, 4, 5])

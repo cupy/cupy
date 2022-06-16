@@ -93,31 +93,10 @@ cdef object _null_context = contextlib.nullcontext()
 
 
 class ndarray(_ndarray_base):
-    __module__ = 'cupy'
-    __doc__ = _ndarray_base.__doc__
+    """
+    __init__(self, shape, dtype=float, memptr=None, strides=None, order='C')
 
-    def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
-        x = super().__new__(cls, *args, **kwargs)
-        if _no_init:
-            return x
-        x._init(*args, **kwargs)
-        if cls is not ndarray:
-            x.__array_finalize__(_obj)
-        return x
-
-    def __init__(self, *args, **kwargs):
-        # Prevent from calling the super class `_ndarray_base.__init__()` as
-        # it is used to check accidental direct instantiation of underlaying
-        # `_ndarray_base` extention.
-        pass
-
-    def __array_finalize__(self, obj):
-        pass
-
-
-cdef class _ndarray_base:
-
-    """Multi-dimensional array on a CUDA device.
+    Multi-dimensional array on a CUDA device.
 
     This class implements a subset of methods of :class:`numpy.ndarray`.
     The difference is that this class allocates the array content on the
@@ -147,6 +126,29 @@ cdef class _ndarray_base:
             .. seealso:: :attr:`numpy.ndarray.size`
 
     """
+
+    __module__ = 'cupy'
+
+    def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
+        x = super().__new__(cls, *args, **kwargs)
+        if _no_init:
+            return x
+        x._init(*args, **kwargs)
+        if cls is not ndarray:
+            x.__array_finalize__(_obj)
+        return x
+
+    def __init__(self, *args, **kwargs):
+        # Prevent from calling the super class `_ndarray_base.__init__()` as
+        # it is used to check accidental direct instantiation of underlaying
+        # `_ndarray_base` extention.
+        pass
+
+    def __array_finalize__(self, obj):
+        pass
+
+
+cdef class _ndarray_base:
 
     def __init__(self, *args, **kwargs):
         # Raise an error if underlaying `_ndarray_base` extension type is
