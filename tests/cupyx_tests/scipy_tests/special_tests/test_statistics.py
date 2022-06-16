@@ -59,7 +59,7 @@ class TestSpecial(_TestBase):
         return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-6, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         p = xp.linspace(0, 1, 1000, dtype=dtype)
         return self._check_unary(p, name, scp)
@@ -138,7 +138,7 @@ class TestFusionSpecial(_TestBase):
         return self._check_unary(a, name, scp)
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-6, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         a = xp.linspace(0, 1, 1000, dtype)
         return self._check_unary(a, name, scp)
