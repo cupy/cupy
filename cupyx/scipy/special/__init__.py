@@ -92,7 +92,7 @@ from cupyx.scipy.special._basic import tandg  # NOQA
 from cupyx.scipy.special._basic import cotdg  # NOQA
 from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._basic import expm1  # NOQA
-from cupy import round  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
-from cupy import sinc  # NOQA
+from cupy._math.special import sinc  # NOQA

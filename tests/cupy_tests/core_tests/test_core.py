@@ -57,7 +57,7 @@ class TestOrder(unittest.TestCase):
     @testing.for_orders(_orders.keys())
     def test_ndarray(self, order):
         order_expect = _orders[order]
-        a = core._ndarray((2, 3), order=order)
+        a = core.ndarray((2, 3), order=order)
         expect_c = order_expect == 'C'
         expect_f = order_expect == 'F'
         assert a.flags.c_contiguous == expect_c
