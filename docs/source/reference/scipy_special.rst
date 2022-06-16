@@ -127,6 +127,7 @@ Other special functions
 .. autosummary::
    :toctree: generated/
 
+   expn
    zeta
 
 
