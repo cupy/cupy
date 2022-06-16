@@ -36,10 +36,9 @@ log_ndtr_definition = """
 
 #define NPY_SQRT1_2   0.707106781186547524400844362104849039  /* 1/sqrt(2) */
 
-template <typename T>
-static __device__ double log_ndtr(T x)
+static __device__ double log_ndtr(double x)
 {
-    T t = x * NPY_SQRT1_2;
+    double t = x * NPY_SQRT1_2;
     if (x < -1.0) {
         return log(erfcx(-t) / 2) - t * t;
     } else {
@@ -47,10 +46,9 @@ static __device__ double log_ndtr(T x)
     }
 }
 
-template <typename T>
-static __device__ float log_ndtrf(T x)
+static __device__ float log_ndtrf(float x)
 {
-    T t = x * NPY_SQRT1_2;
+    float t = x * NPY_SQRT1_2;
     if (x < -1.0) {
         return logf(erfcxf(-t) / 2) - t * t;
     } else {
