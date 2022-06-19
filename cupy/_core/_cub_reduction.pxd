@@ -1,6 +1,6 @@
 from cupy._core._carray cimport shape_t
 from cupy._core._kernel cimport _TypeMap
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cdef bint _try_to_call_cub_reduction(
@@ -9,4 +9,4 @@ cdef bint _try_to_call_cub_reduction(
     map_expr, reduce_expr, post_map_expr,
     reduce_type, _TypeMap type_map,
     tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
-    ndarray ret) except *
+    _ndarray_base ret) except *

@@ -10,7 +10,7 @@ import warnings
 
 import numpy
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cdef extern from 'halffloat.h':
@@ -335,14 +335,14 @@ cdef _broadcast_core(list arrays, shape_t& shape):
     cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
     cdef strides_t strides
     cdef vector.vector[int] index
-    cdef ndarray a
+    cdef _ndarray_base a
     cdef list ret
 
     shape.clear()
     index.reserve(len(arrays))
     nd = 0
     for i, x in enumerate(arrays):
-        if not isinstance(x, ndarray):
+        if not isinstance(x, _ndarray_base):
             continue
         a = x
         index.push_back(i)
@@ -368,7 +368,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
             raise ValueError(
                 'operands could not be broadcast together with shapes {}'
                 .format(
-                    ' '.join([str(x.shape) if isinstance(x, ndarray)
+                    ' '.join([str(x.shape) if isinstance(x, _ndarray_base)
                               else '()' for x in arrays])))
         shape.push_back(s)
 
