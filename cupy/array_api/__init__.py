@@ -125,7 +125,7 @@ if sys.version_info < (3, 8):
 import warnings
 
 warnings.warn(
-    "The numpy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
+    "The cupy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
 )
 
 __all__ = []
