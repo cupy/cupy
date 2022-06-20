@@ -505,12 +505,12 @@ def fix_jit_callable_signature(
 
 def fix_ndarray_signature(
         app, what, name, obj, options, signature, return_annotation):
-    # Replace `cupy.ndarray` constructor arguments
-    if obj is cupy.ndarray:
-        return ("(self, shape, dtype=float, memptr=None, strides=None, order='C')", return_annotation)
-    # Replace `-> _ndarray_base` return annoation on document to `-> ndarray`
+    # Replace `_ndarray_base` with `ndarray` for signatures and return types
+    # on docs.
+    if signature is not None:
+        signature = signature.replace('_ndarray_base', 'ndarray')
     if return_annotation == '_ndarray_base':
-        return (signature, 'ndarray')
+        return_annotation = 'ndarray'
     return (signature, return_annotation)
 
 def setup(app):
