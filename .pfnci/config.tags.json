@@ -68,6 +68,17 @@
     ],
     "cupy.linux.cuda116": [],
     "cupy.linux.cuda116.multi": [],
+    "cupy.linux.cuda117": [
+        "@push",
+        "full",
+        "mini"
+    ],
+    "cupy.linux.cuda117.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi"
+    ],
     "cupy.linux.rocm-4-0": [],
     "cupy.linux.cuda-slow": [
         "slow"
