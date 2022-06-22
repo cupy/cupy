@@ -213,7 +213,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         return ret
 
 
-def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, 
+def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
              axis=0):
     """Returns an array with evenly-spaced values on a log-scale.
 
