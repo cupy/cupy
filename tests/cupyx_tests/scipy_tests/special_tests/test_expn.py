@@ -1,8 +1,3 @@
-import unittest
-
-import cupy
-import numpy
-
 import cupyx.scipy.special  # NOQA
 
 from cupy import testing
