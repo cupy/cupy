@@ -9,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir -f https://github.com/cupy/cupy/releases/v11.0.0b3 "cupy-cuda117[all]==11.0.0b3"
+RUN pip3 install --no-cache-dir -f https://github.com/cupy/cupy/releases/v11.0.0b3 "cupy-cuda116[all]==11.0.0b3"  # TODO: replace with cuda117 or cuda11x when bumping version to RC
