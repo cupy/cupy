@@ -284,7 +284,6 @@ class TestRanges(unittest.TestCase):
     def test_logspace_base(self, xp, dtype):
         return xp.logspace(0, 2, 5, base=2.0, dtype=dtype)
 
-
     @testing.with_requires('numpy>=1.16')
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True)
@@ -293,6 +292,7 @@ class TestRanges(unittest.TestCase):
         start = xp.array([0, 2], dtype=dtype_range)
         stop = xp.array([2, 0], dtype=dtype_range)
         return xp.logspace(start, stop, num=5, dtype=dtype_out, axis=1)
+
 
 @testing.parameterize(
     *testing.product({
