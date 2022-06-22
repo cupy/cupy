@@ -213,7 +213,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         return ret
 
 
-def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
+def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
     """Returns an array with evenly-spaced values on a log-scale.
 
     Instead of specifying the step width like :func:`cupy.arange`, this
@@ -229,14 +229,17 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
             elements on a log-scale are the same as ``base``.
         dtype: Data type specifier. It is inferred from the start and stop
             arguments by default.
-
+        axis (int):  The axis in the result to store the samples.  Relevant
+            only if start or stop are array-like.  By default ``0``, the
+            samples will be along a new axis inserted at the beginning.
+            Use ``-1`` to get an axis at the end.
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
 
     .. seealso:: :func:`numpy.logspace`
 
     """
-    y = linspace(start, stop, num=num, endpoint=endpoint)
+    y = linspace(start, stop, num=num, endpoint=endpoint, axis=axis)
     if dtype is None:
         return _core.power(base, y)
     return _core.power(base, y).astype(dtype)
