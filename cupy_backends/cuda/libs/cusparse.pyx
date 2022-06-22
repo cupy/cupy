@@ -1367,12 +1367,13 @@ cdef extern from '../../cupy_sparse.h' nogil:
 
 # APIs added after CUDA 11.2+.
 cdef void* _cusparseCreateCsc = NULL
-cdef Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
-                         int64_t cols, int64_t nnz, void* cscColOffsets,
-                         void* cscRowInd, void* cscValues,
-                         IndexType cscColOffsetsType,
-                         IndexType cscRowIndType, IndexBase idxBase,
-                         DataType valueType):
+cdef Status cusparseCreateCsc(
+        SpMatDescr* spMatDescr, int64_t rows,
+        int64_t cols, int64_t nnz, void* cscColOffsets,
+        void* cscRowInd, void* cscValues,
+        IndexType cscColOffsetsType,
+        IndexType cscRowIndType, IndexBase idxBase,
+        DataType valueType):
     return (<Status(*)(...) nogil>_cusparseCreateCsc)(
         spMatDescr, rows,
         cols, nnz, cscColOffsets,
@@ -1426,11 +1427,11 @@ cdef load_functions(libname, prefix):
     global _cusparseCreateCsc
     _cusparseCreateCsc = lib.get_func('CreateCsc')
     global _cusparseSparseToDense_bufferSize
-    _cusparseSparseToDense_bufferSize = lib.get_func('SparseToDense_bufferSize')
+    _cusparseSparseToDense_bufferSize = lib.get_func('SparseToDense_bufferSize')  # NOQA
     global _cusparseSparseToDense
     _cusparseSparseToDense = lib.get_func('SparseToDense')
     global _cusparseDenseToSparse_bufferSize
-    _cusparseDenseToSparse_bufferSize = lib.get_func('DenseToSparse_bufferSize')
+    _cusparseDenseToSparse_bufferSize = lib.get_func('DenseToSparse_bufferSize')  # NOQA
     global _cusparseDenseToSparse_analysis
     _cusparseDenseToSparse_analysis = lib.get_func('DenseToSparse_analysis')
     global _cusparseDenseToSparse_convert
