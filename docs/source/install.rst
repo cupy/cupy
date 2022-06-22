@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -97,6 +97,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda115``
    * - v11.6
      - ``$ pip install cupy-cuda116``
+   * - v11.7
+     - ``$ pip install cupy-cuda117``
 
 .. note::
 
