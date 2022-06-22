@@ -604,26 +604,6 @@ cusparseStatus_t cusparseSpGEMM_copy(...) {
 typedef enum {} cusparseSparseToDenseAlg_t;
 typedef enum {} cusparseDenseToSparseAlg_t;
 
-cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSparseToDense(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_convert(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 #endif // CUSPARSE_VERSION < 11300
 
 

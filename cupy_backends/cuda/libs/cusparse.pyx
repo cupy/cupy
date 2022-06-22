@@ -1349,23 +1349,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
         SpMatDescr matA, SpMatDescr matB, const void* beta, SpMatDescr matC,
         DataType computeType, SpGEMMAlg alg, SpGEMMDescr spgemmDescr)
 
-    Status cusparseSparseToDense_bufferSize(
-        Handle handle, SpMatDescr matA, DnMatDescr matB,
-        cusparseSparseToDenseAlg_t alg, size_t* bufferSize)
-    Status cusparseSparseToDense(
-        Handle handle, SpMatDescr matA, DnMatDescr matB,
-        cusparseSparseToDenseAlg_t alg, void* buffer)
-
-    Status cusparseDenseToSparse_bufferSize(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, size_t* bufferSize)
-    Status cusparseDenseToSparse_analysis(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, void* buffer)
-    Status cusparseDenseToSparse_convert(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, void* buffer)
-
     # CSR2CSC
     Status cusparseCsr2cscEx2_bufferSize(
         Handle handle, int m, int n, int nnz, const void* csrVal,
@@ -1381,7 +1364,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
 
     # Build-time version
     int CUSPARSE_VERSION
-
 
 # APIs added after CUDA 11.2+.
 cdef void* _cusparseCreateCsc = NULL
@@ -1399,11 +1381,60 @@ cdef Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
         cscRowIndType, idxBase,
         valueType)
 
+cdef void* _cusparseSparseToDense_bufferSize = NULL
+cdef Status cusparseSparseToDense_bufferSize(
+        Handle handle, SpMatDescr matA, DnMatDescr matB,
+        cusparseSparseToDenseAlg_t alg, size_t* bufferSize):
+    return (<Status(*)(...) nogil>_cusparseSparseToDense_bufferSize)(
+        handle, matA, matB,
+        alg, bufferSize)
+
+cdef void* _cusparseSparseToDense = NULL
+cdef Status cusparseSparseToDense(
+        Handle handle, SpMatDescr matA, DnMatDescr matB,
+        cusparseSparseToDenseAlg_t alg, void* buffer):
+    return (<Status(*)(...) nogil>_cusparseSparseToDense)(
+        handle, matA, matB,
+        alg, buffer)
+
+cdef void* _cusparseDenseToSparse_bufferSize = NULL
+cdef Status cusparseDenseToSparse_bufferSize(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, size_t* bufferSize):
+    return (<Status(*)(...) nogil>_cusparseDenseToSparse_bufferSize)(
+        handle, matA, matB,
+        alg, bufferSize)
+
+cdef void* _cusparseDenseToSparse_analysis = NULL
+cdef Status cusparseDenseToSparse_analysis(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, void* buffer):
+    return (<Status(*)(...) nogil>_cusparseDenseToSparse_analysis)(
+        handle, matA, matB,
+        alg, buffer)
+
+cdef void* _cusparseDenseToSparse_convert = NULL
+cdef Status cusparseDenseToSparse_convert(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, void* buffer):
+    return (<Status(*)(...) nogil>_cusparseDenseToSparse_convert)(
+        handle, matA, matB,
+        alg, buffer)
 
 cdef load_functions(libname, prefix):
     lib = SoftLink(libname, prefix)
     global _cusparseCreateCsc
     _cusparseCreateCsc = lib.get_func('CreateCsc')
+    global _cusparseSparseToDense_bufferSize
+    _cusparseSparseToDense_bufferSize = lib.get_func('SparseToDense_bufferSize')
+    global _cusparseSparseToDense
+    _cusparseSparseToDense = lib.get_func('SparseToDense')
+    global _cusparseDenseToSparse_bufferSize
+    _cusparseDenseToSparse_bufferSize = lib.get_func('DenseToSparse_bufferSize')
+    global _cusparseDenseToSparse_analysis
+    _cusparseDenseToSparse_analysis = lib.get_func('DenseToSparse_analysis')
+    global _cusparseDenseToSparse_convert
+    _cusparseDenseToSparse_convert = lib.get_func('DenseToSparse_convert')
 
 IF 11020 <= CUPY_CUDA_VERSION < 12000:
     if _sys.platform == 'linux':

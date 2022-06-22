@@ -1137,26 +1137,6 @@ cusparseStatus_t cusparseConstrainedGeMM(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSparseToDense(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_convert(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 typedef enum {} cusparseCsr2CscAlg_t;
 
 cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
