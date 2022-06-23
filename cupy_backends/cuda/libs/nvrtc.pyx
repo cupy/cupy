@@ -40,8 +40,6 @@ ELSE:
         int nvrtcGetPTX(Program prog, char *ptx)
         int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
         int nvrtcGetCUBIN(Program prog, char *cubin)
-        int nvrtcGetNVVMSize(Program, size_t*)
-        int nvrtcGetNVVM(Program, char*)
         int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
         int nvrtcGetProgramLog(Program prog, char* log)
         int nvrtcAddNameExpression(Program, const char*)
@@ -56,12 +54,24 @@ ELSE:
     cdef int nvrtcGetSupportedArchs(int* supportedArchs) nogil:
         return (<int(*)(...) nogil>_nvrtcGetSupportedArchs)(supportedArchs)
 
+    cdef void* _nvrtcGetNVVMSize = NULL
+    cdef int nvrtcGetNVVMSize(Program prog, size_t* nvvmSizeRet) nogil:
+        return (<int(*)(...) nogil>_nvrtcGetNVVMSize)(prog, nvvmSizeRet)
+
+    cdef void* _nvrtcGetNVVM = NULL
+    cdef int nvrtcGetNVVM(Program prog, char* nvvm) nogil:
+        return (<int(*)(...) nogil>_nvrtcGetNVVM)(prog, nvvm)
+
     cdef load_functions(libname):
-        global _nvrtcGetNumSupportedArchs
-        global _nvrtcGetSupportedArchs
         _nvrtc = SoftLink(libname, 'nvrtc')
+        global _nvrtcGetNumSupportedArchs
         _nvrtcGetNumSupportedArchs = _nvrtc.get_func('GetNumSupportedArchs')
+        global _nvrtcGetSupportedArchs
         _nvrtcGetSupportedArchs = _nvrtc.get_func('GetSupportedArchs')
+        global _nvrtcGetNVVMSize
+        _nvrtcGetNVVMSize = _nvrtc.get_func('GetNVVMSize')
+        global _nvrtcGetNVVM
+        _nvrtcGetNVVM = _nvrtc.get_func('GetNVVM')
 
     IF 11020 <= CUPY_CUDA_VERSION < 12000:
         if _sys.platform == 'linux':
