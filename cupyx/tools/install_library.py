@@ -71,6 +71,7 @@ def _make_cudnn_record(cuda_version):
 
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
+_cudnn_records.append(_make_cudnn_record('11.x'))
 _cudnn_records.append(_make_cudnn_record('11.7'))
 _cudnn_records.append(_make_cudnn_record('11.6'))
 _cudnn_records.append(_make_cudnn_record('11.5'))
@@ -118,6 +119,7 @@ def _make_cutensor_record(cuda_version):
         'libcutensor-windows-x86_64-1.5.0.3-archive.zip')
 
 
+_cutensor_records.append(_make_cutensor_record('11.x'))
 _cutensor_records.append(_make_cutensor_record('11.7'))
 _cutensor_records.append(_make_cutensor_record('11.6'))
 _cutensor_records.append(_make_cutensor_record('11.5'))
@@ -151,6 +153,9 @@ def _make_nccl_record(
     }
 
 
+_nccl_records.append(_make_nccl_record(
+    '11.x', '2.11.4', '2.11',
+    'nccl_2.11.4-1+cuda11.4_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.7', '2.11.4', '2.11',
     'nccl_2.11.4-1+cuda11.4_x86_64.txz'))
