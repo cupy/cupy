@@ -1424,8 +1424,13 @@ cdef Status cusparseDenseToSparse_convert(
 
 cdef load_functions(libname, prefix):
     lib = SoftLink(libname, prefix)
+
+    # cuSPARSE 11.3.1+ (CUDA 11.2.0+)
     global _cusparseCreateCsc
     _cusparseCreateCsc = lib.get_func('CreateCsc')
+
+    # cuSPARSE 11.3+ (CUDA 11.1.1+)
+    # Note: CUDA 11.1.0 contains cuSPARSE 11.2.0.275
     global _cusparseSparseToDense_bufferSize
     _cusparseSparseToDense_bufferSize = lib.get_func('SparseToDense_bufferSize')  # NOQA
     global _cusparseSparseToDense
@@ -1437,7 +1442,7 @@ cdef load_functions(libname, prefix):
     global _cusparseDenseToSparse_convert
     _cusparseDenseToSparse_convert = lib.get_func('DenseToSparse_convert')
 
-IF 11020 <= CUPY_CUDA_VERSION < 12000:
+IF 11010 <= CUPY_CUDA_VERSION < 12000:
     if _sys.platform == 'linux':
         _libname = 'libcusparse.so.11'
     else:

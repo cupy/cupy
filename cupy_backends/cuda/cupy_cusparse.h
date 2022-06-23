@@ -599,7 +599,7 @@ cusparseStatus_t cusparseSpGEMM_copy(...) {
 #endif // #if CUSPARSE_VERSION < 11100
 
 #if CUSPARSE_VERSION < 11300
-// Types and macros added in cuSparse 11.3 (CUDA 11.2)
+// Types and macros added in cuSparse 11.3 (CUDA 11.1.1)
 
 typedef enum {} cusparseSparseToDenseAlg_t;
 typedef enum {} cusparseDenseToSparseAlg_t;
