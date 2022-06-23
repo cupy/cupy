@@ -6,3 +6,4 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy install ccache git curl
 
 ENV PATH "/usr/lib/ccache:${PATH}"
+ENV DISABLE_JUPYTER true
