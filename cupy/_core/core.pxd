@@ -33,7 +33,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base copy(self, order=*)
-    cpdef _ndarray_base view(self, dtype=*, array_class=*)
+    cpdef _ndarray_base _view_impl(self, dtype=*, array_class=*)
     cpdef fill(self, value)
     cpdef _ndarray_base swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2)
     cpdef _ndarray_base flatten(self, order=*)

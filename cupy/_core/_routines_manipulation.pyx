@@ -365,7 +365,7 @@ cpdef _ndarray_base _reshape(_ndarray_base self, const shape_t &shape_spec):
 
 
 cpdef _ndarray_base _T(_ndarray_base self):
-    ret = self.view()
+    ret = self._view_impl()
     ret._shape.assign(self._shape.rbegin(), self._shape.rend())
     ret._strides.assign(self._strides.rbegin(), self._strides.rend())
     ret._c_contiguous = self._f_contiguous

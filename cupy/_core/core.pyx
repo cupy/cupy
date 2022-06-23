@@ -620,7 +620,11 @@ cdef class _ndarray_base:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
         return newarray
 
-    cpdef _ndarray_base view(self, dtype=None, array_class=None):
+    # It seems that Cython's 'cpdef'd methods take neither an argument named
+    # 'type' nor starargs ('*args' and '**kwargs'), so we have to provide
+    # 'def'd definition of view() to handle its arguments to follow NumPy's
+    # API.
+    def view(self, dtype=None, type=None):
         """Returns a view of the array.
 
         Args:
@@ -635,6 +639,9 @@ cdef class _ndarray_base:
         .. seealso:: :meth:`numpy.ndarray.view`
 
         """
+        return self._view_impl(dtype=dtype, array_class=type)
+
+    cpdef _ndarray_base _view_impl(self, dtype=None, array_class=None):
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
 
