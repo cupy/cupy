@@ -20,5 +20,7 @@ These functions cover a subset of
    scipy_sparse
    scipy_sparse_linalg
    scipy_sparse_csgraph
+   scipy_spatial
+   scipy_spatial_distance
    scipy_special
    scipy_stats
