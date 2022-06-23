@@ -239,28 +239,18 @@ sign = _core.create_ufunc(
     ''')
 
 
-_float_heaviside_head = '''
-if (isnan(in0)) {
-    out0 = in0;
-}
-'''
-_heaviside = '''
-if (in0 == 0) {
-    out0 = in1;
-} else {
-    out0 = (in0 > 0);
-}
-'''
-_float_heaviside = _float_heaviside_head + " else " + _heaviside
 heaviside = _core.create_ufunc(
     'cupy_heaviside',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I',
-     'll->l', 'LL->L', 'qq->q', 'QQ->Q',
-     ('ee->e', _float_heaviside),
-     ('ff->f', _float_heaviside),
-     ('dd->d', _float_heaviside)
-     ),
-    _heaviside,
+    ('ee->e', 'ff->f', 'dd->d'),
+    '''
+    if (isnan(in0)) {
+        out0 = in0;
+    } else if (in0 == 0) {
+        out0 = in1;
+    } else {
+        out0 = (in0 > 0);
+    }
+    ''',
     doc='''Compute the Heaviside step function.
 
     .. seealso:: :data:`numpy.heaviside`
