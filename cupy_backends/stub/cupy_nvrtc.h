@@ -48,14 +48,6 @@ nvrtcResult nvrtcGetCUBIN(...) {
     return NVRTC_SUCCESS;
 }
 
-nvrtcResult nvrtcGetNVVMSize(...) {
-    return NVRTC_SUCCESS;
-}
-
-nvrtcResult nvrtcGetNVVM(...) {
-    return NVRTC_SUCCESS;
-}
-
 nvrtcResult nvrtcGetProgramLogSize(...) {
     return NVRTC_SUCCESS;
 }

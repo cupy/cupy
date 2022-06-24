@@ -18,21 +18,7 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
 fi
 
 # TODO(kmaehashi): Hack for CUDA 11.6+ until FlexCI base image update
-if [[ "${TARGET}" == cuda116* || "${TARGET}" == cuda117* ]]; then
-    if dpkg -s cuda-drivers-495; then
-        killall Xorg
-        nvidia-smi -pm 0
-
-        apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
-        add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
-        apt-get purge -qqy "cuda-drivers*" "*nvidia*-495"
-        apt-get install -qqy "cuda-drivers"
-
-        modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
-        nvidia-smi -pm 1
-        nvidia-smi
-    fi
-fi
+.pfnci/linux/update-cuda-driver.sh
 
 gcloud auth configure-docker
 
@@ -43,7 +29,7 @@ STAGES="cache_get build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get build benchmark"
 fi
-BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
+DISABLE_JUPYTER=true BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 
 echo "****************************************************************************************************"
@@ -52,7 +38,7 @@ echo "Build & Test: Exit with status ${test_retval}"
 if [[ "${pull_req}" == "" ]]; then
     # Upload cache when testing a branch, even when test failed.
     echo "Uploading cache and Docker image..."
-    CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put push | tee --append "${LOG_FILE}"
+    DISABLE_JUPYTER=true CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_put push | tee --append "${LOG_FILE}"
     echo "Upload: Exit with status ${PIPESTATUS[0]}"
 
     # Notify.

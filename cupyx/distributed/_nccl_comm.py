@@ -666,7 +666,19 @@ class _SparseNCCLCommunicator:
     @classmethod
     def reduce_scatter(
             cls, comm, in_array, out_array, count, op='sum', stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # We need a LIST of sparse in_arrays and perform a reduction for each
+        # of the entries, then we will scatter that result
+        root = 0
+        reduce_out_arrays = []
+        if not isinstance(in_array, (list, tuple)):
+            raise ValueError(
+                'in_array must be a list or a tuple of sparse matrices')
+        for s_m in in_array:
+            partial_out_array = _make_sparse_empty(
+                s_m.dtype, _get_sparse_type(s_m))
+            cls.reduce(comm, s_m, partial_out_array, root, op, stream)
+            reduce_out_arrays.append(partial_out_array)
+        cls.scatter(comm, reduce_out_arrays, out_array, root, stream)
 
     @classmethod
     def all_gather(cls, comm, in_array, out_array, count, stream=None):
@@ -740,7 +752,10 @@ class _SparseNCCLCommunicator:
 
     @classmethod
     def send_recv(cls, comm, in_array, out_array, peer, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        nccl.groupStart()
+        cls.send(comm, in_array, peer, stream)
+        cls.recv(comm, out_array, peer, stream)
+        nccl.groupEnd()
 
     @classmethod
     def scatter(cls, comm, in_array, out_array, root=0, stream=None):
@@ -779,4 +794,22 @@ class _SparseNCCLCommunicator:
     @classmethod
     def all_to_all(cls, comm, in_array, out_array, stream=None):
         # in_array & out_array is a list of sparse matrices
-        raise RuntimeError('Method not supported for sparse matrices')
+        if len(in_array) != comm._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires in_array to have {comm._n_devices}'
+                f'elements, found {len(in_array)}')
+        # TODO(ecastill) assert the types
+        for _ in range(comm._n_devices):
+            out_array.append(_make_sparse_empty(
+                in_array[comm.rank].dtype,
+                _get_sparse_type(in_array[comm.rank])))
+        # TODO check out dtypes are the same as in dtypes
+        for i in range(comm._n_devices):
+            if i != comm.rank:
+                cls.send(comm, in_array[i], i, stream)
+                cls.recv(comm, out_array[i], i, stream)
+            else:
+                cls._assign_arrays(
+                    out_array[i],
+                    cls._get_internal_arrays(in_array[i]),
+                    in_array[i].shape)

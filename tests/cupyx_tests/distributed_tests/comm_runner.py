@@ -319,7 +319,7 @@ def init(use_mpi=False):
 
 
 def _make_sparse(dtype):
-    data = cupy.array([1, 3, 2, 5, 1, 2], dtype)
+    data = cupy.array([1, 3, 2, 5, 1, 1], dtype)
     indices = cupy.array([0, 3, 1, 3, 0, 2], 'i')
     indptr = cupy.array([0, 2, 3, 4, 6], 'i')
     return sparse.csr_matrix((data, indices, indptr), shape=(4, 4))
@@ -353,6 +353,29 @@ def sparse_send_and_recv(dtype, use_mpi=False):
         run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
     else:
         _launch_workers(run_send_and_recv, (dtype,))
+
+
+def sparse_send_recv(dtype, use_mpi=False):
+    def run_send_recv(rank, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_array = _make_sparse(dtype)
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        if rank == 0:
+            comm.send_recv(in_array, out_array, 1)
+        else:
+            comm.send_recv(in_array, out_array, 0)
+            testing.assert_allclose(out_array.todense(), in_array.todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_send_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
+    else:
+        _launch_workers(run_send_recv, (dtype,))
 
 
 def sparse_broadcast(dtype, use_mpi=False):
@@ -517,6 +540,59 @@ def sparse_all_gather(dtype, use_mpi=False):
     else:
         _launch_workers(run_all_gather, (dtype,))
         _launch_workers(run_all_gather, (dtype,))
+
+
+def sparse_all_to_all(dtype, use_mpi=False):
+
+    def run_all_to_all(rank, root, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_arrays = [_make_sparse(dtype), 2 * _make_sparse(dtype)]
+        out_array = []
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.all_to_all(in_arrays, out_array)
+        testing.assert_allclose(
+            out_array[0].todense(), (rank + 1) * in_arrays[0].todense())
+        testing.assert_allclose(
+            out_array[1].todense(), (rank + 1) * in_arrays[0].todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_all_to_all(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_all_to_all(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
+    else:
+        _launch_workers(run_all_to_all, (0, dtype))
+        _launch_workers(run_all_to_all, (1, dtype))
+
+
+def sparse_reduce_scatter(dtype, use_mpi=False):
+
+    def run_reduce_scatter(rank, root, dtype, use_mpi=False):
+        dev = cuda.Device(rank)
+        dev.use()
+        comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
+        in_arrays = [(rank + 1) * _make_sparse(dtype),
+                     (rank + 2) * _make_sparse(dtype)]
+        out_array = _make_sparse_empty(dtype)
+        warnings.filterwarnings(
+            'ignore', '.*transferring sparse.*', UserWarning)
+        comm.reduce_scatter(in_arrays, out_array, 2)
+        target = ((rank + 1) * _make_sparse(dtype)
+                  + (rank + 2) * _make_sparse(dtype))
+        testing.assert_allclose(
+            out_array.todense(), target.todense())
+
+    if use_mpi:
+        from mpi4py import MPI
+        # This process was run with mpiexec
+        run_reduce_scatter(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_reduce_scatter(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
+    else:
+        _launch_workers(run_reduce_scatter, (0, dtype))
+        _launch_workers(run_reduce_scatter, (1, dtype))
 
 
 if __name__ == '__main__':

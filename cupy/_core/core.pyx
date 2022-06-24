@@ -147,6 +147,28 @@ class ndarray(_ndarray_base):
     def __array_finalize__(self, obj):
         pass
 
+    # We provide the Python-level wrapper of `view` method to follow NumPy's
+    # API signature, as it seems that Cython's `cpdef`d methods does not take
+    # an argument named `type`. Cython also does not take starargs
+    # (`*args` and `**kwargs`) for `cpdef`d methods so we can not interpret the
+    # arguments `dtype` and `type` from them.
+    def view(self, dtype=None, type=None):
+        """Returns a view of the array.
+
+        Args:
+            dtype: If this is different from the data type of the array, the
+                returned view reinterpret the memory sequence as an array of
+                this type.
+
+        Returns:
+            cupy.ndarray: A view of the array. A reference to the original
+            array is stored at the :attr:`~ndarray.base` attribute.
+
+        .. seealso:: :meth:`numpy.ndarray.view`
+
+        """
+        return super(ndarray, self).view(dtype=dtype, array_class=type)
+
 
 cdef class _ndarray_base:
 
@@ -621,20 +643,6 @@ cdef class _ndarray_base:
         return newarray
 
     cpdef _ndarray_base view(self, dtype=None, array_class=None):
-        """Returns a view of the array.
-
-        Args:
-            dtype: If this is different from the data type of the array, the
-                returned view reinterpret the memory sequence as an array of
-                this type.
-
-        Returns:
-            cupy.ndarray: A view of the array. A reference to the original
-            array is stored at the :attr:`~ndarray.base` attribute.
-
-        .. seealso:: :meth:`numpy.ndarray.view`
-
-        """
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
 
