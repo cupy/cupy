@@ -375,32 +375,32 @@ class TestSubclassArrayView:
 
     def test_view_casting(self):
         for xp, C in [(numpy, C_np), (cupy, C_cp)]:
-            a = xp.arange(5).view('f')
+            a = xp.arange(5, dtype='i').view('f')
             assert type(a) is xp.ndarray
             assert a.dtype == xp.float32
 
-            a = xp.arange(5).view(dtype='f')
+            a = xp.arange(5, dtype='i').view(dtype='f')
             assert type(a) is xp.ndarray
             assert a.dtype == xp.float32
 
             with pytest.raises(TypeError):
-                xp.arange(5).view('f', dtype='f')
+                xp.arange(5, dtype='i').view('f', dtype='f')
 
-            a = xp.arange(5).view(C)
+            a = xp.arange(5, dtype='i').view(C)
             assert type(a) is C
-            assert a.dtype == xp.int64
+            assert a.dtype == xp.int32
             assert a.info is None
 
-            a = xp.arange(5).view(type=C)
+            a = xp.arange(5, dtype='i').view(type=C)
             assert type(a) is C
-            assert a.dtype == xp.int64
+            assert a.dtype == xp.int32
             assert a.info is None
 
             # When an instance of ndarray's subclass is supplied to `dtype`,
             # view() interprets it as if it is supplied to `type`
-            a = xp.arange(5).view(dtype=C)
+            a = xp.arange(5, dtype='i').view(dtype=C)
             assert type(a) is C
-            assert a.dtype == xp.int64
+            assert a.dtype == xp.int32
             assert a.info is None
 
             with pytest.raises(TypeError):
