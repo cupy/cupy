@@ -727,11 +727,11 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
+     - ✅
      - 
      - 
      - 
-     - 
-     - 4
+     - 5
    * - 
      - 2.8
      - ✅
@@ -843,11 +843,11 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
+     - 
      - ✅
      - 
      - 
-     - 6
+     - 5
    * - cutensor
      - null
      - ✅

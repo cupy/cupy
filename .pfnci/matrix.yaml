@@ -381,7 +381,7 @@
   os: "ubuntu:20.04"
   cuda: "11.7"
   rocm: null
-  nccl: "2.11"
+  nccl: null  # TODO use 2.12 once supported
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.4"
