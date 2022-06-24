@@ -343,3 +343,68 @@ class TestNumPyArrayCopyView:
         b = xp.empty(a.shape, dtype=dtype, order=order)
         b[:] = a
         return b
+
+
+class C_cp(cupy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
+class C_np(numpy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
+class TestSubclassArrayView:
+
+    def test_view_casting(self):
+        for xp, C in [(numpy, C_np), (cupy, C_cp)]:
+            a = xp.arange(5, dtype='i').view('f')
+            assert type(a) is xp.ndarray
+            assert a.dtype == xp.float32
+
+            a = xp.arange(5, dtype='i').view(dtype='f')
+            assert type(a) is xp.ndarray
+            assert a.dtype == xp.float32
+
+            with pytest.raises(TypeError):
+                xp.arange(5, dtype='i').view('f', dtype='f')
+
+            a = xp.arange(5, dtype='i').view(C)
+            assert type(a) is C
+            assert a.dtype == xp.int32
+            assert a.info is None
+
+            a = xp.arange(5, dtype='i').view(type=C)
+            assert type(a) is C
+            assert a.dtype == xp.int32
+            assert a.info is None
+
+            # When an instance of ndarray's subclass is supplied to `dtype`,
+            # view() interprets it as if it is supplied to `type`
+            a = xp.arange(5, dtype='i').view(dtype=C)
+            assert type(a) is C
+            assert a.dtype == xp.int32
+            assert a.info is None
+
+            with pytest.raises(TypeError):
+                xp.arange(5).view('f', C, type=C)
+
+        with pytest.raises(ValueError):
+            cupy.arange(5).view(type=numpy.ndarray)

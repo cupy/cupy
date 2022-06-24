@@ -452,7 +452,7 @@ cdef _ndarray_base scan(
         if dtype is None:
             dtype = a.dtype
         if not incomplete:
-            out = _ndarray_init(a._shape, dtype)
+            out = _ndarray_init(cupy.ndarray, a._shape, dtype, None)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
