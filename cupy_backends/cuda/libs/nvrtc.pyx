@@ -239,9 +239,7 @@ cpdef bytes getCUBIN(intptr_t prog):
 cpdef bytes getNVVM(intptr_t prog):
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getNVVM")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11040:
-        raise RuntimeError("getNVVM is supported since CUDA 11.4")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11040:
+    if runtime.runtimeGetVersion() < 11040:
         raise RuntimeError("getNVVM is supported since CUDA 11.4")
 
     cdef size_t nvvmSizeRet = 0
