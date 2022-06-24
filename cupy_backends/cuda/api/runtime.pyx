@@ -908,8 +908,6 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
     if _is_hip_environment:
         raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('streamBeginCapture is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
                                         <StreamCaptureMode>mode)
@@ -921,8 +919,6 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     cdef Graph g
     if _is_hip_environment:
         raise RuntimeError('streamEndCapture is not supported in ROCm')
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('streamEndCapture is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -933,8 +929,6 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
     if _is_hip_environment:
         raise RuntimeError('streamIsCapturing is not supported in ROCm')
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('streamIsCapturing is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
     check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
@@ -1069,23 +1063,17 @@ cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz):
 ##############################################################################
 
 cpdef graphDestroy(intptr_t graph):
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphDestroy is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphDestroy(<Graph>graph)
     check_status(status)
 
 cpdef graphExecDestroy(intptr_t graphExec):
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphExecDestroy is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphExecDestroy(<GraphExec>graphExec)
     check_status(status)
 
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphInstantiate is supported since CUDA 10.1+')
     cdef GraphExec ge
     with nogil:
         status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
@@ -1094,8 +1082,6 @@ cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     return <intptr_t>ge
 
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphLaunch is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphLaunch(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
