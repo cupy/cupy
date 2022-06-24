@@ -653,14 +653,6 @@ cdef class _ndarray_base:
                 'the itemsize is unchanged')
         if self._c_contiguous:
             axis = ndim - 1
-        elif self._f_contiguous:
-            warnings.warn(
-                'Changing the shape of an F-contiguous array by '
-                'descriptor assignment is deprecated. To maintain the '
-                'Fortran contiguity of a multidimensional Fortran '
-                'array, use \'a.T.view(...).T\' instead',
-                DeprecationWarning)
-            axis = 0
         else:
             # Don't mention the deprecated F-contiguous support
             raise ValueError(

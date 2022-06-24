@@ -112,7 +112,11 @@ class TestArrayAdvancedIndexingGetitemPerm:
     {'shape': (0,), 'indexes': ()},
     {'shape': (2, 0), 'indexes': ([1],)},
     {'shape': (0, 3), 'indexes': (slice(None), [1])},
+    {'shape': (0,), 'indexes': True},
+    {'shape': (0,), 'indexes': (True,)},
     {'shape': (0,), 'indexes': (False, True, True)},
+    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
+    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
     # ellipsis
     {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2)},
     # issue #1512
@@ -146,28 +150,8 @@ class TestArrayAdvancedIndexingGetitemParametrized:
     {'shape': (2, 3, 4), 'indexes': [[1]]},
     {'shape': (2, 3, 4), 'indexes': [[1, 1]]},
     {'shape': (2, 3, 4), 'indexes': [[1], [1]]},
-    {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
-    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
-    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
 )
-@testing.gpu
-class TestArrayAdvancedIndexingGetitemDeprecated:
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_adv_getitem(self, xp, dtype):
-        with testing.assert_warns(FutureWarning):
-            a = testing.shaped_arange(self.shape, xp, dtype)
-            return a[self.indexes]
-
-
-@testing.parameterize(
-    {'shape': (0,), 'indexes': True},
-    {'shape': (0,), 'indexes': (True,)},
-    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_)},
-    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
-)
-@testing.gpu
+@testing.with_requires('numpy>=1.23')
 class TestArrayAdvancedIndexingGetitemParametrized2:
 
     @testing.for_all_dtypes()
@@ -175,6 +159,24 @@ class TestArrayAdvancedIndexingGetitemParametrized2:
     def test_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         return a[self.indexes]
+
+
+@testing.parameterize(
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
+)
+@testing.with_requires('numpy>=1.23')
+class TestArrayAdvancedIndexingGetitemParametrizedIndexError:
+
+    @testing.for_all_dtypes()
+    def test_adv_getitem(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            with pytest.raises(IndexError):
+                with testing.assert_warns(numpy.VisibleDeprecationWarning):
+                    a[self.indexes]
 
 
 @testing.parameterize(
@@ -500,7 +502,11 @@ class TestArrayInvalidValueAdvGetitem:
     {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
     {'shape': (0,), 'indexes': None, 'value': 1},
     {'shape': (0,), 'indexes': (), 'value': 1},
+    {'shape': (0,), 'indexes': True, 'value': 1},
+    {'shape': (0,), 'indexes': (True,), 'value': 1},
     {'shape': (0,), 'indexes': (False, True, True), 'value': 1},
+    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
+    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
     # ellipsis
     {'shape': (2, 3, 4), 'indexes': (1, Ellipsis, 2), 'value': 1},
     # issue #1512
@@ -516,7 +522,6 @@ class TestArrayInvalidValueAdvGetitem:
      'value': 1},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValue:
 
     @testing.for_all_dtypes()
@@ -538,29 +543,8 @@ class TestArrayAdvancedIndexingSetitemScalarValue:
     {'shape': (2, 3, 4), 'indexes': [[1]], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[1, 0]], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[1], [0]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
 )
-@testing.gpu
-class TestArrayAdvancedIndexingSetitemScalarValueDeprecated:
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_adv_setitem(self, xp, dtype):
-        a = xp.zeros(self.shape, dtype=dtype)
-        with testing.assert_warns(FutureWarning):
-            a[self.indexes] = self.value
-        return a
-
-
-@testing.parameterize(
-    {'shape': (0,), 'indexes': True, 'value': 1},
-    {'shape': (0,), 'indexes': (True,), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.ones((), dtype=numpy.bool_), 'value': 1},
-    {'shape': (0,), 'indexes': numpy.zeros((), dtype=numpy.bool_), 'value': 1},
-)
-@testing.gpu
+@testing.with_requires('numpy>=1.23')
 class TestArrayAdvancedIndexingSetitemScalarValue2:
 
     @testing.for_all_dtypes()
@@ -586,6 +570,24 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
             a = xp.zeros(self.shape)
             with pytest.raises(IndexError):
                 a[self.indexes] = self.value
+
+
+@testing.parameterize(
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
+)
+@testing.with_requires('numpy>=1.23')
+class TestArrayAdvancedIndexingSetitemScalarValueIndexError2:
+
+    @testing.for_all_dtypes()
+    def test_adv_setitem(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.zeros(self.shape, dtype=dtype)
+            with pytest.raises(IndexError):
+                with testing.assert_warns(numpy.VisibleDeprecationWarning):
+                    a[self.indexes] = self.value
 
 
 @testing.parameterize(
