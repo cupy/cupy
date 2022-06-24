@@ -1101,7 +1101,7 @@ cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
     check_status(status)
 
 cpdef graphUpload(intptr_t graphExec, intptr_t stream):
-    if CUPY_CUDA_VERSION < 11010:
+    if runtimeGetVersion() < 11010:
         raise RuntimeError('graphUpload is supported since CUDA 11.1+')
     with nogil:
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
