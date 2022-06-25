@@ -8,8 +8,24 @@
 
 from cupy import _core
 
-from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_definition
+
+
+polevl_definition = '''
+
+static __device__ double polevl(double x, const double coef[], int N)
+{
+    double ans;
+    const double *p;
+    p = coef;
+    ans = *p++;
+    for (int i = 0; i < N; ++i){
+        ans = ans * x + *p++;
+    }
+    return ans;
+}
+
+'''
 
 
 expn_large_n_definition = '''
@@ -21,33 +37,33 @@ __constant__ double MAXLOG = 7.08396418532264106224E2;
 
 #define nA 13
 
-__constant__ double A0[] = {
+__constant__ double _A0[] = {
     1.00000000000000000
 };
 
-__constant__ double A1[] = {
+__constant__ double _A1[] = {
     1.00000000000000000
 };
 
-__constant__ double A2[] = {
+__constant__ double _A2[] = {
     -2.00000000000000000,
     1.00000000000000000
 };
 
-__constant__ double A3[] = {
+__constant__ double _A3[] = {
     6.00000000000000000,
     -8.00000000000000000,
     1.00000000000000000
 };
 
-__constant__ double A4[] = {
+__constant__ double _A4[] = {
     -24.0000000000000000,
     58.0000000000000000,
     -22.0000000000000000,
     1.00000000000000000
 };
 
-__constant__ double A5[] = {
+__constant__ double _A5[] = {
     120.000000000000000,
     -444.000000000000000,
     328.000000000000000,
@@ -55,7 +71,7 @@ __constant__ double A5[] = {
     1.00000000000000000
 };
 
-__constant__ double A6[] = {
+__constant__ double _A6[] = {
     -720.000000000000000,
     3708.00000000000000,
     -4400.00000000000000,
@@ -64,7 +80,7 @@ __constant__ double A6[] = {
     1.00000000000000000
 };
 
-__constant__ double A7[] = {
+__constant__ double _A7[] = {
     5040.00000000000000,
     -33984.0000000000000,
     58140.0000000000000,
@@ -74,7 +90,7 @@ __constant__ double A7[] = {
     1.00000000000000000
 };
 
-__constant__ double A8[] = {
+__constant__ double _A8[] = {
     -40320.0000000000000,
     341136.000000000000,
     -785304.000000000000,
@@ -85,7 +101,7 @@ __constant__ double A8[] = {
     1.00000000000000000
 };
 
-__constant__ double A9[] = {
+__constant__ double _A9[] = {
     362880.000000000000,
     -3733920.00000000000,
     11026296.0000000000,
@@ -97,7 +113,7 @@ __constant__ double A9[] = {
     1.00000000000000000
 };
 
-__constant__ double A10[] = {
+__constant__ double _A10[] = {
     -3628800.00000000000,
     44339040.0000000000,
     -162186912.000000000,
@@ -110,7 +126,7 @@ __constant__ double A10[] = {
     1.00000000000000000
 };
 
-__constant__ double A11[] = {
+__constant__ double _A11[] = {
     39916800.0000000000,
     -568356480.000000000,
     2507481216.00000000,
@@ -124,7 +140,7 @@ __constant__ double A11[] = {
     1.00000000000000000
 };
 
-__constant__ double A12[] = {
+__constant__ double _A12[] = {
     -479001600.000000000,
     7827719040.00000000,
     -40788301824.0000000,
@@ -140,17 +156,19 @@ __constant__ double A12[] = {
 };
 
 __constant__ double *A[] = {
-    A0, A1, A2,
-    A3, A4, A5,
-    A6, A7, A8, A9,
-    A10, A11, A12
+    _A0, _A1, _A2,
+    _A3, _A4, _A5,
+    _A6, _A7, _A8,
+    _A9, _A10, _A11,
+    _A12
 };
 
 __constant__ int Adegs[] = {
     0, 0, 1,
     2, 3, 4,
     5, 6, 7,
-    8, 9, 10, 11
+    8, 9, 10,
+    11
 };
 
 /* Asymptotic expansion for large n, DLMF 8.20(ii) */
@@ -175,7 +193,7 @@ __device__ double expn_large_n(int n, double x)
 
     for (k = 2; k < nA; k++) {
         fac *= multiplier;
-        term = fac*polevl<Adegs[k]>(lambda, A[k]);
+        term = fac*polevl(lambda, A[k], Adegs[k]);
         res += term;
         if (fabs(term) < MACHEP*fabs(res)) {
             break;
@@ -273,6 +291,7 @@ __device__ double expn(int n, double x)
         } while (t > MACHEP);
 
         ans *= exp(-x);
+        return ans;
     }
 
     /* Power series expansion, DLMF 8.19.8 */
