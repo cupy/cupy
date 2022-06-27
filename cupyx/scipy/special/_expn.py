@@ -13,10 +13,10 @@ from cupyx.scipy.special._gamma import gamma_definition
 
 polevl_definition = '''
 
-static __device__ double polevl(double x, const double coef[], int N)
+__device__ double polevl(double x, double coef[], int N)
 {
     double ans;
-    const double *p;
+    double *p;
     p = coef;
     ans = *p++;
     for (int i = 0; i < N; ++i){
