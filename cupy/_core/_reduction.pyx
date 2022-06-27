@@ -59,7 +59,7 @@ cpdef function.Function _create_reduction_function(
 ${type_preamble}
 ${preamble}
 #define REDUCE(a, b) (${reduce_expr})
-#define POST_MAP(a) (${post_map_expr})
+#define POST_MAP(a, b) (${post_map_expr})
 #define _REDUCE(_offset) if (_tid < _offset) { \
   _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
   _sdata[_tid] = REDUCE(_a, _b); \
@@ -103,9 +103,13 @@ extern "C" __global__ void ${name}(${params}) {
       _s = _sdata[_tid];
     }
     if (_tid < _block_stride && _i < _out_ind.size()) {
-      _out_ind.set(static_cast<ptrdiff_t>(_i));
-      ${output_expr}
-      POST_MAP(_s);
+      for (ptrdiff_t _j = _i + _j_offset; _j < _out_ind.size();
+           _j += _j_stride, _J += _J_stride) {
+        _out_ind.set(_j);
+        ${output_expr}
+        _type_reduce _a = static_cast<_type_reduce>(${post_map_expr});
+        POST_MAP(_s, _a);
+      }
     }
   }
 }''').substitute(
@@ -737,16 +741,13 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
         out_args = list(args[self.nin:])
         if out is not None:
-            if self.nout != 1:
-                raise NotImplementedError('')
             if len(out_args) != 0:
                 raise ValueError("cannot specify 'out' as both "
                                  "a positional and keyword argument")
-            out_args = [out]
 
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args = _preprocess_args(dev_id, out_args, False)
+        out_args = _preprocess_args(dev_id, out, False)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(
