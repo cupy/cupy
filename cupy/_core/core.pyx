@@ -1963,7 +1963,7 @@ cdef class _ndarray_base:
     cpdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.get_contiguous_strides_inplace(
-            self._shape, self._strides, itemsize, is_c_contiguous)
+            self._shape, self._strides, itemsize, is_c_contiguous, True)
         if is_c_contiguous:
             self._c_contiguous = True
             self._update_f_contiguity()
