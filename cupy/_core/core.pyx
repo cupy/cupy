@@ -2769,7 +2769,7 @@ cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj):
 
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
-        const shape_t& shape, const strides_t& strides, dtype):
+        subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
     cdef int ndim = shape.size()
     cdef int64_t begin = 0, end = dtype.itemsize
     cdef memory.MemoryPointer ptr
@@ -2779,4 +2779,5 @@ cdef _ndarray_base _create_ndarray_from_shape_strides(
         elif strides[i] < 0:
             begin += strides[i] * (shape[i] - 1)
     ptr = memory.alloc(end - begin) + begin
-    return ndarray(shape, dtype, memptr=ptr, strides=strides)
+    return ndarray.__new__(
+        subtype, shape, dtype, _obj=obj, memptr=ptr, strides=strides)

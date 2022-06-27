@@ -874,8 +874,23 @@ def _try_elementwise_binary_routine(
             alpha, gamma = gamma, alpha
         else:
             return None
+
+        # Determine a template object from which we initialize the output when
+        # inputs have subclass instances
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = _cupy.ndarray
+        template = None
+        a_type, c_type = type(a), type(c)
+        if issubclass1(a_type, _cupy.ndarray):
+            subtype = a_type
+            template = a
+        elif issubclass1(c_type, _cupy.ndarray):
+            subtype = c_type
+            template = c
+
         out = core._create_ndarray_from_shape_strides(
-            c._shape, c._strides, compute_dtype)
+            subtype, c._shape, c._strides, compute_dtype, template)
     elif out.dtype != compute_dtype:
         return None
     elif not internal.vector_equal(c._shape, out._shape):
