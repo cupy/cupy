@@ -23,9 +23,9 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v11 is based on NumPy 1.22 and SciPy 1.8, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v11 is based on NumPy 1.23 and SciPy 1.8, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.20 / v1.21 / v1.22
+* `NumPy <https://numpy.org/>`_: v1.20 / v1.21 / v1.22 / v1.23
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.6 / v1.7 / v1.8
 
