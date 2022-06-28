@@ -189,6 +189,47 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
 
 
+class AbstractReductionTestBaseMultipleArguments:
+
+    def get_sum_func(self):
+        raise NotImplementedError()
+
+    def check_sign(a):
+        i = -1 if a < 0 else 1
+        return i
+
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def check_sum(self, shape, xp, axis=None, keepdims=False, trans=None):
+        a = testing.shaped_random(shape, xp, 'b')
+        if trans:
+            a = a.tanspose(*trans)
+        sum_func = self.get_sum_func()
+        if xp == cupy:
+            k = sum_func(a, axis, keepdims=keepdims)
+            s = check_sign(k)
+            return k, s
+        else:
+            return a.sum(axis=axis, keepdims=keepdims, dtype='b')
+
+
+class ReductionKernelMultipleArgumentsTestBase(
+        AbstractReductionTestBaseMultipleArguments):
+
+    def get_sum_func(self):
+        return cupy.ReductionKernel(
+            'T x', 'T out', 'x', 'a + b', 'out = a, b', '0', 'my_sum')
+
+
+@testing.gpu
+class TestReductionKernelMultipleArguments(
+        ReductionKernelMultipleArgumentsTestBase, unittest.TestCase):
+
+    def test_multiple_args(self):
+
+        for i in range(1, 10):
+            self.check_sum((2 ** i,))
+
+
 @testing.gpu
 class TestLargeMultiDimReduction(
         ReductionKernelTestBase, unittest.TestCase):
