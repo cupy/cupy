@@ -70,14 +70,18 @@ def _get_version_from_library(
     if func is None:
         raise AutoDetectionFailed(
             f'{libname}: {func} could not be found')
-    func.restype = ctypes.c_int  # cudaError_t
-    func.argtypes = [ctypes.POINTER(ctypes.c_int)]
-    version_ptr = ctypes.c_int()
-    retval = func(version_ptr)
-    if retval != 0:
+    func.restype = ctypes.c_int  # nvrtcResult
+    func.argtypes = [
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+    ]
+    major = ctypes.c_int()
+    minor = ctypes.c_int()
+    retval = func(major, minor)
+    if retval != 0:  # NVRTC_SUCCESS
         raise AutoDetectionFailed(
             f'{libname}: {func} returned error: {retval}')
-    version = version_ptr.value
+    version = major.value * 1000 + minor.value * 10
     _log(f'Detected version: {version}')
     return version
 
@@ -86,14 +90,24 @@ def _get_cuda_version() -> Optional[int]:
     """Returns the detected CUDA version or None."""
 
     if sys.platform == 'linux':
-        libnames = ['libcudart.so']
+        libnames = [
+            'libnvrtc.so.11.2',
+            'libnvrtc.so.11.1',
+            'libnvrtc.so.11.0',
+            'libnvrtc.so.10.2',
+        ]
     elif sys.platform == 'win32':
-        libnames = ['cudart64_110.dll', 'cudart64_102.dll']
+        libnames = [
+            'nvrtc64_112_0.dll',
+            'nvrtc64_111_0.dll',
+            'nvrtc64_110_0.dll',
+            'nvrtc64_102_0.dll',
+        ]
     else:
         _log(f'CUDA detection unsupported on platform: {sys.platform}')
         return None
     _log(f'Trying to detect CUDA version from libraries: {libnames}')
-    version = _get_version_from_library(libnames, 'cudaRuntimeGetVersion')
+    version = _get_version_from_library(libnames, 'nvrtcVersion')
     return version
 
 
@@ -104,7 +118,7 @@ def _get_rocm_version() -> Optional[int]:
     else:
         _log(f'ROCm detection unsupported on platform: {sys.platform}')
         return None
-    version = _get_version_from_library(libnames, 'hipRuntimeGetVersion')
+    version = _get_version_from_library(libnames, 'hiprtcVersion')
     return version
 
 
