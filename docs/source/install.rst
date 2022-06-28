@@ -87,18 +87,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda110``
    * - v11.1
      - ``$ pip install cupy-cuda111``
-   * - v11.2
-     - ``$ pip install cupy-cuda112``
-   * - v11.3
-     - ``$ pip install cupy-cuda113``
-   * - v11.4
-     - ``$ pip install cupy-cuda114``
-   * - v11.5
-     - ``$ pip install cupy-cuda115``
-   * - v11.6
-     - ``$ pip install cupy-cuda116``
-   * - v11.7
-     - ``$ pip install cupy-cuda117``
+   * - v11.2 or later
+     - ``$ pip install cupy-cuda11x``
 
 .. note::
 
