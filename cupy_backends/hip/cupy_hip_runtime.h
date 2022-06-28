@@ -119,6 +119,7 @@ enum cudaMemAllocationHandleType {};  // stub
 enum cudaMemLocationType {};  // stub
 struct cudaMemLocation {  // stub
     int id;
+    cudaMemLocationType type;
 };
 struct cudaMemPoolProps {  // stub
     cudaMemAllocationType allocType;
