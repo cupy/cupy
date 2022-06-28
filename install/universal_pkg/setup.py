@@ -201,10 +201,21 @@ def _cuda_version_to_package(ver: int) -> str:
 
 
 def _rocm_version_to_package(ver: int) -> str:
-    if 400 <= ver < 410:
+    """
+    ROCm 4.0.x = 3212
+    ROCm 4.1.x = 3241
+    ROCm 4.2.0 = 3275
+    ROCm 4.3.0 = 40321300
+    ROCm 4.3.1 = 40321331
+    ROCm 4.5.0 = 40421401
+    ROCm 4.5.1 = 40421432
+    ROCm 5.0.0 = 50013601
+    ROCm 5.1.0 = 50120531
+    """
+    if ver == 3212:
         # ROCm 4.0
         suffix = '4-0'
-    elif 420 <= ver < 430:
+    elif ver == 3275:
         # ROCm 4.2
         suffix = '4-2'
     elif 4_03_00000 <= ver < 4_04_00000:
