@@ -52,7 +52,10 @@ def _log(msg: str) -> None:
 
 
 def _get_version_from_library(
-        libnames: List[str], funcname: str) -> Optional[int]:
+        libnames: List[str],
+        funcname: str,
+        nvrtc: bool = False,
+) -> Optional[int]:
     """Returns the library version from list of candidate libraries."""
 
     for libname in libnames:
@@ -70,18 +73,30 @@ def _get_version_from_library(
     if func is None:
         raise AutoDetectionFailed(
             f'{libname}: {func} could not be found')
-    func.restype = ctypes.c_int  # nvrtcResult
-    func.argtypes = [
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int),
-    ]
-    major = ctypes.c_int()
-    minor = ctypes.c_int()
-    retval = func(major, minor)
-    if retval != 0:  # NVRTC_SUCCESS
+    func.restype = ctypes.c_int
+
+    if nvrtc:
+        # nvrtcVersion
+        func.argtypes = [
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+        ]
+        major = ctypes.c_int()
+        minor = ctypes.c_int()
+        retval = func(major, minor)
+        version = major.value * 1000 + minor.value * 10
+    else:
+        # cudaRuntimeGetVersion
+        func.argtypes = [
+            ctypes.POINTER(ctypes.c_int),
+        ]
+        version_ref = ctypes.c_int()
+        retval = func(version_ref)
+        version = version_ref.value
+
+    if retval != 0:  # NVRTC_SUCCESS or cudaSuccess
         raise AutoDetectionFailed(
             f'{libname}: {func} returned error: {retval}')
-    version = major.value * 1000 + minor.value * 10
     _log(f'Detected version: {version}')
     return version
 
@@ -120,7 +135,7 @@ def _get_cuda_version() -> Optional[int]:
         _log(f'CUDA detection unsupported on platform: {sys.platform}')
         return None
     _log(f'Trying to detect CUDA version from libraries: {libnames}')
-    version = _get_version_from_library(libnames, 'nvrtcVersion')
+    version = _get_version_from_library(libnames, 'nvrtcVersion', True)
     return version
 
 
@@ -131,7 +146,7 @@ def _get_rocm_version() -> Optional[int]:
     else:
         _log(f'ROCm detection unsupported on platform: {sys.platform}')
         return None
-    version = _get_version_from_library(libnames, 'hiprtcVersion')
+    version = _get_version_from_library(libnames, 'hipRuntimeGetVersion')
     return version
 
 
