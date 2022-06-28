@@ -654,7 +654,6 @@ cdef class _ndarray_base:
         if self._c_contiguous:
             axis = ndim - 1
         else:
-            # Don't mention the deprecated F-contiguous support
             raise ValueError(
                 'To change to a dtype of a different size, the array must '
                 'be C-contiguous')
