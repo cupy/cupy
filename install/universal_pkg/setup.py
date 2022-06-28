@@ -86,6 +86,18 @@ def _get_version_from_library(
     return version
 
 
+def _setup_win32_dll_directory() -> None:
+    if not hasattr(os, 'add_dll_directory'):
+        # Python 3.7 or earlier.
+        return
+    cuda_path = os.environ.get('CUDA_PATH', None)
+    if cuda_path is None:
+        _log('CUDA_PATH is not set.'
+             'cupy-wheel may not be able to discover NVRTC to probe version')
+        return
+    os.add_dll_directory(os.path.join(cuda_path, 'bin'))
+
+
 def _get_cuda_version() -> Optional[int]:
     """Returns the detected CUDA version or None."""
 
@@ -103,6 +115,7 @@ def _get_cuda_version() -> Optional[int]:
             'nvrtc64_110_0.dll',
             'nvrtc64_102_0.dll',
         ]
+        _setup_win32_dll_directory()
     else:
         _log(f'CUDA detection unsupported on platform: {sys.platform}')
         return None
