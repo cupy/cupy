@@ -118,9 +118,7 @@ cpdef tuple getSupportedArchs():
     cdef vector.vector[int] archs
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getSupportedArchs")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
     with nogil:
         status = nvrtcGetNumSupportedArchs(&num_archs)
@@ -214,9 +212,7 @@ cpdef bytes getCUBIN(intptr_t prog):
     cdef char* cubin_ptr = NULL
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getCUBIN")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11010:
-        raise RuntimeError("getCUBIN is supported since CUDA 11.1")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11010:
+    if runtime.runtimeGetVersion() < 11010:
         raise RuntimeError("getCUBIN is supported since CUDA 11.1")
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
@@ -239,9 +235,7 @@ cpdef bytes getCUBIN(intptr_t prog):
 cpdef bytes getNVVM(intptr_t prog):
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getNVVM")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11040:
-        raise RuntimeError("getNVVM is supported since CUDA 11.4")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11040:
+    if runtime.runtimeGetVersion() < 11040:
         raise RuntimeError("getNVVM is supported since CUDA 11.4")
 
     cdef size_t nvvmSizeRet = 0

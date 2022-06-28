@@ -81,7 +81,7 @@ cpdef get_build_version():
 
     https://github.com/NVIDIA/cuda-python/blob/v11.4.0/cuda/ccuda.pxd#L2268
 
-    In CuPy codebase, use CUPY_CUDA_VERSION compile-time constant instead of
+    In CuPy codebase, use `runtime.runtimeGetVersion()` instead of
     this function to change the behavior based on the target CUDA version.
     """
 
