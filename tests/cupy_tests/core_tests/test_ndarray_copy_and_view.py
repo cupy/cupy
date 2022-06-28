@@ -1,5 +1,3 @@
-import contextlib
-
 import numpy
 import pytest
 
@@ -55,12 +53,13 @@ class TestArrayCopyAndView:
                 a.view(dtype=dtype)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
-    @testing.numpy_cupy_array_equal()
-    def test_view_f_contiguous(self, dtype, xp):
-        a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.float32)
-        a = a.T
-        with testing.assert_warns(DeprecationWarning):
-            return a.view(dtype=dtype)
+    @testing.with_requires('numpy>=1.23')
+    def test_view_f_contiguous(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.float32)
+            a = a.T
+            with pytest.raises(ValueError):
+                a.view(dtype=dtype)
 
     def test_view_assert_divisible(self):
         for xp in (numpy, cupy):
@@ -79,7 +78,6 @@ class TestArrayCopyAndView:
     @pytest.mark.parametrize(('order', 'shape'), [
         ('C', (3,)),
         ('C', (3, 5)),
-        ('F', (3, 5)),
         ('C', (0,)),
         ('C', (1, 3)),
         ('C', (3, 1)),
@@ -87,29 +85,42 @@ class TestArrayCopyAndView:
     @testing.numpy_cupy_equal()
     def test_view_flags_smaller(self, xp, order, shape):
         a = xp.zeros(shape, numpy.int32, order)
-        with contextlib.ExitStack() as stack:
-            if order == 'F':
-                stack.enter_context(testing.assert_warns(DeprecationWarning))
-            b = a.view(numpy.int16)
+        b = a.view(numpy.int16)
         return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
+
+    @pytest.mark.parametrize(('order', 'shape'), [
+        ('F', (3, 5)),
+    ], ids=str)
+    @testing.with_requires('numpy>=1.23')
+    def test_view_flags_smaller_invalid(self, order, shape):
+        for xp in (numpy, cupy):
+            a = xp.zeros(shape, numpy.int32, order)
+            with pytest.raises(ValueError):
+                a.view(numpy.int16)
 
     @pytest.mark.parametrize(('order', 'shape'), [
         ('C', (6,)),
         ('C', (3, 10)),
-        ('F', (6, 5)),
         ('C', (0,)),
         ('C', (1, 6)),
-        ('F', (2, 3)),
         ('C', (3, 2)),
     ], ids=str)
     @testing.numpy_cupy_equal()
     def test_view_flags_larger(self, xp, order, shape):
         a = xp.zeros(shape, numpy.int16, order)
-        with contextlib.ExitStack() as stack:
-            if order == 'F':
-                stack.enter_context(testing.assert_warns(DeprecationWarning))
-            b = a.view(numpy.int32)
+        b = a.view(numpy.int32)
         return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
+
+    @pytest.mark.parametrize(('order', 'shape'), [
+        ('F', (6, 5)),
+        ('F', (2, 3)),
+    ], ids=str)
+    @testing.with_requires('numpy>=1.23')
+    def test_view_flags_larger_invalid(self, order, shape):
+        for xp in (numpy, cupy):
+            a = xp.zeros(shape, numpy.int16, order)
+            with pytest.raises(ValueError):
+                a.view(numpy.int32)
 
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):

@@ -15,15 +15,6 @@ from cupy import _core
 from cupyx.jit import _cuda_types
 
 
-_numpy_scalar_true_divide = _core.create_ufunc(
-    'numpy_scalar_true_divide',
-    ('??->d', '?i->d', 'i?->d', 'bb->f', 'bi->d', 'BB->f', 'Bi->d',
-     'hh->f', 'HH->f', 'ii->d', 'II->d', 'll->d', 'LL->d', 'qq->d', 'QQ->d',
-     'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = (out0_type)in0 / (out0_type)in1',
-)
-
-
 _numpy_scalar_invert = _core.create_ufunc(
     'numpy_scalar_invert',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
@@ -82,7 +73,7 @@ _numpy_ops: Mapping[Type[ast.AST], cupy.ufunc] = {
     ast.Sub: arithmetic.subtract,
     ast.Mult: arithmetic.multiply,
     ast.Pow: arithmetic.power,
-    ast.Div: _numpy_scalar_true_divide,
+    ast.Div: arithmetic.true_divide,
     ast.FloorDiv: arithmetic.floor_divide,
     ast.Mod: arithmetic.remainder,
     ast.LShift: elementwise.left_shift,

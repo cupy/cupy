@@ -765,7 +765,7 @@ cdef _get_strides_for_nocopy_reshape(
         return
     if size == 0:
         internal.get_contiguous_strides_inplace(
-            newshape, newstrides, itemsize, True)
+            newshape, newstrides, itemsize, True, False)
         return
 
     cdef shape_t shape

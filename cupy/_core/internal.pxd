@@ -26,7 +26,7 @@ cdef void get_reduced_dims(
 # Returns the size (total number of elements).
 cdef Py_ssize_t get_contiguous_strides_inplace(
     const shape_t& shape, strides_t& strides,
-    Py_ssize_t itemsize, bint is_c_contiguous)
+    Py_ssize_t itemsize, bint is_c_contiguous, bint zeros_for_zerosize)
 
 cpdef bint get_c_contiguity(
     shape_t& shape, strides_t& strides, Py_ssize_t itemsize)
