@@ -95,7 +95,7 @@ def _setup_win32_dll_directory() -> None:
         _log('CUDA_PATH is not set.'
              'cupy-wheel may not be able to discover NVRTC to probe version')
         return
-    os.add_dll_directory(os.path.join(cuda_path, 'bin'))
+    os.add_dll_directory(os.path.join(cuda_path, 'bin'))  # type: ignore[attr-defined] # NOQA
 
 
 def _get_cuda_version() -> Optional[int]:
