@@ -497,3 +497,9 @@
   tags: ["benchmark"]
   system: "linux"
   test: "benchmark"
+
+- project: "Jenkins"
+  _extern: true
+  target: "jenkins"
+  tags: []  # This allows "/test skip" to mark "Jenkins" check as skipped
+  system: "linux"
