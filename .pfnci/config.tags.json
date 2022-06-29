@@ -140,5 +140,6 @@
     ],
     "cupy.linux.benchmark.pr": [
         "benchmark"
-    ]
+    ],
+    "Jenkins": []
 }
