@@ -5,13 +5,13 @@ __all__ = ["log_softmax"]
 
 
 _log_softmax_kernel = cp._core.ReductionKernel(
-   'T x1',
-   'T y',
-   'exp(x1)',
-   'a + b',
-   'y = log(a)',
-   '0',
-   name='log_softmax'
+    'T x1',
+    'T y',
+    'exp(x1)',
+    'a + b',
+    'y = log(a)',
+    '0',
+    name='log_softmax'
 )
 
 
