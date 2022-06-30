@@ -4,38 +4,14 @@ import cupy as cp
 __all__ = ["log_softmax"]
 
 
-_log_preamble = '''
-
-template <typename T>
-__device__ T _log(T a)
-{
-    return log(a);
-}
-
-'''
-
-
-_preamble = _log_preamble+'''
-
-template <typename T>
-__device__ T _post_map(T a, T* y)
-{
-    *y = _log(static_cast<float>(a));
-    return *y;
-}
-
-'''
-
-
 _log_softmax_kernel = cp._core.ReductionKernel(
    'T x1',
    'T y',
-   'exp(static_cast<float>(x1))',
+   'exp(x1)',
    'a + b',
-   'y = _post_map(a, &y)',
+   'y = log(a)',
    '0',
-   name='log_softmax',
-   preamble=_preamble
+   name='log_softmax'
 )
 
 
@@ -52,7 +28,7 @@ def log_softmax(x, axis=None):
 
     Returns
     -------
-    s : cupy.ndarry or scalar
+    s : cupy.ndarry
         An array with the same shape as `x`. Exponential of the
         result will sum to 1 along the specified axis. If `x` is a
         scalar, a scalar is returned
