@@ -6,8 +6,14 @@ on:
   pull_request_target:
     types: [labeled]
 
+permissions:
+  contents: read
+
 jobs:
   auto-notify:
+    permissions:
+      issues: write  # for peter-evans/create-or-update-comment to create or update comment
+      pull-requests: write  # for peter-evans/create-or-update-comment to create or update comment
     if: |
         github.repository_owner == 'cupy' &&
         contains('|hip|array-api|', github.event.label.name)

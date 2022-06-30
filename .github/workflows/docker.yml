@@ -8,6 +8,9 @@ on:
       - docker/**
       - .github/workflows/docker.yml
 
+permissions:
+  contents: read
+
 jobs:
   docker-build-push:
     if: |
