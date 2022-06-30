@@ -464,13 +464,18 @@ def _transpile_stmt(stmt, is_toplevel, env):
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
         target = _transpile_expr(stmt.target, env)
-        assert isinstance(target, Data)
+        if not isinstance(target, Data):
+            raise TypeError(f'Cannot augassign to {target.code}')
         value = Data.init(value, env)
-        result = _eval_operand(stmt.op, (target, value), env)
+        tmp = Data('tmp__', target.ctype)
+        result = _eval_operand(stmt.op, (tmp, value), env)
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
-            raise TypeError('dtype mismatch')
-        return [target.ctype.assign(target, result) + ';']
+            raise TypeError(
+                f'dtype mismatch: {result.ctype.dtype}'
+                f' and {target.ctype.dtype}')
+        return ['{ ' + target.ctype.declvar('&' + tmp.code, target) + '; ' +
+                target.ctype.assign(tmp, result) + '; }']
 
     if isinstance(stmt, ast.For):
         if len(stmt.orelse) > 0:
