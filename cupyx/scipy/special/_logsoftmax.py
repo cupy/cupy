@@ -1,9 +1,6 @@
 import cupy as cp
 
 
-__all__ = ["log_softmax"]
-
-
 _log_softmax_kernel = cp._core.ReductionKernel(
     'T x1',
     'T y',
@@ -34,6 +31,15 @@ def log_softmax(x, axis=None):
         scalar, a scalar is returned
 
     """
+
+    if x.dtype == cp.int8:
+        x = x.astype(cp.float16)
+    elif x.dtype == cp.int16:
+        x = x.astype(cp.float32)
+    elif x.dtype == cp.int32:
+        x = x.astype(cp.float64)
+    elif x.dtype == cp.int64:
+        x = x.astype(cp.float64)
 
     x_max = cp.amax(x, axis=axis, keepdims=True)
 
