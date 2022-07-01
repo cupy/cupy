@@ -121,6 +121,7 @@ class TestView:
             with pytest.raises(ValueError):
                 a.view(numpy.int32)
 
+    @testing.with_requires('numpy>=1.23')
     @testing.numpy_cupy_array_equal()
     def test_view_smaller_dtype_multiple(self, xp):
         # x is non-contiguous
@@ -129,18 +130,21 @@ class TestView:
             x.view(xp.int16)
         return x[:, xp.newaxis].view(xp.int16)
 
+    @testing.with_requires('numpy>=1.23')
     @testing.numpy_cupy_array_equal()
     def test_view_smaller_dtype_multiple2(self, xp):
         # x is non-contiguous, and stride[-1] != 0
         x = xp.ones((3, 4), xp.int32)[:, :1:2]
         return x.view(xp.int16)
 
+    @testing.with_requires('numpy>=1.23')
     @testing.numpy_cupy_array_equal()
     def test_view_larger_dtype_multiple(self, xp):
         # x is non-contiguous in the first dimension, contiguous in the last
         x = xp.arange(20, dtype=xp.int16).reshape(10, 2)[::2, :]
         return x.view(xp.int32)
 
+    @testing.with_requires('numpy>=1.23')
     @testing.numpy_cupy_array_equal()
     def test_view_non_c_contiguous(self, xp):
         # x is contiguous in axis=-1, but not C-contiguous in other axes
