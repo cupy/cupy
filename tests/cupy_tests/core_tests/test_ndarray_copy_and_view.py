@@ -335,6 +335,37 @@ class TestArrayCopyAndView:
             dev[:] = host
 
 
+class TestViewDtype:
+
+    @testing.numpy_cupy_array_equal()
+    def test_smaller_dtype_multiple(self, xp):
+        # x is non-contiguous
+        x = xp.arange(10, dtype=xp.int32)[::2]
+        with pytest.raises(ValueError):
+            x.view(xp.int16)
+        return x[:, xp.newaxis].view(xp.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_larger_dtype_multiple(self, xp):
+        # x is non-contiguous in the first dimension, contiguous in the last
+        x = xp.arange(20, dtype=xp.int16).reshape(10, 2)[::2, :]
+        return x.view(xp.int32)
+
+    def test_f_contiguous(self):
+        for xp in (numpy, cupy):
+            # x is F-contiguous
+            x = xp.arange(4 * 3, dtype=xp.int32).reshape(4, 3).T
+            with pytest.raises(ValueError):
+                x.view(xp.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_non_c_contiguous(self, xp):
+        # x is contiguous in axis=-1, but not C-contiguous in other axes
+        x = xp.arange(2 * 3 * 4, dtype=xp.int8).reshape(
+            2, 3, 4).transpose(1, 0, 2)
+        return x.view(xp.int16)
+
+
 @testing.parameterize(
     {'src_order': 'C'},
     {'src_order': 'F'},

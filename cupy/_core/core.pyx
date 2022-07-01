@@ -679,12 +679,14 @@ cdef class _ndarray_base:
             raise ValueError(
                 'Changing the dtype of a 0d array is only supported if '
                 'the itemsize is unchanged')
-        if self._c_contiguous:
-            axis = ndim - 1
-        else:
+        axis = ndim - 1
+        if (
+            self._shape[axis] != 1
+            and self._strides[axis] != self.dtype.itemsize
+        ):
             raise ValueError(
-                'To change to a dtype of a different size, the array must '
-                'be C-contiguous')
+                'To change to a dtype of a different size, the last axis '
+                'must be contiguous')
 
         # Normalize `_strides[axis]` whenever itemsize changes
         v._strides[axis] = v_is
