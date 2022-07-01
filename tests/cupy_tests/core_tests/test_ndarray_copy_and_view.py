@@ -123,6 +123,89 @@ class TestArrayCopyAndView:
                 a.view(numpy.int32)
 
     @testing.numpy_cupy_array_equal()
+    def test_view_smaller_dtype_multiple(self, xp):
+        # x is non-contiguous
+        x = xp.arange(10, dtype=xp.int32)[::2]
+        with pytest.raises(ValueError):
+            x.view(xp.int16)
+        return x[:, xp.newaxis].view(xp.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_view_smaller_dtype_multiple2(self, xp):
+        # x is non-contiguous, and stride[-1] != 0
+        x = xp.ones((3, 4), xp.int32)[:, :1:2]
+        return x.view(xp.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_view_larger_dtype_multiple(self, xp):
+        # x is non-contiguous in the first dimension, contiguous in the last
+        x = xp.arange(20, dtype=xp.int16).reshape(10, 2)[::2, :]
+        return x.view(xp.int32)
+
+    @testing.numpy_cupy_array_equal()
+    def test_view_non_c_contiguous(self, xp):
+        # x is contiguous in axis=-1, but not C-contiguous in other axes
+        x = xp.arange(2 * 3 * 4, dtype=xp.int8).reshape(
+            2, 3, 4).transpose(1, 0, 2)
+        return x.view(xp.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_view_larger_dtype_zero_sized(self, xp):
+        x = xp.ones((3, 20), xp.int16)[:0, ::2]
+        return x.view(xp.int32)
+
+
+class TestArrayCopy:
+
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+    @testing.for_orders('CF')
+    @testing.for_dtypes([numpy.int16, numpy.int64,
+                         numpy.float16, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_isinstance_numpy_copy(self, xp, dtype, order):
+        a = numpy.arange(100, dtype=dtype).reshape(10, 10, order=order)
+        b = xp.empty(a.shape, dtype=dtype, order=order)
+        b[:] = a
+        return b
+
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+    def test_isinstance_numpy_copy_wrong_dtype(self):
+        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+        b = cupy.empty(a.shape, dtype=numpy.int32)
+        with pytest.raises(ValueError):
+            b[:] = a
+
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+    def test_isinstance_numpy_copy_wrong_shape(self):
+        for xp in (numpy, cupy):
+            a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+            b = cupy.empty(100, dtype=a.dtype)
+            with pytest.raises(ValueError):
+                b[:] = a
+
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+    @testing.numpy_cupy_array_equal()
+    def test_isinstance_numpy_copy_not_slice(self, xp):
+        a = xp.arange(5, dtype=numpy.float64)
+        a[a < 3] = 0
+        return a
+
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
+    def test_copy_host_to_device_view(self):
+        dev = cupy.empty((10, 10), dtype=numpy.float32)[2:5, 1:8]
+        host = numpy.arange(3 * 7, dtype=numpy.float32).reshape(3, 7)
+        with pytest.raises(ValueError):
+            dev[:] = host
+
+
+class TestArrayFlatten:
+
+    @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return a.flatten()
@@ -344,6 +427,12 @@ class TestViewDtype:
         with pytest.raises(ValueError):
             x.view(xp.int16)
         return x[:, xp.newaxis].view(xp.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_smaller_dtype_multiple2(self, xp):
+        # x is non-contiguous, and stride[-1] != 0
+        x = xp.ones((3, 4), xp.int32)[:, :1:2]
+        return x.view(xp.int16)
 
     @testing.numpy_cupy_array_equal()
     def test_larger_dtype_multiple(self, xp):
