@@ -682,6 +682,7 @@ cdef class _ndarray_base:
         axis = ndim - 1
         if (
             self._shape[axis] != 1
+            and self.size != 0
             and self._strides[axis] != self.dtype.itemsize
         ):
             raise ValueError(
