@@ -46,7 +46,11 @@ class TestLogSoftmax:
         return scp.special.log_softmax(a, axis=-1)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol_low, rtol=rtol_low)
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp',
+        atol=atol_low,
+        rtol=rtol_low
+    )
     def test_log_softmax_3d(self, xp, scp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return scp.special.log_softmax(a, axis=1)
