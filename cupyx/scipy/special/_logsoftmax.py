@@ -32,17 +32,6 @@ def log_softmax(x, axis=None):
 
     """
 
-    if x.dtype == cp.int8:
-        x = x.astype(cp.float16)
-    elif x.dtype == cp.int16:
-        x = x.astype(cp.float32)
-    elif x.dtype == cp.int32:
-        x = x.astype(cp.float64)
-    elif x.dtype == cp.int64:
-        x = x.astype(cp.float64)
-    elif x.dtype == cp.uint8:
-        x = x.astype(cp.float16)
-
     x_max = cp.amax(x, axis=axis, keepdims=True)
 
     if x_max.ndim > 0:
@@ -51,6 +40,23 @@ def log_softmax(x, axis=None):
         x_max = 0
 
     tmp = x - x_max
+
+    if tmp.dtype == cp.int8:
+        tmp = tmp.astype(cp.float16)
+    elif tmp.dtype == cp.int16:
+        tmp = tmp.astype(cp.float32)
+    elif tmp.dtype == cp.int32:
+        tmp = tmp.astype(cp.float64)
+    elif tmp.dtype == cp.int64:
+        tmp = tmp.astype(cp.float64)
+    elif tmp.dtype == cp.uint8:
+        tmp = tmp.astype(cp.float16)
+    elif tmp.dtype == cp.uint16:
+        tmp = tmp.astype(cp.float32)
+    elif tmp.dtype == cp.uint32:
+        tmp = tmp.astype(cp.float64)
+    elif tmp.dtype == cp.uint64:
+        tmp = tmp.astype(cp.float64)
 
     out = _log_softmax_kernel(tmp, axis=axis, keepdims=True)
 

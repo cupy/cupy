@@ -8,6 +8,9 @@ import scipy.special  # NOQA
 atol = {'default': 1e-6, cupy.float64: 1e-14}
 rtol = {'default': 1e-6, cupy.float64: 1e-14}
 
+atol_low = {'default': 1e-6, cupy.float16: 1e-3, cupy.float64: 1e-14}
+rtol_low = {'default': 1e-6, cupy.float16: 1e-3, cupy.float64: 1e-14}
+
 
 @testing.with_requires('scipy')
 class TestLogSoftmax:
@@ -43,7 +46,7 @@ class TestLogSoftmax:
         return scp.special.log_softmax(a, axis=-1)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol_low, rtol=rtol_low)
     def test_log_softmax_3d(self, xp, scp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return scp.special.log_softmax(a, axis=1)
