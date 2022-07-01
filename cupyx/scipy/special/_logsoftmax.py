@@ -40,6 +40,8 @@ def log_softmax(x, axis=None):
         x = x.astype(cp.float64)
     elif x.dtype == cp.int64:
         x = x.astype(cp.float64)
+    elif x.dtype == cp.uint8:
+        x = x.astype(cp.float16)
 
     x_max = cp.amax(x, axis=axis, keepdims=True)
 
