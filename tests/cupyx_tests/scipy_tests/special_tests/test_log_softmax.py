@@ -17,19 +17,19 @@ class TestLogSoftmax:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    def test_log_softmax_large_inputs(self, xp, scp, dtype):
+    def test_log_softmax_ndarray_1(self, xp, scp, dtype):
         a = xp.arange(4, dtype=dtype)
         return scp.special.log_softmax(a)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_log_softmax_ndarray(self, xp, scp, dtype):
+    def test_log_softmax_ndarray_2(self, xp, scp, dtype):
         a = xp.array([1000, 1], dtype=dtype)
         return scp.special.log_softmax(a)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_log_softmax_ndarray_2(self, xp, scp, dtype):
+    def test_log_softmax_ndarray_3(self, xp, scp, dtype):
         a = xp.array([0, -99], dtype=dtype)
         return scp.special.log_softmax(a)
 
