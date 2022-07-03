@@ -2,7 +2,7 @@ import numbers
 
 import numpy
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 import cupy
 from cupy.lib import _routines_poly
@@ -31,7 +31,7 @@ cdef class poly1d:
     __hash__ = None
 
     cdef:
-        readonly ndarray _coeffs
+        readonly _ndarray_base _coeffs
         readonly str _variable
         readonly bint _trimmed
 

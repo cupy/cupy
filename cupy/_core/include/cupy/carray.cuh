@@ -126,11 +126,11 @@ public:
     return (__half_raw(data_).x & 0x8000u) != 0;
   }
 
-#ifdef __HIPCC__ && HIP_VERSION >= 50000000
+#ifdef __HIPCC__
 
-  __device__ float16 operator-() {
-    return float16(-data_);
-  }
+__device__ float16 operator-() {
+  return float16(-data_);
+}
 
 #endif
 

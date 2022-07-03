@@ -50,6 +50,7 @@ Raw statistical functions
    chdtrc
    chdtri
    ndtr
+   log_ndtr
    ndtri
    logit
    expit
@@ -127,6 +128,7 @@ Other special functions
 .. autosummary::
    :toctree: generated/
 
+   expn
    zeta
 
 

@@ -43,18 +43,13 @@ Choose the right package for your platform.
 | CUDA 10.2     | `pip install cupy-cuda102`    |
 | CUDA 11.0     | `pip install cupy-cuda110`    |
 | CUDA 11.1     | `pip install cupy-cuda111`    |
-| CUDA 11.2     | `pip install cupy-cuda112`    |
-| CUDA 11.3     | `pip install cupy-cuda113`    |
-| CUDA 11.4     | `pip install cupy-cuda114`    |
-| CUDA 11.5     | `pip install cupy-cuda115`    |
-| CUDA 11.6     | `pip install cupy-cuda116`    |
-| ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
+| CUDA 11.2+    | `pip install cupy-cuda11x`    |
 | ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |
 | ROCm 5.0 (*)  | `pip install cupy-rocm-5-0`   |
 
 (\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
 
-Use `--pre -f https://pip.cupy.dev/pre` option to install pre-releases (e.g., `pip install cupy-cuda116 --pre -f https://pip.cupy.dev/pre`).
+Use `--pre -f https://pip.cupy.dev/pre` option to install pre-releases (e.g., `pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre`).
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 
 ## Run on Docker

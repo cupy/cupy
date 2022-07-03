@@ -18,6 +18,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver  # NOQA
+from cupy_backends.cuda.libs cimport nvrtc  # NOQA
 
 
 ###############################################################################
@@ -154,8 +155,16 @@ cpdef int driverGetVersion() except? -1:
 
 cpdef int runtimeGetVersion() except? -1:
     cdef int version
-    status = cudaRuntimeGetVersion(&version)
-    check_status(status)
+    IF CUPY_USE_CUDA_PYTHON:
+        # Workarounds an issue that cuda-python returns its version instead of
+        # the real runtime version.
+        # https://github.com/NVIDIA/cuda-python/issues/16
+        cdef int major, minor
+        (major, minor) = nvrtc.getVersion()
+        version = major * 1000 + minor * 10
+    ELSE:
+        status = cudaRuntimeGetVersion(&version)
+        check_status(status)
     return version
 
 
@@ -498,9 +507,7 @@ cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
     cdef void* ptr
     if _is_hip_environment:
         raise RuntimeError('HIP does not support mallocAsync')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('mallocAsync is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('mallocAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaMallocAsync(&ptr, size, <driver.Stream>stream)
@@ -512,9 +519,7 @@ cpdef intptr_t mallocFromPoolAsync(
     cdef void* ptr
     if _is_hip_environment:
         raise RuntimeError('HIP does not support mallocFromPoolAsync')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('mallocFromPoolAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaMallocFromPoolAsync(
@@ -557,9 +562,7 @@ cpdef freeArray(intptr_t ptr):
 cpdef freeAsync(intptr_t ptr, intptr_t stream):
     if _is_hip_environment:
         raise RuntimeError('HIP does not support freeAsync')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('freeAsync is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('freeAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaFreeAsync(<void*>ptr, <driver.Stream>stream)
@@ -712,10 +715,7 @@ cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
     if _is_hip_environment:
         raise RuntimeError('HIP does not support deviceGetDefaultMemPool')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('deviceGetDefaultMemPool is supported since '
-                           'CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('deviceGetDefaultMemPool is supported since '
                            'CUDA 11.2')
     cdef MemPool pool
@@ -728,10 +728,7 @@ cpdef intptr_t deviceGetMemPool(int device) except? 0:
     '''Get the current mempool on the current device.'''
     if _is_hip_environment:
         raise RuntimeError('HIP does not support deviceGetMemPool')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('deviceGetMemPool is supported since '
-                           'CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('deviceGetMemPool is supported since '
                            'CUDA 11.2')
     cdef MemPool pool
@@ -744,10 +741,7 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
     '''Set the current mempool on the current device to pool.'''
     if _is_hip_environment:
         raise RuntimeError('HIP does not support deviceSetMemPool')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('deviceSetMemPool is supported since '
-                           'CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('deviceSetMemPool is supported since '
                            'CUDA 11.2')
     with nogil:
@@ -757,9 +751,7 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
 cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolCreate')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolCreate is supported since CUDA 11.2')
 
     cdef MemPool pool
@@ -778,9 +770,7 @@ cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
 cpdef memPoolDestroy(intptr_t pool):
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolDestroy')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolDestroy is supported since CUDA 11.2')
     with nogil:
         status = cudaMemPoolDestroy(<MemPool>pool)
@@ -789,9 +779,7 @@ cpdef memPoolDestroy(intptr_t pool):
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolTrimTo')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
     with nogil:
         status = cudaMemPoolTrimTo(<MemPool>pool, size)
@@ -800,9 +788,7 @@ cpdef memPoolTrimTo(intptr_t pool, size_t size):
 cpdef memPoolGetAttribute(intptr_t pool, int attr):
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolGetAttribute')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolGetAttribute is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolGetAttribute is supported since CUDA 11.2')
     cdef int val1
     cdef uint64_t val2
@@ -819,9 +805,7 @@ cpdef memPoolGetAttribute(intptr_t pool, int attr):
 cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolSetAttribute')
-    if CUPY_USE_CUDA_PYTHON and runtimeGetVersion() < 11020:
-        raise RuntimeError('memPoolSetAttribute is supported since CUDA 11.2')
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtimeGetVersion() < 11020:
         raise RuntimeError('memPoolSetAttribute is supported since CUDA 11.2')
     cdef int val1
     cdef uint64_t val2
@@ -924,8 +908,6 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
     if _is_hip_environment:
         raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('streamBeginCapture is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
                                         <StreamCaptureMode>mode)
@@ -937,8 +919,6 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     cdef Graph g
     if _is_hip_environment:
         raise RuntimeError('streamEndCapture is not supported in ROCm')
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('streamEndCapture is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -949,8 +929,6 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
     if _is_hip_environment:
         raise RuntimeError('streamIsCapturing is not supported in ROCm')
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('streamIsCapturing is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
     check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
@@ -1085,23 +1063,17 @@ cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz):
 ##############################################################################
 
 cpdef graphDestroy(intptr_t graph):
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphDestroy is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphDestroy(<Graph>graph)
     check_status(status)
 
 cpdef graphExecDestroy(intptr_t graphExec):
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphExecDestroy is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphExecDestroy(<GraphExec>graphExec)
     check_status(status)
 
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphInstantiate is supported since CUDA 10.1+')
     cdef GraphExec ge
     with nogil:
         status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
@@ -1110,14 +1082,12 @@ cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     return <intptr_t>ge
 
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
-    if CUPY_CUDA_VERSION < 10010:
-        raise RuntimeError('graphLaunch is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphLaunch(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
 
 cpdef graphUpload(intptr_t graphExec, intptr_t stream):
-    if CUPY_CUDA_VERSION < 11010:
+    if runtimeGetVersion() < 11010:
         raise RuntimeError('graphUpload is supported since CUDA 11.1+')
     with nogil:
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)

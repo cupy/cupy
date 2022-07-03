@@ -10,13 +10,14 @@ from libcpp.vector cimport vector
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 import warnings
 
 import cupy
+import cupy._core.core as core
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
@@ -82,14 +83,14 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     if tensor.manager_ctx is NULL:
         return
     stdlib.free(tensor.dl_tensor.shape)
-    cpython.Py_DECREF(<ndarray>tensor.manager_ctx)
+    cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
     tensor.manager_ctx = NULL
     stdlib.free(tensor)
 
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef object toDlpack(ndarray array) except +:
+cpdef object toDlpack(_ndarray_base array) except +:
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
 
@@ -206,7 +207,7 @@ cdef class DLPackMemory(memory.BaseMemory):
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef ndarray fromDlpack(object dltensor) except +:
+cpdef _ndarray_base fromDlpack(object dltensor) except +:
     """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
 
     DLPack is a open in memory tensor structure proposed in this repository:
@@ -256,7 +257,7 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     return _dlpack_to_cupy_array(dltensor)
 
 
-cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
+cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
@@ -317,7 +318,7 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
     if mem.dlm_tensor.dl_tensor.strides is NULL:
         # Make sure this capsule will never be used again.
         cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
-        return ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
+        return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
@@ -325,7 +326,7 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
 
     # Make sure this capsule will never be used again.
     cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
-    return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
+    return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
 # TODO(leofang): this function is exposed to the cupy namespace, so it returns

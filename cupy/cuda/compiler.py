@@ -456,11 +456,11 @@ _empty_file_preprocess_cache: dict = {}
 
 
 def compile_with_cache(*args, **kwargs):
-    # TODO(kmaehashi): change to visible warning in CuPy v11+.
+    # TODO(asi1024): Remove in CuPy v13+.
     warnings.warn(
         'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
         ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
-        ' instead.', DeprecationWarning)
+        ' instead.', UserWarning)
     return _compile_module_with_cache(*args, **kwargs)
 
 

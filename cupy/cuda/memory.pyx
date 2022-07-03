@@ -110,9 +110,7 @@ cdef class Memory(BaseMemory):
 cdef inline void check_async_alloc_supported(int device_id) except*:
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
     cdef list support

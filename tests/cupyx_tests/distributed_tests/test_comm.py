@@ -116,6 +116,42 @@ class TestNCCLBackendSparse:
     def test_send_and_recv(self, dtype):
         self._run_test('sparse_send_and_recv', dtype)
 
+    @testing.for_dtypes('fdFD')
+    def test_broadcast(self, dtype):
+        self._run_test('sparse_broadcast', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_reduce(self, dtype):
+        self._run_test('sparse_reduce', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_all_reduce(self, dtype):
+        self._run_test('sparse_all_reduce', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_scatter(self, dtype):
+        self._run_test('sparse_scatter', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_gather(self, dtype):
+        self._run_test('sparse_gather', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_all_gather(self, dtype):
+        self._run_test('sparse_all_gather', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_all_to_all(self, dtype):
+        self._run_test('sparse_all_to_all', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_reduce_scatter(self, dtype):
+        self._run_test('sparse_reduce_scatter', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_send_recv(self, dtype):
+        self._run_test('sparse_send_recv', dtype)
+
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')
 @testing.multi_gpu(2)

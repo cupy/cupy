@@ -165,6 +165,7 @@ class TestBasic:
             cupy.empty_like(a, subok=True)
 
     @testing.for_CF_orders()
+    @testing.with_requires('numpy>=1.23')
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
         b = cupy.empty((1, 0, 2), dtype='d', order=order)

@@ -7,6 +7,7 @@ from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
 from cupy._core cimport internal
 from cupy import _util
 
@@ -16,7 +17,7 @@ from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 
 from cupy.cuda import cub
@@ -29,31 +30,32 @@ except ImportError:
     cutensor = None
 
 
-# ndarray members
+# _ndarray_base members
 
 
-cdef ndarray _ndarray_conj(ndarray self):
+cdef _ndarray_base _ndarray_conj(_ndarray_base self):
     if self.dtype.kind == 'c':
         return _conjugate(self)
     else:
         return self
 
 
-cdef ndarray _ndarray_real_getter(ndarray self):
+cdef _ndarray_base _ndarray_real_getter(_ndarray_base self):
     if self.dtype.kind == 'c':
-        view = ndarray(
+        view = core.ndarray(
             shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
             memptr=self.data, strides=self._strides)
-        view.base = self.base if self.base is not None else self
+        (<_ndarray_base>view).base = (
+            self.base if self.base is not None else self)
         return view
     return self
 
 
-cdef ndarray _ndarray_real_setter(ndarray self, value):
+cdef _ndarray_base _ndarray_real_setter(_ndarray_base self, value):
     elementwise_copy(value, _ndarray_real_getter(self))
 
 
-cdef ndarray _ndarray_imag_getter(ndarray self):
+cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
     cdef memory.MemoryPointer memptr
     if self.dtype.kind == 'c':
         dtype = get_dtype(self.dtype.char.lower())
@@ -64,24 +66,26 @@ cdef ndarray _ndarray_imag_getter(ndarray self):
         # aligning with NumPy behavior.
         if memptr.ptr != 0:
             memptr = memptr + self.dtype.itemsize // 2
-        view = ndarray(
+        view = core.ndarray(
             shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
-        view.base = self.base if self.base is not None else self
+        (<_ndarray_base>view).base = (
+            self.base if self.base is not None else self)
         return view
-    new_array = ndarray(self.shape, dtype=self.dtype)
+    new_array = core.ndarray(self.shape, dtype=self.dtype)
     new_array.fill(0)
     return new_array
 
 
-cdef ndarray _ndarray_imag_setter(ndarray self, value):
+cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
     if self.dtype.kind == 'c':
         elementwise_copy(value, _ndarray_imag_getter(self))
     else:
         raise TypeError('cupy.ndarray does not have imaginary part to set')
 
 
-cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
+cdef _ndarray_base _ndarray_prod(
+        _ndarray_base self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
@@ -100,7 +104,8 @@ cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
         return _prod_keep_dtype(self, axis, dtype, out, keepdims)
 
 
-cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
+cdef _ndarray_base _ndarray_sum(
+        _ndarray_base self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
@@ -120,15 +125,15 @@ cdef ndarray _ndarray_sum(ndarray self, axis, dtype, out, keepdims):
         return _sum_keep_dtype(self, axis, dtype, out, keepdims)
 
 
-cdef ndarray _ndarray_cumsum(ndarray self, axis, dtype, out):
+cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out):
     return cupy.cumsum(self, axis, dtype, out)
 
 
-cdef ndarray _ndarray_cumprod(ndarray self, axis, dtype, out):
+cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out):
     return cupy.cumprod(self, axis, dtype, out)
 
 
-cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
+cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
     if a_min is None and a_max is None:
         raise ValueError('array_clip: must set either max or min')
     kind = self.dtype.kind
@@ -426,8 +431,9 @@ def _cupy_scan_btree(op, chunk_size, warp_size=32):
                                   'cupy_scan_btree', loop_prep=loop_prep)
 
 
-cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
-                  incomplete=False, chunk_size=512):
+cdef _ndarray_base scan(
+        _ndarray_base a, op, dtype=None, _ndarray_base out=None,
+        incomplete=False, chunk_size=512):
     """Return the prefix sum(scan) of the elements.
 
     Args:
@@ -446,7 +452,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
         if dtype is None:
             dtype = a.dtype
         if not incomplete:
-            out = _ndarray_init(a._shape, dtype)
+            out = _ndarray_init(cupy.ndarray, a._shape, dtype, None)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
@@ -638,7 +644,8 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     return module.get_function(name)
 
 
-cdef ndarray _batch_scan_op(ndarray a, scan_op op, ndarray out):
+cdef _ndarray_base _batch_scan_op(
+        _ndarray_base a, scan_op op, _ndarray_base out):
     batch_size = a.shape[1]
     # TODO(ecastill) replace this with "_reduction._block_size" once it is
     # properly exposed
@@ -672,7 +679,7 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, ndarray out):
     return out
 
 
-cdef _proc_as_batch(ndarray x, int axis, scan_op op):
+cdef _proc_as_batch(_ndarray_base x, int axis, scan_op op):
     if x.shape[axis] == 0:
         return cupy.empty_like(x)
     t = cupy.rollaxis(x, axis, x.ndim)
@@ -682,7 +689,8 @@ cdef _proc_as_batch(ndarray x, int axis, scan_op op):
     return cupy.rollaxis(r.reshape(s), x.ndim-1, axis)
 
 
-cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
+cpdef scan_core(
+        _ndarray_base a, axis, scan_op op, dtype=None, _ndarray_base out=None):
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -738,7 +746,7 @@ def _scan_for_test(a, out=None):
     return scan(a, scan_op.SCAN_SUM, dtype=None, out=out)
 
 
-cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
+cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims):
     if cupy.iscomplexobj(a):
         return _nansum_complex_dtype(a, axis, dtype, out, keepdims)
     elif dtype is None:
@@ -747,7 +755,7 @@ cpdef ndarray _nansum(ndarray a, axis, dtype, out, keepdims):
         return _nansum_keep_dtype(a, axis, dtype, out, keepdims)
 
 
-cpdef ndarray _nanprod(ndarray a, axis, dtype, out, keepdims):
+cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims):
     if cupy.iscomplexobj(a):
         return _nanprod_complex_dtype(a, axis, dtype, out, keepdims)
     elif dtype is None:
