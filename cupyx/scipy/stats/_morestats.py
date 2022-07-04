@@ -1,16 +1,6 @@
 import cupy
 
 
-@cupy.fuse(kernel_name='find_sum')
-def find_sum(a):
-    return cupy.sum(a, axis=0)
-
-
-@cupy.fuse(kernel_name='find_log')
-def find_log(a):
-    return cupy.log(a)
-
-
 def boxcox_llf(lmb, data):
     """The boxcox log-likelihood function.
 
@@ -46,7 +36,7 @@ def boxcox_llf(lmb, data):
     if N == 0:
         return cupy.nan
 
-    logdata = find_log(data)
+    logdata = cupy.log(data)
 
     # Compute the variance of the transformed data
     if lmb == 0:
@@ -54,4 +44,4 @@ def boxcox_llf(lmb, data):
     else:
         variance = cupy.var(data**lmb / lmb, axis=0)
 
-    return (lmb - 1) * find_sum(logdata) - N/2 * find_log(variance)
+    return (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * cupy.log(variance)
