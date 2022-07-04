@@ -67,7 +67,7 @@ def nanmedian(a, axis=None, out=None, overwrite_input=False, keepdims=False):
                       keepdims=keepdims)
 
 
-def average(a, axis=None, weights=None, returned=False):
+def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
     """Returns the weighted average along an axis.
 
     Args:
@@ -79,6 +79,8 @@ def average(a, axis=None, weights=None, returned=False):
             in ``a`` have a weight equal to one.
         returned (bool): If ``True``, a tuple of the average and the sum
             of weights is returned, otherwise only the average is returned.
+        keepdims (bool): If ``True``, the axis is remained as an axis of size
+            one.
 
     Returns:
         cupy.ndarray or tuple of cupy.ndarray: The average of the input array
@@ -94,7 +96,7 @@ def average(a, axis=None, weights=None, returned=False):
     a = cupy.asarray(a)
 
     if weights is None:
-        avg = a.mean(axis)
+        avg = a.mean(axis=axis, keepdims=keepdims)
         scl = avg.dtype.type(a.size / avg.size)
     else:
         wgt = cupy.asarray(weights)
@@ -127,7 +129,8 @@ def average(a, axis=None, weights=None, returned=False):
             raise ZeroDivisionError(
                 'Weights sum to zero, can\'t be normalized')
 
-        avg = cupy.multiply(a, wgt, dtype=result_dtype).sum(axis) / scl
+        avg = cupy.multiply(a, wgt, dtype=result_dtype).sum(
+            axis, keepdims=keepdims) / scl
 
     if returned:
         if scl.shape != avg.shape:

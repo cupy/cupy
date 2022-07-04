@@ -185,6 +185,22 @@ class TestAverage:
         self.check_returned(a, axis=None, weights=w)
         self.check_returned(a, axis=1, weights=w)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={'default': 5e-7})
+    @testing.with_requires('numpy>=1.23')
+    def test_average_keepdims_axis1(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        w = testing.shaped_random((2, 3), xp, dtype)
+        return xp.average(a, axis=1, weights=w, keepdims=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={'default': 1e-7, numpy.float16: 1e-3})
+    @testing.with_requires('numpy>=1.23')
+    def test_average_keepdims_noaxis(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        w = testing.shaped_random((2, 3), xp, dtype)
+        return xp.average(a, weights=w, keepdims=True)
+
 
 @testing.gpu
 class TestMeanVar:
