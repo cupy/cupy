@@ -123,8 +123,17 @@ def trim_zeros(filt, trim='fb'):
     return filt[start:end]
 
 
+@_core.fusion.fuse()
+def _unique_update_mask_equal_nan(mask, x0, x1):
+    x0_isnan = cupy.isnan(x0)
+    x1_isnan = cupy.isnan(x1)
+    mask1 = cupy.logical_not(
+        cupy.logical_and(x0_isnan, x1_isnan))  # NAND across isnan
+    mask[:] = cupy.logical_and(mask, mask1)
+
+
 def unique(ar, return_index=False, return_inverse=False,
-           return_counts=False, axis=None):
+           return_counts=False, axis=None, *, equal_nan=True):
     """Find the unique elements of an array.
 
     Returns the sorted unique elements of an array. There are three optional
@@ -146,6 +155,8 @@ def unique(ar, return_index=False, return_inverse=False,
         return_counts(bool, optional): If True, also return the number of times
             each unique item appears in `ar`.
         axis(int or None, optional): Not supported yet.
+        equal_nan(bool, optional): If True, collapse multiple NaN values in the
+            return array into one.
 
     Returns:
         cupy.ndarray or tuple:
@@ -181,6 +192,8 @@ def unique(ar, return_index=False, return_inverse=False,
     mask = cupy.empty(aux.shape, dtype=cupy.bool_)
     mask[:1] = True
     mask[1:] = aux[1:] != aux[:-1]
+    if equal_nan:
+        _unique_update_mask_equal_nan(mask[1:], aux[1:], aux[:-1])
 
     ret = aux[mask]
     if not return_index and not return_inverse and not return_counts:

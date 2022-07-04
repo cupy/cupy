@@ -101,8 +101,7 @@ class TestResize(unittest.TestCase):
         return xp.resize(xp.array([]), (10, 10))
 
 
-@testing.gpu
-class TestUnique(unittest.TestCase):
+class TestUnique:
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -147,6 +146,33 @@ class TestUnique(unittest.TestCase):
         a = xp.empty((3, 0, 2), dtype)
         return xp.unique(
             a, return_index=True, return_inverse=True, return_counts=True)
+
+    @pytest.mark.parametrize('equal_nan', [True, False])
+    @pytest.mark.parametrize('dtype', 'fdFD')
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.23')
+    def test_unique_equal_nan(self, xp, dtype, equal_nan):
+        if xp.dtype(dtype).kind == 'c':
+            # Nan and Nan+Nan*1j are collapsed when equal_nan=True
+            a = xp.array([xp.nan + 1j, 2, xp.nan, 2, xp.nan, 1], dtype=dtype)
+        else:
+            a = xp.array([2, xp.nan, 2, xp.nan, 1], dtype=dtype)
+        return xp.unique(a, equal_nan=equal_nan)
+
+    @pytest.mark.parametrize(
+        'equal_nan',
+        [
+            pytest.param(True, marks=pytest.mark.xfail(
+                reason='numpy.unique bug')),
+            False,
+        ]
+    )
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.23')
+    def test_unique_equal_nan_float16(self, xp, equal_nan):
+        dtype = xp.float16
+        a = xp.array([2, xp.nan, 2, xp.nan, 1], dtype=dtype)
+        return xp.unique(a, equal_nan=equal_nan)
 
 
 @testing.parameterize(*testing.product({
