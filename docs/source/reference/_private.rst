@@ -12,3 +12,11 @@ Benchmark Data
    :toctree: generated/
 
    cupyx.profiler._time._PerfCaseResult
+
+cuFFT Plan Cache
+----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupy.fft._cache.PlanCache
