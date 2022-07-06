@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 
 from cupy import testing
@@ -73,7 +75,9 @@ class TestBoxcox_llf:
             ]
         ], dtype=dtype)
         lmb = 9.0
-        return scp.stats.boxcox_llf(lmb, data)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            return scp.stats.boxcox_llf(lmb, data)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
