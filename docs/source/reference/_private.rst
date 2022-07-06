@@ -20,3 +20,12 @@ cuFFT Plan Cache
    :toctree: generated/
 
    cupy.fft._cache.PlanCache
+
+JIT Cooperative Groups
+----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupyx.jit.cg._ThreadBlockGroup
+   cupyx.jit.cg._GridGroup
