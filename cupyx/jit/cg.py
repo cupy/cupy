@@ -265,7 +265,8 @@ class _ThisCgGroup(_BuiltinFunc):
         else:
             raise NotImplementedError
         self.group_type = group_type
-        self.__doc__ = f"""Get the current {name}.
+        self.__doc__ = f"""
+        Returns the current {name} (:class:`~cupyx.jit.cg.{typename}`).
 
         .. seealso:: :class:`cupyx.jit.cg.{typename}`"""
         if group_type == "grid":
