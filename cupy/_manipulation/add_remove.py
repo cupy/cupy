@@ -124,11 +124,8 @@ def trim_zeros(filt, trim='fb'):
 
 
 @_core.fusion.fuse()
-def _unique_update_mask_equal_nan(mask, x0, x1):
-    x0_isnan = cupy.isnan(x0)
-    x1_isnan = cupy.isnan(x1)
-    mask1 = cupy.logical_not(
-        cupy.logical_and(x0_isnan, x1_isnan))  # NAND across isnan
+def _unique_update_mask_equal_nan(mask, x0):
+    mask1 = cupy.logical_not(cupy.isnan(x0))
     mask[:] = cupy.logical_and(mask, mask1)
 
 
@@ -193,7 +190,7 @@ def unique(ar, return_index=False, return_inverse=False,
     mask[:1] = True
     mask[1:] = aux[1:] != aux[:-1]
     if equal_nan:
-        _unique_update_mask_equal_nan(mask[1:], aux[1:], aux[:-1])
+        _unique_update_mask_equal_nan(mask[1:], aux[:-1])
 
     ret = aux[mask]
     if not return_index and not return_inverse and not return_counts:

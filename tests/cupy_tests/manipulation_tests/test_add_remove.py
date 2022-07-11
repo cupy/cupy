@@ -154,7 +154,10 @@ class TestUnique:
     def test_unique_equal_nan(self, xp, dtype, equal_nan):
         if xp.dtype(dtype).kind == 'c':
             # Nan and Nan+Nan*1j are collapsed when equal_nan=True
-            a = xp.array([xp.nan + 1j, 2, xp.nan, 2, xp.nan, 1], dtype=dtype)
+            a = xp.array([
+                complex(xp.nan, 3), 2, complex(7, xp.nan), xp.nan,
+                complex(xp.nan, xp.nan), 2, xp.nan, 1
+            ], dtype=dtype)
         else:
             a = xp.array([2, xp.nan, 2, xp.nan, 1], dtype=dtype)
         return xp.unique(a, equal_nan=equal_nan)
