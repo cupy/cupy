@@ -41,22 +41,11 @@ def log_softmax(x, axis=None):
 
     tmp = x - x_max
 
-    if tmp.dtype == cp.int8:
-        tmp = tmp.astype(cp.float16)
-    elif tmp.dtype == cp.int16:
-        tmp = tmp.astype(cp.float32)
-    elif tmp.dtype == cp.int32:
-        tmp = tmp.astype(cp.float64)
-    elif tmp.dtype == cp.int64:
-        tmp = tmp.astype(cp.float64)
-    elif tmp.dtype == cp.uint8:
-        tmp = tmp.astype(cp.float16)
-    elif tmp.dtype == cp.uint16:
-        tmp = tmp.astype(cp.float32)
-    elif tmp.dtype == cp.uint32:
-        tmp = tmp.astype(cp.float64)
-    elif tmp.dtype == cp.uint64:
-        tmp = tmp.astype(cp.float64)
+    if tmp.dtype.kind in 'iu':
+        for out_dtype in [cp.float16, cp.float32, cp.float64]:
+            if cp.can_cast(tmp.dtype, out_dtype):
+                tmp = tmp.astype(out_dtype)
+                break
 
     out = _log_softmax_kernel(tmp, axis=axis, keepdims=True)
 

@@ -15,25 +15,34 @@ rtol_low = {'default': 1e-6, cupy.float16: 1e-3, cupy.float64: 1e-14}
 @testing.with_requires('scipy')
 class TestLogSoftmax:
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('bhilefdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_log_softmax_ndarray_1(self, xp, scp, dtype):
-        a = xp.arange(4, dtype=dtype)
+        a = xp.arange(100, dtype=dtype)
         return scp.special.log_softmax(a)
 
-    @testing.for_all_dtypes(no_bool=True)
+    # Throws warning if we increase the number of inputs. Error below:
+    # RuntimeWarning: overflow encountered in exp
+    #   exp_tmp = np.exp(tmp)
+    @testing.for_dtypes('BHIL')
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_log_softmax_ndarray_1_uint(self, xp, scp, dtype):
+        a = xp.arange(1, dtype=dtype)
+        return scp.special.log_softmax(a)
+
+    @testing.for_dtypes('bhilefdFD')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_log_softmax_ndarray_2(self, xp, scp, dtype):
         a = xp.array([1000, 1], dtype=dtype)
         return scp.special.log_softmax(a)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('bhilefdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_log_softmax_ndarray_3(self, xp, scp, dtype):
         a = xp.array([0, -99], dtype=dtype)
         return scp.special.log_softmax(a)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('bhilefdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_log_softmax_2d(self, xp, scp, dtype):
         a = testing.shaped_random((5, 3), xp, dtype=dtype)
@@ -45,7 +54,7 @@ class TestLogSoftmax:
         a = xp.array([[100, 1000], [1e-10, 1e-10]])
         return scp.special.log_softmax(a, axis=-1)
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('bhilefdFD')
     @testing.numpy_cupy_allclose(
         scipy_name='scp',
         atol=atol_low,
