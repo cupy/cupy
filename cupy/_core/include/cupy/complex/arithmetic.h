@@ -288,7 +288,7 @@ __host__ __device__ inline T norm(const complex<T>& z) {
 
 template <>
 __host__ __device__ inline float norm(const complex<float>& z) {
-  if (abs(z.real()) < ::sqrtf(FLT_MIN) && abs(z.imag()) < ::sqrtf(FLT_MIN)) {
+  if (::abs(z.real()) < ::sqrtf(FLT_MIN) && ::abs(z.imag()) < ::sqrtf(FLT_MIN)) {
     float a = z.real() * 4.0f;
     float b = z.imag() * 4.0f;
     return (a * a + b * b) / 16.0f;
@@ -298,7 +298,7 @@ __host__ __device__ inline float norm(const complex<float>& z) {
 
 template <>
 __host__ __device__ inline double norm(const complex<double>& z) {
-  if (abs(z.real()) < ::sqrt(DBL_MIN) && abs(z.imag()) < ::sqrt(DBL_MIN)) {
+  if (::abs(z.real()) < ::sqrt(DBL_MIN) && ::abs(z.imag()) < ::sqrt(DBL_MIN)) {
     double a = z.real() * 4.0;
     double b = z.imag() * 4.0;
     return (a * a + b * b) / 16.0;
