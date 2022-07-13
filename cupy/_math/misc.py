@@ -239,6 +239,26 @@ sign = _core.create_ufunc(
     ''')
 
 
+heaviside = _core.create_ufunc(
+    'cupy_heaviside',
+    ('ee->e', 'ff->f', 'dd->d'),
+    '''
+    if (isnan(in0)) {
+        out0 = in0;
+    } else if (in0 == 0) {
+        out0 = in1;
+    } else {
+        out0 = (in0 > 0);
+    }
+    ''',
+    doc='''Compute the Heaviside step function.
+
+    .. seealso:: :data:`numpy.heaviside`
+
+    '''
+)
+
+
 _float_preamble = '''
 #ifndef NAN
 #define NAN __int_as_float(0x7fffffff)

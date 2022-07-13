@@ -80,6 +80,7 @@ from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 
 # Other special functions
 from cupyx.scipy.special._expn import expn  # NOQA
+from cupyx.scipy.special._logsoftmax import log_softmax  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions

@@ -22,5 +22,5 @@ Other statistical functionality
 .. autosummary::
    :toctree: generated/
 
+   boxcox_llf
    zmap
-
