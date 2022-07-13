@@ -174,7 +174,7 @@ class TestAverage:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={'default': 5e-7})
     @pytest.mark.parametrize('returned', [True, False])
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires('numpy>=1.23.1')
     def test_average_keepdims_axis1(self, xp, dtype, returned):
         a = testing.shaped_random((2, 3), xp, dtype)
         w = testing.shaped_random((2, 3), xp, dtype)
@@ -184,7 +184,7 @@ class TestAverage:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol={'default': 1e-7, numpy.float16: 1e-3})
     @pytest.mark.parametrize('returned', [True, False])
-    @testing.with_requires('numpy>=1.23')
+    @testing.with_requires('numpy>=1.23.1')
     def test_average_keepdims_noaxis(self, xp, dtype, returned):
         a = testing.shaped_random((2, 3), xp, dtype)
         w = testing.shaped_random((2, 3), xp, dtype)

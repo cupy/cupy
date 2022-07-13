@@ -124,7 +124,7 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
             wgt = cupy.broadcast_to(wgt, (a.ndim - 1) * (1,) + wgt.shape)
             wgt = wgt.swapaxes(-1, axis)
 
-        scl = wgt.sum(axis=axis, dtype=result_dtype)
+        scl = wgt.sum(axis=axis, dtype=result_dtype, keepdims=keepdims)
         if cupy.any(scl == 0.0):  # synchronize!
             raise ZeroDivisionError(
                 'Weights sum to zero, can\'t be normalized')
