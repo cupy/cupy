@@ -1,9 +1,7 @@
 import warnings
 
 import cupy
-
 from cupy import testing
-
 import cupyx
 import cupyx.scipy.stats  # NOQA
 
@@ -12,14 +10,14 @@ import scipy.stats  # NOQA
 
 atol = {
     'default': 1e-6,
-    cupy.float16: 5e-2,
-    cupy.float32: 1e-5,
+    cupy.float16: 1e-3,
+    cupy.float32: 1e-6,
     cupy.float64: 1e-14
 }
 rtol = {
     'default': 1e-6,
-    cupy.float16: 5e-2,
-    cupy.float32: 1e-5,
+    cupy.float16: 1e-3,
+    cupy.float32: 1e-6,
     cupy.float64: 1e-14
 }
 
@@ -28,9 +26,14 @@ rtol = {
 class TestBoxcox_llf:
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3, atol=1e-3)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_array_1dim(self, xp, scp, dtype):
-        data = testing.shaped_arange((10,), xp, dtype=dtype)
+        if dtype in (xp.int8, xp.uint8):
+            # Test with smaller shape because of tolerance
+            shape = 5,
+        else:
+            shape = 10,
+        data = testing.shaped_arange(shape, xp, dtype=dtype)
         lmb = 4.0
         return scp.stats.boxcox_llf(lmb, data)
 
