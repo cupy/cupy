@@ -1,5 +1,7 @@
+ctypedef int (*func_ptr)(...) nogil
+
 cdef class SoftLink:
     cdef:
         object _cdll
         str _prefix
-        void* get_func(self, str name)
+        func_ptr get(self, str name)
