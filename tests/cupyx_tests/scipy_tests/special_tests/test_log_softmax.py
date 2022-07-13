@@ -18,7 +18,7 @@ class TestLogSoftmax:
     @testing.for_dtypes('bhilefdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_log_softmax_ndarray_1(self, xp, scp, dtype):
-        a = xp.arange(100, dtype=dtype)
+        a = testing.shaped_random((40, 50), xp, dtype=dtype)
         return scp.special.log_softmax(a)
 
     # Throws warning if we increase scale. Error below:
@@ -26,7 +26,7 @@ class TestLogSoftmax:
     #   exp_tmp = np.exp(tmp)
     @testing.for_dtypes('BHIL')
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_log_softmax_ndarray_1_uint(self, xp, scp, dtype):
+    def test_log_softmax_ndarray_1d(self, xp, scp, dtype):
         a = testing.shaped_random((50,), xp, dtype=dtype, scale=1)
         return scp.special.log_softmax(a)
 
@@ -48,6 +48,13 @@ class TestLogSoftmax:
         a = testing.shaped_random((5, 3), xp, dtype=dtype)
         return scp.special.log_softmax(a)
 
+    # Throws warning if we increase scale.
+    @testing.for_dtypes('BHIL')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_log_softmax_2d_uint_dtypes(self, xp, scp, dtype):
+        a = testing.shaped_random((5, 3), xp, dtype=dtype, scale=1)
+        return scp.special.log_softmax(a)
+
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_log_softmax_axis_arg(self, xp, scp, dtype):
@@ -62,4 +69,15 @@ class TestLogSoftmax:
     )
     def test_log_softmax_3d(self, xp, scp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return scp.special.log_softmax(a, axis=1)
+
+    # Throws warning if we increase scale.
+    @testing.for_dtypes('BHIL')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp',
+        atol=atol_low,
+        rtol=rtol_low
+    )
+    def test_log_softmax_3d_uint_dtypes(self, xp, scp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype, scale=1)
         return scp.special.log_softmax(a, axis=1)
