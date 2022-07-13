@@ -21,13 +21,13 @@ class TestLogSoftmax:
         a = xp.arange(100, dtype=dtype)
         return scp.special.log_softmax(a)
 
-    # Throws warning if we increase the number of inputs. Error below:
+    # Throws warning if we increase scale. Error below:
     # RuntimeWarning: overflow encountered in exp
     #   exp_tmp = np.exp(tmp)
     @testing.for_dtypes('BHIL')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_log_softmax_ndarray_1_uint(self, xp, scp, dtype):
-        a = xp.arange(1, dtype=dtype)
+        a = testing.shaped_random((50,), xp, dtype=dtype, scale=1)
         return scp.special.log_softmax(a)
 
     @testing.for_dtypes('bhilefdFD')
