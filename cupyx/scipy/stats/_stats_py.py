@@ -50,34 +50,6 @@ def _isconst(x):
         return (y[0] == y).all(keepdims=True)
 
 
-def _quiet_nanmean(x):
-    """Compute nanmean for the 1d array x, but quietly return
-    nan if x is all nan. The return value is a 1d array with
-    length 1, so it can be used in cupy.apply_along_axis.
-
-    """
-
-    y = x[~cupy.isnan(x)]
-    if y.size == 0:
-        return cupy.array([cupy.nan])
-    else:
-        return cupy.mean(y, keepdims=True)
-
-
-def _quiet_nanstd(x, ddof=0):
-    """Compute nanstd for the 1d array x, but quietly return
-    nan if x is all nan. The return value is a 1d array
-    with length 1, so it can be used in cupy.apply_along_axis
-
-    """
-
-    y = x[~cupy.isnan(x)]
-    if y.size == 0:
-        return cupy.array([cupy.nan])
-    else:
-        return cupy.std(y, keepdims=True, ddof=ddof)
-
-
 def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
     """Calculate the relative z-scores.
 
@@ -121,15 +93,15 @@ def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
 
     contains_nan, nan_policy = _contains_nan(a, nan_policy)
 
-    if contains_nan and nan_policy == 'omit':
+    if nan_policy == 'omit':
         if axis is None:
-            mn = _quiet_nanmean(a.ravel())
-            std = _quiet_nanstd(a.ravel(), ddof=ddof)
+            mn = cupy.nanmean(a.ravel())
+            std = cupy.nanstd(a.ravel(), ddof=ddof)
             isconst = _isconst(a.ravel())
         else:
-            mn = cupy.apply_along_axis(_quiet_nanmean, axis, a)
-            std = cupy.apply_along_axis(_quiet_nanstd, axis, a, ddof=ddof)
-            isconst = cupy.apply_along_axis(_isconst, axis, a)
+            mn = cupy.nanmean(a, axis=axis, keepdims=True)
+            std = cupy.nanstd(a, axis=axis, keepdims=True, ddof=ddof)
+            isconst = (_first(a, axis) == a).all(axis=axis, keepdims=True)
     else:
         mn = a.mean(axis=axis, keepdims=True)
         std = a.std(axis=axis, ddof=ddof, keepdims=True)
