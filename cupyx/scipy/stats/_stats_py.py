@@ -22,7 +22,7 @@ def _contains_nan(a, nan_policy='propagate'):
                           "checked for nan values. nan values "
                           "will be ignored.", RuntimeWarning)
 
-    if contains_nan and nan_policy == 'raise':
+    if nan_policy == 'raise' and contains_nan:
         raise ValueError("The input contains nan values")
 
     return contains_nan, nan_policy
