@@ -10,22 +10,12 @@ def _contains_nan(a, nan_policy='propagate'):
         raise ValueError("nan_policy must be one of {%s}" %
                          ', '.join("'%s'" % s for s in policies))
 
-    try:
-        contains_nan = cupy.isnan(cupy.sum(a))
-    except TypeError:
-        try:
-            contains_nan = cupy.nan in set(a.ravel())
-        except TypeError:
-            contains_nan = False
-            nan_policy = 'omit'
-            warnings.warn("The input array could not be properly "
-                          "checked for nan values. nan values "
-                          "will be ignored.", RuntimeWarning)
+    contains_nan = cupy.isnan(cupy.sum(a))
 
     if nan_policy == 'raise' and contains_nan:
         raise ValueError("The input contains nan values")
 
-    return contains_nan, nan_policy
+    return nan_policy
 
 
 def _first(arr, axis):
@@ -48,6 +38,42 @@ def _isconst(x):
         return cupy.array([True])
     else:
         return (y[0] == y).all(keepdims=True)
+
+
+def zscore(a, axis=0, ddof=0, nan_policy='propagate'):
+    """Compute the z-score.
+
+    Compute the z-score of each value in the sample, relative to
+    the sample mean and standard deviation.
+
+    Parameters
+    ----------
+    a : array-like
+        An array like object containing the sample data
+    axis : int or None, optional
+        Axis along which to operate. Default is 0. If None,
+        compute over the whole arrsy `a`
+    ddof : int, optional
+        Degrees of freedom correction in the calculation of the
+        standard deviation. Default is 0
+    nan_policy : {'propagate', 'raise', 'omit'}, optional
+        Defines how to handle when input contains nan. 'propagate'
+        returns nan, 'raise' throws an error, 'omit' performs
+        the calculations ignoring nan values. Default is
+        'propagate'. Note that when the value is 'omit',
+        nans in the input also propagate to the output,
+        but they do not affect the z-scores computed
+        for the non-nan values
+
+    Returns
+    -------
+    zscore : array-like
+        The z-scores, standardized by mean and standard deviation of
+        input array `a`
+
+    """
+
+    return zmap(a, a, axis=axis, ddof=ddof, nan_policy=nan_policy)
 
 
 def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
@@ -91,7 +117,7 @@ def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
     if a.size == 0:
         return cupy.empty(a.shape)
 
-    contains_nan, nan_policy = _contains_nan(a, nan_policy)
+    nan_policy = _contains_nan(a, nan_policy)
 
     if nan_policy == 'omit':
         if axis is None:

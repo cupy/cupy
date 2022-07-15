@@ -24,4 +24,5 @@ Other statistical functionality
 
    boxcox_llf
    zmap
+   zscore
 
