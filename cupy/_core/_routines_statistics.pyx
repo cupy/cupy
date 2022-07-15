@@ -681,7 +681,7 @@ cdef _nanmean_func = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('e->q', 'f->q', 'd->q'),
+    ('e->q', 'f->q', 'd->q', 'F->q', 'D->q'),
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 
@@ -695,9 +695,6 @@ cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
 
 cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
-    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
-                                'implemented. Current implemention does not ' \
-                                'convert the dtype'
 
     _count = _count_non_nan(a, axis=axis, keepdims=True)
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)

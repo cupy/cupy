@@ -107,9 +107,9 @@ __host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
   return quot;
 }
 
-template <typename T>
+template <typename T, typename S>
 __host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
-                                                const T& rhs) {
+                                                const S& rhs) {
   return complex<T>(lhs.real() / rhs, lhs.imag() / rhs);
 }
 
