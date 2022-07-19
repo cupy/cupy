@@ -120,7 +120,7 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('32', '53', '62', '72')
+_tegra_archs = ('32', '53', '62', '72', '87')
 
 
 @_util.memoize()
@@ -137,7 +137,8 @@ def _get_max_compute_capability():
         nvrtc_max_compute_capability = '86'
     else:
         # CUDA 11.4+
-        nvrtc_max_compute_capability = '87'
+        # Note: 87 is for Jetson Orin
+        nvrtc_max_compute_capability = '86'
 
     return nvrtc_max_compute_capability
 
