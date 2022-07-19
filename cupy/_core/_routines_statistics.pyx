@@ -696,30 +696,6 @@ cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
 cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
-    dtype_mean = a.dtype
-    dtype_out = numpy.dtype(dtype)
-    if dtype is None:
-        if a.dtype.kind in 'biu':
-            dtype_mean = 'float64'
-            dtype_out = 'float64'
-        else:
-            dtype_mean = a.dtype
-            dtype_out = a.dtype
-            if a.dtype.kind == 'c':
-                dtype_out = numpy.dtype(a.dtype.char.lower())
-
-    if a.dtype.kind == 'c':
-        if out is not None:
-            raise NotImplementedError(
-                'Variance for complex numbers is not implemented when out != '
-                'None. Current implemention does not convert the dtype.'
-            )
-        dtype_out = dtype
-        if dtype in ['D', 'F']:
-            dtype == dtype.lower()
-
-    dtype_out = dtype
-
     _count = _count_non_nan(a, axis=axis, keepdims=True)
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
 
@@ -727,10 +703,8 @@ cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
         return _nanvar_core(
             a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
     else:
-        out = _nanvar_core_out(
+        return _nanvar_core_out(
             a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
-
-    return out.astype(dtype_out, copy=False)
 
 
 cdef _nanvar_complex = '''
