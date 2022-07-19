@@ -64,16 +64,25 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
         if cuda_version >= 11040:
-            arch_list = ['compute_35',
-                         'compute_50',
+            # To utilize CUDA Minor Version Compatibility (`cupy-cuda11x`),
+            # PTX cannot be used:
+            # https://docs.nvidia.com/deploy/cuda-compatibility/index.html#application-considerations
+            # Jetson TX1/TX2 are excluded as they don't support JetPack 5 (CUDA 11.4).
+            arch_list = [('compute_35', 'sm_35'),
+                         ('compute_37', 'sm_37'),
+                         ('compute_50', 'sm_50'),
+                         ('compute_52', 'sm_52'),
+                         # ('compute_53', 'sm_53'),  # Jetson (TX1 / Nano)
                          ('compute_60', 'sm_60'),
                          ('compute_61', 'sm_61'),
+                         # ('compute_62', 'sm_62'),  # Jetson (TX2)
                          ('compute_70', 'sm_70'),
+                         ('compute_72', 'sm_72'),  # Jetson (Xavier)
                          ('compute_75', 'sm_75'),
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
-                         ('compute_87', 'sm_87'),
-                         'compute_87']
+                         ('compute_87', 'sm_87'),  # Jetson (Orin)
+                         'compute_86']
         elif cuda_version >= 11010:
             arch_list = ['compute_35',
                          'compute_50',
