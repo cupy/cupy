@@ -10,7 +10,7 @@ CUDA functionalities
 Device management
 *****************
 
-Starting CuPy v10, the ``with Device`` context manager would no longer respect ``cudaSetDevice()``, see :ref:`change in CuPy Device behavior`.
+Under construction. Starting CuPy v10, the ``with Device`` context manager would no longer respect ``cudaSetDevice()``, see :ref:`change in CuPy Device behavior`.
 
 Stream and event management
 ***************************
