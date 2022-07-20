@@ -85,7 +85,7 @@ The current device set via :meth:`cupy.cuda.Device.use()` will not be reactivate
        pass
    cupy.cuda.Device()  # -> CuPy v10 returns device 0 instead of device 1
 
-This decision was made to serve CuPy *users* beter, but it could lead to surprises to downstream *developers* depending on CuPy,
+This decision was made to serve CuPy *users* better, but it could lead to surprises to downstream *developers* depending on CuPy,
 as essentially CuPy's :class:`~cupy.cuda.Device` context manager no longer respects the CUDA ``cudaSetDevice()`` API. Mixing
 device management functionalities (especially using context manager) from different libraries is highly discouraged.
 
