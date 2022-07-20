@@ -594,7 +594,11 @@ cpdef _ndarray_base concatenate_method(
     if dtype is not None:
         dtype = get_dtype(dtype)
 
-    arrays = list(tup)
+    arrays = []
+    for array in tup:
+        if hasattr(array, '__cupy_get_ndarray__'):
+            array = array.__cupy_get_ndarray__()
+        arrays.append(array)
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:
