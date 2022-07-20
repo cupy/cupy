@@ -73,8 +73,8 @@ NumPy 1.17 is no longer supported.
 Change in :class:`cupy.cuda.Device` Behavior
 --------------------------------------------
 
-Current device set via :meth:`~cupy.cuda.Device.use`` will not be honored by the ``with Device`` block
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Current device set via :meth:`~cupy.cuda.Device.use` will not be honored by the ``with Device`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The current device set via :meth:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
 
