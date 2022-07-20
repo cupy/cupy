@@ -45,7 +45,7 @@ ELSE:
         int nvrtcAddNameExpression(Program, const char*)
         int nvrtcGetLoweredName(Program, const char*, const char**)
 
-    ctypedef int (*f_type)(...) nogil
+    ctypedef int (*f_type)(...) nogil  # NOQA
     IF 11020 <= CUPY_CUDA_VERSION < 12000:
         if _sys.platform == 'linux':
             _libname = 'libnvrtc.so.11.2'

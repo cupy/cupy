@@ -1365,7 +1365,7 @@ cdef extern from '../../cupy_sparse.h' nogil:
     # Build-time version
     int CUSPARSE_VERSION
 
-ctypedef Status (*f_type)(...) nogil
+ctypedef Status (*f_type)(...) nogil  # NOQA
 IF 11010 <= CUPY_CUDA_VERSION < 12000:
     if _sys.platform == 'linux':
         _libname = 'libcusparse.so.11'

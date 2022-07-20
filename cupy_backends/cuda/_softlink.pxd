@@ -1,4 +1,4 @@
-ctypedef int (*func_ptr)(...) nogil
+ctypedef int (*func_ptr)(...) nogil  # NOQA
 
 cdef class SoftLink:
     cdef:
