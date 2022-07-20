@@ -700,11 +700,17 @@ cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
 
     if out is None:
-        return _nanvar_core(
+        out = _nanvar_core(
             a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
     else:
-        return _nanvar_core_out(
+        out = _nanvar_core_out(
             a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+
+    if out.dtype == cupy.complex64:
+        out = out.astype(cupy.float32)
+    elif out.dtype == cupy.complex128:
+        out = out.astype(cupy.float64)
+    return out
 
 
 cdef _nanvar_complex = '''
