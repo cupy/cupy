@@ -31,7 +31,8 @@ class Feature:
 
     def configure(self, compiler: Any, settings: Any) -> bool:
         # Fill `self._version` with the version or NOT_AVAILABLE
-        raise NotImplemented
+        self._version = None
+        return True
 
     def get_version(self) -> Any:
         assert self._version != self._UNDETERMINED, 'not configured yet'
@@ -53,8 +54,6 @@ class Feature:
             return self.modules
         elif key == 'include':
             return self.includes
-        elif key == 'version_method':
-            return self.get_version
         return getattr(self, key)
 
 
@@ -69,8 +68,11 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
     # Note: the followings are renamed
     f.modules = d['file']
     f.includes = d['include']
-    f.configure = d.get('check_method', lambda *args: True)  # type: ignore # NOQA
-    f.get_version = d.get('version_method', lambda: 0)  # type: ignore # NOQA
+    if 'check_method' in d:
+        f.configure = d['check_method']  # type: ignore
+        f._version = None
+        if 'version_method' in d:
+            f.get_version = d['version_method']  # type: ignore
     return f
 
 

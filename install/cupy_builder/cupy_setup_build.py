@@ -150,7 +150,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         # before the configuration process following.
         if ctx.use_hip and module['name'] == 'cuda':
             if module.configure(compiler, settings):
-                hip_version = module['version_method']()
+                hip_version = module.get_version()
                 if hip_version >= 401:
                     rocm_path = build.get_rocm_path()
                     inc_path = os.path.join(rocm_path, 'hipfft', 'include')
@@ -195,8 +195,10 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             status = 'Yes'
             ret.append(module['name'])
 
-        if installed and 'version_method' in module:
-            status += ' (version {})'.format(module['version_method']())
+        if installed:
+            version = module.get_version()
+            if version is not None:
+                status += f' (version {version})'
 
         summary += [
             '  {:<10}: {}'.format(module['name'], status)
