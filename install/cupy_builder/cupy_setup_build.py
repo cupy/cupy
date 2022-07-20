@@ -149,7 +149,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         # directories and libraries to link here depending on ROCm version
         # before the configuration process following.
         if ctx.use_hip and module['name'] == 'cuda':
-            if module['check_method'](compiler, settings):
+            if module.configure(compiler, settings):
                 hip_version = module['version_method']()
                 if hip_version >= 401:
                     rocm_path = build.get_rocm_path()
@@ -180,8 +180,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
-        elif ('check_method' in module and
-                not module['check_method'](compiler, settings)):
+        elif not module.configure(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']

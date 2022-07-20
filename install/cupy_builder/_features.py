@@ -53,8 +53,6 @@ class Feature:
             return self.modules
         elif key == 'include':
             return self.includes
-        elif key == 'check_method':
-            return self.configure
         elif key == 'version_method':
             return self.get_version
         return getattr(self, key)
