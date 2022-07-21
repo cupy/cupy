@@ -703,8 +703,15 @@ cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
         out = _nanvar_core(
             a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
     else:
-        out = _nanvar_core_out(
-            a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+        if a.dtype == cupy.complex64 or dtype == cupy.complex64:
+            out = _nanvar_core_complex64_out(
+                a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+        elif a.dtype == cupy.complex128 or dtype == cupy.complex128:
+            out = _nanvar_core_complex128_out(
+                a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
+        else:
+            out = _nanvar_core_out(
+                a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
 
     if out.dtype == cupy.complex64:
         out = out.astype(cupy.float32)
@@ -736,6 +743,12 @@ template <typename S, typename T>
 __device__ T nanvar_impl(S x, T mean, long long alpha) {
     return (isnan(x) ? T(0) : T(nanvar_complex_cast(x - mean))) / alpha;
 }
+
+template <typename S, typename T>
+__device__ T nanvar_impl_complex(S x, complex<T> mean, long long alpha) {
+    return (isnan(x) ? T(0) : T(nanvar_complex_cast(x - mean))) / alpha;
+}
+
 '''
 
 
@@ -748,6 +761,18 @@ cdef _nanvar_core = ReductionKernel(
 cdef _nanvar_core_out = ReductionKernel(
     'S x, T sum, int64 _count, int64 ddof', 'U out',
     'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
+
+
+cdef _nanvar_core_complex64_out = ReductionKernel(
+    'complex64 x, T sum, int64 _count, int64 ddof', 'float64 out',
+    'nanvar_impl_complex<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
+
+
+cdef _nanvar_core_complex128_out = ReductionKernel(
+    'complex128 x, T sum, int64 _count, int64 ddof', 'float64 out',
+    'nanvar_impl_complex<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
     'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
 
