@@ -700,79 +700,51 @@ cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
 
     if out is None:
-        out = _nanvar_core(
+        if a.dtype == cupy.complex64 or dtype == cupy.complex64:
+            nanvar_core = _nanvar_core_complex64
+        elif a.dtype == cupy.complex128 or dtype == cupy.complex128:
+            nanvar_core = _nanvar_core_complex128
+        else:
+            nanvar_core = _nanvar_core
+        out = nanvar_core(
             a, arrsum, _count, ddof, axis=axis, keepdims=keepdims)
     else:
-        if a.dtype == cupy.complex64 or dtype == cupy.complex64:
-            out = _nanvar_core_complex64_out(
-                a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
-        elif a.dtype == cupy.complex128 or dtype == cupy.complex128:
-            out = _nanvar_core_complex128_out(
-                a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
-        else:
-            out = _nanvar_core_out(
-                a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
-
-    if out.dtype == cupy.complex64:
-        out = out.astype(cupy.float32)
-    elif out.dtype == cupy.complex128:
-        out = out.astype(cupy.float64)
+        _nanvar_core_out(
+            a, arrsum, _count, ddof, out, axis=axis, keepdims=keepdims)
     return out
 
 
-cdef _nanvar_complex = '''
-
-template <typename T>
-__device__ T nanvar_complex_cast(T x) {
-    return x * x;
-}
-
-__device__ float nanvar_complex_cast(const complex<float>& x) {
-    return norm(x);
-}
-
-__device__ double nanvar_complex_cast(const complex<double>& x) {
-    return norm(x);
-}
-
-'''
-
-
-cdef _nanvar_preamble = _nanvar_complex + '''
+cdef _nanvar_preamble = '''
 template <typename S, typename T>
 __device__ T nanvar_impl(S x, T mean, long long alpha) {
-    return (isnan(x) ? T(0) : T(nanvar_complex_cast(x - mean))) / alpha;
+    return (isnan(x) ? T(0) : T((x - mean) * (x - mean))) / alpha;
 }
 
 template <typename S, typename T>
-__device__ T nanvar_impl_complex(S x, complex<T> mean, long long alpha) {
-    return (isnan(x) ? T(0) : T(nanvar_complex_cast(x - mean))) / alpha;
+__device__ T nanvar_impl(complex<S> x, complex<T> mean, long long alpha) {
+    return (isnan(x) ? T(0) : T(norm(x - mean))) / alpha;
 }
-
 '''
 
 
 cdef _nanvar_core = ReductionKernel(
     'S x, T sum, int64 _count, int64 ddof', 'S out',
-    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'nanvar_impl(x, sum / _count, max(_count - ddof, 0LL))',
     'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
+cdef _nanvar_core_complex64 = ReductionKernel(
+    'complex64 x, complex64 sum, int64 _count, int64 ddof', 'float32 out',
+    'nanvar_impl(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core_complex64', preamble=_nanvar_preamble)
+
+cdef _nanvar_core_complex128 = ReductionKernel(
+    'complex128 x, complex128 sum, int64 _count, int64 ddof', 'float64 out',
+    'nanvar_impl(x, sum / _count, max(_count - ddof, 0LL))',
+    'a + b', 'out = a', '0', '_nanvar_core_complex128', preamble=_nanvar_preamble)
 
 cdef _nanvar_core_out = ReductionKernel(
     'S x, T sum, int64 _count, int64 ddof', 'U out',
-    'nanvar_impl<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
-    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
-
-
-cdef _nanvar_core_complex64_out = ReductionKernel(
-    'complex64 x, T sum, int64 _count, int64 ddof', 'float64 out',
-    'nanvar_impl_complex<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
-    'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
-
-
-cdef _nanvar_core_complex128_out = ReductionKernel(
-    'complex128 x, T sum, int64 _count, int64 ddof', 'float64 out',
-    'nanvar_impl_complex<S, T>(x, sum / _count, max(_count - ddof, 0LL))',
+    'nanvar_impl(x, sum / _count, max(_count - ddof, 0LL))',
     'a + b', 'out = a', '0', '_nanvar_core', preamble=_nanvar_preamble)
 
 
