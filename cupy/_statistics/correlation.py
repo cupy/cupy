@@ -153,7 +153,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
 
     w = None
     if fweights is not None:
-        if not type(fweights) == cupy.ndarray:
+        if not isinstance(fweights, cupy.ndarray):
             raise TypeError(
                 "fweights must be a cupy.ndarray")
         if fweights.dtype.char not in 'bBhHiIlLqQ':
@@ -169,7 +169,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
         w = fweights
 
     if aweights is not None:
-        if not type(aweights) == cupy.ndarray:
+        if not isinstance(fweights, cupy.ndarray):
             raise TypeError(
                 "aweights must be a cupy.ndarray")
         aweights = aweights.astype(dtype=float)
@@ -195,7 +195,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
     elif aweights is None:
         fact = w_sum - ddof
     else:
-        fact = w_sum - ddof*sum(w*aweights)/w_sum
+        fact = w_sum - ddof * sum(w*aweights) / w_sum
 
     if fact <= 0:
         warnings.warn('Degrees of freedom <= 0 for slice',
@@ -206,7 +206,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
     if w is None:
         X_T = X.T
     else:
-        X_T = (X*w).T
+        X_T = (X * w).T
     out = X.dot(X_T.conj()) * (1 / cupy.float64(fact))
 
     return out.squeeze()

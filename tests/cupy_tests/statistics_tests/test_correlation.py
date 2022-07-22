@@ -36,6 +36,7 @@ class TestCorrcoef(unittest.TestCase):
         y = testing.shaped_arange((2, 3), xp, dtype)
         return xp.corrcoef(a, y=y, rowvar=False)
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_corrcoef_dtype(self, xp, dtype):
