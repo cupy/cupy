@@ -567,7 +567,6 @@ cdef tuple _decide_params_type_core(
                       for p in in_params])
     out_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
                        for p in out_params])
-
     type_map = _TypeMap(tuple(sorted(type_dict.items())))
     return in_types, out_types, type_map
 
