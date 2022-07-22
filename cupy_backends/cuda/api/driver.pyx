@@ -81,7 +81,7 @@ cpdef get_build_version():
 
     https://github.com/NVIDIA/cuda-python/blob/v11.4.0/cuda/ccuda.pxd#L2268
 
-    In CuPy codebase, use CUPY_CUDA_VERSION compile-time constant instead of
+    In CuPy codebase, use `runtime.runtimeGetVersion()` instead of
     this function to change the behavior based on the target CUDA version.
     """
 
@@ -135,6 +135,13 @@ cpdef ctxDestroy(intptr_t ctx):
     with nogil:
         status = cuCtxDestroy(<Context>ctx)
     check_status(status)
+
+cpdef int ctxGetDevice() except? -1:
+    cdef Device dev
+    with nogil:
+        status = cuCtxGetDevice(&dev)
+    check_status(status)
+    return dev
 
 
 ###############################################################################
@@ -388,3 +395,15 @@ cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
             NULL, dynamicSMemSize, blockSizeLimit)
     check_status(status)
     return minGridSize, blockSize
+
+
+###############################################################################
+# Stream management
+###############################################################################
+
+cpdef intptr_t streamGetCtx(intptr_t stream) except? 0:
+    cdef Context ctx
+    with nogil:
+        status = cuStreamGetCtx(<Stream>stream, &ctx)
+    check_status(status)
+    return <intptr_t>ctx

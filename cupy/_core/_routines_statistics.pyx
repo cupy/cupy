@@ -8,10 +8,11 @@ from cupy._core import _reduction
 from cupy._core._reduction import create_reduction_func
 from cupy._core._reduction import ReductionKernel
 from cupy._core._kernel import ElementwiseKernel
+from cupy._core._ufuncs import elementwise_copy
 
 from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 from cupy.cuda import cub
 
@@ -23,7 +24,8 @@ except ImportError:
     cutensor = None
 
 
-cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
+cdef _ndarray_base _ndarray_max(
+        _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
@@ -42,7 +44,8 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
+cdef _ndarray_base _ndarray_min(
+        _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
@@ -61,7 +64,7 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
+cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
@@ -89,7 +92,8 @@ cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
-cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
+cdef _ndarray_base _ndarray_argmax(
+        _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
@@ -106,7 +110,8 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
-cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
+cdef _ndarray_base _ndarray_argmin(
+        _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
@@ -117,7 +122,8 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
+cdef _ndarray_base _ndarray_mean(
+        _ndarray_base self, axis, dtype, out, keepdims):
     cdef Py_ssize_t n
 
     dtype_sum = dtype_out = dtype
@@ -162,12 +168,14 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
     return result
 
 
-cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims):
+cdef _ndarray_base _ndarray_var(
+        _ndarray_base self, axis, dtype, out, ddof, keepdims):
     return _var(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims):
+cdef _ndarray_base _ndarray_std(
+        _ndarray_base self, axis, dtype, out, ddof, keepdims):
     return _std(
         self, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
@@ -336,12 +344,12 @@ cdef _argmax = create_reduction_func(
     None, _min_max_preamble, sort_reduce_axis=False)
 
 
-cpdef ndarray _nanargmax(ndarray a, axis, out, dtype, keepdims):
+cpdef _ndarray_base _nanargmax(_ndarray_base a, axis, out, dtype, keepdims):
     return _nanargmax_func(
         a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
-cpdef ndarray _nanargmin(ndarray a, axis, out, dtype, keepdims):
+cpdef _ndarray_base _nanargmin(_ndarray_base a, axis, out, dtype, keepdims):
     return _nanargmin_func(
         a, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
@@ -374,8 +382,12 @@ cdef _nanargmax_func = create_reduction_func(
     None, _min_max_preamble, sort_reduce_axis=False)
 
 
-cpdef ndarray _median(
-        ndarray a, axis, out, overwrite_input, keepdims):
+cdef _exists_nan = ReductionKernel(
+    'T x', 'bool y', 'isnan(x)', 'a || b', 'y = a', 'false', '_exists_nan')
+
+
+cpdef _ndarray_base _median(
+        _ndarray_base a, axis, out, overwrite_input, keepdims):
 
     keep_ndim = a.ndim
 
@@ -437,13 +449,16 @@ cpdef ndarray _median(
 
     out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+    if part.dtype.kind in 'fc':
+        isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
+        out = cupy.where(isnan, numpy.nan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
 
 
-cpdef ndarray _nanmedian(
-        ndarray a, axis, out, overwrite_input, keepdims):
+cpdef _ndarray_base _nanmedian(
+        _ndarray_base a, axis, out, overwrite_input, keepdims):
 
     if axis is None:
         axis = tuple(range(a.ndim))
@@ -468,15 +483,13 @@ cpdef ndarray _nanmedian(
     a = cupy.ascontiguousarray(a)
 
     n_reduce = numpy.prod(reduce_shape)
-    n_reduce_each = cupy.empty(out_shape, dtype='int32')
-    n_reduce_each[...] = n_reduce
+    n_reduce_each = cupy.full(out_shape, n_reduce, dtype='int32')
     if a_data_ptr == a.data.ptr and overwrite_input is False:
         a = a.copy()
     _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
     a = cupy.sort(a, axis=-1)
 
-    b = cupy.empty(out_shape, dtype=a.dtype)
-    b[...] = cupy.nan
+    b = cupy.full(out_shape, cupy.nan, dtype=a.dtype)
     _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
 
     if keepdims:
@@ -489,7 +502,7 @@ cpdef ndarray _nanmedian(
     if out is None:
         out = b
     else:
-        out[...] = b
+        elementwise_copy(b, out)
     return out
 
 
@@ -522,15 +535,16 @@ cdef _pickup_median_kernel = ElementwiseKernel(
 )
 
 
-cdef ndarray _mean(
-        ndarray a, axis=None, dtype=None, out=None, keepdims=False):
+cdef _ndarray_base _mean(
+        _ndarray_base a, axis=None, dtype=None, out=None, keepdims=False):
     if a.size == 0:
         # Return nan; see also https://github.com/numpy/numpy/issues/13582
         return _mean_core_empty(a, axis, dtype, out, keepdims)
     return _mean_core(a, axis, dtype, out, keepdims)
 
-cdef ndarray _var(
-        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+cdef _ndarray_base _var(
+        _ndarray_base a, axis=None, dtype=None, out=None, ddof=0,
+        keepdims=False):
 
     if axis is None:
         axis = tuple(range(a.ndim))
@@ -575,8 +589,9 @@ cdef ndarray _var(
     return out.astype(dtype_out, copy=False)
 
 
-cdef ndarray _std(
-        ndarray a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+cdef _ndarray_base _std(
+        _ndarray_base a, axis=None, dtype=None, out=None, ddof=0,
+        keepdims=False):
     ret = _var(
         a, axis=axis, dtype=dtype, out=None, ddof=ddof, keepdims=keepdims)
     return _math._sqrt(ret, dtype=dtype, out=out)
@@ -670,16 +685,16 @@ _count_non_nan = create_reduction_func(
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 
-cpdef ndarray _nanmean(ndarray a, axis, dtype, out, keepdims):
+cpdef _ndarray_base _nanmean(_ndarray_base a, axis, dtype, out, keepdims):
     return _nanmean_func(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-cpdef ndarray _nanstd(ndarray a, axis, dtype, out, ddof, keepdims):
+cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims):
     var = _nanvar(a, axis, dtype, None, ddof, keepdims)
     return _math._sqrt(var, dtype=dtype, out=out)
 
 
-cpdef ndarray _nanvar(ndarray a, axis, dtype, out, ddof, keepdims):
+cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
     assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
                                 'implemented. Current implemention does not ' \
                                 'convert the dtype'

@@ -12,7 +12,7 @@ from cupy._core._kernel cimport _broadcast
 from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
 from cupy._core._kernel cimport _get_kernel_params
-from cupy._core._kernel cimport _get_out_args
+from cupy._core._kernel cimport _get_out_args_from_optionals
 from cupy._core._kernel cimport _get_out_args_with_params
 from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport _reduce_dims
@@ -24,7 +24,7 @@ from cupy._core._scalar import get_typename as _get_typename
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _create_ndarray_from_shape_strides
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
@@ -37,6 +37,7 @@ import warnings
 
 import numpy
 
+import cupy
 from cupy._core._kernel import _get_param_info
 from cupy._core._kernel import _decide_params_type
 from cupy._core._ufuncs import elementwise_copy
@@ -172,7 +173,7 @@ cdef shape_t _set_permuted_args(
             if p.raw:
                 raise NotImplementedError('Illegal conditions')
         for i, a in enumerate(args):
-            if isinstance(a, ndarray):
+            if isinstance(a, _ndarray_base):
                 args[i] = _manipulation._transpose(a, axis_permutes)
         out_shape.reserve(len(axis_permutes))
         for i in axis_permutes:
@@ -183,17 +184,17 @@ cdef shape_t _set_permuted_args(
 
 
 cdef Py_ssize_t _get_contiguous_size(
-        list args, tuple params, Py_ssize_t ndim,
-        Py_ssize_t out_ndim) except -1:
+        list args, tuple params, list out_shape, Py_ssize_t ndim) except -1:
     '''
     get contiguous size in the *output* axis (not *reduce* axis!)
     '''
     cdef int i, j
     cdef ParameterInfo p
     cdef Py_ssize_t contiguous_size, tmp_contiguous_size, itemsize
+    out_ndim = len(out_shape)
     contiguous_size = 1
     for i, a in enumerate(args):
-        if not isinstance(a, ndarray):
+        if not isinstance(a, _ndarray_base):
             continue
         p = params[i]
         if p.raw:
@@ -203,7 +204,7 @@ cdef Py_ssize_t _get_contiguous_size(
         for j in range(out_ndim):
             if a._strides[ndim-j-1] != tmp_contiguous_size * itemsize:
                 break
-            tmp_contiguous_size *= a._shape[ndim-j-1]
+            tmp_contiguous_size *= out_shape[out_ndim-j-1]
         contiguous_size = max(contiguous_size, tmp_contiguous_size)
     return contiguous_size
 
@@ -240,7 +241,7 @@ cdef tuple _sort_axis(tuple axis, tuple strides):
 cdef tuple _get_shape_and_strides(list in_args, list out_args):
     cdef list shape_and_strides = []
     for x in in_args + out_args:
-        if isinstance(x, ndarray):
+        if isinstance(x, _ndarray_base):
             shape_and_strides.append(x.shape)
             shape_and_strides.append(x.strides)
         else:
@@ -250,9 +251,9 @@ cdef tuple _get_shape_and_strides(list in_args, list out_args):
 
 
 cdef _optimizer_copy_arg(a):
-    if isinstance(a, ndarray):
+    if isinstance(a, _ndarray_base):
         x = _create_ndarray_from_shape_strides(
-            a._shape, a._strides, a.dtype)
+            cupy.ndarray, a._shape, a._strides, a.dtype, None)
         assert a.data.device_id == x.data.device_id
         elementwise_copy(a, x)
         return x
@@ -284,7 +285,7 @@ cdef class _AbstractReductionKernel:
         # This is for profiling mechanisms to auto infer a name
         self.__name__ = name
 
-    cpdef ndarray _call(
+    cpdef _ndarray_base _call(
             self,
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
@@ -297,7 +298,7 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t contiguous_size = -1
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
         cdef shape_t in_shape, out_shape
-        cdef ndarray ret
+        cdef _ndarray_base ret
         cdef bint cub_success
 
         if dtype is not None:
@@ -332,7 +333,7 @@ cdef class _AbstractReductionKernel:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        in_args = [x if isinstance(x, ndarray) else
+        in_args = [x if isinstance(x, _ndarray_base) else
                    _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
                    for x, t in zip(in_args, in_types)]
 
@@ -368,7 +369,7 @@ cdef class _AbstractReductionKernel:
         if optimize_context is None:
             # Calculate manually
             contiguous_size = _get_contiguous_size(
-                in_args, self.in_params, in_shape.size(), out_shape.size())
+                in_args, self.in_params, out_shape, in_shape.size())
             block_size, block_stride, out_block_num = _get_block_specs(
                 internal.prod(in_shape),
                 internal.prod(out_shape),
@@ -407,7 +408,7 @@ cdef class _AbstractReductionKernel:
         out_args = [_optimizer_copy_arg(a) for a in out_args]
 
         contiguous_size = _get_contiguous_size(
-            in_args, self.in_params, len(in_shape), len(out_shape))
+            in_args, self.in_params, out_shape, len(in_shape))
         block_size, block_stride, default_out_block_num = _get_block_specs(
             internal.prod(in_shape),
             internal.prod(out_shape),
@@ -537,19 +538,21 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         self._routine_cache = {}
         self._sort_reduce_axis = sort_reduce_axis
 
-    def __call__(self, object a, axis=None, dtype=None, ndarray out=None,
+    def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
                  bint keepdims=False):
 
-        cdef ndarray arr
+        cdef _ndarray_base arr
 
-        if isinstance(a, ndarray):
+        if isinstance(a, _ndarray_base):
             arr = a
         elif hasattr(a, '__cuda_array_interface__'):
             arr = _convert_object_with_cuda_array_interface(a)
+        elif hasattr(a, '__cupy_get_ndarray__'):
+            arr = a.__cupy_get_ndarray__()
         else:
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
-                (ndarray, type(a)))
+                (cupy.ndarray, type(a)))
         in_args = [arr]
 
         dev_id = device.get_device_id()
@@ -603,8 +606,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef list _get_out_args(
             self, list out_args, tuple out_types, const shape_t& out_shape):
-        return _get_out_args(
-            out_args, out_types, out_shape, 'unsafe')
+        return _get_out_args_from_optionals(
+            cupy.ndarray, out_args, out_types, out_shape, 'unsafe', None)
 
     cdef function.Function _get_function(
             self,
@@ -755,10 +758,10 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self, list in_args, list out_args, dtype):
 
         in_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, ndarray) else None
+            [a.dtype.type if isinstance(a, _ndarray_base) else None
              for a in in_args])
         out_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, ndarray) else None
+            [a.dtype.type if isinstance(a, _ndarray_base) else None
              for a in out_args])
         in_types, out_types, type_map = _decide_params_type(
             self.in_params, self.out_params,

@@ -9,6 +9,8 @@ function ActivatePython($version) {
         $pydir = "Python38"
     } elseif ($version -eq "3.9") {
         $pydir = "Python39"
+    } elseif ($version -eq "3.10") {
+        $pydir = "Python310"
     } else {
         throw "Unsupported Python version: $version"
     }
@@ -40,6 +42,14 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_3
     } elseif ($version -eq "11.4") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_4
+    } elseif ($version -eq "11.5") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_5
+    } elseif ($version -eq "11.6") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_6
+    } elseif ($version -eq "11.7") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_7
+    } elseif ($version -eq "11.x") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_7
     } else {
         throw "Unsupported CUDA version: $version"
     }

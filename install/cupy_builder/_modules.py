@@ -24,6 +24,7 @@ _cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
+    'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
     'cupy._core._carray',
     'cupy._core._cub_reduction',
@@ -370,8 +371,9 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
             HIP_cub,
             HIP_nccl,
             HIP_random,
+            HIP_thrust,
             COMMON_dlpack,
-        ] + [HIP_thrust] if context.enable_thrust else []
+        ]
 
     return [
         CUDA_cuda,
@@ -383,6 +385,7 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         CUDA_cub,
         CUDA_jitify,
         CUDA_random,
+        CUDA_thrust,
         CUDA_cusparselt,
         COMMON_dlpack,
-    ] + [CUDA_thrust] if context.enable_thrust else []
+    ]

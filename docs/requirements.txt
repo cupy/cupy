@@ -3,5 +3,5 @@ pydata_sphinx_theme==0.6.3
 sphinx-copybutton==0.4.0
 
 Cython==0.29.*
-numpy==1.22.*
-scipy==1.7.*
+numpy==1.23.*
+scipy==1.8.*

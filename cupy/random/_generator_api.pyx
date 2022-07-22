@@ -4,8 +4,9 @@ import numpy
 from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 
 import cupy
+from cupy import _core
 from cupy.cuda cimport stream
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api import runtime
 
@@ -68,7 +69,7 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
 
 
-cdef ndarray _array_data(ndarray x):
+cdef _ndarray_base _array_data(_ndarray_base x):
     return cupy.array((x.data.ptr, x.ndim) + x.shape + x.strides)
 
 
@@ -143,15 +144,15 @@ class Generator:
         .. seealso::
             - :meth:`numpy.random.Generator.random`
         """
-        cdef ndarray y
+        cdef _ndarray_base y
 
         if out is not None:
             self._check_output_array(dtype, size, out)
 
-        y = ndarray(size if size is not None else (), numpy.float64)
+        y = _core.ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, random_uniform, y, ())
         if out is not None:
-            out[...] = y
+            _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
         # cython cant call astype with the default values for
@@ -187,7 +188,7 @@ class Generator:
         .. seealso::
             - :meth:`numpy.random.Generator.integers`
         """
-        cdef ndarray y
+        cdef _ndarray_base y
         if high is None:
             lo = 0
             hi1 = int(low)
@@ -219,7 +220,7 @@ class Generator:
             raise ValueError(
                 f'high - low must be within uint64 range (actual: {diff})')
 
-        y = ndarray(size if size is not None else (), pdtype)
+        y = _core.ndarray(size if size is not None else (), pdtype)
         if pdtype is numpy.uint32:
             _launch_dist(self.bit_generator, interval_32, y, (diff, mask))
         else:
@@ -249,16 +250,16 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.beta`
         """
-        cdef ndarray y
+        cdef _ndarray_base y
         cdef a_arr, b_arr
 
-        if not isinstance(a, ndarray):
+        if not isinstance(a, _ndarray_base):
             if type(a) in (float, int):
                 a = cupy.asarray(a, numpy.float64)
             else:
                 raise TypeError('a is required to be a cupy.ndarray'
                                 ' or a scalar')
-        if not isinstance(b, ndarray):
+        if not isinstance(b, _ndarray_base):
             if type(b) in (float, int):
                 b = cupy.asarray(b, numpy.float64)
             else:
@@ -270,7 +271,7 @@ class Generator:
         elif size is None:
             size = cupy.broadcast(a, b).shape
 
-        y = ndarray(size, numpy.float64)
+        y = _core.ndarray(size, numpy.float64)
 
         a = cupy.broadcast_to(a, y.shape)
         b = cupy.broadcast_to(b, y.shape)
@@ -306,9 +307,9 @@ class Generator:
             :meth:`numpy.random.Generator.chisquare`
         """
 
-        cdef ndarray y
+        cdef _ndarray_base y
 
-        if not isinstance(df, ndarray):
+        if not isinstance(df, _ndarray_base):
             if type(df) in (float, int):
                 df = cupy.asarray(df, numpy.float64)
             else:
@@ -322,7 +323,7 @@ class Generator:
         if size is None:
             size = df.shape
 
-        y = ndarray(size, numpy.float64)
+        y = _core.ndarray(size, numpy.float64)
 
         df = cupy.broadcast_to(df, y.shape)
         y = self.standard_gamma(df / 2)
@@ -353,7 +354,7 @@ class Generator:
             :meth:`numpy.random.Generator.dirichlet`
         """
 
-        if not isinstance(alpha, ndarray):
+        if not isinstance(alpha, _ndarray_base):
             if type(alpha) in (float, int):
                 alpha = cupy.asarray(alpha, numpy.float64)
             else:
@@ -424,7 +425,7 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.f`
         """
-        if not isinstance(dfnum, ndarray):
+        if not isinstance(dfnum, _ndarray_base):
             if type(dfnum) in (float, int):
                 dfnum = cupy.asarray(dfnum, numpy.float64)
             else:
@@ -433,7 +434,7 @@ class Generator:
         else:
             dfnum = dfnum.astype('d', copy=False)
 
-        if not isinstance(dfden, ndarray):
+        if not isinstance(dfden, _ndarray_base):
             if type(dfden) in (float, int):
                 dfden = cupy.asarray(dfden, numpy.float64)
             else:
@@ -471,12 +472,12 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.geometric`
         """
-        cdef ndarray y
-        cdef ndarray p_arr
+        cdef _ndarray_base y
+        cdef _ndarray_base p_arr
 
-        if not isinstance(p, ndarray):
+        if not isinstance(p, _ndarray_base):
             if type(p) in (float, int):
-                p_a = ndarray((), numpy.float64)
+                p_a = _core.ndarray((), numpy.float64)
                 p_a.fill(p)
                 p = p_a
             else:
@@ -489,7 +490,7 @@ class Generator:
             size = (size,)
         elif size is None:
             size = p.shape
-        y = ndarray(size if size is not None else (), numpy.int64)
+        y = _core.ndarray(size if size is not None else (), numpy.int64)
 
         p = cupy.broadcast_to(p, y.shape)
         p_arr = _array_data(p)
@@ -522,14 +523,14 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.hypergeometric`
         """
-        cdef ndarray y
-        cdef ndarray ngood_arr
-        cdef ndarray nbad_arr
-        cdef ndarray nsample_arr
+        cdef _ndarray_base y
+        cdef _ndarray_base ngood_arr
+        cdef _ndarray_base nbad_arr
+        cdef _ndarray_base nsample_arr
 
-        if not isinstance(ngood, ndarray):
+        if not isinstance(ngood, _ndarray_base):
             if type(ngood) in (float, int):
-                ngood_a = ndarray((), numpy.int64)
+                ngood_a = _core.ndarray((), numpy.int64)
                 ngood_a.fill(ngood)
                 ngood = ngood_a
             else:
@@ -538,9 +539,9 @@ class Generator:
         else:
             ngood = ngood.astype(numpy.int64, copy=False)
 
-        if not isinstance(nbad, ndarray):
+        if not isinstance(nbad, _ndarray_base):
             if type(nbad) in (float, int):
-                nbad_a = ndarray((), numpy.int64)
+                nbad_a = _core.ndarray((), numpy.int64)
                 nbad_a.fill(nbad)
                 nbad = nbad_a
             else:
@@ -549,9 +550,9 @@ class Generator:
         else:
             nbad = nbad.astype(numpy.int64, copy=False)
 
-        if not isinstance(nsample, ndarray):
+        if not isinstance(nsample, _ndarray_base):
             if type(nsample) in (float, int):
-                nsample_a = ndarray((), numpy.int64)
+                nsample_a = _core.ndarray((), numpy.int64)
                 nsample_a.fill(nsample)
                 nsample = nsample_a
             else:
@@ -564,7 +565,7 @@ class Generator:
             size = (size,)
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
-        y = ndarray(size, numpy.int64)
+        y = _core.ndarray(size, numpy.int64)
 
         ngood = cupy.broadcast_to(ngood, y.shape)
         nbad = cupy.broadcast_to(nbad, y.shape)
@@ -602,10 +603,10 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.logseries`
         """
-        cdef ndarray y
-        cdef ndarray p_arr
+        cdef _ndarray_base y
+        cdef _ndarray_base p_arr
 
-        if not isinstance(p, ndarray):
+        if not isinstance(p, _ndarray_base):
             if type(p) in (float, int):
                 p = cupy.asarray(p, numpy.float64)
             else:
@@ -619,7 +620,7 @@ class Generator:
         elif size is None:
             size = p.shape
 
-        y = ndarray(size, numpy.int64)
+        y = _core.ndarray(size, numpy.int64)
 
         p = cupy.broadcast_to(p, y.shape)
         p_arr = _array_data(p)
@@ -654,7 +655,7 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.standard_exponential`
         """
-        cdef ndarray y
+        cdef _ndarray_base y
 
         if method == 'zig':
             raise NotImplementedError('Ziggurat method is not supported')
@@ -662,10 +663,10 @@ class Generator:
         if out is not None:
             self._check_output_array(dtype, size, out)
 
-        y = ndarray(size if size is not None else (), numpy.float64)
+        y = _core.ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, exponential, y, ())
         if out is not None:
-            out[...] = y
+            _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
         # cython cant call astype with the default values for
@@ -694,12 +695,12 @@ class Generator:
         .. seealso::
             :meth:`numpy.random.Generator.poisson`
         """
-        cdef ndarray y
-        cdef ndarray lam_arr
+        cdef _ndarray_base y
+        cdef _ndarray_base lam_arr
 
-        if not isinstance(lam, ndarray):
+        if not isinstance(lam, _ndarray_base):
             if type(lam) in (float, int):
-                lam_a = ndarray((), numpy.float64)
+                lam_a = _core.ndarray((), numpy.float64)
                 lam_a.fill(lam)
                 lam = lam_a
             else:
@@ -715,7 +716,7 @@ class Generator:
         elif size is None:
             size = lam.shape
 
-        y = ndarray(size if size is not None else (), numpy.int64)
+        y = _core.ndarray(size if size is not None else (), numpy.int64)
 
         lam = cupy.broadcast_to(lam, y.shape)
         lam_arr = _array_data(lam)
@@ -745,7 +746,7 @@ class Generator:
             :meth:`numpy.random.Generator.power`
         """
 
-        if not isinstance(a, ndarray):
+        if not isinstance(a, _ndarray_base):
             if type(a) in (float, int):
                 a = cupy.asarray(a, numpy.float64)
             else:
@@ -785,13 +786,13 @@ class Generator:
         .. seealso::
             - :meth:`numpy.random.Generator.standard_normal`
         """
-        cdef ndarray y
+        cdef _ndarray_base y
 
         if out is not None:
             self._check_output_array(dtype, size, out)
             y = out
         else:
-            y = ndarray(size if size is not None else (), dtype)
+            y = _core.ndarray(size if size is not None else (), dtype)
 
         if y.dtype.char not in ('f', 'd'):
             raise TypeError(
@@ -854,12 +855,12 @@ class Generator:
         .. seealso::
             - :meth:`numpy.random.Generator.standard_gamma`
         """
-        cdef ndarray y
-        cdef ndarray shape_arr
+        cdef _ndarray_base y
+        cdef _ndarray_base shape_arr
 
-        if not isinstance(shape, ndarray):
+        if not isinstance(shape, _ndarray_base):
             if type(shape) in (float, int):
-                shape_a = ndarray((), numpy.float64)
+                shape_a = _core.ndarray((), numpy.float64)
                 shape_a.fill(shape)
                 shape = shape_a
             else:
@@ -884,7 +885,7 @@ class Generator:
                 y = out
 
         if y is None:
-            y = ndarray(size if size is not None else (), numpy.float64)
+            y = _core.ndarray(size if size is not None else (), numpy.float64)
 
         if numpy.dtype(dtype).char not in ('f', 'd'):
             raise TypeError(
@@ -896,7 +897,7 @@ class Generator:
 
         _launch_dist(self.bit_generator, standard_gamma, y, (shape_ptr,))
         if out is not None and y is not out:
-            out[...] = y
+            _core.elementwise_copy(y, out)
             y = out
         # we cast the array to a python object because
         # cython cant call astype with the default values for
@@ -929,19 +930,19 @@ class Generator:
         .. seealso::
            :meth:`numpy.random.Generator.binomial`
         """
-        cdef ndarray y
-        cdef ndarray n_arr
-        cdef ndarray p_arr
+        cdef _ndarray_base y
+        cdef _ndarray_base n_arr
+        cdef _ndarray_base p_arr
         cdef intptr_t binomial_state_ptr
 
-        if isinstance(n, ndarray):
+        if isinstance(n, _ndarray_base):
             n = n.astype(numpy.int64, copy=False)
         elif type(n) in (float, int):
             n = cupy.asarray(n, numpy.int64)
         else:
             raise TypeError('n is required to be a cupy.ndarray or a scalar')
 
-        if isinstance(p, ndarray):
+        if isinstance(p, _ndarray_base):
             p = p.astype(numpy.float64, copy=False)
         elif type(p) is float:
             p = cupy.asarray(p, numpy.float64)
@@ -951,7 +952,7 @@ class Generator:
         if size is None:
             size = cupy.broadcast(n, p).shape
 
-        y = ndarray(size if size is not None else (), numpy.int64)
+        y = _core.ndarray(size if size is not None else (), numpy.int64)
 
         n = cupy.broadcast_to(n, y.shape)
         p = cupy.broadcast_to(p, y.shape)
@@ -994,7 +995,7 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef state = <intptr_t>state_ptr
     cdef y_ptr = <intptr_t>out.data.ptr
     cdef ssize_t size = out.size
-    cdef ndarray chunk
+    cdef _ndarray_base chunk
     cdef int generator = bit_generator.generator
     # out is always contiguous, when out parameter is specified the checks
     # ensure it

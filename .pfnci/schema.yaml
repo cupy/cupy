@@ -47,22 +47,31 @@ cuda:
     full_version: "11.4.0"
   "11.5":
     full_version: "11.5.0"
+  "11.6":
+    full_version: "11.6.0"
+  "11.7":
+    full_version: "11.7.0"
 rocm:
   null:
     full_version: null
     packages: []
-  "4.0":
-    full_version: "4.0.1"
-    packages: ['rocm-dev', 'hipblas', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "4.2":
-    full_version: "4.2"
+  "4.3":
+    full_version: "4.3.1"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
-  "4.3":
-    full_version: "4.3"
+  "5.0":
+    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "5.1":
+    full_version: "5.1.3"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "5.2":
+    full_version: "5.2"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -106,6 +115,7 @@ nccl:
       "11.0":
       "11.4":
       "11.5":
+      "11.6":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -121,18 +131,33 @@ cutensor:
       "11.3":
       "11.4":
       "11.5":
+      "11.6":
+  "1.5":
+    spec: "1.5.*"
+    cuda:
+      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
+      "11.0":
+      "11.1":
+      "11.2":
+      "11.3":
+      "11.4":
+      "11.5":
+      "11.6":
+      "11.7":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.1.0":
-    spec: "0.1.0.*"
+  "0.2.0":
+    spec: "0.2.0.*"
     cuda:
       "11.2":
       "11.3":
       "11.4":
       "11.5":
+      "11.6":
+      "11.7":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -194,6 +219,28 @@ cudnn:
         alias: "11.5"
       "11.5":
         alias: "11.5"
+      "11.6":
+        alias: "11.5"
+  "8.4":
+    spec: "8.4.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.6"
+      "11.1":
+        alias: "11.6"
+      "11.2":
+        alias: "11.6"
+      "11.3":
+        alias: "11.6"
+      "11.4":
+        alias: "11.6"
+      "11.5":
+        alias: "11.6"
+      "11.6":
+        alias: "11.6"
+      "11.7":
+        alias: "11.6"
 
 ###############################################################################
 # Python
@@ -222,20 +269,6 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.18":
-    spec: "==1.18.*"
-    python:
-      # - "3.5"
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-  "1.19":
-    spec: "==1.19.*"
-    python:
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-      - "3.9"
   "1.20":
     spec: "==1.20.*"
     python:
@@ -252,46 +285,21 @@ numpy:
   "1.22":
     spec: "==1.22.*"
     python:
-      - "3.7"
+      - "3.8"
+      - "3.9"
+      - "3.10"
+  "1.23":
+    spec: "==1.23.*"
+    python:
       - "3.8"
       - "3.9"
       - "3.10"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
+  # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
     spec: null
-  "1.4":
-    spec: "==1.4.*"
-    python:
-      # - "3.5"
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-    numpy:
-      # - "1.13"
-      # - "1.14"
-      # - "1.15"
-      # - "1.16"
-      # - "1.17"
-      - "1.18"
-      - "1.19"
-      - "1.20"
-      - "1.21"
-  "1.5":
-    spec: "==1.5.*"
-    python:
-      # - "3.6"
-      - "3.7"
-      - "3.8"
-      - "3.9"
-    numpy:
-      # - "1.16"
-      # - "1.17"
-      - "1.18"
-      - "1.19"
-      - "1.20"
-      - "1.21"
   "1.6":
     spec: "==1.6.*"
     python:
@@ -301,11 +309,9 @@ scipy:
     numpy:
       # - "1.16"
       # - "1.17"
-      - "1.18"
-      - "1.19"
+      # - "1.18"
+      # - "1.19"
       - "1.20"
-      - "1.21"
-      - "1.22"
   "1.7":
     spec: "==1.7.*"
     python:
@@ -316,11 +322,25 @@ scipy:
     numpy:
       # - "1.16"
       # - "1.17"
-      - "1.18"
-      - "1.19"
+      # - "1.18"
+      # - "1.19"
       - "1.20"
       - "1.21"
       - "1.22"
+  "1.8":
+    spec: "==1.8.*"
+    python:
+      - "3.8"
+      - "3.9"
+      - "3.10"
+    numpy:
+      # - "1.17"
+      # - "1.18"
+      # - "1.19"
+      - "1.20"
+      - "1.21"
+      - "1.22"
+      - "1.23"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:
@@ -346,6 +366,7 @@ cuda-python:
 ###############################################################################
 env:CUPY_ACCELERATORS:
   null:
+  "":
   "cub":
   "cutensor":
   "cub,cutensor":
@@ -359,3 +380,4 @@ test:
   "unit-multi":
   "unit-slow":
   "example":
+  "benchmark":

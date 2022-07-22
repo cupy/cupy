@@ -544,19 +544,17 @@ class TestCooMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(2.0)
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_numpy_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(numpy.dtype(self.dtype).type(2.0))
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
@@ -861,7 +859,9 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @testing.with_requires('scipy!=1.8.0rc1')  # scipy/15210
+    @pytest.mark.xfail(
+        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1',
+        reason='See scipy/15210')
     def test_rmul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -898,7 +898,6 @@ class TestCooMatrixScipyComparison:
                 x @ m
 
     # __pow__
-    @testing.with_requires('scipy!=1.8.0rc1')  # scipy/15224
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
@@ -1114,6 +1113,12 @@ class TestCooMatrixDiagonal:
     def test_diagonal(self, dtype):
         scipy_a, cupyx_a = self._make_matrix(dtype)
         m, n = self.shape
+        for k in range(-m, n+1):
+            scipy_diag = scipy_a.diagonal(k=k)
+            cupyx_diag = cupyx_a.diagonal(k=k)
+            testing.assert_allclose(scipy_diag, cupyx_diag)
+        scipy_a.has_canonical_format = False
+        cupyx_a.has_canonical_format = False
         for k in range(-m, n+1):
             scipy_diag = scipy_a.diagonal(k=k)
             cupyx_diag = cupyx_a.diagonal(k=k)

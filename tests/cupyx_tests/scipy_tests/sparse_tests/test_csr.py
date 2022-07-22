@@ -600,19 +600,17 @@ class TestCsrMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(2.0)
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(2.0)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_numpy_scalar(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = self.make(xp, sp, self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(numpy.dtype(self.dtype).type(2.0))
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_dot_numpy_scalar(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csr(self, xp, sp):
@@ -925,8 +923,12 @@ class TestCsrMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @testing.with_requires('scipy!=1.8.0rc1')  # scipy/15210
     def test_rmul_unsupported(self):
+        if (
+            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
+            self.make_method not in ['_make_empty', '_make_shape']
+        ):
+            pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
             if m.nnz == 0:
@@ -1243,7 +1245,6 @@ class TestCsrMatrixScipyComparison:
 @testing.with_requires('scipy')
 class TestCsrMatrixPowScipyComparison:
 
-    @testing.with_requires('scipy!=1.8.0rc1')  # scipy/15224
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
@@ -1304,7 +1305,7 @@ class TestCsrMatrixSum:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1526,7 +1527,7 @@ class TestCsrMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1549,7 +1550,7 @@ class TestCsrMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1795,7 +1796,7 @@ class TestCubSpmv:
             return m * x
 
         # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse.csr.cub.device_csrmv'
+        func = 'cupyx.scipy.sparse._csr.cub.device_csrmv'
         with testing.AssertFunctionIsCalled(func):
             m * x
         # ...then perform the actual computation

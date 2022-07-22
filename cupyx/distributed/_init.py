@@ -10,7 +10,8 @@ _backends = {'nccl': NCCLBackend}
 
 
 def init_process_group(
-        n_devices, rank, *, backend='nccl', host=None, port=None):
+        n_devices, rank, *, backend='nccl', host=None, port=None,
+        use_mpi=False):
     """Start `cupyx.distributed` and obtain a communicator.
 
     This call initializes the distributed environment, it needs to be
@@ -63,6 +64,10 @@ def init_process_group(
             defaults to `None`.
         port (int): port for the process rendezvous on initialization
             defaults to `None`.
+        use_mpi (bool): if ``False``, it avoids using MPI for synchronization
+            and uses the provided TCP server for exchanging CPU only
+            information.
+            defaults to `False`.
     Returns:
         Backend: object used to perform communications, adheres to the
             :class:`~cupyx.distributed.Backend` specification:
@@ -81,4 +86,4 @@ def init_process_group(
         port = int(os.environ.get(
             'CUPYX_DISTRIBUTED_PORT', _store._DEFAULT_PORT))
 
-    return _backends[backend](n_devices, rank, host, port)
+    return _backends[backend](n_devices, rank, host, port, use_mpi)

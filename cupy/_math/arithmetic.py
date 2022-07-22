@@ -111,6 +111,17 @@ true_divide = _core.true_divide
 
 floor_divide = _core.floor_divide
 
+float_power = _core.create_ufunc(
+    'cupy_float_power',
+    ('dd->d', 'FF->D',
+     ('DD->D', 'out0 = in1 == in1_type(0) ? in1_type(1): pow(in0, in1)')),
+    'out0 = pow(in0, in1)',
+    doc='''First array elements raised to powers from second array, element-wise.
+
+    .. seealso:: :data:`numpy.float_power`
+
+    '''
+)
 
 fmod = _core.create_ufunc(
     'cupy_fmod',

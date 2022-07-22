@@ -5,6 +5,45 @@ Upgrade Guide
 This page covers changes introduced in each major version that users should know when migrating from older releases.
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
+CuPy v11
+========
+
+Unified Binary Package for CUDA 11.2+
+-------------------------------------
+
+CuPy v11 provides a unified binary package named ``cupy-cuda11x`` that supports all CUDA 11.2+ releases.
+This replaces per-CUDA version binary packages (``cupy-cuda112`` ~ ``cupy-cuda117``).
+
+Note that CUDA 11.1 or earlier still requires per-CUDA version binary packages.
+``cupy-cuda102``, ``cupy-cuda110``, and ``cupy-cuda111`` will be provided for CUDA 10.2, 11.0, and 11.1, respectively.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v11.
+
+* ROCm 4.2 or earlier
+* NumPy 1.19 or earlier
+* SciPy 1.5 or earlier
+
+CUB Enabled by Default
+----------------------
+
+CuPy v11 accelerates the computation with CUB by default.
+In case needed, you can turn it off by setting :envvar:`CUPY_ACCELERATORS` environment variable to ``""``.
+
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.21 and SciPy 1.7 to NumPy 1.23 and SciPy 1.8.
+CuPy v11 will follow the upstream products' specifications of these baseline versions.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.7 and ROCm 5.0.
+
+
 CuPy v10
 ========
 
@@ -396,30 +435,42 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
+   * - v12
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v11
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     - `latest <https://docs.cupy.dev/en/stable/install.html>`__
-   * - v10
      - 3.0~
      - 10.2~
-     - 4.0~
-     - 1.3~
+     - 4.3~
+     - 1.4~
      - 2.8~
      - 7.6~
      - 3.7~
-     - 1.18~
-     - 1.4~
-     - NumPy 1.21 & SciPy 1.7
+     - 1.20~
+     - 1.6~
+     - NumPy 1.23 & SciPy 1.8
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+   * - v10
+     - 3.0~8.x
+     - 10.2~11.7
+     - 4.0 & 4.2 & 4.3 & 5.0
+     - 1.3~1.5
+     - 2.8~2.11
+     - 7.6~8.4
+     - 3.7~3.10
+     - 1.18~1.22
+     - 1.4~1.8
+     - NumPy 1.21 & SciPy 1.7
+     - `v10.6.0 <https://docs.cupy.dev/en/v10.6.0/install.html>`__
    * - v9
      - 3.0~8.x
      - 9.2~11.5

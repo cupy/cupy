@@ -20,6 +20,7 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 from cupy import _core
 
 from cupyx.scipy.special._digamma import polevl_definition
+from cupyx.scipy.special._gamma import gamma_definition
 from cupyx.scipy.special._zeta import zeta_definition
 
 _zeta_c = zeta_definition
@@ -111,8 +112,14 @@ _unity_c_partial = (
     + """
 // part of cephes/unity.c
 
+
 /* log(1 + x) - x */
+#ifdef __HIP_DEVICE_COMPILE__
+// For some reason ROCm 4.3 crashes with the noinline in this function
 __device__ double log1pmx(double x)
+#else
+__noinline__ __device__ double log1pmx(double x)
+#endif
 {
     if (fabs(x) < 0.5) {
         int n;
@@ -137,7 +144,7 @@ __device__ double log1pmx(double x)
 
 
 /* Compute lgam(x + 1) around x = 0 using its Taylor series. */
-__device__ double lgam1p_taylor(double x)
+__noinline__ __device__ double lgam1p_taylor(double x)
 {
     int n;
     double xfac, coeff, res;
@@ -161,7 +168,7 @@ __device__ double lgam1p_taylor(double x)
 
 
 /* Compute lgam(x + 1). */
-__device__ double lgam1p(double x)
+__noinline__ __device__ double lgam1p(double x)
 {
     if (fabs(x) <= 0.5) {
         return lgam1p_taylor(x);
@@ -397,7 +404,7 @@ _igam_h = """
 #define d_K 25
 #define d_N 25
 
-static const double d[d_K][d_N] =
+__device__ static const double d[d_K][d_N] =
 {{-3.3333333333333333e-1, 8.3333333333333333e-2, -1.4814814814814815e-2, 1.1574074074074074e-3, 3.527336860670194e-4, -1.7875514403292181e-4, 3.9192631785224378e-5, -2.1854485106799922e-6, -1.85406221071516e-6, 8.296711340953086e-7, -1.7665952736826079e-7, 6.7078535434014986e-9, 1.0261809784240308e-8, -4.3820360184533532e-9, 9.1476995822367902e-10, -2.551419399494625e-11, -5.8307721325504251e-11, 2.4361948020667416e-11, -5.0276692801141756e-12, 1.1004392031956135e-13, 3.3717632624009854e-13, -1.3923887224181621e-13, 2.8534893807047443e-14, -5.1391118342425726e-16, -1.9752288294349443e-15},
 {-1.8518518518518519e-3, -3.4722222222222222e-3, 2.6455026455026455e-3, -9.9022633744855967e-4, 2.0576131687242798e-4, -4.0187757201646091e-7, -1.8098550334489978e-5, 7.6491609160811101e-6, -1.6120900894563446e-6, 4.6471278028074343e-9, 1.378633446915721e-7, -5.752545603517705e-8, 1.1951628599778147e-8, -1.7543241719747648e-11, -1.0091543710600413e-9, 4.1627929918425826e-10, -8.5639070264929806e-11, 6.0672151016047586e-14, 7.1624989648114854e-12, -2.9331866437714371e-12, 5.9966963656836887e-13, -2.1671786527323314e-16, -4.9783399723692616e-14, 2.0291628823713425e-14, -4.13125571381061e-15},
 {4.1335978835978836e-3, -2.6813271604938272e-3, 7.7160493827160494e-4, 2.0093878600823045e-6, -1.0736653226365161e-4, 5.2923448829120125e-5, -1.2760635188618728e-5, 3.4235787340961381e-8, 1.3721957309062933e-6, -6.298992138380055e-7, 1.4280614206064242e-7, -2.0477098421990866e-10, -1.4092529910867521e-8, 6.228974084922022e-9, -1.3670488396617113e-9, 9.4283561590146782e-13, 1.2872252400089318e-10, -5.5645956134363321e-11, 1.1975935546366981e-11, -4.1689782251838635e-15, -1.0940640427884594e-12, 4.6622399463901357e-13, -9.905105763906906e-14, 1.8931876768373515e-17, 8.8592218725911273e-15},
@@ -437,7 +444,7 @@ _igam_preamble = (
 // from scipy/special/cephes/igam.c
 
 /* Compute igam/igamc using DLMF 8.12.3/8.12.4. */
-__device__ double  asymptotic_series(double a, double x, int func)
+__noinline__ __device__ double  asymptotic_series(double a, double x, int func)
 {
     int k, n, sgn;
     int maxpow = 0;
@@ -498,7 +505,7 @@ __device__ double  asymptotic_series(double a, double x, int func)
 /* Compute igamc using DLMF 8.7.3. This is related to the series in
  * igam_series but extra care is taken to avoid cancellation.
  */
-__device__ double  igamc_series(double a, double x)
+__noinline__ __device__ double  igamc_series(double a, double x)
 {
     int n;
     double fac = 1;
@@ -527,7 +534,7 @@ __device__ double  igamc_series(double a, double x)
  * corrected from (15) and (16) in [2] by replacing exp(x - a) with
  * exp(a - x).
  */
-__device__ double igam_fac(double a, double x)
+__noinline__ __device__ double igam_fac(double a, double x)
 {
     double ax, fac, res, num;
 
@@ -555,7 +562,7 @@ __device__ double igam_fac(double a, double x)
 
 
 /* Compute igamc using DLMF 8.9.2. */
-__device__ double  igamc_continued_fraction(double a, double x)
+__noinline__ __device__ double  igamc_continued_fraction(double a, double x)
 {
     int i;
     double ans, ax, c, yc, r, t, y, z;
@@ -610,7 +617,7 @@ __device__ double  igamc_continued_fraction(double a, double x)
 
 
 /* Compute igam using DLMF 8.11.4. */
-__device__ double  igam_series(double a, double x)
+__noinline__ __device__ double  igam_series(double a, double x)
 {
     int i;
     double ans, ax, c, r;
@@ -637,7 +644,7 @@ __device__ double  igam_series(double a, double x)
     return (ans * ax / a);
 }
 
-__device__ double igamc(double a, double x)
+__noinline__ __device__ double igamc(double a, double x)
 {
     double absxma_a;
 
@@ -692,7 +699,7 @@ __device__ double igamc(double a, double x)
 }
 
 
-__device__ double igam(double a, double x)
+__noinline__ __device__ double igam(double a, double x)
 {
     double absxma_a;
 
@@ -739,14 +746,15 @@ __device__ double igam(double a, double x)
 
 _igami_preamble = (
     _igam_preamble
+    + gamma_definition
     + """
 
 // from scipy/special/cephes/igami.c
 
-__device__ double igamci(double a, double q);
-__device__ double igami(double a, double q);
+__noinline__ __device__ double igamci(double a, double q);
+__noinline__ __device__ double igami(double a, double q);
 
-__device__ double find_inverse_s(double p, double q)
+__noinline__ __device__ double find_inverse_s(double p, double q)
 {
     /*
      * Computation of the Incomplete Gamma Function Ratios and their Inverse
@@ -775,7 +783,7 @@ __device__ double find_inverse_s(double p, double q)
 }
 
 
-__device__ double didonato_SN(double a, double x, unsigned N, double tolerance)
+__noinline__ __device__ double didonato_SN(double a, double x, unsigned N, double tolerance)
 {
     /*
      * Computation of the Incomplete Gamma Function Ratios and their Inverse
@@ -804,21 +812,7 @@ __device__ double didonato_SN(double a, double x, unsigned N, double tolerance)
 }
 
 
-__device__ double Gamma(double in0)
-{
-    double out0;
-    if (isinf(in0) && in0 < 0) {
-        out0 = -1.0 / 0.0;
-    } else if (in0 < 0. && in0 == floor(in0)) {
-        out0 = 1.0 / 0.0;
-    } else {
-        out0 = tgamma(in0);
-    }
-    return out0;
-}
-
-
-__device__ double find_inverse_gamma(double a, double p, double q)
+__noinline__ __device__ double find_inverse_gamma(double a, double p, double q)
 {
     /*
      * In order to understand what's going on here, you will
@@ -1007,7 +1001,7 @@ __device__ double find_inverse_gamma(double a, double p, double q)
 }
 
 
-__device__ double igamci(double a, double q)
+__noinline__ __device__ double igamci(double a, double q)
 {
     int i;
     double x, fac, f_fp, fpp_fp;
@@ -1048,7 +1042,7 @@ __device__ double igamci(double a, double q)
 }
 
 
-__device__ double igami(double a, double p)
+__noinline__ __device__ double igami(double a, double p)
 {
     int i;
     double x, fac, f_fp, fpp_fp;

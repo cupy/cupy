@@ -2,18 +2,20 @@ import distutils.ccompiler
 import os
 import os.path
 import platform
+import shutil
 import sys
 import subprocess
-from typing import List
+from typing import Any, Optional, List
 
 import setuptools
+import setuptools.msvc
 from setuptools import Extension
 
 from cupy_builder._context import Context
 import cupy_builder.install_build as build
 
 
-def _nvcc_gencode_options(cuda_version):
+def _nvcc_gencode_options(cuda_version: int) -> List[str]:
     """Returns NVCC GPU code generation options."""
 
     if sys.argv == ['setup.py', 'develop']:
@@ -61,17 +63,32 @@ def _nvcc_gencode_options(cuda_version):
         #
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
+        aarch64 = (platform.machine() == 'aarch64')
         if cuda_version >= 11040:
-            arch_list = ['compute_35',
-                         'compute_50',
+            # To utilize CUDA Minor Version Compatibility (`cupy-cuda11x`),
+            # CUBIN must be generated for all supported compute capabilities
+            # instead of PTX:
+            # https://docs.nvidia.com/deploy/cuda-compatibility/index.html#application-considerations
+            arch_list = [('compute_35', 'sm_35'),
+                         ('compute_37', 'sm_37'),
+                         ('compute_50', 'sm_50'),
+                         ('compute_52', 'sm_52'),
                          ('compute_60', 'sm_60'),
                          ('compute_61', 'sm_61'),
                          ('compute_70', 'sm_70'),
                          ('compute_75', 'sm_75'),
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
-                         ('compute_87', 'sm_87'),
-                         'compute_87']
+                         'compute_86']
+            if aarch64:
+                # Jetson TX1/TX2 are excluded as they don't support JetPack 5
+                # (CUDA 11.4).
+                arch_list += [
+                    # ('compute_53', 'sm_53'),  # Jetson (TX1 / Nano)
+                    # ('compute_62', 'sm_62'),  # Jetson (TX2)
+                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
+                    ('compute_87', 'sm_87'),  # Jetson (Orin)
+                ]
         elif cuda_version >= 11010:
             arch_list = ['compute_35',
                          'compute_50',
@@ -122,31 +139,29 @@ class DeviceCompilerBase:
     def __init__(self, ctx: Context):
         self._context = ctx
 
-    def _get_preprocess_options(self, ext: Extension):
+    def _get_preprocess_options(self, ext: Extension) -> List[str]:
         # https://setuptools.pypa.io/en/latest/deprecated/distutils/apiref.html#distutils.core.Extension
         # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/command/build_ext.py#L524-L526
-        incdirs = ext.include_dirs[:]  # type: ignore
-        macros = ext.define_macros[:]  # type: ignore
-        for undef in ext.undef_macros:  # type: ignore
+        incdirs = ext.include_dirs[:]
+        macros: List[Any] = ext.define_macros[:]
+        for undef in ext.undef_macros:
             macros.append((undef,))
         return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
 
-    def spawn(self, commands: List[str]):
+    def spawn(self, commands: List[str]) -> None:
         print('Command:', commands)
         subprocess.check_call(commands)
 
 
 class DeviceCompilerUnix(DeviceCompilerBase):
 
-    def compile(self, obj: str, src: str, ext: Extension):
+    def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
-            return self._compile_unix_hipcc(
-                obj, src, ext)
+            self._compile_unix_hipcc(obj, src, ext)
         else:
-            return self._compile_unix_nvcc(
-                obj, src, ext)
+            self._compile_unix_nvcc(obj, src, ext)
 
-    def _compile_unix_nvcc(self, obj: str, src: str, ext: Extension):
+    def _compile_unix_nvcc(self, obj: str, src: str, ext: Extension) -> None:
         cc_args = self._get_preprocess_options(ext) + ['-c']
 
         # For CUDA C source files, compile them with NVCC.
@@ -168,7 +183,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
 
-    def _compile_unix_hipcc(self, obj: str, src: str, ext: Extension):
+    def _compile_unix_hipcc(self, obj: str, src: str, ext: Extension) -> None:
         cc_args = self._get_preprocess_options(ext) + ['-c']
 
         # For CUDA C source files, compile them with HIPCC.
@@ -189,7 +204,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
 
 class DeviceCompilerWin32(DeviceCompilerBase):
 
-    def compile(self, obj: str, src: str, ext: Extension):
+    def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
             raise RuntimeError('ROCm is not supported on Windows')
 
@@ -209,17 +224,24 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
             postargs += [f'-t{num_threads}']
         cl_exe_path = self._find_host_compiler_path()
-        if cl_exe_path is None:
-            print('Warning: Host compiler path could not be detected')
-        else:
+        if cl_exe_path is not None:
+            print(f'Using host compiler at {cl_exe_path}')
             postargs += ['--compiler-bindir', cl_exe_path]
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
-    def _find_host_compiler_path(self):
-        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+    def _find_host_compiler_path(self) -> Optional[str]:
+        # c.f. cupy.cuda.compiler._get_extra_path_for_msvc
+        cl_exe = shutil.which('cl.exe')
+        if cl_exe:
+            # The compiler is already on PATH, no extra path needed.
+            return None
+
+        vctools: List[str] = setuptools.msvc.EnvironmentInfo(
+            platform.machine()).VCTools
         for path in vctools:
             cl_exe = os.path.join(path, 'cl.exe')
             if os.path.exists(cl_exe):
                 return path
+        print(f'Warning: cl.exe could not be found in {vctools}')
         return None

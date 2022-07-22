@@ -50,14 +50,6 @@ nvrtcResult nvrtcGetCUBIN(...) {
     return HIPRTC_ERROR_COMPILATION;
 }
 
-nvrtcResult nvrtcGetNumSupportedArchs(...) {
-    return HIPRTC_ERROR_INTERNAL_ERROR;
-}
-
-nvrtcResult nvrtcGetSupportedArchs(...) {
-    return HIPRTC_ERROR_INTERNAL_ERROR;
-}
-
 nvrtcResult nvrtcGetProgramLogSize(nvrtcProgram prog, std::size_t* logSizeRet) {
     return hiprtcGetProgramLogSize(prog, logSizeRet);
 }
