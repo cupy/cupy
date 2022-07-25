@@ -42,8 +42,9 @@ cdef _ndarray_base _ndarray_conj(_ndarray_base self):
 
 cdef _ndarray_base _ndarray_real_getter(_ndarray_base self):
     if self.dtype.kind == 'c':
-        view = core.ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
+        dtype = get_dtype(self.dtype.char.lower())
+        view = core.ndarray.__new__(
+            type(self), shape=self._shape, dtype=dtype, _obj=self,
             memptr=self.data, strides=self._strides)
         (<_ndarray_base>view).base = (
             self.base if self.base is not None else self)
@@ -66,13 +67,13 @@ cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
         # aligning with NumPy behavior.
         if memptr.ptr != 0:
             memptr = memptr + self.dtype.itemsize // 2
-        view = core.ndarray(
-            shape=self._shape, dtype=dtype, memptr=memptr,
+        view = core.ndarray.__new__(
+            type(self), shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
         (<_ndarray_base>view).base = (
             self.base if self.base is not None else self)
         return view
-    new_array = core.ndarray(self.shape, dtype=self.dtype)
+    new_array = core.ndarray.__new__(type(self), self.shape, dtype=self.dtype)
     new_array.fill(0)
     return new_array
 
