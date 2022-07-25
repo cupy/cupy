@@ -735,14 +735,16 @@ cdef _nanvar_core = ReductionKernel(
 
 cdef _nanvar_core_complex64 = ReductionKernel(
     'complex64 x, complex64 sum, int64 _count, int64 ddof', 'float32 out',
-    'nanvar_impl(x, sum / static_cast<float>(_count), max(_count - ddof, 0LL))',
+    'nanvar_impl(x, sum / static_cast<float>(_count),
+                 max(_count - ddof, 0LL))',
     'a + b', 'out = a', '0', '_nanvar_core_complex64',
     preamble=_nanvar_preamble)
 
 
 cdef _nanvar_core_complex128 = ReductionKernel(
     'complex128 x, complex128 sum, int64 _count, int64 ddof', 'float64 out',
-    'nanvar_impl(x, sum / static_cast<double>(_count), max(_count - ddof, 0LL))',
+    'nanvar_impl(x, sum / static_cast<double>(_count),
+                 max(_count - ddof, 0LL))',
     'a + b', 'out = a', '0', '_nanvar_core_complex128',
     preamble=_nanvar_preamble)
 
