@@ -129,6 +129,7 @@ Other special functions
    :toctree: generated/
 
    expn
+   log_softmax
    zeta
 
 
