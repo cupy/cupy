@@ -113,12 +113,6 @@ __host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
   return complex<T>(lhs.real() / rhs, lhs.imag() / rhs);
 }
 
-template <typename T, typename S>
-__host__ __device__ inline complex<T> operator/(const complex<T>& lhs,
-                                                const S& rhs) {
-  return complex<T>(lhs.real() / rhs, lhs.imag() / rhs);
-}
-
 template <typename T>
 __host__ __device__ inline complex<T> operator/(const T& lhs,
                                                 const complex<T>& rhs) {
