@@ -45,7 +45,12 @@ PACKAGES_SDIST = [
 
 
 class AutoDetectionFailed(Exception):
-    pass
+    def __str__(self) -> str:
+        return f'''
+============================================================
+{super().__str__()}
+============================================================
+'''
 
 
 def _log(msg: str) -> None:
