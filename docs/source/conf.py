@@ -32,8 +32,8 @@ if rtd_version == 'latest':
 else:
     tag = 'v{}'.format(__version__)
 extlinks = {
-    'blob': ('https://github.com/cupy/cupy/blob/{}/%s'.format(tag), ''),
-    'tree': ('https://github.com/cupy/cupy/tree/{}/%s'.format(tag), ''),
+    'blob': ('https://github.com/cupy/cupy/blob/{}/%s'.format(tag), '%s'),
+    'tree': ('https://github.com/cupy/cupy/tree/{}/%s'.format(tag), '%s'),
 }
 
 
