@@ -70,8 +70,7 @@ def test_validate_index():
     assert_raises(IndexError, lambda: a[[0, 1]])
     assert_raises(IndexError, lambda: a[(0, 1), (0, 1)])
     assert_raises(IndexError, lambda: a[[0, 1]])
-    # WAR: uncomment after resolving cupy/cupy#6893
-    #assert_raises(IndexError, lambda: a[cp.array([[0, 1]])])
+    assert_raises(IndexError, lambda: a[cp.array([[0, 1]])])
 
     # Multiaxis indices must contain exactly as many indices as dimensions
     assert_raises(IndexError, lambda: a[()])

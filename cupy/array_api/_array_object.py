@@ -289,11 +289,11 @@ class Array:
         for i in _key:
             if isinstance(i, bool) or not (
                 isinstance(i, SupportsIndex)  # i.e. ints
+                or isinstance(i, Array)
+                or isinstance(i, np.ndarray)
                 or isinstance(i, slice)
                 or i == Ellipsis
                 or i is None
-                or isinstance(i, Array)
-                or isinstance(i, np.ndarray)
             ):
                 raise IndexError(
                     f"Single-axes index {i} has {type(i)=}, but only "
