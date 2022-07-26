@@ -4,7 +4,6 @@ import os
 import sys
 from typing import Dict, List, Optional
 
-import setuptools
 from setuptools import setup
 
 
