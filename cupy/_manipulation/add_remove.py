@@ -124,8 +124,14 @@ def trim_zeros(filt, trim='fb'):
     return filt[start:end]
 
 
+@_core.fusion.fuse()
+def _unique_update_mask_equal_nan(mask, x0):
+    mask1 = cupy.logical_not(cupy.isnan(x0))
+    mask[:] = cupy.logical_and(mask, mask1)
+
+
 def unique(ar, return_index=False, return_inverse=False,
-           return_counts=False, axis=None):
+           return_counts=False, axis=None, *, equal_nan=True):
     """Find the unique elements of an array.
 
     Returns the sorted unique elements of an array. There are three optional
@@ -151,6 +157,8 @@ def unique(ar, return_index=False, return_inverse=False,
             axis will be flattened and treated as the elements of a 1-D array
             with the dimension of the given axis, see the notes for more
             details. The default is None.
+        equal_nan(bool, optional): If True, collapse multiple NaN values in the
+            return array into one.
 
     Returns:
         cupy.ndarray or tuple:
@@ -181,7 +189,8 @@ def unique(ar, return_index=False, return_inverse=False,
     if axis is None:
         ret = _unique_1d(ar, return_index=return_index,
                          return_inverse=return_inverse,
-                         return_counts=return_counts)
+                         return_counts=return_counts,
+                         equal_nan=equal_nan)
         return ret
 
     ar = cupy.moveaxis(ar, axis, 0)
@@ -196,6 +205,10 @@ def unique(ar, return_index=False, return_inverse=False,
         for i in range(0, ar.shape[1]):
             left = ar[idx1, i]
             right = ar[idx2, i]
+
+            if cupy.isnan(left) and cupy.isnan(right):
+                if not equal_nan:
+                    return True
 
             if left < right:
                 return True
@@ -233,6 +246,7 @@ def unique(ar, return_index=False, return_inverse=False,
         mask = cupy.empty(ar.shape, dtype=cupy.bool_)
         mask[:1] = True
         mask[1:] = ar[1:] != ar[:-1]
+
         mask = cupy.any(mask, axis=1)
     else:
         # If empty, then the mask should grab the first empty array as the
@@ -267,7 +281,7 @@ def unique(ar, return_index=False, return_inverse=False,
 
 
 def _unique_1d(ar, return_index=False, return_inverse=False,
-               return_counts=False):
+               return_counts=False, equal_nan=True):
     ar = cupy.asarray(ar).flatten()
 
     if return_index or return_inverse:
@@ -279,6 +293,8 @@ def _unique_1d(ar, return_index=False, return_inverse=False,
     mask = cupy.empty(aux.shape, dtype=cupy.bool_)
     mask[:1] = True
     mask[1:] = aux[1:] != aux[:-1]
+    if equal_nan:
+        _unique_update_mask_equal_nan(mask[1:], aux[:-1])
 
     ret = aux[mask]
     if not return_index and not return_inverse and not return_counts:
