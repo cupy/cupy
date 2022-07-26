@@ -86,7 +86,7 @@ class TestArithmeticUnary:
         if isinstance(arg1, numpy.ndarray):
             arg1 = xp.asarray(arg1)
 
-        if self.name in ('angle'):
+        if self.name in {'angle'}:
             y = getattr(xp, self.name)(arg1, self.deg)
         else:
             y = getattr(xp, self.name)(arg1)
