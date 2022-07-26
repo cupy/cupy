@@ -229,7 +229,9 @@ def infer_best_package() -> str:
         if installed[0] in PACKAGES_OUTDATED:
             raise AutoDetectionFailed(
                 f'You have CuPy package "{installed[0]}" installed, but the'
-                f' package is not available for version {VERSION}.')
+                f' package is not available for version {VERSION}.\n'
+                'Hint: cupy-cuda{112~117} has been merged to cupy-cuda11x in '
+                'CuPy v11. Uninstall the package and try again.')
         return installed[0]
 
     # Try CUDA.
