@@ -14,14 +14,7 @@ PACKAGES = [
     'cupy-cuda102',
     'cupy-cuda110',
     'cupy-cuda111',
-    'cupy-cuda112',
-    'cupy-cuda113',
-    'cupy-cuda114',
-    'cupy-cuda115',
-    'cupy-cuda116',
-    'cupy-cuda117',
-    'cupy-rocm-4-0',
-    'cupy-rocm-4-2',
+    'cupy-cuda11x',
     'cupy-rocm-4-3',
     'cupy-rocm-5-0',
 ]
@@ -34,6 +27,14 @@ PACKAGES_OUTDATED = [
     'cupy-cuda92',
     'cupy-cuda100',
     'cupy-cuda101',
+    'cupy-cuda112',
+    'cupy-cuda113',
+    'cupy-cuda114',
+    'cupy-cuda115',
+    'cupy-cuda116',
+    'cupy-cuda117',
+    'cupy-rocm-4-0',
+    'cupy-rocm-4-2',
 ]
 
 # List of sdist packages.
