@@ -38,7 +38,7 @@ class TestCorrcoef(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def test_corrcoef_dtype(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         y = testing.shaped_arange((2, 3), xp, dtype)
@@ -56,16 +56,21 @@ class TestCov(unittest.TestCase):
         return a, y
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def check(self, a_shape, y_shape=None, rowvar=True, bias=False,
               ddof=None, xp=None, dtype=None,
-              fweights=None, aweights=None):
+              fweights=None, aweights=None, name=None):
         a, y = self.generate_input(a_shape, y_shape, xp, dtype)
+        if fweights is not None:
+            fweights = name.asarray(fweights)
+        if aweights is not None:
+            aweights = name.asarray(aweights)
+        # print(type(fweights))
         return xp.cov(a, y, rowvar, bias, ddof,
                       fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def check_warns(self, a_shape, y_shape=None, rowvar=True, bias=False,
                     ddof=None, xp=None, dtype=None,
                     fweights=None, aweights=None):
@@ -92,11 +97,11 @@ class TestCov(unittest.TestCase):
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)
         self.check((2, 3))
-        self.check((1, 3), fweights=cupy.array([1, 4, 1]))
-        self.check((1, 3), aweights=cupy.array([1.0, 4.0, 1.0]))
-        self.check((1, 3), bias=True, aweights=cupy.array([1.0, 4.0, 1.0]))
-        self.check((1, 3), fweights=cupy.array([1, 4, 1]),
-                   aweights=cupy.array([1.0, 4.0, 1.0]))
+        self.check((1, 3), fweights=(1, 4, 1))
+        self.check((1, 3), aweights=(1.0, 4.0, 1.0))
+        self.check((1, 3), bias=True, aweights=(1.0, 4.0, 1.0))
+        self.check((1, 3), fweights=(1, 4, 1),
+                   aweights=(1.0, 4.0, 1.0))
 
     def test_cov_warns(self):
         self.check_warns((2, 3), ddof=3)
