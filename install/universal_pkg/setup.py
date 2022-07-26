@@ -177,24 +177,9 @@ def _cuda_version_to_package(ver: int) -> str:
     elif ver < 11020:
         # CUDA 11.1
         suffix = '111'
-    elif ver < 11030:
-        # CUDA 11.2
-        suffix = '112'
-    elif ver < 11040:
-        # CUDA 11.3
-        suffix = '113'
-    elif ver < 11050:
-        # CUDA 11.4
-        suffix = '114'
-    elif ver < 11060:
-        # CUDA 11.5
-        suffix = '115'
-    elif ver < 11070:
-        # CUDA 11.6
-        suffix = '116'
-    elif ver < 11080:
-        # CUDA 11.7
-        suffix = '117'
+    elif ver < 12000:
+        # CUDA 11.2 ~ 11.x
+        suffix = '11x'
     else:
         raise AutoDetectionFailed(
             f'Your CUDA version ({ver}) is too new.')
@@ -213,13 +198,7 @@ def _rocm_version_to_package(ver: int) -> str:
     ROCm 5.0.0 = 50013601
     ROCm 5.1.0 = 50120531
     """
-    if ver == 3212:
-        # ROCm 4.0
-        suffix = '4-0'
-    elif ver == 3275:
-        # ROCm 4.2
-        suffix = '4-2'
-    elif 4_03_00000 <= ver < 4_04_00000:
+    if 4_03_00000 <= ver < 4_04_00000:
         # ROCm 4.3
         suffix = '4-3'
     elif 5_00_00000 <= ver < 5_01_00000:
