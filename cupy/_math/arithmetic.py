@@ -30,9 +30,6 @@ negative = _core.negative
 conjugate = _core.conjugate
 
 
-angle = _core.angle
-
-
 # cupy.real is not a ufunc because it returns a view.
 # The ufunc implementation is used by fusion.
 _real_ufunc = _core.create_ufunc(
@@ -63,6 +60,17 @@ _imag_ufunc = _core.create_ufunc(
     .. seealso:: :func:`numpy.imag`
 
     ''')
+
+
+def angle(z, deg=False):
+    '''Returns the angle of the complex argument.
+
+    .. seealso:: :func:`numpy.angle`
+
+    '''
+    if deg:
+        return _core.angle_deg(z)
+    return _core.angle(z)
 
 
 def real(val):
