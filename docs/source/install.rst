@@ -448,7 +448,6 @@ The following features are not available due to the limitation of ROCm or becaus
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
 * Per-thread default stream
-* Random generation API (``cupy.random.Generator``) for ROCm versions older than 4.3
 
 The following features are not yet supported:
 

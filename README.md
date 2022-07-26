@@ -49,8 +49,6 @@ Choose the right package for your platform.
 | CUDA 11.5     | `pip install cupy-cuda115`    |
 | CUDA 11.6     | `pip install cupy-cuda116`    |
 | CUDA 11.7     | `pip install cupy-cuda117`    |
-| ROCm 4.0 (*)  | `pip install cupy-rocm-4-0`   |
-| ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
 | ROCm 4.3 (*)  | `pip install cupy-rocm-4-3`   |
 | ROCm 5.0 (*)  | `pip install cupy-rocm-5-0`   |
 
