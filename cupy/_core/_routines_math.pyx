@@ -915,7 +915,7 @@ _angle = create_ufunc(
 
 
 _angle_deg = create_ufunc(
-    'cupy_angle',
+    'cupy_angle_deg',
     ('?->d', 'e->e', 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
      ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
