@@ -915,6 +915,19 @@ _angle = create_ufunc(
     ''')
 
 
+_angle_deg = create_ufunc(
+    'cupy_angle_deg',
+    ('?->d', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
+     ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
+    'out0 = in0 >= 0 ? 0 : 180.0',
+    doc='''Returns the angle of the complex argument.
+
+    .. seealso:: :func:`numpy.angle`
+
+    ''')
+
+
 def _positive_boolean_error():
     raise TypeError(
         'The cupy boolean positive, the `+` operator, is not supported.')
@@ -1111,6 +1124,7 @@ _clip = create_ufunc(
 add = _add
 conjugate = _conjugate
 angle = _angle
+angle_deg = _angle_deg
 positive = _positive
 negative = _negative
 multiply = _multiply
