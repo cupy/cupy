@@ -3,7 +3,6 @@ import pickle
 import pytest
 
 import cupy
-from cupy.cuda import driver
 from cupy.cuda import nvrtc
 from cupy.cuda import runtime
 
