@@ -73,7 +73,7 @@ Installing CuPy
 Installing CuPy from PyPI
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
+Wheels (precompiled binary packages) are available for Linux and Windows.
 Package names are different depending on your CUDA Toolkit version.
 
 .. list-table::
@@ -81,25 +81,29 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - v10.2
-     - ``$ pip install cupy-cuda102``
-   * - v11.0
-     - ``$ pip install cupy-cuda110``
-   * - v11.1
-     - ``$ pip install cupy-cuda111``
-   * - v11.2 or later
-     - ``$ pip install cupy-cuda11x``
+   * - **v10.2** (x86_64)
+     - ``pip install cupy-cuda102``
+   * - **v10.2** (aarch64 - `JetPack 4 <https://developer.nvidia.com/embedded/jetpack>`_)
+     - ``pip install cupy-cuda102 -f https://pip.cupy.dev/aarch64``
+   * - **v11.0** (x86_64)
+     - ``pip install cupy-cuda110``
+   * - **v11.1** (x86_64)
+     - ``pip install cupy-cuda111``
+   * - **v11.2 or later** (x86_64)
+     - ``pip install cupy-cuda11x``
+   * - **v11.2 or later** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
+     - ``pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64``
 
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
    If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
-    $ python -m cupyx.tools.install_library --cuda 11.6 --library cutensor
+    $ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
 
 .. note::
 
-   Use ``pip install cupy-cudaXXX --pre -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
+   Append ``--pre -f https://pip.cupy.dev/pre`` options to install pre-releases (e.g., ``pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre``).
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
