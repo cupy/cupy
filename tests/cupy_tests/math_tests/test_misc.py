@@ -137,7 +137,7 @@ class TestMisc:
     def test_external_clip3(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.clip(a, 8, 1)
-    
+
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     def test_external_clip4(self, dtype):
         for xp in (numpy, cupy):
