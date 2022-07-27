@@ -19,17 +19,12 @@ class TestExceptionPicklable:
 
 class TestMemPool:
 
-    @pytest.mark.skipif(runtime.is_hip,
-                        reason='HIP does not support async allocator')
-    @pytest.mark.skipif(driver._is_cuda_python()
-                        and runtime.runtimeGetVersion() < 11020,
-                        reason='cudaMemPool_t is supported since CUDA 11.2')
-    @pytest.mark.skipif(not driver._is_cuda_python()
-                        and driver.get_build_version() < 11020,
-                        reason='cudaMemPool_t is supported since CUDA 11.2')
-    @pytest.mark.skipif(runtime.deviceGetAttribute(
-        runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0,
-        reason='cudaMemPool_t is not supported on device 0')
+    @pytest.mark.skipif(
+        runtime.is_hip or
+        runtime.runtimeGetVersion() < 11020 or
+        runtime.deviceGetAttribute(
+            runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0,
+        reason='CUDA 11.2+ and device supporting cudaMemPool_t is required')
     def test_mallocFromPoolAsync(self):
         # also test create/destroy a pool
         props = runtime.MemPoolProps(
