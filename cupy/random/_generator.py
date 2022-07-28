@@ -921,7 +921,7 @@ class RandomState(object):
             high = cupy.asarray(high, dtype)
 
         if size is None:
-           size = cupy.broadcast(low, high).shape
+            size = cupy.broadcast(low, high).shape
 
         dtype = numpy.dtype(dtype)
         rand = self.random_sample(size=size, dtype=dtype)
