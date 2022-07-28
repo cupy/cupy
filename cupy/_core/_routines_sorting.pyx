@@ -237,6 +237,10 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
         data = _manipulation.rollaxis(self, axis, ndim).copy()
 
     length = data._shape[_axis]
+
+    if length == 0:
+        return cupy.empty((0,), dtype=cupy.int64)
+
     if isinstance(kth, int):
         kth = kth,
     max_k = 0
