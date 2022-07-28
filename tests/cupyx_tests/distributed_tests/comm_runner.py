@@ -186,9 +186,11 @@ def send_recv(dtype, use_mpi=False):
         dev.use()
         comm = NCCLBackend(N_WORKERS, rank, use_mpi=use_mpi)
         in_array = cupy.arange(10, dtype='f')
-        for i in range(N_WORKERS):
-            out_array = cupy.zeros((10,), dtype='f')
-            comm.send_recv(in_array, out_array, i)
+        out_array = cupy.zeros((10,), dtype='f')
+        if rank == 0:
+            comm.send_recv(in_array, out_array, 1)
+        else:
+            comm.send_recv(in_array, out_array, 0)
             testing.assert_allclose(out_array, in_array)
 
     if use_mpi:
