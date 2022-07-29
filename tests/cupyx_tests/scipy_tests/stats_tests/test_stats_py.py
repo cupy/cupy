@@ -5,6 +5,8 @@ from cupy import testing
 import cupyx
 import cupyx.scipy.stats  # NOQA
 
+import numpy
+
 import scipy.stats  # NOQA
 
 
@@ -93,10 +95,11 @@ class TestZmap:
 
     @testing.for_dtypes('fdFD')
     def test_zmap_nan_policy_raise(self, dtype):
-        x = cupy.array([1, 2, 3], dtype=dtype)
-        y = cupy.array([8, -4, cupy.nan, 4], dtype=dtype)
-        with pytest.raises(ValueError):
-            cupyx.scipy.stats.zmap(x, y, nan_policy='raise')
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            x = xp.array([1, 2, 3], dtype=dtype)
+            y = xp.array([8, -4, xp.nan, 4], dtype=dtype)
+            with pytest.raises(ValueError):
+                scp.stats.zmap(x, y, nan_policy='raise')
 
 
 @testing.with_requires('scipy')
@@ -173,6 +176,7 @@ class TestZscore:
 
     @testing.for_dtypes('fdFD')
     def test_zscore_nan_policy_raise(self, dtype):
-        x = cupy.array([1, 2, 3, cupy.nan], dtype=dtype)
-        with pytest.raises(ValueError):
-            cupyx.scipy.stats.zscore(x, nan_policy='raise')
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            x = xp.array([1, 2, 3, xp.nan], dtype=dtype)
+            with pytest.raises(ValueError):
+                scp.stats.zscore(x, nan_policy='raise')
