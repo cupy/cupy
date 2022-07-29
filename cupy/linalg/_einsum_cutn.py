@@ -92,8 +92,7 @@ def _try_use_cutensornet(*args, **kwargs):
     if handle is None:
         handle = cutensornet.create()
         cutn_handle_cache[device] = handle
-    cutn_options = {'device_id': device, 'handle': handle,
-                    'memory_limit': 4**31}  # TODO(leofang): fix?
+    cutn_options = {'device_id': device, 'handle': handle}
 
     # TODO(leofang): support all valid combinations:
     # - path from user, contract with cutn (done)
