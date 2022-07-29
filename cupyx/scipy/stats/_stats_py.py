@@ -1,21 +1,6 @@
 import cupy
 
 
-def _contains_nan(a, nan_policy='propagate'):
-    policies = ['propagate', 'raise', 'omit']
-
-    if nan_policy not in policies:
-        raise ValueError("nan_policy must be one of {%s}" %
-                         ', '.join("'%s'" % s for s in policies))
-
-    contains_nan = cupy.isnan(cupy.sum(a))
-
-    if nan_policy == 'raise' and contains_nan:
-        raise ValueError("The input contains nan values")
-
-    return nan_policy
-
-
 def _first(arr, axis):
     """Return arr[..., 0:1, ...] where 0:1 is in the `axis` position
 
@@ -110,12 +95,22 @@ def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
 
     """
 
+    policies = ['propagate', 'raise', 'omit']
+
+    if nan_policy not in policies:
+        raise ValueError("nan_policy must be one of {%s}" %
+                         ', '.join("'%s'" % s for s in policies))
+
     a = compare
 
     if a.size == 0:
         return cupy.empty(a.shape)
 
-    nan_policy = _contains_nan(a, nan_policy)
+    if nan_policy == 'raise':
+        contains_nan = cupy.isnan(cupy.sum(a))
+
+        if contains_nan:
+            raise ValueError("The input contains nan values")
 
     if nan_policy == 'omit':
         if axis is None:
@@ -130,7 +125,7 @@ def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
         mn = a.mean(axis=axis, keepdims=True)
         std = a.std(axis=axis, ddof=ddof, keepdims=True)
         if axis is None:
-            isconst = (a.item(0) == a).all()
+            isconst = (a.ravel()[0] == a).all()
         else:
             isconst = (_first(a, axis) == a).all(axis=axis, keepdims=True)
 
