@@ -415,12 +415,3 @@ void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
     _sort op;
     return dtype_dispatcher(dtype_id, op, data_start, keys_start, shape, stream, memory);
 }
-
-
-/* -------- lexsort -------- */
-void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
-    size_t n, intptr_t stream, void *memory) {
-
-    _lexsort op;
-    return dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
-}

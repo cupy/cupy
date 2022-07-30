@@ -53,6 +53,7 @@ class Context:
         data = {
             'thrust': {
                 'argsort': f'{self.source_root}/cupy/cuda/cupy_thrust_argsort.template',
+                'lexsort': f'{self.source_root}/cupy/cuda/cupy_thrust_lexsort.template',
             },
             'cub': {
             }
