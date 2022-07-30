@@ -60,4 +60,9 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
     }
 }
 
+
+template <typename dtype, class functor_t, typename... Ts>
+void dtype_forwarder(functor_t f, Ts&&... args) {
+    return f.template operator()<dtype>(std::forward<Ts>(args)...);
+}
 #endif  // #ifndef INCLUDE_GUARD_CUPY_TYPE_DISPATCHER_H

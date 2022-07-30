@@ -3,6 +3,8 @@ import os
 import sys
 from typing import Any, List, Mapping, Optional, Tuple
 
+from cupy_builder import install_utils
+
 
 def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
     return env[name] != '0' if name in env else default
@@ -36,6 +38,54 @@ class Context:
 
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
+
+        self._generate_translation_units()
+        print(f"\n\n\n{self.module_TUs}\n\n\n")
+
+    def __del__(self):
+        # TODO(leofang): keep them if generating sdist or in debug mode?
+        if True:
+            for mod, files in self.module_TUs.items():
+                for f in files:
+                    os.remove(f)
+
+    def _generate_translation_units(self):
+        data = {
+            'thrust': {
+                'argsort': f'{self.source_root}/cupy/cuda/cupy_thrust_argsort.template',
+            },
+            'cub': {
+            }
+        }
+        # TODO(leofang): some functions only support a subset of this list
+        type_names = [
+            'char',
+            'short',
+            'int',
+            'int64_t',
+            'unsigned char',
+            'unsigned short',
+            'unsigned int',
+            'uint64_t',
+            '__half',
+            'float',
+            'double',
+            'complex<float>',
+            'complex<double>',
+            'bool',
+        ]
+
+        module_TUs = {}
+        for mod, funcs in data.items():
+            TUs = []
+            for func_name, template_path in funcs.items():
+                for dtype in type_names:
+                    TUs.append(install_utils.generate_translation_unit(
+                        func_name, dtype, template_path)
+                    )
+            module_TUs[mod] = TUs
+
+        self.module_TUs = module_TUs
 
 
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:

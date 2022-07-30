@@ -334,6 +334,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
             if compiler.compiler_type == 'msvc':
                 compile_args.append('-D_USE_MATH_DEFINES')
 
+        if module['name'] == 'thrust':
+            # TODO(leofang): set up s['depends'] on the .inl files
+            module['file'][0][1].extend(ctx.module_TUs['thrust'])
+            print(f'\n\n\n{module}\n\n\n')
+
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')

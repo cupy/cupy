@@ -403,24 +403,71 @@ struct _lexsort {
 };
 
 
-//
-// APIs exposed to CuPy
-//
+/*
+ * argsort
+ */
 
-/* -------- sort -------- */
+struct _argsort {
+    template <typename T>
+    __forceinline__ void operator()(size_t *idx_start, void *data_start,
+                                    void *keys_start,
+                                    const std::vector<ptrdiff_t>& shape,
+                                    intptr_t stream, void *memory) {
+        /* idx_start is the beginning of the output array where the indexes that
+           would sort the data will be placed. The original contents of idx_start
+           will be destroyed. */
 
-void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
-    const std::vector<ptrdiff_t>& shape, intptr_t stream, void* memory) {
+        size_t ndim = shape.size();
+        ptrdiff_t size;
+        cudaStream_t stream_ = (cudaStream_t)stream;
+        cupy_allocator alloc(memory);
 
-    _sort op;
-    return dtype_dispatcher(dtype_id, op, data_start, keys_start, shape, stream, memory);
-}
+        thrust::device_ptr<size_t> dp_idx_first, dp_idx_last;
+        thrust::device_ptr<T> dp_data_first, dp_data_last;
+        thrust::device_ptr<size_t> dp_keys_first, dp_keys_last;
 
+        // Compute the total size of the data array.
+        size = shape[0];
+        for (size_t i = 1; i < ndim; ++i) {
+            size *= shape[i];
+        }
 
-/* -------- lexsort -------- */
-void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
-    size_t n, intptr_t stream, void *memory) {
+        // Cast device pointers of data.
+        dp_data_first = thrust::device_pointer_cast(static_cast<T*>(data_start));
+        dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
-    _lexsort op;
-    return dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
-}
+        // Generate an index sequence.
+        dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
+        dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + size);
+        transform(cuda::par(alloc).on(stream_),
+                  thrust::make_counting_iterator<size_t>(0),
+                  thrust::make_counting_iterator<size_t>(size),
+                  thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  dp_idx_first,
+                  thrust::modulus<size_t>());
+
+        if (ndim == 1) {
+            // Sort the index sequence by data.
+            stable_sort_by_key(cuda::par(alloc).on(stream_),
+                               dp_data_first,
+                               dp_data_last,
+                               dp_idx_first);
+        } else {
+            // Generate key indices.
+            dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
+            dp_keys_last  = thrust::device_pointer_cast(static_cast<size_t*>(keys_start) + size);
+            transform(cuda::par(alloc).on(stream_),
+                      thrust::make_counting_iterator<size_t>(0),
+                      thrust::make_counting_iterator<size_t>(size),
+                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      dp_keys_first,
+                      thrust::divides<size_t>());
+
+            stable_sort_by_key(
+                cuda::par(alloc).on(stream_),
+                make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
+                make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
+                dp_idx_first);
+        }
+    }
+};

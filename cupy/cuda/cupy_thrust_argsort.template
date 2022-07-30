@@ -1,0 +1,18 @@
+#include "cupy_thrust.inl"
+
+
+void thrust_argsort_<TYPENAME>(size_t *idx_start,
+                               void *data_start,
+                               void *keys_start,
+                               const std::vector<ptrdiff_t>& shape, 
+                               intptr_t stream,
+                               void *memory) {
+    _argsort op;
+    return dtype_forwarder< <TYPENAME> >(op, 
+                                         idx_start,
+                                         data_start,
+                                         keys_start,
+                                         shape,
+                                         stream,
+                                         memory);
+}
