@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 from typing import List, Tuple
 
 import setuptools
@@ -48,6 +49,8 @@ def compile_device_code(
         compiler = DeviceCompilerUnix(ctx)
 
     objects = []
+    # TODO(leofang): use a thread pool? constrain max num threads?
+    threads = []
     for src in sources_cu:
         print(f'{ext.name}: Device code: {src}')
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
@@ -58,8 +61,14 @@ def compile_device_code(
         else:
             os.makedirs(os.path.dirname(obj), exist_ok=True)
             print(f'{ext.name}: Building: {obj}')
-            compiler.compile(obj, src, ext)
+            t = threading.Thread(target=compiler.compile, args=(obj, src, ext))
+            threads.append(t)
         objects.append(obj)
+
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
     return sources_cpp, objects
 
