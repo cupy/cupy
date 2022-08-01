@@ -72,8 +72,8 @@ class TestZmap:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zmap_1dim(self, xp, scp, dtype):
-        x = testing.shaped_random((5,), xp, dtype=dtype)
-        y = testing.shaped_random((4,), xp, dtype=dtype)
+        x = testing.shaped_random((10,), xp, dtype=dtype)
+        y = testing.shaped_random((8,), xp, dtype=dtype)
         return scp.stats.zmap(x, y)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -104,17 +104,17 @@ class TestZmap:
         return scp.stats.zmap(x, y)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_zmap_with_axis(self, xp, scp, dtype):
         x = testing.shaped_random((2, 3), xp, dtype=dtype)
         y = testing.shaped_random((1, 3), xp, dtype=dtype)
         return scp.stats.zmap(x, y, axis=1)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_zmap_with_axis_ddof(self, xp, scp, dtype):
-        x = testing.shaped_random((2, 3), xp, dtype=dtype)
-        y = testing.shaped_random((1, 3), xp, dtype=dtype)
+        x = testing.shaped_random((4, 5), xp, dtype=dtype)
+        y = testing.shaped_random((1, 5), xp, dtype=dtype)
         return scp.stats.zmap(x, y, axis=1, ddof=2)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -180,7 +180,7 @@ class TestZscore:
         return scp.stats.zscore(x)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-3, rtol=1e-3)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_zscore_multi_dim(self, xp, scp, dtype):
         x = testing.shaped_random((3, 4, 5, 7), xp, dtype=dtype)
         return scp.stats.zscore(x)
