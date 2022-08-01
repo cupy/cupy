@@ -112,6 +112,15 @@ class LinuxGenerator:
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
                 '',
             ]
+            if matrix.test == 'unit-multi':
+                lines += [
+                    'RUN export DEBIAN_FRONTEND=noninteractive && \\',
+                    '    apt-get -qqy update && \\',
+                    '    apt-get -qqy install openmpi-bin',
+                    '',
+                    'RUN pip install mpi4py',
+                    ''
+                ]
         elif os_name == 'centos':
             assert os_version in ('7', '8')
             if os_version == '7':
@@ -286,6 +295,10 @@ class LinuxGenerator:
             if matrix.test == 'unit':
                 spec = 'not slow and not multi_gpu'
             elif matrix.test == 'unit-multi':
+                lines += [
+                    'export OMPI_ALLOW_RUN_AS_ROOT=1',
+                    'export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1'
+                ]
                 spec = 'not slow and multi_gpu'
             elif matrix.test == 'unit-slow':
                 # Slow tests may use multiple GPUs.
