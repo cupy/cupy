@@ -109,7 +109,7 @@ def zmap(scores, compare, axis=0, ddof=0, nan_policy='propagate'):
     if nan_policy == 'raise':
         contains_nan = cupy.isnan(cupy.sum(a))
 
-        if contains_nan:
+        if contains_nan:  # synchronize!
             raise ValueError("The input contains nan values")
 
     if nan_policy == 'omit':
