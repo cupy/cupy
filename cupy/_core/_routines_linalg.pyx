@@ -823,9 +823,6 @@ cpdef _ndarray_base matmul(
     The main difference against cupy.dot are the handling of arrays with more
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
-    .. note::
-        The out array as input is currently not supported.
-
     Args:
         a (cupy.ndarray): The left argument.
         b (cupy.ndarray): The right argument.

@@ -42,8 +42,9 @@ cdef _ndarray_base _ndarray_conj(_ndarray_base self):
 
 cdef _ndarray_base _ndarray_real_getter(_ndarray_base self):
     if self.dtype.kind == 'c':
-        view = core.ndarray(
-            shape=self._shape, dtype=get_dtype(self.dtype.char.lower()),
+        dtype = get_dtype(self.dtype.char.lower())
+        view = core.ndarray.__new__(
+            type(self), shape=self._shape, dtype=dtype, _obj=self,
             memptr=self.data, strides=self._strides)
         (<_ndarray_base>view).base = (
             self.base if self.base is not None else self)
@@ -66,13 +67,13 @@ cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
         # aligning with NumPy behavior.
         if memptr.ptr != 0:
             memptr = memptr + self.dtype.itemsize // 2
-        view = core.ndarray(
-            shape=self._shape, dtype=dtype, memptr=memptr,
+        view = core.ndarray.__new__(
+            type(self), shape=self._shape, dtype=dtype, memptr=memptr,
             strides=self._strides)
         (<_ndarray_base>view).base = (
             self.base if self.base is not None else self)
         return view
-    new_array = core.ndarray(self.shape, dtype=self.dtype)
+    new_array = core.ndarray.__new__(type(self), self.shape, dtype=self.dtype)
     new_array.fill(0)
     return new_array
 
@@ -914,6 +915,19 @@ _angle = create_ufunc(
     ''')
 
 
+_angle_deg = create_ufunc(
+    'cupy_angle_deg',
+    ('?->d', 'e->e', 'f->f', 'd->d',
+     ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
+     ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
+    'out0 = in0 >= 0 ? 0 : 180.0',
+    doc='''Returns the angle of the complex argument.
+
+    .. seealso:: :func:`numpy.angle`
+
+    ''')
+
+
 def _positive_boolean_error():
     raise TypeError(
         'The cupy boolean positive, the `+` operator, is not supported.')
@@ -1110,6 +1124,7 @@ _clip = create_ufunc(
 add = _add
 conjugate = _conjugate
 angle = _angle
+angle_deg = _angle_deg
 positive = _positive
 negative = _negative
 multiply = _multiply

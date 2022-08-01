@@ -34,7 +34,7 @@ def boxcox_llf(lmb, data):
 
     N = data.shape[0]
     if N == 0:
-        return cupy.nan
+        return cupy.array(cupy.nan)
 
     logdata = cupy.log(data)
 
