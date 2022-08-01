@@ -118,8 +118,6 @@ class LinuxGenerator:
                     '    apt-get -qqy update && \\',
                     '    apt-get -qqy install openmpi-bin',
                     '',
-                    'RUN pip install mpi4py',
-                    ''
                 ]
         elif os_name == 'centos':
             assert os_version in ('7', '8')
@@ -195,6 +193,12 @@ class LinuxGenerator:
                 '    pip check',
             ]
         lines.append('')
+        if os_name == 'ubuntu' and matrix.test == 'unit-multi':
+            lines += [
+                'RUN pip install mpi4py',
+                '',
+            ]
+
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> List[str]:

@@ -20,8 +20,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install openmpi-bin
 
-RUN pip install mpi4py
-
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
@@ -32,3 +30,5 @@ RUN pyenv install 3.10.0 && \
 RUN pip install -U 'numpy==1.23.*' 'scipy==1.9.*' 'optuna==2.*' 'cython==0.29.*'
 RUN pip uninstall -y cuda-python && \
     pip check
+
+RUN pip install mpi4py
