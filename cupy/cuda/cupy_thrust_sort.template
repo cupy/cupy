@@ -8,6 +8,11 @@ void thrust_sort_<CODENAME>(void *data_start,
                             const std::vector<ptrdiff_t>& shape,
                             intptr_t stream,
                             void* memory) {
+#if ( <CODENAME> != CUPY_TYPE_FLOAT16 )                        \
+    || (( <CODENAME> == CUPY_TYPE_FLOAT16 )                    \
+        && ((__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))  \
+            || (defined(__HIPCC__) || defined(CUPY_USE_HIP))))
+
     _sort op;
     return dtype_forwarder< <TYPENAME> >(op,
                                          data_start,
@@ -15,6 +20,8 @@ void thrust_sort_<CODENAME>(void *data_start,
                                          shape,
                                          stream,
                                          memory);
+
+#endif
 }
 
 }  // namespace cupy

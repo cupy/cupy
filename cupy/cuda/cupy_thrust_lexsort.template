@@ -9,6 +9,11 @@ void thrust_lexsort_<CODENAME>(size_t *idx_start,
                                size_t n,
                                intptr_t stream,
                                void *memory) {
+#if ( <CODENAME> != CUPY_TYPE_FLOAT16 )                        \
+    || (( <CODENAME> == CUPY_TYPE_FLOAT16 )                    \
+        && ((__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))  \
+            || (defined(__HIPCC__) || defined(CUPY_USE_HIP))))
+
     _lexsort op;
     return dtype_forwarder< <TYPENAME> >(op,
                                          idx_start,
@@ -17,6 +22,8 @@ void thrust_lexsort_<CODENAME>(size_t *idx_start,
                                          n,
                                          stream,
                                          memory);
+
+#endif
 }
 
 }
