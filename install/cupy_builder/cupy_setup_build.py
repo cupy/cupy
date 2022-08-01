@@ -3,6 +3,7 @@
 import copy
 from distutils import ccompiler
 from distutils import sysconfig
+import glob
 import os
 import shutil
 import sys
@@ -336,8 +337,16 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         if module['name'] == 'thrust':
             # TODO(leofang): set up s['depends'] on the .inl files
+            assert module['file'][0][0] == 'cupy.cuda.thrust'
             module['file'][0][1].extend(ctx.module_TUs['thrust'])
-            print(f'\n\n\n{module}\n\n\n')
+            s['depends'] = [
+                './cupy/cuda/cupy_thrust.h',
+                './cupy/cuda/cupy_thrust.cu',
+                './cupy/cuda/cupy_thrust.inl',
+            ] + [
+                x for x in glob.glob('./cupy/cuda/cupy_thrust*.template')
+                if os.path.isfile(x)
+            ]
 
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...

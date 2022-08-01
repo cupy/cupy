@@ -26,4 +26,4 @@ void thrust_lexsort_<CODENAME>(size_t *idx_start,
 #endif
 }
 
-}
+}  // namespace cupy

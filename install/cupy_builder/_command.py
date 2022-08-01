@@ -56,14 +56,25 @@ def compile_device_code(
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
         # TODO(kmaehashi): embed CUDA version in path
         obj = f'build/temp.device_objects/{src}.{obj_ext}'
-        if os.path.exists(obj) and (_get_timestamp(src) < _get_timestamp(obj)):
-            print(f'{ext.name}: Reusing cached object file: {obj}')
-        else:
-            os.makedirs(os.path.dirname(obj), exist_ok=True)
-            print(f'{ext.name}: Building: {obj}')
-            f = ctx._thread_pool.submit(compiler.compile, obj, src, ext)
-            futures.append(f)
         objects.append(obj)
+
+        # We need to look at the timestamps for the templates and other
+        # depended files, not the generated files (which would be removed
+        # after the installation).
+        # TODO(leofang): The dependency on *.template files can be more
+        # fine-grained. Ideally we only recompile at the per-function level.
+        if os.path.exists(obj):
+            if ((len(ext.depends) > 0
+                    and all(_get_timestamp(f) < _get_timestamp(obj)
+                        for f in ext.depends))
+                    or (_get_timestamp(src) < _get_timestamp(obj))):
+                print(f'{ext.name}: Reusing cached object file: {obj}')
+                continue
+
+        os.makedirs(os.path.dirname(obj), exist_ok=True)
+        print(f'{ext.name}: Building: {obj}')
+        f = ctx._thread_pool.submit(compiler.compile, obj, src, ext)
+        futures.append(f)
 
     return sources_cpp, objects, futures
 
