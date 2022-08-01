@@ -33,4 +33,7 @@ def generate_translation_unit(
     full_path = f'{os.path.dirname(source_path)}/{base_name}_{code_name}.cu'
     with open(full_path, 'w') as f:
         f.write(func_template)
-    return full_path
+    # the builder expects relative paths (especially on Windows)
+    rel_path = os.path.relpath(
+        full_path, f'{os.path.dirname(source_path)}/../..')
+    return rel_path
