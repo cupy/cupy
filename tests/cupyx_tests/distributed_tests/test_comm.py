@@ -37,7 +37,7 @@ def _run_test_with_mpi(test_name, dtype=None):
     # subprocess is required not to interfere with cupy module imported in top
     # of this file
     runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
-    args = ['mpiexec', '-n', '2',
+    args = ['mpiexec', '-n', '2', '--allow-run-as-root',
             sys.executable, runner_path, test_name, 'mpi']
     if dtype is not None:
         args.append(numpy.dtype(dtype).char)
