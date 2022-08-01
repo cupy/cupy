@@ -52,7 +52,11 @@ class Context:
         if not self.cupy_dump_TU:
             for mod, files in self.module_TUs.items():
                 for f in files:
-                    os.remove(f)
+                    try:
+                        os.remove(f)
+                    except FileNotFoundError:
+                        # make tests happy
+                        pass
 
     def _generate_translation_units(self) -> None:
         # avoid circular import...

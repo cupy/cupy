@@ -336,7 +336,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 compile_args.append('-D_USE_MATH_DEFINES')
 
         if module['name'] == 'thrust':
-            # TODO(leofang): set up s['depends'] on the .inl files
+            # TODO(leofang): make "depends" aware of CUPY_NVCC_GENERATE_CODE
             assert module['file'][0][0] == 'cupy.cuda.thrust'
             module['file'][0][1].extend(ctx.module_TUs['thrust'])
             s['depends'] = [
