@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 
 import cupy_builder.install_build as build
 from cupy_builder import Context
@@ -69,7 +69,7 @@ _cuda_files = [
 ]
 
 
-def get_cuda_source_data(source_root):
+def get_cuda_source_data(source_root: str) -> Mapping[str, Mapping[str, str]]:
     return {
         'thrust': {
             'argsort': f'{source_root}/cupy/cuda/cupy_thrust_argsort.template',

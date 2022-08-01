@@ -2,7 +2,7 @@ import argparse
 from concurrent.futures import Executor, ThreadPoolExecutor
 import os
 import sys
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from cupy_builder import install_utils
 
@@ -40,16 +40,16 @@ class Context:
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
 
-        self.module_TUs: dict = None
+        self.module_TUs: Dict[str, List[str]] = {}
+        self.cupy_dump_TU: bool = cmdopts.cupy_dump_TU
         self._thread_pool: Executor = ThreadPoolExecutor(
             max_workers=int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4')),
             thread_name_prefix='cupy_nvcc_worker_',
         )
         self._generate_translation_units()
 
-    def __del__(self):
-        # TODO(leofang): keep them if generating sdist or in debug mode?
-        if True:
+    def __del__(self) -> None:
+        if not self.cupy_dump_TU:
             for mod, files in self.module_TUs.items():
                 for f in files:
                     os.remove(f)
@@ -59,7 +59,7 @@ class Context:
         from cupy_builder._modules import get_cuda_source_data
         from cupy_builder._modules import cuda_type_to_code
 
-        module_TUs = self.module_TUs = {}
+        module_TUs = self.module_TUs
         for mod, funcs in get_cuda_source_data(self.source_root).items():
             TUs = []
             for func_name, template_path in funcs.items():
@@ -105,5 +105,8 @@ def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
+    parser.add_argument(
+        '--cupy-dump-TU', action='store_true', default=False,
+        help='keep CuPy generated *.cu translation units for inspection')
 
     return parser.parse_known_args(argv)

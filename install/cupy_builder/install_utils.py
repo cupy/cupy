@@ -23,7 +23,8 @@ def search_on_path(filenames):
     return None
 
 
-def generate_translation_unit(func_name, type_name, code_name, source_path):
+def generate_translation_unit(
+        func_name, type_name, code_name, source_path) -> str:
     with open(source_path) as f:
         func_template = f.read()
         func_template = func_template.replace('<CODENAME>', code_name)
