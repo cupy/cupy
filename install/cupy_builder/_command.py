@@ -1,6 +1,5 @@
 import os
 import sys
-import threading
 from typing import List, Tuple
 
 import setuptools
@@ -10,6 +9,7 @@ import cupy_builder
 from cupy_builder._context import Context
 from cupy_builder.cupy_setup_build import cythonize
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
+from cupy_builder.install_utils import ThreadWorker
 
 
 def filter_files_by_extension(
@@ -61,7 +61,7 @@ def compile_device_code(
         else:
             os.makedirs(os.path.dirname(obj), exist_ok=True)
             print(f'{ext.name}: Building: {obj}')
-            t = threading.Thread(target=compiler.compile, args=(obj, src, ext))
+            t = ThreadWorker(target=compiler.compile, args=(obj, src, ext))
             threads.append(t)
         objects.append(obj)
 
@@ -69,6 +69,8 @@ def compile_device_code(
         t.start()
     for t in threads:
         t.join()
+        if t.exception:
+            raise t.exception
 
     return sources_cpp, objects
 

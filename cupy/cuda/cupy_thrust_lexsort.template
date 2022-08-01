@@ -1,13 +1,14 @@
 #include "cupy_thrust.inl"
 
 
-extern "C"
-void cupy_thrust_lexsort_<TYPENAME>(size_t *idx_start,
-                                    void *keys_start,
-                                    size_t k,
-                                    size_t n,
-                                    intptr_t stream,
-                                    void *memory) {
+namespace cupy {
+
+void thrust_lexsort_<CODENAME>(size_t *idx_start,
+                               void *keys_start,
+                               size_t k,
+                               size_t n,
+                               intptr_t stream,
+                               void *memory) {
     _lexsort op;
     return dtype_forwarder< <TYPENAME> >(op,
                                          idx_start,
@@ -16,4 +17,6 @@ void cupy_thrust_lexsort_<TYPENAME>(size_t *idx_start,
                                          n,
                                          stream,
                                          memory);
+}
+
 }

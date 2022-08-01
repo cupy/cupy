@@ -1,6 +1,14 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 #define INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 
+#include <cstdint>
+#include <cstddef>
+#include <vector>
+
+using std::size_t;
+using std::ptrdiff_t;
+using std::intptr_t;
+
 #ifndef CUPY_NO_CUDA
 #include <thrust/version.h>  // for THRUST_VERSION
 

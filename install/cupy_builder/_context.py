@@ -50,6 +50,7 @@ class Context:
                     os.remove(f)
 
     def _generate_translation_units(self):
+        # TODO(leofang): move these data to _modules.py
         data = {
             'thrust': {
                 'argsort': f'{self.source_root}/cupy/cuda/cupy_thrust_argsort.template',
@@ -60,30 +61,30 @@ class Context:
             }
         }
         # TODO(leofang): some functions only support a subset of this list
-        type_names = [
-            'char',
-            'short',
-            'int',
-            'int64_t',
-            'unsigned char',
-            'unsigned short',
-            'unsigned int',
-            'uint64_t',
-            '__half',
-            'float',
-            'double',
-            'complex<float>',
-            'complex<double>',
-            'bool',
-        ]
+        type_to_code = {
+            'char': 'CUPY_TYPE_INT8',
+            'short': 'CUPY_TYPE_INT16',
+            'int': 'CUPY_TYPE_INT32',
+            'int64_t': 'CUPY_TYPE_INT64',
+            'unsigned char': 'CUPY_TYPE_UINT8',
+            'unsigned short': 'CUPY_TYPE_UINT16',
+            'unsigned int': 'CUPY_TYPE_UINT32',
+            'uint64_t': 'CUPY_TYPE_UINT64',
+            '__half': 'CUPY_TYPE_FLOAT16',
+            'float': 'CUPY_TYPE_FLOAT32',
+            'double': 'CUPY_TYPE_FLOAT64',
+            'complex<float>': 'CUPY_TYPE_COMPLEX64',
+            'complex<double>': 'CUPY_TYPE_COMPLEX128',
+            'bool': 'CUPY_TYPE_BOOL',
+        }
 
         module_TUs = {}
         for mod, funcs in data.items():
             TUs = []
             for func_name, template_path in funcs.items():
-                for dtype in type_names:
+                for type_name, code_name in type_to_code.items():
                     TUs.append(install_utils.generate_translation_unit(
-                        func_name, dtype, template_path)
+                        func_name, type_name, code_name, template_path)
                     )
             module_TUs[mod] = TUs
 

@@ -1,12 +1,13 @@
 #include "cupy_thrust.inl"
 
 
-extern "C"
-void cupy_thrust_sort_<TYPENAME>(void *data_start,
-                                 size_t *keys_start,
-                                 const std::vector<ptrdiff_t>& shape,
-                                 intptr_t stream,
-                                 void* memory) {
+namespace cupy {
+
+void thrust_sort_<CODENAME>(void *data_start,
+                            size_t *keys_start,
+                            const std::vector<ptrdiff_t>& shape,
+                            intptr_t stream,
+                            void* memory) {
     _sort op;
     return dtype_forwarder< <TYPENAME> >(op,
                                          data_start,
@@ -15,3 +16,5 @@ void cupy_thrust_sort_<TYPENAME>(void *data_start,
                                          stream,
                                          memory);
 }
+
+}  // namespace cupy

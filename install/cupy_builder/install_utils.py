@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 
 import os
+import threading
 
 
 def print_warning(*lines):
@@ -23,16 +24,30 @@ def search_on_path(filenames):
     return None
 
 
-def generate_translation_unit(func_name, type_name, source_path):
+def generate_translation_unit(func_name, type_name, code_name, source_path):
     with open(source_path) as f:
         func_template = f.read()
-    base_name = os.path.basename(source_path).split('.')[0]
-    # both filename and function name cannot contain space, <, >
-    type_name_fixed = type_name.replace(' ', '_').replace('<', '_').replace('>', '_')
-    full_path = f'{os.path.dirname(source_path)}/{base_name}_{type_name_fixed}.cu'
-    with open(full_path, 'w') as f:
-        # TODO(leofang): come up with a better hack?
-        func_template = func_template.replace('<TYPENAME>', type_name_fixed, 1)
+        func_template = func_template.replace('<CODENAME>', code_name)
         func_template = func_template.replace('<TYPENAME>', type_name)
+    base_name = os.path.basename(source_path).split('.')[0]
+    full_path = f'{os.path.dirname(source_path)}/{base_name}_{code_name}.cu'
+    with open(full_path, 'w') as f:
         f.write(func_template)
     return full_path
+
+
+class ThreadWorker(threading.Thread):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._exception = None
+
+    def run(self):
+        try:
+            super().run()
+        except Exception as e:
+            self._exception = e
+
+    @property
+    def exception(self):
+        return self._exception

@@ -471,3 +471,59 @@ struct _argsort {
         }
     }
 };
+
+
+//
+// Placeholders for storing function pointers to the template specializations
+// Note: no template instatiation should be done in this file!
+//
+
+namespace cupy {
+  using SortTargetT = void (void*, size_t*, const std::vector<ptrdiff_t>&, intptr_t, void*);
+  extern SortTargetT thrust_sort_CUPY_TYPE_INT8      ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_UINT8     ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_INT16     ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_UINT16    ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_INT32     ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_UINT32    ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_INT64     ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_UINT64    ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_FLOAT16   ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_FLOAT32   ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_FLOAT64   ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_COMPLEX64 ;
+  extern SortTargetT thrust_sort_CUPY_TYPE_COMPLEX128;
+  extern SortTargetT thrust_sort_CUPY_TYPE_BOOL      ;
+
+  using LexSortTargetT = void (size_t*, void*, size_t, size_t, intptr_t, void*);
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_INT8      ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_UINT8     ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_INT16     ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_UINT16    ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_INT32     ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_UINT32    ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_INT64     ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_UINT64    ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_FLOAT16   ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_FLOAT32   ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_FLOAT64   ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_COMPLEX64 ;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_COMPLEX128;
+  extern LexSortTargetT thrust_lexsort_CUPY_TYPE_BOOL      ;
+
+  using ArgSortTargetT = void (size_t*, void*, void*, const std::vector<ptrdiff_t>&, intptr_t, void*);
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_INT8      ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_UINT8     ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_INT16     ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_UINT16    ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_INT32     ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_UINT32    ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_INT64     ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_UINT64    ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_FLOAT16   ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_FLOAT32   ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_FLOAT64   ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_COMPLEX64 ;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_COMPLEX128;
+  extern ArgSortTargetT thrust_argsort_CUPY_TYPE_BOOL      ;
+}

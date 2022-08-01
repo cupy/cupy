@@ -26,6 +26,7 @@
 #define CUPY_TYPE_COMPLEX64  11
 #define CUPY_TYPE_COMPLEX128 12
 #define CUPY_TYPE_BOOL       13
+#define CUPY_NUM_TYPES       14  // end of type macros
 
 
 //
