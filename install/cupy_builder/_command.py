@@ -1,3 +1,4 @@
+import concurrent.futures
 import os
 import sys
 from typing import List, Tuple
@@ -9,7 +10,6 @@ import cupy_builder
 from cupy_builder._context import Context
 from cupy_builder.cupy_setup_build import cythonize
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
-from cupy_builder.install_utils import ThreadWorker
 
 
 def filter_files_by_extension(
@@ -29,19 +29,20 @@ def filter_files_by_extension(
 def compile_device_code(
         ctx: Context,
         ext: setuptools.Extension
-) -> Tuple[List[str], List[str]]:
+) -> Tuple[List[str], List[str], List[concurrent.futures.Future]]:
     """Compiles device code ("*.cu").
 
     This method invokes the device compiler (nvcc/hipcc) to build object
     files from device code, then returns the tuple of:
     - list of remaining (non-device) source files ("*.cpp")
     - list of compiled object files for device code ("*.o")
+    - list of future objects representing nvcc compilation tasks
     """
     sources_cu, sources_cpp = filter_files_by_extension(
         ext.sources, '.cu')
     if len(sources_cu) == 0:
         # No device code used in this extension.
-        return ext.sources, []
+        return ext.sources, [], []
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
@@ -49,8 +50,7 @@ def compile_device_code(
         compiler = DeviceCompilerUnix(ctx)
 
     objects = []
-    # TODO(leofang): use a thread pool? constrain max num threads?
-    threads = []
+    futures = []
     for src in sources_cu:
         print(f'{ext.name}: Device code: {src}')
         obj_ext = 'obj' if sys.platform == 'win32' else 'o'
@@ -61,18 +61,11 @@ def compile_device_code(
         else:
             os.makedirs(os.path.dirname(obj), exist_ok=True)
             print(f'{ext.name}: Building: {obj}')
-            t = ThreadWorker(target=compiler.compile, args=(obj, src, ext))
-            threads.append(t)
+            f = ctx._thread_pool.submit(compiler.compile, obj, src, ext)
+            futures.append(f)
         objects.append(obj)
 
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-        if t.exception:
-            raise t.exception
-
-    return sources_cpp, objects
+    return sources_cpp, objects, futures
 
 
 def _get_timestamp(path: str) -> float:
@@ -121,7 +114,17 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         ctx = cupy_builder.get_context()
 
         # Compile "*.cu" files into object files.
-        sources_cpp, extra_objects = compile_device_code(ctx, ext)
+        sources_cpp, extra_objects, futures = compile_device_code(ctx, ext)
+
+        # We may have many TUs in the queue waiting for nvcc to complete them,
+        # so for safety we should wait for the completion here
+        done, _ = concurrent.futures.wait(
+            futures, return_when=concurrent.futures.FIRST_EXCEPTION)
+        for future in done:
+            err = future.exception()
+            if err:
+                raise err
+        assert len(done) == len(futures)
 
         # Remove device code from list of sources, and instead add compiled
         # object files to link.

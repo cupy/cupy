@@ -1,4 +1,5 @@
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
 import sys
 from typing import Any, List, Mapping, Optional, Tuple
@@ -41,6 +42,10 @@ class Context:
 
         self._generate_translation_units()
         print(f"\n\n\n{self.module_TUs}\n\n\n")
+        self._thread_pool = ThreadPoolExecutor(
+            max_workers=int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4')),
+            thread_name_prefix='cupy_nvcc_worker_',
+        )
 
     def __del__(self):
         # TODO(leofang): keep them if generating sdist or in debug mode?

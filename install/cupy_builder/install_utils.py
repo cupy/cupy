@@ -34,20 +34,3 @@ def generate_translation_unit(func_name, type_name, code_name, source_path):
     with open(full_path, 'w') as f:
         f.write(func_template)
     return full_path
-
-
-class ThreadWorker(threading.Thread):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._exception = None
-
-    def run(self):
-        try:
-            super().run()
-        except Exception as e:
-            self._exception = e
-
-    @property
-    def exception(self):
-        return self._exception
