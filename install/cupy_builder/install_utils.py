@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 
 import os
-import threading
 
 
 def print_warning(*lines):

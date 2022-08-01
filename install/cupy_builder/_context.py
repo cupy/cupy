@@ -55,45 +55,19 @@ class Context:
                     os.remove(f)
 
     def _generate_translation_units(self) -> None:
-        # TODO(leofang): move these data to _modules.py
-        data = {
-            'thrust': {
-                'argsort': f'{self.source_root}/cupy/cuda/cupy_thrust_argsort.template',
-                'lexsort': f'{self.source_root}/cupy/cuda/cupy_thrust_lexsort.template',
-                'sort': f'{self.source_root}/cupy/cuda/cupy_thrust_sort.template',
-            },
-            'cub': {
-            }
-        }
-        # TODO(leofang): some functions only support a subset of this list
-        type_to_code = {
-            'char': 'CUPY_TYPE_INT8',
-            'short': 'CUPY_TYPE_INT16',
-            'int': 'CUPY_TYPE_INT32',
-            'int64_t': 'CUPY_TYPE_INT64',
-            'unsigned char': 'CUPY_TYPE_UINT8',
-            'unsigned short': 'CUPY_TYPE_UINT16',
-            'unsigned int': 'CUPY_TYPE_UINT32',
-            'uint64_t': 'CUPY_TYPE_UINT64',
-            '__half': 'CUPY_TYPE_FLOAT16',
-            'float': 'CUPY_TYPE_FLOAT32',
-            'double': 'CUPY_TYPE_FLOAT64',
-            'complex<float>': 'CUPY_TYPE_COMPLEX64',
-            'complex<double>': 'CUPY_TYPE_COMPLEX128',
-            'bool': 'CUPY_TYPE_BOOL',
-        }
+        # avoid circular import...
+        from cupy_builder._modules import get_cuda_source_data
+        from cupy_builder._modules import cuda_type_to_code
 
-        module_TUs = {}
-        for mod, funcs in data.items():
+        module_TUs = self.module_TUs = {}
+        for mod, funcs in get_cuda_source_data(self.source_root).items():
             TUs = []
             for func_name, template_path in funcs.items():
-                for type_name, code_name in type_to_code.items():
+                for type_name, code_name in cuda_type_to_code.items():
                     TUs.append(install_utils.generate_translation_unit(
                         func_name, type_name, code_name, template_path)
                     )
             module_TUs[mod] = TUs
-
-        self.module_TUs = module_TUs
 
 
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:

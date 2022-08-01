@@ -66,7 +66,7 @@ def compile_device_code(
         if os.path.exists(obj):
             if ((len(ext.depends) > 0
                     and all(_get_timestamp(f) < _get_timestamp(obj)
-                        for f in ext.depends))
+                            for f in ext.depends))
                     or (_get_timestamp(src) < _get_timestamp(obj))):
                 print(f'{ext.name}: Reusing cached object file: {obj}')
                 continue
