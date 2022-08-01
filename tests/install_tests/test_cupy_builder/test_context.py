@@ -1,3 +1,5 @@
+import os
+
 from cupy_builder._context import _get_env_bool, Context, parse_args
 
 
@@ -15,9 +17,13 @@ class TestGetEnvBool:
 
 class TestContext:
     def test_default(self):
-        ctx = Context('.', _env={}, _argv=[])
+        # We care about the project root location now, because we need to
+        # do some file I/O at build time.
+        root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '../../..'))
+        ctx = Context(root, _env={}, _argv=[])
 
-        assert ctx.source_root == '.'
+        assert ctx.source_root == root
 
         assert not ctx.use_cuda_python
         assert not ctx.use_hip
@@ -32,6 +38,7 @@ class TestContext:
         assert not ctx.linetrace
         assert not ctx.annotate
         assert not ctx.use_stub
+        assert not ctx.cupy_dump_TU
 
 
 class TestParseArgs:
@@ -48,6 +55,7 @@ class TestParseArgs:
             '--cupy-coverage',
             '--cupy-no-cuda',
             '--extra-option',
+            '--cupy-dump-TU',
         ]
         options, remaining = parse_args(args)
         assert options.cupy_package_name == 'cupy-cudaXXX'
@@ -58,4 +66,5 @@ class TestParseArgs:
         assert options.cupy_profile
         assert options.cupy_coverage
         assert options.cupy_no_cuda
+        assert options.cupy_dump_TU
         assert remaining == ['python', 'setup.py', 'develop', '--extra-option']
