@@ -1,5 +1,5 @@
 import argparse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Executor, ThreadPoolExecutor
 import os
 import sys
 from typing import Any, List, Mapping, Optional, Tuple
@@ -40,12 +40,12 @@ class Context:
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
 
-        self._generate_translation_units()
-        print(f"\n\n\n{self.module_TUs}\n\n\n")
-        self._thread_pool = ThreadPoolExecutor(
+        self.module_TUs: dict = None
+        self._thread_pool: Executor = ThreadPoolExecutor(
             max_workers=int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4')),
             thread_name_prefix='cupy_nvcc_worker_',
         )
+        self._generate_translation_units()
 
     def __del__(self):
         # TODO(leofang): keep them if generating sdist or in debug mode?
@@ -54,7 +54,7 @@ class Context:
                 for f in files:
                     os.remove(f)
 
-    def _generate_translation_units(self):
+    def _generate_translation_units(self) -> None:
         # TODO(leofang): move these data to _modules.py
         data = {
             'thrust': {

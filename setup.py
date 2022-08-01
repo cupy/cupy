@@ -69,6 +69,12 @@ cupy_package_data = [
     if os.path.isfile(x)
 ]
 
+
+# Generated translation units
+for _, files in ctx.module_TUs.items():
+    cupy_package_data.extend(files)
+
+
 package_data = {
     'cupy': [
         os.path.relpath(x, 'cupy') for x in cupy_package_data
