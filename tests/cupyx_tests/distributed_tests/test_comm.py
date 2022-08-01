@@ -2,6 +2,7 @@ import pathlib
 import subprocess
 import sys
 import unittest
+import os
 
 import numpy
 import pytest
@@ -43,7 +44,9 @@ def _run_test_with_mpi(test_name, dtype=None):
     proc = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE,
+        env=os.environ
+    )
     stdoutdata, stderrdata = proc.communicate()
     assert stderrdata.decode() == ''
     assert proc.returncode == 0
