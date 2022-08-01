@@ -1,8 +1,10 @@
-from typing import Mapping
+from typing import List, Mapping, Tuple, Union
 import os
 
 
-def get_cuda_source_data(source_root: str) -> Mapping[str, Mapping[str, str]]:
+def get_cuda_source_data(source_root: str) \
+        -> Mapping[str, Mapping[str, Union[str, Tuple[str, List[str]]]]]:
+    # if not all dtypes are supported, the list of supported dtypes is returned
     return {
         'thrust': {
             'argsort': f'{source_root}/cupy/cuda/detail/cupy_thrust_argsort.template',  # noqa: E501
@@ -10,11 +12,32 @@ def get_cuda_source_data(source_root: str) -> Mapping[str, Mapping[str, str]]:
             'sort': f'{source_root}/cupy/cuda/detail/cupy_thrust_sort.template',  # noqa: E501
         },
         'cub': {
+            'sum': f'{source_root}/cupy/cuda/detail/cupy_cub_device_reduce_sum.template',  # noqa: E501
+            'prod': f'{source_root}/cupy/cuda/detail/cupy_cub_device_reduce_prod.template',  # noqa: E501
+            'min': f'{source_root}/cupy/cuda/detail/cupy_cub_device_reduce_min.template',  # noqa: E501
+            'max': f'{source_root}/cupy/cuda/detail/cupy_cub_device_reduce_max.template',  # noqa: E501
+            'argmin': f'{source_root}/cupy/cuda/detail/cupy_cub_device_reduce_argmin.template',  # noqa: E501
+            'argmax': f'{source_root}/cupy/cuda/detail/cupy_cub_device_reduce_argmax.template',  # noqa: E501
+            's_sum': f'{source_root}/cupy/cuda/detail/cupy_cub_device_segmented_reduce_sum.template',  # noqa: E501
+            's_prod': f'{source_root}/cupy/cuda/detail/cupy_cub_device_segmented_reduce_prod.template',  # noqa: E501
+            's_min': f'{source_root}/cupy/cuda/detail/cupy_cub_device_segmented_reduce_min.template',  # noqa: E501
+            's_max': f'{source_root}/cupy/cuda/detail/cupy_cub_device_segmented_reduce_max.template',  # noqa: E501
+            'cumsum': f'{source_root}/cupy/cuda/detail/cupy_cub_device_scan_cumsum.template',  # noqa: E501
+            'cumprod': f'{source_root}/cupy/cuda/detail/cupy_cub_device_scan_cumprod.template',  # noqa: E501
+            'spmv': f'{source_root}/cupy/cuda/detail/cupy_cub_device_spmv.template',  # noqa: E501
+            'hist_range': (f'{source_root}/cupy/cuda/detail/cupy_cub_device_histogram_range.template',  # noqa: E501
+                           ['char', 'short', 'int', 'int64_t',
+                            'unsigned char', 'unsigned short', 'unsigned int', 'uint64_t',  # noqa: E501
+                            '__half', 'float', 'double',
+                            'bool']),
+            'hist_even': (f'{source_root}/cupy/cuda/detail/cupy_cub_device_histogram_even.template',  # noqa: E501
+                          ['char', 'short', 'int', 'int64_t',
+                           'unsigned char', 'unsigned short', 'unsigned int', 'uint64_t',  # noqa: E501
+                           'bool']),
         }
     }
 
 
-# TODO(leofang): some functions only support a subset of this list
 # TODO(leofang): use exact bit-width names (ex: int8_t instead of char)
 cuda_type_to_code = {
     'char': 'CUPY_TYPE_INT8',
@@ -52,7 +75,13 @@ if __name__ == '__main__':
         os.path.join(os.path.dirname(__file__), '../../..'))
 
     for mod, funcs in get_cuda_source_data(source_root).items():
-        for func_name, template_path in funcs.items():
-            for type_name, code_name in cuda_type_to_code.items():
+        for func_name, template in funcs.items():
+            if isinstance(template, str):
+                template_path = template
+                supported_types = list(cuda_type_to_code.keys())  # all supported
+            else:
+                template_path, supported_types = template
+            for type_name in supported_types:
+                code_name = cuda_type_to_code[type_name]
                 generate_translation_unit(
                     func_name, type_name, code_name, template_path)
