@@ -18,7 +18,7 @@ ENV PATH "/usr/lib/ccache:${PATH}"
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
-    apt-get -qqy install openmpi-bin
+    apt-get -qqy install libopenmpi-dev
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"

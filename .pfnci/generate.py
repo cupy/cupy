@@ -116,7 +116,7 @@ class LinuxGenerator:
                 lines += [
                     'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                     '    apt-get -qqy update && \\',
-                    '    apt-get -qqy install openmpi-bin',
+                    '    apt-get -qqy install libopenmpi-dev',
                     '',
                 ]
         elif os_name == 'centos':
