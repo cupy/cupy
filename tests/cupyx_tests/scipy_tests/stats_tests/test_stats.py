@@ -127,22 +127,22 @@ class TestZmap:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zmap_nan_policy_propagate(self, xp, scp, dtype):
-        x = xp.array([4.0, 1.0, 1.0, cupy.nan], dtype=dtype)
-        y = xp.array([cupy.nan, -4.0, -1.0, -5.0], dtype=dtype)
+        x = xp.array([4.0, 1.0, 1.0, xp.nan], dtype=dtype)
+        y = xp.array([xp.nan, -4.0, -1.0, -5.0], dtype=dtype)
         return scp.stats.zmap(x, y, nan_policy='propagate')
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zmap_nan_pocily_omit(self, xp, scp, dtype):
-        x = xp.array([4.0, 1.0, 1.0, cupy.nan], dtype=dtype)
-        y = xp.array([cupy.nan, -4.0, -1.0, -5.0], dtype=dtype)
+        x = xp.array([4.0, 1.0, 1.0, xp.nan], dtype=dtype)
+        y = xp.array([xp.nan, -4.0, -1.0, -5.0], dtype=dtype)
         return scp.stats.zmap(x, y, nan_policy='omit')
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zmap_nan_policy_omit_axis_ddof(self, xp, scp, dtype):
-        x = xp.array([4.0, 1.0, 1.0, cupy.nan], dtype=dtype)
-        y = xp.array([cupy.nan, -4.0, -1.0, -5.0], dtype=dtype)
+        x = xp.array([4.0, 1.0, 1.0, xp.nan], dtype=dtype)
+        y = xp.array([xp.nan, -4.0, -1.0, -5.0], dtype=dtype)
         return scp.stats.zmap(x, y, axis=0, ddof=1, nan_policy='omit')
 
     @testing.for_dtypes('fdFD')
@@ -211,19 +211,19 @@ class TestZscore:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zscore_nan_policy_propagate(self, xp, scp, dtype):
-        x = xp.array([4.0, 1.0, 1.0, cupy.nan], dtype=dtype)
+        x = xp.array([4.0, 1.0, 1.0, xp.nan], dtype=dtype)
         return scp.stats.zscore(x, nan_policy='propagate')
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zscore_nan_pocily_omit(self, xp, scp, dtype):
-        x = xp.array([4.0, 1.0, 1.0, cupy.nan], dtype=dtype)
+        x = xp.array([4.0, 1.0, 1.0, xp.nan], dtype=dtype)
         return scp.stats.zscore(x, nan_policy='omit')
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zmap_nan_policy_omit_axis_ddof(self, xp, scp, dtype):
-        x = xp.array([4.0, 1.0, 1.0, cupy.nan], dtype=dtype)
+        x = xp.array([4.0, 1.0, 1.0, xp.nan], dtype=dtype)
         return scp.stats.zscore(x, axis=0, ddof=1, nan_policy='omit')
 
     @testing.for_dtypes('fdFD')
