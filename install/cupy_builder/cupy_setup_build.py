@@ -337,14 +337,14 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         if module['name'] == 'thrust':
             # TODO(leofang): make "depends" aware of CUPY_NVCC_GENERATE_CODE
+            # TODO(leofang): include all the cupy headers here?
             assert module['file'][0][0] == 'cupy.cuda.thrust'
             module['file'][0][1].extend(ctx.module_TUs['thrust'])
             s['depends'] = [
                 './cupy/cuda/cupy_thrust.h',
-                './cupy/cuda/cupy_thrust.cu',
                 './cupy/cuda/cupy_thrust.inl',
             ] + [
-                x for x in glob.glob('./cupy/cuda/cupy_thrust*.template')
+                x for x in glob.glob('./cupy/cuda/detail/cupy_thrust*.cu')
                 if os.path.isfile(x)
             ]
 

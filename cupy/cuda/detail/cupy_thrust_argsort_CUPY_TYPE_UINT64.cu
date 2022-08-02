@@ -1,21 +1,21 @@
-#include "cupy_thrust.inl"
+#include "../cupy_thrust.inl"
 
 
 namespace cupy{
 
-void thrust_argsort_<CODENAME>(size_t *idx_start,
+void thrust_argsort_CUPY_TYPE_UINT64(size_t *idx_start,
                                void *data_start,
                                void *keys_start,
                                const std::vector<ptrdiff_t>& shape, 
                                intptr_t stream,
                                void *memory) {
-#if ( <CODENAME> != CUPY_TYPE_FLOAT16 )                        \
-    || (( <CODENAME> == CUPY_TYPE_FLOAT16 )                    \
+#if ( CUPY_TYPE_UINT64 != CUPY_TYPE_FLOAT16 )                        \
+    || (( CUPY_TYPE_UINT64 == CUPY_TYPE_FLOAT16 )                    \
         && ((__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))  \
             || (defined(__HIPCC__) || defined(CUPY_USE_HIP))))
 
     _argsort op;
-    return dtype_forwarder< <TYPENAME> >(op, 
+    return dtype_forwarder< uint64_t >(op, 
                                          idx_start,
                                          data_start,
                                          keys_start,

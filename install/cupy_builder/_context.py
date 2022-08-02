@@ -1,10 +1,9 @@
 import argparse
 from concurrent.futures import Executor, ThreadPoolExecutor
+import glob
 import os
 import sys
 from typing import Any, Dict, List, Mapping, Optional, Tuple
-
-from cupy_builder import install_utils
 
 
 def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
@@ -41,37 +40,19 @@ class Context:
             self.use_stub = True
 
         self.module_TUs: Dict[str, List[str]] = {}
-        self.cupy_dump_TU: bool = cmdopts.cupy_dump_TU
         self._thread_pool: Executor = ThreadPoolExecutor(
             max_workers=int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4')),
             thread_name_prefix='cupy_nvcc_worker_',
         )
-        self._generate_translation_units()
+        self._fetch_translation_units()
 
-    def __del__(self) -> None:
-        if not self.cupy_dump_TU:
-            for mod, files in self.module_TUs.items():
-                for f in files:
-                    try:
-                        os.remove(f)
-                    except FileNotFoundError:
-                        # make tests happy
-                        pass
-
-    def _generate_translation_units(self) -> None:
-        # avoid circular import...
-        from cupy_builder._modules import get_cuda_source_data
-        from cupy_builder._modules import cuda_type_to_code
-
+    def _fetch_translation_units(self) -> None:
         module_TUs = self.module_TUs
-        for mod, funcs in get_cuda_source_data(self.source_root).items():
-            TUs = []
-            for func_name, template_path in funcs.items():
-                for type_name, code_name in cuda_type_to_code.items():
-                    TUs.append(install_utils.generate_translation_unit(
-                        func_name, type_name, code_name, template_path)
-                    )
-            module_TUs[mod] = TUs
+        # The files are pre-generated via a separate script and checked in
+        # to the repo
+        TUs = glob.glob('./cupy/cuda/detail/*.cu')
+        for mod in ('thrust', 'cub'):
+            module_TUs[mod] = [TU for TU in TUs if mod in TU]
 
 
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
@@ -109,8 +90,5 @@ def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
-    parser.add_argument(
-        '--cupy-dump-TU', action='store_true', default=False,
-        help='keep CuPy generated *.cu translation units for inspection')
 
     return parser.parse_known_args(argv)

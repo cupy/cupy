@@ -1,21 +1,21 @@
-#include "cupy_thrust.inl"
+#include "../cupy_thrust.inl"
 
 
 namespace cupy {
 
-void thrust_lexsort_<CODENAME>(size_t *idx_start,
+void thrust_lexsort_CUPY_TYPE_COMPLEX128(size_t *idx_start,
                                void *keys_start,
                                size_t k,
                                size_t n,
                                intptr_t stream,
                                void *memory) {
-#if ( <CODENAME> != CUPY_TYPE_FLOAT16 )                        \
-    || (( <CODENAME> == CUPY_TYPE_FLOAT16 )                    \
+#if ( CUPY_TYPE_COMPLEX128 != CUPY_TYPE_FLOAT16 )                        \
+    || (( CUPY_TYPE_COMPLEX128 == CUPY_TYPE_FLOAT16 )                    \
         && ((__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))  \
             || (defined(__HIPCC__) || defined(CUPY_USE_HIP))))
 
     _lexsort op;
-    return dtype_forwarder< <TYPENAME> >(op,
+    return dtype_forwarder< complex<double> >(op,
                                          idx_start,
                                          keys_start,
                                          k,

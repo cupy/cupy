@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List
 
 import cupy_builder.install_build as build
 from cupy_builder import Context
@@ -67,37 +67,6 @@ _cuda_files = [
     'cupy.lib._polynomial',
     'cupy._util',
 ]
-
-
-def get_cuda_source_data(source_root: str) -> Mapping[str, Mapping[str, str]]:
-    return {
-        'thrust': {
-            'argsort': f'{source_root}/cupy/cuda/cupy_thrust_argsort.template',
-            'lexsort': f'{source_root}/cupy/cuda/cupy_thrust_lexsort.template',
-            'sort': f'{source_root}/cupy/cuda/cupy_thrust_sort.template',
-        },
-        'cub': {
-        }
-    }
-
-
-# TODO(leofang): some functions only support a subset of this list
-cuda_type_to_code = {
-    'char': 'CUPY_TYPE_INT8',
-    'short': 'CUPY_TYPE_INT16',
-    'int': 'CUPY_TYPE_INT32',
-    'int64_t': 'CUPY_TYPE_INT64',
-    'unsigned char': 'CUPY_TYPE_UINT8',
-    'unsigned short': 'CUPY_TYPE_UINT16',
-    'unsigned int': 'CUPY_TYPE_UINT32',
-    'uint64_t': 'CUPY_TYPE_UINT64',
-    '__half': 'CUPY_TYPE_FLOAT16',
-    'float': 'CUPY_TYPE_FLOAT32',
-    'double': 'CUPY_TYPE_FLOAT64',
-    'complex<float>': 'CUPY_TYPE_COMPLEX64',
-    'complex<double>': 'CUPY_TYPE_COMPLEX128',
-    'bool': 'CUPY_TYPE_BOOL',
-}
 
 
 def get_modules(context: Context) -> List[Dict[str, Any]]:

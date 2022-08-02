@@ -29,40 +29,31 @@ def filter_files_by_extension(
 def compile_device_code(
         ctx: Context,
         ext: setuptools.Extension
-) -> Tuple[List[str], List[str], List[concurrent.futures.Future]]:
+) -> List[concurrent.futures.Future]:
     """Compiles device code ("*.cu").
 
     This method invokes the device compiler (nvcc/hipcc) to build object
-    files from device code, then returns the tuple of:
-    - list of remaining (non-device) source files ("*.cpp")
-    - list of compiled object files for device code ("*.o")
-    - list of future objects representing nvcc compilation tasks
+    files from device code, then returns a list of future objects representing
+    nvcc/hipcc compilation tasks.
     """
-    sources_cu, sources_cpp = filter_files_by_extension(
-        ext.sources, '.cu')
+    sources_cpp, sources_cu, objects = get_device_code_objects(ctx, ext)
     if len(sources_cu) == 0:
-        # No device code used in this extension.
-        return ext.sources, [], []
+        # No device code used in this extension, so no compilation is needed.
+        return []
 
     if sys.platform == 'win32':
         compiler = DeviceCompilerWin32(ctx)
     else:
         compiler = DeviceCompilerUnix(ctx)
 
-    objects = []
     futures = []
-    for src in sources_cu:
+    for src, obj in zip(sources_cu, objects):
         print(f'{ext.name}: Device code: {src}')
-        obj_ext = 'obj' if sys.platform == 'win32' else 'o'
-        # TODO(kmaehashi): embed CUDA version in path
-        obj = f'build/temp.device_objects/{src}.{obj_ext}'
-        objects.append(obj)
 
-        # We need to look at the timestamps for the templates and other
-        # depended files, not the generated files (which would be removed
-        # after the installation).
-        # TODO(leofang): The dependency on *.template files can be more
-        # fine-grained. Ideally we only recompile at the per-function level.
+        # We need to look at the timestamps for all depended files.
+        # TODO(leofang): The dependency on *.cu files can be more fine-grained.
+        # Ideally we only need to recompile the changed translation units
+        # independently.
         if os.path.exists(obj):
             if ((len(ext.depends) > 0
                     and all(_get_timestamp(f) < _get_timestamp(obj)
@@ -76,7 +67,34 @@ def compile_device_code(
         f = ctx._thread_pool.submit(compiler.compile, obj, src, ext)
         futures.append(f)
 
-    return sources_cpp, objects, futures
+    return futures
+
+
+def get_device_code_objects(
+        ctx: Context,
+        ext: setuptools.Extension
+) -> Tuple[List[str], List[str], List[str]]:
+    """Retrieve the device code ("*.cu") objects.
+
+    Returns:
+        - list of remaining (non-device) source files ("*.cpp")
+        - list of device code files ("*.cu")
+        - list of compiled object files for device code ("*.o")
+    """
+    sources_cu, sources_cpp = filter_files_by_extension(
+        ext.sources, '.cu')
+    if len(sources_cu) == 0:
+        # No device code used in this extension.
+        return ext.sources, [], []
+
+    objects = []
+    for src in sources_cu:
+        obj_ext = 'obj' if sys.platform == 'win32' else 'o'
+        # TODO(kmaehashi): embed CUDA version in path
+        obj = f'build/temp.device_objects/{src}.{obj_ext}'
+        objects.append(obj)
+
+    return sources_cpp, sources_cu, objects
 
 
 def _get_timestamp(path: str) -> float:
@@ -87,6 +105,8 @@ def _get_timestamp(path: str) -> float:
 class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
+
+    _cupy_nvcc_futures: List[concurrent.futures.Future] = []
 
     def build_extensions(self) -> None:
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
@@ -106,6 +126,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         print('Cythonizing...')
         cythonize(self.extensions, cupy_builder.get_context())
 
+        ctx = cupy_builder.get_context()
+
         # Change an extension in each source filenames from "*.pyx" to "*.cpp".
         # c.f. `Cython.Distutils.old_build_ext`
         for ext in self.extensions:
@@ -118,24 +140,28 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
                 if not os.path.isfile(src):
                     raise RuntimeError(f'Fatal error: missing file: {src}')
 
+            # Compile "*.cu" files into object files. We move this step from
+            # build_extension() to here to simplify the parallel hierachy.
+            self._cupy_nvcc_futures.extend(compile_device_code(ctx, ext))
+
+        # Again, we avoid nvcc & setuptools workers from running in parallel
+        done, _ = concurrent.futures.wait(
+            self._cupy_nvcc_futures,
+            return_when=concurrent.futures.FIRST_EXCEPTION)
+        for future in done:
+            err = future.exception()
+            if err:
+                raise err
+        assert len(done) == len(self._cupy_nvcc_futures)
+
         print('Building extensions...')
         super().build_extensions()
 
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()
 
-        # Compile "*.cu" files into object files.
-        sources_cpp, extra_objects, futures = compile_device_code(ctx, ext)
-
-        # We may have many TUs in the queue waiting for nvcc to complete them,
-        # so for safety we should wait for the completion here
-        done, _ = concurrent.futures.wait(
-            futures, return_when=concurrent.futures.FIRST_EXCEPTION)
-        for future in done:
-            err = future.exception()
-            if err:
-                raise err
-        assert len(done) == len(futures)
+        # Get compiled device code objects for the linker
+        sources_cpp, _, extra_objects = get_device_code_objects(ctx, ext)
 
         # Remove device code from list of sources, and instead add compiled
         # object files to link.

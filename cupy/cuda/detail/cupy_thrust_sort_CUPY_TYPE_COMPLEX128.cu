@@ -1,20 +1,20 @@
-#include "cupy_thrust.inl"
+#include "../cupy_thrust.inl"
 
 
 namespace cupy {
 
-void thrust_sort_<CODENAME>(void *data_start,
+void thrust_sort_CUPY_TYPE_COMPLEX128(void *data_start,
                             size_t *keys_start,
                             const std::vector<ptrdiff_t>& shape,
                             intptr_t stream,
                             void* memory) {
-#if ( <CODENAME> != CUPY_TYPE_FLOAT16 )                        \
-    || (( <CODENAME> == CUPY_TYPE_FLOAT16 )                    \
+#if ( CUPY_TYPE_COMPLEX128 != CUPY_TYPE_FLOAT16 )                        \
+    || (( CUPY_TYPE_COMPLEX128 == CUPY_TYPE_FLOAT16 )                    \
         && ((__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))  \
             || (defined(__HIPCC__) || defined(CUPY_USE_HIP))))
 
     _sort op;
-    return dtype_forwarder< <TYPENAME> >(op,
+    return dtype_forwarder< complex<double> >(op,
                                          data_start,
                                          keys_start,
                                          shape,

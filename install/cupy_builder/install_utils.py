@@ -21,19 +21,3 @@ def search_on_path(filenames):
             if os.path.exists(full):
                 return os.path.abspath(full)
     return None
-
-
-def generate_translation_unit(
-        func_name, type_name, code_name, source_path) -> str:
-    with open(source_path) as f:
-        func_template = f.read()
-        func_template = func_template.replace('<CODENAME>', code_name)
-        func_template = func_template.replace('<TYPENAME>', type_name)
-    base_name = os.path.basename(source_path).split('.')[0]
-    full_path = f'{os.path.dirname(source_path)}/{base_name}_{code_name}.cu'
-    with open(full_path, 'w') as f:
-        f.write(func_template)
-    # the builder expects relative paths (especially on Windows)
-    rel_path = os.path.relpath(
-        full_path, f'{os.path.dirname(source_path)}/../..')
-    return rel_path
