@@ -242,8 +242,7 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
     """
     weights_dtype = _util._init_weights_dtype(input)
     weights = cupy.full(size, 1 / size, dtype=weights_dtype)
-    return correlate1d(input, weights ,axis, output, mode, cval,
-                       origin)
+    return correlate1d(input, weights, axis, output, mode, cval, origin)
 
 
 def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
