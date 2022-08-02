@@ -45,42 +45,21 @@ ELSE:
         int nvrtcAddNameExpression(Program, const char*)
         int nvrtcGetLoweredName(Program, const char*, const char**)
 
-    # APIs added after CUDA 11.2+.
-    cdef void* _nvrtcGetNumSupportedArchs = NULL
-    cdef int nvrtcGetNumSupportedArchs(int* numArchs) nogil:
-        return (<int(*)(...) nogil>_nvrtcGetNumSupportedArchs)(numArchs)
-
-    cdef void* _nvrtcGetSupportedArchs = NULL
-    cdef int nvrtcGetSupportedArchs(int* supportedArchs) nogil:
-        return (<int(*)(...) nogil>_nvrtcGetSupportedArchs)(supportedArchs)
-
-    cdef void* _nvrtcGetNVVMSize = NULL
-    cdef int nvrtcGetNVVMSize(Program prog, size_t* nvvmSizeRet) nogil:
-        return (<int(*)(...) nogil>_nvrtcGetNVVMSize)(prog, nvvmSizeRet)
-
-    cdef void* _nvrtcGetNVVM = NULL
-    cdef int nvrtcGetNVVM(Program prog, char* nvvm) nogil:
-        return (<int(*)(...) nogil>_nvrtcGetNVVM)(prog, nvvm)
-
-    cdef load_functions(libname):
-        _nvrtc = SoftLink(libname, 'nvrtc')
-        global _nvrtcGetNumSupportedArchs
-        _nvrtcGetNumSupportedArchs = _nvrtc.get_func('GetNumSupportedArchs')
-        global _nvrtcGetSupportedArchs
-        _nvrtcGetSupportedArchs = _nvrtc.get_func('GetSupportedArchs')
-        global _nvrtcGetNVVMSize
-        _nvrtcGetNVVMSize = _nvrtc.get_func('GetNVVMSize')
-        global _nvrtcGetNVVM
-        _nvrtcGetNVVM = _nvrtc.get_func('GetNVVM')
-
+    ctypedef int (*f_type)(...) nogil  # NOQA
     IF 11020 <= CUPY_CUDA_VERSION < 12000:
         if _sys.platform == 'linux':
             _libname = 'libnvrtc.so.11.2'
         else:
             _libname = 'nvrtc64_112_0.dll'
-        load_functions(_libname)
     ELSE:
-        load_functions(None)
+        _libname = None
+
+    cdef SoftLink _lib = SoftLink(_libname, 'nvrtc')
+    # APIs added after CUDA 11.2+.
+    cdef f_type nvrtcGetNumSupportedArchs = <f_type>_lib.get('GetNumSupportedArchs')  # NOQA
+    cdef f_type nvrtcGetSupportedArchs = <f_type>_lib.get('GetSupportedArchs')  # NOQA
+    cdef f_type nvrtcGetNVVMSize = <f_type>_lib.get('GetNVVMSize')
+    cdef f_type nvrtcGetNVVM = <f_type>_lib.get('GetNVVM')
 
 
 ###############################################################################
