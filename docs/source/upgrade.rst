@@ -68,21 +68,30 @@ Dropping NumPy 1.17 Support
 
 NumPy 1.17 is no longer supported.
 
+.. _change in CuPy Device behavior:
+
 Change in :class:`cupy.cuda.Device` Behavior
 --------------------------------------------
 
-Current device set via ``use()`` will not be restored when exiting ``with`` block
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Current device set via :meth:`~cupy.cuda.Device.use` will not be honored by the ``with Device`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The current device set via :func:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
+The current device set via :meth:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
 
 .. code-block:: py
 
-   with cupy.cuda.Device(1) as d1:
-       d2 = cupy.cuda.Device(0).use()
-       with d1:
-           pass
-       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
+   cupy.cuda.Device(1).use()
+   with cupy.cuda.Device(0):
+       pass
+   cupy.cuda.Device()  # -> CuPy v10 returns device 0 instead of device 1
+
+This decision was made to serve CuPy *users* better, but it could lead to surprises to downstream *developers* depending on CuPy,
+as essentially CuPy's :class:`~cupy.cuda.Device` context manager no longer respects the CUDA ``cudaSetDevice()`` API. Mixing
+device management functionalities (especially using context manager) from different libraries is highly discouraged.
+
+For downstream libraries that still wish to respect the ``cudaGetDevice()``/``cudaSetDevice()`` APIs, you should avoid managing
+current devices using the ``with Device`` context manager, and instead calling these APIs explicitly, see for example
+`cupy/cupy#5963 <https://github.com/cupy/cupy/pull/5963>`_.
 
 Changes in :class:`cupy.cuda.Stream` Behavior
 ---------------------------------------------
