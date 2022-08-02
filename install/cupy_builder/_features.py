@@ -43,8 +43,8 @@ class Feature:
         if not isinstance(key, str):
             return False
         try:
-            self[key]
-        except AttributeError as e:
+            self.__getitem__(key)
+        except AttributeError:
             return False
         return True
 
