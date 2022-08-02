@@ -524,13 +524,13 @@ class _SparseNCCLCommunicator:
                 return sizes_shape
             elif method == 'bcast':
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
-                comm._mpi_comm.Bcast(sizes_shape, root=peer)
-                return sizes_shape
+                # If sizes_shape is an empty tuple, Bcast does not work
+                return comm._mpi_comm.bcast(sizes_shape, root=peer)
             elif method == 'gather':
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
                 recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
-                comm._mpi_comm.Gather(sizes_shape, recv_buf, peer)
-                return recv_buf
+                # If sizes_shape is an empty tuple, Gather does not work
+                return comm._mpi_comm.gather(sizes_shape, recv_buf, peer)
             else:
                 raise RuntimeError('Unsupported method')
         else:
