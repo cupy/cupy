@@ -1365,93 +1365,27 @@ cdef extern from '../../cupy_sparse.h' nogil:
     # Build-time version
     int CUSPARSE_VERSION
 
-# APIs added after CUDA 11.2+.
-cdef void* _cusparseCreateCsc = NULL
-cdef Status cusparseCreateCsc(
-        SpMatDescr* spMatDescr, int64_t rows,
-        int64_t cols, int64_t nnz, void* cscColOffsets,
-        void* cscRowInd, void* cscValues,
-        IndexType cscColOffsetsType,
-        IndexType cscRowIndType, IndexBase idxBase,
-        DataType valueType):
-    return (<Status(*)(...) nogil>_cusparseCreateCsc)(
-        spMatDescr, rows,
-        cols, nnz, cscColOffsets,
-        cscRowInd, cscValues,
-        cscColOffsetsType,
-        cscRowIndType, idxBase,
-        valueType)
-
-cdef void* _cusparseSparseToDense_bufferSize = NULL
-cdef Status cusparseSparseToDense_bufferSize(
-        Handle handle, SpMatDescr matA, DnMatDescr matB,
-        cusparseSparseToDenseAlg_t alg, size_t* bufferSize):
-    return (<Status(*)(...) nogil>_cusparseSparseToDense_bufferSize)(
-        handle, matA, matB,
-        alg, bufferSize)
-
-cdef void* _cusparseSparseToDense = NULL
-cdef Status cusparseSparseToDense(
-        Handle handle, SpMatDescr matA, DnMatDescr matB,
-        cusparseSparseToDenseAlg_t alg, void* buffer):
-    return (<Status(*)(...) nogil>_cusparseSparseToDense)(
-        handle, matA, matB,
-        alg, buffer)
-
-cdef void* _cusparseDenseToSparse_bufferSize = NULL
-cdef Status cusparseDenseToSparse_bufferSize(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, size_t* bufferSize):
-    return (<Status(*)(...) nogil>_cusparseDenseToSparse_bufferSize)(
-        handle, matA, matB,
-        alg, bufferSize)
-
-cdef void* _cusparseDenseToSparse_analysis = NULL
-cdef Status cusparseDenseToSparse_analysis(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, void* buffer):
-    return (<Status(*)(...) nogil>_cusparseDenseToSparse_analysis)(
-        handle, matA, matB,
-        alg, buffer)
-
-cdef void* _cusparseDenseToSparse_convert = NULL
-cdef Status cusparseDenseToSparse_convert(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, void* buffer):
-    return (<Status(*)(...) nogil>_cusparseDenseToSparse_convert)(
-        handle, matA, matB,
-        alg, buffer)
-
-cdef load_functions(libname, prefix):
-    lib = SoftLink(libname, prefix)
-
-    # cuSPARSE 11.3.1+ (CUDA 11.2.0+)
-    global _cusparseCreateCsc
-    _cusparseCreateCsc = lib.get_func('CreateCsc')
-
-    # cuSPARSE 11.3+ (CUDA 11.1.1+)
-    # Note: CUDA 11.1.0 contains cuSPARSE 11.2.0.275
-    global _cusparseSparseToDense_bufferSize
-    _cusparseSparseToDense_bufferSize = lib.get_func('SparseToDense_bufferSize')  # NOQA
-    global _cusparseSparseToDense
-    _cusparseSparseToDense = lib.get_func('SparseToDense')
-    global _cusparseDenseToSparse_bufferSize
-    _cusparseDenseToSparse_bufferSize = lib.get_func('DenseToSparse_bufferSize')  # NOQA
-    global _cusparseDenseToSparse_analysis
-    _cusparseDenseToSparse_analysis = lib.get_func('DenseToSparse_analysis')
-    global _cusparseDenseToSparse_convert
-    _cusparseDenseToSparse_convert = lib.get_func('DenseToSparse_convert')
-
+ctypedef Status (*f_type)(...) nogil  # NOQA
 IF 11010 <= CUPY_CUDA_VERSION < 12000:
     if _sys.platform == 'linux':
         _libname = 'libcusparse.so.11'
     else:
         _libname = 'cusparse64_11.dll'
-    load_functions(_libname, 'cusparse')
 ELIF 0 < CUPY_HIP_VERSION:
-    load_functions(__file__, 'cusparse')
+    _libname = __file__
 ELSE:
-    load_functions(None, 'cusparse')
+    _libname = None
+
+cdef SoftLink _lib = SoftLink(_libname, 'cusparse')
+# cuSPARSE 11.3.1+ (CUDA 11.2.0+)
+cdef f_type cusparseCreateCsc = <f_type>_lib.get('CreateCsc')
+# cuSPARSE 11.3+ (CUDA 11.1.1+)
+# Note: CUDA 11.1.0 contains cuSPARSE 11.2.0.275
+cdef f_type cusparseSparseToDense_bufferSize = <f_type>_lib.get('SparseToDense_bufferSize')  # NOQA
+cdef f_type cusparseSparseToDense = <f_type>_lib.get('SparseToDense')
+cdef f_type cusparseDenseToSparse_bufferSize = <f_type>_lib.get('DenseToSparse_bufferSize')  # NOQA
+cdef f_type cusparseDenseToSparse_analysis = <f_type>_lib.get('DenseToSparse_analysis')  # NOQA
+cdef f_type cusparseDenseToSparse_convert = <f_type>_lib.get('DenseToSparse_convert')  # NOQA
 
 
 cdef dict STATUS = {
