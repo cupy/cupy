@@ -809,8 +809,7 @@ class _SparseNCCLCommunicator:
         # TODO check out dtypes are the same as in dtypes
         for i in range(comm._n_devices):
             if i != comm.rank:
-                cls.send(comm, in_array[i], i, stream)
-                cls.recv(comm, out_array[i], i, stream)
+                cls.send_recv(comm, in_array[i], out_array[i], i, stream)
             else:
                 cls._assign_arrays(
                     out_array[i],
