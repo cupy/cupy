@@ -127,7 +127,7 @@ main() {
         --rm
         --name "${container_name}"
         --env "BASE_BRANCH=${base_branch}"
-        --shm-size=2048m
+        --shm-size=1024m
       )
       if [[ -t 1 ]]; then
         docker_args+=(--interactive)
