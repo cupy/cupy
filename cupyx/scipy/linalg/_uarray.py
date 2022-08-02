@@ -68,7 +68,8 @@ _cp_linalg_functions = [
     'solve', 'lstsq', 'inv', 'pinv'
 ]
 
-for func_name in _cp_linalg_functions:
-    cp_func = getattr(_cp_linalg, func_name)
-    scipy_func = getattr(_scipy_linalg, func_name)
-    _implemented[scipy_func] = cp_func
+if _scipy_linalg:
+    for func_name in _cp_linalg_functions:
+        cp_func = getattr(_cp_linalg, func_name)
+        scipy_func = getattr(_scipy_linalg, func_name)
+        _implemented[scipy_func] = cp_func
