@@ -10,6 +10,7 @@ from cupyx.jit import _compile
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _cuda_types
 from cupyx.jit import _internal_types
+from cupyx.jit._cuda_types import Scalar
 
 
 class _CudaFunction:
@@ -113,7 +114,16 @@ class _JitRawKernel:
             kern = module.get_function(fname)
             self._cache[(in_types, device_id)] = (kern, enable_cg)
 
-        kern(grid, block, args, shared_mem, stream, enable_cg)
+        new_args = []
+        for a, t in zip(args, in_types):
+            if isinstance(t, Scalar):
+                if t.dtype.char == 'e':
+                    a = numpy.float32(a)
+                else:
+                    a = t.dtype.type(a)
+            new_args.append(a)
+
+        kern(grid, block, tuple(new_args), shared_mem, stream, enable_cg)
 
     def __getitem__(self, grid_and_block):
         """Numba-style kernel call.
