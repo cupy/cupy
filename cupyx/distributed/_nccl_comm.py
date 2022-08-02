@@ -523,14 +523,17 @@ class _SparseNCCLCommunicator:
                 comm._mpi_comm.Recv(sizes_shape, source=peer, tag=1)
                 return sizes_shape
             elif method == 'bcast':
-                sizes_shape = numpy.array(sizes_shape, dtype='q')
-                # If sizes_shape is an empty tuple, Bcast does not work
-                return comm._mpi_comm.bcast(sizes_shape, root=peer)
+                if comm.rank == peer:
+                    sizes_shape = numpy.array(sizes_shape, dtype='q')
+                else:
+                    sizes_shape = numpy.empty(5, dtype='q')
+                comm._mpi_comm.Bcast(sizes_shape, root=peer)
+                return sizes_shape
             elif method == 'gather':
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
                 recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
-                # If sizes_shape is an empty tuple, Gather does not work
-                return comm._mpi_comm.gather(sizes_shape, recv_buf, peer)
+                comm._mpi_comm.Gather(sizes_shape, recv_buf, peer)
+                return recv_buf
             else:
                 raise RuntimeError('Unsupported method')
         else:
