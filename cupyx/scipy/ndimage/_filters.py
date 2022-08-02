@@ -240,7 +240,9 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    return correlate1d(input, cupy.ones(size) / size, axis, output, mode, cval,
+    weights_dtype = _util._init_weights_dtype(input)
+    weights = cupy.full(size, 1 / size, dtype=weights_dtype)
+    return correlate1d(input, kernel ,axis, output, mode, cval,
                        origin)
 
 
@@ -275,9 +277,10 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
         from SciPy due to floating-point rounding of intermediate results.
     """
     sizes = _util._fix_sequence_arg(size, input.ndim, 'size', int)
+    weights_dtype = _util._init_weights_dtype(input)
 
-    def get(size):
-        return None if size <= 1 else cupy.ones(size) / size
+    def get(size, dtype=weights_dtype):
+        return None if size <= 1 else cupy.full(size, 1 / size, dtype=dtype)
 
     return _run_1d_correlates(input, sizes, get, output, mode, cval, origin)
 
@@ -317,7 +320,10 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
         from SciPy due to floating-point rounding of intermediate results.
     """
     radius = int(float(truncate) * float(sigma) + 0.5)
-    weights = _gaussian_kernel1d(sigma, int(order), radius)
+    weights_dtype = _util._init_weights_dtype(input)
+    weights = _gaussian_kernel1d(
+        sigma, int(order), radius, dtype=weights_dtype
+    )
     return correlate1d(input, weights, axis, output, mode, cval)
 
 
@@ -356,19 +362,20 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
     sigmas = _util._fix_sequence_arg(sigma, input.ndim, 'sigma', float)
     orders = _util._fix_sequence_arg(order, input.ndim, 'order', int)
     truncate = float(truncate)
+    weights_dtype = _util._init_weights_dtype(input)
 
     def get(param):
         sigma, order = param
         radius = int(truncate * float(sigma) + 0.5)
         if radius <= 0:
             return None
-        return _gaussian_kernel1d(sigma, order, radius)
+        return _gaussian_kernel1d(sigma, order, radius, dtype=weights_dtype)
 
     return _run_1d_correlates(input, list(zip(sigmas, orders)), get, output,
                               mode, cval, 0)
 
 
-def _gaussian_kernel1d(sigma, order, radius):
+def _gaussian_kernel1d(sigma, order, radius, dtype=float):
     """
     Computes a 1-D Gaussian correlation kernel.
     """
@@ -396,7 +403,7 @@ def _gaussian_kernel1d(sigma, order, radius):
     for _ in range(order):
         q = Q_deriv.dot(q)
     q = (x[:, None] ** exponent_range).dot(q)
-    return cupy.asarray((q * phi_x)[::-1])
+    return cupy.asarray((q * phi_x)[::-1], dtype=dtype)
 
 
 def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
@@ -423,7 +430,9 @@ def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    return _prewitt_or_sobel(input, axis, output, mode, cval, cupy.ones(3))
+    weights_dtype = _util._init_weights_dtype(input)
+    weights = cupy.ones(3, dtype=weights_dtype)
+    return _prewitt_or_sobel(input, axis, output, mode, cval, weights)
 
 
 def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
@@ -450,15 +459,16 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
+    weights_dtype = _util._init_weights_dtype(input)
     return _prewitt_or_sobel(input, axis, output, mode, cval,
-                             cupy.array([1, 2, 1]))
+                             cupy.array([1, 2, 1], dtype=weights_dtype))
 
 
 def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
     axis = internal._normalize_axis_index(axis, input.ndim)
 
     def get(is_diff):
-        return cupy.array([-1, 0, 1]) if is_diff else weights
+        return cupy.array([-1, 0, 1], dtype=weights.dtype) if is_diff else weights  # noqa
 
     return _run_1d_correlates(input, [a == axis for a in range(input.ndim)],
                               get, output, mode, cval)
@@ -546,7 +556,8 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    weights = cupy.array([1, -2, 1], dtype=cupy.float64)
+    weights_dtype = _util._init_weights_dtype(input)
+    weights = cupy.array([1, -2, 1], dtype=weights_dtype)
 
     def derivative2(input, axis, output, mode, cval):
         return correlate1d(input, weights, axis, output, mode, cval)
