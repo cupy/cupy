@@ -254,7 +254,11 @@ class Environment:
 
     def get_fresh_variable_name(self, prefix='', suffix=''):
         self.count += 1
-        return f'{prefix}{self.count}{suffix}'
+        name = f'{prefix}{self.count}{suffix}'
+        if self[name] is None:
+            return name
+        else:
+            return self.get_fresh_variable_name(prefix, suffix)
 
 
 def _transpile_function(
@@ -467,7 +471,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         if not isinstance(target, Data):
             raise TypeError(f'Cannot augassign to {target.code}')
         value = Data.init(value, env)
-        tmp = Data('tmp__', target.ctype)
+        tmp = Data(env.get_fresh_variable_name('_tmp_'), target.ctype)
         result = _eval_operand(stmt.op, (tmp, value), env)
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
