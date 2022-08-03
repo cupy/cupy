@@ -52,7 +52,7 @@ def run(gpu_id, tol, max_iter):
         # Create the large symmetric matrix 'A'.
         N = 2000
         A = np.random.randint(-50, 50, size=(N, N))
-        A = (A + A.T).astype(np.float64)
+        A = (A @ A.T).astype(np.float64)
         x_ans = np.random.randint(-50, 50, size=N).astype(np.float64)
         b = np.dot(A, x_ans)
 
