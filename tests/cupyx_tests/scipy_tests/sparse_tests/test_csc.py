@@ -896,12 +896,8 @@ class TestCscMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
+    @testing.with_requires('scipy>=1.9.0,<1.8.0')  # See scipy/15210
     def test_rmul_unsupported(self):
-        if (
-            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
-            self.make_method not in ['_make_empty', '_make_shape']
-        ):
-            pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
             # TODO(unno): When a sparse matrix has no element, scipy.sparse
