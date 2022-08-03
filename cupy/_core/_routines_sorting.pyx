@@ -231,12 +231,10 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
     ndim = data._shape.size()
     _axis = internal._normalize_axis_index(_axis, ndim)
 
-    if _axis == ndim - 1:
-        data = self
-    else:
+    if _axis != ndim - 1:
         data = _manipulation.rollaxis(self, _axis, ndim).copy()
 
-    length = self._shape[_axis]
+    length = data._shape[ndim - 1]
 
     if length == 0:
         return cupy.empty((0,), dtype=cupy.int64)
@@ -265,31 +263,31 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
     while sz > 0 and length // sz < max_k + 32 * t:
         sz //= 2
     sz *= self.size // length
+    shape = data.shape
 
     # If the array size is small or k is large, we simply sort the array.
     if length < 32 or sz < 1 or max_k >= 1024:
         # kth is ignored.
-        return data.argsort(axis=-1)
+        indices = data.argsort(axis=-1)
+    else:
+        data = data.ravel()
+        indices = cupy.arange(0, data.shape[0], dtype=cupy.int64)
 
-    shape = data.shape
-    data = data.ravel()
-    indices = cupy.arange(0, data.shape[0], dtype=cupy.int64)
-
-    # For each subarray, we collect first k elements to the head.
-    kern, merge_kern = _argpartition_kernel(self.dtype)
-    block_size = 32
-    grid_size = sz
-    kern(grid=(grid_size,), block=(block_size,), args=(
-        data, indices, max_k, self.size, t, sz))
-
-    # Merge heads of subarrays.
-    s = 1
-    while s < sz // (self.size // length):
+        # For each subarray, we collect first k elements to the head.
+        kern, merge_kern = _argpartition_kernel(self.dtype)
         block_size = 32
-        grid_size = sz // s // 2
-        merge_kern(grid=(grid_size,), block=(block_size,), args=(
-            data, indices, max_k, self.size, sz, s))
-        s *= 2
+        grid_size = sz
+        kern(grid=(grid_size,), block=(block_size,), args=(
+            data, indices, max_k, self.size, t, sz))
+
+        # Merge heads of subarrays.
+        s = 1
+        while s < sz // (self.size // length):
+            block_size = 32
+            grid_size = sz // s // 2
+            merge_kern(grid=(grid_size,), block=(block_size,), args=(
+                data, indices, max_k, self.size, sz, s))
+            s *= 2
 
     # Rearrange indices w.r.t the original axis
     indices = indices % length
