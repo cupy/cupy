@@ -25,9 +25,6 @@ matmul = _GUFunc(
     The main difference against cupy.dot are the handling of arrays with more
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
-    .. note::
-        The out array as input is currently not supported.
-
     Args:
         x1 (cupy.ndarray): The left argument.
         x2 (cupy.ndarray): The right argument.
