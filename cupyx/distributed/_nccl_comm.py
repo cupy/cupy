@@ -534,6 +534,11 @@ class _SparseNCCLCommunicator:
                 recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
                 comm._mpi_comm.Gather(sizes_shape, recv_buf, peer)
                 return recv_buf
+            elif method == 'alltoall':
+                sizes_shape = numpy.array(sizes_shape, dtype='q')
+                recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
+                comm._mpi_comm.Alltoall(sizes_shape, recv_buf)
+                return recv_buf
             else:
                 raise RuntimeError('Unsupported method')
         else:
@@ -568,6 +573,12 @@ class _SparseNCCLCommunicator:
                 recv_buf = cupy.empty((comm._n_devices, 5), dtype='q')
                 _DenseNCCLCommunicator.gather(
                     comm, sizes_shape, recv_buf, root=peer, stream=stream)
+                return cupy.asnumpy(recv_buf)
+            elif method == 'alltoall':
+                sizes_shape = cupy.array(sizes_shape, dtype='q')
+                recv_buf = cupy.empty((comm._n_devices, 5), dtype='q')
+                _DenseNCCLCommunicator.all_to_all(
+                    comm, sizes_shape, recv_buf, stream=stream)
                 return cupy.asnumpy(recv_buf)
             else:
                 raise RuntimeError('Unsupported method')
@@ -801,17 +812,32 @@ class _SparseNCCLCommunicator:
             raise RuntimeError(
                 f'all_to_all requires in_array to have {comm._n_devices}'
                 f'elements, found {len(in_array)}')
-        # TODO(ecastill) assert the types
-        for _ in range(comm._n_devices):
-            out_array.append(_make_sparse_empty(
-                in_array[comm.rank].dtype,
-                _get_sparse_type(in_array[comm.rank])))
-        # TODO check out dtypes are the same as in dtypes
+
+        # Exchange metadata
+        shape_and_sizes = []
+        recv_shape_and_sizes = []
+        for i, a in enumerate(in_array):
+            arrays = cls._get_internal_arrays(a)
+            shape_and_sizes.append(cls._get_shape_and_sizes(arrays, a.shape))
+
+        recv_shape_and_sizes = cls._exchange_shape_and_sizes(
+            comm, i, shape_and_sizes, 'alltoall', stream)
+
+        # prepare the arrays to recv the data
         for i in range(comm._n_devices):
-            if i != comm.rank:
-                cls.send_recv(comm, in_array[i], out_array[i], i, stream)
-            else:
-                cls._assign_arrays(
-                    out_array[i],
-                    cls._get_internal_arrays(in_array[i]),
-                    in_array[i].shape)
+            shape = tuple(recv_shape_and_sizes[i][0:2])
+            sizes = recv_shape_and_sizes[i][2:]
+            s_arrays = cls._get_internal_arrays(in_array[i])
+            # TODO(use the out_array datatypes)
+            r_arrays = [
+                cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, s_arrays)]
+            nccl.groupStart()
+            for a in s_arrays:
+                cls._send(comm, a, i, a.dtype, a.size, stream)
+            for a in r_arrays:
+                cls._recv(comm, a, i, a.dtype, a.size, stream)
+            nccl.groupEnd()
+            out_array.append(_make_sparse_empty(
+                in_array[i].dtype,
+                _get_sparse_type(in_array[i])))
+            cls._assign_arrays(out_array[i], r_arrays, shape)
