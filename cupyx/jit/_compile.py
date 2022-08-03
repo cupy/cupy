@@ -632,11 +632,18 @@ def _transpile_expr_internal(expr, env):
 
         func = func.obj
 
-        if is_constants(*args, *kwargs.values()):
-            # compile-time function call
-            args = [x.obj for x in args]
-            kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
-            return Constant(func(*args, **kwargs))
+        if isinstance(func, _interface._JitRawKernel):
+            if not func._device:
+                raise TypeError(
+                    f'Calling __global__ function {func.__name__} '
+                    'from __global__ funcion is not allowed.')
+            args = [Data.init(x, env) for x in args]
+            in_types = tuple([x.ctype for x in args])
+            fname, return_type = _transpile_func_obj(
+                func._func, ['__device__'], env.mode,
+                in_types, None, env.generated)
+            in_params = ', '.join([x.code for x in args])
+            return Data(f'{fname}({in_params})', return_type)
 
         if isinstance(func, _kernel.ufunc):
             # ufunc call
@@ -647,6 +654,12 @@ def _transpile_expr_internal(expr, env):
                     f"'{name}' is an invalid keyword to ufunc {func.name}")
             return _call_ufunc(func, args, dtype, env)
 
+        if is_constants(*args, *kwargs.values()):
+            # compile-time function call
+            args = [x.obj for x in args]
+            kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
+            return Constant(func(*args, **kwargs))
+
         if inspect.isclass(func) and issubclass(func, _typeclasses):
             # explicit typecast
             if len(args) != 1:
@@ -655,16 +668,7 @@ def _transpile_expr_internal(expr, env):
             ctype = _cuda_types.Scalar(func)
             return _astype_scalar(args[0], ctype, 'unsafe', env)
 
-        if isinstance(func, _interface._JitRawKernel) and func._device:
-            args = [Data.init(x, env) for x in args]
-            in_types = tuple([x.ctype for x in args])
-            fname, return_type = _transpile_func_obj(
-                func._func, ['__device__'], env.mode,
-                in_types, None, env.generated)
-            in_params = ', '.join([x.code for x in args])
-            return Data(f'{fname}({in_params})', return_type)
-
-        raise TypeError(f"Invalid function call '{fname}'.")
+        raise TypeError(f"Invalid function call '{func.__name__}'.")
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)

@@ -132,6 +132,19 @@ class TestMisc:
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.clip(a, 3, 13)
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_external_clip3(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.clip(a, 8, 4)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    def test_external_clip4(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.clip(a, 3)
+
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip2(self, xp, dtype):
@@ -451,6 +464,22 @@ class TestMisc:
         fx = xp.asarray([-numpy.inf, numpy.inf], dtype=dtype_x)
         fy = xp.asarray([0, 10], dtype=dtype_y)
         return xp.interp(x, fx, fy)
+
+    @testing.for_all_dtypes(name='dtype_2', no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name='dtype_1', no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_heaviside(self, xp, dtype_1, dtype_2):
+        x = testing.shaped_random((10, ), xp, dtype_1)
+        h = xp.asarray([10], dtype=dtype_2)
+        return xp.heaviside(x, h)
+
+    @testing.for_all_dtypes(name='dtype_2', no_bool=True, no_complex=True)
+    @testing.for_float_dtypes(name='dtype_1')
+    @testing.numpy_cupy_array_equal()
+    def test_heaviside_nan_inf(self, xp, dtype_1, dtype_2):
+        x = xp.asarray([-2., 0., 3., xp.nan, xp.inf, -xp.inf], dtype=dtype_1)
+        h = xp.asarray([10], dtype=dtype_2)
+        return xp.heaviside(x, h)
 
 
 @testing.parameterize(*testing.product({
