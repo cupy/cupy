@@ -231,12 +231,12 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
     ndim = data._shape.size()
     _axis = internal._normalize_axis_index(_axis, ndim)
 
-    if axis == ndim - 1:
+    if _axis == ndim - 1:
         data = self
     else:
-        data = _manipulation.rollaxis(self, axis, ndim).copy()
+        data = _manipulation.rollaxis(self, _axis, ndim).copy()
 
-    length = data._shape[_axis]
+    length = self._shape[_axis]
 
     if length == 0:
         return cupy.empty((0,), dtype=cupy.int64)
@@ -290,6 +290,13 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
         merge_kern(grid=(grid_size,), block=(block_size,), args=(
             data, indices, max_k, self.size, sz, s))
         s *= 2
+
+    # Rearrange indices w.r.t the original axis
+    indices = indices % length
+    indices = indices.reshape(shape)
+
+    if _axis != ndim - 1:
+        indices = _manipulation.rollaxis(indices, -1, _axis)
 
     return indices
 
