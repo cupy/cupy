@@ -178,7 +178,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
             postargs += [f'-t{num_threads}']
         else:
             postargs += ['--std=c++11']
-        postargs += ['-Xcompiler=-fno-gnu-unique']
+        postargs += ['-Xcompiler=-fno-gnu-unique', '-Xfatbin=-compress-all']
         print('NVCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
@@ -217,7 +217,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             # to build CuPy because some Python versions were built using it.
             # REF: https://wiki.python.org/moin/WindowsCompilers
             postargs += ['-allow-unsupported-compiler']
-        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
+        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES',
+                     '-Xfatbin', '-compress-all']
         # This is to compile thrust with MSVC2015
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
