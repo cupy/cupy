@@ -6,6 +6,7 @@ from cupy_builder._features import CUDA_cuda
 from cupy_builder import install_build as build
 
 import cupy
+import pytest
 
 
 def get_compiler_settings():
@@ -16,6 +17,7 @@ def get_compiler_settings():
     return compiler, settings
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='For CUDA environment')
 def test_CUDA_cuda():
     ctx = Context('.', _env={}, _argv=[])
     feat = CUDA_cuda(ctx)
