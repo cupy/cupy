@@ -13,3 +13,4 @@ Summary  statistics
    :toctree: generated/
 
    BarycentricInterpolator
+   barycentric_interpolate

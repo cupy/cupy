@@ -149,6 +149,10 @@ class BarycentricInterpolator(_Interpolator1D):
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate values
 
+    See Also
+    --------
+    scipy.interpolate.BarycentricInterpolator
+
     """
 
     def __init__(self, xi, yi=None, axis=0):
@@ -276,3 +280,41 @@ class BarycentricInterpolator(_Interpolator1D):
             else:
                 p[r[:-1]] = self.yi[r[-1]]
         return p
+
+
+def barycentric_interpolate(xi, yi, x, axis=0):
+    """Convenience function for polynomial interpolation.
+
+    Constructs a polynomial that passes through a given
+    set of points, then evaluates the polynomial. For
+    reasons of numerical stability, this function does
+    not compute the coefficients of the polynomial.
+
+    Parameters
+    ----------
+    xi : array-like
+        1-D array of coordinates of the points the polynomial
+        should pass through
+    yi : array-like
+        y-coordinates of the points the polynomial should pass
+        through
+    x : scalar or array-like
+        Points to evaluate the interpolator at
+    axis : int, optional
+        Axis in the yi array corresponding to the x-coordinate
+        values
+
+    Returns
+    -------
+    y : scalar or array-like
+        Interpolated values. Shape is determined by replacing
+        the interpolation axis in the original array with the
+        shape x
+
+    See Also
+    --------
+    scipy.interpolate.barycentric_interpolate
+
+    """
+
+    return BarycentricInterpolator(xi, yi, axis=axis)(x)

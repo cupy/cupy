@@ -2,6 +2,7 @@ import cupy
 
 from cupy import testing
 from cupyx.scipy.interpolate import BarycentricInterpolator
+from cupyx.scipy.interpolate import barycentric_interpolate
 
 
 @testing.with_requires("scipy")
@@ -86,3 +87,14 @@ class TestBarycentric:
 
         P = BarycentricInterpolator(x, y)
         testing.assert_allclose(y, P(x))
+
+    def test_wrapper(self):
+        P = BarycentricInterpolator(self.xs, self.ys)
+        values = barycentric_interpolate(self.xs, self.ys, self.test_xs)
+        testing.assert_allclose(P(self.test_xs), values)
+
+    def test_int_input(self):
+        x = 1000 * cupy.arange(1, 11)
+        y = cupy.arange(1, 11)
+        value = barycentric_interpolate(x, y, 1000 * 9.5)
+        testing.assert_allclose(value, 9.5)
