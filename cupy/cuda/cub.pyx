@@ -437,7 +437,7 @@ cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
     # NumPy/CuPy quirk: zero-size arrays are both C- & F- contig...
     if x.size != 0:
         if not _cub_device_segmented_reduce_axis_compatible(
-            reduce_axis, x.ndim, order):
+                reduce_axis, x.ndim, order):
             return (False, 0)
     else:
         order = 'CF'  # for computing the contig size

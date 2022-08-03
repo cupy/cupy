@@ -358,14 +358,21 @@ class TestArrayReduction(unittest.TestCase):
         ((2, 3, 0), (0, 1, 2)),
     ],
     'order': ('C', 'F'),
-    'func': ('min', 'max'),
+    'func': ('min', 'max', 'argmax', 'argmin'),
 }))
 class TestArrayReductionZeroSize:
 
     @testing.numpy_cupy_allclose(
         contiguous_check=False, accept_error=ValueError)
-    def test_max_min_zero_size(self, xp):
+    def test_zero_size(self, xp):
         shape, axis = self.shape_and_axis
+        # NumPy only supports axis being an int
+        if self.func in ('argmax', 'argmin'):
+            if axis is not None and len(axis) == 1:
+                axis = axis[0]
+            else:
+                pytest.skip(
+                    f"NumPy does not support axis={axis} for {self.func}")
         # dtype is irrelevant here, just pick one
         a = testing.shaped_random(shape, xp, xp.float32, order=self.order)
         return getattr(a, self.func)(axis=axis)
@@ -409,9 +416,6 @@ class TestCubReduction:
         a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
 
         if xp is numpy:
-            return a.min(axis=axis)
-
-        if self.backend == 'fallback':
             return a.min(axis=axis)
 
         # xp is cupy, first ensure we really use CUB
@@ -459,9 +463,6 @@ class TestCubReduction:
         if xp is numpy:
             return a.max(axis=axis)
 
-        if 0 in self.shape or self.backend == 'fallback':
-            return a.max(axis=axis)
-
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if self.backend == 'device':
@@ -481,9 +482,13 @@ class TestCubReduction:
                 times_called = 2  # two passes
             else:
                 times_called = 1  # one pass
+            if a.size == 0:
+                times_called = 0  # _reduction.pyx has an early return path
             with testing.AssertFunctionIsCalled(
                     func_name, wraps=func, times_called=times_called):
                 a.max(axis=axis)
+        elif self.backend == 'fallback':
+            pass
         # ...then perform the actual computation
         return a.max(axis=axis)
 
