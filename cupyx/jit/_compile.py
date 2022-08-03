@@ -5,9 +5,7 @@ import linecache
 import numbers
 import re
 import sys
-from typing import (
-    Any, Dict, List, Literal, Optional, Sequence, Tuple, TypeVar, Union
-)
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 import warnings
 
 import numpy
@@ -28,7 +26,13 @@ from cupyx.jit import _interface
 _is_debug_mode = False
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
-_CastingType = Optional[Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe']]
+
+if (3, 8) <= sys.version_info:
+    from typing import Literal
+    _CastingType = Optional[
+        Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe']]
+else:
+    _CastingType = str
 
 Result = collections.namedtuple(
     'Result',
@@ -690,7 +694,7 @@ def _transpile_expr_internal(
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
                 raise TypeError(
-                    f'Calling __global__ function {func.__name__} '
+                    f'Calling __global__ function {func._func.__name__} '
                     'from __global__ funcion is not allowed.')
             args = [Data.init(x, env) for x in args]
             in_types = tuple([x.ctype for x in args])
