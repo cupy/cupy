@@ -14,6 +14,7 @@ These functions cover a subset of
 
    scipy_fft
    scipy_fftpack
+   scipy_interpolate
    scipy_linalg
    scipy_ndimage
    scipy_signal
