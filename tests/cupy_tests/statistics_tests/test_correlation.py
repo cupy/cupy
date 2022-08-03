@@ -36,6 +36,14 @@ class TestCorrcoef(unittest.TestCase):
         y = testing.shaped_arange((2, 3), xp, dtype)
         return xp.corrcoef(a, y=y, rowvar=False)
 
+    @testing.with_requires('numpy>=1.20')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(accept_error=True)
+    def test_corrcoef_dtype(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        y = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.corrcoef(a, y=y, dtype=dtype)
+
 
 @testing.gpu
 class TestCov(unittest.TestCase):
@@ -48,27 +56,38 @@ class TestCov(unittest.TestCase):
         return a, y
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def check(self, a_shape, y_shape=None, rowvar=True, bias=False,
-              ddof=None, xp=None, dtype=None):
+              ddof=None, xp=None, dtype=None,
+              fweights=None, aweights=None, name=None):
         a, y = self.generate_input(a_shape, y_shape, xp, dtype)
-        return xp.cov(a, y, rowvar, bias, ddof)
+        if fweights is not None:
+            fweights = name.asarray(fweights)
+        if aweights is not None:
+            aweights = name.asarray(aweights)
+        # print(type(fweights))
+        return xp.cov(a, y, rowvar, bias, ddof,
+                      fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def check_warns(self, a_shape, y_shape=None, rowvar=True, bias=False,
-                    ddof=None, xp=None, dtype=None):
+                    ddof=None, xp=None, dtype=None,
+                    fweights=None, aweights=None):
         with testing.assert_warns(RuntimeWarning):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
-            return xp.cov(a, y, rowvar, bias, ddof)
+            return xp.cov(a, y, rowvar, bias, ddof,
+                          fweights, aweights, dtype=dtype)
 
     @testing.for_all_dtypes()
-    def check_raises(self, a_shape, y_shape=None, rowvar=True, bias=False,
-                     ddof=None, dtype=None):
+    def check_raises(self, a_shape, y_shape=None,
+                     rowvar=True, bias=False, ddof=None,
+                     dtype=None, fweights=None, aweights=None):
         for xp in (numpy, cupy):
             a, y = self.generate_input(a_shape, y_shape, xp, dtype)
             with pytest.raises(ValueError):
-                xp.cov(a, y, rowvar, bias, ddof)
+                xp.cov(a, y, rowvar, bias, ddof,
+                       fweights, aweights, dtype=dtype)
 
     def test_cov(self):
         self.check((2, 3))
@@ -77,6 +96,12 @@ class TestCov(unittest.TestCase):
         self.check((2, 3), (2, 3), rowvar=False)
         self.check((2, 3), bias=True)
         self.check((2, 3), ddof=2)
+        self.check((2, 3))
+        self.check((1, 3), fweights=(1, 4, 1))
+        self.check((1, 3), aweights=(1.0, 4.0, 1.0))
+        self.check((1, 3), bias=True, aweights=(1.0, 4.0, 1.0))
+        self.check((1, 3), fweights=(1, 4, 1),
+                   aweights=(1.0, 4.0, 1.0))
 
     def test_cov_warns(self):
         self.check_warns((2, 3), ddof=3)

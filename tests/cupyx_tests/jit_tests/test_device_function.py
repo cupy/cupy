@@ -3,6 +3,7 @@ import numpy
 
 import pytest
 
+import cupy
 from cupyx import jit
 from cupy import testing
 
@@ -86,3 +87,17 @@ class TestDeviceFunction(unittest.TestCase):
         y = testing.shaped_random((256,), dtype=numpy.int32, seed=1)
         f((1,), (256,), (x, y))
         assert y[0] == x.sum()
+
+    def test_device_function_called_once(self):
+        @jit.rawkernel(device=True)
+        def g(x):
+            x[0] += 1
+            return 1
+
+        @jit.rawkernel()
+        def f(x):
+            x[g(x)] += 1
+
+        x = cupy.array([0, 0])
+        f((1,), (1,), (x,))
+        testing.assert_array_equal(x, [1, 1])
