@@ -8,7 +8,7 @@ from libc.stdint cimport intptr_t
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _internal_asfortranarray
-from cupy._core.internal cimport _contig_axes
+from cupy._core.internal cimport _contig_axes, is_in, prod
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
@@ -126,6 +126,8 @@ cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
         axis_permutes = out_axis + reduce_axis
     elif order == 'F':
         axis_permutes = reduce_axis + out_axis
+    elif order == 'CF':
+        axis_permutes = tuple(set(out_axis + reduce_axis))
     assert axis_permutes == tuple(range(len(arr_shape)))
 
     for axis in reduce_axis:
@@ -133,8 +135,8 @@ cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
     return contiguous_size
 
 
-def device_reduce(_ndarray_base x, op, tuple out_axis, out=None,
-                  bint keepdims=False):
+def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
+                  out=None, bint keepdims=False):
     cdef _ndarray_base y
     cdef memory.MemoryPointer ws
     cdef int dtype_id, ndim_out, kv_bytes, x_size, op_code
@@ -150,6 +152,7 @@ def device_reduce(_ndarray_base x, op, tuple out_axis, out=None,
         ndim_out = len(out_shape)
     else:
         ndim_out = 0
+    reduce_shape = _get_output_shape(x, reduce_axis, False)
 
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
@@ -160,7 +163,7 @@ def device_reduce(_ndarray_base x, op, tuple out_axis, out=None,
         raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
                          'CUPY_CUB_MAX, CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX '
                          'are supported.')
-    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD) and is_in(reduce_shape, 0):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     x = _internal_ascontiguousarray(x)
@@ -216,7 +219,8 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
         raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
                          'and CUPY_CUB_MAX are supported.')
-    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
+    reduce_shape = _get_output_shape(x, reduce_axis, False)
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD) and is_in(reduce_shape, 0):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     if x.flags.c_contiguous:
@@ -430,9 +434,13 @@ cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
         dtype=None, str order='C') except*:
     if not _cub_reduce_dtype_compatible(x.dtype, op, dtype):
         return (False, 0)
-    if not _cub_device_segmented_reduce_axis_compatible(
+    # NumPy/CuPy quirk: zero-size arrays are both C- & F- contig...
+    if x.size != 0:
+        if not _cub_device_segmented_reduce_axis_compatible(
             reduce_axis, x.ndim, order):
-        return (False, 0)
+            return (False, 0)
+    else:
+        order = 'CF'  # for computing the contig size
     # until we resolve cupy/cupy#3309
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
@@ -531,7 +539,7 @@ cpdef cub_reduction(
 
     reduce_axis, out_axis = _get_axis(axis, arr.ndim)
     if can_use_device_reduce(arr, op, out_axis, dtype):
-        return device_reduce(arr, op, out_axis, out, keepdims)
+        return device_reduce(arr, op, reduce_axis, out_axis, out, keepdims)
 
     if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         # segmented reduction not currently implemented for argmax, argmin
