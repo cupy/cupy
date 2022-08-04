@@ -212,8 +212,6 @@ class SharedMemory(BuiltinFunc):
     def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_smem')
         child_type = _cuda_types.Scalar(dtype)
-        while env[name] is not None:
-            name = env.get_fresh_variable_name(prefix='_smem')  # retry
         var = Data(name, _cuda_types.SharedMem(child_type, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
