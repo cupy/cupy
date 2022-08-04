@@ -94,7 +94,7 @@ class _Interpolator1D:
         """
         Reshape the updated yi to a 1-D array
         """
-        yi = cupy.moveaxis(cupy.asarray(yi), self._y_axis, 0)
+        yi = cupy.moveaxis(yi, self._y_axis, 0)
         if check and yi.shape[1:] != self._y_extra_shape:
             ok_shape = "%r + (N,) + %r" % (self._y_extra_shape[-self._y_axis:],
                                            self._y_extra_shape[:-self._y_axis])
@@ -146,7 +146,7 @@ class BarycentricInterpolator(_Interpolator1D):
     xi : array-like
         1-D array of x-coordinates of the points the polynomial should
         pass through
-    yi : array-lie, optional
+    yi : array-like, optional
         The y-coordinates of the points the polynomial should pass through.
         If None, the y values will be supplied later via the `set_y` method
     axis : int, optional
