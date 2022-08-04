@@ -5,11 +5,12 @@ import linecache
 import numbers
 import re
 import sys
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 import warnings
 
 import numpy
 
-from cupy._core._codeblock import CodeBlock
+from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
 from cupyx import jit
 from cupyx.jit import _cuda_types
@@ -25,6 +26,13 @@ from cupyx.jit import _interface
 _is_debug_mode = False
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
+
+if (3, 8) <= sys.version_info:
+    from typing import Literal
+    _CastingType = Optional[
+        Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe']]
+else:
+    _CastingType = str
 
 Result = collections.namedtuple(
     'Result',
@@ -138,9 +146,11 @@ class Generated:
 
     def __init__(self):
         # list of str
-        self.codes = []
+        self.codes: List[str] = []
         # (function, in_types) => Optional(function_name, return_type)
-        self.device_function = {}
+        self.device_function: \
+            Dict[Tuple[Any, Tuple[_cuda_types.TypeBase, ...]],
+                 Tuple[str, _cuda_types.TypeBase]] = {}
         # whether to use cooperative launch
         self.enable_cg = False
         # whether to include cooperative_groups.h
@@ -206,11 +216,11 @@ def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
     return name, env.ret_type
 
 
-def _indent(lines, spaces='  '):
+def _indent(lines: List[str], spaces: str = '  ') -> List[str]:
     return [spaces + line for line in lines]
 
 
-def is_constants(*values):
+def is_constants(*values: _internal_types.Expr) -> bool:
     assert all(isinstance(x, _internal_types.Expr) for x in values)
     return all(isinstance(x, Constant) for x in values)
 
@@ -233,17 +243,24 @@ class Environment:
         generated (Generated): Generated CUDA functions.
     """
 
-    def __init__(self, mode, consts, params, ret_type, generated):
+    def __init__(
+            self,
+            mode: str,
+            consts: Dict[str, Constant],
+            params: Dict[str, Data],
+            ret_type: _cuda_types.TypeBase,
+            generated: Generated,
+    ):
         self.mode = mode
         self.consts = consts
         self.params = params
-        self.locals = {}
-        self.decls = {}
+        self.locals: Dict[str, Data] = {}
+        self.decls: Dict[str, Data] = {}
         self.ret_type = ret_type
         self.generated = generated
         self.count = 0
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Optional[Union[Constant, Data]]:
         if key in self.locals:
             return self.locals[key]
         if key in self.params:
@@ -252,7 +269,8 @@ class Environment:
             return self.consts[key]
         return None
 
-    def get_fresh_variable_name(self, prefix='', suffix=''):
+    def get_fresh_variable_name(
+            self, prefix: str = '', suffix: str = '') -> str:
         self.count += 1
         name = f'{prefix}{self.count}{suffix}'
         if self[name] is None:
@@ -331,18 +349,22 @@ def _transpile_function_internal(
     params = dict([(x, Data(x, t)) for x, t in zip(args, in_types)])
     env = Environment(mode, consts, params, ret_type, generated)
     body = _transpile_stmts(func.body, True, env)
-    params = ', '.join([env[a].ctype.declvar(a, None) for a in args])
+    params_s = ', '.join([t.declvar(x, None) for x, t in zip(args, in_types)])
     local_vars = [v.ctype.declvar(n, None) + ';' for n, v in env.decls.items()]
 
     if env.ret_type is None:
         env.ret_type = _cuda_types.void
 
-    head = f'{attributes} {env.ret_type} {name}({params})'
+    head = f'{attributes} {env.ret_type} {name}({params_s})'
     code = CodeBlock(head, local_vars + body)
     return str(code), env
 
 
-def _eval_operand(op, args, env):
+def _eval_operand(
+        op: ast.AST,
+        args: Sequence[Union[Constant, Data]],
+        env: Environment,
+) -> Union[Constant, Data]:
     if is_constants(*args):
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
@@ -351,19 +373,26 @@ def _eval_operand(op, args, env):
     return _call_ufunc(ufunc, args, None, env)
 
 
-def _call_ufunc(ufunc, args, dtype, env):
+def _call_ufunc(
+        ufunc: _kernel.ufunc,
+        args: Sequence[Union[Constant, Data]],
+        dtype: Optional[numpy.dtype],
+        env: Environment,
+) -> Data:
     if len(args) != ufunc.nin:
         raise ValueError('invalid number of arguments')
 
     in_types = []
     for x in args:
-        if is_constants(x):
+        if isinstance(x, Constant):
             t = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj).dtype
-        else:
+        elif isinstance(x.ctype, _cuda_types.Scalar):
             t = x.ctype.dtype
+        else:
+            raise TypeError(f'cupy.ufunc: {x.ctype} is unsupported')
         in_types.append(t)
 
-    op = _cuda_typerules.guess_routine(ufunc, in_types, dtype, env.mode)
+    op = _cuda_typerules.guess_routine(ufunc, tuple(in_types), dtype, env.mode)
 
     if op is None:
         raise TypeError(
@@ -404,14 +433,18 @@ __device__ {out_type} {ufunc_name}({params}) {{
 }}
 """
             env.generated.add_code(ufunc_code)
-            in_params = ', '.join([a.code for a in in_params])
-            expr = f'{ufunc_name}({in_params})'
+            in_params_code = ', '.join([a.code for a in in_params])
+            expr = f'{ufunc_name}({in_params_code})'
         return Data(expr, out_type)
 
     raise NotImplementedError(f'ufunc `{ufunc.name}` is not supported.')
 
 
-def _transpile_stmts(stmts, is_toplevel, env):
+def _transpile_stmts(
+        stmts: List[ast.stmt],
+        is_toplevel: bool,
+        env: Environment,
+) -> _CodeType:
     codeblocks = []
     for stmt in stmts:
         codeblocks.extend(_transpile_stmt(stmt, is_toplevel, env))
@@ -419,7 +452,11 @@ def _transpile_stmts(stmts, is_toplevel, env):
 
 
 @transpile_function_wrapper
-def _transpile_stmt(stmt, is_toplevel, env):
+def _transpile_stmt(
+        stmt: ast.stmt,
+        is_toplevel: bool,
+        env: Environment,
+) -> _CodeType:
     """Transpile the statement.
 
     Returns (list of [CodeBlock or str]): The generated CUDA code.
@@ -448,13 +485,13 @@ def _transpile_stmt(stmt, is_toplevel, env):
             raise NotImplementedError('Not implemented.')
 
         value = _transpile_expr(stmt.value, env)
-        target = stmt.targets[0]
+        var = stmt.targets[0]
 
-        if is_constants(value) and isinstance(target, ast.Name):
-            name = target.id
+        if is_constants(value) and isinstance(var, ast.Name):
+            name = var.id
             if not isinstance(value.obj, _typeclasses):
                 if is_toplevel:
-                    if env[name] is not None and not is_constants(env[name]):
+                    if isinstance(env[name], Data):
                         raise TypeError(f'Type mismatch of variable: `{name}`')
                     env.consts[name] = value
                     return []
@@ -463,7 +500,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
                         'Cannot assign constant value not at top-level.')
 
         value = Data.init(value, env)
-        return _transpile_assign_stmt(target, env, value, is_toplevel)
+        return _transpile_assign_stmt(var, env, value, is_toplevel)
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -473,6 +510,10 @@ def _transpile_stmt(stmt, is_toplevel, env):
         value = Data.init(value, env)
         tmp = Data(env.get_fresh_variable_name('_tmp_'), target.ctype)
         result = _eval_operand(stmt.op, (tmp, value), env)
+        assert isinstance(target, Data)
+        assert isinstance(result, Data)
+        assert isinstance(target.ctype, _cuda_types.Scalar)
+        assert isinstance(result.ctype, _cuda_types.Scalar)
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
             raise TypeError(
@@ -484,17 +525,21 @@ def _transpile_stmt(stmt, is_toplevel, env):
     if isinstance(stmt, ast.For):
         if len(stmt.orelse) > 0:
             raise NotImplementedError('while-else is not supported.')
+        assert isinstance(stmt.target, ast.Name)
         name = stmt.target.id
         iters = _transpile_expr(stmt.iter, env)
+        loop_var = env[name]
 
-        if env[name] is None:
-            var = Data(stmt.target.id, iters.ctype)
-            env.locals[name] = var
-            env.decls[name] = var
-        elif env[name].ctype.dtype != iters.ctype.dtype:
+        if loop_var is None:
+            target = Data(stmt.target.id, iters.ctype)
+            env.locals[name] = target
+            env.decls[name] = target
+        elif isinstance(loop_var, Constant):
+            raise TypeError('loop counter must not be constant value')
+        elif loop_var.ctype != iters.ctype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
-                f'{env[name].ctype.dtype} != {iters.ctype.dtype}')
+                f'{loop_var.ctype} != {iters.ctype}')
 
         if not isinstance(iters, _internal_types.Range):
             raise NotImplementedError(
@@ -513,14 +558,14 @@ def _transpile_stmt(stmt, is_toplevel, env):
             cond = '__it > __stop'
 
         head = f'for ({init_code}; {cond}; __it += __step)'
-        result = [CodeBlock(head, [f'{name} = __it;'] + body)]
+        code: _CodeType = [CodeBlock(head, [f'{name} = __it;'] + body)]
 
         unroll = iters.unroll
         if unroll is True:
-            result = ['#pragma unroll'] + result
+            code = ['#pragma unroll'] + code
         elif unroll is not None:
-            result = [f'#pragma unroll({unroll})'] + result
-        return result
+            code = [f'#pragma unroll({unroll})'] + code
+        return code
 
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')
@@ -570,7 +615,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
 
 
 @transpile_function_wrapper
-def _transpile_expr(expr, env):
+def _transpile_expr(expr: ast.expr, env: Environment) -> _internal_types.Expr:
     """Transpile the statement.
 
     Returns (Data): The CUDA code and its type of the expression.
@@ -583,7 +628,10 @@ def _transpile_expr(expr, env):
         return res
 
 
-def _transpile_expr_internal(expr, env):
+def _transpile_expr_internal(
+        expr: ast.expr,
+        env: Environment,
+) -> _internal_types.Expr:
     if isinstance(expr, ast.BoolOp):
         values = [_transpile_expr(e, env) for e in expr.values]
         value = values[0]
@@ -626,8 +674,10 @@ def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env)
         args = [_transpile_expr(x, env) for x in expr.args]
-        kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
-                       for kw in expr.keywords])
+        kwargs: Dict[str, Union[Constant, Data]] = {}
+        for kw in expr.keywords:
+            assert kw.arg is not None
+            kwargs[kw.arg] = _transpile_expr(kw.value, env)
 
         builtin_funcs = _builtin_funcs.builtin_functions_dict
         if is_constants(func) and (func.obj in builtin_funcs):
@@ -636,7 +686,7 @@ def _transpile_expr_internal(expr, env):
         if isinstance(func, _internal_types.BuiltinFunc):
             return func.call(env, *args, **kwargs)
 
-        if not is_constants(func):
+        if not isinstance(func, Constant):
             raise TypeError(f"'{func}' is not callable.")
 
         func = func.obj
@@ -644,7 +694,7 @@ def _transpile_expr_internal(expr, env):
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
                 raise TypeError(
-                    f'Calling __global__ function {func.__name__} '
+                    f'Calling __global__ function {func._func.__name__} '
                     'from __global__ funcion is not allowed.')
             args = [Data.init(x, env) for x in args]
             in_types = tuple([x.ctype for x in args])
@@ -698,7 +748,7 @@ def _transpile_expr_internal(expr, env):
         value = env[expr.id]
         if value is None:
             raise NameError(f'Unbound name: {expr.id}')
-        return env[expr.id]
+        return value
     if isinstance(expr, ast.Attribute):
         value = _transpile_expr(expr.value, env)
         if is_constants(value):
@@ -734,17 +784,23 @@ def _transpile_expr_internal(expr, env):
         # TODO: Support compile time constants.
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
-        ctype = _cuda_types.Tuple([x.ctype for x in elts])
-        return Data(f'thrust::make_tuple({elts_code})', ctype)
+        return Data(
+            f'thrust::make_tuple({elts_code})',
+            _cuda_types.Tuple([x.ctype for x in elts]))
 
     if isinstance(expr, ast.Index):
-        return _transpile_expr(expr.value, env)
+        # Deprecated in Python 3.9
+        return _transpile_expr(expr.value, env)  # type: ignore
 
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _emit_assign_stmt(lvalue, rvalue, env):
-    if is_constants(lvalue):
+def _emit_assign_stmt(
+        lvalue: Union[Constant, Data],
+        rvalue: Data,
+        env: Environment,
+) -> _CodeType:
+    if isinstance(lvalue, Constant):
         raise TypeError('lvalue of assignment must not be constant value')
 
     if (isinstance(lvalue.ctype, _cuda_types.Scalar)
@@ -758,18 +814,27 @@ def _emit_assign_stmt(lvalue, rvalue, env):
     return [lvalue.ctype.assign(lvalue, rvalue) + ';']
 
 
-def _transpile_assign_stmt(target, env, value, is_toplevel, depth=0):
+def _transpile_assign_stmt(
+        target: ast.expr,
+        env: Environment,
+        value: Data,
+        is_toplevel: bool,
+        depth: int = 0,
+) -> _CodeType:
     if isinstance(target, ast.Name):
         name = target.id
-        if env[name] is None:
-            env.locals[name] = Data(name, value.ctype)
+        lvalue = env[name]
+        if lvalue is None:
+            lvalue = Data(name, value.ctype)
+            env.locals[name] = lvalue
             if is_toplevel and depth == 0:
                 return [value.ctype.declvar(name, value) + ';']
-            env.decls[name] = Data(name, value.ctype)
-        return _emit_assign_stmt(env[name], value, env)
+            env.decls[name] = lvalue
+        return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Subscript):
         target = _transpile_expr(target, env)
+        assert isinstance(target, Data)
         return _emit_assign_stmt(target, value, env)
 
     if isinstance(target, ast.Tuple):
@@ -789,10 +854,16 @@ def _transpile_assign_stmt(target, env, value, is_toplevel, depth=0):
             codes.extend(stmt)
         return [CodeBlock('', codes)]
 
+    assert False
 
-def _indexing(array, index, env):
-    if is_constants(array):
-        if is_constants(index):
+
+def _indexing(
+        array: _internal_types.Expr,
+        index: _internal_types.Expr,
+        env: Environment,
+) -> Union[Data, Constant]:
+    if isinstance(array, Constant):
+        if isinstance(index, Constant):
             return Constant(array.obj[index.obj])
         raise TypeError(
             f'{type(array.obj)} is not subscriptable with non-constants.')
@@ -800,7 +871,7 @@ def _indexing(array, index, env):
     array = Data.init(array, env)
 
     if isinstance(array.ctype, _cuda_types.Tuple):
-        if is_constants(index):
+        if isinstance(index, Constant):
             i = index.obj
             t = array.ctype.types[i]
             return Data(f'thrust::get<{i}>({array.code})', t)
@@ -843,10 +914,23 @@ def _indexing(array, index, env):
     raise TypeError(f'{array.code} is not subscriptable.')
 
 
-def _astype_scalar(x, ctype, casting, env):
-    if is_constants(x):
-        return Constant(ctype.dtype.type(x.obj))
+_T = TypeVar('_T', Constant, Data, Union[Constant, Data])
 
+
+def _astype_scalar(
+        x: _T,
+        ctype: _cuda_types.Scalar,
+        casting: _CastingType,
+        env: Environment,
+) -> _T:
+    if isinstance(x, Constant):
+        assert not isinstance(x, Data)
+        return Constant(ctype.dtype.type(x.obj))
+    # # TODO
+    # if not isinstance(x, Data):
+    #     raise TypeError(f'{x} is not scalar type.')
+    if not isinstance(x.ctype, _cuda_types.Scalar):
+        raise TypeError(f'{x.code} is not scalar type.')
     from_t = x.ctype.dtype
     to_t = ctype.dtype
     if from_t == to_t:
@@ -865,9 +949,14 @@ def _astype_scalar(x, ctype, casting, env):
     return Data(f'({ctype})({x.code})', ctype)
 
 
-def _infer_type(x, hint, env) -> Data:
+def _infer_type(
+        x: Union[Constant, Data],
+        hint: Union[Constant, Data],
+        env: Environment,
+) -> Data:
     if not isinstance(x, Constant) or isinstance(x.obj, numpy.generic):
         return Data.init(x, env)
     hint = Data.init(hint, env)
+    assert isinstance(hint.ctype, _cuda_types.Scalar)
     cast_x = _astype_scalar(x, hint.ctype, 'same_kind', env)
     return Data.init(cast_x, env)
