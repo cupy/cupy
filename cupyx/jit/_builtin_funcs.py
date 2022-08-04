@@ -1,3 +1,4 @@
+from typing import Any, Mapping
 import warnings
 
 import cupy
@@ -439,7 +440,7 @@ class LaneID(BuiltinFunc):
         return Data('LaneId()', _cuda_types.uint32)
 
 
-builtin_functions_dict = {
+builtin_functions_dict: Mapping[Any, BuiltinFunc] = {
     range: RangeFunc(),
     len: LenFunc(),
     min: MinFunc(),
