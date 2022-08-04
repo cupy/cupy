@@ -5,8 +5,6 @@ from cupy import testing
 import cupyx
 import cupyx.scipy.special  # NOQA
 
-import scipy.special  # NOQA
-
 
 atol = {
     'default': 1e-6,
