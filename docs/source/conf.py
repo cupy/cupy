@@ -406,7 +406,6 @@ def _find_source_root(source_abs_path):
     if _source_root is not None:
         return _source_root
 
-    assert os.path.isfile(source_abs_path)
     dirname = os.path.dirname(source_abs_path)
     while True:
         parent = os.path.dirname(dirname)
