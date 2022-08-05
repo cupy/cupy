@@ -74,7 +74,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
 
-    def _cythonize(self) -> None:
+    def _cythonize(self, nthreads: int) -> None:
         # Defer importing Cython as it may be installed via setup_requires if
         # the user does not have Cython installed.
         import Cython.Build
@@ -113,7 +113,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
               json.dumps(compile_time_env, indent=4))
 
         Cython.Build.cythonize(
-            self.extensions, verbose=True, language_level=3,
+            self.extensions, verbose=True, nthreads=nthreads, language_level=3,
             compiler_directives=compiler_directives, annotate=ctx.annotate,
             compile_time_env=compile_time_env)
 
@@ -133,7 +133,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         # Compile "*.pyx" files into "*.cpp" files.
         print('Cythonizing...')
-        self._cythonize()
+        self._cythonize(num_jobs)
 
         # Change an extension in each source filenames from "*.pyx" to "*.cpp".
         # c.f. `Cython.Distutils.old_build_ext`
