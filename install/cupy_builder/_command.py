@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from typing import List, Tuple
@@ -107,6 +108,9 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         else:  # on CUDA
             compile_time_env['CUPY_CUDA_VERSION'] = build.get_cuda_version()
             compile_time_env['CUPY_HIP_VERSION'] = 0
+
+        print('Compile-time constants: ' +
+              json.dumps(compile_time_env, indent=4))
 
         Cython.Build.cythonize(
             self.extensions, verbose=True, language_level=3,
