@@ -23,4 +23,7 @@ def test_CUDA_cuda():
     feat = CUDA_cuda(ctx)
     compiler, settings = get_compiler_settings()
     feat.configure(compiler, settings)
-    assert feat._version == cupy.cuda.driver.get_build_version()
+    if not cupy.cuda.driver._is_cuda_python():
+        # In CUDA Python, `get_build_version()` returns CUDA Python's version
+        assert feat._version == cupy.cuda.driver.get_build_version()
+    assert feat._version == cupy.cuda.runtime.runtimeGetVersion()
