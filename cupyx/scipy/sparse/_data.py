@@ -123,13 +123,13 @@ class _data_matrix(_base.spmatrix):
 def _find_missing_index(ind, n):
     for k, a in enumerate(ind):
         if k != a:
-            return k
+            return cupy.asarray(k)
 
     k += 1
     if k < n:
-        return k
+        return cupy.asarray(k)
     else:
-        return -1
+        return cupy.asarray(-1)
 
 
 class _minmax_mixin(object):
@@ -238,7 +238,7 @@ class _minmax_mixin(object):
                 if compare(m, zero):
                     return mat.row[am] * mat.shape[1] + mat.col[am]
                 else:
-                    size = cupy.prod(mat.shape)
+                    size = cupy.prod(cupy.asarray(mat.shape))
                     if size == mat.nnz:
                         return am
                     else:
