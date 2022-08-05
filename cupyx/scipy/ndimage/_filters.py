@@ -374,7 +374,7 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
                               mode, cval, 0)
 
 
-def _gaussian_kernel1d(sigma, order, radius, dtype=float):
+def _gaussian_kernel1d(sigma, order, radius, dtype=cupy.float64):
     """
     Computes a 1-D Gaussian correlation kernel.
     """
