@@ -2,73 +2,157 @@ import cupy
 
 from cupy import testing
 from cupyx.scipy.interpolate import BarycentricInterpolator
-from cupyx.scipy.interpolate import barycentric_interpolate
+
+from scipy import interpolate  # NOQA
 
 
 @testing.with_requires("scipy")
 class TestBarycentric:
 
-    def setup_method(self):
-        self.true_poly = cupy.poly1d([-2, 3, 1, 5, -4])
-        self.test_xs = cupy.linspace(-1, 1, 100)
-        self.xs = cupy.linspace(-1, 1, 5)
-        self.ys = self.true_poly(self.xs)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_lagrange(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 1, 5, -4])
+        test_xs = xp.linspace(-1, 1, 100)
+        xs = xp.linspace(-1, 1, 5)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return P(test_xs)
 
-    def test_lagrange(self):
-        P = BarycentricInterpolator(self.xs, self.ys)
-        testing.assert_allclose(self.true_poly(self.test_xs),
-                                P(self.test_xs))
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    def test_scalar(self, xp, scp):
+        true_poly = xp.poly1d([-1, 2, 6, -3, 2])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return P(xp.array(7))
 
-    def test_scalar(self):
-        P = BarycentricInterpolator(self.xs, self.ys)
-        testing.assert_allclose(self.true_poly(cupy.array(7)),
-                                P(cupy.array(7)))
-        testing.assert_allclose(self.true_poly(7), P(7))
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    def test_scalar_2(self, xp, scp):
+        true_poly = xp.poly1d([-1, 2, 6, -3, 2])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return P(7)
 
-    def test_delayed(self):
-        P = BarycentricInterpolator(self.xs)
-        P.set_yi(self.ys)
-        testing.assert_allclose(self.true_poly(self.test_xs),
-                                P(self.test_xs))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_delayed(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 1, 5, -4])
+        test_xs = xp.linspace(-1, 1, 100)
+        xs = xp.linspace(-1, 1, 5)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs)
+        P.set_yi(ys)
+        return P(test_xs)
 
-    def test_append(self):
-        P = BarycentricInterpolator(self.xs[:3], self.ys[:3])
-        P.add_xi(self.xs[3:], self.ys[3:])
-        testing.assert_allclose(self.true_poly(self.test_xs),
-                                P(self.test_xs))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_append(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 1, 5, -4])
+        test_xs = xp.linspace(-1, 1, 100)
+        xs = xp.linspace(-1, 1, 5)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs[:3], ys[:3])
+        P.add_xi(xs[3:], ys[3:])
+        return P(test_xs)
 
-    def test_vector(self):
-        xs = cupy.array([0, 1, 2])
-        ys = cupy.array([[0, 1], [1, 0], [2, 1]])
-        BI = BarycentricInterpolator
-        P = BI(xs, ys)
-        Pi = [BI(xs, ys[:, i]) for i in range(ys.shape[1])]
-        test_xs = cupy.linspace(-1, 3, 100)
-        testing.assert_allclose(P(test_xs),
-                                cupy.asarray([p(test_xs) for p in Pi]).T)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_vector(self, xp, scp):
+        xs = xp.array([0, 1, 2])
+        ys = xp.array([[0, 1], [1, 0], [2, 1]])
+        test_xs = xp.linspace(-1, 3, 100)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return P(test_xs)
 
-    def test_shapes_scalarvalue(self):
-        P = BarycentricInterpolator(self.xs, self.ys)
-        testing.assert_allclose(cupy.shape(P(0)), ())
-        testing.assert_allclose(cupy.shape(P(cupy.array(0))), ())
-        testing.assert_allclose(cupy.shape(P([0])), (1,))
-        testing.assert_allclose(cupy.shape(P([0, 1])), (2,))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_scalarvalue_1(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 5, 1, -3, 5])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return xp.shape(P(0))
 
-    def test_shapes_vectorvalue(self):
-        P = BarycentricInterpolator(self.xs,
-                                    cupy.outer(self.ys, cupy.arange(3)))
-        testing.assert_allclose(cupy.shape(P(0)), (3,))
-        testing.assert_allclose(cupy.shape(P([0])), (1, 3))
-        testing.assert_allclose(cupy.shape(P([0, 1])), (2, 3))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_scalarvalue_2(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 5, 1, -3, 5])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return xp.shape(P(xp.array(0)))
 
-    def test_shapes_1d_vectorvalue(self):
-        P = BarycentricInterpolator(self.xs,
-                                    cupy.outer(self.ys, cupy.array([1])))
-        testing.assert_allclose(cupy.shape(P(0)), (1,))
-        testing.assert_allclose(cupy.shape(P([0])), (1, 1))
-        testing.assert_allclose(cupy.shape(P([0, 1])), (2, 1))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_scalarvalue_3(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 5, 1, -3, 5])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return xp.shape(P([0]))
 
-    def test_large_chebyshev(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_scalarvalue_4(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 5, 1, -3, 5])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return xp.shape(P([0, 1]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_vectorvalue_1(self, xp, scp):
+        true_poly = xp.poly1d([4, -5, 3, 2, -4])
+        xs = xp.linspace(-1, 1, 20)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(
+                xs,
+                xp.outer(ys, xp.arange(3)))
+        return P(0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_vectorvalue_2(self, xp, scp):
+        true_poly = xp.poly1d([4, -5, 3, 2, -4])
+        xs = xp.linspace(-1, 1, 20)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(
+                xs,
+                xp.outer(ys, xp.arange(3)))
+        return P([0])
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_vectorvalue_3(self, xp, scp):
+        true_poly = xp.poly1d([4, -5, 3, 2, -4])
+        xs = xp.linspace(-1, 1, 20)
+        ys = true_poly(xs)
+        P = scp.interpolate.BarycentricInterpolator(
+                xs,
+                xp.outer(ys, xp.arange(3)))
+        return P([0, 1])
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_1d_vectorvalue_1(self, xp, scp):
+        true_poly = xp.poly1d([-3, -1, 4, 9, 8, 4])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        return xp.shape(scp.interpolate.BarycentricInterpolator(
+                        xs,
+                        xp.outer(ys, xp.array([1])))(0))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_1d_vectorvalue_2(self, xp, scp):
+        true_poly = xp.poly1d([-3, -1, 4, 9, 8, 4])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        return xp.shape(scp.interpolate.BarycentricInterpolator(
+                        xs,
+                        xp.outer(ys, xp.array([1])))([0]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_shapes_1d_vectorvalue_3(self, xp, scp):
+        true_poly = xp.poly1d([-3, -1, 4, 9, 8, 4])
+        xs = xp.linspace(-1, 1, 10)
+        ys = true_poly(xs)
+        return xp.shape(scp.interpolate.BarycentricInterpolator(
+                        xs,
+                        xp.outer(ys, xp.array([1])))([0, 1]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_large_chebyshev(self, xp, scp):
         n = 800
         j = cupy.arange(n + 1).astype(cupy.float64)
         x = cupy.cos(j * cupy.pi / n)
@@ -77,24 +161,30 @@ class TestBarycentric:
         w[0] *= 0.5
         w[-1] *= 0.5
 
-        P = BarycentricInterpolator(x)
-        factor = P.wi[0]
-        testing.assert_allclose(P.wi / (2 * factor), w)
+        return scp.interpolate.BarycentricInterpolator(x).wi
 
-    def test_complex(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_complex_1(self, xp, scp):
+        x = xp.array([1, 2, 3, 4])
+        y = xp.array([1, 2, 1j, 3])
+        return scp.interpolate.BarycentricInterpolator(x, y)(x)
+
+    def test_complex_2(self):
         x = cupy.array([1, 2, 3, 4])
         y = cupy.array([1, 2, 1j, 3])
-
         P = BarycentricInterpolator(x, y)
         testing.assert_allclose(y, P(x))
 
-    def test_wrapper(self):
-        P = BarycentricInterpolator(self.xs, self.ys)
-        values = barycentric_interpolate(self.xs, self.ys, self.test_xs)
-        testing.assert_allclose(P(self.test_xs), values)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_wrapper(self, xp, scp):
+        true_poly = xp.poly1d([-2, 3, 1, 5, -4])
+        test_xs = xp.linspace(-1, 1, 100)
+        xs = xp.linspace(-1, 1, 5)
+        ys = true_poly(xs)
+        return scp.interpolate.barycentric_interpolate(xs, ys, test_xs)
 
-    def test_int_input(self):
-        x = 1000 * cupy.arange(1, 11)
-        y = cupy.arange(1, 11)
-        value = barycentric_interpolate(x, y, 1000 * 9.5)
-        testing.assert_allclose(value, 9.5)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_int_input(self, xp, scp):
+        x = 1000 * xp.arange(1, 11)
+        y = xp.arange(1, 11)
+        return scp.interpolate.barycentric_interpolate(x, y, 1000 * 9.5)

@@ -161,7 +161,7 @@ class BarycentricInterpolator(_Interpolator1D):
     def __init__(self, xi, yi=None, axis=0):
         _Interpolator1D.__init__(self, xi, yi, axis)
 
-        self.xi = cupy.asfarray(xi)
+        self.xi = xi.astype(cupy.float_)
         self.set_yi(yi)
         self.n = len(self.xi)
 

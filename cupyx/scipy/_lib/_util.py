@@ -57,7 +57,7 @@ def _asarray_validated(a, check_finite=True,
         assert not objects_ok
 
     if as_inexact:
-        if not cupy.issubdtype(a.dtype, cupy.inexact):
+        if not cupy.issubdtype(a, cupy.inexact):
             a = a.astype(dtype=cupy.float_)
 
     return a
