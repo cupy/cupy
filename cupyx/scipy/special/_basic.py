@@ -1,5 +1,6 @@
 """basic special functions
 
+
 cotdg and tandg implementations are adapted from the following SciPy code:
 
 https://github.com/scipy/scipy/blob/master/scipy/special/cephes/tandg.c
@@ -7,6 +8,14 @@ https://github.com/scipy/scipy/blob/master/scipy/special/cephes/tandg.c
 radian is from
 
 https://github.com/scipy/scipy/blob/master/scipy/special/cephes/sindg.c
+
+cosm1 is from
+
+https://github.com/scipy/scipy/blob/main/scipy/special/cephes/unity.c
+
+polevl is from
+
+https://github.com/scipy/scipy/blob/main/scipy/special/cephes/polevl.h
 
 
 Cephes Math Library Release 2.0:  April, 1987
@@ -81,6 +90,57 @@ expm1 = _core.create_ufunc(
 
     ''')
 
+cosm1_implementation = """
+//Define from npy_math.h https://github.com/numpy/numpy/blob/main/numpy/core/include/numpy/npy_math.h
+#define NPY_PI_4      0.785398163397448309615660845819875721  /* pi/4 */
+__constant__ double coscof[] = {
+    4.7377507964246204691685E-14,
+    -1.1470284843425359765671E-11,
+    2.0876754287081521758361E-9,
+    -2.7557319214999787979814E-7,
+    2.4801587301570552304991E-5,
+    -1.3888888888888872993737E-3,
+    4.1666666666666666609054E-2,
+};
+
+__device__ static double polevl(double x, const double coef[], int N)
+{
+    double ans;
+    int i;
+    const double *p;
+
+    p = coef;
+    ans = *p++;
+    i = N;
+
+    do
+	ans = ans * x + *p++;
+    while (--i);
+
+    return (ans);
+}
+
+__device__ static double cosm1(double x)
+{
+    double xx;
+
+    if ((x < -NPY_PI_4) || (x > NPY_PI_4))
+	    return (cos(x) - 1.0);
+    xx = x * x;
+    xx = -0.5 * xx + xx * xx * polevl(xx, coscof, 6);
+    return xx;
+}
+"""
+
+cosm1 = _core.create_ufunc(
+    'cupyx_scipy_special_cosm1', ('f->f', 'd->d'),
+    'out0 = cosm1(in0)',
+    preamble=cosm1_implementation,
+    doc='''Computes ``cos(x) - 1``.
+
+    .. seealso:: :meth:`scipy.special.cosm1`
+
+    ''')
 
 pi180_preamble = """
     __constant__ double PI180 = 1.74532925199432957692E-2;  // pi/180
@@ -202,7 +262,6 @@ cotdg = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.cotdg`
 
     ''')
-
 
 radian_implementation = """
 /* 1 arc second, in radians*/

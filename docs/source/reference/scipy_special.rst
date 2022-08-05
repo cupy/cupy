@@ -150,6 +150,7 @@ Convenience functions
    cotdg
    log1p
    expm1
+   cosm1
    round
    xlogy
    xlog1py
