@@ -106,7 +106,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compile_time_env['CUPY_CUDA_VERSION'] = 0
             compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
         else:  # on CUDA
-            compile_time_env['CUPY_CUDA_VERSION'] = build.get_cuda_version()
+            compile_time_env['CUPY_CUDA_VERSION'] = (
+                ctx.features['cuda'].get_version())
             compile_time_env['CUPY_HIP_VERSION'] = 0
 
         print('Compile-time constants: ' +
