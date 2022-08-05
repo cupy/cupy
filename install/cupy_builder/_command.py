@@ -2,12 +2,13 @@ import os
 import sys
 from typing import List, Tuple
 
+import pkg_resources
 import setuptools
 import setuptools.command.build_ext
 
 import cupy_builder
+import cupy_builder.install_build as build
 from cupy_builder._context import Context
-from cupy_builder.cupy_setup_build import cythonize
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
 
 
@@ -73,6 +74,53 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
 
+    def _cythonize(self, extensions, ctx: Context):
+        # Delay importing Cython as it may be installed via setup_requires if
+        # the user does not have Cython installed.
+        import Cython
+        import Cython.Build
+        cython_version = pkg_resources.parse_version(Cython.__version__)
+
+        directives = {
+            'linetrace': ctx.linetrace,
+            'profile': ctx.profile,
+            # Embed signatures for Sphinx documentation.
+            'embedsignature': True,
+        }
+
+        cythonize_options = {
+            'annotate': ctx.annotate
+        }
+
+        # Compile-time constants to be used in Cython code
+        compile_time_env = cythonize_options.get('compile_time_env')
+        if compile_time_env is None:
+            compile_time_env = {}
+            cythonize_options['compile_time_env'] = compile_time_env
+
+        # Enable CUDA Python.
+        # TODO: add `cuda` to `setup_requires` only when this flag is set
+        use_cuda_python = cupy_builder.get_context().use_cuda_python
+        compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
+        if use_cuda_python:
+            print('Using CUDA Python')
+
+        compile_time_env['CUPY_CUFFT_STATIC'] = False
+        compile_time_env['CUPY_CYTHON_VERSION'] = str(cython_version)
+        if ctx.use_stub:  # on RTD
+            compile_time_env['CUPY_CUDA_VERSION'] = 0
+            compile_time_env['CUPY_HIP_VERSION'] = 0
+        elif ctx.use_hip:  # on ROCm/HIP
+            compile_time_env['CUPY_CUDA_VERSION'] = 0
+            compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
+        else:  # on CUDA
+            compile_time_env['CUPY_CUDA_VERSION'] = build.get_cuda_version()
+            compile_time_env['CUPY_HIP_VERSION'] = 0
+
+        return Cython.Build.cythonize(
+            extensions, verbose=True, language_level=3,
+            compiler_directives=directives, **cythonize_options)
+
     def build_extensions(self) -> None:
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
         if num_jobs > 1:
@@ -89,7 +137,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         # Compile "*.pyx" files into "*.cpp" files.
         print('Cythonizing...')
-        cythonize(self.extensions, cupy_builder.get_context())
+        self._cythonize(self.extensions, cupy_builder.get_context())
 
         # Change an extension in each source filenames from "*.pyx" to "*.cpp".
         # c.f. `Cython.Distutils.old_build_ext`
