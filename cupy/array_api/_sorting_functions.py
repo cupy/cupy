@@ -16,8 +16,9 @@ def argsort(
 
     See its docstring for more information.
     """
-    # Note: this keyword argument is different, and the default is different.
-    kind = "stable" if stable else "quicksort"
+    # Note: Unlike in NumPy we only support kind={None, 'stable'}, but the standard
+    # does *not* require we need to support unstable sort.
+    kind = None
     if not descending:
         res = np.argsort(x._array, axis=axis, kind=kind)
     else:
@@ -43,8 +44,9 @@ def sort(
 
     See its docstring for more information.
     """
-    # Note: this keyword argument is different, and the default is different.
-    kind = "stable" if stable else "quicksort"
+    # Note: Unlike in NumPy we only support kind={None, 'stable'}, but the standard
+    # does *not* require we need to support unstable sort.
+    kind = None
     res = np.sort(x._array, axis=axis, kind=kind)
     if descending:
         res = np.flip(res, axis=axis)

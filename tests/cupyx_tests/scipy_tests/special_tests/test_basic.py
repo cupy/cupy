@@ -3,7 +3,6 @@ import math
 import cupy
 import numpy
 import pytest
-import scipy.special  # NOQA
 
 import cupyx.scipy.special
 from cupy import testing

@@ -74,7 +74,7 @@
   python: "3.7"
   numpy: "1.20"
   scipy: null
-  optuna: "2"
+  optuna: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"

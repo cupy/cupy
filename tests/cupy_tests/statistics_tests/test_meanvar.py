@@ -411,11 +411,10 @@ class TestNanMeanAdditional:
         'keepdims': [True, False],
         'ddof': [0, 1]
     }))
-@testing.gpu
 class TestNanVarStd:
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
@@ -425,7 +424,7 @@ class TestNanVarStd:
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
@@ -435,11 +434,10 @@ class TestNanVarStd:
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
 
 
-@testing.gpu
 class TestNanVarStdAdditional:
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar_out(self, xp, dtype):
         a = testing.shaped_random((10, 20, 30), xp, dtype)
@@ -453,7 +451,7 @@ class TestNanVarStdAdditional:
         return z
 
     @testing.slow
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
@@ -470,7 +468,7 @@ class TestNanVarStdAdditional:
         return xp.nanvar(a, axis=0)
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_out(self, xp, dtype):
         a = testing.shaped_random((10, 20, 30), xp, dtype)
@@ -484,7 +482,7 @@ class TestNanVarStdAdditional:
         return z
 
     @testing.slow
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
