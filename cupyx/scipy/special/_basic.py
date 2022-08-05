@@ -91,7 +91,8 @@ expm1 = _core.create_ufunc(
     ''')
 
 cosm1_implementation = """
-//Define from npy_math.h https://github.com/numpy/numpy/blob/main/numpy/core/include/numpy/npy_math.h
+//Define from npy_math.h
+//https://github.com/numpy/numpy/blob/main/numpy/core/include/numpy/npy_math.h
 #define NPY_PI_4      0.785398163397448309615660845819875721  /* pi/4 */
 __constant__ double coscof[] = {
     4.7377507964246204691685E-14,
@@ -114,7 +115,7 @@ __device__ static double polevl(double x, const double coef[], int N)
     i = N;
 
     do
-	ans = ans * x + *p++;
+        ans = ans * x + *p++;
     while (--i);
 
     return (ans);
@@ -125,7 +126,7 @@ __device__ static double cosm1(double x)
     double xx;
 
     if ((x < -NPY_PI_4) || (x > NPY_PI_4))
-	    return (cos(x) - 1.0);
+        return (cos(x) - 1.0);
     xx = x * x;
     xx = -0.5 * xx + xx * xx * polevl(xx, coscof, 6);
     return xx;
