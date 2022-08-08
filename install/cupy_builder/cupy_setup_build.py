@@ -9,7 +9,6 @@ import sys
 
 import setuptools
 
-import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
 from cupy_builder.install_build import PLATFORM_LINUX
