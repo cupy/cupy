@@ -51,8 +51,6 @@ def _asarray_validated(a, check_finite=True,
     # toarray = cupy.asarray_chkfinite if check_finite else cupy.asarray
     # a = toarray(a)
 
-    a = cupy.asarray(a)
-
     if not objects_ok:
         assert not objects_ok
 

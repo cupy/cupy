@@ -44,12 +44,12 @@ class _Interpolator1D:
 
         Parametres
         ----------
-        x : array-like
+        x : cupy.ndarray
             The points to evaluate the interpolant
 
         Returns
         -------
-        y : array-like
+        y : cupy.ndarray
             Interpolated values. Shape is determined by replacing
             the interpolation axis in the original array with the shape of x
 
@@ -143,10 +143,10 @@ class BarycentricInterpolator(_Interpolator1D):
 
     Parameters
     ----------
-    xi : array-like
+    xi : cupy.ndarray
         1-D array of x-coordinates of the points the polynomial should
         pass through
-    yi : array-like, optional
+    yi : cupy.ndarray, optional
         The y-coordinates of the points the polynomial should pass through.
         If None, the y values will be supplied later via the `set_y` method
     axis : int, optional
@@ -185,7 +185,7 @@ class BarycentricInterpolator(_Interpolator1D):
 
         Parameters
         ----------
-        yi : array-like
+        yi : cupy.ndarray
             The y-coordinates of the points the polynomial should pass
             through. If None, the y values will be supplied later.
         axis : int, optional
@@ -208,10 +208,10 @@ class BarycentricInterpolator(_Interpolator1D):
 
         Parameters
         ----------
-        xi : array-like
+        xi : cupy.ndarray
             The x-coordinates of the points that the polynomial should
             pass through
-        yi : array-like, optional
+        yi : cupy.ndarray, optional
             The y-coordinates of the points the polynomial should pass
             through. Should have shape ``(xi.size, R)``; if R > 1 then
             the polynomial is vector-valued
@@ -248,12 +248,12 @@ class BarycentricInterpolator(_Interpolator1D):
 
         Parameters
         ----------
-        x : array-like
+        x : cupy.ndarray
             Points to evaluate the interpolant at
 
         Returns
         -------
-        y : array-like
+        y : cupy.ndarray
             Interpolated values. Shape is determined by replacing the
             interpolation axis in the original array with the shape of x
 
@@ -295,13 +295,13 @@ def barycentric_interpolate(xi, yi, x, axis=0):
 
     Parameters
     ----------
-    xi : array-like
+    xi : cupy.ndarray
         1-D array of coordinates of the points the polynomial
         should pass through
-    yi : array-like
+    yi : cupy.ndarray
         y-coordinates of the points the polynomial should pass
         through
-    x : scalar or array-like
+    x : scalar or cupy.ndarray
         Points to evaluate the interpolator at
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate
@@ -309,7 +309,7 @@ def barycentric_interpolate(xi, yi, x, axis=0):
 
     Returns
     -------
-    y : scalar or array-like
+    y : scalar or cupy.ndarray
         Interpolated values. Shape is determined by replacing
         the interpolation axis in the original array with the
         shape x
