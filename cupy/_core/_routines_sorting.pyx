@@ -290,7 +290,8 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
             s *= 2
 
     # Rearrange indices w.r.t the original axis
-    indices = indices % length
+    axis_indices = cupy.unravel_index(indices, shape)
+    indices = axis_indices[-1]
     indices = indices.reshape(shape)
 
     if _axis != ndim - 1:
