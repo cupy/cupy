@@ -23,14 +23,6 @@ class TestBarycentric:
         P = scp.interpolate.BarycentricInterpolator(xs, ys)
         return P(test_xs)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
-    def test_scalar_1(self, xp, scp):
-        true_poly = xp.poly1d([-1, 2, 6, -3, 2])
-        xs = xp.linspace(-1, 1, 10)
-        ys = true_poly(xs)
-        P = scp.interpolate.BarycentricInterpolator(xs, ys)
-        return P(xp.array(7))
-
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_delayed(self, xp, scp, dtype):
