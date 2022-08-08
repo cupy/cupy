@@ -70,7 +70,7 @@ class TestTrim:
 class TestZmap:
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     def test_zmap_1dim(self, xp, scp, dtype):
         x = testing.shaped_random((10,), xp, dtype=dtype)
         y = testing.shaped_random((8,), xp, dtype=dtype)
