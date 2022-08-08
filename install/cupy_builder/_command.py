@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import setuptools
 import setuptools.command.build_ext
@@ -88,7 +88,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         }
 
         # Compile-time constants to be used in Cython code
-        compile_time_env = {}
+        compile_time_env: Dict[str, Any] = {}
 
         # Enable CUDA Python.
         # TODO: add `cuda` to `setup_requires` only when this flag is set
