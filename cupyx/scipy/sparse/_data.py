@@ -121,11 +121,14 @@ class _data_matrix(_base.spmatrix):
 
 
 def _find_missing_index(ind, n):
-    for k, a in enumerate(ind):
-        if k != a:
-            return cupy.asarray(k)
+    positions = cupy.arange(ind.size)
+    diff = ind != positions
+    non_zero = cupy.argwhere(diff).ravel()
 
-    k += 1
+    if non_zero.size != 0:
+        return non_zero[0]
+
+    k = ind.size + 1
     if k < n:
         return cupy.asarray(k)
     else:
