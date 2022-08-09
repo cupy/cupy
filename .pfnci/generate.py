@@ -102,7 +102,9 @@ class LinuxGenerator:
                 '       libbz2-dev libreadline-dev libsqlite3-dev wget \\',
                 '       curl llvm libncursesw5-dev xz-utils tk-dev \\',
                 '       libxml2-dev libxmlsec1-dev libffi-dev \\',
-                '       liblzma-dev && \\',
+                '       liblzma-dev \\',
+                '       libopenmpi-dev \\' if matrix.mpi4py else '\\',
+                '       && \\',
                 '    apt-get -qqy install ccache git curl && \\',
                 '    apt-get -qqy --allow-change-held-packages \\',
                 '            --allow-downgrades install {}'.format(
@@ -112,13 +114,6 @@ class LinuxGenerator:
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
                 '',
             ]
-            if matrix.test == 'unit-multi':
-                lines += [
-                    'RUN export DEBIAN_FRONTEND=noninteractive && \\',
-                    '    apt-get -qqy update && \\',
-                    '    apt-get -qqy install libopenmpi-dev',
-                    '',
-                ]
         elif os_name == 'centos':
             assert os_version in ('7', '8')
             if os_version == '7':
@@ -145,6 +140,7 @@ class LinuxGenerator:
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
                 '',
             ]
+            assert matrix.mpi4py is None, 'mpi4py test unsupported on CentOS'
         else:
             raise AssertionError
 
@@ -176,7 +172,8 @@ class LinuxGenerator:
         # Setup Python libraries.
         pip_args = []
         pip_uninstall_args = []
-        for pylib in ('numpy', 'scipy', 'optuna', 'cython', 'cuda-python'):
+        for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
+                      'cython', 'cuda-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)
@@ -193,12 +190,6 @@ class LinuxGenerator:
                 '    pip check',
             ]
         lines.append('')
-        if os_name == 'ubuntu' and matrix.test == 'unit-multi':
-            lines += [
-                'RUN pip install mpi4py',
-                '',
-            ]
-
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> List[str]:
