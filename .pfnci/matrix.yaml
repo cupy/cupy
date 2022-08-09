@@ -90,7 +90,7 @@
   tags: ["@push", "full", "multi", "cuda111"]
   _inherits: "cupy.linux.cuda111"
   target: "cuda111.multi"
-  mpi4py: "3"
+  mpi4py: null  # CentOS
   test: "unit-multi"
 
 # CUDA 11.2 | Linux
@@ -120,7 +120,7 @@
   _inherits: "cupy.linux.cuda112"
   tags: ["@push", "full", "multi", "cuda112"]
   target: "cuda112.multi"
-  mpi4py: "3"
+  mpi4py: null  # CentOS
   test: "unit-multi"
 
 # CUDA 11.3 | Linux
