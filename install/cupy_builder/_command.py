@@ -113,6 +113,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         print('Compile-time constants: ' +
               json.dumps(compile_time_env, indent=4))
 
+        if sys.platform == 'win32':
+            # Disable multiprocessing on Windows (spawn)
+            nthreads = 0
+
         Cython.Build.cythonize(
             self.extensions, verbose=True, nthreads=nthreads, language_level=3,
             compiler_directives=compiler_directives, annotate=ctx.annotate,
