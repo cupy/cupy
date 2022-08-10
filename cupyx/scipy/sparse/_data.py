@@ -1,3 +1,4 @@
+import math
 import cupy
 from cupy._core import internal
 from cupy import _util
@@ -235,7 +236,7 @@ class _minmax_mixin(object):
                 if compare(m, zero):
                     return mat.row[am] * mat.shape[1] + mat.col[am]
                 else:
-                    size = cupy.prod(cupy.asarray(mat.shape))
+                    size = math.prod(mat.shape)
                     if size == mat.nnz:
                         return am
                     else:
