@@ -109,6 +109,7 @@ class TestBarycentric:
         test_xs = xp.array(test_xs)
         return xp.shape(P(test_xs))
 
+    @testing.with_requires("scipy>=1.8.0")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_large_chebyshev(self, xp, scp, dtype):
