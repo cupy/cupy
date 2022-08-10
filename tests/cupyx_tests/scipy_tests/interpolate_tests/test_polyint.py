@@ -1,3 +1,4 @@
+import numpy
 import pytest
 
 import cupy
@@ -22,6 +23,20 @@ class TestBarycentric:
         ys = true_poly(xs)
         P = scp.interpolate.BarycentricInterpolator(xs, ys)
         return P(test_xs)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    def test_scalar(self, xp, scp, dtype):
+        if xp.dtype(dtype).kind in 'iu':
+            pytest.skip()
+        true_poly = numpy.poly1d([-1, 2, 6, -3, 2])
+        xs = numpy.linspace(-1, 1, 10, dtype=dtype)
+        ys = true_poly(xs)
+        if xp is cupy:
+            xs = cupy.asarray(xs)
+            ys = cupy.asarray(ys)
+        P = scp.interpolate.BarycentricInterpolator(xs, ys)
+        return P(xp.array(7, dtype=dtype))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -60,106 +75,37 @@ class TestBarycentric:
         P = scp.interpolate.BarycentricInterpolator(xs, ys)
         return P(test_xs)
 
-    @pytest.mark.parametrize(
-        'input',
-        [lambda xp, dtype: xp.array(val, dtype=dtype)
-            for val in [[0], [0, 1], [0, 1, 3], [5, 6, 4, 5]]])
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
     @testing.numpy_cupy_array_equal(scipy_name='scp')
-    def test_shapes_scalarvalue(self, xp, scp, dtype, input):
+    def test_shapes_scalarvalue(self, xp, scp, test_xs):
         true_poly = xp.poly1d([-2, 3, 5, 1, -3])
-        xs = xp.linspace(-1, 10, 10, dtype=dtype)
+        xs = xp.linspace(-1, 10, 10)
         ys = true_poly(xs)
         P = scp.interpolate.BarycentricInterpolator(xs, ys)
-        if callable(input):
-            input = input(xp, dtype)
-        return xp.shape(P(input))
+        test_xs = xp.array(test_xs)
+        return xp.shape(P(test_xs))
 
-    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
-    def test_vectorvalue_1(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
-            pytest.skip()
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_vectorvalue(self, xp, scp, test_xs):
         true_poly = xp.poly1d([4, -5, 3, 2, -4])
-        xs = xp.linspace(-10, 10, 20, dtype=dtype)
+        xs = xp.linspace(-10, 10, 20)
         ys = true_poly(xs)
         P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.arange(3, dtype=dtype)))
-        return P(xp.array(0))
+            xs, xp.outer(ys, xp.arange(3)))
+        test_xs = xp.array(test_xs)
+        return xp.shape(P(test_xs))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
-    def test_vectorvalue_1_float16(self, xp, scp):
-        true_poly = xp.poly1d([4, -5, 3, 2, -4])
-        xs = xp.linspace(-5, 5, 20, dtype=xp.float16)
-        ys = true_poly(xs)
-        P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.arange(3, dtype=xp.float16)))
-        return P(xp.array(0))
-
-    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
-    def test_vectorvalue_2(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
-            pytest.skip()
-        true_poly = xp.poly1d([4, -5, 3, 2, -4])
-        xs = xp.linspace(-10, 10, 20, dtype=dtype)
-        ys = true_poly(xs)
-        P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.arange(3, dtype=dtype)))
-        return P(xp.array([0]))
-
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
-    def test_vectorvalue_2_float16(self, xp, scp):
-        true_poly = xp.poly1d([4, -5, 3, 2, -4])
-        xs = xp.linspace(-1, 1, 20, dtype=xp.float16)
-        ys = true_poly(xs)
-        P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.arange(3, dtype=xp.float16)))
-        return P(xp.array([0]))
-
-    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
-    def test_vectorvalue_3(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind == 'u':
-            pytest.skip()
-        true_poly = xp.poly1d([4, -5, 3, 2, -4])
-        xs = xp.linspace(-10, 10, 20, dtype=dtype)
-        ys = true_poly(xs)
-        P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.arange(3, dtype=dtype)))
-        return P(xp.array([0, 1]))
-
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
-    def test_vectorvalue_3_float16(self, xp, scp):
-        true_poly = xp.poly1d([4, -5, 3, 2, -4])
-        xs = xp.linspace(-1, 1, 20, dtype=xp.float16)
-        ys = true_poly(xs)
-        P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.arange(3, dtype=xp.float16)))
-        return P(xp.array([0, 1]))
-
-    @pytest.mark.parametrize(
-        'input',
-        [lambda xp, dtype: xp.array(val, dtype=dtype)
-            for val in [[0], [0, 1], [0, 1, 3], [4, 5, 6, 7]]])
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_shapes_1d_vectorvalue_1(self, xp, scp, dtype, input):
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_1d_vectorvalue(self, xp, scp, test_xs):
         true_poly = xp.poly1d([-3, -1, 4, 9, 8])
-        xs = xp.linspace(-1, 10, 10, dtype=dtype)
+        xs = xp.linspace(-1, 10, 10)
         ys = true_poly(xs)
         P = scp.interpolate.BarycentricInterpolator(
-            xs,
-            xp.outer(ys, xp.array([1], dtype=dtype)))
-        if callable(input):
-            input = input(xp, dtype)
-        return xp.shape(P(input))
+            xs, xp.outer(ys, xp.array([1])))
+        test_xs = xp.array(test_xs)
+        return xp.shape(P(test_xs))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -171,19 +117,12 @@ class TestBarycentric:
         # # The weights for Chebyshev points against SciPy counterpart
         return scp.interpolate.BarycentricInterpolator(x).wi
 
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_complex_1(self, xp, scp, dtype):
-        x = xp.array([1, 2, 3, 4], dtype=dtype)
+    def test_complex(self, xp, scp):
+        x = xp.array([1, 2, 3, 4])
         y = xp.array([1, 2, 1j, 3])
-        xi = xp.array([0, 8, 1, 5], dtype=dtype)
+        xi = xp.array([0, 8, 1, 5])
         return scp.interpolate.BarycentricInterpolator(x, y)(xi)
-
-    def test_complex_2(self):
-        x = cupy.array([1, 2, 3, 4])
-        y = cupy.array([1, 2, 1j, 3])
-        P = BarycentricInterpolator(x, y)
-        testing.assert_allclose(y, P(x))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)

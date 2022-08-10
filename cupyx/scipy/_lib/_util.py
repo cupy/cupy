@@ -45,14 +45,19 @@ def _asarray_validated(a, check_finite=True,
                    'would work instead.')
             raise ValueError(msg)
 
+    # TODO: remove these comments when CuPy supports masked arrays
+    # Ref Issue: https://github.com/cupy/cupy/issues/2225
+    # if not mask_ok:
+    #     if cupy.ma.isMaskedArray(a):
+    #         raise ValueError('masked arrays are not supported')
+
     if not mask_ok:
         assert not mask_ok
 
-    # toarray = cupy.asarray_chkfinite if check_finite else cupy.asarray
-    # a = toarray(a)
-
-    if not objects_ok:
-        assert not objects_ok
+    # TODO: remove these comments when CuPy supports 'object' dtype
+    # if not objects_ok:
+    #    if a.dtype is cupy.dtype('O'):
+    #        raise ValueError('object arrays are not supported')
 
     if as_inexact:
         if not cupy.issubdtype(a, cupy.inexact):
