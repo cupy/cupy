@@ -265,7 +265,7 @@ class BarycentricInterpolator(_Interpolator1D):
 
         """
 
-        return _Interpolator1D.__call__(self, x)
+        return super().__call__(x)
 
     def _evaluate(self, x):
         if x.size == 0:

@@ -113,10 +113,13 @@ class TestBarycentric:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_large_chebyshev(self, xp, scp, dtype):
         n = 100
-        j = xp.arange(n + 1, dtype=dtype).astype(xp.float64)
-        x = xp.cos(j * xp.pi / n)
+        j = numpy.arange(n + 1, dtype=dtype).astype(numpy.float64)
+        x = numpy.cos(j * numpy.pi / n)
 
-        # # The weights for Chebyshev points against SciPy counterpart
+        if xp is cupy:
+            j = cupy.asarray(j)
+            x = cupy.asarray(x)
+        # The weights for Chebyshev points against SciPy counterpart
         return scp.interpolate.BarycentricInterpolator(x).wi
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
