@@ -3,8 +3,12 @@ import pytest
 
 import cupy
 from cupy import testing
+import cupyx.scipy.interpolate  # NOQA
 
-from scipy import interpolate  # NOQA
+try:
+    from scipy import interpolate  # NOQA
+except ImportError:
+    pass
 
 
 @testing.with_requires("scipy")
