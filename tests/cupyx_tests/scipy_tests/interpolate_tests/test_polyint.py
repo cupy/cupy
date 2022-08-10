@@ -2,9 +2,7 @@ import numpy
 import pytest
 
 import cupy
-
 from cupy import testing
-from cupyx.scipy.interpolate import BarycentricInterpolator
 
 from scipy import interpolate  # NOQA
 
