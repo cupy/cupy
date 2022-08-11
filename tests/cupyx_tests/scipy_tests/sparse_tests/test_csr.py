@@ -1453,17 +1453,11 @@ class TestCsrMatrixScipyCompressedMinMax:
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_argmin(self, xp, sp):
-        # TODO(takagi) Fix axis=None
-        if self.axis is None:
-            pytest.skip()
         data = self._make_data_min(xp, sp, dense=self.dense)
         return data.argmin(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_argmax(self, xp, sp):
-        # TODO(takagi) Fix axis=None
-        if self.axis is None:
-            pytest.skip()
         data = self._make_data_max(xp, sp, dense=self.dense)
         return data.argmax(axis=self.axis)
 
