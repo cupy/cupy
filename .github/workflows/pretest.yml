@@ -3,7 +3,31 @@ name: "Pre-review Tests"
 on: [push, pull_request]
 
 jobs:
-  test:
+  static-checks:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      id: setup-python
+      with:
+        python-version: '3.8'
+
+    - name: Setup cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache
+        key: static-checks-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+    - name: Check
+      run: |
+        pip install pre-commit
+        pre-commit run -a --show-diff-on-failure
+
+  cuda-build:
     runs-on: ubuntu-22.04
     env:
       CUPY_CI: GitHub
@@ -38,45 +62,15 @@ jobs:
       run: |
         pip install -U pip wheel
         pip install cython
-        READTHEDOCS=True pip install -v -e .[stylecheck]
+        READTHEDOCS=True pip install -v -e .
 
-    - name: Coding Style (flake8)
-      run: |
-        flake8
-        flake8 --config=.flake8.cython
-
-    - name: Coding Style (autopep8)
-      run: |
-        autopep8 -r . --diff | tee check_autopep8
-        test ! -s check_autopep8
-
-    - name: Static Type Checking (mypy)
-      run: |
-        mypy cupy cupyx cupy_backends
-
-    - name: Test - Docs Build
+    - name: Docs Build
       run: |
         # Test to detect invalid escape sequences in docstrings (#1619)
         python -Werror::DeprecationWarning -m compileall -f -q cupy cupyx examples tests docs
         pushd docs
         pip install -r requirements.txt
         SPHINXOPTS="-W --keep-going -j 4" make html
-        popd
-
-    - name: Test - Installer
-      run: |
-        pushd install
-        mypy cupy_builder universal_pkg
-
-    - name: Test - CI Tools
-      run: |
-        pip install PyYAML types-PyYAML pygithub
-        pushd .pfnci
-        ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
-        mypy generate.py
-        popd
-        pushd .github/workflows
-        mypy flexci_dispatcher.py
         popd
 
   rocm-build:
