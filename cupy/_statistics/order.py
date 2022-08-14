@@ -221,8 +221,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     indices = q * (Nx - 1.)
 
     if method in ['inverted_cdf', 'averaged_inverted_cdf',
-                  'closest_observation', 'interpolated_inverted_cdf',
-                  'hazen', 'weibull', 'median_unbiased', 'normal_unbiased']:
+                  'closest_observation','hazen', 'median_unbiased', 'normal_unbiased']:
         # TODO(takagi) Implement new methods introduced in NumPy 1.22
         raise ValueError(f'\'{method}\' method is not yet supported. '
                          'Please use any other method.')
@@ -232,6 +231,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         indices = cupy.ceil(indices).astype(cupy.int32)
     elif method == 'midpoint':
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
+    elif method == 'interpolated_inverted_cdf':
+        indices = q * Nx - 1
     elif method == 'nearest':
         # TODO(hvy): Implement nearest using around
         raise ValueError('\'nearest\' method is not yet supported. '
