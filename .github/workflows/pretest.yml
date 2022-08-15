@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     env:
       CUPY_CI: GitHub
 
@@ -80,7 +80,7 @@ jobs:
         popd
 
   rocm-build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
