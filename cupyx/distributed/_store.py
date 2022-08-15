@@ -1,3 +1,4 @@
+import atexit
 from ctypes import sizeof
 import multiprocessing
 import threading
@@ -44,9 +45,7 @@ class TCPStore:
         # For implementing a barrier
         self._lock = threading.Lock()
         self._current_barrier = None
-
-    def __del__(self):
-        self.stop()
+        atexit.register(self.stop)
 
     def _set_process(self, process):
         self._process = process
