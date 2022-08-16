@@ -25,5 +25,5 @@ RUN pyenv install 3.7.11 && \
     pip install -U setuptools pip
 
 RUN pip install -U 'numpy==1.20.*' 'cython==0.29.*'
-RUN pip uninstall -y scipy optuna cuda-python && \
+RUN pip uninstall -y scipy optuna mpi4py cuda-python && \
     pip check
