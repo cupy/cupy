@@ -168,17 +168,24 @@ class LinuxGenerator:
 
         # Setup Python libraries.
         pip_args = []
+        pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'cython', 'cuda-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
-                continue
-            pip_spec = self.schema[pylib][pylib_ver]['spec']
-            pip_args.append(f'{pylib}{pip_spec}')
+                pip_uninstall_args.append(pylib)
+            else:
+                pip_spec = self.schema[pylib][pylib_ver]['spec']
+                pip_args.append(f'{pylib}{pip_spec}')
         lines += [
             f'RUN pip install -U {shlex.join(pip_args)}',
-            '',
         ]
-
+        if len(pip_uninstall_args) != 0:
+            # Ensure that packages are not installed.
+            lines += [
+                f'RUN pip uninstall -y {shlex.join(pip_uninstall_args)} && \\',
+                '    pip check',
+            ]
+        lines.append('')
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> List[str]:
