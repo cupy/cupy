@@ -303,6 +303,7 @@ def check_hip_version(compiler, settings):
         ''', include_dirs=settings['include_dirs'])
 
     except Exception as e:
+        raise
         utils.print_warning('Cannot check HIP version', str(e))
         return False
 
