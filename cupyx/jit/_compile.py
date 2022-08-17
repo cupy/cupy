@@ -623,6 +623,7 @@ def _transpile_expr(expr: ast.expr, env: Environment) -> _internal_types.Expr:
     res = _transpile_expr_internal(expr, env)
 
     if isinstance(res, Constant) and isinstance(res.obj, _internal_types.Expr):
+        assert isinstance(res.obj, Data)
         return res.obj
     else:
         return res
@@ -681,15 +682,15 @@ def _transpile_expr_internal(
 
         builtin_funcs = _builtin_funcs.builtin_functions_dict
         if is_constants(func) and (func.obj in builtin_funcs):
-            func = builtin_funcs[func.obj]
-
-        if isinstance(func, _internal_types.BuiltinFunc):
-            return func.call(env, *args, **kwargs)
+            func = Constant(builtin_funcs[func.obj])
 
         if not isinstance(func, Constant):
             raise TypeError(f"'{func}' is not callable.")
 
         func = func.obj
+
+        if isinstance(func, _builtin_funcs.BuiltinFunc):
+            return func.call(env, *args, **kwargs)
 
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
@@ -775,8 +776,9 @@ def _transpile_expr_internal(
                 return getattr(value.ctype, expr.attr)(value.code)
         # TODO(leofang): support arbitrary Python class methods
         if isinstance(value.ctype, _ThreadGroup):
-            return _internal_types.BuiltinFunc.from_class_method(
-                value.code, getattr(value.ctype, expr.attr))
+            return Constant(
+                _builtin_funcs.BuiltinFunc.from_class_method(
+                    value.code, getattr(value.ctype, expr.attr)))
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
