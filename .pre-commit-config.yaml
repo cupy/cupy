@@ -8,10 +8,10 @@ repos:
     # Git
     -   id: check-added-large-files
     -   id: no-commit-to-branch
+        name: "ensure no direct commit to master/vXX branch"
         args: [--branch, "master", --pattern, "v\\d+"]
     -   id: check-case-conflict
     # Contents
-    #-   id: end-of-file-fixer
     -   id: mixed-line-ending
     -   id: fix-byte-order-marker
     -   id: check-yaml
@@ -47,7 +47,7 @@ repos:
 -   repo: local
     hooks:
     -   id: ci-generate
-        name: ci-generate
+        name: "check CI files are up-to-date (.pfnci/generate.py)"
         files: .pfnci/*
         entry: .pfnci/generate.py --dry-run
         pass_filenames: false
