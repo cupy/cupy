@@ -408,8 +408,8 @@ def validate_schema(schema: SchemaType) -> None:
                 system = value_schema.get('system', None)
                 if system is None:
                     raise ValueError(
-                            f'system is missing '
-                            f'while parsing schema os:{value}')
+                        f'system is missing '
+                        f'while parsing schema os:{value}')
                 if system not in schema['system'].keys():
                     raise ValueError(
                         f'unknown system: {system} '
