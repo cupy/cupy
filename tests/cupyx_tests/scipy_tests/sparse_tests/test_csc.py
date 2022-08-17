@@ -1261,7 +1261,7 @@ class TestCscMatrixScipyCompressedMinMax:
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_argmin(self, xp, sp):
         data = self._make_data_min(xp, sp, dense=self.dense)
-        return data.argmin(axis=self.axis)
+        return xp.array(data.argmin(axis=self.axis))
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_argmax(self, xp, sp):
