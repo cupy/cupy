@@ -9,7 +9,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        libbz2-dev libreadline-dev libsqlite3-dev wget \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
-       liblzma-dev && \
+       liblzma-dev \
+       libopenmpi-dev \
+       && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 'libnccl2=2.10.*+cuda11.4' 'libnccl-dev=2.10.*+cuda11.4' 'libcutensor1=1.4.*' 'libcutensor-dev=1.4.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.3.*+cuda11.5' 'libcudnn8-dev=8.3.*+cuda11.5'
@@ -23,6 +25,6 @@ RUN pyenv install 3.10.0 && \
     pyenv global 3.10.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==2.*' 'mpi4py==3.*' 'cython==0.29.*'
 RUN pip uninstall -y cuda-python && \
     pip check
