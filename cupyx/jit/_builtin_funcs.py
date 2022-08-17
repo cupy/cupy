@@ -1,3 +1,4 @@
+import functools
 import itertools
 from typing import Any, Mapping, NoReturn, TYPE_CHECKING
 import warnings
@@ -12,8 +13,6 @@ from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 from cupyx.jit import _compile
-
-from functools import reduce
 
 if TYPE_CHECKING:
     from cupyx.jit._compile import Environment
@@ -173,7 +172,7 @@ class MinFunc(BuiltinFunc):
                 f'min() expects at least 2 arguments, got {len(args)}')
         if kwds:
             raise TypeError('keyword arguments are not supported')
-        return reduce(lambda a, b: _compile._call_ufunc(
+        return functools.reduce(lambda a, b: _compile._call_ufunc(
             cupy.minimum, (a, b), None, env), args)
 
 
@@ -185,7 +184,7 @@ class MaxFunc(BuiltinFunc):
                 f'max() expects at least 2 arguments, got {len(args)}')
         if kwds:
             raise TypeError('keyword arguments are not supported')
-        return reduce(lambda a, b: _compile._call_ufunc(
+        return functools.reduce(lambda a, b: _compile._call_ufunc(
             cupy.maximum, (a, b), None, env), args)
 
 
