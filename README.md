@@ -38,18 +38,19 @@ You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://
 Wheels (precompiled binary packages) are available for Linux and Windows.
 Choose the right package for your platform.
 
-| Platform              | Architecture      | Command                                                       |
-| --------------------- | ----------------- | ------------------------------------------------------------- |
-| CUDA 10.2             | x86_64            | `pip install cupy-cuda102`                                    |
-|                       | aarch64           | `pip install cupy-cuda102 -f https://pip.cupy.dev/aarch64`    |
-| CUDA 11.0             | x86_64            | `pip install cupy-cuda110`                                    |
-| CUDA 11.1             | x86_64            | `pip install cupy-cuda111`                                    |
-| CUDA 11.2 or later    | x86_64            | `pip install cupy-cuda11x`                                    |
-|                       | aarch64           | `pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64`    |
-| ROCm 4.3 (*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
-| ROCm 5.0 (*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
+| Platform                | Architecture | Command                                                                |
+| ----------------------- | -------------| ---------------------------------------------------------------------- |
+| CUDA 10.2               | x86_64       | [`pip install cupy-cuda102`](https://pypi.org/project/cupy-cuda102/)   |
+|                         | aarch64      | [`pip install cupy-cuda102 -f https://pip.cupy.dev/aarch64`](https://pip.cupy.dev/aarch64) |
+| CUDA 11.0               | x86_64       | [`pip install cupy-cuda110`](https://pypi.org/project/cupy-cuda110/)   |
+| CUDA 11.1               | x86_64       | [`pip install cupy-cuda111`](https://pypi.org/project/cupy-cuda111/)   |
+| CUDA 11.2 or later [^1] | x86_64       | [`pip install cupy-cuda11x`](https://pypi.org/project/cupy-cuda11x/)   |
+|                         | aarch64      | [`pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64`](https://pip.cupy.dev/aarch64) |
+| ROCm 4.3 [^2]           | x86_64       | [`pip install cupy-rocm-4-3`](https://pypi.org/project/cupy-rocm-4-3/) |
+| ROCm 5.0 [^2]           | x86_64       | [`pip install cupy-rocm-5-0`](https://pypi.org/project/cupy-rocm-5-0/) |
 
-(\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
+[^1]: CuPy v11 provides a unified binary package named `cupy-cuda11x` that supports all CUDA 11.2+ releases. Separate packages (`cupy-cuda112~117`) provided in CuPy v10 or earlier are no longer available.
+[^2]: ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
 
 Append `--pre -f https://pip.cupy.dev/pre` options to install pre-releases (e.g., `pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre`).
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
