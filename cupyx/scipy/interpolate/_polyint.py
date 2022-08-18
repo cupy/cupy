@@ -9,10 +9,12 @@ def _isscalar(x):
 
 class _Interpolator1D:
     """Common features in univariate interpolation.
+
     Deal with input data type and interpolation axis rolling. The
     actual interpolator can assume the y-data is of shape (n, r) where
     `n` is the number of x-points, and `r` the number of variables,
     and use self.dtype as the y-data type.
+
     Attributes
     ----------
     _y_axis : Axis along which the interpolation goes in the
@@ -21,6 +23,7 @@ class _Interpolator1D:
         the interpolation axis
     dtype : Dtype of the y-data arrays. It can be set via _set_dtype,
         which forces it to be float or complex
+
     Methods
     -------
     __call__
@@ -31,6 +34,7 @@ class _Interpolator1D:
     _set_yi
     _set_dtype
     _evaluate
+
     """
 
     def __init__(self, xi=None, yi=None, axis=None):
@@ -42,19 +46,23 @@ class _Interpolator1D:
 
     def __call__(self, x):
         """Evaluate the interpolant
+
         Parametres
         ----------
         x : cupy.ndarray
             The points to evaluate the interpolant
+
         Returns
         -------
         y : cupy.ndarray
             Interpolated values. Shape is determined by replacing
             the interpolation axis in the original array with the shape of x
+
         Notes
         -----
         Input values `x` must be convertible to `float` values like `int`
         or `float`.
+
         """
         x, x_shape = self._prepare_x(x)
         y = self._evaluate(x)
