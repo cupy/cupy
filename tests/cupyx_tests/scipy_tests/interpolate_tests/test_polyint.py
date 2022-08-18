@@ -126,6 +126,59 @@ class TestKrogh:
         P = scp.interpolate.KroghInterpolator(xs, ys)
         return P(xp.array([]))
 
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_scalarvalue(self, xp, scp, test_xs):
+        true_poly = xp.poly1d([-2, 3, 5, 1, -3])
+        xs = xp.linspace(-1, 10, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(xs, ys)
+        test_xs = xp.array(test_xs)
+        return xp.shape(P(test_xs))
+
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_scalarvalue_derivatives(self, xp, scp, test_xs):
+        true_poly = xp.poly1d([-2, 3, 5, 1, -3])
+        xs = xp.linspace(-1, 10, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(xs, ys)
+        test_xs = xp.array(test_xs)
+        return xp.shape(P.derivatives(test_xs))
+
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_vectorvalue(self, xp, scp, test_xs):
+        true_poly = xp.poly1d([4, -5, 3, 2, -4])
+        xs = xp.linspace(-10, 10, 20)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(
+            xs, xp.outer(ys, xp.arange(3)))
+        test_xs = xp.array(test_xs)
+        return xp.shape(P(test_xs))
+
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_vectorvalue_derivative(self, xp, scp, test_xs):
+        true_poly = xp.poly1d([4, -5, 3, 2, -4])
+        xs = xp.linspace(-10, 10, 20)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(
+            xs, xp.outer(ys, xp.arange(3)))
+        test_xs = xp.array(test_xs)
+        return xp.shape(P.derivatives(test_xs))
+
+    @pytest.mark.parametrize('test_xs', [0, [0], [0, 1]])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_shapes_1d_vectorvalue(self, xp, scp, test_xs):
+        true_poly = xp.poly1d([-3, -1, 4, 9, 8])
+        xs = xp.linspace(-1, 10, 10)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(
+            xs, xp.outer(ys, xp.array([1])))
+        test_xs = xp.array(test_xs)
+        return xp.shape(P(test_xs))
+
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):

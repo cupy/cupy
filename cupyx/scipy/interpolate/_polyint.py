@@ -198,7 +198,7 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
     additionally specify a number of derivatives at each point xi;
     this is done by repeating the value xi and specifying the
     derivatives as successive yi values
-.
+
     Allows evaluation of the polynomial and all its derivatives.
     For reasons of numerical stability, this function does not compute
     the coefficients of the polynomial, although they can be obtained
@@ -213,10 +213,6 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
         the corresponding yi's represent derivative values
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate values.
-
-    See Also
-    --------
-    scipy.interpolate.KroghInterpolator
 
     """
 
