@@ -94,6 +94,11 @@ Package names are different depending on your CUDA Toolkit version.
    * - **v11.2 or later** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
      - ``pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64``
 
+.. hint::
+
+   CuPy v11 provides a unified package named `cupy-cuda11x <https://pypi.org/project/cupy-cuda11x/>`_ that supports all CUDA 11.2+ releases.
+   Separate packages (``cupy-cuda112~117``) provided in CuPy v10 or earlier are no longer available.
+
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
@@ -415,9 +420,9 @@ Package names are different depending on your ROCm version.
    * - ROCm
      - Command
    * - v4.3
-     - ``$ pip install cupy-rocm-4-3``
+     - ``pip install cupy-rocm-4-3``
    * - v5.0
-     - ``$ pip install cupy-rocm-5-0``
+     - ``pip install cupy-rocm-5-0``
 
 Building CuPy for ROCm From Source
 ----------------------------------
