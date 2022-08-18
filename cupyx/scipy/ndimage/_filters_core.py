@@ -78,7 +78,6 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     The args is a list of values that are passed for the arg value to the
     filter. Individual filters can be None causing that axis to be skipped.
     """
-    output_orig = output
     output = _util._get_output(output, input)
     modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
                                     _util._check_mode)
@@ -91,17 +90,25 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
     temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
-    first = True
     iterator = zip(filters, args, modes, origins)
+    # skip any axes where the filter is None
     for axis, (fltr, arg, mode, origin) in enumerate(iterator):
+        if fltr is not None:
+            break
+    # To avoid need for any additional copies, we have to start with a
+    # different output array depending on whether the total number of filters
+    # is odd or even.
+    if n_filters % 2 == 0:
+        fltr(input, arg, axis, temp, mode, cval, origin)
+        input = temp
+    else:
+        fltr(input, arg, axis, output, mode, cval, origin)
+        input, output = output, temp
+    for axis, (fltr, arg, mode, origin) in enumerate(iterator, start=axis + 1):
         if fltr is None:
             continue
         fltr(input, arg, axis, output, mode, cval, origin)
-        input, output = output, temp if first else input
-        first = False
-    if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
-        _core.elementwise_copy(input, output_orig)
-        input = output_orig
+        input, output = output, input
     return input
 
 

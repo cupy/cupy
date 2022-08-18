@@ -16,7 +16,7 @@ jobs:
              contains(github.event.comment.body, '/test ')) ||
             (github.event_name == 'push')
         )
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout

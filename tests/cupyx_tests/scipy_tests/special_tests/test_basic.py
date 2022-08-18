@@ -152,6 +152,18 @@ class TestBasic:
 
     @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_cosm1(self, xp, scp, dtype):
+        vals = xp.linspace(-50, 50, 200, dtype=dtype)
+        return scp.special.cosm1(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_cosm1_close_to_zero(self, xp, scp, dtype):
+        vals = xp.linspace(-1e-8, 1e-8, 200, dtype=dtype)
+        return scp.special.cosm1(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_radian(self, xp, scp, dtype):
         tmp = xp.linspace(-100, 100, 10, dtype=dtype)
         d = tmp[:, xp.newaxis, xp.newaxis]
