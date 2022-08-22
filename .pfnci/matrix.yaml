@@ -19,6 +19,7 @@
   numpy: "1.20"
   scipy: "1.6"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
@@ -29,6 +30,7 @@
   _inherits: "cupy.linux.cuda102"
   tags: ["@push", "full", "mini", "multi", "cuda102"]
   target: "cuda102.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.0 | Linux
@@ -47,6 +49,7 @@
   numpy: "1.20"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
@@ -57,6 +60,7 @@
   _inherits: "cupy.linux.cuda110"
   tags: ["@push", "full", "multi", "cuda110"]
   target: "cuda110.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.1 | Linux
@@ -74,7 +78,8 @@
   python: "3.7"
   numpy: "1.20"
   scipy: null
-  optuna: "2"
+  optuna: null
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -85,6 +90,7 @@
   tags: ["@push", "full", "multi", "cuda111"]
   _inherits: "cupy.linux.cuda111"
   target: "cuda111.multi"
+  mpi4py: null  # CentOS
   test: "unit-multi"
 
 # CUDA 11.2 | Linux
@@ -103,6 +109,7 @@
   numpy: "1.21"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: ""
@@ -113,6 +120,7 @@
   _inherits: "cupy.linux.cuda112"
   tags: ["@push", "full", "multi", "cuda112"]
   target: "cuda112.multi"
+  mpi4py: null  # CentOS
   test: "unit-multi"
 
 # CUDA 11.3 | Linux
@@ -131,6 +139,7 @@
   numpy: "1.20"
   scipy: "1.6"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
@@ -141,6 +150,7 @@
   _inherits: "cupy.linux.cuda113"
   tags: ["@push", "full", "multi", "cuda113"]
   target: "cuda113.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.4 | Linux
@@ -159,6 +169,7 @@
   numpy: "1.22"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -169,6 +180,7 @@
   _inherits: "cupy.linux.cuda114"
   tags: ["@push", "full", "multi", "cuda114"]
   target: "cuda114.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.5 | Linux
@@ -187,6 +199,7 @@
   numpy: "1.23"
   scipy: "1.8"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -197,6 +210,7 @@
   _inherits: "cupy.linux.cuda115"
   tags: ["@push", "full", "multi", "cuda115"]
   target: "cuda115.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.6 | Linux
@@ -215,6 +229,7 @@
   numpy: "1.22"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -225,6 +240,7 @@
   _inherits: "cupy.linux.cuda116"
   tags: ["@push", "full", "multi", "cuda116"]
   target: "cuda116.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.7 | Linux
@@ -242,8 +258,9 @@
   cudnn: "8.4"
   python: "3.10"
   numpy: "1.23"
-  scipy: "1.8"
+  scipy: "1.9"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -254,6 +271,7 @@
   _inherits: "cupy.linux.cuda117"
   tags: ["@push", "full", "mini", "multi", "cuda117"]
   target: "cuda117.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 ###############################################################################
@@ -284,6 +302,7 @@
   numpy: "1.20"
   scipy: "1.6"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
@@ -304,8 +323,9 @@
   cudnn: null
   python: "3.9"
   numpy: "1.23"
-  scipy: "1.8"
+  scipy: "1.9"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
@@ -328,6 +348,7 @@
   numpy: "1.23"
   scipy: "1.8"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
@@ -351,6 +372,7 @@
   numpy: "1.23"
   scipy: "1.8"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: null
@@ -376,6 +398,7 @@
   numpy: "1.21"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -406,6 +429,7 @@
   numpy: "1.20"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: null
   env:CUPY_ACCELERATORS: ""
@@ -432,6 +456,7 @@
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
+  mpi4py: null
   cython: "0.29"  # TODO: support Cython 3
   cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
@@ -457,6 +482,7 @@
   numpy: "1.21"
   scipy: "1.7"
   optuna: "2"
+  mpi4py: null
   cython: "0.29"
   cuda-python: "11"
   env:CUPY_ACCELERATORS: "cutensor,cub"

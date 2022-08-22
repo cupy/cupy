@@ -1017,6 +1017,9 @@ class TestUniform(RandomGeneratorTestCase):
     def test_uniform_2(self):
         self.generate(-4.2, 2.4, size=(3, 2))
 
+    def test_uniform_broadcast(self):
+        self.generate([[2, 3]], [4])
+
     @testing.for_dtypes('fd')
     @_condition.repeat_with_success_at_least(10, 3)
     def test_uniform_ks_1(self, dtype):

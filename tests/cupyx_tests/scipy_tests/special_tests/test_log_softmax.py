@@ -4,8 +4,6 @@ import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 
-import scipy.special  # NOQA
-
 
 atol = {'default': 1e-6, cupy.float64: 1e-14}
 rtol = {'default': 1e-6, cupy.float64: 1e-14}

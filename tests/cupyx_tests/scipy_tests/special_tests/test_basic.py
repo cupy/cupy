@@ -3,7 +3,6 @@ import math
 import cupy
 import numpy
 import pytest
-import scipy.special  # NOQA
 
 import cupyx.scipy.special
 from cupy import testing
@@ -150,6 +149,18 @@ class TestBasic:
             # broadcast to mix small and large real and imaginary parts
             vals = vals[:, xp.newaxis] + 1j * vals[xp.newaxis, :]
         return scp.special.expm1(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_cosm1(self, xp, scp, dtype):
+        vals = xp.linspace(-50, 50, 200, dtype=dtype)
+        return scp.special.cosm1(vals)
+
+    @testing.for_dtypes("efd")
+    @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
+    def test_cosm1_close_to_zero(self, xp, scp, dtype):
+        vals = xp.linspace(-1e-8, 1e-8, 200, dtype=dtype)
+        return scp.special.cosm1(vals)
 
     @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)

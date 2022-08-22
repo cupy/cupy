@@ -48,7 +48,7 @@ def module_extension_sources(file, use_cython, no_cuda):
 
 
 def get_required_modules(MODULES):
-    return [m['name'] for m in MODULES if m.get('required', False)]
+    return [m['name'] for m in MODULES if m.required]
 
 
 def check_library(compiler, includes=(), libraries=(),
@@ -134,7 +134,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
-            cuda_version = build.get_cuda_version()
+            cuda_version = ctx.features['cuda'].get_version()
             cuda_major = str(cuda_version // 1000)
             cuda_major_minor = cuda_major + '.' + \
                 str((cuda_version // 10) % 100)
@@ -149,8 +149,8 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         # directories and libraries to link here depending on ROCm version
         # before the configuration process following.
         if ctx.use_hip and module['name'] == 'cuda':
-            if module['check_method'](compiler, settings):
-                hip_version = module['version_method']()
+            if module.configure(compiler, settings):
+                hip_version = module.get_version()
                 if hip_version >= 401:
                     rocm_path = build.get_rocm_path()
                     inc_path = os.path.join(rocm_path, 'hipfft', 'include')
@@ -180,8 +180,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
-        elif ('check_method' in module and
-                not module['check_method'](compiler, settings)):
+        elif not module.configure(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
@@ -196,8 +195,10 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             status = 'Yes'
             ret.append(module['name'])
 
-        if installed and 'version_method' in module:
-            status += ' (version {})'.format(module['version_method'](True))
+        if installed:
+            version = module.get_version()
+            if version is not None:
+                status += f' (version {version})'
 
         summary += [
             '  {:<10}: {}'.format(module['name'], status)
@@ -258,7 +259,7 @@ def _rpath_base():
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
-    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
+    MODULES = ctx.features.values()
 
     no_cuda = ctx.use_stub
     use_hip = not no_cuda and ctx.use_hip
@@ -473,7 +474,7 @@ def cythonize(extensions, ctx: Context):
         compile_time_env['CUPY_CUDA_VERSION'] = 0
         compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
     else:  # on CUDA
-        compile_time_env['CUPY_CUDA_VERSION'] = build.get_cuda_version()
+        compile_time_env['CUPY_CUDA_VERSION'] = ctx.features['cuda'].get_version()  # NOQA
         compile_time_env['CUPY_HIP_VERSION'] = 0
 
     return Cython.Build.cythonize(

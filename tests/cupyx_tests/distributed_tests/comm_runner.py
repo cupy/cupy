@@ -76,8 +76,8 @@ def reduce(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_reduce(MPI.COMM_WORLD.Get_rank(), 0, dtype, False)
-        run_reduce(MPI.COMM_WORLD.Get_rank(), 1, dtype, False)
+        run_reduce(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_reduce(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
     else:
         _launch_workers(run_reduce, (0, dtype))
         _launch_workers(run_reduce, (1, dtype))
@@ -100,7 +100,7 @@ def all_reduce(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_all_reduce(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_all_reduce, (dtype,))
 
@@ -123,7 +123,7 @@ def reduce_scatter(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_reduce_scatter(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_reduce_scatter(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_reduce_scatter, (dtype,))
 
@@ -148,7 +148,7 @@ def all_gather(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_all_gather(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_all_gather(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_all_gather, (dtype,))
 
@@ -172,7 +172,7 @@ def send_and_recv(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_send_and_recv, (dtype,))
 
@@ -194,7 +194,7 @@ def send_recv(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_send_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_send_recv(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_send_recv, (dtype,))
 
@@ -218,8 +218,8 @@ def scatter(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_scatter(MPI.COMM_WORLD.Get_rank(), 0, dtype, False)
-        run_scatter(MPI.COMM_WORLD.Get_rank(), 1, dtype, False)
+        run_scatter(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_scatter(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
     else:
         _launch_workers(run_scatter, (0, dtype))
         _launch_workers(run_scatter, (1, dtype))
@@ -245,8 +245,8 @@ def gather(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_gather(MPI.COMM_WORLD.Get_rank(), 0, dtype, False)
-        run_gather(MPI.COMM_WORLD.Get_rank(), 1, dtype, False)
+        run_gather(MPI.COMM_WORLD.Get_rank(), 0, dtype, True)
+        run_gather(MPI.COMM_WORLD.Get_rank(), 1, dtype, True)
     else:
         _launch_workers(run_gather, (0, dtype))
         _launch_workers(run_gather, (1, dtype))
@@ -271,7 +271,7 @@ def all_to_all(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_all_to_all(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_all_to_all(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_all_to_all, (dtype,))
 
@@ -292,7 +292,7 @@ def barrier(use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_barrier(MPI.COMM_WORLD.Get_rank(), False)
+        run_barrier(MPI.COMM_WORLD.Get_rank(), True)
     else:
         _launch_workers(run_barrier)
 
@@ -312,8 +312,8 @@ def init(use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_init(MPI.COMM_WORLD.Get_rank(), dtype, False)
-        run_init(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_init(MPI.COMM_WORLD.Get_rank(), dtype, True)
+        run_init(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_init)
 
@@ -350,7 +350,7 @@ def sparse_send_and_recv(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_send_and_recv(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_send_and_recv, (dtype,))
 
@@ -373,7 +373,7 @@ def sparse_send_recv(dtype, use_mpi=False):
     if use_mpi:
         from mpi4py import MPI
         # This process was run with mpiexec
-        run_send_recv(MPI.COMM_WORLD.Get_rank(), dtype, False)
+        run_send_recv(MPI.COMM_WORLD.Get_rank(), dtype, True)
     else:
         _launch_workers(run_send_recv, (dtype,))
 

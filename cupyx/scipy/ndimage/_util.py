@@ -19,6 +19,17 @@ def _check_cval(mode, cval, integer_output):
                                   "outputs with integer dtype.")
 
 
+def _init_weights_dtype(input):
+    """Initialize filter weights based on the input array.
+
+    This helper is only used during initialization of some internal filters
+    like prewitt and sobel to avoid costly double-precision computation.
+    """
+    if input.dtype.kind == "c":
+        return cupy.promote_types(input.real.dtype, cupy.complex64)
+    return cupy.promote_types(input.real.dtype, cupy.float32)
+
+
 def _get_weights_dtype(input, weights):
     if weights.dtype.kind == "c" or input.dtype.kind == "c":
         return cupy.promote_types(input.real.dtype, cupy.complex64)
@@ -35,17 +46,17 @@ def _get_output(output, input, shape=None, complex_output=False):
             _dtype = cupy.promote_types(input.dtype, cupy.complex64)
         else:
             _dtype = input.dtype
-        output = cupy.zeros(shape, dtype=_dtype)
+        output = cupy.empty(shape, dtype=_dtype)
     elif isinstance(output, (type, cupy.dtype)):
         if complex_output and cupy.dtype(output).kind != 'c':
             warnings.warn("promoting specified output dtype to complex")
             output = cupy.promote_types(output, cupy.complex64)
-        output = cupy.zeros(shape, dtype=output)
+        output = cupy.empty(shape, dtype=output)
     elif isinstance(output, str):
         output = numpy.sctypeDict[output]
         if complex_output and cupy.dtype(output).kind != 'c':
             raise RuntimeError("output must have complex dtype")
-        output = cupy.zeros(shape, dtype=output)
+        output = cupy.empty(shape, dtype=output)
     elif output.shape != shape:
         raise RuntimeError("output shape not correct")
     elif complex_output and output.dtype.kind != 'c':

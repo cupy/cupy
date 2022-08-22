@@ -4,4 +4,4 @@ sphinx-copybutton==0.5.0
 
 Cython==0.29.*
 numpy==1.23.*
-scipy==1.8.*
+scipy==1.9.*

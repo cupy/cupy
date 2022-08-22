@@ -1,9 +1,9 @@
 # mypy: ignore-errors
 
 import contextlib
-import distutils.util
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -17,7 +17,6 @@ import cupy_builder.install_utils as utils
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 10020
 minimum_cudnn_version = 7600
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
@@ -86,7 +85,7 @@ def get_cuda_path():
 def get_nvcc_path() -> List[str]:
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
-        return distutils.util.split_quoted(nvcc)
+        return shlex.split(nvcc)
 
     cuda_path = get_cuda_path()
     if cuda_path is None:
@@ -107,7 +106,7 @@ def get_nvcc_path() -> List[str]:
 def get_hipcc_path() -> List[str]:
     hipcc = os.environ.get('HIPCC', None)
     if hipcc:
-        return distutils.util.split_quoted(hipcc)
+        return shlex.split(hipcc)
 
     rocm_path = get_rocm_path()
     if rocm_path is None:
@@ -278,7 +277,6 @@ def _get_compiler_base_options(compiler_path):
     return []
 
 
-_cuda_version = None
 _hip_version = None
 _thrust_version = None
 _cudnn_version = None
@@ -290,44 +288,6 @@ _jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
 _cusparselt_version = None
-
-
-def check_cuda_version(compiler, settings):
-    global _cuda_version
-    try:
-        out = build_and_run(compiler, '''
-        #include <cuda.h>
-        #include <stdio.h>
-        int main() {
-          printf("%d", CUDA_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-
-    except Exception as e:
-        utils.print_warning('Cannot check CUDA version', str(e))
-        return False
-
-    _cuda_version = int(out)
-
-    if _cuda_version < minimum_cuda_version:
-        utils.print_warning(
-            'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 10.2 or newer is required')
-        return False
-
-    return True
-
-
-def get_cuda_version(formatted: bool = False) -> int:
-    """Return CUDA Toolkit version cached in check_cuda_version()."""
-    global _cuda_version
-    if _cuda_version is None:
-        msg = 'check_cuda_version() must be called first.'
-        raise RuntimeError(msg)
-    if formatted:
-        return str(_cuda_version)
-    return _cuda_version
 
 
 def check_hip_version(compiler, settings):
@@ -650,7 +610,7 @@ def check_jitify_version(compiler, settings):
     return True  # we always build Jitify
 
 
-def get_jitify_version(formatted=False):
+def get_jitify_version(formatted=True):
     """Return Jitify version cached in check_jitify_version()."""
     global _jitify_version
     if _jitify_version is None:
