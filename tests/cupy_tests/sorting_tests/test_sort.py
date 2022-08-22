@@ -651,7 +651,7 @@ class TestArgpartition(unittest.TestCase):
         return idx[:, :, kth:kth + 1]
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal(accept_error=True)
+    @testing.numpy_cupy_array_equal()
     def test_argpartition_multi_dim_kernel(self, xp, dtype):
         a = testing.shaped_random((3, 3, 256), xp, dtype, 100)
         kth = 2
