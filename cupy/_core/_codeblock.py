@@ -1,13 +1,18 @@
+from typing import Any, List
+
+_CodeType = Any  # TODO(asi1024): Correct type annotation
+
+
 class CodeBlock:
     """Code fragment for the readable format.
     """
 
-    def __init__(self, head, codes):
+    def __init__(self, head: str, codes: _CodeType) -> None:
         self._head = '' if head == '' else head + ' '
         self._codes = codes
 
-    def _to_str_list(self, indent_width=0):
-        codes = []
+    def _to_str_list(self, indent_width: int = 0) -> List[str]:
+        codes: List[str] = []
         codes.append(' ' * indent_width + self._head + '{')
         for code in self._codes:
             next_indent_width = indent_width + 2
@@ -20,7 +25,7 @@ class CodeBlock:
         codes.append(' ' * indent_width + '}')
         return codes
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Emit CUDA program like the following format.
 
         <<head>> {
