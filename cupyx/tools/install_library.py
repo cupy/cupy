@@ -65,9 +65,9 @@ def __make_cudnn_record(
 
 def _make_cudnn_record(cuda_version):
     return __make_cudnn_record(
-        cuda_version, '8.4.0', '11.6',
-        'cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive.tar.xz',
-        'cudnn-windows-x86_64-8.4.0.27_cuda11.6-archive.zip')
+        cuda_version, '8.5.0', '11.7',
+        'cudnn-linux-x86_64-8.5.0.96_cuda11-archive.tar.xz',
+        'cudnn-windows-x86_64-8.5.0.96_cuda11-archive.zip')
 
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
@@ -81,9 +81,9 @@ _cudnn_records.append(_make_cudnn_record('11.2'))
 _cudnn_records.append(_make_cudnn_record('11.1'))
 _cudnn_records.append(_make_cudnn_record('11.0'))
 _cudnn_records.append(__make_cudnn_record(
-    '10.2', '8.4.0', '10.2',
-    'cudnn-linux-x86_64-8.4.0.27_cuda10.2-archive.tar.xz',
-    'cudnn-windows-x86_64-8.4.0.27_cuda10.2-archive.zip'))
+    '10.2', '8.5.0', '10.2',
+    'cudnn-linux-x86_64-8.5.0.96_cuda10-archive.tar.xz',
+    'cudnn-windows-x86_64-8.5.0.96_cuda10-archive.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
