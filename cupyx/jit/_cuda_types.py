@@ -16,7 +16,7 @@ class TypeBase:
     def __str__(self) -> str:
         raise NotImplementedError
 
-    def declvar(self, x: str, init: 'Data') -> str:
+    def declvar(self, x: str, init: Optional['Data']) -> str:
         if init is None:
             return f'{self} {x}'
         return f'{self} {x} = {init.code}'
@@ -126,7 +126,7 @@ class SharedMem(ArrayBase):
         self._alignment = alignment
         super().__init__(child_type, 1)
 
-    def declvar(self, x: str, init: 'Data') -> str:
+    def declvar(self, x: str, init: Optional['Data']) -> str:
         assert init is None
         if self._alignment is not None:
             code = f'__align__({self._alignment})'

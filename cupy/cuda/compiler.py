@@ -120,7 +120,7 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('32', '53', '62', '72')
+_tegra_archs = ('32', '53', '62', '72', '87')
 
 
 @_util.memoize()
@@ -137,7 +137,8 @@ def _get_max_compute_capability():
         nvrtc_max_compute_capability = '86'
     else:
         # CUDA 11.4+
-        nvrtc_max_compute_capability = '87'
+        # Note: 87 is for Jetson Orin
+        nvrtc_max_compute_capability = '86'
 
     return nvrtc_max_compute_capability
 
@@ -456,11 +457,11 @@ _empty_file_preprocess_cache: dict = {}
 
 
 def compile_with_cache(*args, **kwargs):
-    # TODO(kmaehashi): change to visible warning in CuPy v11+.
+    # TODO(asi1024): Remove in CuPy v13+.
     warnings.warn(
         'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
         ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
-        ' instead.', DeprecationWarning)
+        ' instead.', UserWarning)
     return _compile_module_with_cache(*args, **kwargs)
 
 

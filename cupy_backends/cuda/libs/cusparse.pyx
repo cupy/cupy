@@ -1,8 +1,10 @@
+import sys as _sys
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda._softlink cimport SoftLink
 
 
 cdef extern from '../../cupy_complex.h':
@@ -1246,12 +1248,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
                              IndexType csrRowOffsetsType,
                              IndexType csrColIndType, IndexBase idxBase,
                              DataType valueType)
-    Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
-                             int64_t cols, int64_t nnz, void* cscColOffsets,
-                             void* cscRowInd, void* cscValues,
-                             IndexType cscColOffsetsType,
-                             IndexType cscRowIndType, IndexBase idxBase,
-                             DataType valueType)
     Status cusparseDestroySpMat(SpMatDescr spMatDescr)
     Status cusparseCooGet(SpMatDescr spMatDescr, int64_t* rows, int64_t* cols,
                           int64_t* nnz, void** cooRowInd, void** cooColInd,
@@ -1353,23 +1349,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
         SpMatDescr matA, SpMatDescr matB, const void* beta, SpMatDescr matC,
         DataType computeType, SpGEMMAlg alg, SpGEMMDescr spgemmDescr)
 
-    Status cusparseSparseToDense_bufferSize(
-        Handle handle, SpMatDescr matA, DnMatDescr matB,
-        cusparseSparseToDenseAlg_t alg, size_t* bufferSize)
-    Status cusparseSparseToDense(
-        Handle handle, SpMatDescr matA, DnMatDescr matB,
-        cusparseSparseToDenseAlg_t alg, void* buffer)
-
-    Status cusparseDenseToSparse_bufferSize(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, size_t* bufferSize)
-    Status cusparseDenseToSparse_analysis(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, void* buffer)
-    Status cusparseDenseToSparse_convert(
-        Handle handle, DnMatDescr matA, SpMatDescr matB,
-        cusparseDenseToSparseAlg_t alg, void* buffer)
-
     # CSR2CSC
     Status cusparseCsr2cscEx2_bufferSize(
         Handle handle, int m, int n, int nnz, const void* csrVal,
@@ -1385,6 +1364,28 @@ cdef extern from '../../cupy_sparse.h' nogil:
 
     # Build-time version
     int CUSPARSE_VERSION
+
+ctypedef Status (*f_type)(...) nogil  # NOQA
+IF 11010 <= CUPY_CUDA_VERSION < 12000:
+    if _sys.platform == 'linux':
+        _libname = 'libcusparse.so.11'
+    else:
+        _libname = 'cusparse64_11.dll'
+ELIF 0 < CUPY_HIP_VERSION:
+    _libname = __file__
+ELSE:
+    _libname = None
+
+cdef SoftLink _lib = SoftLink(_libname, 'cusparse')
+# cuSPARSE 11.3.1+ (CUDA 11.2.0+)
+cdef f_type cusparseCreateCsc = <f_type>_lib.get('CreateCsc')
+# cuSPARSE 11.3+ (CUDA 11.1.1+)
+# Note: CUDA 11.1.0 contains cuSPARSE 11.2.0.275
+cdef f_type cusparseSparseToDense_bufferSize = <f_type>_lib.get('SparseToDense_bufferSize')  # NOQA
+cdef f_type cusparseSparseToDense = <f_type>_lib.get('SparseToDense')
+cdef f_type cusparseDenseToSparse_bufferSize = <f_type>_lib.get('DenseToSparse_bufferSize')  # NOQA
+cdef f_type cusparseDenseToSparse_analysis = <f_type>_lib.get('DenseToSparse_analysis')  # NOQA
+cdef f_type cusparseDenseToSparse_convert = <f_type>_lib.get('DenseToSparse_convert')  # NOQA
 
 
 cdef dict STATUS = {

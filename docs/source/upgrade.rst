@@ -5,6 +5,45 @@ Upgrade Guide
 This page covers changes introduced in each major version that users should know when migrating from older releases.
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
+CuPy v11
+========
+
+Unified Binary Package for CUDA 11.2+
+-------------------------------------
+
+CuPy v11 provides a unified binary package named ``cupy-cuda11x`` that supports all CUDA 11.2+ releases.
+This replaces per-CUDA version binary packages (``cupy-cuda112`` ~ ``cupy-cuda117``).
+
+Note that CUDA 11.1 or earlier still requires per-CUDA version binary packages.
+``cupy-cuda102``, ``cupy-cuda110``, and ``cupy-cuda111`` will be provided for CUDA 10.2, 11.0, and 11.1, respectively.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v11.
+
+* ROCm 4.2 or earlier
+* NumPy 1.19 or earlier
+* SciPy 1.5 or earlier
+
+CUB Enabled by Default
+----------------------
+
+CuPy v11 accelerates the computation with CUB by default.
+In case needed, you can turn it off by setting :envvar:`CUPY_ACCELERATORS` environment variable to ``""``.
+
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.21 and SciPy 1.7 to NumPy 1.23 and SciPy 1.8.
+CuPy v11 will follow the upstream products' specifications of these baseline versions.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.7 and ROCm 5.0.
+
+
 CuPy v10
 ========
 
@@ -29,21 +68,30 @@ Dropping NumPy 1.17 Support
 
 NumPy 1.17 is no longer supported.
 
+.. _change in CuPy Device behavior:
+
 Change in :class:`cupy.cuda.Device` Behavior
 --------------------------------------------
 
-Current device set via ``use()`` will not be restored when exiting ``with`` block
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Current device set via :meth:`~cupy.cuda.Device.use` will not be honored by the ``with Device`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The current device set via :func:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
+The current device set via :meth:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
 
 .. code-block:: py
 
-   with cupy.cuda.Device(1) as d1:
-       d2 = cupy.cuda.Device(0).use()
-       with d1:
-           pass
-       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
+   cupy.cuda.Device(1).use()
+   with cupy.cuda.Device(0):
+       pass
+   cupy.cuda.Device()  # -> CuPy v10 returns device 0 instead of device 1
+
+This decision was made to serve CuPy *users* better, but it could lead to surprises to downstream *developers* depending on CuPy,
+as essentially CuPy's :class:`~cupy.cuda.Device` context manager no longer respects the CUDA ``cudaSetDevice()`` API. Mixing
+device management functionalities (especially using context manager) from different libraries is highly discouraged.
+
+For downstream libraries that still wish to respect the ``cudaGetDevice()``/``cudaSetDevice()`` APIs, you should avoid managing
+current devices using the ``with Device`` context manager, and instead calling these APIs explicitly, see for example
+`cupy/cupy#5963 <https://github.com/cupy/cupy/pull/5963>`_.
 
 Changes in :class:`cupy.cuda.Stream` Behavior
 ---------------------------------------------
@@ -396,30 +444,42 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
+   * - v12
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     -
+     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
    * - v11
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     -
-     - `latest <https://docs.cupy.dev/en/stable/install.html>`__
-   * - v10
      - 3.0~
      - 10.2~
-     - 4.0~
-     - 1.3~
+     - 4.3~
+     - 1.4~
      - 2.8~
      - 7.6~
      - 3.7~
-     - 1.18~
-     - 1.4~
-     - NumPy 1.21 & SciPy 1.7
+     - 1.20~
+     - 1.6~
+     - NumPy 1.23 & SciPy 1.8
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+   * - v10
+     - 3.0~8.x
+     - 10.2~11.7
+     - 4.0 & 4.2 & 4.3 & 5.0
+     - 1.3~1.5
+     - 2.8~2.11
+     - 7.6~8.4
+     - 3.7~3.10
+     - 1.18~1.22
+     - 1.4~1.8
+     - NumPy 1.21 & SciPy 1.7
+     - `v10.6.0 <https://docs.cupy.dev/en/v10.6.0/install.html>`__
    * - v9
      - 3.0~8.x
      - 9.2~11.5

@@ -33,7 +33,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base copy(self, order=*)
-    cpdef _ndarray_base view(self, dtype=*)
+    cpdef _ndarray_base view(self, dtype=*, array_class=*)
     cpdef fill(self, value)
     cpdef _ndarray_base swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2)
     cpdef _ndarray_base flatten(self, order=*)
@@ -80,10 +80,10 @@ cdef class _ndarray_base:
                                  const strides_t& strides,
                                  bint update_c_contiguity,
                                  bint update_f_contiguity)
-    cdef _ndarray_base _view(self, const shape_t& shape,
+    cdef _ndarray_base _view(self, subtype, const shape_t& shape,
                              const strides_t& strides,
                              bint update_c_contiguity,
-                             bint update_f_contiguity)
+                             bint update_f_contiguity, obj)
     cpdef _set_contiguous_strides(
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
@@ -108,7 +108,7 @@ cpdef _ndarray_base array(
     obj, dtype=*, bint copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
-cdef _ndarray_base _ndarray_init(const shape_t& shape, dtype)
+cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
-    const shape_t& shape, const strides_t& strides, dtype)
+    subtype, const shape_t& shape, const strides_t& strides, dtype, obj)

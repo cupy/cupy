@@ -14,3 +14,15 @@ Summary statistics
 
    trim_mean
    entropy
+
+
+Other statistical functionality
+-------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   boxcox_llf
+   zmap
+   zscore
+

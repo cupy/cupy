@@ -253,7 +253,7 @@ cdef tuple _get_shape_and_strides(list in_args, list out_args):
 cdef _optimizer_copy_arg(a):
     if isinstance(a, _ndarray_base):
         x = _create_ndarray_from_shape_strides(
-            a._shape, a._strides, a.dtype)
+            cupy.ndarray, a._shape, a._strides, a.dtype, None)
         assert a.data.device_id == x.data.device_id
         elementwise_copy(a, x)
         return x
@@ -607,7 +607,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
     cdef list _get_out_args(
             self, list out_args, tuple out_types, const shape_t& out_shape):
         return _get_out_args_from_optionals(
-            out_args, out_types, out_shape, 'unsafe')
+            cupy.ndarray, out_args, out_types, out_shape, 'unsafe', None)
 
     cdef function.Function _get_function(
             self,

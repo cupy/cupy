@@ -32,8 +32,13 @@
 
 #pragma once
 
+#if defined(_MSC_VER)  // see #6823
+#include <cfloat>
+#endif  // defined(_MSC_VER)
+
 namespace thrust {
 
+#if !defined(_MSC_VER)  // see #6823
 const float FLT_MIN = 1.17549435e-38F;
 const float FLT_MAX = 3.40282347e+38F;
 const float FLT_EPSILON = 1.19209290e-07F;
@@ -45,6 +50,7 @@ const double DBL_MAX = 1.7976931348623157e+308;
 const double DBL_EPSILON = 2.2204460492503131e-16;
 const int DBL_MAX_EXP = 1024;
 const int DBL_MANT_DIG = 53;
+#endif  // !defined(_MSC_VER)
 
 namespace detail {
 namespace complex {

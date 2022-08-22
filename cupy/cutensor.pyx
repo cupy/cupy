@@ -308,7 +308,8 @@ def elementwise_trinary(
         raise ValueError('The inputs should be contiguous arrays.')
 
     if out is None:
-        out = core._ndarray_init(C._shape, dtype=C.dtype)
+        out = core._ndarray_init(
+            _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
@@ -371,7 +372,8 @@ def elementwise_binary(
         raise ValueError('The inputs should be contiguous arrays.')
 
     if out is None:
-        out = core._ndarray_init(C._shape, dtype=C.dtype)
+        out = core._ndarray_init(
+            _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
@@ -609,14 +611,16 @@ cdef inline _ndarray_base _contraction_impl(
     # Allocate workspace
     ws_size = cutensor.contractionGetWorkspace(handle, desc, find, ws_pref)
     try:
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     except Exception:
         _warnings.warn('cuTENSOR: failed to allocate memory of workspace '
                        'with preference ({}) and size ({}).'
                        ''.format(ws_pref, ws_size))
         ws_size = cutensor.contractionGetWorkspace(
             handle, desc, find, cutensor.WORKSPACE_MIN)
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
 
     plan = _create_contraction_plan(handle, desc, find, ws_size)
 
@@ -706,12 +710,14 @@ cdef inline _ndarray_base _reduction_impl(
         out.data.ptr, desc_C, mode_C.data,
         reduce_op, cutensor_compute_type)
     try:
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     except _cupy.cuda.memory.OutOfMemoryError:
         _warnings.warn('cuTENSOR: failed to allocate memory of workspace '
                        '(size: {}).'.format(ws_size))
         ws_size = 0
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
 
     cutensor.reduction(
         handle,
@@ -772,7 +778,8 @@ def _try_reduction_routine(
     out_shape = _reduction._get_out_shape(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:
-        out = core._ndarray_init(out_shape, dtype=dtype)
+        out = core._ndarray_init(
+            _cupy.ndarray, out_shape, dtype=dtype, obj=None)
     elif not internal.vector_equal(out._shape, out_shape):
         # TODO(asi1024): Support broadcast
         return None
@@ -867,8 +874,23 @@ def _try_elementwise_binary_routine(
             alpha, gamma = gamma, alpha
         else:
             return None
+
+        # Determine a template object from which we initialize the output when
+        # inputs have subclass instances
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = _cupy.ndarray
+        template = None
+        a_type, c_type = type(a), type(c)
+        if issubclass1(a_type, _cupy.ndarray):
+            subtype = a_type
+            template = a
+        elif issubclass1(c_type, _cupy.ndarray):
+            subtype = c_type
+            template = c
+
         out = core._create_ndarray_from_shape_strides(
-            c._shape, c._strides, compute_dtype)
+            subtype, c._shape, c._strides, compute_dtype, template)
     elif out.dtype != compute_dtype:
         return None
     elif not internal.vector_equal(c._shape, out._shape):

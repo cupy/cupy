@@ -555,7 +555,7 @@ cpdef _ndarray_base tensordot_core(
         dtype = numpy.promote_types(dtype, b.dtype).char
     if not a.size or not b.size:
         if out is None:
-            out = _ndarray_init(ret_shape, dtype)
+            out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
         out.fill(0)
         return out
 
@@ -564,7 +564,7 @@ cpdef _ndarray_base tensordot_core(
     cdef int ace
     if m == 1 and n == 1:
         if out is None:
-            out = _ndarray_init(ret_shape, dtype)
+            out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
         c = _manipulation._reshape(out, ())
         for ace in _accelerator._routine_accelerators:
             # fast path using CUB or cuTENSOR
@@ -598,12 +598,12 @@ cpdef _ndarray_base tensordot_core(
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
 
     if out is None:
-        out = c = _ndarray_init(ret_shape, dtype)
+        out = c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
     elif (
         _memory_range.may_share_bounds(out, a)
         or _memory_range.may_share_bounds(out, b)
     ):
-        copy_to_out = c = _ndarray_init(ret_shape, dtype)
+        copy_to_out = c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
     else:
         c = out
 
@@ -648,7 +648,7 @@ cpdef _ndarray_base tensordot_core(
         dtype = 'f'
         a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
         b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
-        c = _ndarray_init(ret_shape, dtype)
+        c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
         copy_to_out = c
         warnings.warn('On ROCm/HIP, there is no specialized API to handle '
                       'half precision floating numbers, so the computation '
@@ -823,9 +823,6 @@ cpdef _ndarray_base matmul(
     The main difference against cupy.dot are the handling of arrays with more
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
-    .. note::
-        The out array as input is currently not supported.
-
     Args:
         a (cupy.ndarray): The left argument.
         b (cupy.ndarray): The right argument.
@@ -856,7 +853,7 @@ cpdef _ndarray_base matmul(
         ret_dtype = numpy.promote_types(a.dtype, b.dtype)
         if out._c_contiguous and ret_dtype == out.dtype:
             return dot(a, b, out)
-        c = _ndarray_init(out._shape, dtype=ret_dtype)
+        c = _ndarray_init(cupy.ndarray, out._shape, dtype=ret_dtype, obj=None)
         dot(a, b, c)
         elementwise_copy(c, out)
         return out

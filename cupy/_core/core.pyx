@@ -147,6 +147,28 @@ class ndarray(_ndarray_base):
     def __array_finalize__(self, obj):
         pass
 
+    # We provide the Python-level wrapper of `view` method to follow NumPy's
+    # API signature, as it seems that Cython's `cpdef`d methods does not take
+    # an argument named `type`. Cython also does not take starargs
+    # (`*args` and `**kwargs`) for `cpdef`d methods so we can not interpret the
+    # arguments `dtype` and `type` from them.
+    def view(self, dtype=None, type=None):
+        """Returns a view of the array.
+
+        Args:
+            dtype: If this is different from the data type of the array, the
+                returned view reinterpret the memory sequence as an array of
+                this type.
+
+        Returns:
+            cupy.ndarray: A view of the array. A reference to the original
+            array is stored at the :attr:`~ndarray.base` attribute.
+
+        .. seealso:: :meth:`numpy.ndarray.view`
+
+        """
+        return super(ndarray, self).view(dtype=dtype, array_class=type)
+
 
 cdef class _ndarray_base:
 
@@ -546,7 +568,7 @@ cdef class _ndarray_base:
 
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
-            newarray = _ndarray_init(self._shape, dtype)
+            newarray = _ndarray_init(ndarray, self._shape, dtype, None)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
@@ -600,7 +622,7 @@ cdef class _ndarray_base:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(prev_device)
-        newarray = _ndarray_init(x._shape, x.dtype)
+        newarray = _ndarray_init(ndarray, x._shape, x.dtype, None)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
                 'CuPy cannot copy non-contiguous array between devices.')
@@ -620,24 +642,30 @@ cdef class _ndarray_base:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
         return newarray
 
-    cpdef _ndarray_base view(self, dtype=None):
-        """Returns a view of the array.
-
-        Args:
-            dtype: If this is different from the data type of the array, the
-                returned view reinterpret the memory sequence as an array of
-                this type.
-
-        Returns:
-            cupy.ndarray: A view of the array. A reference to the original
-            array is stored at the :attr:`~ndarray.base` attribute.
-
-        .. seealso:: :meth:`numpy.ndarray.view`
-
-        """
+    cpdef _ndarray_base view(self, dtype=None, array_class=None):
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
-        v = self._view(self._shape, self._strides, False, False)
+
+        if dtype is not None:
+            if type(dtype) is type and issubclass(dtype, ndarray):
+                if array_class is not None:
+                    raise ValueError('Cannot specify output type twice.')
+                array_class = dtype
+                dtype = None
+
+        if (
+            array_class is not None and (
+                type(array_class) is not type or
+                not issubclass(array_class, ndarray)
+            )
+        ):
+            raise ValueError('Type must be a sub-type of ndarray type')
+
+        if array_class is None:
+            array_class = type(self)
+
+        v = self._view(
+            array_class, self._shape, self._strides, False, False, self)
         if dtype is None:
             return v
 
@@ -651,21 +679,15 @@ cdef class _ndarray_base:
             raise ValueError(
                 'Changing the dtype of a 0d array is only supported if '
                 'the itemsize is unchanged')
-        if self._c_contiguous:
-            axis = ndim - 1
-        elif self._f_contiguous:
-            warnings.warn(
-                'Changing the shape of an F-contiguous array by '
-                'descriptor assignment is deprecated. To maintain the '
-                'Fortran contiguity of a multidimensional Fortran '
-                'array, use \'a.T.view(...).T\' instead',
-                DeprecationWarning)
-            axis = 0
-        else:
-            # Don't mention the deprecated F-contiguous support
+        axis = ndim - 1
+        if (
+            self._shape[axis] != 1
+            and self.size != 0
+            and self._strides[axis] != self.dtype.itemsize
+        ):
             raise ValueError(
-                'To change to a dtype of a different size, the array must '
-                'be C-contiguous')
+                'To change to a dtype of a different size, the last axis '
+                'must be contiguous')
 
         # Normalize `_strides[axis]` whenever itemsize changes
         v._strides[axis] = v_is
@@ -1901,7 +1923,7 @@ cdef class _ndarray_base:
             return self
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        return self._view(shape, strides, False, True)
+        return self._view(type(self), shape, strides, False, True, self)
 
     cpdef _update_c_contiguity(self):
         if self.size == 0:
@@ -1951,13 +1973,14 @@ cdef class _ndarray_base:
         if update_f_contiguity:
             self._update_f_contiguity()
 
-    cdef _ndarray_base _view(self, const shape_t& shape,
+    cdef _ndarray_base _view(self, subtype, const shape_t& shape,
                              const strides_t& strides,
                              bint update_c_contiguity,
-                             bint update_f_contiguity):
+                             bint update_f_contiguity, obj):
         cdef _ndarray_base v
-        # Use `_no_init=True`  to skip recomputation of contiguity.
-        v = ndarray.__new__(ndarray, _no_init=True)
+        # Use `_no_init=True` to skip recomputation of contiguity. Now
+        # calling `__array_finalize__` is responsibility of this method.`
+        v = ndarray.__new__(subtype, _obj=obj, _no_init=True)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         v.dtype = self.dtype
@@ -1966,12 +1989,14 @@ cdef class _ndarray_base:
         v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
+        if subtype is not ndarray:
+            v.__array_finalize__(self)
         return v
 
     cpdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.get_contiguous_strides_inplace(
-            self._shape, self._strides, itemsize, is_c_contiguous)
+            self._shape, self._strides, itemsize, is_c_contiguous, True)
         if is_c_contiguous:
             self._c_contiguous = True
             self._update_f_contiguity()
@@ -2600,7 +2625,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
 cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
     if a._c_contiguous:
         return a
-    newarray = _ndarray_init(a._shape, a.dtype)
+    newarray = _ndarray_init(ndarray, a._shape, a.dtype, None)
     elementwise_copy(a, newarray)
     return newarray
 
@@ -2727,14 +2752,18 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     return ndarray(shape, dtype, memptr, strides)
 
 
-cdef _ndarray_base _ndarray_init(const shape_t& shape, dtype):
-    cdef _ndarray_base ret = ndarray.__new__(ndarray, _no_init=True)
+cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj):
+    # Use `_no_init=True` for fast init. Now calling `__array_finalize__` is
+    # responsibility of this function.
+    cdef _ndarray_base ret = ndarray.__new__(subtype, _obj=obj, _no_init=True)
     ret._init_fast(shape, dtype, True)
+    if subtype is not ndarray:
+        ret.__array_finalize__(obj)
     return ret
 
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
-        const shape_t& shape, const strides_t& strides, dtype):
+        subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
     cdef int ndim = shape.size()
     cdef int64_t begin = 0, end = dtype.itemsize
     cdef memory.MemoryPointer ptr
@@ -2744,4 +2773,5 @@ cdef _ndarray_base _create_ndarray_from_shape_strides(
         elif strides[i] < 0:
             begin += strides[i] * (shape[i] - 1)
     ptr = memory.alloc(end - begin) + begin
-    return ndarray(shape, dtype, memptr=ptr, strides=strides)
+    return ndarray.__new__(
+        subtype, shape, dtype, _obj=obj, memptr=ptr, strides=strides)

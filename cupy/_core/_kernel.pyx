@@ -384,7 +384,8 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
             arr = args[i]
             newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
-            args[i] = arr._view(newshape, newstrides, False, True)
+            args[i] = arr._view(
+                type(arr), newshape, newstrides, False, True, arr)
         return newshape
 
     axes.reserve(ndim)
@@ -421,7 +422,7 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
         # TODO(niboshi): Confirm update_x_contiguity flags
-        args[i] = arr._view(newshape, newstrides, False, True)
+        args[i] = arr._view(type(arr), newshape, newstrides, False, True, arr)
     return newshape
 
 
@@ -624,7 +625,8 @@ cdef void _complex_warning(dtype_from, dtype_to):
 
 
 cdef list _get_out_args_from_optionals(
-    list out_args, tuple out_types, const shape_t& out_shape, casting
+    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
+    obj
 ):
     cdef _ndarray_base arr
 
@@ -633,7 +635,8 @@ cdef list _get_out_args_from_optionals(
 
     for i, a in enumerate(out_args):
         if a is None:
-            out_args[i] = _ndarray_init(out_shape, out_types[i])
+            out_args[i] = _ndarray_init(
+                subtype, out_shape, out_types[i], obj)
             continue
 
         if not isinstance(a, _ndarray_base):
@@ -679,7 +682,8 @@ cdef list _get_out_args_with_params(
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
-        return [_ndarray_init(out_shape, t) for t in out_types]
+        return [_ndarray_init(
+            cupy.ndarray, out_shape, t, None) for t in out_types]
 
     for i, p in enumerate(out_params):
         a = out_args[i]
@@ -1264,8 +1268,22 @@ cdef class ufunc:
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
+
+        # Determine a template object from which we initialize the output when
+        # inputs have subclass instances
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = cupy.ndarray
+        template = None
+        for in_arg in in_args:
+            in_arg_type = type(in_arg)
+            if issubclass1(in_arg_type, cupy.ndarray):
+                subtype = in_arg_type
+                template = in_arg
+                break
+
         out_args = _get_out_args_from_optionals(
-            out_args, op.out_types, shape, casting)
+            subtype, out_args, op.out_types, shape, casting, template)
         if self.nout == 1:
             ret = out_args[0]
         else:

@@ -50,14 +50,6 @@ nvrtcResult nvrtcGetCUBIN(...) {
     return HIPRTC_ERROR_COMPILATION;
 }
 
-nvrtcResult nvrtcGetNVVMSize(...) {
-    return HIPRTC_ERROR_COMPILATION;
-}
-
-nvrtcResult nvrtcGetNVVM(...) {
-    return HIPRTC_ERROR_COMPILATION;
-}
-
 nvrtcResult nvrtcGetProgramLogSize(nvrtcProgram prog, std::size_t* logSizeRet) {
     return hiprtcGetProgramLogSize(prog, logSizeRet);
 }

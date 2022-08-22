@@ -109,6 +109,20 @@ cudaError_t cudaIpcOpenMemHandle(...){
 }
 
 // Memory management
+enum cudaMemAllocationType {};
+enum cudaMemAllocationHandleType {};
+enum cudaMemLocationType {};
+struct cudaMemLocation {
+    int id;
+};
+struct cudaMemPoolProps {
+    cudaMemAllocationType allocType;
+    cudaMemAllocationHandleType handleTypes;
+    struct cudaMemLocation location;
+    unsigned char reserved[64];
+    void* win32SecurityAttributes;
+};
+
 cudaError_t cudaMalloc(...) {
     return cudaSuccess;
 }
@@ -229,6 +243,18 @@ cudaError_t cudaPointerGetAttributes(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMallocFromPoolAsync(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolCreate(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolDestroy(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaDeviceGetDefaultMemPool(...) {
     return cudaSuccess;
 }
@@ -255,6 +281,9 @@ cudaError_t cudaMemPoolSetAttribute(...) {
 
 
 // Stream and Event
+enum cudaStreamCaptureMode {};
+enum cudaStreamCaptureStatus {};
+
 cudaError_t cudaStreamCreate(...) {
     return cudaSuccess;
 }
@@ -315,6 +344,17 @@ cudaError_t cudaEventSynchronize(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaStreamBeginCapture(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamEndCapture(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamIsCapturing(...) {
+    return cudaSuccess;
+}
 
 // Texture
 cudaError_t cudaCreateTextureObject(...) {
@@ -358,6 +398,27 @@ cudaError_t cudaCreateSurfaceObject(...) {
 }
 
 cudaError_t cudaDestroySurfaceObject(...) {
+    return cudaSuccess;
+}
+
+// CUDA Graph
+cudaError_t cudaGraphInstantiate(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphDestroy(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphExecDestroy(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphLaunch(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaGraphUpload(...) {
     return cudaSuccess;
 }
 

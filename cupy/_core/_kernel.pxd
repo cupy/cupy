@@ -155,8 +155,8 @@ cdef str _get_kernel_params(tuple params, tuple arginfos)
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
 cdef list _get_out_args_from_optionals(
-    list out_args, tuple out_types, const shape_t& out_shape, casting
-)
+    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
+    obj)
 
 cdef list _get_out_args_with_params(
     list out_args, tuple out_types,

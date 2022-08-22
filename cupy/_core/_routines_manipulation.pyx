@@ -355,7 +355,7 @@ cpdef _ndarray_base _reshape(_ndarray_base self, const shape_t &shape_spec):
 
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
-        return self._view(shape, strides, False, True)
+        return self._view(type(self), shape, strides, False, True, self)
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 
@@ -765,7 +765,7 @@ cdef _get_strides_for_nocopy_reshape(
         return
     if size == 0:
         internal.get_contiguous_strides_inplace(
-            newshape, newstrides, itemsize, True)
+            newshape, newstrides, itemsize, True, False)
         return
 
     cdef shape_t shape

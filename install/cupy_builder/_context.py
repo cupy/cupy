@@ -3,6 +3,8 @@ import os
 import sys
 from typing import Any, List, Mapping, Optional, Tuple
 
+import cupy_builder
+
 
 def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
     return env[name] != '0' if name in env else default
@@ -36,6 +38,8 @@ class Context:
 
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
+
+        self.features = cupy_builder.get_features(self)
 
 
 def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:

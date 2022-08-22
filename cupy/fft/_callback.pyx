@@ -1,6 +1,6 @@
 from libc.stdint cimport intptr_t
 
-from cupy_backends.cuda.api.runtime cimport _is_hip_environment
+from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda.device cimport get_compute_capability
 
@@ -89,7 +89,7 @@ cdef inline void _set_vars() except*:
         if not os.path.isfile(_nvprune):
             _nvprune = None
 
-    _build_ver = str(CUPY_CUDA_VERSION)
+    _build_ver = str(runtime.runtimeGetVersion())
     _cufft_ver = get_cufft_version()
     _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
@@ -133,7 +133,7 @@ cdef inline void _set_nvcc_path() except*:
 cdef inline void _sanity_checks(
         str cb_load, str cb_store,
         _ndarray_base cb_load_aux_arr, _ndarray_base cb_store_aux_arr) except*:
-    if _is_hip_environment:
+    if runtime._is_hip_environment:
         raise RuntimeError('hipFFT does not support callbacks')
     if not sys.platform.startswith('linux'):
         raise RuntimeError('cuFFT callbacks are only available on Linux')

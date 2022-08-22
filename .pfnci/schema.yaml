@@ -49,6 +49,8 @@ cuda:
     full_version: "11.5.0"
   "11.6":
     full_version: "11.6.0"
+  "11.7":
+    full_version: "11.7.0"
 rocm:
   null:
     full_version: null
@@ -60,6 +62,16 @@ rocm:
                'rocprim', 'rccl']
   "5.0":
     full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "5.1":
+    full_version: "5.1.3"
+    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
+               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
+               'rocprim', 'rccl']
+  "5.2":
+    full_version: "5.2"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -131,6 +143,7 @@ cutensor:
       "11.4":
       "11.5":
       "11.6":
+      "11.7":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -144,6 +157,7 @@ cusparselt:
       "11.4":
       "11.5":
       "11.6":
+      "11.7":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -225,6 +239,8 @@ cudnn:
         alias: "11.6"
       "11.6":
         alias: "11.6"
+      "11.7":
+        alias: "11.6"
 
 ###############################################################################
 # Python
@@ -269,7 +285,12 @@ numpy:
   "1.22":
     spec: "==1.22.*"
     python:
-      - "3.7"
+      - "3.8"
+      - "3.9"
+      - "3.10"
+  "1.23":
+    spec: "==1.23.*"
+    python:
       - "3.8"
       - "3.9"
       - "3.10"
@@ -278,6 +299,8 @@ numpy:
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
+    # Note: Optuna depends on SciPy, so Optuna must also be set to null when
+    # setting SciPy to null to run tests without SciPy.
     spec: null
   "1.6":
     spec: "==1.6.*"
@@ -319,6 +342,21 @@ scipy:
       - "1.20"
       - "1.21"
       - "1.22"
+      - "1.23"
+  "1.9":
+    spec: "==1.9.*"
+    python:
+      - "3.8"
+      - "3.9"
+      - "3.10"
+    numpy:
+      # - "1.17"
+      # - "1.18"
+      # - "1.19"
+      - "1.20"
+      - "1.21"
+      - "1.22"
+      - "1.23"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:
@@ -328,6 +366,11 @@ optuna:
     spec: "==2.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
+mpi4py:
+  null:
+    spec: null
+  "3":
+    spec: "==3.*"
 cython:
   "0.29":
     spec: "==0.29.*"

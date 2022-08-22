@@ -91,14 +91,14 @@ struct complex {
 #if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
   /*! Default construct a complex number.
    */
-  inline __host__ __device__ complex() = default;
+  inline complex() = default;
 
   /*! This copy constructor copies from a \p complex with a type that is
    *  convertible to this \p complex's \c value_type.
    *
    *  \param z The \p complex to copy from.
    */
-  inline __host__ __device__ complex(const complex<T>& z) = default;
+  inline complex(const complex<T>& z) = default;
 #else
   /*! Default construct a complex number.
    */

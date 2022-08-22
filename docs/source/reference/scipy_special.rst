@@ -128,6 +128,9 @@ Other special functions
 .. autosummary::
    :toctree: generated/
 
+   expn
+   softmax
+   log_softmax
    zeta
 
 
@@ -147,6 +150,7 @@ Convenience functions
    cotdg
    log1p
    expm1
+   cosm1
    round
    xlogy
    xlog1py
