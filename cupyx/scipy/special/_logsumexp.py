@@ -1,57 +1,6 @@
 import cupy as cp
 
 
-__all__ = ["logsumexp"]
-
-
-_sign_preamble = '''
-
-template <typename T>
-__device__ T _sign(T a)
-{
-    return (a < 0) ? -1 : 1;
-}
-
-'''
-
-
-_log_preamble = '''
-
-template <typename T>
-__device__ T _log(T a)
-{
-    return log(a);
-}
-
-'''
-
-
-_preamble = '''
-
-template <typename T>
-__device__ T _post_map(T a, T* y, T* sgn)
-{
-    *sgn = _sign(a);
-    a *= *sgn;
-    *y = _log(static_cast<float>(a));
-    return *y, *sgn;
-}
-
-'''
-
-
-_logsumexp_kernel = cp._core.ReductionKernel(
-   'T x1',
-   'T y, T sgn',
-   'exp(static_cast<float>(x1))',
-   'a + b',
-   'y = _post_map(a, &y, &sgn)',
-   '1',
-   name='logsumexp',
-   preamble=_preamble+_sign_preamble+_log_preamble
-)
-
-
 def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     """Compute the log of the sum of exponentials of input elements.
 
@@ -107,13 +56,22 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     elif not cp.isfinite(a_max):
         a_max = 0
 
-    tmp, sgn = _logsumexp_kernel(a - a_max, axis=axis, keepdims=keepdims)
+    if b is not None:
+        tmp = b * cp.exp(cp.subtract(a, a_max))
+    else:
+        tmp = cp.exp(cp.subtract(a, a_max))
+
+    s = cp.sum(tmp, axis=axis, keepdims=keepdims)
+    if return_sign:
+        sgn = cp.sign(s)
+        s *= sgn
+    out = cp.log(s)
 
     if not keepdims:
         a_max = cp.squeeze(a_max, axis=axis)
-    tmp += a_max
+    out += a_max
 
     if return_sign:
-        return tmp, sgn
+        return out, sgn
     else:
-        return tmp
+        return out

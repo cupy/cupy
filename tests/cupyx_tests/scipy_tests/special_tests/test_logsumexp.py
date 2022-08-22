@@ -12,13 +12,13 @@ import scipy.special  # NOQA
 @testing.with_requires('scipy')
 class TestLogsumexp:
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_large_inputs(self, xp, scp, dtype):
         a = xp.arange(400)
         return scp.special.logsumexp(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_more_large_inputs(self, xp, scp, dtype):
         a = xp.arange(10000)
@@ -38,7 +38,9 @@ class TestLogsumexp:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_array_inputs(self, xp, scp, dtype):
-        a = testing.shaped_random((1000, 10000), xp, dtype=dtype)
+        if xp.dtype(dtype).kind in 'iu':
+            pytest.skip()
+        a = testing.shaped_random((100, 1000), xp, dtype=dtype)
         return scp.special.logsumexp(a)
 
     @testing.for_all_dtypes(no_bool=True)
@@ -58,7 +60,9 @@ class TestLogsumexp:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_sign_shape(self, xp, scp, dtype):
-        a = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
+        if xp.dtype(dtype).kind in 'iu':
+            pytest.skip()
+        a = testing.shaped_random((1, 1, 3, 4), xp, dtype=dtype)
         b = testing.shaped_random((1, 1, 1, 4), xp, dtype=dtype)
         return scp.special.logsumexp(a, b=b, return_sign=True)
 
@@ -76,16 +80,18 @@ class TestLogsumexp:
         b = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
         return scp.special.logsumexp(a, axis=(1, 3), b=b, return_sign=True)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_b_zero(self, xp, scp, dtype):
-        a = xp.array([1, 100000], dtype=dtype)
+        a = xp.array([1, 100], dtype=dtype)
         b = xp.array([1, 0], dtype=dtype)
         return scp.special.logsumexp(a, b=b)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_b_shape(self, xp, scp, dtype):
+        if xp.dtype(dtype).kind in 'iu':
+            pytest.skip()
         a = testing.shaped_arange((4, 1, 2, 1), xp, dtype=dtype)
         b = testing.shaped_arange((3, 1, 5), xp, dtype=dtype)
         return scp.special.logsumexp(a, b=b)
@@ -95,7 +101,7 @@ class TestLogsumexp:
         a = xp.array([cupy.inf, -cupy.inf, cupy.nan, -cupy.nan])
         return scp.special.logsumexp(a)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     def test_empty_array_inputs(self, dtype):
         for xp in (scipy, cupy):
             with pytest.raises(ValueError):
