@@ -51,9 +51,6 @@ def _asarray_validated(a, check_finite=True,
     #     if cupy.ma.isMaskedArray(a):
     #         raise ValueError('masked arrays are not supported')
 
-    if not mask_ok:
-        assert not mask_ok
-
     # TODO: remove these comments when CuPy supports 'object' dtype
     # if not objects_ok:
     #    if a.dtype is cupy.dtype('O'):
