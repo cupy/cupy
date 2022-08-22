@@ -11,18 +11,15 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     axis : None or int or tuple of ints, optional
         Axis or axes over which the sum is taken. By default
         `axis` is None, and all elements are summed
-
     keepdims : bool, optional
         If this is set to True, the axes which are reduced
         are left in the result as dimensions with size one. With
         this option, the result will broadcast correctly
         against the original array
-
     b : cupy.ndarray, optional
         Scaling factor for exp(`a`) must be of the same shape as `a` or
         broadcastable to `a`. These values may be negative in order to
         implement subtraction
-
     return_sign : bool, optional
         If this is set to True, the result will be a pair containing sign
         information; if False, results that are negative will be returned
