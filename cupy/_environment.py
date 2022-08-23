@@ -8,7 +8,7 @@ import os
 import os.path
 import shutil
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import warnings
 
 
@@ -341,6 +341,11 @@ def _preload_library(lib):
                 cupy_cuda_lib_path, config['cuda'], lib, version, x,
                 filename)
             for x in ['lib', 'lib64', 'bin']]
+        if lib == 'cutensor' and sys.platform == 'linux':
+            libpath_cands = (
+                _get_cutensor_from_wheel(version, config['cuda']) +
+                libpath_cands)
+
         for libpath in libpath_cands:
             if not os.path.exists(libpath):
                 _log('Rejected candidate (not found): {}'.format(libpath))
@@ -372,6 +377,23 @@ def _preload_library(lib):
                 # Fallback to the standard shared library lookup which only
                 # uses the major version (e.g., `libcudnn.so.X`).
                 _log(f'Library {lib} could not be preloaded: {e}')
+
+
+def _get_cutensor_from_wheel(
+        version: str, cuda: str) -> List[str]:
+    """
+    Returns the list of shared library path candidates.
+    """
+    import pkg_resources  # defer import # NOQA
+    try:
+        dist = pkg_resources.get_distribution(f'cutensor=={version}.*')
+    except pkg_resources.ResolutionError as e:
+        _log(f'cuTENSOR wheel could not be loaded: {type(e).__name__}: {e}')
+        return []
+    return [os.path.join(
+                dist.module_path, 'cutensor', 'lib', cuda_ver_path,
+                f'libcutensor.so.{version.split(".")[0]}')
+            for cuda_ver_path in (cuda, cuda.split('.')[0])]
 
 
 def _get_preload_logs():
