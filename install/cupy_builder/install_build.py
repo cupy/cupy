@@ -1,9 +1,9 @@
 # mypy: ignore-errors
 
 import contextlib
-import distutils.util
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -85,7 +85,7 @@ def get_cuda_path():
 def get_nvcc_path() -> List[str]:
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
-        return distutils.util.split_quoted(nvcc)
+        return shlex.split(nvcc)
 
     cuda_path = get_cuda_path()
     if cuda_path is None:
@@ -106,7 +106,7 @@ def get_nvcc_path() -> List[str]:
 def get_hipcc_path() -> List[str]:
     hipcc = os.environ.get('HIPCC', None)
     if hipcc:
-        return distutils.util.split_quoted(hipcc)
+        return shlex.split(hipcc)
 
     rocm_path = get_rocm_path()
     if rocm_path is None:

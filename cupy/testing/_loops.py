@@ -226,7 +226,16 @@ def _make_positive_masks(impl, args, kw, name, sp_name, scipy_name):
 
 
 def _contains_signed_and_unsigned(kw):
-    vs = set(kw.values())
+    def isdtype(v):
+        if isinstance(v, numpy.dtype):
+            return True
+        elif isinstance(v, str):  # expecting dtype character codes
+            return True
+        elif isinstance(v, type) and issubclass(v, numpy.number):
+            return True
+        else:
+            return False
+    vs = set(v for v in kw.values() if isdtype(v))
     return any(d in vs for d in _unsigned_dtypes) and \
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
