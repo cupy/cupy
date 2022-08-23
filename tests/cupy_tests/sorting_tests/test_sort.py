@@ -654,15 +654,15 @@ class TestArgpartition(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_argpartition_multi_dim_kernel(self, xp, dtype):
         a = testing.shaped_random((3, 3, 256), xp, dtype, 100)
-        kth = 2
+        kth = 20
         idx = self.argpartition(a, kth, axis=-1)
 
         rows = [[[0]], [[1]], [[2]]]
         cols = [[[0], [1], [2]]]
 
-        assert (a[rows, cols, idx[:, :, :kth]] <
+        assert (a[rows, cols, idx[:, :, :kth]] <=
                 a[rows, cols, idx[:, :, kth:kth + 1]]).all()
-        assert (a[rows, cols, idx[:, :, kth:kth + 1]] <
+        assert (a[rows, cols, idx[:, :, kth:kth + 1]] <=
                 a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
