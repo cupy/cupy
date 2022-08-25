@@ -7,10 +7,8 @@ import os
 import shutil
 import sys
 
-import pkg_resources
 import setuptools
 
-import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
 from cupy_builder.install_build import PLATFORM_LINUX
@@ -432,54 +430,6 @@ def prepare_wheel_libs(ctx: Context):
         shutil.copy2(srcpath, dstpath)
 
     return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
-
-
-def cythonize(extensions, ctx: Context):
-    # Delay importing Cython as it may be installed via setup_requires if
-    # the user does not have Cython installed.
-    import Cython
-    import Cython.Build
-    cython_version = pkg_resources.parse_version(Cython.__version__)
-
-    directives = {
-        'linetrace': ctx.linetrace,
-        'profile': ctx.profile,
-        # Embed signatures for Sphinx documentation.
-        'embedsignature': True,
-    }
-
-    cythonize_options = {
-        'annotate': ctx.annotate
-    }
-
-    # Compile-time constants to be used in Cython code
-    compile_time_env = cythonize_options.get('compile_time_env')
-    if compile_time_env is None:
-        compile_time_env = {}
-        cythonize_options['compile_time_env'] = compile_time_env
-
-    # Enable CUDA Python.
-    # TODO: add `cuda` to `setup_requires` only when this flag is set
-    use_cuda_python = cupy_builder.get_context().use_cuda_python
-    compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
-    if use_cuda_python:
-        print('Using CUDA Python')
-
-    compile_time_env['CUPY_CUFFT_STATIC'] = False
-    compile_time_env['CUPY_CYTHON_VERSION'] = str(cython_version)
-    if ctx.use_stub:  # on RTD
-        compile_time_env['CUPY_CUDA_VERSION'] = 0
-        compile_time_env['CUPY_HIP_VERSION'] = 0
-    elif ctx.use_hip:  # on ROCm/HIP
-        compile_time_env['CUPY_CUDA_VERSION'] = 0
-        compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
-    else:  # on CUDA
-        compile_time_env['CUPY_CUDA_VERSION'] = ctx.features['cuda'].get_version()  # NOQA
-        compile_time_env['CUPY_HIP_VERSION'] = 0
-
-    return Cython.Build.cythonize(
-        extensions, verbose=True, language_level=3,
-        compiler_directives=directives, **cythonize_options)
 
 
 def get_ext_modules(use_cython: bool, ctx: Context):
