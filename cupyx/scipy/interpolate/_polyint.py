@@ -47,7 +47,7 @@ class _Interpolator1D:
     def __call__(self, x):
         """Evaluate the interpolant
 
-        Parametres
+        Parameters
         ----------
         x : cupy.ndarray
             The points to evaluate the interpolant
