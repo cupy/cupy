@@ -6,8 +6,6 @@ import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 
-import scipy.special  # NOQA
-
 
 @testing.with_requires('scipy')
 class TestLogsumexp:
@@ -103,6 +101,7 @@ class TestLogsumexp:
 
     @testing.for_all_dtypes(no_bool=True)
     def test_empty_array_inputs(self, dtype):
+        import scipy.special  # NOQA
         for xp in (scipy, cupy):
             with pytest.raises(ValueError):
                 if xp is scipy:

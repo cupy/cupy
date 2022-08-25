@@ -55,9 +55,9 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
         a_max = 0
 
     if b is not None:
-        tmp = b * cp.exp(cp.subtract(a, a_max))
+        tmp = b * cp.exp(a - a_max)
     else:
-        tmp = cp.exp(cp.subtract(a, a_max))
+        tmp = cp.exp(a - a_max)
 
     s = cp.sum(tmp, axis=axis, keepdims=keepdims)
     if return_sign:
