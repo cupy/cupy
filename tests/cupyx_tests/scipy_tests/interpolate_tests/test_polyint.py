@@ -113,7 +113,6 @@ class TestKrogh:
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
-        test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
         xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
@@ -127,7 +126,6 @@ class TestKrogh:
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
-        test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
         xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
