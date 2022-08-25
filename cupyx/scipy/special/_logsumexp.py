@@ -4,7 +4,7 @@ import cupy as cp
 def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     """Compute the log of the sum of exponentials of input elements.
 
-    Parametres
+    Parameters
     ----------
     a : cupy.ndarray
         Input array
