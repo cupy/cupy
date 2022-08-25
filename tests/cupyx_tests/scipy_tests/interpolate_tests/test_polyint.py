@@ -17,19 +17,19 @@ class TestKrogh:
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
     def test_lagrange(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
-        xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
         return P(test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
     def test_scalar(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = numpy.poly1d([-1, 2, 6, -3, 2])
         xs = numpy.linspace(-1, 1, 10, dtype=dtype)
@@ -43,11 +43,11 @@ class TestKrogh:
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
     def test_derivatives(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
-        xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
         D = P.derivatives(test_xs)
@@ -56,11 +56,11 @@ class TestKrogh:
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
     def test_low_derivatives(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
-        xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
         D = P.derivatives(test_xs, len(xs) + 2)
@@ -69,25 +69,25 @@ class TestKrogh:
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
     def test_derivative(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
-        xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
         m = 10
-        D = P.derivative(test_xs, m)
-        return D
+        for i in range(m):
+            return P.derivative(test_xs, i)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
     def test_high_derivative(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
-        xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
         D = P.derivative(test_xs, 2 * len(xs))
@@ -96,15 +96,43 @@ class TestKrogh:
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
     def test_hermite(self, xp, scp, dtype):
-        if xp.dtype(dtype).kind in 'iu':
+        if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
-        xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
         D = P(test_xs)
         return D
+
+    @pytest.mark.parametrize('n', [0, [0], [0, 1]])
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    def test_hermite_derivative1(self, xp, scp, dtype, n):
+        if xp.dtype(dtype).kind in 'u':
+            pytest.skip()
+        true_poly = xp.poly1d([-2, 3, 1, 5, -4])
+        test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(xs, ys)
+        x_D = P.derivative(xp.array(n), 0)
+        return P(x_D)
+
+    @pytest.mark.parametrize('n', [0, [0], [0, 1]])
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    def test_hermite_derivative2(self, xp, scp, dtype, n):
+        if xp.dtype(dtype).kind in 'u':
+            pytest.skip()
+        true_poly = xp.poly1d([-2, 3, 1, 5, -4])
+        test_xs = xp.linspace(-5, 5, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
+        ys = true_poly(xs)
+        P = scp.interpolate.KroghInterpolator(xs, ys)
+        x_D = P.derivatives(xp.array(n), 1)
+        return P(x_D)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
@@ -117,7 +145,7 @@ class TestKrogh:
         P = scp.interpolate.KroghInterpolator(xs, ys)
         return P(test_xs)
 
-    @testing.for_dtypes('bhilfdFD')
+    @testing.for_dtypes('bhilfd')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_empty(self, xp, scp, dtype):
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
@@ -186,7 +214,7 @@ class TestKrogh:
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-2, 2, 5, dtype=dtype)
-        xs = xp.linspace(-2, 2, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         return scp.interpolate.krogh_interpolate(xs, ys, test_xs)
 
@@ -197,7 +225,7 @@ class TestKrogh:
             pytest.skip()
         true_poly = xp.poly1d([-2, 3, 1, 5, -4])
         test_xs = xp.linspace(-2, 2, 5, dtype=dtype)
-        xs = xp.linspace(-2, 2, 5, dtype=dtype)
+        xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         return scp.interpolate.krogh_interpolate(xs, ys, test_xs, der=3)
 
