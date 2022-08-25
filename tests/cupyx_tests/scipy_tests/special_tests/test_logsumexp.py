@@ -102,11 +102,7 @@ class TestLogsumexp:
     @testing.for_all_dtypes(no_bool=True)
     def test_empty_array_inputs(self, dtype):
         import scipy.special  # NOQA
-        for xp in (scipy, cupy):
+        a = numpy.array([], dtype=dtype)
+        for xp in (scipy, cupyx.scipy):
             with pytest.raises(ValueError):
-                if xp is scipy:
-                    a = numpy.array([], dtype=dtype)
-                    xp.special.logsumexp(a)
-                else:
-                    a = xp.array([], dtype=dtype)
-                    cupyx.scipy.special.logsumexp(a)
+                xp.special.logsumexp(a)
