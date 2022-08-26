@@ -25,7 +25,7 @@ __device__ double exp1(double x)
             e1 += R;
         }
         return -EUL - log(x) + x*e1;
-    } 
+    }
 
     int M = 20 + 80.0/x;
     double t0 = 0;

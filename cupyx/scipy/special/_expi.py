@@ -23,14 +23,14 @@ __device__ double expi(double x)
             ei += r;
         }
 
-        return EUL + x*ei + log(x);  
-    } 
-    
+        return EUL + x*ei + log(x);
+    }
+
     for (int k = 1; k <= 40; k++) {
         r = r*k/x;
         ei += r;
     }
-    
+
     return exp(x)/x*ei;
 }
 
