@@ -191,7 +191,7 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     is an identity function otherwise.
 
     Args:
-        a (cupy.cusparse.csr_matrix): Matrix A.
+        a (cupyx.cusparse.csr_matrix): Matrix A.
         x (cupy.ndarray): Vector x.
         y (cupy.ndarray or None): Vector y. It must be F-contiguous.
         alpha (float): Coefficient for x.
@@ -234,7 +234,7 @@ def csrmvExIsAligned(a, x, y=None):
     """Check if the pointers of arguments for csrmvEx are aligned or not
 
     Args:
-        a (cupy.cusparse.csr_matrix): Matrix A.
+        a (cupyx.cusparse.csr_matrix): Matrix A.
         x (cupy.ndarray): Vector x.
         y (cupy.ndarray or None): Vector y.
 
@@ -269,7 +269,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
        y = \\alpha * A x + \\beta y,
 
     Args:
-        a (cupy.cusparse.csr_matrix): Matrix A.
+        a (cupyx.cusparse.csr_matrix): Matrix A.
         x (cupy.ndarray): Vector x.
         y (cupy.ndarray or None): Vector y. It must be F-contiguous.
         alpha (float): Coefficient for x.

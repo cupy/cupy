@@ -316,7 +316,7 @@ class TestCsrlsvqr:
             b = b[::-1]
             cp_b = cp_b[::-1]
         ref_x = numpy.linalg.solve(a, b)
-        x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
-                                   reorder=self.reorder)
+        x = cupyx.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
+                                    reorder=self.reorder)
         cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
                                      atol=test_tol)
