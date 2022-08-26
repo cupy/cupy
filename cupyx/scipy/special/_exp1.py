@@ -35,11 +35,12 @@ __device__ double exp1(double x)
     double T = 1.0/(x + t0);
     return exp(-x)*T;
 }
+
 """
 
 
 exp1 = _core.create_ufunc(
-    'cupyx_scipy_special_expi',
+    'cupyx_scipy_special_exp1',
     ('f->f', 'd->d'),
     'out0 = exp1(in0)',
     preamble=math_constants_and_eul + exp1_defenition,
