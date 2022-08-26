@@ -2,7 +2,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import cusolver
+from cupyx import cusolver
 from cupy import testing
 from cupy.testing import _attr
 from cupy._core import _routines_linalg as _linalg

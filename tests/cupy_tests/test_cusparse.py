@@ -10,7 +10,7 @@ except ImportError:
 
 import cupy
 from cupy import testing
-from cupy import cusparse
+from cupyx import cusparse
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupyx.scipy import sparse

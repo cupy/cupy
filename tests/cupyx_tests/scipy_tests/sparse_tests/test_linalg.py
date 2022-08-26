@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 import cupy
-from cupy import cusparse
+from cupyx import cusparse
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime

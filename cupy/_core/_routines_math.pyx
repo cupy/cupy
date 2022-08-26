@@ -24,7 +24,7 @@ from cupy.cuda import cub
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
-    from cupy import cutensor
+    from cupyx import cutensor
 except ImportError:
     cuda_cutensor = None
     cutensor = None

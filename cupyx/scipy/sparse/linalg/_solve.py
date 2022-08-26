@@ -2,7 +2,7 @@ import numpy
 
 import cupy
 from cupy import cublas
-from cupy import cusparse
+from cupyx import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime

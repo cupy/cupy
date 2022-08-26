@@ -9,7 +9,7 @@ from cupy.cuda import device
 from cupy.cuda import cutensor as ct
 
 if ct.available:
-    from cupy import cutensor
+    from cupyx import cutensor
 
 
 @testing.parameterize(
