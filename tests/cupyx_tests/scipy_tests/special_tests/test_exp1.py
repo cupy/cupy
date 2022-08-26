@@ -29,7 +29,7 @@ class TestExp1:
         return scp.special.exp1(1000)
 
     @testing.for_float_dtypes()
-    @numpy_cupy_allclose(scipy_name="scp")
+    @numpy_cupy_allclose(scipy_name="scp", atol=1e-15)
     def test_exp1_array_inputs(self, xp, scp, dtype):
         x = testing.shaped_arange((8, 9, 10), xp, dtype)
         return scp.special.exp1(x)
