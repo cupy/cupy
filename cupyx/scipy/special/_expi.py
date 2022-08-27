@@ -2,15 +2,16 @@
 # https://github.com/scipy/scipy/blob/main/scipy/special/specfun/specfun.f
 
 from cupy import _core  # NOQA
-from cupyx.scipy.special._exp1 import math_constants_and_eul
 from cupyx.scipy.special._exp1 import exp1_defenition
+from cupyx.scipy.special._exp1 import math_constants_and_eul
 
 
 expi_definition = """
-__device__ double expi(double x)
+template <typename T>
+__device__ double expi(T x)
 {
-    double ei = 1;
-    double r = 1;
+    T ei = 1;
+    T r = 1;
 
     if (x == 0) {
         return -CUDART_INF;
