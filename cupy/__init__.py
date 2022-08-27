@@ -669,6 +669,7 @@ from cupy._math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
+from cupy._misc.byte_bounds import byte_bounds  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
