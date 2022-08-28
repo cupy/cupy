@@ -60,10 +60,10 @@ y1 = _core.create_ufunc(
     ''')
 
 
-# Note: oddly, unlike for y0 or y1, SciPy always returns double for yn
-# dd->d because SciPy will accept 2.0
 yn = _core.create_ufunc(
-    'cupyx_scipy_special_yn', ('id->d', 'dd->d'),
+    'cupyx_scipy_special_yn',
+    (('ff->f', 'out0 = ynf((int)in0, in1)'),
+     'dd->d'),
     'out0 = yn((int)in0, in1)',
     doc='''Bessel function of the second kind of order n.
 
