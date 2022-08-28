@@ -2,7 +2,7 @@
 # https://github.com/scipy/scipy/blob/main/scipy/special/specfun/specfun.f
 
 from cupy import _core  # NOQA
-from cupyx.scipy.special._exp1 import exp1_defenition
+from cupyx.scipy.special._exp1 import exp1_definition
 from cupyx.scipy.special._exp1 import math_constants_and_eul
 
 
@@ -19,7 +19,7 @@ __device__ double expi(T x)
         return -exp1(-x);
     } else if (x <= 40.0) {
         for (int k = 1; k <= 100; k++){
-            int den = (k+1)*(k+1);
+            int den = (k + 1) * (k + 1);
             r = r*k*x/den;
             ei += r;
         }
@@ -41,7 +41,7 @@ expi = _core.create_ufunc(
     'cupyx_scipy_special_expi',
     ('f->f', 'd->d'),
     'out0 = expi(in0)',
-    preamble=math_constants_and_eul + exp1_defenition + expi_definition,
+    preamble=math_constants_and_eul + exp1_definition + expi_definition,
     doc="""Exponential integral Ei.
 
     Parameters

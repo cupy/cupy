@@ -9,7 +9,7 @@ math_constants_and_eul = """
 __constant__ double EUL = 0.5772156649015328;
 """
 
-exp1_defenition = """
+exp1_definition = """
 template <typename T>
 static __device__ T exp1(T x)
 {
@@ -21,7 +21,7 @@ static __device__ T exp1(T x)
 
         for(int k=1; k<=25; k++)
         {
-            int den = (k+1)*(k+1);
+            int den = (k + 1) * (k + 1);
             R = -R*k*x/den;
             e1 += R;
         }
@@ -44,7 +44,7 @@ exp1 = _core.create_ufunc(
     'cupyx_scipy_special_exp1',
     ('f->f', 'd->d'),
     'out0 = exp1(in0)',
-    preamble=math_constants_and_eul + exp1_defenition,
+    preamble=math_constants_and_eul + exp1_definition,
     doc="""Exponential integral E1.
 
     Parameters
