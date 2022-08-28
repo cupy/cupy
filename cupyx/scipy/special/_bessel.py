@@ -21,8 +21,10 @@ j1 = _core.create_ufunc(
     ''')
 
 jn = _core.create_ufunc(
-    'cupyx_scipy_special_jn', ('f->f', 'd->d'),
-    'out0 = jn(in0)',
+    'cupyx_scipy_special_jn',
+    (('ff->f', 'out0 = jnf((int)in0, in1)'),
+     'dd->d'),
+    'out0 = jn((int)in0, in1)',
     doc='''Bessel function of the first kind of order n.
     
     Args:
