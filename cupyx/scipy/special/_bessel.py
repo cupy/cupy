@@ -20,6 +20,22 @@ j1 = _core.create_ufunc(
 
     ''')
 
+jn = _core.create_ufunc(
+    'cupyx_scipy_special_jn', ('f->f', 'd->d'),
+    'out0 = jn(in0)',
+    doc='''Bessel function of the first kind of order n.
+    
+    Args:
+        n (cupy.ndarray): order (integer)
+        x (cupy.ndarray): argument (float)
+
+    Returns:
+        cupy.ndarray: The result.
+
+    .. seealso:: :meth:`scipy.special.jn`
+
+    ''')
+
 
 y0 = _core.create_ufunc(
     'cupyx_scipy_special_y0', ('f->f', 'd->d'),
