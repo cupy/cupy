@@ -8,7 +8,6 @@ import cupy._core._accelerator as _acc
 import cupy.cuda.cutensor
 from cupy._core import _cub_reduction
 from cupy import testing
-import cupyx  # NOQA
 
 
 @testing.gpu
@@ -422,7 +421,7 @@ class TestCuTensorReduction:
 
         # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupyx.cutensor._try_reduction_routine'
+        func = 'cupy.cutensor._try_reduction_routine'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
