@@ -30,23 +30,12 @@ from cupy._core cimport internal
 from cupy import _ufunc_method
 from cupy_backends.cuda.api cimport runtime
 
-
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 
 from cupy._core import _fusion_thread_local
-
-
-# Delay the import to avoid circular reference
-cupyx_cutensor = None
-
-
-def _cutensor_lazy_load():
-    global cupyx_cutensor
-    import cupyx.cutensor
-    cupyx_cutensor = cupyx.cutensor
 
 
 cdef inline bint _contains_zero(const shape_t& v) except? -1:
@@ -1268,9 +1257,8 @@ cdef class ufunc:
             if (self.nin == 2 and self.nout == 1 and
                     isinstance(in_args[0], _ndarray_base) and
                     isinstance(in_args[1], _ndarray_base)):
-                if cupyx_cutensor is None:
-                    _cutensor_lazy_load()
-                ret = cupyx_cutensor._try_elementwise_binary_routine(
+                import cupyx.cutensor
+                ret = cupyx.cutensor._try_elementwise_binary_routine(
                     in_args[0], in_args[1], dtype,
                     out_args[0] if len(out_args) == 1 else None,
                     self._cutensor_op,

@@ -24,10 +24,8 @@ from cupy.cuda import cub
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
-    from cupyx import cutensor
 except ImportError:
     cuda_cutensor = None
-    cutensor = None
 
 
 # _ndarray_base members
@@ -94,7 +92,8 @@ cdef _ndarray_base _ndarray_prod(
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
         if result is not None:
@@ -114,7 +113,8 @@ cdef _ndarray_base _ndarray_sum(
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
         if result is not None:

@@ -18,10 +18,8 @@ from cupy.cuda import cub
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
-    from cupyx import cutensor
 except ImportError:
     cuda_cutensor = None
-    cutensor = None
 
 
 cdef _ndarray_base _ndarray_max(
@@ -33,7 +31,8 @@ cdef _ndarray_base _ndarray_max(
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             if self.dtype.kind == 'c' or dtype in ('F', 'D'):
                 # Complex dtype is not supported
                 continue
@@ -53,7 +52,8 @@ cdef _ndarray_base _ndarray_min(
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             if self.dtype.kind == 'c' or dtype in ('F', 'D'):
                 # Complex dtype is not supported
                 continue
@@ -75,7 +75,8 @@ cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
                     self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
                 return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             if self.dtype.kind == 'c':
                 # Complex dtype is not supported
                 continue
@@ -148,7 +149,8 @@ cdef _ndarray_base _ndarray_mean(
                 cupy.true_divide(result, n, out=result, casting='unsafe')
                 break
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             reduce_axis, _ = _reduction._get_axis(axis, self._shape.size())
             n = 1
             for i in reduce_axis:
