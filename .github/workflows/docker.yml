@@ -13,7 +13,7 @@ jobs:
     if: |
         github.repository_owner == 'cupy' ||
         github.event_name != 'release'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         include:

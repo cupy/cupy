@@ -299,6 +299,8 @@ numpy:
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
+    # Note: Optuna depends on SciPy, so Optuna must also be set to null when
+    # setting SciPy to null to run tests without SciPy.
     spec: null
   "1.6":
     spec: "==1.6.*"
@@ -350,6 +352,11 @@ optuna:
     spec: "==2.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
+mpi4py:
+  null:
+    spec: null
+  "3":
+    spec: "==3.*"
 cython:
   "0.29":
     spec: "==0.29.*"
