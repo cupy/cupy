@@ -11,32 +11,29 @@ __constant__ double EUL = 0.5772156649015328;
 
 exp1_definition = """
 template <typename T>
-static __device__ T exp1(T x)
-{
+static __device__ T exp1(T x) {
     if (x == 0) {
         return CUDART_INF;
     } else if (x <= 1) {
         T e1 = 1.0;
         T R = 1.0;
 
-        for(int k=1; k<=25; k++)
-        {
+        for (int k = 1; k <= 25; k++) {
             int den = (k + 1) * (k + 1);
-            R = -R*k*x/den;
+            R = -R * k * x / den;
             e1 += R;
         }
-        return -EUL - log(x) + x*e1;
+        return -EUL - log(x) + x * e1;
     }
 
-    int M = 20 + 80.0/x;
+    int M = 20 + 80.0 / x;
     T t0 = 0;
-    for (int k = M; k != 0; k--){
-        t0 = k/(1.0 + k/(x + t0));
+    for (int k = M; k != 0; k--) {
+        t0 = k / (1.0 + k / (x + t0));
     }
-    T t = 1.0/(x + t0);
-    return exp(-x)*t;
+    T t = 1.0 / (x + t0);
+    return exp(-x) * t;
 }
-
 """
 
 

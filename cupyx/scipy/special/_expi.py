@@ -7,34 +7,32 @@ from cupyx.scipy.special._exp1 import math_constants_and_eul
 
 
 expi_definition = """
-template <typename T>
-__device__ double expi(T x)
-{
+template < typename T >
+__device__ double expi(T x) {
     T ei = 1;
     T r = 1;
 
     if (x == 0) {
         return -CUDART_INF;
-    } else if (x < 0){
+    } else if (x < 0) {
         return -exp1(-x);
     } else if (x <= 40.0) {
-        for (int k = 1; k <= 100; k++){
+        for (int k = 1; k <= 100; k++) {
             int den = (k + 1) * (k + 1);
-            r = r*k*x/den;
+            r = r * k * x / den;
             ei += r;
         }
 
-        return EUL + x*ei + log(x);
+        return EUL + x * ei + log(x);
     }
 
     for (int k = 1; k <= 40; k++) {
-        r = r*k/x;
+        r = r * k / x;
         ei += r;
     }
 
-    return exp(x)/x*ei;
+    return exp(x) / x * ei;
 }
-
 """
 
 expi = _core.create_ufunc(
