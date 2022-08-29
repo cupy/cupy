@@ -37,6 +37,10 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
         kw = {'x': numpy.uint32}
         assert not _loops._contains_signed_and_unsigned(kw)
 
+    def test_ignore_not_dtype(self):
+        kw = {'x': numpy.int32, 'y': numpy.uint32, 'a': [0, 1]}
+        assert _loops._contains_signed_and_unsigned(kw)
+
 
 class TestCheckCupyNumpyError(unittest.TestCase):
 
