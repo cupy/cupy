@@ -15,10 +15,12 @@ def _asarray_validated(a, check_finite=True,
                        sparse_ok=False, objects_ok=False, mask_ok=False,
                        as_inexact=False):
     """Helper function for SciPy argument validation.
+
     Many CuPy linear algebra functions do support arbitrary array-like
     input arguments. Examples of commonly unsupported inputs include
     matrices containing inf/nan, sparse matrix representations, and
     matrices with complicated elements.
+
     Parameters
     ----------
     a : array-like
@@ -37,10 +39,12 @@ def _asarray_validated(a, check_finite=True,
     as_inexact : bool, optional
         By default False. True to convert the input array to a
         cupy.inexact dtype
+
     Returns
     -------
     ret : cupy.ndarray
         The converted validated array
+
     """
 
     if not sparse_ok:
@@ -56,9 +60,6 @@ def _asarray_validated(a, check_finite=True,
     # if not mask_ok:
     #     if cupy.ma.isMaskedArray(a):
     #         raise ValueError('masked arrays are not supported')
-
-    if not mask_ok:
-        assert not mask_ok
 
     # TODO: remove these comments when CuPy supports 'object' dtype
     # if not objects_ok:

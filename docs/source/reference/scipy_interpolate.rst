@@ -11,5 +11,7 @@ Summary  statistics
 .. autosummary::
    :toctree: generated/
 
+   BarycentricInterpolator
    KroghInterpolator
+   barycentric_interpolate
    krogh_interpolate
