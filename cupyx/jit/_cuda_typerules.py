@@ -1,5 +1,5 @@
 import ast
-from typing import Any, Callable, Mapping, Tuple, Type
+from typing import Any, Callable, Mapping, Optional, Tuple, Type
 
 import numpy
 import numpy.typing as npt
@@ -146,8 +146,8 @@ def _cuda_can_cast(from_dtype: npt.DTypeLike, to_dtype: npt.DTypeLike) -> bool:
 
 def guess_routine(
         ufunc: cupy.ufunc,
-        in_types: Tuple[numpy.dtype],
-        dtype: numpy.dtype,
+        in_types: Tuple[numpy.dtype, ...],
+        dtype: Optional[numpy.dtype],
         mode: str,
 ) -> cupy._core._kernel._Op:
     if dtype is not None:

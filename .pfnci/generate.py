@@ -102,7 +102,9 @@ class LinuxGenerator:
                 '       libbz2-dev libreadline-dev libsqlite3-dev wget \\',
                 '       curl llvm libncursesw5-dev xz-utils tk-dev \\',
                 '       libxml2-dev libxmlsec1-dev libffi-dev \\',
-                '       liblzma-dev && \\',
+                '       liblzma-dev \\',
+                '       libopenmpi-dev \\' if matrix.mpi4py else '\\',
+                '       && \\',
                 '    apt-get -qqy install ccache git curl && \\',
                 '    apt-get -qqy --allow-change-held-packages \\',
                 '            --allow-downgrades install {}'.format(
@@ -138,6 +140,7 @@ class LinuxGenerator:
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
                 '',
             ]
+            assert matrix.mpi4py is None, 'mpi4py test unsupported on CentOS'
         else:
             raise AssertionError
 
@@ -168,17 +171,25 @@ class LinuxGenerator:
 
         # Setup Python libraries.
         pip_args = []
-        for pylib in ('numpy', 'scipy', 'optuna', 'cython', 'cuda-python'):
+        pip_uninstall_args = []
+        for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
+                      'cython', 'cuda-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
-                continue
-            pip_spec = self.schema[pylib][pylib_ver]['spec']
-            pip_args.append(f'{pylib}{pip_spec}')
+                pip_uninstall_args.append(pylib)
+            else:
+                pip_spec = self.schema[pylib][pylib_ver]['spec']
+                pip_args.append(f'{pylib}{pip_spec}')
         lines += [
             f'RUN pip install -U {shlex.join(pip_args)}',
-            '',
         ]
-
+        if len(pip_uninstall_args) != 0:
+            # Ensure that packages are not installed.
+            lines += [
+                f'RUN pip uninstall -y {shlex.join(pip_uninstall_args)} && \\',
+                '    pip check',
+            ]
+        lines.append('')
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> List[str]:
@@ -279,6 +290,10 @@ class LinuxGenerator:
             if matrix.test == 'unit':
                 spec = 'not slow and not multi_gpu'
             elif matrix.test == 'unit-multi':
+                lines += [
+                    'export OMPI_ALLOW_RUN_AS_ROOT=1',
+                    'export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1'
+                ]
                 spec = 'not slow and multi_gpu'
             elif matrix.test == 'unit-slow':
                 # Slow tests may use multiple GPUs.

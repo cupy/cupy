@@ -60,7 +60,7 @@ class Constant(Expr):
 class Range(Expr):
 
     def __init__(
-            self, start: Expr, stop: Expr, step: Expr,
+            self, start: Data, stop: Data, step: Data,
             ctype: _cuda_types.Scalar,
             step_is_positive: Optional[bool],
             *,
