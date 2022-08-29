@@ -28,13 +28,13 @@ class TestExpi:
     def test_expi_large_positive(self, xp, scp):
         return scp.special.expi(1000)
 
-    @testing.for_dtypes(["f"])
+    @testing.for_dtypes("f")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
     def test_expi_linspace_float32(self, xp, scp, dtype):
         x = xp.linspace(-10, 60, 1000, dtype=dtype)
         return scp.special.expi(x)
 
-    @testing.for_dtypes(["d"])
+    @testing.for_dtypes("d")
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-12)
     def test_expi_linspace_float64(self, xp, scp, dtype):
         x = xp.linspace(-10, 100, 1000, dtype=dtype)
