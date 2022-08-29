@@ -1,5 +1,4 @@
 import cupy
-
 from cupyx.scipy._lib._util import _asarray_validated, float_factorial
 
 
@@ -135,10 +134,13 @@ class _Interpolator1D:
 
 
 class _Interpolator1DWithDerivatives(_Interpolator1D):
+
     def derivatives(self, x, der=None):
         """Evaluate many derivatives of the polynomial at the point x.
+
         The function produce an array of all derivative values at
         the point x.
+
         Parameters
         ----------
         x : cupy.ndarray
@@ -148,12 +150,14 @@ class _Interpolator1DWithDerivatives(_Interpolator1D):
             nonzero derivatives (that is a number equal to the number
             of points). This number includes the function value as 0th
             derivative
+
         Returns
         -------
         d : cupy.ndarray
             Array with derivatives; d[j] contains the jth derivative.
             Shape of d[j] is determined by replacing the interpolation
             axis in the original array with the shape of x
+
         """
         x, x_shape = self._prepare_x(x)
         y = self._evaluate_derivatives(x, der)
@@ -170,6 +174,7 @@ class _Interpolator1DWithDerivatives(_Interpolator1D):
 
     def derivative(self, x, der=1):
         """Evaluate one derivative of the polynomial at the point x
+
         Parameters
         ----------
         x : cupy.ndarray
@@ -177,16 +182,19 @@ class _Interpolator1DWithDerivatives(_Interpolator1D):
         der : integer, optional
             Which derivative to extract. This number includes the
             function value as 0th derivative
+
         Returns
         -------
         d : cupy.ndarray
             Derivative interpolated at the x-points. Shape of d is
             determined by replacing the interpolation axis in the
             original array with the shape of x
+
         Notes
         -----
         This is computed by evaluating all derivatives up to the desired
         one (using self.derivatives()) and then discarding the rest.
+
         """
         x, x_shape = self._prepare_x(x)
         y = self._evaluate_derivatives(x, der+1)
@@ -195,6 +203,7 @@ class _Interpolator1DWithDerivatives(_Interpolator1D):
 
 class BarycentricInterpolator(_Interpolator1D):
     """The interpolating polynomial for a set of points.
+
     Constructs a polynomial that passes through a given set of points.
     Allows evaluation of the polynomial, efficient changing of the y
     values to be interpolated, and updating by adding more x values.
@@ -203,6 +212,7 @@ class BarycentricInterpolator(_Interpolator1D):
     The value `yi` need to be provided before the function is
     evaluated, but none of the preprocessing depends on them,
     so rapid updates are possible.
+
     Parameters
     ----------
     xi : cupy.ndarray
@@ -213,9 +223,11 @@ class BarycentricInterpolator(_Interpolator1D):
         If None, the y values will be supplied later via the `set_y` method
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate values
+
     See Also
     --------
     scipy.interpolate.BarycentricInterpolator
+
     """
 
     def __init__(self, xi, yi=None, axis=0):
@@ -238,9 +250,11 @@ class BarycentricInterpolator(_Interpolator1D):
 
     def set_yi(self, yi, axis=None):
         """Update the y values to be interpolated.
+
         The barycentric interpolation algorithm requires the calculation
         of weights, but these depend only on the xi. The yi can be changed
         at any time.
+
         Parameters
         ----------
         yi : cupy.ndarray
@@ -248,6 +262,7 @@ class BarycentricInterpolator(_Interpolator1D):
             through. If None, the y values will be supplied later.
         axis : int, optional
             Axis in the yi array corresponding to the x-coordinate values
+
         """
 
         if yi is None:
@@ -259,8 +274,10 @@ class BarycentricInterpolator(_Interpolator1D):
 
     def add_xi(self, xi, yi=None):
         """Add more x values to the set to be interpolated.
+
         The barycentric interpolation algorithm allows easy updating
         by adding more points for the polynomial to pass through.
+
         Parameters
         ----------
         xi : cupy.ndarray
@@ -273,6 +290,7 @@ class BarycentricInterpolator(_Interpolator1D):
             If `yi` is not given, the y values will be supplied later.
             `yi` should be given if and only if the interpolator has y
             values specified
+
         """
 
         if yi is not None:
@@ -299,20 +317,24 @@ class BarycentricInterpolator(_Interpolator1D):
 
     def __call__(self, x):
         """Evaluate the interpolating polynomial at the points x.
+
         Parameters
         ----------
         x : cupy.ndarray
             Points to evaluate the interpolant at
+
         Returns
         -------
         y : cupy.ndarray
             Interpolated values. Shape is determined by replacing the
             interpolation axis in the original array with the shape of x
+
         Notes
         -----
         Currently the code computes an outer product between x and the
         weights, that is, it constructs an intermediate array of size
         N by len(x), where N is the degree of the polynomial.
+
         """
 
         return super().__call__(x)
@@ -337,10 +359,12 @@ class BarycentricInterpolator(_Interpolator1D):
 
 def barycentric_interpolate(xi, yi, x, axis=0):
     """Convenience function for polynomial interpolation.
+
     Constructs a polynomial that passes through a given
     set of points, then evaluates the polynomial. For
     reasons of numerical stability, this function does
     not compute the coefficients of the polynomial.
+
     Parameters
     ----------
     xi : cupy.ndarray
@@ -354,15 +378,18 @@ def barycentric_interpolate(xi, yi, x, axis=0):
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate
         values
+
     Returns
     -------
     y : scalar or cupy.ndarray
         Interpolated values. Shape is determined by replacing
         the interpolation axis in the original array with the
         shape x
+
     See Also
     --------
     scipy.interpolate.barycentric_interpolate
+
     """
 
     return BarycentricInterpolator(xi, yi, axis=axis)(x)
@@ -370,6 +397,7 @@ def barycentric_interpolate(xi, yi, x, axis=0):
 
 class KroghInterpolator(_Interpolator1DWithDerivatives):
     """Interpolating polynomial for a set of points.
+
     The polynomial passes through all the pairs (xi,yi). One may
     additionally specify a number of derivatives at each point xi;
     this is done by repeating the value xi and specifying the
@@ -378,6 +406,7 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
     For reasons of numerical stability, this function does not compute
     the coefficients of the polynomial, although they can be obtained
     by evaluating all the derivatives.
+
     Parameters
     ----------
     xi : cupy.ndarray, length N
@@ -387,6 +416,7 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
         the corresponding yi's represent derivative values
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate values.
+
     """
 
     def __init__(self, xi, yi, axis=0):
@@ -457,6 +487,7 @@ class KroghInterpolator(_Interpolator1DWithDerivatives):
 
 def krogh_interpolate(xi, yi, x, der=0, axis=0):
     """Convenience function for polynomial interpolation
+
     Parameters
     ----------
     xi : cupy.ndarray
@@ -473,6 +504,7 @@ def krogh_interpolate(xi, yi, x, der=0, axis=0):
         includes the function value as 0th derivative
     axis : int, optional
         Axis in the yi array corresponding to the x-coordinate values
+
     Returns
     -------
     d : cupy.ndarray
@@ -480,9 +512,11 @@ def krogh_interpolate(xi, yi, x, der=0, axis=0):
         returned array will be the number of derivatives by N by R.
         If `x` is a scalar, the middle dimension will be dropped; if
         the `yi` are scalars then the last dimension will be dropped
+
     See Also
     --------
     scipy.interpolate.krogh_interpolate
+
     """
     P = KroghInterpolator(xi, yi, axis=axis)
     if der == 0:
