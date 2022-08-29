@@ -46,7 +46,7 @@ cupyx_cutensor = None
 def _cutensor_lazy_load():
     global cupyx_cutensor
     import cupyx.cutensor
-    cupyx_cutensor = cupyx.cutensor 
+    cupyx_cutensor = cupyx.cutensor
 
 
 cdef inline bint _contains_zero(const shape_t& v) except? -1:
@@ -1133,8 +1133,6 @@ cdef class ufunc:
         else:
             self._default_casting = default_casting
         if cutensor_op is not None and cuda_cutensor is not None:
-
-
             self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
                 getattr(cuda_cutensor, cutensor_op[0]),
                 cutensor_op[1], cutensor_op[2])
