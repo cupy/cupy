@@ -1,4 +1,4 @@
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 
 from libc.stdint cimport intptr_t
@@ -6,7 +6,7 @@ from libcpp.pair cimport pair
 from libcpp.vector cimport vector
 
 
-cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(ndarray array):
+cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):
     cdef Py_ssize_t left = array.data.ptr
     cdef Py_ssize_t right = left
     cdef Py_ssize_t tmp
@@ -26,7 +26,7 @@ cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(ndarray array):
     return ret
 
 
-cpdef bint may_share_bounds(ndarray a, ndarray b):
+cpdef bint may_share_bounds(_ndarray_base a, _ndarray_base b):
     cdef memory.MemoryPointer a_data = a.data
     cdef memory.MemoryPointer b_data = b.data
     cdef pair[Py_ssize_t, Py_ssize_t] a_range, b_range

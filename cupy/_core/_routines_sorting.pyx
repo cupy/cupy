@@ -11,13 +11,13 @@ from cupy.cuda import thrust
 
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 
-cdef _ndarray_sort(ndarray self, int axis):
+cdef _ndarray_sort(_ndarray_base self, int axis):
     cdef int ndim = self._shape.size()
-    cdef ndarray data
+    cdef _ndarray_base data
 
     if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.sort. Please '
@@ -44,7 +44,7 @@ cdef _ndarray_sort(ndarray self, int axis):
         thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
     else:
         max_size = max(min(1 << 22, data.size) // data.shape[-1], 1)
-        keys_array = core._ndarray(
+        keys_array = core.ndarray(
             (max_size * data.shape[-1],), dtype=numpy.intp)
         stop = data.size // data.shape[-1]
         for offset in range(0, stop, max_size):
@@ -63,9 +63,9 @@ cdef _ndarray_sort(ndarray self, int axis):
         elementwise_copy(data, self)
 
 
-cdef ndarray _ndarray_argsort(ndarray self, axis):
+cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
     cdef int _axis, ndim
-    cdef ndarray data
+    cdef _ndarray_base data
 
     if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
@@ -90,13 +90,13 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         data = _manipulation.rollaxis(data, _axis, ndim).copy()
     shape = data.shape
 
-    idx_array = core._ndarray(shape, dtype=numpy.intp)
+    idx_array = core.ndarray(shape, dtype=numpy.intp)
 
     if ndim == 1:
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
                        shape)
     else:
-        keys_array = core._ndarray(shape, dtype=numpy.intp)
+        keys_array = core.ndarray(shape, dtype=numpy.intp)
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
                        keys_array.data.ptr, shape)
 
@@ -106,7 +106,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         return _manipulation.rollaxis(idx_array, -1, _axis)
 
 
-cdef _ndarray_partition(ndarray self, kth, int axis):
+cdef _ndarray_partition(_ndarray_base self, kth, int axis):
     """Partitions an array.
 
     Args:
@@ -125,7 +125,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     cdef int ndim = self._shape.size()
     cdef Py_ssize_t k, max_k, length, s, sz, t
-    cdef ndarray data
+    cdef _ndarray_base data
 
     if ndim == 0:
         raise numpy.AxisError('Sorting arrays with the rank of zero is not '
@@ -199,7 +199,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
         elementwise_copy(data, self)
 
 
-cdef ndarray _ndarray_argpartition(self, kth, axis):
+cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
     """Returns the indices that would partially sort an array.
 
     Args:
@@ -219,8 +219,8 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
 
     """
     cdef int _axis, ndim
-    cdef Py_ssize_t k, length
-    cdef ndarray data
+    cdef Py_ssize_t k, max_k, length, s, sz, t
+    cdef _ndarray_base data
     if axis is None:
         data = self.ravel()
         _axis = -1
@@ -231,21 +231,73 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     ndim = data._shape.size()
     _axis = internal._normalize_axis_index(_axis, ndim)
 
-    length = data._shape[_axis]
+    if _axis != ndim - 1:
+        data = _manipulation.rollaxis(self, _axis, ndim).copy()
+
+    length = data._shape[ndim - 1]
+
+    if length == 0:
+        return cupy.empty((0,), dtype=cupy.int64)
+
     if isinstance(kth, int):
         kth = kth,
+    max_k = 0
     for k in kth:
         if k < 0:
             k += length
         if not (0 <= k < length):
             raise ValueError('kth(={}) out of bounds {}'.format(k, length))
+        if max_k < k:
+            max_k = k
 
-    # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
-    # currently performs full argsort with Thrust's efficient radix sort
-    # algorithm.
+    # For simplicity, max_k is round up to the power of 2. If max_k is
+    # already the power of 2, it is round up to the next power of 2 because
+    # we need to collect the first max(kth)+1 elements.
+    max_k = max(32, 1 << max_k.bit_length())
 
-    # kth is ignored.
-    return data.argsort(_axis)
+    # The parameter t is the length of the list that stores elements to be
+    # selected for each thread. We divide the array into sz subarrays.
+    # These parameters are determined from the measurement on TITAN X.
+    t = 4
+    sz = 512
+    while sz > 0 and length // sz < max_k + 32 * t:
+        sz //= 2
+    sz *= self.size // length
+    shape = data.shape
+
+    # If the array size is small or k is large, we simply sort the array.
+    if length < 32 or sz < 1 or max_k >= 1024:
+        # kth is ignored.
+        indices = data.argsort(axis=-1)
+    else:
+        data = data.ravel()
+        indices = cupy.arange(0, data.shape[0], dtype=cupy.int64)
+
+        # For each subarray, we collect first k elements to the head.
+        kern, merge_kern = _argpartition_kernel(self.dtype)
+        block_size = 32
+        grid_size = sz
+        kern(grid=(grid_size,), block=(block_size,), args=(
+            data, indices, max_k, self.size, t, sz))
+
+        # Merge heads of subarrays.
+        s = 1
+        while s < sz // (self.size // length):
+            block_size = 32
+            grid_size = sz // s // 2
+            merge_kern(grid=(grid_size,), block=(block_size,), args=(
+                data, indices, max_k, self.size, sz, s))
+            s *= 2
+
+    # Rearrange indices w.r.t the original axis
+    axis_indices = cupy.unravel_index(indices, shape)
+    indices = axis_indices[-1]
+    indices = indices.reshape(shape)
+
+    if _axis != ndim - 1:
+        indices = _manipulation.rollaxis(indices, -1, _axis)
+
+    return indices
 
 
 @_util.memoize(for_each_device=True)
@@ -356,6 +408,125 @@ def _partition_kernel(dtype):
         ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
         int id = i % 32;
         merge< ${dtype} >(a, k, id, z, m, k);
+    }
+    }
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
+    module = compile_with_cache(source)
+    return module.get_function(name), module.get_function(merge_kernel)
+
+
+@_util.memoize(for_each_device=True)
+def _argpartition_kernel(dtype):
+    name = 'argpartition_kernel'
+    merge_kernel = 'argpartition_merge_kernel'
+    dtype = _get_typename(dtype)
+    source = string.Template('''
+    template<typename T>
+    __device__ void bitonic_sort_step(
+            CArray<T, 1, true> a, CArray<long long, 1, true> b,
+            ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
+        for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
+            ptrdiff_t n = j + (j & -w);
+            T v = a[b[n + x]], u = a[b[n + w + x]];
+            if (n & s ? v < u : v > u) {
+                long long temp = b[n + x];
+                b[n + x] = b[n + w + x];
+                b[n + w + x] = temp;
+            }
+        }
+    }
+
+    // Sort a[x:y].
+    template<typename T>
+    __device__ void bitonic_sort(
+            CArray<T, 1, true> a, CArray<long long, 1, true> b,
+            ptrdiff_t x, ptrdiff_t y, int i) {
+        for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
+            for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
+                bitonic_sort_step< T >(a, b, x, y, i, s, w);
+            }
+        }
+    }
+
+    // Merge first k elements and the next 32 times t elements.
+    template<typename T>
+    __device__ void merge(
+            CArray<T, 1, true> a, CArray<long long, 1, true> b,
+            int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
+        for (int s = i; s < u; s += 32) {
+            if (a[b[x + k - s - 1]] > a[b[z + s]]) {
+                long long tmp = b[x + k - s - 1];
+                b[x + k - s - 1] = b[z + s];
+                b[z + s] = tmp;
+            }
+        }
+
+        // After merge step, the first k elements are already bitonic.
+        // Therefore, we do not need to fully sort.
+        for (int w = k / 2; w >= 1; w /= 2) {
+            bitonic_sort_step< T >(a, b, x, k + x, i, k, w);
+        }
+    }
+
+    extern "C" {
+    // In this function, 32 threads handle one subarray. This number equals to
+    // the warp size. The first k elements are always sorted and the next 32
+    // times t elements stored values that have possibilities to be selected.
+    __global__ void ${name}(
+            CArray<${dtype}, 1, true> a, CArray<long long, 1, true> b,
+            int k, ptrdiff_t n, int t, ptrdiff_t sz) {
+
+        // This thread handles a[z:m].
+        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
+            + threadIdx.x;
+        ptrdiff_t z = i / 32 * n / sz;
+        ptrdiff_t m = (i / 32 + 1) * n / sz;
+        int id = i % 32;
+        int x = 0;
+
+        bitonic_sort< ${dtype} >(a, b, z, k + z, id);
+        ptrdiff_t j;
+        for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
+            if (a[b[j]] < a[b[k - 1 + z]]) {
+                long long tmp = b[k + 32 * x + id + z];
+                b[k + 32 * x + id + z] = b[j];
+                b[j] = tmp;
+                ++x;
+            }
+
+            // If at least one thread in the warp has found t values that
+            // can be selected, we update the first k elements.
+    #if __CUDACC_VER_MAJOR__ >= 9
+            if (__any_sync(0xffffffff, x >= t)) {
+    #else
+            if (__any(x >= t)) {
+    #endif
+                bitonic_sort< ${dtype} >(a, b, k + z, 32 * t + k + z, id);
+                merge< ${dtype} >(a, b, k, id, z, k + z, min(k, 32 * t));
+                x = 0;
+            }
+        }
+        if (j < m && a[b[j]] < a[b[k - 1 + z]]) {
+            long long tmp = b[k + 32 * x + id + z];
+            b[k + 32 * x + id + z] = b[j];
+            b[j] = tmp;
+        }
+
+        // Finally, we merge the first k elements and the remainders to be
+        // stored.
+        bitonic_sort< ${dtype} >(a, b, k + z, 32 * t + k + z, id);
+        merge< ${dtype} >(a, b, k, id, z, k + z, min(k, 32 * t));
+    }
+
+    __global__ void ${merge_kernel}(
+            CArray<${dtype}, 1, true> a,  CArray<long long, 1, true> b,
+            int k, ptrdiff_t n, int sz, int s) {
+        ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
+            + threadIdx.x;
+        ptrdiff_t z = i / 32 * 2 * s * n / sz;
+        ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
+        int id = i % 32;
+        merge< ${dtype} >(a, b, k, id, z, m, k);
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)

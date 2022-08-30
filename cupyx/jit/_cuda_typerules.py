@@ -1,8 +1,8 @@
-from typing import Dict
-
 import ast
+from typing import Any, Callable, Mapping, Optional, Tuple, Type
 
 import numpy
+import numpy.typing as npt
 import operator
 
 import cupy
@@ -13,15 +13,6 @@ from cupy._binary import elementwise
 from cupy import _core
 
 from cupyx.jit import _cuda_types
-
-
-_numpy_scalar_true_divide = _core.create_ufunc(
-    'numpy_scalar_true_divide',
-    ('??->d', '?i->d', 'i?->d', 'bb->f', 'bi->d', 'BB->f', 'Bi->d',
-     'hh->f', 'HH->f', 'ii->d', 'II->d', 'll->d', 'LL->d', 'qq->d', 'QQ->d',
-     'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = (out0_type)in0 / (out0_type)in1',
-)
 
 
 _numpy_scalar_invert = _core.create_ufunc(
@@ -48,7 +39,7 @@ _scalar_gt = _core.create_comparison('scalar_less', '>')
 _scalar_gte = _core.create_comparison('scalar_less', '>=')
 
 
-_py_ops = {
+_py_ops: Mapping[Type[ast.AST], Callable[..., Any]] = {
     ast.And: lambda x, y: x and y,
     ast.Or: lambda x, y: x or y,
     ast.Add: operator.add,
@@ -75,14 +66,14 @@ _py_ops = {
 }
 
 
-_numpy_ops: Dict[type, cupy.ufunc] = {
+_numpy_ops: Mapping[Type[ast.AST], cupy.ufunc] = {
     ast.And: ops.logical_and,
     ast.Or: ops.logical_or,
     ast.Add: arithmetic.add,
     ast.Sub: arithmetic.subtract,
     ast.Mult: arithmetic.multiply,
     ast.Pow: arithmetic.power,
-    ast.Div: _numpy_scalar_true_divide,
+    ast.Div: arithmetic.true_divide,
     ast.FloorDiv: arithmetic.floor_divide,
     ast.Mod: arithmetic.remainder,
     ast.LShift: elementwise.left_shift,
@@ -102,11 +93,11 @@ _numpy_ops: Dict[type, cupy.ufunc] = {
 }
 
 
-def get_pyfunc(op_type):
+def get_pyfunc(op_type: Type[ast.AST]) -> Callable[..., Any]:
     return _py_ops[op_type]
 
 
-def get_ufunc(mode, op_type):
+def get_ufunc(mode: str, op_type: Type[ast.AST]) -> cupy.ufunc:
     if mode == 'numpy':
         return _numpy_ops[op_type]
     if mode == 'cuda':
@@ -114,7 +105,7 @@ def get_ufunc(mode, op_type):
     assert False
 
 
-def get_ctype_from_scalar(mode, x):
+def get_ctype_from_scalar(mode: str, x: Any) -> _cuda_types.Scalar:
     if isinstance(x, numpy.generic):
         return _cuda_types.Scalar(x.dtype)
 
@@ -147,13 +138,18 @@ def get_ctype_from_scalar(mode, x):
 _typechars = '?bBhHiIlLqQefdFD'
 
 
-def _cuda_can_cast(from_dtype, to_dtype):
+def _cuda_can_cast(from_dtype: npt.DTypeLike, to_dtype: npt.DTypeLike) -> bool:
     from_dtype = numpy.dtype(from_dtype)
     to_dtype = numpy.dtype(to_dtype)
     return _typechars.find(from_dtype.char) <= _typechars.find(to_dtype.char)
 
 
-def guess_routine(ufunc, in_types, dtype, mode):
+def guess_routine(
+        ufunc: cupy.ufunc,
+        in_types: Tuple[numpy.dtype, ...],
+        dtype: Optional[numpy.dtype],
+        mode: str,
+) -> cupy._core._kernel._Op:
     if dtype is not None:
         return ufunc._ops._guess_routine_from_dtype(dtype)
     can_cast = numpy.can_cast if mode == 'numpy' else _cuda_can_cast

@@ -1,7 +1,80 @@
 from typing import Any, Dict, List
 
 import cupy_builder.install_build as build
+import cupy_builder.install_utils as utils
 from cupy_builder import Context
+
+
+class Feature:
+    NOT_AVAILABLE = -1
+    _UNDETERMINED = -100
+
+    def __init__(self, ctx: Context):
+        # Name of the feature.
+        self.name = ''
+
+        # When True, fail the build if the feature is unavailable.
+        self.required = False
+
+        # List of Cython modules.
+        self.modules: List[str] = []
+
+        # C/C++ headers required for the feature.
+        # This is used only for testing availability of the feature.
+        self.includes: List[str] = []
+
+        # Shared libraries to be linked.
+        self.libraries: List[str] = []
+
+        # Version of the feature.
+        self._version: Any = self._UNDETERMINED
+
+    def configure(self, compiler: Any, settings: Any) -> bool:
+        # Fill `self._version` with the version or NOT_AVAILABLE
+        self._version = None
+        return True
+
+    def get_version(self) -> Any:
+        assert self._version != self._UNDETERMINED, 'not configured yet'
+        return self._version
+
+    def __contains__(self, key: Any) -> bool:
+        # TODO(kmaehashi): Remove this transient function.
+        if not isinstance(key, str):
+            return False
+        try:
+            self.__getitem__(key)
+        except AttributeError:
+            return False
+        return True
+
+    def __getitem__(self, key: str) -> Any:
+        # TODO(kmaehashi): Remove this transient function.
+        if key == 'file':
+            return self.modules
+        elif key == 'include':
+            return self.includes
+        return getattr(self, key)
+
+
+def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
+    # Define a feature from dict.
+    # TODO(kmaehashi): Remove this transient function.
+    f = Feature(ctx)
+    f.name = d['name']
+    f.required = d.get('required', False)
+    f.libraries = d['libraries']
+
+    # Note: the followings are renamed
+    f.modules = d['file']
+    f.includes = d['include']
+    if 'check_method' in d:
+        f.configure = d['check_method']  # type: ignore
+        f._version = None
+        if 'version_method' in d:
+            f.get_version = d['version_method']  # type: ignore
+    return f
+
 
 # The value of the key 'file' is a list that contains extension names
 # or tuples of an extension name and a list of other souces files
@@ -24,6 +97,7 @@ _cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
+    'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
     'cupy._core._carray',
     'cupy._core._cub_reduction',
@@ -68,7 +142,7 @@ _cuda_files = [
 ]
 
 
-def get_modules(context: Context) -> List[Dict[str, Any]]:
+def get_features(ctx: Context) -> Dict[str, Feature]:
     # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
@@ -107,33 +181,6 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
     }
-    CUDA_cuda = {
-        'name': 'cuda',
-        'required': True,
-        'file': _cuda_files,
-        'include': [
-            'cublas_v2.h',
-            'cuda.h',
-            'cuda_profiler_api.h',
-            'cuda_runtime.h',
-            'cufft.h',
-            'curand.h',
-            'cusparse.h',
-            'nvrtc.h',
-        ],
-        # TODO(kmaehashi): Split profiler module to remove dependency to
-        # cudart when using CUDA Python.
-        'libraries':
-            (['cudart'] if context.use_cuda_python else ['cuda', 'cudart']) + [
-                'cublas',
-                'cufft',
-                'curand',
-                'cusparse',
-                'nvrtc',
-        ],
-        'check_method': build.check_cuda_version,
-        'version_method': build.get_cuda_version,
-    }
     CUDA_cusolver = {
         'name': 'cusolver',
         'required': True,
@@ -147,7 +194,6 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         'libraries': [
             'cusolver',
         ],
-        'check_method': build.check_cuda_version,
     }
     CUDA_cudnn = {
         'name': 'cudnn',
@@ -364,27 +410,82 @@ def get_modules(context: Context) -> List[Dict[str, Any]]:
         'libraries': [],
     }
 
-    if context.use_hip:
-        return [
-            HIP_cuda_nvtx_cusolver,
-            HIP_cub,
-            HIP_nccl,
-            HIP_random,
-            HIP_thrust,
-            COMMON_dlpack,
+    if ctx.use_hip:
+        features = [
+            _from_dict(HIP_cuda_nvtx_cusolver, ctx),
+            _from_dict(HIP_cub, ctx),
+            _from_dict(HIP_nccl, ctx),
+            _from_dict(HIP_random, ctx),
+            _from_dict(HIP_thrust, ctx),
+            _from_dict(COMMON_dlpack, ctx),
         ]
+    else:
+        features = [
+            CUDA_cuda(ctx),
+            _from_dict(CUDA_cusolver, ctx),
+            _from_dict(CUDA_cudnn, ctx),
+            _from_dict(CUDA_nccl, ctx),
+            _from_dict(CUDA_nvtx, ctx),
+            _from_dict(CUDA_cutensor, ctx),
+            _from_dict(CUDA_cub, ctx),
+            _from_dict(CUDA_jitify, ctx),
+            _from_dict(CUDA_random, ctx),
+            _from_dict(CUDA_thrust, ctx),
+            _from_dict(CUDA_cusparselt, ctx),
+            _from_dict(COMMON_dlpack, ctx),
+        ]
+    return {f.name: f for f in features}
 
-    return [
-        CUDA_cuda,
-        CUDA_cusolver,
-        CUDA_cudnn,
-        CUDA_nccl,
-        CUDA_nvtx,
-        CUDA_cutensor,
-        CUDA_cub,
-        CUDA_jitify,
-        CUDA_random,
-        CUDA_thrust,
-        CUDA_cusparselt,
-        COMMON_dlpack,
-    ]
+
+class CUDA_cuda(Feature):
+    minimum_cuda_version = 10020
+
+    def __init__(self, ctx: Context):
+        self.name = 'cuda'
+        self.required = True
+        self.modules = _cuda_files
+        self.includes = [
+            'cublas_v2.h',
+            'cuda.h',
+            'cuda_profiler_api.h',
+            'cuda_runtime.h',
+            'cufft.h',
+            'curand.h',
+            'cusparse.h',
+            'nvrtc.h',
+        ]
+        # TODO(kmaehashi): Split profiler module so that dependency to
+        # `cudart` can be removed when using CUDA Python.
+        self.libraries = (
+            (['cudart'] if ctx.use_cuda_python else ['cuda', 'cudart']) + [
+                'cublas',
+                'cufft',
+                'curand',
+                'cusparse',
+                'nvrtc',
+            ]
+        )
+        self._version = self._UNDETERMINED
+
+    def configure(self, compiler: Any, settings: Any) -> bool:
+        try:
+            out = build.build_and_run(compiler, '''
+            #include <cuda.h>
+            #include <stdio.h>
+            int main() {
+              printf("%d", CUDA_VERSION);
+              return 0;
+            }
+            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+        except Exception as e:
+            utils.print_warning('Cannot check CUDA version', str(e))
+            return False
+
+        self._version = int(out)
+
+        if self._version < self.minimum_cuda_version:
+            utils.print_warning(
+                'CUDA version is too old: %d' % self._version,
+                'CUDA 10.2 or newer is required')
+            return False
+        return True

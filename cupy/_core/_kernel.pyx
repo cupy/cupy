@@ -25,7 +25,7 @@ from cupy._core._scalar import get_typename as _get_typename
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
 
@@ -84,7 +84,7 @@ cdef inline int _get_kind_score(int kind):
 
 
 @cython.profile(False)
-cdef inline _check_peer_access(ndarray arr, int device_id):
+cdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
         return
 
@@ -104,17 +104,17 @@ cdef inline _check_peer_access(ndarray arr, int device_id):
 
 
 cdef inline _preprocess_arg(int dev_id, arg, bint use_c_scalar):
-    if isinstance(arg, ndarray):
+    if isinstance(arg, _ndarray_base):
         s = arg
-        _check_peer_access(<ndarray>s, dev_id)
+        _check_peer_access(<_ndarray_base>s, dev_id)
     elif isinstance(arg, texture.TextureObject):
         s = arg
     elif hasattr(arg, '__cuda_array_interface__'):
         s = _convert_object_with_cuda_array_interface(arg)
-        _check_peer_access(<ndarray>s, dev_id)
+        _check_peer_access(<_ndarray_base>s, dev_id)
     elif hasattr(arg, '__cupy_get_ndarray__'):
         s = arg.__cupy_get_ndarray__()
-        _check_peer_access(<ndarray>s, dev_id)
+        _check_peer_access(<_ndarray_base>s, dev_id)
     else:  # scalars or invalid args
         if use_c_scalar:
             s = _scalar.scalar_to_c_scalar(arg)
@@ -182,7 +182,7 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_arg(object arg):
         typ = type(arg)
-        if issubclass(typ, ndarray):
+        if issubclass(typ, _ndarray_base):
             return _ArgInfo.from_ndarray(arg)
         if typ is _scalar.CScalar:
             return _ArgInfo.from_scalar(arg)
@@ -195,7 +195,7 @@ cdef class _ArgInfo:
         assert False, typ
 
     @staticmethod
-    cdef _ArgInfo from_ndarray(ndarray arg):
+    cdef _ArgInfo from_ndarray(_ndarray_base arg):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
             ARG_KIND_NDARRAY,
@@ -326,14 +326,14 @@ cdef str _get_kernel_params(tuple params, tuple arginfos):
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef ndarray arr
+    cdef _ndarray_base arr
 
     if shape.size() <= 1 or len(args) == 0:
         return shape
 
     if len(args) == 1:  # fast path for reduction
         a = args[0]
-        if (<ParameterInfo>params[0]).raw or not isinstance(a, ndarray):
+        if (<ParameterInfo>params[0]).raw or not isinstance(a, _ndarray_base):
             return shape
         arr = a
         arr = arr.reduced_view()
@@ -352,7 +352,7 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
     cdef vector.vector[int] array_indexes, axes
     cdef vector.vector[int] strides_indexes
     cdef ParameterInfo p
-    cdef ndarray arr
+    cdef _ndarray_base arr
 
     ndim = shape.size()
     array_indexes.reserve(len(args))
@@ -362,7 +362,7 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
         if p.raw:
             continue
         a = args[i]
-        if isinstance(a, ndarray):
+        if isinstance(a, _ndarray_base):
             array_indexes.push_back(i)
             arr = a
             if not arr._c_contiguous:
@@ -384,7 +384,8 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
             arr = args[i]
             newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
-            args[i] = arr._view(newshape, newstrides, False, True)
+            args[i] = arr._view(
+                type(arr), newshape, newstrides, False, True, arr)
         return newshape
 
     axes.reserve(ndim)
@@ -421,7 +422,7 @@ cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
         for ax in axes:
             newstrides.push_back(arr._strides[ax])
         # TODO(niboshi): Confirm update_x_contiguity flags
-        args[i] = arr._view(newshape, newstrides, False, True)
+        args[i] = arr._view(type(arr), newshape, newstrides, False, True, arr)
     return newshape
 
 
@@ -580,7 +581,7 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
     value = []
     for i, a in enumerate(args):
         p = params[i]
-        if not p.raw and isinstance(a, ndarray):
+        if not p.raw and isinstance(a, _ndarray_base):
             # Non-raw array
             any_nonraw_array = True
             value.append(a)
@@ -624,19 +625,21 @@ cdef void _complex_warning(dtype_from, dtype_to):
 
 
 cdef list _get_out_args_from_optionals(
-    list out_args, tuple out_types, const shape_t& out_shape, casting
+    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
+    obj
 ):
-    cdef ndarray arr
+    cdef _ndarray_base arr
 
     while len(out_args) < len(out_types):
         out_args.append(None)
 
     for i, a in enumerate(out_args):
         if a is None:
-            out_args[i] = _ndarray_init(out_shape, out_types[i])
+            out_args[i] = _ndarray_init(
+                subtype, out_shape, out_types[i], obj)
             continue
 
-        if not isinstance(a, ndarray):
+        if not isinstance(a, _ndarray_base):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         arr = a
@@ -657,10 +660,10 @@ cdef list _get_out_args_from_optionals(
 
 cdef _copy_in_args_if_needed(list in_args, list out_args):
     # `in_args` is an input and output argument
-    cdef ndarray inp, out
+    cdef _ndarray_base inp, out
     for i in range(len(in_args)):
         a = in_args[i]
-        if isinstance(a, ndarray):
+        if isinstance(a, _ndarray_base):
             inp = a
             for out in out_args:
                 if inp is not out and may_share_bounds(inp, out):
@@ -672,18 +675,19 @@ cdef list _get_out_args_with_params(
         list out_args, tuple out_types, const shape_t& out_shape,
         tuple out_params, bint is_size_specified):
     cdef ParameterInfo p
-    cdef ndarray arr
+    cdef _ndarray_base arr
     cdef shape_t shape
     cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
-        return [_ndarray_init(out_shape, t) for t in out_types]
+        return [_ndarray_init(
+            cupy.ndarray, out_shape, t, None) for t in out_types]
 
     for i, p in enumerate(out_params):
         a = out_args[i]
-        if not isinstance(a, ndarray):
+        if not isinstance(a, _ndarray_base):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         arr = a
@@ -855,7 +859,7 @@ cdef class ElementwiseKernel:
 
         in_ndarray_types = []
         for a in in_args:
-            if isinstance(a, ndarray):
+            if isinstance(a, _ndarray_base):
                 t = a.dtype.type
             elif isinstance(a, texture.TextureObject):
                 t = 'cudaTextureObject_t'
@@ -1035,7 +1039,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     max_scalar_kind = -1
     for i in in_args:
         kind = _get_kind_score(ord(i.dtype.kind))
-        if isinstance(i, ndarray):
+        if isinstance(i, _ndarray_base):
             all_scalars = False
             max_array_kind = max(max_array_kind, kind)
         else:
@@ -1224,7 +1228,7 @@ cdef class ufunc:
         if has_where:
             where_args = _preprocess_args(dev_id, (where,), False)
             x = where_args[0]
-            if isinstance(x, ndarray):
+            if isinstance(x, _ndarray_base):
                 # NumPy seems using casting=safe here
                 if x.dtype != bool:
                     raise TypeError(
@@ -1250,8 +1254,8 @@ cdef class ufunc:
                 and _accelerator.ACCELERATOR_CUTENSOR in
                 _accelerator._elementwise_accelerators):
             if (self.nin == 2 and self.nout == 1 and
-                    isinstance(in_args[0], ndarray) and
-                    isinstance(in_args[1], ndarray)):
+                    isinstance(in_args[0], _ndarray_base) and
+                    isinstance(in_args[1], _ndarray_base)):
                 ret = cupy.cutensor._try_elementwise_binary_routine(
                     in_args[0], in_args[1], dtype,
                     out_args[0] if len(out_args) == 1 else None,
@@ -1264,8 +1268,22 @@ cdef class ufunc:
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
+
+        # Determine a template object from which we initialize the output when
+        # inputs have subclass instances
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = cupy.ndarray
+        template = None
+        for in_arg in in_args:
+            in_arg_type = type(in_arg)
+            if issubclass1(in_arg_type, cupy.ndarray):
+                subtype = in_arg_type
+                template = in_arg
+                break
+
         out_args = _get_out_args_from_optionals(
-            out_args, op.out_types, shape, casting)
+            subtype, out_args, op.out_types, shape, casting, template)
         if self.nout == 1:
             ret = out_args[0]
         else:
@@ -1278,7 +1296,7 @@ cdef class ufunc:
         for i, t in enumerate(op.in_types):
             x = broad_values[i]
             inout_args.append(
-                x if isinstance(x, ndarray) else
+                x if isinstance(x, _ndarray_base) else
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         if has_where:
             x = broad_values[self.nin]
@@ -1408,7 +1426,7 @@ cdef class _Ops:
             use_raw_value = _check_should_use_min_scalar(in_args)
             if use_raw_value:
                 in_types = tuple([
-                    a.dtype.type if isinstance(a, ndarray)
+                    a.dtype.type if isinstance(a, _ndarray_base)
                     else _min_scalar_type(a)
                     for a in in_args])
             else:

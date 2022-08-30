@@ -11,6 +11,9 @@ class _TestBase:
     def test_ndtr(self):
         self.check_unary_linspace0_1('ndtr')
 
+    def test_log_ndtr(self):
+        self.check_unary_linspace0_1('log_ndtr')
+
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 

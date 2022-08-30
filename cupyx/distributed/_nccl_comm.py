@@ -64,7 +64,6 @@ class NCCLBackend(_Backend):
                  use_mpi=False):
         super().__init__(n_devices, rank, host, port)
         self._use_mpi = _mpi_available and use_mpi
-        self._rank = rank
         if self._use_mpi:
             self._init_with_mpi(n_devices, rank)
         else:
@@ -131,7 +130,11 @@ class NCCLBackend(_Backend):
 
     def _dispatch_arg_type(self, function, args):
         comm_class = _DenseNCCLCommunicator
-        if sparse.issparse(args[0]):
+        if (
+            (isinstance(args[0], (list, tuple))
+             and sparse.issparse(args[0][0]))
+            or sparse.issparse(args[0])
+        ):
             comm_class = _SparseNCCLCommunicator
         getattr(comm_class, function)(self, *args)
 
@@ -459,9 +462,9 @@ class _DenseNCCLCommunicator:
 
 
 def _make_sparse_empty(dtype, sparse_type):
-    data = cupy.array([0], dtype)
-    a = cupy.array([0], 'i')
-    b = cupy.array([0], 'i')
+    data = cupy.empty(1, dtype)
+    a = cupy.empty(1, 'i')
+    b = cupy.empty(1, 'i')
     if sparse_type == 'csr':
         return sparse.csr_matrix((data, a, b), shape=(0, 0))
     elif sparse_type == 'csc':
@@ -520,13 +523,22 @@ class _SparseNCCLCommunicator:
                 comm._mpi_comm.Recv(sizes_shape, source=peer, tag=1)
                 return sizes_shape
             elif method == 'bcast':
-                sizes_shape = numpy.array(sizes_shape, dtype='q')
-                return comm._mpi_comm.bcast(sizes_shape, root=peer)
+                if comm.rank == peer:
+                    sizes_shape = numpy.array(sizes_shape, dtype='q')
+                else:
+                    sizes_shape = numpy.empty(5, dtype='q')
+                comm._mpi_comm.Bcast(sizes_shape, root=peer)
+                return sizes_shape
             elif method == 'gather':
                 sizes_shape = numpy.array(sizes_shape, dtype='q')
-                # recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
-                return comm._mpi_comm.gather(sizes_shape, peer)
-                # return recv_buf
+                recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
+                comm._mpi_comm.Gather(sizes_shape, recv_buf, peer)
+                return recv_buf
+            elif method == 'alltoall':
+                sizes_shape = numpy.array(sizes_shape, dtype='q')
+                recv_buf = numpy.empty([comm._n_devices, 5], dtype='q')
+                comm._mpi_comm.Alltoall(sizes_shape, recv_buf)
+                return recv_buf
             else:
                 raise RuntimeError('Unsupported method')
         else:
@@ -549,7 +561,7 @@ class _SparseNCCLCommunicator:
                     comm, sizes_shape, peer, sizes_shape.dtype, 5, stream)
                 return cupy.asnumpy(sizes_shape)
             elif method == 'bcast':
-                if comm._rank == peer:
+                if comm.rank == peer:
                     sizes_shape = cupy.array(sizes_shape, dtype='q')
                 else:
                     sizes_shape = cupy.empty(5, dtype='q')
@@ -561,6 +573,12 @@ class _SparseNCCLCommunicator:
                 recv_buf = cupy.empty((comm._n_devices, 5), dtype='q')
                 _DenseNCCLCommunicator.gather(
                     comm, sizes_shape, recv_buf, root=peer, stream=stream)
+                return cupy.asnumpy(recv_buf)
+            elif method == 'alltoall':
+                sizes_shape = cupy.array(sizes_shape, dtype='q')
+                recv_buf = cupy.empty((comm._n_devices, 5), dtype='q')
+                _DenseNCCLCommunicator.all_to_all(
+                    comm, sizes_shape, recv_buf, stream=stream)
                 return cupy.asnumpy(recv_buf)
             else:
                 raise RuntimeError('Unsupported method')
@@ -595,7 +613,7 @@ class _SparseNCCLCommunicator:
         shape_and_sizes = cls._get_shape_and_sizes(arrays, in_array.shape)
         shape_and_sizes = cls._exchange_shape_and_sizes(
             comm, root, shape_and_sizes, 'gather', stream)
-        if comm._rank == root:
+        if comm.rank == root:
             if _get_sparse_type(in_array) != _get_sparse_type(out_array):
                 raise ValueError(
                     'in_array and out_array must be the same format')
@@ -637,7 +655,7 @@ class _SparseNCCLCommunicator:
     @classmethod
     def broadcast(cls, comm, in_out_array, root=0, stream=None):
         arrays = cls._get_internal_arrays(in_out_array)
-        if comm._rank == root:
+        if comm.rank == root:
             shape_and_sizes = cls._get_shape_and_sizes(
                 arrays, in_out_array.shape)
         else:
@@ -648,7 +666,7 @@ class _SparseNCCLCommunicator:
         shape = tuple(shape_and_sizes[0:2])
         sizes = shape_and_sizes[2:]
         # Naive approach, we send each of the subarrays one by one
-        if comm._rank != root:
+        if comm.rank != root:
             arrays = [
                 cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, arrays)]
         # TODO(ecastill): measure if its faster to just contatenate
@@ -662,11 +680,39 @@ class _SparseNCCLCommunicator:
     @classmethod
     def reduce_scatter(
             cls, comm, in_array, out_array, count, op='sum', stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # We need a LIST of sparse in_arrays and perform a reduction for each
+        # of the entries, then we will scatter that result
+        root = 0
+        reduce_out_arrays = []
+        if not isinstance(in_array, (list, tuple)):
+            raise ValueError(
+                'in_array must be a list or a tuple of sparse matrices')
+        for s_m in in_array:
+            partial_out_array = _make_sparse_empty(
+                s_m.dtype, _get_sparse_type(s_m))
+            cls.reduce(comm, s_m, partial_out_array, root, op, stream)
+            reduce_out_arrays.append(partial_out_array)
+        cls.scatter(comm, reduce_out_arrays, out_array, root, stream)
 
     @classmethod
     def all_gather(cls, comm, in_array, out_array, count, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # OutArray is a list
+        # This is like gather follow by a broadcast
+        # TODO(ecastill), broadcast a single array and split it instead
+        # of doing a loop of broadcasts
+        # TODO(ecastill) find a way to better determine the root, maybe random?
+        # super naive algorithm
+        root = 0
+        gather_out_arrays = []
+        cls.gather(comm, in_array, gather_out_arrays, root, stream)
+        if comm.rank != root:
+            gather_out_arrays = [
+                _make_sparse_empty(in_array.dtype, _get_sparse_type(in_array))
+                for _ in range(comm._n_devices)
+            ]
+        for arr in gather_out_arrays:
+            cls.broadcast(comm, arr, root, stream)
+            out_array.append(arr)
 
     @classmethod
     def send(cls, comm, array, peer, stream=None):
@@ -720,16 +766,78 @@ class _SparseNCCLCommunicator:
 
     @classmethod
     def send_recv(cls, comm, in_array, out_array, peer, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        nccl.groupStart()
+        cls.send(comm, in_array, peer, stream)
+        cls.recv(comm, out_array, peer, stream)
+        nccl.groupEnd()
 
     @classmethod
     def scatter(cls, comm, in_array, out_array, root=0, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # in_array is a list of sparse matrices
+        if comm.rank == root:
+            nccl.groupStart()
+            for peer, s_a in enumerate(in_array):
+                if peer != root:
+                    cls.send(comm, s_a, peer, stream)
+            nccl.groupEnd()
+            cls._assign_arrays(
+                out_array,
+                cls._get_internal_arrays(in_array[root]),
+                in_array[root].shape)
+        else:
+            cls.recv(comm, out_array, root, stream)
 
     @classmethod
     def gather(cls, comm, in_array, out_array, root=0, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # out_array is a list of sparse matrices
+        if comm.rank == root:
+            for peer in range(comm._n_devices):
+                res = _make_sparse_empty(
+                    in_array.dtype, _get_sparse_type(in_array))
+                if peer != root:
+                    cls.recv(comm, res, peer, stream)
+                else:
+                    cls._assign_arrays(
+                        res,
+                        cls._get_internal_arrays(in_array),
+                        in_array.shape)
+                out_array.append(res)
+        else:
+            cls.send(comm, in_array, root, stream)
 
     @classmethod
     def all_to_all(cls, comm, in_array, out_array, stream=None):
-        raise RuntimeError('Method not supported for sparse matrices')
+        # in_array & out_array is a list of sparse matrices
+        if len(in_array) != comm._n_devices:
+            raise RuntimeError(
+                f'all_to_all requires in_array to have {comm._n_devices}'
+                f'elements, found {len(in_array)}')
+
+        # Exchange metadata
+        shape_and_sizes = []
+        recv_shape_and_sizes = []
+        for i, a in enumerate(in_array):
+            arrays = cls._get_internal_arrays(a)
+            shape_and_sizes.append(cls._get_shape_and_sizes(arrays, a.shape))
+
+        recv_shape_and_sizes = cls._exchange_shape_and_sizes(
+            comm, i, shape_and_sizes, 'alltoall', stream)
+
+        # prepare the arrays to recv the data
+        for i in range(comm._n_devices):
+            shape = tuple(recv_shape_and_sizes[i][0:2])
+            sizes = recv_shape_and_sizes[i][2:]
+            s_arrays = cls._get_internal_arrays(in_array[i])
+            # TODO(use the out_array datatypes)
+            r_arrays = [
+                cupy.empty(s, dtype=a.dtype) for s, a in zip(sizes, s_arrays)]
+            nccl.groupStart()
+            for a in s_arrays:
+                cls._send(comm, a, i, a.dtype, a.size, stream)
+            for a in r_arrays:
+                cls._recv(comm, a, i, a.dtype, a.size, stream)
+            nccl.groupEnd()
+            out_array.append(_make_sparse_empty(
+                in_array[i].dtype,
+                _get_sparse_type(in_array[i])))
+            cls._assign_arrays(out_array[i], r_arrays, shape)

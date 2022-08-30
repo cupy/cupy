@@ -1,18 +1,19 @@
 from cupy._core._carray cimport shape_t
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cpdef compute_type_to_str(compute_type)
 
 cpdef get_compute_type(dtype)
 
-cpdef ndarray dot(ndarray a, ndarray b, ndarray out=*)
+cpdef _ndarray_base dot(_ndarray_base a, _ndarray_base b, _ndarray_base out=*)
 
-cpdef ndarray tensordot_core(
-    ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-    Py_ssize_t k, const shape_t& ret_shape)
+cpdef _ndarray_base tensordot_core(
+    _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
+    Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape)
 
-cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=*)
+cpdef _ndarray_base matmul(
+    _ndarray_base a, _ndarray_base b, _ndarray_base out=*)
 
 
 cpdef enum:

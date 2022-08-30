@@ -915,12 +915,16 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.uniform`
 
         """
-        dtype = numpy.dtype(dtype)
-        rand = self.random_sample(size=size, dtype=dtype)
         if not numpy.isscalar(low):
             low = cupy.asarray(low, dtype)
         if not numpy.isscalar(high):
             high = cupy.asarray(high, dtype)
+
+        if size is None:
+            size = cupy.broadcast(low, high).shape
+
+        dtype = numpy.dtype(dtype)
+        rand = self.random_sample(size=size, dtype=dtype)
         return RandomState._scale_kernel(low, high, rand)
 
     def vonmises(self, mu, kappa, size=None, dtype=float):

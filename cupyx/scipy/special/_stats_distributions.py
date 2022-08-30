@@ -32,6 +32,62 @@ ndtr = _core.create_ufunc(
     ''')
 
 
+log_ndtr_definition = """
+
+#define NPY_SQRT1_2   0.707106781186547524400844362104849039  /* 1/sqrt(2) */
+
+static __device__ double log_ndtr(double x)
+{
+    double t = x * NPY_SQRT1_2;
+    if (x < -1.0) {
+        return log(erfcx(-t) / 2) - t * t;
+    } else {
+        return log1p(-erfc(t) / 2);
+    }
+}
+
+static __device__ float log_ndtrf(float x)
+{
+    float t = x * NPY_SQRT1_2;
+    if (x < -1.0) {
+        return logf(erfcxf(-t) / 2) - t * t;
+    } else {
+        return log1pf(-erfcf(t) / 2);
+    }
+}
+
+"""
+
+
+log_ndtr = _core.create_ufunc(
+    'cupyx_scipy_special_log_ndtr',
+    (('f->f', 'out0 = log_ndtrf(in0)'), 'd->d'),
+    'out0 = log_ndtr(in0)',
+    preamble=log_ndtr_definition,
+    doc="""Logarithm of Gaussian cumulative distribution function.
+
+    Returns the log of the area under the standard Gaussian propability
+    density function.
+
+    Parameters
+    ----------
+    x : array-like
+        The input array
+
+    Returns
+    -------
+    y : cupy.ndarray
+        The value of the log of the normal cumulative distribution
+        function evaluated at x
+
+    See Also
+    --------
+    :func:`scipy.special.log_ndtr`
+
+    """,
+)
+
+
 ndtri = _core.create_ufunc(
     'cupyx_scipy_special_ndtri',
     (('f->f', 'out0 = normcdfinvf(in0)'), 'd->d'),

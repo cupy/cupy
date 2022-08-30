@@ -1009,10 +1009,6 @@ cusparseStatus_t cusparseCreateCsr(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-cusparseStatus_t cusparseCreateCsc(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 cusparseStatus_t cusparseDestroySpMat(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -1138,26 +1134,6 @@ cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
 }
 
 cusparseStatus_t cusparseConstrainedGeMM(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSparseToDense(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_convert(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

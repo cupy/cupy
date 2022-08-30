@@ -19,16 +19,6 @@ class TestCheckVersion(unittest.TestCase):
         self.settings = build.get_compiler_setting(False)
 
     @pytest.mark.gpu
-    @pytest.mark.skipif(test_hip, reason='For CUDA environment')
-    def test_check_cuda_version(self):
-        with self.assertRaises(RuntimeError):
-            build.get_cuda_version()
-        assert build.check_cuda_version(
-            self.compiler, self.settings)
-        assert isinstance(build.get_cuda_version(), int)
-        assert isinstance(build.get_cuda_version(True), str)
-
-    @pytest.mark.gpu
     @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
     def test_check_hip_version(self):
         with self.assertRaises(RuntimeError):

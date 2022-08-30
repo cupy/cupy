@@ -182,5 +182,6 @@ Miscellaneous
    fmax
    fmin
    nan_to_num
+   heaviside
    real_if_close
    interp

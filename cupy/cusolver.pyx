@@ -16,7 +16,7 @@ from cupy_backends.cuda.libs.cusolver cimport (  # noqa
 
 from cupy.cuda cimport memory
 from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.core cimport _ndarray_init, ndarray
+from cupy._core.core cimport _ndarray_init, _ndarray_base
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -288,7 +288,7 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     # TODO(leofang): try overlapping using a small stream pool?
 
-    cdef ndarray x, s, u, vt, dev_info
+    cdef _ndarray_base x, s, u, vt, dev_info
     cdef int n, m, k, batch_size, i, buffersize, d_size, status
     cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
     cdef str s_dtype
@@ -314,14 +314,15 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
-            u = _ndarray_init((batch_size, m, m), a_dtype)
+            u = _ndarray_init(_cupy.ndarray, (batch_size, m, m), a_dtype, None)
             vt = x[..., :n]
             job_u = b'A'
             job_vt = b'O'
             u_ptr, vt_ptr = u.data.ptr, 0
         else:
             u = x
-            vt = _ndarray_init((batch_size, k, n), a_dtype)
+            vt = _ndarray_init(
+                _cupy.ndarray, (batch_size, k, n), a_dtype, None)
             job_u = b'O'
             job_vt = b'S'
             u_ptr, vt_ptr = 0, vt.data.ptr
@@ -329,10 +330,10 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = b'N'
         job_vt = b'N'
-    s = _ndarray_init((batch_size, k), s_dtype)
+    s = _ndarray_init(_cupy.ndarray, (batch_size, k), s_dtype, None)
     s_ptr = s.data.ptr
     cdef intptr_t handle = _device.get_cusolver_handle()
-    dev_info = _ndarray_init((batch_size,), _numpy.int32)
+    dev_info = _ndarray_init(_cupy.ndarray, (batch_size,), _numpy.int32, None)
     info_ptr = dev_info.data.ptr
 
     if a_dtype == 'f':
@@ -887,7 +888,7 @@ cpdef _geqrf_orgqr_batched(a, mode):
     x_ptr = ap.data.ptr
 
     cdef intptr_t handle = _device.get_cusolver_handle()
-    dev_info = _ndarray_init((batch_size,), _numpy.int32)
+    dev_info = _ndarray_init(_cupy.ndarray, (batch_size,), _numpy.int32, None)
     info_ptr = dev_info.data.ptr
 
     cdef geqrf_ptr geqrf

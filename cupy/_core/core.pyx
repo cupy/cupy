@@ -92,29 +92,11 @@ cdef tuple _HANDLED_TYPES
 cdef object _null_context = contextlib.nullcontext()
 
 
-class _ndarray(ndarray):
-    def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
-        x = super().__new__(cls, *args, **kwargs)
-        if _no_init:
-            return x
-        x._init(*args, **kwargs)
-        if cls is not _ndarray:
-            x.__array_finalize__(_obj)
-        return x
+class ndarray(_ndarray_base):
+    """
+    __init__(self, shape, dtype=float, memptr=None, strides=None, order='C')
 
-    def __init__(self, *args, **kwargs):
-        # Prevent from calling the super class `ndarray.__init__()` as
-        # it is used to check accidental direct instantiation of underlaying
-        # `ndarray` extention.
-        pass
-
-    def __array_finalize__(self, obj):
-        pass
-
-
-cdef class ndarray:
-
-    """Multi-dimensional array on a CUDA device.
+    Multi-dimensional array on a CUDA device.
 
     This class implements a subset of methods of :class:`numpy.ndarray`.
     The difference is that this class allocates the array content on the
@@ -145,10 +127,55 @@ cdef class ndarray:
 
     """
 
+    __module__ = 'cupy'
+
+    def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
+        x = super().__new__(cls, *args, **kwargs)
+        if _no_init:
+            return x
+        x._init(*args, **kwargs)
+        if cls is not ndarray:
+            x.__array_finalize__(_obj)
+        return x
+
     def __init__(self, *args, **kwargs):
-        # Raise an error if underlaying `ndarray` extension type is directly
-        # instantiated. We must instantiate `_ndarray` class instead for our
-        # ndarray subclassing mechanism.
+        # Prevent from calling the super class `_ndarray_base.__init__()` as
+        # it is used to check accidental direct instantiation of underlaying
+        # `_ndarray_base` extention.
+        pass
+
+    def __array_finalize__(self, obj):
+        pass
+
+    # We provide the Python-level wrapper of `view` method to follow NumPy's
+    # API signature, as it seems that Cython's `cpdef`d methods does not take
+    # an argument named `type`. Cython also does not take starargs
+    # (`*args` and `**kwargs`) for `cpdef`d methods so we can not interpret the
+    # arguments `dtype` and `type` from them.
+    def view(self, dtype=None, type=None):
+        """Returns a view of the array.
+
+        Args:
+            dtype: If this is different from the data type of the array, the
+                returned view reinterpret the memory sequence as an array of
+                this type.
+
+        Returns:
+            cupy.ndarray: A view of the array. A reference to the original
+            array is stored at the :attr:`~ndarray.base` attribute.
+
+        .. seealso:: :meth:`numpy.ndarray.view`
+
+        """
+        return super(ndarray, self).view(dtype=dtype, array_class=type)
+
+
+cdef class _ndarray_base:
+
+    def __init__(self, *args, **kwargs):
+        # Raise an error if underlaying `_ndarray_base` extension type is
+        # directly instantiated. We must instantiate `ndarray` class instead
+        # for our ndarray subclassing mechanism.
         raise RuntimeError('Must not be directly instantiated')
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
@@ -486,7 +513,7 @@ cdef class ndarray:
         """Dumps a pickle of the array to a string."""
         return pickle.dumps(self, -1)
 
-    cpdef ndarray astype(
+    cpdef _ndarray_base astype(
             self, dtype, order='K', casting=None, subok=None, copy=True):
         """Casts the array to given data type.
 
@@ -541,11 +568,11 @@ cdef class ndarray:
 
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
-            newarray = _ndarray_init(self._shape, dtype)
+            newarray = _ndarray_init(ndarray, self._shape, dtype, None)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
         else:
-            newarray = _ndarray(self.shape, dtype=dtype, order=chr(order_char))
+            newarray = ndarray(self.shape, dtype=dtype, order=chr(order_char))
 
         if self.size == 0:
             # skip copy
@@ -560,7 +587,7 @@ cdef class ndarray:
 
     # TODO(okuta): Implement byteswap
 
-    cpdef ndarray copy(self, order='C'):
+    cpdef _ndarray_base copy(self, order='C'):
         """Returns a copy of the array.
 
         This method makes a copy of a given array in the current device.
@@ -580,7 +607,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.copy`
 
         """
-        cdef ndarray x
+        cdef _ndarray_base x
         if self.size == 0:
             return self.astype(self.dtype, order=order)
 
@@ -595,7 +622,7 @@ cdef class ndarray:
             x = self.astype(self.dtype, order=order, copy=False)
         finally:
             runtime.setDevice(prev_device)
-        newarray = _ndarray_init(x._shape, x.dtype)
+        newarray = _ndarray_init(ndarray, x._shape, x.dtype, None)
         if not x._c_contiguous and not x._f_contiguous:
             raise NotImplementedError(
                 'CuPy cannot copy non-contiguous array between devices.')
@@ -615,24 +642,30 @@ cdef class ndarray:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
         return newarray
 
-    cpdef ndarray view(self, dtype=None):
-        """Returns a view of the array.
-
-        Args:
-            dtype: If this is different from the data type of the array, the
-                returned view reinterpret the memory sequence as an array of
-                this type.
-
-        Returns:
-            cupy.ndarray: A view of the array. A reference to the original
-            array is stored at the :attr:`~ndarray.base` attribute.
-
-        .. seealso:: :meth:`numpy.ndarray.view`
-
-        """
+    cpdef _ndarray_base view(self, dtype=None, array_class=None):
         cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
-        v = self._view(self._shape, self._strides, False, False)
+
+        if dtype is not None:
+            if type(dtype) is type and issubclass(dtype, ndarray):
+                if array_class is not None:
+                    raise ValueError('Cannot specify output type twice.')
+                array_class = dtype
+                dtype = None
+
+        if (
+            array_class is not None and (
+                type(array_class) is not type or
+                not issubclass(array_class, ndarray)
+            )
+        ):
+            raise ValueError('Type must be a sub-type of ndarray type')
+
+        if array_class is None:
+            array_class = type(self)
+
+        v = self._view(
+            array_class, self._shape, self._strides, False, False, self)
         if dtype is None:
             return v
 
@@ -646,21 +679,15 @@ cdef class ndarray:
             raise ValueError(
                 'Changing the dtype of a 0d array is only supported if '
                 'the itemsize is unchanged')
-        if self._c_contiguous:
-            axis = ndim - 1
-        elif self._f_contiguous:
-            warnings.warn(
-                'Changing the shape of an F-contiguous array by '
-                'descriptor assignment is deprecated. To maintain the '
-                'Fortran contiguity of a multidimensional Fortran '
-                'array, use \'a.T.view(...).T\' instead',
-                DeprecationWarning)
-            axis = 0
-        else:
-            # Don't mention the deprecated F-contiguous support
+        axis = ndim - 1
+        if (
+            self._shape[axis] != 1
+            and self.size != 0
+            and self._strides[axis] != self.dtype.itemsize
+        ):
             raise ValueError(
-                'To change to a dtype of a different size, the array must '
-                'be C-contiguous')
+                'To change to a dtype of a different size, the last axis '
+                'must be contiguous')
 
         # Normalize `_strides[axis]` whenever itemsize changes
         v._strides[axis] = v_is
@@ -749,7 +776,7 @@ cdef class ndarray:
         """
         return _manipulation._ndarray_transpose(self, axes)
 
-    cpdef ndarray swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2):
+    cpdef _ndarray_base swapaxes(self, Py_ssize_t axis1, Py_ssize_t axis2):
         """Returns a view of the array with two axes swapped.
 
         .. seealso::
@@ -759,7 +786,7 @@ cdef class ndarray:
         """
         return _manipulation._ndarray_swapaxes(self, axis1, axis2)
 
-    cpdef ndarray flatten(self, order='C'):
+    cpdef _ndarray_base flatten(self, order='C'):
         """Returns a copy of the array flatten into one dimension.
 
         Args:
@@ -780,7 +807,7 @@ cdef class ndarray:
         """
         return _manipulation._ndarray_flatten(self, order)
 
-    cpdef ndarray ravel(self, order='C'):
+    cpdef _ndarray_base ravel(self, order='C'):
         """Returns an array flattened into one dimension.
 
         .. seealso::
@@ -791,7 +818,7 @@ cdef class ndarray:
         return _internal_ascontiguousarray(
             _manipulation._ndarray_ravel(self, order))
 
-    cpdef ndarray squeeze(self, axis=None):
+    cpdef _ndarray_base squeeze(self, axis=None):
         """Returns a view with size-one axes removed.
 
         .. seealso::
@@ -804,7 +831,7 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Item selection and manipulation
     # -------------------------------------------------------------------------
-    cpdef ndarray take(self, indices, axis=None, out=None):
+    cpdef _ndarray_base take(self, indices, axis=None, out=None):
         """Returns an array of elements at given indices along the axis.
 
         .. seealso::
@@ -857,7 +884,7 @@ cdef class ndarray:
         # TODO(takagi): Support kind argument.
         _sorting._ndarray_sort(self, axis)
 
-    cpdef ndarray argsort(self, axis=-1):
+    cpdef _ndarray_base argsort(self, axis=-1):
         """Returns the indices that would sort an array with stable sorting
 
         Args:
@@ -894,7 +921,7 @@ cdef class ndarray:
         """
         _sorting._ndarray_partition(self, kth, axis)
 
-    cpdef ndarray argpartition(self, kth, axis=-1):
+    cpdef _ndarray_base argpartition(self, kth, axis=-1):
         """Returns the indices that would partially sort an array.
 
         Args:
@@ -934,7 +961,7 @@ cdef class ndarray:
         """
         return _indexing._ndarray_nonzero(self)
 
-    cpdef ndarray compress(self, condition, axis=None, out=None):
+    cpdef _ndarray_base compress(self, condition, axis=None, out=None):
         """Returns selected slices of this array along given axis.
 
         .. warning::
@@ -948,7 +975,7 @@ cdef class ndarray:
         """
         return _indexing._ndarray_compress(self, condition, axis, out)
 
-    cpdef ndarray diagonal(self, offset=0, axis1=0, axis2=1):
+    cpdef _ndarray_base diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
 
         .. seealso::
@@ -961,7 +988,7 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Calculation
     # -------------------------------------------------------------------------
-    cpdef ndarray max(self, axis=None, out=None, keepdims=False):
+    cpdef _ndarray_base max(self, axis=None, out=None, keepdims=False):
         """Returns the maximum along a given axis.
 
         .. seealso::
@@ -971,8 +998,8 @@ cdef class ndarray:
         """
         return _statistics._ndarray_max(self, axis, out, None, keepdims)
 
-    cpdef ndarray argmax(self, axis=None, out=None, dtype=None,
-                         keepdims=False):
+    cpdef _ndarray_base argmax(
+            self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the indices of the maximum along a given axis.
 
         .. note::
@@ -990,7 +1017,7 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmax(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray min(self, axis=None, out=None, keepdims=False):
+    cpdef _ndarray_base min(self, axis=None, out=None, keepdims=False):
         """Returns the minimum along a given axis.
 
         .. seealso::
@@ -1000,8 +1027,8 @@ cdef class ndarray:
         """
         return _statistics._ndarray_min(self, axis, out, None, keepdims)
 
-    cpdef ndarray argmin(self, axis=None, out=None, dtype=None,
-                         keepdims=False):
+    cpdef _ndarray_base argmin(
+            self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the indices of the minimum along a given axis.
 
         .. note::
@@ -1019,7 +1046,7 @@ cdef class ndarray:
         """
         return _statistics._ndarray_argmin(self, axis, out, dtype, keepdims)
 
-    cpdef ndarray ptp(self, axis=None, out=None, keepdims=False):
+    cpdef _ndarray_base ptp(self, axis=None, out=None, keepdims=False):
         """Returns (maximum - minimum) along a given axis.
 
         .. seealso::
@@ -1029,7 +1056,7 @@ cdef class ndarray:
         """
         return _statistics._ndarray_ptp(self, axis, out, keepdims)
 
-    cpdef ndarray clip(self, min=None, max=None, out=None):
+    cpdef _ndarray_base clip(self, min=None, max=None, out=None):
         """Returns an array with values limited to [min, max].
 
         .. seealso::
@@ -1039,7 +1066,7 @@ cdef class ndarray:
         """
         return _math._ndarray_clip(self, min, max, out)
 
-    cpdef ndarray round(self, decimals=0, out=None):
+    cpdef _ndarray_base round(self, decimals=0, out=None):
         """Returns an array with values rounded to the given number of decimals.
 
         .. seealso::
@@ -1049,8 +1076,8 @@ cdef class ndarray:
         """
         return _round_ufunc(self, decimals, out=out)
 
-    cpdef ndarray trace(self, offset=0, axis1=0, axis2=1, dtype=None,
-                        out=None):
+    cpdef _ndarray_base trace(
+            self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         """Returns the sum along diagonals of the array.
 
         .. seealso::
@@ -1061,7 +1088,8 @@ cdef class ndarray:
         d = self.diagonal(offset, axis1, axis2)
         return d.sum(-1, dtype, out, False)
 
-    cpdef ndarray sum(self, axis=None, dtype=None, out=None, keepdims=False):
+    cpdef _ndarray_base sum(
+            self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the sum along a given axis.
 
         .. seealso::
@@ -1071,7 +1099,7 @@ cdef class ndarray:
         """
         return _math._ndarray_sum(self, axis, dtype, out, keepdims)
 
-    cpdef ndarray cumsum(self, axis=None, dtype=None, out=None):
+    cpdef _ndarray_base cumsum(self, axis=None, dtype=None, out=None):
         """Returns the cumulative sum of an array along a given axis.
 
         .. seealso::
@@ -1081,7 +1109,8 @@ cdef class ndarray:
         """
         return _math._ndarray_cumsum(self, axis, dtype, out)
 
-    cpdef ndarray mean(self, axis=None, dtype=None, out=None, keepdims=False):
+    cpdef _ndarray_base mean(
+            self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
 
         .. seealso::
@@ -1091,8 +1120,8 @@ cdef class ndarray:
         """
         return _statistics._ndarray_mean(self, axis, dtype, out, keepdims)
 
-    cpdef ndarray var(self, axis=None, dtype=None, out=None, ddof=0,
-                      keepdims=False):
+    cpdef _ndarray_base var(
+            self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         """Returns the variance along a given axis.
 
         .. seealso::
@@ -1103,8 +1132,8 @@ cdef class ndarray:
         return _statistics._ndarray_var(
             self, axis, dtype, out, ddof, keepdims)
 
-    cpdef ndarray std(self, axis=None, dtype=None, out=None, ddof=0,
-                      keepdims=False):
+    cpdef _ndarray_base std(
+            self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         """Returns the standard deviation along a given axis.
 
         .. seealso::
@@ -1114,7 +1143,8 @@ cdef class ndarray:
         """
         return _statistics._ndarray_std(self, axis, dtype, out, ddof, keepdims)
 
-    cpdef ndarray prod(self, axis=None, dtype=None, out=None, keepdims=None):
+    cpdef _ndarray_base prod(
+            self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis.
 
         .. seealso::
@@ -1124,7 +1154,7 @@ cdef class ndarray:
         """
         return _math._ndarray_prod(self, axis, dtype, out, keepdims)
 
-    cpdef ndarray cumprod(self, axis=None, dtype=None, out=None):
+    cpdef _ndarray_base cumprod(self, axis=None, dtype=None, out=None):
         """Returns the cumulative product of an array along a given axis.
 
         .. seealso::
@@ -1134,11 +1164,11 @@ cdef class ndarray:
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
 
-    cpdef ndarray all(self, axis=None, out=None, keepdims=False):
+    cpdef _ndarray_base all(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring
         return _logic._ndarray_all(self, axis, out, keepdims)
 
-    cpdef ndarray any(self, axis=None, out=None, keepdims=False):
+    cpdef _ndarray_base any(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring
         return _logic._ndarray_any(self, axis, out, keepdims)
 
@@ -1390,10 +1420,10 @@ cdef class ndarray:
     def __ixor__(self, other):
         return _binary._bitwise_xor(self, other, self)
 
-    cpdef ndarray conj(self):
+    cpdef _ndarray_base conj(self):
         return _math._ndarray_conj(self)
 
-    cpdef ndarray conjugate(self):
+    cpdef _ndarray_base conjugate(self):
         return _math._ndarray_conj(self)
 
     @property
@@ -1434,7 +1464,7 @@ cdef class ndarray:
 
     # Basic customization:
 
-    # cupy.ndarray does not define __new__
+    # _ndarray_base does not define __new__
 
     def __array__(self, dtype=None):
         # TODO(imanishi): Support an environment variable or a global
@@ -1704,7 +1734,7 @@ cdef class ndarray:
     # -------------------------------------------------------------------------
     # Methods outside of the ndarray main documentation
     # -------------------------------------------------------------------------
-    def dot(self, ndarray b, ndarray out=None):
+    def dot(self, _ndarray_base b, _ndarray_base out=None):
         """Returns the dot product with given array.
 
         .. seealso::
@@ -1855,7 +1885,7 @@ cdef class ndarray:
         finally:
             runtime.setDevice(prev_device)
 
-    cpdef ndarray reduced_view(self, dtype=None):
+    cpdef _ndarray_base reduced_view(self, dtype=None):
         """Returns a view of the array with minimum number of dimensions.
 
         Args:
@@ -1870,7 +1900,7 @@ cdef class ndarray:
         cdef shape_t shape
         cdef strides_t strides
         cdef Py_ssize_t ndim
-        cdef ndarray view
+        cdef _ndarray_base view
         if dtype is not None:
             warnings.warn(
                 'calling reduced_view with dtype is deprecated',
@@ -1893,7 +1923,7 @@ cdef class ndarray:
             return self
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        return self._view(shape, strides, False, True)
+        return self._view(type(self), shape, strides, False, True, self)
 
     cpdef _update_c_contiguity(self):
         if self.size == 0:
@@ -1943,13 +1973,14 @@ cdef class ndarray:
         if update_f_contiguity:
             self._update_f_contiguity()
 
-    cdef ndarray _view(self, const shape_t& shape,
-                       const strides_t& strides,
-                       bint update_c_contiguity,
-                       bint update_f_contiguity):
-        cdef ndarray v
-        # Use `_no_init=True`  to skip recomputation of contiguity.
-        v = _ndarray.__new__(_ndarray, _no_init=True)
+    cdef _ndarray_base _view(self, subtype, const shape_t& shape,
+                             const strides_t& strides,
+                             bint update_c_contiguity,
+                             bint update_f_contiguity, obj):
+        cdef _ndarray_base v
+        # Use `_no_init=True` to skip recomputation of contiguity. Now
+        # calling `__array_finalize__` is responsibility of this method.`
+        v = ndarray.__new__(subtype, _obj=obj, _no_init=True)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         v.dtype = self.dtype
@@ -1958,12 +1989,14 @@ cdef class ndarray:
         v._index_32_bits = self._index_32_bits
         v._set_shape_and_strides(
             shape, strides, update_c_contiguity, update_f_contiguity)
+        if subtype is not ndarray:
+            v.__array_finalize__(self)
         return v
 
     cpdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.get_contiguous_strides_inplace(
-            self._shape, self._strides, itemsize, is_c_contiguous)
+            self._shape, self._strides, itemsize, is_c_contiguous, True)
         if is_c_contiguous:
             self._c_contiguous = True
             self._update_f_contiguity()
@@ -2015,7 +2048,7 @@ cdef class ndarray:
         return dlpack.toDlpack(self)
 
 
-cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
+cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):
     # Creates CArray from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
@@ -2024,7 +2057,7 @@ cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
     return carr
 
 
-_HANDLED_TYPES = (_ndarray, numpy.ndarray)
+_HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
 # =============================================================================
@@ -2321,8 +2354,8 @@ _round_ufunc = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
-cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
-                    bint subok=False, Py_ssize_t ndmin=0):
+cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
+                          bint subok=False, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support subok options
     if subok:
         raise NotImplementedError
@@ -2348,10 +2381,10 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
     return _array_default(obj, dtype, order, ndmin)
 
 
-cdef ndarray _array_from_cupy_ndarray(
+cdef _ndarray_base _array_from_cupy_ndarray(
         obj, dtype, bint copy, order, Py_ssize_t ndmin):
     cdef Py_ssize_t ndim
-    cdef ndarray a, src
+    cdef _ndarray_base a, src
 
     src = obj
 
@@ -2373,14 +2406,14 @@ cdef ndarray _array_from_cupy_ndarray(
     return a
 
 
-cdef ndarray _array_from_cuda_array_interface(
+cdef _ndarray_base _array_from_cuda_array_interface(
         obj, dtype, bint copy, order, bint subok, Py_ssize_t ndmin):
     return array(
         _convert_object_with_cuda_array_interface(obj),
         dtype, copy, order, subok, ndmin)
 
 
-cdef ndarray _array_from_nested_sequence(
+cdef _ndarray_base _array_from_nested_sequence(
         obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
         concat_dtype):
     cdef Py_ssize_t ndim
@@ -2402,20 +2435,20 @@ cdef ndarray _array_from_nested_sequence(
     if concat_type is numpy.ndarray:
         return _array_from_nested_numpy_sequence(
             obj, concat_dtype, dtype, concat_shape, order, ndmin)
-    elif concat_type is _ndarray:  # TODO(takagi) Consider subclases
+    elif concat_type is ndarray:  # TODO(takagi) Consider subclases
         return _array_from_nested_cupy_sequence(
             obj, dtype, concat_shape, order)
     else:
         assert False
 
 
-cdef ndarray _array_from_nested_numpy_sequence(
+cdef _ndarray_base _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
         Py_ssize_t ndmin):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
-    cdef ndarray a  # allocate it after pinned memory is secured
+    cdef _ndarray_base a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
     cdef size_t nbytes = itemcount * a_dtype.itemsize
 
@@ -2438,7 +2471,7 @@ cdef ndarray _array_from_nested_numpy_sequence(
             get_dtype(src_dtype),
             a_dtype,
             src_cpu)
-        a = _ndarray(shape, dtype=a_dtype, order=order)
+        a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
@@ -2446,13 +2479,13 @@ cdef ndarray _array_from_nested_numpy_sequence(
         # Note: a_cpu.ndim is always >= 1
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
-        a = _ndarray(shape, dtype=a_dtype, order=order)
+        a = ndarray(shape, dtype=a_dtype, order=order)
         a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 
 
-cdef ndarray _array_from_nested_cupy_sequence(obj, dtype, shape, order):
+cdef _ndarray_base _array_from_nested_cupy_sequence(obj, dtype, shape, order):
     lst = _flatten_list(obj)
 
     # convert each scalar (0-dim) ndarray to 1-dim
@@ -2464,7 +2497,7 @@ cdef ndarray _array_from_nested_cupy_sequence(obj, dtype, shape, order):
     return a
 
 
-cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
+cdef _ndarray_base _array_default(obj, dtype, order, Py_ssize_t ndmin):
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
             order = 'F'
@@ -2477,7 +2510,7 @@ cdef ndarray _array_default(obj, dtype, order, Py_ssize_t ndmin):
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
-    cdef ndarray a = _ndarray(a_shape, dtype=a_dtype, order=order)
+    cdef _ndarray_base a = ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
         a.fill(a_cpu)
         return a
@@ -2589,23 +2622,23 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
     return None
 
 
-cpdef ndarray _internal_ascontiguousarray(ndarray a):
+cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
     if a._c_contiguous:
         return a
-    newarray = _ndarray_init(a._shape, a.dtype)
+    newarray = _ndarray_init(ndarray, a._shape, a.dtype, None)
     elementwise_copy(a, newarray)
     return newarray
 
 
-cpdef ndarray _internal_asfortranarray(ndarray a):
-    cdef ndarray newarray
+cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
+    cdef _ndarray_base newarray
     cdef int m, n
     cdef intptr_t handle
 
     if a._f_contiguous:
         return a
 
-    newarray = _ndarray(a.shape, a.dtype, order='F')
+    newarray = ndarray(a.shape, a.dtype, order='F')
     if (a._c_contiguous and a._shape.size() == 2 and
             (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
@@ -2631,7 +2664,7 @@ cpdef ndarray _internal_asfortranarray(ndarray a):
     return newarray
 
 
-cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
+cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=None):
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
     if dtype is None:
@@ -2647,13 +2680,13 @@ cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
         return a
 
     shape = (1,) if zero_dim else a.shape
-    newarray = _ndarray(shape, dtype)
+    newarray = ndarray(shape, dtype)
     elementwise_copy(a, newarray)
     return newarray
 
 
-cpdef ndarray asfortranarray(ndarray a, dtype=None):
-    cdef ndarray newarray
+cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
+    cdef _ndarray_base newarray
     cdef int m, n
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
@@ -2673,12 +2706,12 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
     if same_dtype and not zero_dim:
         return _internal_asfortranarray(a)
 
-    newarray = _ndarray((1,) if zero_dim else a.shape, dtype, order='F')
+    newarray = ndarray((1,) if zero_dim else a.shape, dtype, order='F')
     elementwise_copy(a, newarray)
     return newarray
 
 
-cpdef ndarray _convert_object_with_cuda_array_interface(a):
+cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     if runtime._is_hip_environment:
         raise RuntimeError(
             'HIP/ROCm does not support cuda array interface')
@@ -2716,17 +2749,21 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     if stream_ptr is not None:
         if _util.CUDA_ARRAY_INTERFACE_SYNC:
             runtime.streamSynchronize(stream_ptr)
-    return _ndarray(shape, dtype, memptr, strides)
+    return ndarray(shape, dtype, memptr, strides)
 
 
-cdef ndarray _ndarray_init(const shape_t& shape, dtype):
-    cdef ndarray ret = _ndarray.__new__(_ndarray, _no_init=True)
+cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj):
+    # Use `_no_init=True` for fast init. Now calling `__array_finalize__` is
+    # responsibility of this function.
+    cdef _ndarray_base ret = ndarray.__new__(subtype, _obj=obj, _no_init=True)
     ret._init_fast(shape, dtype, True)
+    if subtype is not ndarray:
+        ret.__array_finalize__(obj)
     return ret
 
 
-cdef ndarray _create_ndarray_from_shape_strides(
-        const shape_t& shape, const strides_t& strides, dtype):
+cdef _ndarray_base _create_ndarray_from_shape_strides(
+        subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
     cdef int ndim = shape.size()
     cdef int64_t begin = 0, end = dtype.itemsize
     cdef memory.MemoryPointer ptr
@@ -2736,4 +2773,5 @@ cdef ndarray _create_ndarray_from_shape_strides(
         elif strides[i] < 0:
             begin += strides[i] * (shape[i] - 1)
     ptr = memory.alloc(end - begin) + begin
-    return _ndarray(shape, dtype, memptr=ptr, strides=strides)
+    return ndarray.__new__(
+        subtype, shape, dtype, _obj=obj, memptr=ptr, strides=strides)

@@ -21,7 +21,7 @@ from cupy._core._scalar cimport get_typename
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport ascontiguousarray
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport _memory_range
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
@@ -368,13 +368,13 @@ cdef tuple _integral_tensordot_core_config():
     # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
     dim_y=16
-    blk_m=64
-    blk_n=64
-    blk_k=4
-    dim_xa=64
-    dim_ya=4
-    dim_xb=4
-    dim_yb=64
+    blk_m=128
+    blk_n=128
+    blk_k=2
+    dim_xa=128
+    dim_ya=2
+    dim_xb=2
+    dim_yb=128
     config = (('DIM_X', dim_x), ('DIM_Y', dim_y),
               ('BLK_M', blk_m), ('BLK_N', blk_n), ('BLK_K', blk_k),
               ('DIM_XA', dim_xa), ('DIM_YA', dim_ya),
@@ -383,9 +383,9 @@ cdef tuple _integral_tensordot_core_config():
     return config, dim_x, dim_y, blk_m, blk_n
 
 
-cdef ndarray _integral_tensordot_core(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
-        Py_ssize_t k, str dtype, const shape_t& ret_shape):
+cdef _ndarray_base _integral_tensordot_core(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
+        Py_ssize_t n, Py_ssize_t k, str dtype, const shape_t& ret_shape):
 
     config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
     kern = _tensordot_core_int_kernel(config, dtype)
@@ -396,9 +396,9 @@ cdef ndarray _integral_tensordot_core(
     return out
 
 
-cdef ndarray _integral_tensordot_core_batched(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
-        Py_ssize_t k, str dtype, Py_ssize_t batch_count):
+cdef _ndarray_base _integral_tensordot_core_batched(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
+        Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
     config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
     kern = _tensordot_core_int_batched_kernel(config, dtype)
@@ -417,9 +417,9 @@ cdef ndarray _integral_tensordot_core_batched(
     return out
 
 
-cdef ndarray _integral_tensordot_core_strided_batched(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
-        Py_ssize_t k, str dtype, Py_ssize_t batch_count):
+cdef _ndarray_base _integral_tensordot_core_strided_batched(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
+        Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
     config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
     kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
@@ -460,7 +460,8 @@ cpdef get_compute_type(dtype):
 
 
 @cython.profile(False)
-cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
+cpdef inline tuple _mat_to_cublas_contiguous(
+        _ndarray_base a, Py_ssize_t trans):
     assert a.ndim == 2
     if a._f_contiguous:
         # builtin max function is not used for Cython 0.23
@@ -473,7 +474,8 @@ cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
     return a, 1 - trans, a._strides[0] // a.itemsize
 
 
-cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
+cpdef _ndarray_base dot(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
     cdef Py_ssize_t a_ndim, b_ndim, a_axis, b_axis, n, m, k
     cdef bint input_a_is_vec, input_b_is_vec
     cdef shape_t ret_shape, shape
@@ -538,22 +540,22 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     return tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
-cpdef ndarray tensordot_core(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-        Py_ssize_t k, const shape_t& ret_shape):
+cpdef _ndarray_base tensordot_core(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
+        Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape):
     # out, if specified, must be C-contiguous and have correct shape.
     cdef shape_t shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode
     cdef intptr_t handle
-    cdef ndarray copy_to_out = None
+    cdef _ndarray_base copy_to_out = None
     cdef str dtype = a.dtype.char
     cdef int compute_capability = int(device.get_compute_capability())
     if dtype != b.dtype.char:
         dtype = numpy.promote_types(dtype, b.dtype).char
     if not a.size or not b.size:
         if out is None:
-            out = _ndarray_init(ret_shape, dtype)
+            out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
         out.fill(0)
         return out
 
@@ -562,7 +564,7 @@ cpdef ndarray tensordot_core(
     cdef int ace
     if m == 1 and n == 1:
         if out is None:
-            out = _ndarray_init(ret_shape, dtype)
+            out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
         c = _manipulation._reshape(out, ())
         for ace in _accelerator._routine_accelerators:
             # fast path using CUB or cuTENSOR
@@ -596,12 +598,12 @@ cpdef ndarray tensordot_core(
     b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
 
     if out is None:
-        out = c = _ndarray_init(ret_shape, dtype)
+        out = c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
     elif (
         _memory_range.may_share_bounds(out, a)
         or _memory_range.may_share_bounds(out, b)
     ):
-        copy_to_out = c = _ndarray_init(ret_shape, dtype)
+        copy_to_out = c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
     else:
         c = out
 
@@ -646,7 +648,7 @@ cpdef ndarray tensordot_core(
         dtype = 'f'
         a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
         b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
-        c = _ndarray_init(ret_shape, dtype)
+        c = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
         copy_to_out = c
         warnings.warn('On ROCm/HIP, there is no specialized API to handle '
                       'half precision floating numbers, so the computation '
@@ -698,10 +700,10 @@ cpdef ndarray tensordot_core(
     return out
 
 
-cpdef ndarray tensordot_core_v11(
+cpdef _ndarray_base tensordot_core_v11(
         Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n,
-        Py_ssize_t k, ndarray a, Py_ssize_t lda, ndarray b, Py_ssize_t ldb,
-        ndarray c, Py_ssize_t ldc):
+        Py_ssize_t k, _ndarray_base a, Py_ssize_t lda, _ndarray_base b,
+        Py_ssize_t ldb, _ndarray_base c, Py_ssize_t ldc):
     cdef float one_f, zero_f
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
@@ -771,7 +773,8 @@ cpdef ndarray tensordot_core_v11(
         algo)
 
 
-cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except? 0:
+cdef Py_ssize_t _get_stride_for_strided_batched_gemm(
+        _ndarray_base a) except? 0:
     cdef int ndim = a._shape.size()
     assert ndim > 2
     assert a._c_contiguous
@@ -784,7 +787,7 @@ cdef _mat_ptrs_kernel = ElementwiseKernel(
     reduce_dims=False)
 
 
-cpdef ndarray _mat_ptrs(ndarray a):
+cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     """Creates an array of pointers to matrices
     Args:
         a: A batch of matrices on GPU.
@@ -797,20 +800,21 @@ cpdef ndarray _mat_ptrs(ndarray a):
     cdef int ndim = a._shape.size()
     assert ndim > 2
     cdef Py_ssize_t sh_, st_
-    cdef ndarray idx
+    cdef _ndarray_base idx
     idx = _mat_ptrs_kernel(
         a.data.ptr, a._strides[0],
-        core._ndarray((a._shape[0],), dtype=numpy.uintp))
+        core.ndarray((a._shape[0],), dtype=numpy.uintp))
 
     for i in range(1, ndim - 2):
         idx = _mat_ptrs_kernel(
             idx[:, None], a._strides[i],
-            core._ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+            core.ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
         idx = idx.ravel()
     return idx
 
 
-cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
+cpdef _ndarray_base matmul(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
     """Matrix product of two arrays.
 
     Returns the matrix product of two arrays and is the implementation of
@@ -818,9 +822,6 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     The main difference against cupy.dot are the handling of arrays with more
     than 2 dimensions. For more information see :func:`numpy.matmul`.
-
-    .. note::
-        The out array as input is currently not supported.
 
     Args:
         a (cupy.ndarray): The left argument.
@@ -837,7 +838,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
-    cdef ndarray ap, bp, cp, c_view
+    cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
 
     orig_a_ndim = a._shape.size()
@@ -852,7 +853,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         ret_dtype = numpy.promote_types(a.dtype, b.dtype)
         if out._c_contiguous and ret_dtype == out.dtype:
             return dot(a, b, out)
-        c = _ndarray_init(out._shape, dtype=ret_dtype)
+        c = _ndarray_init(cupy.ndarray, out._shape, dtype=ret_dtype, obj=None)
         dot(a, b, c)
         elementwise_copy(c, out)
         return out
@@ -962,12 +963,12 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     ):
         c = out
     else:
-        c = core._ndarray(out_shape, dtype=dtype)
+        c = core.ndarray(out_shape, dtype=dtype)
         if out is None:
             if dtype == ret_dtype:
                 out = c
             else:
-                out = core._ndarray(out_shape, dtype=ret_dtype)
+                out = core.ndarray(out_shape, dtype=ret_dtype)
 
     if orig_a_ndim == 1 or orig_b_ndim == 1:
         c_view = c.view()

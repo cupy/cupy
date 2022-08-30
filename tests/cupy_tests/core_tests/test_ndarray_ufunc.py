@@ -5,6 +5,19 @@ import cupy
 from cupy import testing
 
 
+class C(cupy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
 @testing.gpu
 class TestArrayUfunc:
 
@@ -88,6 +101,46 @@ class TestArrayUfunc:
         b = xp.transpose(a)
         a += b
         return a
+
+    def test_subclass_unary_op(self):
+        a = cupy.array([0, 1, 2]).view(C)
+        a.info = 1
+        outa = cupy.sin(a)
+        assert isinstance(outa, C)
+        assert outa.info is not None and outa.info == 1
+
+        b = a.get()
+        outb = numpy.sin(b)
+        testing.assert_allclose(outa, outb)
+
+    def test_subclass_binary_op(self):
+        a0 = cupy.array([0, 1, 2]).view(C)
+        a0.info = 1
+        a1 = cupy.array([3, 4, 5]).view(C)
+        a1.info = 2
+        outa = cupy.add(a0, a1)
+        assert isinstance(outa, C)
+        # a0 is used to initialize outa.info
+        assert outa.info is not None and outa.info == 1
+
+        b0 = a0.get()
+        b1 = a1.get()
+        outb = numpy.add(b0, b1)
+        testing.assert_allclose(outa, outb)
+
+    def test_subclass_binary_op_mixed(self):
+        a0 = cupy.array([0, 1, 2])
+        a1 = cupy.array([3, 4, 5]).view(C)
+        a1.info = 1
+        outa = cupy.add(a0, a1)
+        assert isinstance(outa, C)
+        # The first appearance of C's instance is used to initialize outa.info
+        assert outa.info is not None and outa.info == 1
+
+        b0 = a0.get()
+        b1 = a1.get()
+        outb = numpy.add(b0, b1)
+        testing.assert_allclose(outa, outb)
 
 
 class TestUfunc:

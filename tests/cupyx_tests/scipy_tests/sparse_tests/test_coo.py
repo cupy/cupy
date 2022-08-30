@@ -860,7 +860,9 @@ class TestCooMatrixScipyComparison:
                 x * m
 
     @pytest.mark.xfail(
-        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1',
+        scipy_available and
+        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
+        numpy.lib.NumpyVersion(scipy.__version__) <= '1.9.0rc1',
         reason='See scipy/15210')
     def test_rmul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):

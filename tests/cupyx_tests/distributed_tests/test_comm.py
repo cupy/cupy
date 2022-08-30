@@ -2,6 +2,7 @@ import pathlib
 import subprocess
 import sys
 import unittest
+import os
 
 import numpy
 import pytest
@@ -36,14 +37,16 @@ def _run_test_with_mpi(test_name, dtype=None):
     # subprocess is required not to interfere with cupy module imported in top
     # of this file
     runner_path = pathlib.Path(__file__).parent / 'comm_runner.py'
-    args = ['mpiexec', '-n', '2',
+    args = ['mpiexec', '-n', '2', '--allow-run-as-root',
             sys.executable, runner_path, test_name, 'mpi']
     if dtype is not None:
         args.append(numpy.dtype(dtype).char)
     proc = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE,
+        env=os.environ
+    )
     stdoutdata, stderrdata = proc.communicate()
     assert stderrdata.decode() == ''
     assert proc.returncode == 0
@@ -127,6 +130,30 @@ class TestNCCLBackendSparse:
     @testing.for_dtypes('fdFD')
     def test_all_reduce(self, dtype):
         self._run_test('sparse_all_reduce', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_scatter(self, dtype):
+        self._run_test('sparse_scatter', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_gather(self, dtype):
+        self._run_test('sparse_gather', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_all_gather(self, dtype):
+        self._run_test('sparse_all_gather', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_all_to_all(self, dtype):
+        self._run_test('sparse_all_to_all', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_reduce_scatter(self, dtype):
+        self._run_test('sparse_reduce_scatter', dtype)
+
+    @testing.for_dtypes('fdFD')
+    def test_send_recv(self, dtype):
+        self._run_test('sparse_send_recv', dtype)
 
 
 @pytest.mark.skipif(not _mpi_available, reason='mpi is not installed')

@@ -64,6 +64,7 @@ class TestVectorizeOps(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.with_requires('numpy>=1.23')
     def test_vectorize_div(self, xp, dtype1, dtype2):
         def my_div(x, y):
             return x / y
@@ -424,7 +425,7 @@ class TestVectorizeStmts(unittest.TestCase):
             res = 0
             for i in range(x, y, z):
                 res += i * i
-            return x
+            return res
 
         f = xp.vectorize(func_for)
         start = xp.array([0, 1, 2, 3, 4, 5])

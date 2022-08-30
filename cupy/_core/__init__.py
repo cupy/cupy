@@ -48,7 +48,7 @@ from cupy._core._routines_manipulation import rollaxis  # NOQA
 from cupy._core._routines_manipulation import size  # NOQA'
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
-from cupy._core._routines_math import angle  # NOQA
+from cupy._core._routines_math import angle, angle_deg  # NOQA
 from cupy._core._routines_math import conjugate  # NOQA
 from cupy._core._routines_math import divide  # NOQA
 from cupy._core._routines_math import floor_divide  # NOQA
@@ -69,7 +69,7 @@ from cupy._core.core import ascontiguousarray  # NOQA
 from cupy._core.core import asfortranarray  # NOQA
 from cupy._core.core import divmod  # NOQA
 from cupy._core.core import elementwise_copy  # NOQA
-from cupy._core.core import _ndarray as ndarray  # NOQA
+from cupy._core.core import ndarray  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
 from cupy._core.dlpack import from_dlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA

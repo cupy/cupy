@@ -10,7 +10,7 @@ import warnings
 
 import numpy
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cdef extern from 'halffloat.h':
@@ -130,13 +130,27 @@ cdef void get_reduced_dims(
 @cython.profile(False)
 cdef inline Py_ssize_t get_contiguous_strides_inplace(
         const shape_t& shape, strides_t& strides,
-        Py_ssize_t itemsize, bint is_c_contiguous):
+        Py_ssize_t itemsize, bint is_c_contiguous, bint zeros_for_zerosize):
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
     cdef int i, ndim = shape.size()
     cdef Py_ssize_t idx
     strides.resize(ndim, 0)
     st = 1
+
+    # For some cases, the strides are all set to zero if the shape is
+    # zero-sized since NumPy 1.23.
+    if zeros_for_zerosize:
+        for i in range(ndim):
+            sh = shape[i]
+            if sh == 0:
+                is_nonzero_size = 0
+                break
+
+        if is_nonzero_size == 0:
+            for i in range(ndim):
+                strides[i] = 0
+            return 0
 
     for i in range(ndim):
         if is_c_contiguous:
@@ -335,14 +349,14 @@ cdef _broadcast_core(list arrays, shape_t& shape):
     cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
     cdef strides_t strides
     cdef vector.vector[int] index
-    cdef ndarray a
+    cdef _ndarray_base a
     cdef list ret
 
     shape.clear()
     index.reserve(len(arrays))
     nd = 0
     for i, x in enumerate(arrays):
-        if not isinstance(x, ndarray):
+        if not isinstance(x, _ndarray_base):
             continue
         a = x
         index.push_back(i)
@@ -368,7 +382,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
             raise ValueError(
                 'operands could not be broadcast together with shapes {}'
                 .format(
-                    ' '.join([str(x.shape) if isinstance(x, ndarray)
+                    ' '.join([str(x.shape) if isinstance(x, _ndarray_base)
                               else '()' for x in arrays])))
         shape.push_back(s)
 
@@ -385,7 +399,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
                 strides[j + nd - a_ndim] = a._strides[j]
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(shape, strides, True, True)
+        arrays[i] = a._view(type(a), shape, strides, True, True, a)
 
 
 @cython.boundscheck(False)

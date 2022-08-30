@@ -444,10 +444,12 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __double2half(const double a)
     return val;
 #else
     __half result;
+    /*
     // Perform rounding to 11 bits of precision, convert value
     // to float and call existing float to half conversion.
     // By pre-rounding to 11 bits we avoid additional rounding
     // in float to half conversion.
+    */
     unsigned long long int absa;
     unsigned long long int ua;
     #if defined(__CUDACC__)
@@ -458,12 +460,15 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __double2half(const double a)
     absa = (ua & 0x7fffffffffffffffULL);
     if ((absa >= 0x40f0000000000000ULL) || (absa <= 0x3e60000000000000ULL))
     {
+        /*
         // |a| >= 2^16 or NaN or |a| <= 2^(-25)
         // double-rounding is not a problem
+        */
         result = __float2half(static_cast<float>(a));
     }
     else
     {
+        /*
         // here 2^(-25) < |a| < 2^16
         // prepare shifter value such that a + shifter
         // done in double precision performs round-to-nearest-even
@@ -474,15 +479,22 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __double2half(const double a)
         // So need to have |a| capped to avoid overflow in exponent.
         // For inputs that are smaller than half precision minnorm
         // we prepare fixed shifter exponent.
+        */
         unsigned long long shifterBits;
         if (absa >= 0x3f10000000000000ULL)
-        {   // Here if |a| >= 2^(-14)
+        {
+            /*
+            // Here if |a| >= 2^(-14)
             // add 42 to exponent bits
+            */
             shifterBits  = (ua & 0x7ff0000000000000ULL) + 0x02A0000000000000ULL;
         }
         else
-        {   // 2^(-25) < |a| < 2^(-14), potentially results in denormal
+        {
+            /*
+            // 2^(-25) < |a| < 2^(-14), potentially results in denormal
             // set exponent bits to 42 - 14 + bias
+            */
             shifterBits = 0x41B0000000000000ULL;
         }
         // set leading mantissa bit to protect against negative inputs
@@ -495,8 +507,10 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __double2half(const double a)
         #endif
         double aShiftRound = a + shifter;
 
+        /*
         // Prevent the compiler from optimizing away a + shifter - shifter
         // by doing intermediate memcopy and harmless bitwize operation
+        */
         unsigned long long int aShiftRoundBits;
         #if defined(__CUDACC__)
             (void)memcpy(&aShiftRoundBits, &aShiftRound, sizeof(aShiftRound));
@@ -1374,6 +1388,75 @@ __CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i)
     __HALF_TO_US(h) = i;
     return h;
 }
+
+/******************************************************************************
+*                             __half arithmetic                             *
+******************************************************************************/
+__CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b)
+{
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+    __BINARY_OP_HALF_MACRO(max)
+#else
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    float fr;
+    asm("{max.f32 %0,%1,%2;\n}"
+        :"=f"(fr) : "f"(fa), "f"(fb));
+    const __half hr = __float2half(fr);
+    return hr;
+#endif
+}
+__CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b)
+{
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+    __BINARY_OP_HALF_MACRO(min)
+#else
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    float fr;
+    asm("{min.f32 %0,%1,%2;\n}"
+        :"=f"(fr) : "f"(fa), "f"(fb));
+    const __half hr = __float2half(fr);
+    return hr;
+#endif
+}
+
+/******************************************************************************
+*                            __half2 arithmetic                             *
+******************************************************************************/
+__CUDA_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b)
+{
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+    __BINARY_OP_HALF2_MACRO(max)
+#else
+    const float2 fa = __half22float2(a);
+    const float2 fb = __half22float2(b);
+    float2 fr;
+    asm("{max.f32 %0,%1,%2;\n}"
+        :"=f"(fr.x) : "f"(fa.x), "f"(fb.x));
+    asm("{max.f32 %0,%1,%2;\n}"
+        :"=f"(fr.y) : "f"(fa.y), "f"(fb.y));
+    const __half2 hr = __float22half2_rn(fr);
+    return hr;
+#endif
+}
+__CUDA_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b)
+{
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+    __BINARY_OP_HALF2_MACRO(min)
+#else
+    const float2 fa = __half22float2(a);
+    const float2 fb = __half22float2(b);
+    float2 fr;
+    asm("{min.f32 %0,%1,%2;\n}"
+        :"=f"(fr.x) : "f"(fa.x), "f"(fb.x));
+    asm("{min.f32 %0,%1,%2;\n}"
+        :"=f"(fr.y) : "f"(fa.y), "f"(fb.y));
+    const __half2 hr = __float22half2_rn(fr);
+    return hr;
+#endif
+}
+
 
 #if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 300)
 /******************************************************************************
@@ -2428,20 +2511,10 @@ __CUDA_FP16_DECL__ __half2 __hcmadd(const __half2 a, const __half2 b, const __ha
     img_tmp  = __hfma(a.y,         b.x, img_tmp);
     return make_half2(real_tmp, img_tmp);
 }
+
 #endif /*!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)*/
 
 #if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
-/******************************************************************************
-*                             __half arithmetic                             *
-******************************************************************************/
-__CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b)
-{
-    __BINARY_OP_HALF_MACRO(max)
-}
-__CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b)
-{
-    __BINARY_OP_HALF_MACRO(min)
-}
 __CUDA_FP16_DECL__ __half __hmax_nan(const __half a, const __half b)
 {
     __BINARY_OP_HALF_MACRO(max.NaN)
@@ -2454,17 +2527,7 @@ __CUDA_FP16_DECL__ __half __hfma_relu(const __half a, const __half b, const __ha
 {
     __TERNARY_OP_HALF_MACRO(fma.rn.relu)
 }
-/******************************************************************************
-*                            __half2 arithmetic                             *
-******************************************************************************/
-__CUDA_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b)
-{
-    __BINARY_OP_HALF2_MACRO(max)
-}
-__CUDA_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b)
-{
-    __BINARY_OP_HALF2_MACRO(min)
-}
+
 __CUDA_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b)
 {
     __BINARY_OP_HALF2_MACRO(max.NaN)

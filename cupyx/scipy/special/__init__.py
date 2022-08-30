@@ -30,6 +30,7 @@ from cupyx.scipy.special._stats_distributions import chdtr  # NOQA
 from cupyx.scipy.special._stats_distributions import chdtrc  # NOQA
 from cupyx.scipy.special._stats_distributions import chdtri  # NOQA
 from cupyx.scipy.special._stats_distributions import ndtr  # NOQA
+from cupyx.scipy.special._stats_distributions import log_ndtr  # NOQA
 from cupyx.scipy.special._stats_distributions import ndtri  # NOQA
 from cupyx.scipy.special._statistics import logit  # NOQA
 from cupyx.scipy.special._statistics import expit  # NOQA
@@ -78,6 +79,9 @@ from cupyx.scipy.special._lpmv import lpmv  # NOQA
 from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 
 # Other special functions
+from cupyx.scipy.special._expn import expn  # NOQA
+from cupyx.scipy.special._softmax import softmax  # NOQA
+from cupyx.scipy.special._logsoftmax import log_softmax  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
 
 # Convenience functions
@@ -91,7 +95,8 @@ from cupyx.scipy.special._basic import tandg  # NOQA
 from cupyx.scipy.special._basic import cotdg  # NOQA
 from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._basic import expm1  # NOQA
-from cupy import round  # NOQA
+from cupyx.scipy.special._basic import cosm1  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA
 from cupyx.scipy.special._xlogy import xlog1py  # NOQA
-from cupy import sinc  # NOQA
+from cupy._math.special import sinc  # NOQA

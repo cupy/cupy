@@ -11,10 +11,13 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
+import sys as _sys
+
 cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda._softlink cimport SoftLink
 
 
 ###############################################################################
@@ -37,14 +40,26 @@ ELSE:
         int nvrtcGetPTX(Program prog, char *ptx)
         int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
         int nvrtcGetCUBIN(Program prog, char *cubin)
-        int nvrtcGetNVVMSize(Program, size_t*)
-        int nvrtcGetNVVM(Program, char*)
         int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
         int nvrtcGetProgramLog(Program prog, char* log)
         int nvrtcAddNameExpression(Program, const char*)
         int nvrtcGetLoweredName(Program, const char*, const char**)
-        int nvrtcGetNumSupportedArchs(int* numArchs)
-        int nvrtcGetSupportedArchs(int* supportedArchs)
+
+    ctypedef int (*f_type)(...) nogil  # NOQA
+    IF 11020 <= CUPY_CUDA_VERSION < 12000:
+        if _sys.platform == 'linux':
+            _libname = 'libnvrtc.so.11.2'
+        else:
+            _libname = 'nvrtc64_112_0.dll'
+    ELSE:
+        _libname = None
+
+    cdef SoftLink _lib = SoftLink(_libname, 'nvrtc')
+    # APIs added after CUDA 11.2+.
+    cdef f_type nvrtcGetNumSupportedArchs = <f_type>_lib.get('GetNumSupportedArchs')  # NOQA
+    cdef f_type nvrtcGetSupportedArchs = <f_type>_lib.get('GetSupportedArchs')  # NOQA
+    cdef f_type nvrtcGetNVVMSize = <f_type>_lib.get('GetNVVMSize')
+    cdef f_type nvrtcGetNVVM = <f_type>_lib.get('GetNVVM')
 
 
 ###############################################################################
@@ -82,9 +97,7 @@ cpdef tuple getSupportedArchs():
     cdef vector.vector[int] archs
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getSupportedArchs")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
     with nogil:
         status = nvrtcGetNumSupportedArchs(&num_archs)
@@ -178,9 +191,7 @@ cpdef bytes getCUBIN(intptr_t prog):
     cdef char* cubin_ptr = NULL
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getCUBIN")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11010:
-        raise RuntimeError("getCUBIN is supported since CUDA 11.1")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11010:
+    if runtime.runtimeGetVersion() < 11010:
         raise RuntimeError("getCUBIN is supported since CUDA 11.1")
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
@@ -203,9 +214,7 @@ cpdef bytes getCUBIN(intptr_t prog):
 cpdef bytes getNVVM(intptr_t prog):
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getNVVM")
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11040:
-        raise RuntimeError("getNVVM is supported since CUDA 11.4")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11040:
+    if runtime.runtimeGetVersion() < 11040:
         raise RuntimeError("getNVVM is supported since CUDA 11.4")
 
     cdef size_t nvvmSizeRet = 0
