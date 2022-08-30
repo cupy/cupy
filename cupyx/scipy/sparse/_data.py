@@ -225,7 +225,7 @@ class _minmax_mixin(object):
             if self.nnz == 0:
                 return 0
             else:
-                zero = self.dtype.type(0)
+                zero = cupy.asarray(self.dtype.type(0))
                 mat = self.tocoo()
 
                 mat.sum_duplicates()
@@ -243,7 +243,7 @@ class _minmax_mixin(object):
                         ind = mat.row * mat.shape[1] + mat.col
                         zero_ind = _find_missing_index(ind, size)
                         if m == zero:
-                            return min(zero_ind, am)
+                            return cupy.min(zero_ind, am)
                         else:
                             return zero_ind
 
