@@ -9,19 +9,15 @@ def byte_bounds(a):
     .. seealso:: :func:`numpy.byte_bounds`
     """
     a_low = a_high = a.data.ptr
-    astrides = a.strides
-    ashape = a.shape
-    bytes_a = a.dtype.itemsize
+    a_strides = a.strides
+    a_shape = a.shape
+    a_item_bytes = a.itemsize
 
-    if astrides is None:
-        # contiguous case
-        a_high += a.size * bytes_a
-    else:
-        # non-contiguous case
-        for shape, stride in zip(ashape, astrides):
-            if stride < 0:
-                a_low += (shape - 1) * stride
-            else:
-                a_high += (shape - 1) * stride
-        a_high += bytes_a
+    for shape, stride in zip(a_shape, a_strides):
+        if stride < 0:
+            a_low += (shape - 1) * stride
+        else:
+            a_high += (shape - 1) * stride
+
+    a_high += a_item_bytes
     return a_low, a_high
