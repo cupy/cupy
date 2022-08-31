@@ -41,6 +41,12 @@ class TestSpecial:
     def test_i1e(self):
         self.check_unary('i1e')
 
+    def test_k0(self):
+        self.check_unary('k0')
+
+    def test_k0e(self):
+        self.check_unary('k0e')
+
     @testing.for_dtypes('iId', name='order_dtype')
     @testing.for_dtypes('efd')
     @testing.numpy_cupy_allclose(atol=1e-12, scipy_name='scp')
