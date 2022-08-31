@@ -233,7 +233,9 @@ class _minmax_mixin(object):
                 am = op(mat.data)
                 m = mat.data[am]
 
-                if compare(m, zero):
+                zero_cmp = cupy.where(compare(m, zero), True, False)
+
+                if zero_cmp:
                     return mat.row[am] * mat.shape[1] + mat.col[am]
                 else:
                     size = math.prod(mat.shape)
@@ -243,7 +245,9 @@ class _minmax_mixin(object):
                         ind = mat.row * mat.shape[1] + mat.col
                         zero_ind = _find_missing_index(ind, size)
                         if m == zero:
-                            return cupy.min(zero_ind, am)
+                            min_idx = cupy.where(
+                                cupy.greater(zero_ind, am), am, zero_ind)
+                            return min_idx
                         else:
                             return zero_ind
 
