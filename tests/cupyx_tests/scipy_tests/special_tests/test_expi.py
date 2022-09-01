@@ -4,7 +4,6 @@ from cupy import testing
 from cupy.testing import numpy_cupy_allclose
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 class TestExpi:
 
