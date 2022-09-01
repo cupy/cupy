@@ -1,24 +1,11 @@
-import pytest
-
 import cupy
 from cupy import testing
 
 
 @testing.gpu
-@pytest.mark.parametrize(
-    "dtype",
-    [
-        # built-in types
-        int, float, bool, complex, bytes,
-        # cupy types
-        cupy.int8, cupy.int16, cupy.int32, cupy.int64,
-        cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64,
-        cupy.float16, cupy.float32, cupy.float64,
-        cupy.complex64, cupy.complex128,
-    ]
-)
 class TestByteBounds:
 
+    @testing.for_all_dtypes()
     def test_1d_contiguous(self, dtype):
         a = cupy.zeros(12, dtype=dtype)
         itemsize = a.itemsize
@@ -26,6 +13,7 @@ class TestByteBounds:
         a_high = a.data.ptr + 12 * itemsize
         assert cupy.byte_bounds(a) == (a_low, a_high)
 
+    @testing.for_all_dtypes()
     def test_2d_contiguous(self, dtype):
         a = cupy.zeros((4, 7), dtype=dtype)
         itemsize = a.itemsize
@@ -33,6 +21,7 @@ class TestByteBounds:
         a_high = a.data.ptr + 4 * 7 * itemsize
         assert cupy.byte_bounds(a) == (a_low, a_high)
 
+    @testing.for_all_dtypes()
     def test_1d_noncontiguous_pos_stride(self, dtype):
         a = cupy.zeros(12, dtype=dtype)
         itemsize = a.itemsize
@@ -41,6 +30,7 @@ class TestByteBounds:
         b_high = b.data.ptr + 11 * itemsize  # a[10]
         assert cupy.byte_bounds(b) == (b_low, b_high)
 
+    @testing.for_all_dtypes()
     def test_2d_noncontiguous_pos_stride(self, dtype):
         a = cupy.zeros((4, 7), dtype=dtype)
         b = a[::2, ::2]
@@ -49,6 +39,7 @@ class TestByteBounds:
         b_high = b.data.ptr + 3 * 7 * itemsize  # a[2][6]
         assert cupy.byte_bounds(b) == (b_low, b_high)
 
+    @testing.for_all_dtypes()
     def test_1d_contiguous_neg_stride(self, dtype):
         a = cupy.zeros(12, dtype=dtype)
         b = a[::-1]
@@ -57,6 +48,7 @@ class TestByteBounds:
         b_high = b.data.ptr + 1 * itemsize
         assert cupy.byte_bounds(b) == (b_low, b_high)
 
+    @testing.for_all_dtypes()
     def test_2d_noncontiguous_neg_stride(self, dtype):
         a = cupy.zeros((4, 7), dtype=dtype)
         b = a[::-2, ::-2]  # strides = (-56, -8), shape = (2, 4)
@@ -66,6 +58,7 @@ class TestByteBounds:
         b_high = b.data.ptr + 1 * itemsize
         assert cupy.byte_bounds(b) == (b_low, b_high)
 
+    @testing.for_all_dtypes()
     def test_2d_noncontiguous_posneg_stride_1(self, dtype):
         a = cupy.zeros((4, 7), dtype=dtype)
         b = a[::1, ::-1]  # strides = (28, -4), shape=(4, 7)
@@ -74,6 +67,7 @@ class TestByteBounds:
         b_high = b.data.ptr + 1 * itemsize + 7 * itemsize * (4 - 1)
         assert cupy.byte_bounds(b) == (b_low, b_high)
 
+    @testing.for_all_dtypes()
     def test_2d_noncontiguous_posneg_stride_2(self, dtype):
         a = cupy.zeros((4, 7), dtype=dtype)
         b = a[::2, ::-2]  # strides = (56, -8), shape=(2, 4)
