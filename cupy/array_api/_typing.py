@@ -28,8 +28,7 @@ from typing import (
     Union,
     TYPE_CHECKING,
     TypeVar,
-    Protocol,
-    Iterator
+    Protocol
 )
 
 from ._array_object import Array
@@ -52,7 +51,6 @@ _T_co = TypeVar("_T_co", covariant=True)
 class NestedSequence(Protocol[_T_co]):
     def __getitem__(self, key: int, /) -> _T_co | NestedSequence[_T_co]: ...
     def __len__(self, /) -> int: ...
-    def __iter__(self) -> Iterator[_T_co | NestedSequence[_T_co]]: ...
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     Dtype = dtype[Union[

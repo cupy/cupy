@@ -78,13 +78,6 @@ def asarray(
         # to an object array. TODO: This won't handle large integers in lists.
         raise OverflowError("Integer out of bounds for array dtypes")
 
-    try:
-        # Make sure that sequences containing numpy or cupy array API objects
-        # can be concatenated successfully. See #6367
-        obj = [x._array if hasattr(x, '_array') else x for x in obj]
-    except TypeError:
-        pass
-
     prev_device = runtime.getDevice()
     try:
         runtime.setDevice(device.id)
