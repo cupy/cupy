@@ -11,6 +11,7 @@ Memory ranges
 .. autosummary::
    :toctree: generated/
 
+   byte_bounds
    shares_memory
    may_share_memory
 
