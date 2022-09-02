@@ -1,5 +1,10 @@
 import cupy
-from cupyx.scipy._lib._util import _asarray_validated
+from cupyx.scipy._lib._util import _asarray_validated, float_factorial
+
+
+def _isscalar(x):
+    """Check whether x is if a scalar type, or 0-dim"""
+    return cupy.isscalar(x) or hasattr(x, 'shape') and x.shape == ()
 
 
 class _Interpolator1D:
@@ -42,7 +47,7 @@ class _Interpolator1D:
     def __call__(self, x):
         """Evaluate the interpolant
 
-        Parametres
+        Parameters
         ----------
         x : cupy.ndarray
             The points to evaluate the interpolant
@@ -128,6 +133,74 @@ class _Interpolator1D:
                 self.dtype = cupy.float_
 
 
+class _Interpolator1DWithDerivatives(_Interpolator1D):
+
+    def derivatives(self, x, der=None):
+        """Evaluate many derivatives of the polynomial at the point x.
+
+        The function produce an array of all derivative values at
+        the point x.
+
+        Parameters
+        ----------
+        x : cupy.ndarray
+            Point or points at which to evaluate the derivatives
+        der : int or None, optional
+            How many derivatives to extract; None for all potentially
+            nonzero derivatives (that is a number equal to the number
+            of points). This number includes the function value as 0th
+            derivative
+
+        Returns
+        -------
+        d : cupy.ndarray
+            Array with derivatives; d[j] contains the jth derivative.
+            Shape of d[j] is determined by replacing the interpolation
+            axis in the original array with the shape of x
+
+        """
+        x, x_shape = self._prepare_x(x)
+        y = self._evaluate_derivatives(x, der)
+
+        y = y.reshape((y.shape[0],) + x_shape + self._y_extra_shape)
+        if self._y_axis != 0 and x_shape != ():
+            nx = len(x_shape)
+            ny = len(self._y_extra_shape)
+            s = ([0] + list(range(nx+1, nx + self._y_axis+1))
+                 + list(range(1, nx+1)) +
+                 list(range(nx+1+self._y_axis, nx+ny+1)))
+            y = y.transpose(s)
+        return y
+
+    def derivative(self, x, der=1):
+        """Evaluate one derivative of the polynomial at the point x
+
+        Parameters
+        ----------
+        x : cupy.ndarray
+            Point or points at which to evaluate the derivatives
+        der : integer, optional
+            Which derivative to extract. This number includes the
+            function value as 0th derivative
+
+        Returns
+        -------
+        d : cupy.ndarray
+            Derivative interpolated at the x-points. Shape of d is
+            determined by replacing the interpolation axis in the
+            original array with the shape of x
+
+        Notes
+        -----
+        This is computed by evaluating all derivatives up to the desired
+        one (using self.derivatives()) and then discarding the rest.
+
+        """
+        x, x_shape = self._prepare_x(x)
+        y = self._evaluate_derivatives(x, der+1)
+        return self._finish_y(y[der], x_shape)
+
+
 class BarycentricInterpolator(_Interpolator1D):
     """The interpolating polynomial for a set of points.
 
@@ -136,7 +209,6 @@ class BarycentricInterpolator(_Interpolator1D):
     values to be interpolated, and updating by adding more x values.
     For reasons of numerical stability, this function does not compute
     the coefficients of the polynomial.
-
     The value `yi` need to be provided before the function is
     evaluated, but none of the preprocessing depends on them,
     so rapid updates are possible.
@@ -321,3 +393,135 @@ def barycentric_interpolate(xi, yi, x, axis=0):
     """
 
     return BarycentricInterpolator(xi, yi, axis=axis)(x)
+
+
+class KroghInterpolator(_Interpolator1DWithDerivatives):
+    """Interpolating polynomial for a set of points.
+
+    The polynomial passes through all the pairs (xi,yi). One may
+    additionally specify a number of derivatives at each point xi;
+    this is done by repeating the value xi and specifying the
+    derivatives as successive yi values
+    Allows evaluation of the polynomial and all its derivatives.
+    For reasons of numerical stability, this function does not compute
+    the coefficients of the polynomial, although they can be obtained
+    by evaluating all the derivatives.
+
+    Parameters
+    ----------
+    xi : cupy.ndarray, length N
+        x-coordinate, must be sorted in increasing order
+    yi : cupy.ndarray
+        y-coordinate, when a xi occurs two or more times in a row,
+        the corresponding yi's represent derivative values
+    axis : int, optional
+        Axis in the yi array corresponding to the x-coordinate values.
+
+    """
+
+    def __init__(self, xi, yi, axis=0):
+        _Interpolator1DWithDerivatives.__init__(self, xi, yi, axis)
+
+        self.xi = xi.astype(cupy.float_)
+        self.yi = self._reshape_yi(yi)
+        self.n, self.r = self.yi.shape
+
+        c = cupy.zeros((self.n+1, self.r), dtype=self.dtype)
+        c[0] = self.yi[0]
+        Vk = cupy.zeros((self.n, self.r), dtype=self.dtype)
+        for k in range(1, self.n):
+            s = 0
+            while s <= k and xi[k-s] == xi[k]:
+                s += 1
+            s -= 1
+            Vk[0] = self.yi[k]/float_factorial(s)
+            for i in range(k-s):
+                if xi[i] == xi[k]:
+                    raise ValueError("Elements if `xi` can't be equal.")
+                if s == 0:
+                    Vk[i+1] = (c[i]-Vk[i])/(xi[i]-xi[k])
+                else:
+                    Vk[i+1] = (Vk[i+1]-Vk[i])/(xi[i]-xi[k])
+            c[k] = Vk[k-s]
+        self.c = c
+
+    def _evaluate(self, x):
+        pi = 1
+        p = cupy.zeros((len(x), self.r), dtype=self.dtype)
+        p += self.c[0, cupy.newaxis, :]
+        for k in range(1, self.n):
+            w = x - self.xi[k-1]
+            pi = w*pi
+            p += pi[:, cupy.newaxis] * self.c[k]
+        return p
+
+    def _evaluate_derivatives(self, x, der=None):
+        n = self.n
+        r = self.r
+
+        if der is None:
+            der = self.n
+        pi = cupy.zeros((n, len(x)))
+        w = cupy.zeros((n, len(x)))
+        pi[0] = 1
+        p = cupy.zeros((len(x), self.r), dtype=self.dtype)
+        p += self.c[0, cupy.newaxis, :]
+
+        for k in range(1, n):
+            w[k-1] = x - self.xi[k-1]
+            pi[k] = w[k-1] * pi[k-1]
+            p += pi[k, :, cupy.newaxis] * self.c[k]
+
+        cn = cupy.zeros((max(der, n+1), len(x), r), dtype=self.dtype)
+        cn[:n+1, :, :] += self.c[:n+1, cupy.newaxis, :]
+        cn[0] = p
+        for k in range(1, n):
+            for i in range(1, n-k+1):
+                pi[i] = w[k+i-1]*pi[i-1] + pi[i]
+                cn[k] = cn[k] + pi[i, :, cupy.newaxis]*cn[k+i]
+            cn[k] *= float_factorial(k)
+
+        cn[n, :, :] = 0
+        return cn[:der]
+
+
+def krogh_interpolate(xi, yi, x, der=0, axis=0):
+    """Convenience function for polynomial interpolation
+
+    Parameters
+    ----------
+    xi : cupy.ndarray
+        x-coordinate
+    yi : cupy.ndarray
+        y-coordinates, of shape ``(xi.size, R)``. Interpreted as
+        vectors of length R, or scalars if R=1
+    x : cupy.ndarray
+        Point or points at which to evaluate the derivatives
+    der : int or list, optional
+        How many derivatives to extract; None for all potentially
+        nonzero derivatives (that is a number equal to the number
+        of points), or a list of derivatives to extract. This number
+        includes the function value as 0th derivative
+    axis : int, optional
+        Axis in the yi array corresponding to the x-coordinate values
+
+    Returns
+    -------
+    d : cupy.ndarray
+        If the interpolator's values are R-D then the
+        returned array will be the number of derivatives by N by R.
+        If `x` is a scalar, the middle dimension will be dropped; if
+        the `yi` are scalars then the last dimension will be dropped
+
+    See Also
+    --------
+    scipy.interpolate.krogh_interpolate
+
+    """
+    P = KroghInterpolator(xi, yi, axis=axis)
+    if der == 0:
+        return P(x)
+    elif _isscalar(der):
+        return P.derivative(x, der=der)
+    else:
+        return P.derivatives(x, der=cupy.amax(der)+1)[der]
