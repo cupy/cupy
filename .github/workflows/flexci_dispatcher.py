@@ -57,9 +57,9 @@ def _forward_to_flexci(
     raise RuntimeError(f'unexpected response: {response}')
 
 
-def _complement_commit_status(
+def _fill_commit_status(
         event_name: str, payload: Dict[str, Any], token: str,
-        projects: Set[str], context_prefix: str) -> None:
+        projects: Set[str], context_prefix: str, base_url: str) -> None:
     gh_repo = github.Github(token).get_repo(payload['repository']['full_name'])
     if event_name == 'push':
         sha = payload['after']
@@ -68,8 +68,21 @@ def _complement_commit_status(
     else:
         assert False
 
-    _log(f'Checking statuses for commit {sha}')
+    _log(f'Retrieving commit {sha}')
     gh_commit = gh_repo.get_commit(sha)
+
+    _log('Setting dashboard url to commit status')
+    gh_commit.create_status(
+        state='success',
+        context=f'{context_prefix} (dashboard)',
+        target_url=f'{base_url}/p/dashboard_by_commit_id?commit_id={sha}',
+    )
+
+    if len(projects) == 0:
+        _log('No projects to complement commit status')
+        return
+
+    _log(f'Checking statuses for commit {sha}')
     contexts = [s.context for s in gh_commit.get_statuses()]
     for prj in projects:
         context = f'{context_prefix}/{prj}'
@@ -173,10 +186,9 @@ def main(argv: Any) -> int:
             _log('Failed to dispatch')
             return 1
 
-    if len(projects_skip) != 0:
-        _complement_commit_status(
-            event_name, payload, github_token, projects_skip,
-            options.flexci_context)
+    _fill_commit_status(
+        event_name, payload, github_token, projects_skip,
+        options.flexci_context, options.flexci_uri)
 
     return 0
 
