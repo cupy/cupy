@@ -6,6 +6,11 @@ import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 
+try:
+    import scipy.linalg  # NOQA
+except ImportError:
+    pass
+
 
 @testing.with_requires('scipy')
 class TestLogsumexp:
@@ -66,14 +71,14 @@ class TestLogsumexp:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
-    def test_sign_shape_axis(self, xp, scp, dtype):
+    def test_sign_multi_dims_axis(self, xp, scp, dtype):
         a = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
         b = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
         return scp.special.logsumexp(a, axis=2, b=b, return_sign=True)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
-    def test_sign_shape_axis_2d(self, xp, scp, dtype):
+    def test_sign_multi_dims_axis_2d(self, xp, scp, dtype):
         a = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
         b = testing.shaped_random((1, 2, 3, 4), xp, dtype=dtype)
         return scp.special.logsumexp(a, axis=(1, 3), b=b, return_sign=True)
@@ -87,7 +92,7 @@ class TestLogsumexp:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_b_shape(self, xp, scp, dtype):
+    def test_b_multi_dims(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
         a = testing.shaped_arange((4, 1, 2, 1), xp, dtype=dtype)
@@ -101,7 +106,6 @@ class TestLogsumexp:
 
     @testing.for_all_dtypes(no_bool=True)
     def test_empty_array_inputs(self, dtype):
-        import scipy.special  # NOQA
         a = numpy.array([], dtype=dtype)
         for xp in (scipy, cupyx.scipy):
             with pytest.raises(ValueError):
