@@ -53,6 +53,7 @@ class TestLogsumexp:
         b = xp.array([1, -1, -1], dtype=dtype)
         return scp.special.logsumexp(a, b=b, return_sign=True)
 
+    @testing.with_requires('scipy>=1.9')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_sign_zero(self, xp, scp, dtype):
