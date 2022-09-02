@@ -7,7 +7,7 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 try:
-    import scipy.linalg  # NOQA
+    import scipy.special  # NOQA
 except ImportError:
     pass
 
