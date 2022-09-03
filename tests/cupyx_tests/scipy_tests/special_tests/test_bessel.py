@@ -104,3 +104,15 @@ class TestFusionSpecial(unittest.TestCase):
 
     def test_i1e(self):
         self.check_unary('i1e')
+
+    def test_k0(self):
+        self.check_unary('k0')
+
+    def test_k0e(self):
+        self.check_unary('k0e')
+
+    def test_k1(self):
+        self.check_unary('k1')
+
+    def test_k1e(self):
+        self.check_unary('k1e')
