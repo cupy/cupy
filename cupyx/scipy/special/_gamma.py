@@ -65,10 +65,10 @@ gamma = _core.create_ufunc(
 
 chbevl_implementation = """
 
-
-__device__ double chbevl(double x, double array[], int n)
+template<typename T>
+__device__ T chbevl(T x, T array[], int n)
 {
-    double b0, b1, b2, *p;
+    T b0, b1, b2, *p;
     int i;
 
     p = array;
