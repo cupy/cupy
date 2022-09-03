@@ -1,3 +1,11 @@
+# This source code contains SciPy's code.
+# https://github.com/scipy/scipy/blob/master/scipy/special/cephes/k0.c
+# https://github.com/scipy/scipy/blob/master/scipy/special/cephes/k1.c
+#
+#
+# Cephes Math Library Release 2.8:  June, 2000
+# Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
+
 from cupy import _core
 from cupyx.scipy.special._gamma import chbevl_implementation
 
