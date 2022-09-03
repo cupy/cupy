@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from setuptools import setup
 
 
-VERSION = '11.0.0'
+VERSION = '12.0.0a1'
 
 # List of packages supported by this version of CuPy.
 PACKAGES = [
