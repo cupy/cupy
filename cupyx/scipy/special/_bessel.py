@@ -281,3 +281,177 @@ k0e = _core.create_ufunc(
     .. seealso:: :meth:`scipy.special.k0e`
 
     ''')
+
+k1_implementation = """
+#include <cupy/math_constants.h>
+
+/* Chebyshev coefficients for x(K1(x) - log(x/2) I1(x))
+ * in the interval [0,2].
+ *
+ * lim(x->0){ x(K1(x) - log(x/2) I1(x)) } = 1.
+ */
+__device__ double A[] = {
+    -7.02386347938628759343E-18,
+    -2.42744985051936593393E-15,
+    -6.66690169419932900609E-13,
+    -1.41148839263352776110E-10,
+    -2.21338763073472585583E-8,
+    -2.43340614156596823496E-6,
+    -1.73028895751305206302E-4,
+    -6.97572385963986435018E-3,
+    -1.22611180822657148235E-1,
+    -3.53155960776544875667E-1,
+    1.52530022733894777053E0
+};
+__device__ float AF[] = {
+    -7.02386347938628759343E-18,
+    -2.42744985051936593393E-15,
+    -6.66690169419932900609E-13,
+    -1.41148839263352776110E-10,
+    -2.21338763073472585583E-8,
+    -2.43340614156596823496E-6,
+    -1.73028895751305206302E-4,
+    -6.97572385963986435018E-3,
+    -1.22611180822657148235E-1,
+    -3.53155960776544875667E-1,
+    1.52530022733894777053E0
+};
+
+
+/* Chebyshev coefficients for exp(x) sqrt(x) K1(x)
+ * in the interval [2,infinity].
+ *
+ * lim(x->inf){ exp(x) sqrt(x) K1(x) } = sqrt(pi/2).
+ */
+__device__ double B[] = {
+    -5.75674448366501715755E-18,
+    1.79405087314755922667E-17,
+    -5.68946255844285935196E-17,
+    1.83809354436663880070E-16,
+    -6.05704724837331885336E-16,
+    2.03870316562433424052E-15,
+    -7.01983709041831346144E-15,
+    2.47715442448130437068E-14,
+    -8.97670518232499435011E-14,
+    3.34841966607842919884E-13,
+    -1.28917396095102890680E-12,
+    5.13963967348173025100E-12,
+    -2.12996783842756842877E-11,
+    9.21831518760500529508E-11,
+    -4.19035475934189648750E-10,
+    2.01504975519703286596E-9,
+    -1.03457624656780970260E-8,
+    5.74108412545004946722E-8,
+    -3.50196060308781257119E-7,
+    2.40648494783721712015E-6,
+    -1.93619797416608296024E-5,
+    1.95215518471351631108E-4,
+    -2.85781685962277938680E-3,
+    1.03923736576817238437E-1,
+    2.72062619048444266945E0
+};
+__device__ float BF[] = {
+    -5.75674448366501715755E-18,
+    1.79405087314755922667E-17,
+    -5.68946255844285935196E-17,
+    1.83809354436663880070E-16,
+    -6.05704724837331885336E-16,
+    2.03870316562433424052E-15,
+    -7.01983709041831346144E-15,
+    2.47715442448130437068E-14,
+    -8.97670518232499435011E-14,
+    3.34841966607842919884E-13,
+    -1.28917396095102890680E-12,
+    5.13963967348173025100E-12,
+    -2.12996783842756842877E-11,
+    9.21831518760500529508E-11,
+    -4.19035475934189648750E-10,
+    2.01504975519703286596E-9,
+    -1.03457624656780970260E-8,
+    5.74108412545004946722E-8,
+    -3.50196060308781257119E-7,
+    2.40648494783721712015E-6,
+    -1.93619797416608296024E-5,
+    1.95215518471351631108E-4,
+    -2.85781685962277938680E-3,
+    1.03923736576817238437E-1,
+    2.72062619048444266945E0
+};
+
+__device__ double k1(double x){
+    if (x == 0) {
+        return CUDART_INF;
+    }
+
+    if (x < 0) {
+        return CUDART_NAN;
+    }
+
+    double y;
+
+    if (x <= 2.0) {
+        y = x * x - 2.0;
+        y = log(0.5 * x) * cyl_bessel_i1(x) + chbevl(y, A, 11) / x;
+        return y;
+    }
+
+    return (exp(-x) * chbevl(8.0 / x - 2.0, B, 25) / sqrt(x));
+}
+
+
+__device__ float k1f(float x){
+    if (x == 0) {
+        return CUDART_INF;
+    }
+
+    if (x < 0) {
+        return CUDART_NAN;
+    }
+
+    float y;
+
+    if (x <= 2.0) {
+        y = x * x - 2.0;
+        y = logf(0.5 * x) * cyl_bessel_i1f(x) + chbevl(y, AF, 11) / x;
+        return y;
+    }
+
+    float z = 8.0 / x - 2.0;
+    return (expf(-x) * chbevl(z, BF, 25) / sqrtf(x));
+}
+"""
+
+k1 = _core.create_ufunc(
+    'cupyx_scipy_special_k1',
+    (('f->f', 'out0 = k1f(in0)'),
+     'd->d'),
+    'out0 = k1(in0)',
+    preamble=chbevl_implementation + k1_implementation,
+    doc='''Modified Bessel function of the second kind of order 1.
+
+    Args:
+        x (cupy.ndarray): argument (float)
+
+    Returns:
+        cupy.ndarray: Value of the modified Bessel function K of order 1 at x.
+
+    .. seealso:: :meth:`scipy.special.k1`
+
+    ''')
+
+k1e = _core.create_ufunc(
+    'cupyx_scipy_special_k1e',
+    (('f->f', 'out0 = expf(in0) * k1f(in0)'), 'd->d'),
+    'out0 = exp(in0) * k1(in0)',
+    preamble=chbevl_implementation + k1_implementation,
+    doc='''Exponentially scaled modified Bessel function K of order 1
+
+    Args:
+        x (cupy.ndarray): argument (float)
+
+    Returns:
+        cupy.ndarray: Value of the exponentially scaled modified Bessel function K of order 1 at x.
+
+    .. seealso:: :meth:`scipy.special.k1e`
+
+    ''')
