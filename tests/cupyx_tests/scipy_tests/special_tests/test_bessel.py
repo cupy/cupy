@@ -10,11 +10,11 @@ import cupyx.scipy.special  # NOQA
 class TestSpecial:
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        a = testing.shaped_arange((2, 3), xp, dtype)
+        a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
         return getattr(scp.special, name)(a)
 
     def test_j0(self):
@@ -63,11 +63,11 @@ class TestSpecial:
 class TestFusionSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd'])
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        a = testing.shaped_arange((2, 3), xp, dtype)
+        a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
 
         @cupy.fuse()
         def f(x):
