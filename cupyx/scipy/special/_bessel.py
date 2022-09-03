@@ -204,7 +204,7 @@ __device__ double k0(double x){
     if (x == 0) {
         return CUDART_INF;
     }
-    
+
     if (x < 0) {
         return CUDART_NAN;
     }
@@ -227,7 +227,7 @@ __device__ float k0f(float x){
     if (x == 0) {
         return CUDART_INF;
     }
-    
+
     if (x < 0) {
         return CUDART_NAN;
     }
@@ -248,12 +248,10 @@ __device__ float k0f(float x){
 
 k0 = _core.create_ufunc(
     'cupyx_scipy_special_k0',
-    (('f->f', 'out0 = k0f(in0)'),
-     'd->d'),
+    (('f->f', 'out0 = k0f(in0)'), 'd->d'),
     'out0 = k0(in0)',
     preamble=chbevl_implementation + k0_implementation,
     doc='''Modified Bessel function of the second kind of order 0.
-    This function is also sometimes referred to as the modified Bessel function of the third kind of order 0.
 
     Args:
         x (cupy.ndarray): argument (float)
@@ -276,7 +274,7 @@ k0e = _core.create_ufunc(
         x (cupy.ndarray): argument (float)
 
     Returns:
-        cupy.ndarray: Value of the exponentially scaled modified Bessel function K of order 0 at x.
+        cupy.ndarray: Value at x.
 
     .. seealso:: :meth:`scipy.special.k0e`
 
@@ -290,7 +288,7 @@ k1_implementation = """
  *
  * lim(x->0){ x(K1(x) - log(x/2) I1(x)) } = 1.
  */
-__device__ double A[] = {
+__device__ static double A[] = {
     -7.02386347938628759343E-18,
     -2.42744985051936593393E-15,
     -6.66690169419932900609E-13,
@@ -303,7 +301,7 @@ __device__ double A[] = {
     -3.53155960776544875667E-1,
     1.52530022733894777053E0
 };
-__device__ float AF[] = {
+__device__ static float AF[] = {
     -7.02386347938628759343E-18,
     -2.42744985051936593393E-15,
     -6.66690169419932900609E-13,
@@ -323,7 +321,7 @@ __device__ float AF[] = {
  *
  * lim(x->inf){ exp(x) sqrt(x) K1(x) } = sqrt(pi/2).
  */
-__device__ double B[] = {
+__device__ static double B[] = {
     -5.75674448366501715755E-18,
     1.79405087314755922667E-17,
     -5.68946255844285935196E-17,
@@ -350,7 +348,7 @@ __device__ double B[] = {
     1.03923736576817238437E-1,
     2.72062619048444266945E0
 };
-__device__ float BF[] = {
+__device__ static float BF[] = {
     -5.75674448366501715755E-18,
     1.79405087314755922667E-17,
     -5.68946255844285935196E-17,
@@ -450,7 +448,7 @@ k1e = _core.create_ufunc(
         x (cupy.ndarray): argument (float)
 
     Returns:
-        cupy.ndarray: Value of the exponentially scaled modified Bessel function K of order 1 at x.
+        cupy.ndarray: Value at x.
 
     .. seealso:: :meth:`scipy.special.k1e`
 
