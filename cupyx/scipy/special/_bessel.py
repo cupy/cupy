@@ -230,7 +230,6 @@ __device__ double k0(double x){
     return y * exp(-x);
 }
 
-
 __device__ float k0f(float x){
     if (x == 0) {
         return CUDART_INF;
@@ -404,7 +403,6 @@ __device__ double k1(double x){
     return (exp(-x) * chbevl(8.0 / x - 2.0, B, 25) / sqrt(x));
 }
 
-
 __device__ float k1f(float x){
     if (x == 0) {
         return CUDART_INF;
@@ -429,8 +427,7 @@ __device__ float k1f(float x){
 
 k1 = _core.create_ufunc(
     'cupyx_scipy_special_k1',
-    (('f->f', 'out0 = k1f(in0)'),
-     'd->d'),
+    (('f->f', 'out0 = k1f(in0)'), 'd->d'),
     'out0 = k1(in0)',
     preamble=chbevl_implementation + k1_implementation,
     doc='''Modified Bessel function of the second kind of order 1.
