@@ -12,4 +12,6 @@ Summary  statistics
    :toctree: generated/
 
    BarycentricInterpolator
+   KroghInterpolator
    barycentric_interpolate
+   krogh_interpolate
