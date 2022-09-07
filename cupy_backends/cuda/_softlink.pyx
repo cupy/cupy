@@ -17,18 +17,18 @@ cdef class SoftLink:
                     f'({type(e).__name__}: {e})')
         self._prefix = prefix
 
-    cdef void* get_func(self, str name):
+    cdef func_ptr get(self, str name):
         """
         Returns a function pointer for the API.
         """
         if self._cdll is None:
-            return <void*>_fail_unsupported
+            return <func_ptr>_fail_unsupported
         cdef str funcname = f'{self._prefix}{name}'
         cdef object func = getattr(self._cdll, funcname, None)
         if func is None:
-            return <void*>_fail_not_found
+            return <func_ptr>_fail_not_found
         cdef intptr_t ptr = ctypes.addressof(func)
-        return cython.operator.dereference(<void**>ptr)
+        return cython.operator.dereference(<func_ptr*>ptr)
 
 
 cdef int _fail_unsupported() nogil except -1:

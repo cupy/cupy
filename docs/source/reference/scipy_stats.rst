@@ -23,4 +23,6 @@ Other statistical functionality
    :toctree: generated/
 
    boxcox_llf
+   zmap
+   zscore
 

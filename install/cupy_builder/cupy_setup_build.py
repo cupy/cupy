@@ -7,10 +7,8 @@ import os
 import shutil
 import sys
 
-import pkg_resources
 import setuptools
 
-import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
 from cupy_builder.install_build import PLATFORM_LINUX
@@ -48,7 +46,7 @@ def module_extension_sources(file, use_cython, no_cuda):
 
 
 def get_required_modules(MODULES):
-    return [m['name'] for m in MODULES if m.get('required', False)]
+    return [m['name'] for m in MODULES if m.required]
 
 
 def check_library(compiler, includes=(), libraries=(),
@@ -134,7 +132,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
-            cuda_version = build.get_cuda_version()
+            cuda_version = ctx.features['cuda'].get_version()
             cuda_major = str(cuda_version // 1000)
             cuda_major_minor = cuda_major + '.' + \
                 str((cuda_version // 10) % 100)
@@ -149,8 +147,8 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         # directories and libraries to link here depending on ROCm version
         # before the configuration process following.
         if ctx.use_hip and module['name'] == 'cuda':
-            if module['check_method'](compiler, settings):
-                hip_version = module['version_method']()
+            if module.configure(compiler, settings):
+                hip_version = module.get_version()
                 if hip_version >= 401:
                     rocm_path = build.get_rocm_path()
                     inc_path = os.path.join(rocm_path, 'hipfft', 'include')
@@ -180,8 +178,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
-        elif ('check_method' in module and
-                not module['check_method'](compiler, settings)):
+        elif not module.configure(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
@@ -196,8 +193,10 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             status = 'Yes'
             ret.append(module['name'])
 
-        if installed and 'version_method' in module:
-            status += ' (version {})'.format(module['version_method'](True))
+        if installed:
+            version = module.get_version()
+            if version is not None:
+                status += f' (version {version})'
 
         summary += [
             '  {:<10}: {}'.format(module['name'], status)
@@ -258,7 +257,7 @@ def _rpath_base():
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
-    MODULES = cupy_builder.get_modules(cupy_builder.get_context())
+    MODULES = ctx.features.values()
 
     no_cuda = ctx.use_stub
     use_hip = not no_cuda and ctx.use_hip
@@ -431,54 +430,6 @@ def prepare_wheel_libs(ctx: Context):
         shutil.copy2(srcpath, dstpath)
 
     return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
-
-
-def cythonize(extensions, ctx: Context):
-    # Delay importing Cython as it may be installed via setup_requires if
-    # the user does not have Cython installed.
-    import Cython
-    import Cython.Build
-    cython_version = pkg_resources.parse_version(Cython.__version__)
-
-    directives = {
-        'linetrace': ctx.linetrace,
-        'profile': ctx.profile,
-        # Embed signatures for Sphinx documentation.
-        'embedsignature': True,
-    }
-
-    cythonize_options = {
-        'annotate': ctx.annotate
-    }
-
-    # Compile-time constants to be used in Cython code
-    compile_time_env = cythonize_options.get('compile_time_env')
-    if compile_time_env is None:
-        compile_time_env = {}
-        cythonize_options['compile_time_env'] = compile_time_env
-
-    # Enable CUDA Python.
-    # TODO: add `cuda` to `setup_requires` only when this flag is set
-    use_cuda_python = cupy_builder.get_context().use_cuda_python
-    compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
-    if use_cuda_python:
-        print('Using CUDA Python')
-
-    compile_time_env['CUPY_CUFFT_STATIC'] = False
-    compile_time_env['CUPY_CYTHON_VERSION'] = str(cython_version)
-    if ctx.use_stub:  # on RTD
-        compile_time_env['CUPY_CUDA_VERSION'] = 0
-        compile_time_env['CUPY_HIP_VERSION'] = 0
-    elif ctx.use_hip:  # on ROCm/HIP
-        compile_time_env['CUPY_CUDA_VERSION'] = 0
-        compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
-    else:  # on CUDA
-        compile_time_env['CUPY_CUDA_VERSION'] = build.get_cuda_version()
-        compile_time_env['CUPY_HIP_VERSION'] = 0
-
-    return Cython.Build.cythonize(
-        extensions, verbose=True, language_level=3,
-        compiler_directives=directives, **cythonize_options)
 
 
 def get_ext_modules(use_cython: bool, ctx: Context):

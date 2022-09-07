@@ -650,6 +650,27 @@ class TestArgpartition(unittest.TestCase):
                 a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_argpartition_multi_dim_kernel(self, xp, dtype):
+        # Use a larger scale for shaped_random to avoid duplicated numbers,
+        # which may make different indices at kth between NumPy and CuPy. Skip
+        # if int8 and uint8 not to overflow.
+        if dtype in (xp.int8, xp.uint8):
+            pytest.skip()
+        a = testing.shaped_random((3, 3, 256), xp, dtype, 10000)
+        kth = 20
+        idx = self.argpartition(a, kth, axis=-1)
+
+        rows = [[[0]], [[1]], [[2]]]
+        cols = [[[0], [1], [2]]]
+
+        assert (a[rows, cols, idx[:, :, :kth]] <=
+                a[rows, cols, idx[:, :, kth:kth + 1]]).all()
+        assert (a[rows, cols, idx[:, :, kth:kth + 1]] <=
+                a[rows, cols, idx[:, :, kth + 1:]]).all()
+        return idx[:, :, kth:kth + 1]
+
     # Test non-contiguous array
 
     @testing.numpy_cupy_equal()

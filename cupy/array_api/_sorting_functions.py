@@ -7,6 +7,7 @@ from ._array_object import Array
 import cupy as np
 
 
+# Note: the descending keyword argument is new in this function
 def argsort(
     x: Array, /, *, axis: int = -1, descending: bool = False, stable: bool = True
 ) -> Array:
@@ -15,8 +16,9 @@ def argsort(
 
     See its docstring for more information.
     """
-    # Note: this keyword argument is different, and the default is different.
-    kind = "stable" if stable else "quicksort"
+    # Note: Unlike in NumPy we only support kind={None, 'stable'}, but the standard
+    # does *not* require we need to support unstable sort.
+    kind = None
     if not descending:
         res = np.argsort(x._array, axis=axis, kind=kind)
     else:
@@ -33,7 +35,7 @@ def argsort(
         res = max_i - res
     return Array._new(res)
 
-
+# Note: the descending keyword argument is new in this function
 def sort(
     x: Array, /, *, axis: int = -1, descending: bool = False, stable: bool = True
 ) -> Array:
@@ -42,8 +44,9 @@ def sort(
 
     See its docstring for more information.
     """
-    # Note: this keyword argument is different, and the default is different.
-    kind = "stable" if stable else "quicksort"
+    # Note: Unlike in NumPy we only support kind={None, 'stable'}, but the standard
+    # does *not* require we need to support unstable sort.
+    kind = None
     res = np.sort(x._array, axis=axis, kind=kind)
     if descending:
         res = np.flip(res, axis=axis)

@@ -14,13 +14,13 @@ def _get_output_fourier(output, input, complex_only=False):
 
     if output is None:
         if input.dtype in types:
-            output = cupy.zeros(input.shape, dtype=input.dtype)
+            output = cupy.empty(input.shape, dtype=input.dtype)
         else:
-            output = cupy.zeros(input.shape, dtype=types[-1])
+            output = cupy.empty(input.shape, dtype=types[-1])
     elif type(output) is type:
         if output not in types:
             raise RuntimeError('output type not supported')
-        output = cupy.zeros(input.shape, dtype=output)
+        output = cupy.empty(input.shape, dtype=output)
     elif output.shape != input.shape:
         raise RuntimeError('output shape not correct')
     return output

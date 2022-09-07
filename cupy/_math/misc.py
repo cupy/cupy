@@ -144,7 +144,7 @@ def _dot_convolve(a1, a2, mode):
     return output
 
 
-def clip(a, a_min=None, a_max=None, out=None):
+def clip(a, a_min, a_max, out=None):
     """Clips the values of an array to a given interval.
 
     This is equivalent to ``maximum(minimum(a, a_max), a_min)``, while this
@@ -163,6 +163,10 @@ def clip(a, a_min=None, a_max=None, out=None):
 
     .. seealso:: :func:`numpy.clip`
 
+    Notes
+    -----
+    When `a_min` is greater than `a_max`, `clip` returns an
+    array in which all values are equal to `a_max`.
     """
     if fusion._is_fusing():
         return fusion._call_ufunc(_math.clip,

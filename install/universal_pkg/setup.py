@@ -2,26 +2,19 @@ import ctypes
 import pkg_resources
 import os
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from setuptools import setup
 
 
-VERSION = '10.6.0'
+VERSION = '12.0.0a1'
 
 # List of packages supported by this version of CuPy.
 PACKAGES = [
     'cupy-cuda102',
     'cupy-cuda110',
     'cupy-cuda111',
-    'cupy-cuda112',
-    'cupy-cuda113',
-    'cupy-cuda114',
-    'cupy-cuda115',
-    'cupy-cuda116',
-    'cupy-cuda117',
-    'cupy-rocm-4-0',
-    'cupy-rocm-4-2',
+    'cupy-cuda11x',
     'cupy-rocm-4-3',
     'cupy-rocm-5-0',
 ]
@@ -34,6 +27,14 @@ PACKAGES_OUTDATED = [
     'cupy-cuda92',
     'cupy-cuda100',
     'cupy-cuda101',
+    'cupy-cuda112',
+    'cupy-cuda113',
+    'cupy-cuda114',
+    'cupy-cuda115',
+    'cupy-cuda116',
+    'cupy-cuda117',
+    'cupy-rocm-4-0',
+    'cupy-rocm-4-2',
 ]
 
 # List of sdist packages.
@@ -43,7 +44,12 @@ PACKAGES_SDIST = [
 
 
 class AutoDetectionFailed(Exception):
-    pass
+    def __str__(self) -> str:
+        return f'''
+============================================================
+{super().__str__()}
+============================================================
+'''
 
 
 def _log(msg: str) -> None:
@@ -176,24 +182,9 @@ def _cuda_version_to_package(ver: int) -> str:
     elif ver < 11020:
         # CUDA 11.1
         suffix = '111'
-    elif ver < 11030:
-        # CUDA 11.2
-        suffix = '112'
-    elif ver < 11040:
-        # CUDA 11.3
-        suffix = '113'
-    elif ver < 11050:
-        # CUDA 11.4
-        suffix = '114'
-    elif ver < 11060:
-        # CUDA 11.5
-        suffix = '115'
-    elif ver < 11070:
-        # CUDA 11.6
-        suffix = '116'
-    elif ver < 11080:
-        # CUDA 11.7
-        suffix = '117'
+    elif ver < 12000:
+        # CUDA 11.2 ~ 11.x
+        suffix = '11x'
     else:
         raise AutoDetectionFailed(
             f'Your CUDA version ({ver}) is too new.')
@@ -212,13 +203,7 @@ def _rocm_version_to_package(ver: int) -> str:
     ROCm 5.0.0 = 50013601
     ROCm 5.1.0 = 50120531
     """
-    if ver == 3212:
-        # ROCm 4.0
-        suffix = '4-0'
-    elif ver == 3275:
-        # ROCm 4.2
-        suffix = '4-2'
-    elif 4_03_00000 <= ver < 4_04_00000:
+    if 4_03_00000 <= ver < 4_04_00000:
         # ROCm 4.3
         suffix = '4-3'
     elif 5_00_00000 <= ver < 5_01_00000:
@@ -249,7 +234,9 @@ def infer_best_package() -> str:
         if installed[0] in PACKAGES_OUTDATED:
             raise AutoDetectionFailed(
                 f'You have CuPy package "{installed[0]}" installed, but the'
-                f' package is not available for version {VERSION}.')
+                f' package is not available for version {VERSION}.\n'
+                'Hint: cupy-cuda{112~117} has been merged to cupy-cuda11x in '
+                'CuPy v11. Uninstall the package and try again.')
         return installed[0]
 
     # Try CUDA.
@@ -266,6 +253,20 @@ def infer_best_package() -> str:
         'Unable to detect NVIDIA CUDA or AMD ROCm installation.')
 
 
+def _get_cmdclass(tag: str) -> Dict[str, type]:
+    try:
+        import wheel.bdist_wheel
+    except ModuleNotFoundError:
+        return {}
+
+    class bdist_wheel_with_tag(wheel.bdist_wheel.bdist_wheel):  # type: ignore[misc] # NOQA
+        def initialize_options(self) -> None:
+            super().initialize_options()
+            self.build_number = f'0_{tag}'
+
+    return {"bdist_wheel": bdist_wheel_with_tag}
+
+
 #
 # Entrypoint
 #
@@ -276,14 +277,17 @@ def main() -> None:
         requires = f'{package}=={VERSION}'
         _log(f'Installing package: {requires}')
         install_requires = [requires]
+        tag = package
     else:
         _log('Building cupy-wheel package for release.')
         install_requires = []
+        tag = '0'
 
     setup(
         name='cupy-wheel',
-        version=VERSION,
+        version=f'{VERSION}',
         install_requires=install_requires,
+        cmdclass=_get_cmdclass(tag),
     )
 
 

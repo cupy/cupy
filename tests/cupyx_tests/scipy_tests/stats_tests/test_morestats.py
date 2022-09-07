@@ -5,8 +5,6 @@ from cupy import testing
 import cupyx
 import cupyx.scipy.stats  # NOQA
 
-import scipy.stats  # NOQA
-
 
 atol = {
     cupy.float16: 5e-3,

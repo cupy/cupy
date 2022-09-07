@@ -26,7 +26,7 @@ def test_cuda_version_to_package():
     with pytest.raises(setup.AutoDetectionFailed):
         assert setup._cuda_version_to_package(10019)
     assert setup._cuda_version_to_package(10020) == 'cupy-cuda102'
-    assert setup._cuda_version_to_package(11060) == 'cupy-cuda116'
+    assert setup._cuda_version_to_package(11060) == 'cupy-cuda11x'
     with pytest.raises(setup.AutoDetectionFailed):
         assert setup._cuda_version_to_package(99999)
 
@@ -34,7 +34,7 @@ def test_cuda_version_to_package():
 def test_rocm_version_to_package():
     with pytest.raises(setup.AutoDetectionFailed):
         assert setup._rocm_version_to_package(399)
-    assert setup._rocm_version_to_package(3212) == 'cupy-rocm-4-0'
+    assert setup._rocm_version_to_package(4_03_21300) == 'cupy-rocm-4-3'
     assert setup._rocm_version_to_package(5_00_13601) == 'cupy-rocm-5-0'
     with pytest.raises(setup.AutoDetectionFailed):
         assert setup._rocm_version_to_package(9_00_00000)

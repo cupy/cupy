@@ -169,7 +169,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         base_opts = build.get_compiler_base_options(nvcc_path)
         compiler_so = nvcc_path
 
-        cuda_version = build.get_cuda_version()
+        cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
             '-O2', '--compiler-options="-fPIC"']
         if cuda_version >= 11020:
@@ -210,7 +210,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
 
         compiler_so = build.get_nvcc_path()
         cc_args = self._get_preprocess_options(ext) + ['-c']
-        cuda_version = build.get_cuda_version()
+        cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
         if cuda_version >= 11020:
             # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
