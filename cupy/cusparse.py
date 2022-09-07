@@ -1672,6 +1672,9 @@ def csrilu02(a, level_info=False):
     try:
         check(handle, info, position.ctypes.data)
     except Exception:
+        if info != 0:
+            _cusparse.destroyCsrilu02Info(info)
+            info = 0
         raise ValueError('a({0},{0}) is missing'.format(position[0]))
 
     solve(handle, m, nnz, desc.descriptor, a.data.data.ptr,
@@ -1679,7 +1682,12 @@ def csrilu02(a, level_info=False):
     try:
         check(handle, info, position.ctypes.data)
     except Exception:
+        if info != 0:
+            _cusparse.destroyCsrilu02Info(info)
+            info = 0
         raise ValueError('u({0},{0}) is zero'.format(position[0]))
+    else:
+        _cusparse.destroyCsrilu02Info(info)
 
 
 def denseToSparse(x, format='csr'):
