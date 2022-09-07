@@ -745,3 +745,27 @@ class TestRaw:
             assert 'unroll' not in f.cached_code
         elif unroll >= 0:
             assert f'#pragma unroll({unroll})\n' in f.cached_code
+
+    @pytest.mark.parametrize('ctype', (bool, int, float, complex))
+    def test_scalar_args(self, ctype):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = y
+
+        x = cupy.zeros((30), dtype=ctype)
+        y = ctype(1)
+        f((5,), (6,), (x, y))
+        testing.assert_array_equal(x, numpy.full_like(x, 1))
+
+    @testing.for_all_dtypes()
+    def test_numpy_scalar_args(self, dtype):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = y
+
+        x = cupy.zeros((30), dtype=dtype)
+        y = numpy.dtype(dtype).type(1)
+        f((5,), (6,), (x, y))
+        testing.assert_array_equal(x, numpy.full_like(x, 1))
