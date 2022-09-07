@@ -856,6 +856,10 @@ cdef class ElementwiseKernel:
                 'It must be either {} or {} (with outputs), '
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
+        for arg in args:
+            if hasattr(arg, '__cupy_prepare_elementwise_kernel__'):
+                return arg.__cupy_prepare_elementwise_kernel__(
+                    self, *args, **kwargs)
         dev_id = device.get_device_id()
         arg_list = _preprocess_args(dev_id, args, True)
 
@@ -1183,6 +1187,11 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
+        for arg in args:
+            if hasattr(arg, '__cupy_prepare_elementwise_kernel__'):
+                return arg.__cupy_prepare_elementwise_kernel__(
+                    self, *args, **kwargs)
+
         if _fusion_thread_local.is_fusing():
             return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
