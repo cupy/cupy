@@ -229,6 +229,11 @@ def unique(ar, return_index=False, return_inverse=False,
                             # Compare using the imaginary values
                             left = left.imag
                             right = right.imag
+                    elif not (cupy.isnan(left.real) or
+                                cupy.isnan(right.real)):
+                        # Compare using the real values
+                        left = left.real
+                        right = right.real
                     else:
                         # Move NaNs to the left of the result
                         return (cupy.isnan(left.real) and
@@ -239,14 +244,10 @@ def unique(ar, return_index=False, return_inverse=False,
                         return True
             elif cupy.isnan(left) and not cupy.isnan(right):
                 if is_complex:
-                    # Try to compare left and right on the real or imaginary
+                    # Try to compare left and right on the real
                     # part that is not None, else move the NaN to the left
                     if cupy.isnan(left.real):
-                        if cupy.isnan(left.imag):
-                            return False
-
-                        left = left.imag
-                        right = right.imag
+                        return False
                     else:
                         left = left.real
                         right = right.real
@@ -255,13 +256,10 @@ def unique(ar, return_index=False, return_inverse=False,
                     return False
             elif not cupy.isnan(left) and cupy.isnan(right):
                 if is_complex:
-                    # Try to compare left and right on the real or imaginary
+                    # Try to compare left and right on the real
                     # part that is not None, else move the NaN to the left
                     if cupy.isnan(right.real):
-                        if cupy.isnan(right.imag):
-                            return True
-                        left = left.imag
-                        right = right.imag
+                        return True
                     else:
                         left = left.real
                         right = right.real
