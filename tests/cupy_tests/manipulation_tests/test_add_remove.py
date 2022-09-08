@@ -209,7 +209,7 @@ class TestUnique:
         return xp.unique(a, equal_nan=equal_nan)
 
     @pytest.mark.parametrize('equal_nan', [True, False])
-    @pytest.mark.parametrize('dtype', 'efdFD')
+    @pytest.mark.parametrize('dtype', 'fdFD')
     @testing.numpy_cupy_array_equal()
     @testing.with_requires('numpy>=1.23.1')
     def test_unique_equal_nan(self, xp, dtype, equal_nan):

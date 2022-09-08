@@ -200,6 +200,7 @@ def unique(ar, return_index=False, return_inverse=False,
     idx = cupy.arange(0, orig_shape[0], dtype=cupy.intp)
     ar = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
     ar = cupy.ascontiguousarray(ar)
+    is_complex = cupy.iscomplexobj(ar)
 
     def compare_axis_elems(idx1, idx2):
         for i in range(0, ar.shape[1]):
@@ -207,7 +208,65 @@ def unique(ar, return_index=False, return_inverse=False,
             right = ar[idx2, i]
 
             if cupy.isnan(left) and cupy.isnan(right):
-                if not equal_nan:
+                if is_complex:
+                    # Check for the real parts
+                    if (cupy.isnan(left.real) and
+                            cupy.isnan(right.real)):
+                        # Check for the imaginary parts
+                        if cupy.isnan(left.imag) and cupy.isnan(right.imag):
+                            if not equal_nan:
+                                # Move NaNs to the left of the result
+                                return True
+                        elif (not cupy.isnan(left.imag) and
+                                cupy.isnan(right.imag)):
+                            # Move NaNs to the left of the result
+                            return False
+                        elif (cupy.isnan(left.imag) and
+                                not cupy.isnan(right.imag)):
+                            # Move NaNs to the left of the result
+                            return True
+                        else:
+                            # Compare using the imaginary values
+                            left = left.imag
+                            right = right.imag
+                    else:
+                        # Move NaNs to the left of the result
+                        return (cupy.isnan(left.real) and
+                                not cupy.isnan(right.real))
+                else:
+                    if not equal_nan:
+                        # Move NaNs to the left of the result
+                        return True
+            elif cupy.isnan(left) and not cupy.isnan(right):
+                if is_complex:
+                    # Try to compare left and right on the real or imaginary
+                    # part that is not None, else move the NaN to the left
+                    if cupy.isnan(left.real):
+                        if cupy.isnan(left.imag):
+                            return False
+
+                        left = left.imag
+                        right = right.imag
+                    else:
+                        left = left.real
+                        right = right.real
+                else:
+                    # Move NaNs to the left of the result
+                    return False
+            elif not cupy.isnan(left) and cupy.isnan(right):
+                if is_complex:
+                    # Try to compare left and right on the real or imaginary
+                    # part that is not None, else move the NaN to the left
+                    if cupy.isnan(right.real):
+                        if cupy.isnan(right.imag):
+                            return True
+                        left = left.imag
+                        right = right.imag
+                    else:
+                        left = left.real
+                        right = right.real
+                else:
+                    # Move NaNs to the left of the result
                     return True
 
             if left < right:
