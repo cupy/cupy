@@ -228,6 +228,7 @@ class TestUnique:
             ], dtype=dtype)
         return xp.unique(a, axis=0, equal_nan=equal_nan)
 
+
 @testing.parameterize(*testing.product({
     'trim': ['fb', 'f', 'b']
 }))
