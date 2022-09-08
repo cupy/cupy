@@ -1,7 +1,7 @@
 from cupy.cuda import runtime as _runtime
 from cupyx.jit import _compile
 from cupyx.jit import _cuda_types
-from cupyx.jit._internal_types import BuiltinFunc as _BuiltinFunc
+from cupyx.jit._internal_types import Function as _Function
 from cupyx.jit._internal_types import Constant as _Constant
 from cupyx.jit._internal_types import Data as _Data
 
@@ -253,7 +253,7 @@ class _ThreadBlockGroup(_ThreadGroup):
         return _Data('group_dim()', _cuda_types.dim3)
 
 
-class _ThisCgGroup(_BuiltinFunc):
+class _ThisCgGroup(_Function):
 
     def __init__(self, group_type):
         if group_type == "grid":
@@ -291,7 +291,7 @@ class _ThisCgGroup(_BuiltinFunc):
         return _Data(f'cg::this_{self.group_type}()', cg_type)
 
 
-class _Sync(_BuiltinFunc):
+class _Sync(_Function):
 
     def __call__(self, group):
         """Calls ``cg::sync()``.
@@ -315,7 +315,7 @@ class _Sync(_BuiltinFunc):
         return _Data(f'cg::sync({group.code})', _cuda_types.void)
 
 
-class _MemcpySync(_BuiltinFunc):
+class _MemcpySync(_Function):
 
     def __call__(self, group, dst, dst_idx, src, src_idx, size, *,
                  aligned_size=None):
@@ -378,7 +378,7 @@ class _MemcpySync(_BuiltinFunc):
                      f'&({src.code}), {size_code})', _cuda_types.void)
 
 
-class _Wait(_BuiltinFunc):
+class _Wait(_Function):
 
     def __call__(self, group):
         """Calls ``cg::wait()``.
@@ -400,7 +400,7 @@ class _Wait(_BuiltinFunc):
         return _Data(f'cg::wait({group.code})', _cuda_types.void)
 
 
-class _WaitPrior(_BuiltinFunc):
+class _WaitPrior(_Function):
 
     def __call__(self, group):
         """Calls ``cg::wait_prior<N>()``.

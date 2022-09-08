@@ -74,7 +74,7 @@ class Range(Expr):
         self.unroll = unroll
 
 
-class BuiltinFunc:
+class Function:
     # subclasses must implement:
     # - either call or call_const
     # - `__call__` with a correct signature, which calls the parent's __call__
@@ -101,11 +101,11 @@ class BuiltinFunc:
 
     @classmethod
     def from_class_method(cls, instance_name, method):
-        # - this helper wraps every class method as a BuiltinFunc
+        # - this helper wraps every class method as a Function
         # - method must return a valid Expr
         # TODO(leofang): if performance is concerned, we could cache _Wrapper
         # for each method.__func__, and overwrite with the provided instance
-        class _Wrapper(BuiltinFunc):
+        class _Wrapper(Function):
 
             def call(self, env, *args, **kwargs):
                 data = method(env, *args, **kwargs)

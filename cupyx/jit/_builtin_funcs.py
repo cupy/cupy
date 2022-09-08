@@ -7,14 +7,14 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupyx.jit import _cuda_types
-from cupyx.jit._internal_types import BuiltinFunc
+from cupyx.jit._internal_types import Function
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 from cupyx.jit import _compile
 
 
-class RangeFunc(BuiltinFunc):
+class RangeFunc(Function):
 
     def __call__(self, *args, unroll=None):
         """Range with loop unrolling support.
@@ -104,7 +104,7 @@ class RangeFunc(BuiltinFunc):
         return Range(start, stop, step, ctype, step_is_positive, unroll=unroll)
 
 
-class LenFunc(BuiltinFunc):
+class LenFunc(Function):
 
     def call(self, env, *args, **kwds):
         if len(args) != 1:
@@ -120,7 +120,7 @@ class LenFunc(BuiltinFunc):
                     _cuda_types.Scalar('q'))
 
 
-class MinFunc(BuiltinFunc):
+class MinFunc(Function):
 
     def call(self, env, *args, **kwds):
         if len(args) < 2:
@@ -132,7 +132,7 @@ class MinFunc(BuiltinFunc):
             cupy.minimum, (a, b), None, env), args)
 
 
-class MaxFunc(BuiltinFunc):
+class MaxFunc(Function):
 
     def call(self, env, *args, **kwds):
         if len(args) < 2:
@@ -144,7 +144,7 @@ class MaxFunc(BuiltinFunc):
             cupy.maximum, (a, b), None, env), args)
 
 
-class SyncThreads(BuiltinFunc):
+class SyncThreads(Function):
 
     def __call__(self):
         """Calls ``__syncthreads()``.
@@ -160,7 +160,7 @@ class SyncThreads(BuiltinFunc):
         return Data('__syncthreads()', _cuda_types.void)
 
 
-class SyncWarp(BuiltinFunc):
+class SyncWarp(Function):
 
     def __call__(self, *, mask=0xffffffff):
         """Calls ``__syncwarp()``.
@@ -194,7 +194,7 @@ class SyncWarp(BuiltinFunc):
         return Data(code, _cuda_types.void)
 
 
-class SharedMemory(BuiltinFunc):
+class SharedMemory(Function):
 
     def __call__(self, dtype, size, alignment=None):
         """Allocates shared memory and returns it as a 1-D array.
@@ -218,7 +218,7 @@ class SharedMemory(BuiltinFunc):
         return Data(name, _cuda_types.Ptr(child_type))
 
 
-class AtomicOp(BuiltinFunc):
+class AtomicOp(Function):
 
     def __init__(self, op, dtypes):
         self._op = op
@@ -289,7 +289,7 @@ class AtomicOp(BuiltinFunc):
         return Data(code, ctype)
 
 
-class GridFunc(BuiltinFunc):
+class GridFunc(Function):
 
     def __init__(self, mode):
         if mode == 'grid':
@@ -349,7 +349,7 @@ class GridFunc(BuiltinFunc):
         return Data(f'thrust::make_tuple({elts_code})', ctype)
 
 
-class WarpShuffleOp(BuiltinFunc):
+class WarpShuffleOp(Function):
 
     def __init__(self, op, dtypes):
         self._op = op
@@ -407,7 +407,7 @@ class WarpShuffleOp(BuiltinFunc):
         return Data(code, ctype)
 
 
-class LaneID(BuiltinFunc):
+class LaneID(Function):
     def __call__(self):
         """Returns the lane ID of the calling thread, ranging in
         ``[0, jit.warpsize)``.
@@ -439,7 +439,7 @@ class LaneID(BuiltinFunc):
         return Data('LaneId()', _cuda_types.uint32)
 
 
-builtin_functions_dict: Mapping[Any, BuiltinFunc] = {
+builtin_functions_dict: Mapping[Any, Function] = {
     range: RangeFunc(),
     len: LenFunc(),
     min: MinFunc(),
