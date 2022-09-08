@@ -229,8 +229,7 @@ def unique(ar, return_index=False, return_inverse=False,
                             # Compare using the imaginary values
                             left = left.imag
                             right = right.imag
-                    elif not (cupy.isnan(left.real) or
-                                cupy.isnan(right.real)):
+                    elif not (cupy.isnan(left.real) or cupy.isnan(right.real)):
                         # Compare using the real values
                         left = left.real
                         right = right.real
