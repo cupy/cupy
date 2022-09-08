@@ -143,7 +143,8 @@ class _DistributedArray(cupy.ndarray):
 
     def asnumpy(self):
         # Coalesce it in a single array
-        return numpy.concatenate(self._chunks.values(), axis=self._axis)
+        chunks = [cupy.asnumpy(c) for c in self._chunks.values()]
+        return numpy.concatenate(chunks, axis=self._axis)
 
 
 def _split_tiles(array, nr_splits):

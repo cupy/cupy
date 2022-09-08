@@ -1,10 +1,11 @@
-import pytest
+import warnings
 
 import numpy
-import cupy
+import pytest
 
-import cupyx.distributed._array
+import cupy
 from cupy import testing
+import cupyx.distributed._array
 
 
 @pytest.fixture
@@ -37,7 +38,9 @@ class TestDistributedArray:
     def test_array_creation_from_cupy(self, mem_pool):
         array = cupy.arange(64).reshape(8, 8)
         assert mem_pool.used_bytes() == array.nbytes
-        da = cupyx.distributed._array.array(array, (0, 1), (4, 8))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', cupy._util.PerformanceWarning)
+            da = cupyx.distributed._array.array(array, (0, 1), (4, 8))
         assert da.device.id == -1
         # Ensure no memory allocation other than chunks & original array
         assert da.data.ptr == 0
@@ -74,10 +77,10 @@ class TestDistributedArray:
     @pytest.mark.parametrize('split_shape', [(8, 4), (4, 8)])
     def test_elementwise_kernel(self, split_shape):
         custom_kernel = cupy.ElementwiseKernel(
-           'float32 x, float32 y',
-           'float32 z',
-           'z = (x - y) * (x - y)',
-           'custom')
+            'float32 x, float32 y',
+            'float32 z',
+            'z = (x - y) * (x - y)',
+            'custom')
         # TODO parameterize split shape
         np_a = numpy.arange(64).reshape(8, 8).astype(numpy.float32)
         np_b = (numpy.arange(64).reshape(8, 8) * 2.0).astype(numpy.float32)
@@ -94,3 +97,10 @@ class TestDistributedArray:
         d_b = cupyx.distributed._array.array(np_b, (0, 1), (8, 4))
         with pytest.raises(RuntimeError, match=r'chunk sizes'):
             cupy.sin(d_a * d_b)
+
+    def test_incompatible_operand(self):
+        np_a = numpy.arange(64).reshape(8, 8)
+        cp_b = cupy.arange(64).reshape(8, 8)
+        d_a = cupyx.distributed._array.array(np_a, (0, 1), (4, 8))
+        with pytest.raises(RuntimeError, match=r'Mix `cupy.ndarray'):
+            cupy.sin(d_a * cp_b)
