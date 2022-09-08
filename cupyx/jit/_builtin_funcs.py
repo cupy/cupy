@@ -1,6 +1,5 @@
 import functools
-import itertools
-from typing import Any, Mapping, NoReturn, TYPE_CHECKING
+from typing import Any, Mapping
 import warnings
 
 import cupy
@@ -8,54 +7,11 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupyx.jit import _cuda_types
-from cupyx.jit._internal_types import Expr
+from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 from cupyx.jit import _compile
-
-if TYPE_CHECKING:
-    from cupyx.jit._compile import Environment
-
-
-class BuiltinFunc:
-    # subclasses must implement:
-    # - either call or call_const
-    # - `__call__` with a correct signature, which calls the parent's __call__
-
-    def call(self, env: 'Environment', *args, **kwargs) -> Expr:
-        for x in itertools.chain(args, kwargs.values()):
-            if not isinstance(x, Constant):
-                raise TypeError('Arguments must be constants.')
-        args = tuple([x.obj for x in args])
-        kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
-        return self.call_const(env, *args, **kwargs)
-
-    def call_const(self, env: 'Environment', *args: Any, **kwarg: Any) -> Expr:
-        raise NotImplementedError
-
-    def __init__(self) -> None:
-        self.__doc__ = type(self).__call__.__doc__
-
-    def __call__(self) -> NoReturn:
-        raise RuntimeError('Cannot call this function from Python layer.')
-
-    def __repr__(self) -> str:
-        return '<cupyx.jit function>'
-
-    @classmethod
-    def from_class_method(cls, instance_name, method):
-        # - this helper wraps every class method as a BuiltinFunc
-        # - method must return a valid Expr
-        # TODO(leofang): if performance is concerned, we could cache _Wrapper
-        # for each method.__func__, and overwrite with the provided instance
-        class _Wrapper(BuiltinFunc):
-
-            def call(self, env, *args, **kwargs):
-                data = method(env, *args, **kwargs)
-                return Data(f'{instance_name}.{data.code}', data.ctype)
-
-        return _Wrapper()
 
 
 class RangeFunc(BuiltinFunc):

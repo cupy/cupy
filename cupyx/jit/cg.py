@@ -1,7 +1,7 @@
 from cupy.cuda import runtime as _runtime
 from cupyx.jit import _compile
 from cupyx.jit import _cuda_types
-from cupyx.jit._builtin_funcs import BuiltinFunc as _BuiltinFunc
+from cupyx.jit._internal_types import BuiltinFunc as _BuiltinFunc
 from cupyx.jit._internal_types import Constant as _Constant
 from cupyx.jit._internal_types import Data as _Data
 

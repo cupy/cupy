@@ -689,7 +689,7 @@ def _transpile_expr_internal(
 
         func = func.obj
 
-        if isinstance(func, _builtin_funcs.BuiltinFunc):
+        if isinstance(func, _internal_types.BuiltinFunc):
             return func.call(env, *args, **kwargs)
 
         if isinstance(func, _interface._JitRawKernel):
@@ -777,7 +777,7 @@ def _transpile_expr_internal(
         # TODO(leofang): support arbitrary Python class methods
         if isinstance(value.ctype, _ThreadGroup):
             return Constant(
-                _builtin_funcs.BuiltinFunc.from_class_method(
+                _internal_types.BuiltinFunc.from_class_method(
                     value.code, getattr(value.ctype, expr.attr)))
         raise NotImplementedError('Not implemented: __getattr__')
 
