@@ -130,6 +130,19 @@ def _find_missing_index(ind, n):
         cupy.asarray(ind.size if ind.size < n else -1))
 
 
+def _non_zero_cmp(mat, am, zero, m):
+    size = math.prod(mat.shape)
+    if size == mat.nnz:
+        return am
+    else:
+        ind = mat.row * mat.shape[1] + mat.col
+        zero_ind = _find_missing_index(ind, size)
+        return cupy.where(
+            m == zero,
+            cupy.where(cupy.greater(zero_ind, am), am, zero_ind),
+            zero_ind)
+
+
 class _minmax_mixin(object):
     """Mixin for min and max methods.
     These are not implemented for dia_matrix, hence the separate class.
@@ -233,23 +246,9 @@ class _minmax_mixin(object):
                 am = op(mat.data)
                 m = mat.data[am]
 
-                zero_cmp = cupy.where(compare(m, zero), True, False)
-
-                if zero_cmp:
-                    return mat.row[am] * mat.shape[1] + mat.col[am]
-                else:
-                    size = math.prod(mat.shape)
-                    if size == mat.nnz:
-                        return am
-                    else:
-                        ind = mat.row * mat.shape[1] + mat.col
-                        zero_ind = _find_missing_index(ind, size)
-                        if m == zero:
-                            min_idx = cupy.where(
-                                cupy.greater(zero_ind, am), am, zero_ind)
-                            return min_idx
-                        else:
-                            return zero_ind
+                return cupy.where(
+                    compare(m, zero), mat.row[am] * mat.shape[1] + mat.col[am],
+                    _non_zero_cmp(mat, am, zero, m))
 
         if axis < 0:
             axis += 2
