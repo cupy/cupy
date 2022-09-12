@@ -1090,6 +1090,9 @@ class TestWeibull(RandomGeneratorTestCase):
     def test_weibull(self):
         self.generate(a=self.a, size=(3, 2))
 
+    def test_weibull_size_none(self):
+        self.generate([[0.5, 1.0, 3.0]])
+
     @testing.for_dtypes('fd')
     @_condition.repeat_with_success_at_least(10, 3)
     def test_weibull_ks(self, dtype):
