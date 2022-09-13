@@ -27,6 +27,7 @@ from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
+from cupy import _ufunc_method
 from cupy_backends.cuda.api cimport runtime
 
 try:
@@ -1347,14 +1348,7 @@ cdef class ufunc:
            :meth:`numpy.ufunc.outer`
 
         """
-
-        A = cupy.asarray(A)
-        B = cupy.asarray(B)
-        ndim_a = A.ndim
-        ndim_b = B.ndim
-        A = A.reshape(A.shape + (1,) * ndim_b)
-        B = B.reshape((1,) * ndim_a + B.shape)
-        return self(A, B, **kwargs)
+        return _ufunc_method.ufunc_outer(self, A, B, **kwargs)
 
 
 cdef class _Op:
