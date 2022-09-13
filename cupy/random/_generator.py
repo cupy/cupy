@@ -1150,7 +1150,7 @@ class RandomState(object):
             - :func:`cupy.random.randint` for full documentation
             - :meth:`numpy.random.RandomState.randint`
         """
-        if not numpy.isscalar(low):
+        if not (numpy.isscalar(low) and numpy.isscalar(high)):
             low = cupy.asarray(low)
             if high is None:
                 lo = cupy.zeros_like(low)
