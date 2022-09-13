@@ -1340,6 +1340,22 @@ cdef class ufunc:
             self._kernel_memo[key] = kern
         return kern
 
+    def outer(self, A, B, **kwargs):
+        """Apply the ufunc operation to all pairs of elements in A and B.
+
+        .. seealso::
+           :meth:`numpy.ufunc.outer`
+
+        """
+
+        A = cupy.asarray(A)
+        B = cupy.asarray(B)
+        ndim_a = A.ndim
+        ndim_b = B.ndim
+        A = A.reshape(A.shape + (1,) * ndim_b)
+        B = B.reshape((1,) * ndim_a + B.shape)
+        return self(A, B, **kwargs)
+
 
 cdef class _Op:
 
