@@ -1150,26 +1150,49 @@ class RandomState(object):
             - :func:`cupy.random.randint` for full documentation
             - :meth:`numpy.random.RandomState.randint`
         """
-        if high is None:
-            lo = 0
-            hi1 = int(low) - 1
+        if not numpy.isscalar(low):
+            low = cupy.asarray(low)
+            if high is None:
+                lo = cupy.zeros_like(low)
+                hi = low - 1
+            else:
+                lo = low
+                hi = cupy.asarray(high) - 1
+
+            if cupy.any(lo > high):
+                raise ValueError('low >= high')
+
+            if size is None:
+                size = cupy.broadcast(lo, hi).shape
+
+            diff = hi - lo
+            total_elems = functools.reduce(operator.mul, size, 1)
+            out = cupy.empty(total_elems, dtype=low.dtype)
+            for i, d in enumerate(cupy.flatiter(diff)):
+                out[i] = self._interval(d.item(), None)
+            out = cupy.reshape(out, size)
+            return out + lo
         else:
-            lo = int(low)
-            hi1 = int(high) - 1
+            if high is None:
+                lo = 0
+                hi1 = int(low) - 1
+            else:
+                lo = int(low)
+                hi1 = int(high) - 1
 
-        if lo > hi1:
-            raise ValueError('low >= high')
-        if lo < cupy.iinfo(dtype).min:
-            raise ValueError(
-                'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-        if hi1 > cupy.iinfo(dtype).max:
-            raise ValueError(
-                'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
+            if lo > hi1:
+                raise ValueError('low >= high')
+            if lo < cupy.iinfo(dtype).min:
+                raise ValueError(
+                    'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
+            if hi1 > cupy.iinfo(dtype).max:
+                raise ValueError(
+                    'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
-        diff = hi1 - lo
-        x = self._interval(diff, size).astype(dtype, copy=False)
-        cupy.add(x, lo, out=x)
-        return x
+            diff = hi1 - lo
+            x = self._interval(diff, size).astype(dtype, copy=False)
+            cupy.add(x, lo, out=x)
+            return x
 
 
 def seed(seed=None):
