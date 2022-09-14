@@ -139,7 +139,7 @@ def _non_zero_cmp(mat, am, zero, m):
         zero_ind = _find_missing_index(ind, size)
         return cupy.where(
             m == zero,
-            cupy.where(cupy.greater(zero_ind, am), am, zero_ind),
+            cupy.minimum(zero_ind, am)
             zero_ind)
 
 
