@@ -1,6 +1,5 @@
-from operator import mul
-from functools import reduce
 import cupy
+import numpy as np
 from cupy._core import internal
 from cupy import _util
 from cupyx.scipy.sparse import _base
@@ -132,7 +131,7 @@ def _find_missing_index(ind, n):
 
 
 def _non_zero_cmp(mat, am, zero, m):
-    size = reduce(mul, mat.shape, 1)
+    size = np.prod(mat.shape)
     if size == mat.nnz:
         return am
     else:
