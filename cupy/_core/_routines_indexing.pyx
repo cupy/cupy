@@ -614,7 +614,27 @@ cdef _put_clip_kernel = ElementwiseKernel(
     'cupy_put_clip')
 
 
-cdef _create_scatter_kernel(name, code):
+@cupy._util.memoize(for_each_device=True)
+def _create_unary_scatter_kernel(name, code, preamble=''):
+    return ElementwiseKernel(
+        'S indices, int32 cdim, int32 rdim, int32 adim',
+        'raw T a',
+        string.Template('''
+            S wrap_indices = indices % adim;
+            if (wrap_indices < 0) wrap_indices += adim;
+            ptrdiff_t li = i / (rdim * cdim);
+            ptrdiff_t ri = i % rdim;
+            T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
+            const in0_type in0 = out0;
+            ${code};
+        ''').substitute(code=code),
+        name,
+        preamble=preamble,
+    )
+
+
+@cupy._util.memoize(for_each_device=True)
+def _create_binary_scatter_kernel(name, code, preamble=''):
     return ElementwiseKernel(
         'T v, S indices, int32 cdim, int32 rdim, int32 adim',
         'raw T a',
@@ -629,19 +649,20 @@ cdef _create_scatter_kernel(name, code):
             ${code};
         ''').substitute(code=code),
         name,
+        preamble=preamble,
     )
 
 
-cdef _scatter_update_kernel = _create_scatter_kernel(
+cdef _scatter_update_kernel = _create_binary_scatter_kernel(
     'cupy_scatter_update', 'out0 = in1')
 
-cdef _scatter_add_kernel = _create_scatter_kernel(
+cdef _scatter_add_kernel = _create_binary_scatter_kernel(
     'cupy_scatter_add', 'atomicAdd(&out0, in1)')
 
-cdef _scatter_max_kernel = _create_scatter_kernel(
+cdef _scatter_max_kernel = _create_binary_scatter_kernel(
     'cupy_scatter_max', 'atomicMax(&out0, in1)')
 
-cdef _scatter_min_kernel = _create_scatter_kernel(
+cdef _scatter_min_kernel = _create_binary_scatter_kernel(
     'cupy_scatter_min', 'atomicMin(&out0, in1)')
 
 
@@ -819,6 +840,52 @@ cdef _ndarray_base _take(
 cdef _scatter_op_single(
         _ndarray_base a, _ndarray_base indices, value, Py_ssize_t start,
         Py_ssize_t stop, op=''):
+    cdef _ndarray_base v
+
+    if not isinstance(value, _ndarray_base):
+        v = core.array(value, dtype=a.dtype)
+    else:
+        v = value.astype(a.dtype, copy=False)
+
+    if op == 'update':
+        kernel = _scatter_update_kernel
+    elif op == 'add':
+        # There is constraints on types because atomicAdd() in CUDA 7.5
+        # only supports int32, uint32, uint64, and float32.
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float16, numpy.float32,
+                           numpy.float64, numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_add only supports int32, float16, float32, float64, '
+                'uint32, uint64, as data type')
+        kernel = _scatter_add_kernel
+    elif op == 'max':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_max only supports int32, float32, float64, '
+                'uint32, uint64 as data type')
+        kernel = _scatter_max_kernel
+    elif op == 'min':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+            raise TypeError(
+                'scatter_min only supports int32, float32, float64, '
+                'uint32, uint64 as data type')
+        kernel = _scatter_min_kernel
+    else:
+        raise ValueError('provided op is not supported')
+    return _call_scatter_op_single(kernel, a, indices, v, start, stop)
+
+
+cpdef _call_scatter_op_single(
+        kernel, _ndarray_base a, _ndarray_base indices,
+        _ndarray_base v, Py_ssize_t start, Py_ssize_t stop):
     # When op == 'update', this function behaves similarly to
     # a code below using NumPy under the condition that a = a._reshape(shape)
     # does not invoke copy.
@@ -831,24 +898,16 @@ cdef _scatter_op_single(
     # a[slices] = value
     cdef Py_ssize_t ndim, adim, cdim, rdim
     cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
-    cdef _ndarray_base v
 
     ndim = a._shape.size()
 
-    if not isinstance(value, _ndarray_base):
-        v = core.array(value, dtype=a.dtype)
-    else:
-        v = value.astype(a.dtype, copy=False)
-
     a_shape = a.shape
-
     lshape = a_shape[:start]
     rshape = a_shape[stop:]
     adim = internal.prod_sequence(a_shape[start:stop])
 
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
-    v = _manipulation.broadcast_to(v, v_shape)
 
     cdim = indices.size
     rdim = internal.prod_sequence(rshape)
@@ -857,43 +916,11 @@ cdef _scatter_op_single(
         (1,) * len(lshape) + indices_shape + (1,) * len(rshape))
     indices = _manipulation.broadcast_to(indices, v_shape)
 
-    if op == 'update':
-        _scatter_update_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
-    elif op == 'add':
-        # There is constraints on types because atomicAdd() in CUDA 7.5
-        # only supports int32, uint32, uint64, and float32.
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float16, numpy.float32,
-                           numpy.float64, numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
-            raise TypeError(
-                'scatter_add only supports int32, float16, float32, float64, '
-                'uint32, uint64, as data type')
-        _scatter_add_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
-    elif op == 'max':
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
-                           numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
-            raise TypeError(
-                'scatter_max only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
-        _scatter_max_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
-    elif op == 'min':
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
-                           numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
-            raise TypeError(
-                'scatter_min only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
-        _scatter_min_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
+    if v is None:
+        return kernel(indices, cdim, rdim, adim, a.reduced_view())
     else:
-        raise ValueError('provided op is not supported')
+        v = _manipulation.broadcast_to(v, v_shape)
+        return kernel(v, indices, cdim, rdim, adim, a.reduced_view())
 
 
 cdef _scatter_op_mask_single(
