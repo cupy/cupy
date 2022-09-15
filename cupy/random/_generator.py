@@ -1184,10 +1184,12 @@ class RandomState(object):
                 raise ValueError('low >= high')
             if lo < cupy.iinfo(dtype).min:
                 raise ValueError(
-                    'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
+                    'low is out of bounds for {}'.format(
+                        cupy.dtype(dtype).name))
             if hi1 > cupy.iinfo(dtype).max:
                 raise ValueError(
-                    'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
+                    'high is out of bounds for {}'.format(
+                        cupy.dtype(dtype).name))
 
             diff = hi1 - lo
             x = self._interval(diff, size).astype(dtype, copy=False)
