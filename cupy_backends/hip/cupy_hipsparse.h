@@ -3577,6 +3577,11 @@ cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
 #endif
 }
 
+// TODO(mtakagi) hipsparseSpSM_solve has an extra parameter cuSPARSE counterpart does not have.
+cusparseStatus_t cusparseSpSM_solve(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
+/*
 cusparseStatus_t cusparseSpSM_solve(cusparseHandle_t     handle,
                                     cusparseOperation_t  opA,
                                     cusparseOperation_t  opB,
@@ -3594,6 +3599,7 @@ cusparseStatus_t cusparseSpSM_solve(cusparseHandle_t     handle,
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 #endif
 }
+*/
 
 cusparseStatus_t cusparseSpMM_bufferSize(cusparseHandle_t     handle,
                                          cusparseOperation_t  opA,
