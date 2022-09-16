@@ -645,4 +645,278 @@ cusparseStatus_t cusparseSpSM_solve(...) {
 
 #endif // #if CUSPARSE_VERSION < 11600
 
+#if CUSPARSE_VERSION >= 12000
+// Types and functions deleted in cuSPARSE 12.0 (CUDA 12.0)
+
+typedef enum {} cusparseAlgMode_t;
+typedef void* csrgemm2Info_t;
+typedef void* csrsm2Info_t;
+typedef void* csrsv2Info_t;
+
+cusparseStatus_t cusparseCreateCsrsv2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrsv2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCsrgemm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrgemm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsrmvEx(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsv2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsm2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrgemm2Nnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatSetStridedBatch(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseConstrainedGeMM(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUSPARSE_VERSION >= 12000
+
 #endif  // INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
