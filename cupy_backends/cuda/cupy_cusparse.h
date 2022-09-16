@@ -606,5 +606,43 @@ typedef enum {} cusparseDenseToSparseAlg_t;
 
 #endif // CUSPARSE_VERSION < 11300
 
+#if CUSPARSE_VERSION < 11500
+// API added in cuSparse 11.5 (CUDA 11.3.0)
+
+typedef enum {} cusparseSpMatAttribute_t;
+
+cusparseStatus_t cusparseSpMatSetAttribute(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // CUSPARSE_VERSION < 11500
+
+#if CUSPARSE_VERSION < 11600
+// Generic APIs added in cuSPARSE 11.6 (CUDA 11.3.1)
+
+typedef void* cusparseSpSMDescr_t;
+typedef enum {} cusparseSpSMAlg_t;
+
+cusparseStatus_t cusparseSpSM_createDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_destroyDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUSPARSE_VERSION < 11600
 
 #endif  // INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
