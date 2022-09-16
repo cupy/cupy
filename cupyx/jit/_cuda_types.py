@@ -34,6 +34,15 @@ class Void(TypeBase):
         return 'void'
 
 
+class Unknown(TypeBase):
+
+    def __init__(self) -> None:
+        pass
+
+    def __str__(self) -> str:
+        raise TypeError('unknown type can be used only in ary of a function.')
+
+
 class Scalar(TypeBase):
 
     def __init__(self, dtype: npt.DTypeLike) -> None:
@@ -65,13 +74,23 @@ class PtrDiff(Scalar):
 
 class ArrayBase(TypeBase):
 
+    def ndim(self, instance: 'Data'):
+        from cupyx.jit import _internal_types  # avoid circular import
+        return _internal_types.Constant(self._ndim)
+
     def __init__(self, child_type: TypeBase, ndim: int) -> None:
         assert isinstance(child_type, TypeBase)
         self.child_type = child_type
-        self.ndim = ndim
+        self._ndim = ndim
 
+
+class PointerBase(ArrayBase):
+
+    def __init__(self, child_type: TypeBase, ndim: int) -> None:
+        super().__init__(child_type, ndim)
 
 class CArray(ArrayBase):
+    from cupyx.jit import _internal_types  # avoid circular import
 
     def __init__(
             self,
@@ -81,6 +100,7 @@ class CArray(ArrayBase):
             index_32_bits: bool,
     ) -> None:
         self.dtype = numpy.dtype(dtype)
+        self._ndim = ndim
         self._c_contiguous = is_c_contiguous
         self._index_32_bits = index_32_bits
         super().__init__(Scalar(dtype), ndim)
@@ -89,16 +109,87 @@ class CArray(ArrayBase):
     def from_ndarray(cls, x: cupy.ndarray) -> 'CArray':
         return CArray(x.dtype, x.ndim, x._c_contiguous, x._index_32_bits)
 
+    def size(self, instance: 'Data') -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        return _internal_types.Data(
+            f'static_cast<long long>({instance.code}.size())', Scalar('q'))
+
+    def shape(self, instance: 'Data') -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        if self._ndim > 10:
+            raise NotImplementedError(
+                'getting shape/strides for an array with ndim > 10 '
+                'is not supported yet')
+        return _internal_types.Data(
+            f'{instance.code}.get_shape()', Tuple([PtrDiff()] * self._ndim))
+
+    def strides(self, instance: 'Data') -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        if self._ndim > 10:
+            raise NotImplementedError(
+                'getting shape/strides for an array with ndim > 10 '
+                'is not supported yet')
+        return _internal_types.Data(
+            f'{instance.code}.get_strides()', Tuple([PtrDiff()] * self._ndim))
+
+    @_internal_types.call_as_method
+    def begin(self, instance: 'Data', *args) -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        if self._ndim != 1:
+            raise NotImplementedError(
+                'getting begin iterator for an array with ndim != 1 '
+                'is not supported yet')
+        return _internal_types.Data(
+            f'{instance.code}.begin()', CArrayIterator(instance.ctype))
+
+    @_internal_types.call_as_method
+    def end(self, instance: 'Data', *args) -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        if self._ndim != 1:
+            raise NotImplementedError(
+                'getting end iterator for an array with ndim != 1 '
+                'is not supported yet')
+        return _internal_types.Data(
+            f'{instance.code}.end()', CArrayIterator(instance.ctype))
+
     def __str__(self) -> str:
         ctype = get_typename(self.dtype)
+        ndim = self._ndim
         c_contiguous = get_cuda_code_from_constant(self._c_contiguous, bool_)
         index_32_bits = get_cuda_code_from_constant(self._index_32_bits, bool_)
-        return f'CArray<{ctype}, {self.ndim}, {c_contiguous}, {index_32_bits}>'
+        return f'CArray<{ctype}, {ndim}, {c_contiguous}, {index_32_bits}>'
+
+    def __eq__(self, other: object) -> bool:
+        return str(self) == str(other)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+
+class CArrayIterator(PointerBase):
+
+    def __init__(
+            self,
+            carray: CArray,
+    ) -> None:
+        self.dtype = carray.dtype
+        self._ndim = carray._ndim
+        self._c_contiguous = carray._c_contiguous
+        self._index_32_bits = carray._index_32_bits
+        super().__init__(Scalar(carray.dtype), carray._ndim)
+
+    def __str__(self) -> str:
+        ctype = get_typename(self.dtype)
+        ndim = self._ndim
+        c_contiguous = get_cuda_code_from_constant(self._c_contiguous, bool_)
+        index_32_bits = get_cuda_code_from_constant(self._index_32_bits, bool_)
+        return f'CArray<{ctype}, {ndim}, {c_contiguous}, {index_32_bits}>::iterator'
 
     def __eq__(self, other: object) -> bool:
         assert isinstance(other, TypeBase)
         return (
             isinstance(other, CArray) and
+            isinstance(other, CArrayIterator) and
             self.dtype == other.dtype and
             self.ndim == other.ndim and
             self._c_contiguous == other._c_contiguous and
@@ -139,7 +230,7 @@ class SharedMem(ArrayBase):
         return code
 
 
-class Ptr(ArrayBase):
+class Ptr(PointerBase):
 
     def __init__(self, child_type: TypeBase) -> None:
         super().__init__(child_type, 1)
@@ -155,7 +246,10 @@ class Tuple(TypeBase):
 
     def __str__(self) -> str:
         types = ', '.join([str(t) for t in self.types])
-        return f'thrust::tuple<{types}>'
+        if len(self.types) == 2:
+            return f'thrust::pair<{types}>'
+        else:
+            return f'thrust::tuple<{types}>'
 
     def __eq__(self, other: object) -> bool:
         assert isinstance(other, TypeBase)
@@ -179,17 +273,17 @@ class Dim3(TypeBase):
         z (uint32)
     """
 
-    def x(self, code: str) -> 'Data':
+    def x(self, instance: 'Data') -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
-        return _internal_types.Data(f'{code}.x', uint32)
+        return _internal_types.Data(f'{instance.code}.x', uint32)
 
-    def y(self, code: str) -> 'Data':
+    def y(self, instance: 'Data') -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
-        return _internal_types.Data(f'{code}.y', uint32)
+        return _internal_types.Data(f'{instance.code}.y', uint32)
 
-    def z(self, code: str) -> 'Data':
+    def z(self, instance: 'Data') -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
-        return _internal_types.Data(f'{code}.z', uint32)
+        return _internal_types.Data(f'{instance.code}.z', uint32)
 
     def __str__(self) -> str:
         return 'dim3'

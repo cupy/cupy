@@ -347,7 +347,10 @@ class GridFunc(BuiltinFunc):
 
         elts_code = ', '.join(self._code.format(n=n) for n in dims)
         ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
-        return Data(f'thrust::make_tuple({elts_code})', ctype)
+        if ndim == 2:
+            return Data(f'thrust::make_pair({elts_code})', ctype)
+        else:
+            return Data(f'thrust::make_tuple({elts_code})', ctype)
 
 
 class WarpShuffleOp(BuiltinFunc):

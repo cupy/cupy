@@ -7,6 +7,7 @@ import re
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 import warnings
+import types
 
 import numpy
 
@@ -369,6 +370,46 @@ def _eval_operand(
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
+    if all([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.Ptr) for arg in args]) \
+        or all([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.CArrayIterator) for arg in args]):
+        if not isinstance(op, ast.Sub):
+            raise TypeError(
+                f'Only Sub operator is supported between raw pointers or iterators.')
+        opcode = '-'
+        leftcode = args[0].code
+        rightcode = args[1].code
+        code = '(' + leftcode + ' ' + opcode + ' ' + rightcode + ')'
+        return Data(code, _cuda_types.PtrDiff())
+
+    if any([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.Ptr) for arg in args]) \
+        or any([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.CArrayIterator) for arg in args]):
+        if isinstance(op, ast.Add):
+            opcode = '+'
+        elif isinstance(op, ast.Sub):
+            opcode = '-'
+        else:
+            raise TypeError(
+                f'Only Add or Sub operators are supported for a raw pointer.')
+
+        leftarg = Data.init(args[0], env)
+        rightarg = Data.init(args[1], env)
+
+        if isinstance(leftarg.ctype, _cuda_types.PointerBase):
+            if isinstance(rightarg.ctype, _cuda_types.Scalar) and (rightarg.ctype.dtype.kind in 'ui'):
+                code = '(' + leftarg.code + ' ' + opcode + ' ' + rightarg.code + ')'
+                return Data(code, leftarg.ctype)
+            else:
+                raise TypeError(
+                    f'Only integer-like value can used with raw pointer in Add or Sub.')
+
+        if isinstance(rightarg.ctype, _cuda_types.PointerBase):
+            if isinstance(leftarg.ctype, _cuda_types.Scalar) and (leftarg.ctype.dtype.kind in 'ui'):
+                code = '(' + leftarg.code + ' ' + opcode + ' ' + rightarg.code + ')'
+                return Data(code, rightarg.ctype)
+            else:
+                raise TypeError(
+                    f'Only integer-like value can used with raw pointer in Add or Sub.')
+
     ufunc = _cuda_typerules.get_ufunc(env.mode, type(op))
     return _call_ufunc(ufunc, args, None, env)
 
@@ -685,7 +726,7 @@ def _transpile_expr_internal(
 
         if isinstance(func, _internal_types.BuiltinFunc):
             return func.call(env, *args, **kwargs)
-
+        
         if not isinstance(func, Constant):
             raise TypeError(f"'{func}' is not callable.")
 
@@ -751,42 +792,31 @@ def _transpile_expr_internal(
         return value
     if isinstance(expr, ast.Attribute):
         value = _transpile_expr(expr.value, env)
-        if is_constants(value):
+        if isinstance(value, Constant):
             return Constant(getattr(value.obj, expr.attr))
-        if isinstance(value.ctype, _cuda_types.ArrayBase):
-            if 'ndim' == expr.attr:
-                return Constant(value.ctype.ndim)
-        if isinstance(value.ctype, _cuda_types.CArray):
-            if 'size' == expr.attr:
-                return Data(f'static_cast<long long>({value.code}.size())',
-                            _cuda_types.Scalar('q'))
-            if expr.attr in ('shape', 'strides'):
-                # this guard is needed to avoid NVRTC from throwing an
-                # obsecure error
-                if value.ctype.ndim > 10:
-                    raise NotImplementedError(
-                        'getting shape/strides for an array with ndim > 10 '
-                        'is not supported yet')
-                types = [_cuda_types.PtrDiff()]*value.ctype.ndim
-                return Data(f'{value.code}.get_{expr.attr}()',
-                            _cuda_types.Tuple(types))
-        if isinstance(value.ctype, _cuda_types.Dim3):
-            if expr.attr in ('x', 'y', 'z'):
-                return getattr(value.ctype, expr.attr)(value.code)
-        # TODO(leofang): support arbitrary Python class methods
-        if isinstance(value.ctype, _ThreadGroup):
-            return _internal_types.BuiltinFunc.from_class_method(
-                value.code, getattr(value.ctype, expr.attr))
-        raise NotImplementedError('Not implemented: __getattr__')
+        if isinstance(value, _internal_types.BuiltinFunc):
+            return Constant(getattr(value, expr.attr))
+        if isinstance(value, Data) and hasattr(value.ctype, expr.attr):
+            attr = getattr(value.ctype, expr.attr, None)
+            if isinstance(attr, types.MethodType):
+                return attr(value)
+            if isinstance(attr, Data):
+                return attr
+        raise AttributeError(f'Unknown attribute: {expr.attr}')
 
     if isinstance(expr, ast.Tuple):
         elts = [_transpile_expr(x, env) for x in expr.elts]
         # TODO: Support compile time constants.
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
-        return Data(
-            f'thrust::make_tuple({elts_code})',
-            _cuda_types.Tuple([x.ctype for x in elts]))
+        if len(elts) == 2:
+            return Data(
+                f'thrust::make_pair({elts_code})',
+                _cuda_types.Tuple([x.ctype for x in elts]))
+        else:
+            return Data(
+                f'thrust::make_tuple({elts_code})',
+                _cuda_types.Tuple([x.ctype for x in elts]))
 
     if isinstance(expr, ast.Index):
         # Deprecated in Python 3.9
@@ -879,24 +909,39 @@ def _indexing(
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
         index = Data.init(index, env)
-        ndim = array.ctype.ndim
+        ndim = array.ctype._ndim
         if isinstance(index.ctype, _cuda_types.Scalar):
             index_dtype = index.ctype.dtype
-            if ndim != 1:
-                raise TypeError(
-                    'Scalar indexing is supported only for 1-dim array.')
+            if ndim == 0:
+                raise TypeError('Scalar indexing is not supported for 0-dim array.')
+            if ndim > 1:
+                new_carray = _cuda_types.CArray(
+                    array.ctype.dtype,
+                    array.ctype._ndim - 1,
+                    array.ctype._c_contiguous,
+                    array.ctype._index_32_bits)
+                return Data(
+                    f'{array.code}._slicing({index.code})', new_carray)
             if index_dtype.kind not in 'ui':
                 raise TypeError('Array indices must be integers.')
             return Data(
                 f'{array.code}[{index.code}]', array.ctype.child_type)
         if isinstance(index.ctype, _cuda_types.Tuple):
-            if ndim != len(index.ctype.types):
-                raise IndexError(f'The size of index must be {ndim}')
+            if ndim < len(index.ctype.types):
+                raise IndexError(f'The number of indices is beyond array dim: {ndim}')
             for t in index.ctype.types:
                 if not isinstance(t, _cuda_types.Scalar):
                     raise TypeError('Array indices must be scalar.')
                 if t.dtype.kind not in 'iu':
                     raise TypeError('Array indices must be integer.')
+            if ndim > len(index.ctype.types):
+                new_carray = _cuda_types.CArray(
+                    array.ctype.dtype,
+                    array.ctype._ndim - len(index.ctype.types),
+                    array.ctype._c_contiguous,
+                    array.ctype._index_32_bits)
+                return Data(
+                    f'{array.code}._slicing({index.code}, Dim<{len(index.ctype.types)}>())', new_carray)
             if ndim == 0:
                 return Data(
                     f'{array.code}[0]', array.ctype.child_type)

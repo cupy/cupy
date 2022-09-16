@@ -106,7 +106,7 @@ class _JitRawKernel:
             enable_cg = result.enable_cooperative_groups
             # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
             # recognize "-D", so we have to compile using hipcc...
-            backend = 'nvcc' if runtime.is_hip else 'nvrtc'
+            backend = 'nvcc' #if runtime.is_hip else 'nvrtc'
             module = core.compile_with_cache(
                 source=result.code,
                 options=('-DCUPY_JIT_MODE', '--std=c++14'),

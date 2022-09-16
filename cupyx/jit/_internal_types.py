@@ -21,10 +21,11 @@ class Data(Expr):
         assert isinstance(ctype, _cuda_types.TypeBase)
         self.code = code
         self.ctype = ctype
-        try:
-            self.__doc__ = f'{str(ctype)} {code}\n{ctype.__doc__}'
-        except NotImplementedError:
-            self.__doc__ = f'{code}'
+        if not isinstance(ctype, _cuda_types.Unknown):
+            try:
+                self.__doc__ = f'{str(ctype)} {code}\n{ctype.__doc__}'
+            except NotImplementedError:
+                self.__doc__ = f'{code}'
 
     @property
     def obj(self):
@@ -112,3 +113,17 @@ class BuiltinFunc(Expr):
                 return Data(f'{instance_name}.{data.code}', data.ctype)
 
         return _Wrapper()
+
+    @classmethod
+    def from_instance_method(cls, method, carrayself, instance):
+        class _Wrapper(BuiltinFunc):
+
+            def call(self, env, *args, **kwargs):
+                return method(carrayself, instance, *args)
+
+        return _Wrapper()
+
+def call_as_method(method):
+    def wrapper(carrayself, instance: Data):
+        return BuiltinFunc.from_instance_method(method, carrayself, instance)
+    return wrapper
