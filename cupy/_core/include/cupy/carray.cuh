@@ -225,11 +225,18 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
 #ifdef CUPY_JIT_MODE
-//#include <cupy/swap.cuh>
-//#include <cupy/tuple.cuh>
+#ifdef CUPY_JIT_NVCC
 #include <thrust/swap.h>
 #include <thrust/tuple.h>
+#include <thrust/pair.h>
+#else
+#include <cupy/swap.cuh>
+#include <cupy/tuple.cuh>
+#include <cupy/pair.cuh>
+#endif  // CUPY_JIT_NVCC
+#endif  // CUPY_JIT_MODE
 
+#ifdef CUPY_JIT_MODE
 namespace cupy {
 
 /*
@@ -275,7 +282,98 @@ template <int dim>
 struct Dim {
   __device__ Dim() {}
 };
-#endif
+#endif  // CUPY_JIT_MODE
+
+template <typename T, typename index_t>
+class CArrayIterator {
+public:
+  typedef ptrdiff_t difference_type;
+  typedef T value_type;
+  typedef T* pointer;
+  typedef T& reference;
+#ifdef CUPY_JIT_NVCC
+  typedef std::random_access_iterator_tag iterator_category;
+#endif  // CUPY_JIT_NVCC
+
+private:
+  T* head_;
+  index_t step_;
+public:
+  __device__ CArrayIterator(T* head, index_t step) {
+    this->head_ = head;
+    this->step_ = step;
+  }
+  __device__ CArrayIterator(const CArrayIterator& itr) {
+    this->head_ = itr.head_;
+    this->step_ = itr.step_;
+  }
+  __device__ bool operator==(const CArrayIterator& itr) const {
+    return (this->head_ == itr.head_) && (this->step_ == itr.step_);
+  }
+  __device__ bool operator!=(const CArrayIterator& itr) const {
+    return !(*this == itr);
+  }
+  __device__ T& operator*() const {
+    return *(this->head_);
+  }
+  __device__ const T* operator->() const {
+    return this->head_;
+  }
+  __device__ CArrayIterator& operator++() {
+    this->head_ += this->step_;
+    return *this;
+  }
+  __device__ CArrayIterator operator++(int) {
+    CArrayIterator tmp = *this;
+    this->head_ += this->step_;
+    return tmp;
+  }
+  __device__ CArrayIterator& operator--() {
+    this->head_ -= this->step_;
+    return *this;
+  }
+  __device__ CArrayIterator operator--(int) {
+    CArrayIterator tmp = *this;
+    this->head_ -= this->step_;
+    return tmp;
+  }
+  __device__ CArrayIterator operator+(ptrdiff_t n) const {
+    CArrayIterator out = *this;
+    out.head_ += out.step_ * n;
+    return out;
+  }
+  __device__ difference_type operator-(const CArrayIterator& itr) const {
+    return (this->head_ - itr.head_) / this->step_;
+  }
+  __device__ CArrayIterator operator-(ptrdiff_t n) const {
+    CArrayIterator out = *this;
+    out.head_ -= out.step_ * n;
+    return out;
+  }
+  __device__ CArrayIterator& operator+=(ptrdiff_t n) {
+    this->head_ += this->step_ * n;
+    return *this;
+  }
+  __device__ CArrayIterator& operator-=(ptrdiff_t n) {
+    this->head_ -= this->step_ * n;
+    return *this;
+  }
+  __device__ T& operator[](index_t n) const {
+    return *(this->head_ + this->step_ * n);
+  }
+  __device__ bool operator<(const CArrayIterator& itr) const {
+    return this->head_ < itr.head_;
+  }
+  __device__ bool operator>(const CArrayIterator& itr) const {
+    return this->head_ > itr.head_;
+  }
+  __device__ bool operator<=(const CArrayIterator& itr) const {
+    return !(*this > itr);
+  }
+  __device__ bool operator>=(const CArrayIterator& itr) const {
+    return !(*this < itr);
+  }
+};
 
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
 class CArray {
@@ -283,6 +381,8 @@ public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
+  typedef typename cupy::type_traits::conditional<_c_contiguous, T*, CArrayIterator<T, index_t> >::type iterator;
+
 private:
   T* data_;
   ptrdiff_t size_;
@@ -417,101 +517,19 @@ public:
   }
 
 #ifdef CUPY_JIT_MODE
-  class iterator {
-    public:
-      typedef ptrdiff_t difference_type;
-      typedef T value_type;
-      typedef T* pointer;
-      typedef T& reference;
-      typedef std::random_access_iterator_tag iterator_category;
+  __forceinline__ __device__ iterator begin_ptr() const {
+    return reinterpret_cast<T*>(data_);
+  }
 
-    private:
-      T* head_;
-      index_t step_;
-    public:
-      __device__ iterator(T* head, index_t step) {
-        this->head_ = head;
-        this->step_ = step;
-      }
-      __device__ iterator(const iterator& itr) {
-        this->head_ = itr.head_;
-        this->step_ = itr.step_;
-      }
-      __device__ bool operator==(const iterator& itr) const {
-        return (this->head_ == itr.head_) && (this->step_ == itr.step_);
-      }
-      __device__ bool operator!=(const iterator& itr) const {
-        return !(*this == itr);
-      }
-      __device__ T& operator*() const {
-        return *(this->head_);
-      }
-      __device__ const T* operator->() const {
-        return this->head_;
-      }
-      __device__ iterator& operator++() {
-        this->head_ += this->step_;
-        return *this;
-      }
-      __device__ iterator operator++(int) {
-        iterator tmp = *this;
-        this->head_ += this->step_;
-        return tmp;
-      }
-      __device__ iterator& operator--() {
-        this->head_ -= this->step_;
-        return *this;
-      }
-      __device__ iterator operator--(int) {
-        iterator tmp = *this;
-        this->head_ -= this->step_;
-        return tmp;
-      }
-      __device__ iterator operator+(ptrdiff_t n) const {
-        iterator out = *this;
-        out.head_ += out.step_ * n;
-        return out;
-      }
-      __device__ difference_type operator-(const iterator& itr) const {
-        return (this->head_ - itr.head_) / this->step_;
-      }
-      __device__ iterator operator-(ptrdiff_t n) const {
-        iterator out = *this;
-        out.head_ -= out.step_ * n;
-        return out;
-      }
-      __device__ iterator& operator+=(ptrdiff_t n) {
-        this->head_ += this->step_ * n;
-        return *this;
-      }
-      __device__ iterator& operator-=(ptrdiff_t n) {
-        this->head_ -= this->step_ * n;
-        return *this;
-      }
-      __device__ T& operator[](index_t n) const {
-        return *(this->head_ + this->step_ * n);
-      }
-      __device__ bool operator<(const iterator& itr) const {
-        return this->head_ < itr.head_;
-      }
-      __device__ bool operator>(const iterator& itr) const {
-        return this->head_ > itr.head_;
-      }
-      __device__ bool operator<=(const iterator& itr) const {
-        return !(*this > itr);
-      }
-      __device__ bool operator>=(const iterator& itr) const {
-        return !(*this < itr);
-      }
-  };
+  __forceinline__ __device__ iterator end_ptr() const {
+    return reinterpret_cast<T*>(data_) + size_;
+  }
 
-  __forceinline__ __device__ const iterator begin() {
-    assert(_ndim == 1);
+  __forceinline__ __device__ iterator begin() const {
     return iterator(data_, strides_[0] / sizeof(T));
   }
 
-  __forceinline__ __device__ const iterator end() {
-    assert(_ndim == 1);
+  __forceinline__ __device__ iterator end() const {
     return iterator(data_ + size_ * strides_[0] / sizeof(T), strides_[0] / sizeof(T));
   }
 
@@ -565,7 +583,7 @@ public:
     T* new_head = reinterpret_cast<T*>(new_head_ptr);
     return CArray<T, _ndim - 1, _c_contiguous, _use_32bit_indexing>(new_head, shape_ + 1, strides_ + 1);
   }
-#endif
+#endif  // CUPY_JIT_MODE
 
   __device__ const T& operator[](ptrdiff_t idx) const {
     if (c_contiguous) {

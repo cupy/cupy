@@ -1,3 +1,4 @@
+import functools
 import itertools
 from typing import Any, NoReturn, Optional, Union, TYPE_CHECKING
 
@@ -101,29 +102,19 @@ class BuiltinFunc(Expr):
         return '<cupyx.jit function>'
 
     @classmethod
-    def from_class_method(cls, instance_name, method):
-        # - this helper wraps every class method as a BuiltinFunc
-        # - method must return a valid Expr
-        # TODO(leofang): if performance is concerned, we could cache _Wrapper
-        # for each method.__func__, and overwrite with the provided instance
+    def from_class_method(cls, method, ctype_self, instance):
         class _Wrapper(BuiltinFunc):
 
             def call(self, env, *args, **kwargs):
-                data = method(env, *args, **kwargs)
-                return Data(f'{instance_name}.{data.code}', data.ctype)
+                return method(ctype_self, env, instance, *args)
 
         return _Wrapper()
 
-    @classmethod
-    def from_instance_method(cls, method, carrayself, instance):
-        class _Wrapper(BuiltinFunc):
 
-            def call(self, env, *args, **kwargs):
-                return method(carrayself, instance, *args)
+def wraps_class_method(method):
 
-        return _Wrapper()
+    @functools.wraps(method)
+    def f(ctype_self: _cuda_types.TypeBase, instance: Data) -> BuiltinFunc:
+        return BuiltinFunc.from_class_method(method, ctype_self, instance)
 
-def call_as_method(method):
-    def wrapper(carrayself, instance: Data):
-        return BuiltinFunc.from_instance_method(method, carrayself, instance)
-    return wrapper
+    return f

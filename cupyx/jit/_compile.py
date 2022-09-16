@@ -11,13 +11,13 @@ import types
 
 import numpy
 
+from cupy_backends.cuda.api import runtime
 from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
 from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
-from cupyx.jit.cg import _ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
@@ -37,7 +37,13 @@ else:
 
 Result = collections.namedtuple(
     'Result',
-    ['func_name', 'code', 'return_type', 'enable_cooperative_groups'])
+    [
+        'func_name',
+        'code',
+        'return_type',
+        'enable_cooperative_groups',
+        'backend'
+    ])
 
 
 class _JitCompileError(Exception):
@@ -161,6 +167,10 @@ class Generated:
         # whether to include cuda/barrier
         self.include_cuda_barrier = False
 
+        # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
+        # recognize "-D", so we have to compile using hipcc...
+        self.backend = 'nvcc' if runtime.is_hip else 'nvrtc'
+
     def add_code(self, code: str) -> None:
         if code not in self.codes:
             self.codes.append(code)
@@ -184,10 +194,11 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func, attributes, mode, in_types, ret_type, generated)
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
+    backend = generated.backend
     enable_cg = generated.enable_cg
     return Result(
         func_name=func_name, code=code, return_type=return_type,
-        enable_cooperative_groups=enable_cg)
+        enable_cooperative_groups=enable_cg, backend=backend)
 
 
 def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
@@ -370,45 +381,31 @@ def _eval_operand(
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
-    if all([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.Ptr) for arg in args]) \
-        or all([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.CArrayIterator) for arg in args]):
-        if not isinstance(op, ast.Sub):
-            raise TypeError(
-                f'Only Sub operator is supported between raw pointers or iterators.')
-        opcode = '-'
-        leftcode = args[0].code
-        rightcode = args[1].code
-        code = '(' + leftcode + ' ' + opcode + ' ' + rightcode + ')'
-        return Data(code, _cuda_types.PtrDiff())
+    if isinstance(op, ast.Add):
+        x, y = args
+        x = Data.init(x, env)
+        y = Data.init(y, env)
+        if hasattr(x.ctype, '_add'):
+            out = x.ctype._add(env, x, y)
+            if out is not NotImplemented:
+                return out
+        if hasattr(y.ctype, '_radd'):
+            out = y.ctype._radd(env, x, y)
+            if out is not NotImplemented:
+                return out
 
-    if any([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.Ptr) for arg in args]) \
-        or any([isinstance(arg, Data) and isinstance(arg.ctype, _cuda_types.CArrayIterator) for arg in args]):
-        if isinstance(op, ast.Add):
-            opcode = '+'
-        elif isinstance(op, ast.Sub):
-            opcode = '-'
-        else:
-            raise TypeError(
-                f'Only Add or Sub operators are supported for a raw pointer.')
-
-        leftarg = Data.init(args[0], env)
-        rightarg = Data.init(args[1], env)
-
-        if isinstance(leftarg.ctype, _cuda_types.PointerBase):
-            if isinstance(rightarg.ctype, _cuda_types.Scalar) and (rightarg.ctype.dtype.kind in 'ui'):
-                code = '(' + leftarg.code + ' ' + opcode + ' ' + rightarg.code + ')'
-                return Data(code, leftarg.ctype)
-            else:
-                raise TypeError(
-                    f'Only integer-like value can used with raw pointer in Add or Sub.')
-
-        if isinstance(rightarg.ctype, _cuda_types.PointerBase):
-            if isinstance(leftarg.ctype, _cuda_types.Scalar) and (leftarg.ctype.dtype.kind in 'ui'):
-                code = '(' + leftarg.code + ' ' + opcode + ' ' + rightarg.code + ')'
-                return Data(code, rightarg.ctype)
-            else:
-                raise TypeError(
-                    f'Only integer-like value can used with raw pointer in Add or Sub.')
+    if isinstance(op, ast.Sub):
+        x, y = args
+        x = Data.init(x, env)
+        y = Data.init(y, env)
+        if hasattr(x.ctype, '_sub'):
+            out = x.ctype._sub(env, x, y)
+            if out is not NotImplemented:
+                return out
+        if hasattr(y.ctype, '_rsub'):
+            out = y.ctype._rsub(env, x, y)
+            if out is not NotImplemented:
+                return out
 
     ufunc = _cuda_typerules.get_ufunc(env.mode, type(op))
     return _call_ufunc(ufunc, args, None, env)
@@ -726,7 +723,7 @@ def _transpile_expr_internal(
 
         if isinstance(func, _internal_types.BuiltinFunc):
             return func.call(env, *args, **kwargs)
-        
+
         if not isinstance(func, Constant):
             raise TypeError(f"'{func}' is not callable.")
 
@@ -913,7 +910,8 @@ def _indexing(
         if isinstance(index.ctype, _cuda_types.Scalar):
             index_dtype = index.ctype.dtype
             if ndim == 0:
-                raise TypeError('Scalar indexing is not supported for 0-dim array.')
+                raise TypeError(
+                    'Scalar indexing is not supported for 0-dim array.')
             if ndim > 1:
                 new_carray = _cuda_types.CArray(
                     array.ctype.dtype,
@@ -928,7 +926,8 @@ def _indexing(
                 f'{array.code}[{index.code}]', array.ctype.child_type)
         if isinstance(index.ctype, _cuda_types.Tuple):
             if ndim < len(index.ctype.types):
-                raise IndexError(f'The number of indices is beyond array dim: {ndim}')
+                raise IndexError(
+                    f'The number of indices is beyond array dim: {ndim}')
             for t in index.ctype.types:
                 if not isinstance(t, _cuda_types.Scalar):
                     raise TypeError('Array indices must be scalar.')
@@ -940,8 +939,8 @@ def _indexing(
                     array.ctype._ndim - len(index.ctype.types),
                     array.ctype._c_contiguous,
                     array.ctype._index_32_bits)
-                return Data(
-                    f'{array.code}._slicing({index.code}, Dim<{len(index.ctype.types)}>())', new_carray)
+                params = f'{index.code}, Dim<{len(index.ctype.types)}>()'
+                return Data(f'{array.code}._slicing({params})', new_carray)
             if ndim == 0:
                 return Data(
                     f'{array.code}[0]', array.ctype.child_type)

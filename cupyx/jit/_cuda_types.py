@@ -86,8 +86,23 @@ class ArrayBase(TypeBase):
 
 class PointerBase(ArrayBase):
 
-    def __init__(self, child_type: TypeBase, ndim: int) -> None:
-        super().__init__(child_type, ndim)
+    def __init__(self, child_type: TypeBase) -> None:
+        super().__init__(child_type, 1)
+
+    @staticmethod
+    def _add(env, x: 'Data', y: 'Data') -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        if isinstance(y.ctype, Scalar) and y.ctype.dtype.kind in 'iu':
+            return _internal_types.Data(f'({x.code} + {y.code})', x.ctype)
+        return NotImplemented
+
+    @staticmethod
+    def _radd(env, x: 'Data', y: 'Data') -> 'Data':
+        from cupyx.jit import _internal_types  # avoid circular import
+        if isinstance(x.ctype, Scalar) and x.ctype.dtype.kind in 'iu':
+            return _internal_types.Data(f'({x.code} + {y.code})', y.ctype)
+        return NotImplemented
+
 
 class CArray(ArrayBase):
     from cupyx.jit import _internal_types  # avoid circular import
@@ -132,25 +147,29 @@ class CArray(ArrayBase):
         return _internal_types.Data(
             f'{instance.code}.get_strides()', Tuple([PtrDiff()] * self._ndim))
 
-    @_internal_types.call_as_method
-    def begin(self, instance: 'Data', *args) -> 'Data':
+    @_internal_types.wraps_class_method
+    def begin(self, env, instance: 'Data', *args) -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
         if self._ndim != 1:
             raise NotImplementedError(
                 'getting begin iterator for an array with ndim != 1 '
                 'is not supported yet')
+        method_name = 'begin_ptr' if self._c_contiguous else 'begin'
         return _internal_types.Data(
-            f'{instance.code}.begin()', CArrayIterator(instance.ctype))
+            f'{instance.code}.{method_name}()',
+            CArrayIterator(instance.ctype))  # type: ignore
 
-    @_internal_types.call_as_method
-    def end(self, instance: 'Data', *args) -> 'Data':
+    @_internal_types.wraps_class_method
+    def end(self, env, instance: 'Data', *args) -> 'Data':
         from cupyx.jit import _internal_types  # avoid circular import
         if self._ndim != 1:
             raise NotImplementedError(
                 'getting end iterator for an array with ndim != 1 '
                 'is not supported yet')
+        method_name = 'end_ptr' if self._c_contiguous else 'end'
         return _internal_types.Data(
-            f'{instance.code}.end()', CArrayIterator(instance.ctype))
+            f'{instance.code}.{method_name}()',
+            CArrayIterator(instance.ctype))  # type: ignore
 
     def __str__(self) -> str:
         ctype = get_typename(self.dtype)
@@ -168,32 +187,18 @@ class CArray(ArrayBase):
 
 class CArrayIterator(PointerBase):
 
-    def __init__(
-            self,
-            carray: CArray,
-    ) -> None:
-        self.dtype = carray.dtype
-        self._ndim = carray._ndim
-        self._c_contiguous = carray._c_contiguous
-        self._index_32_bits = carray._index_32_bits
-        super().__init__(Scalar(carray.dtype), carray._ndim)
+    def __init__(self, carray_type: CArray) -> None:
+        self._carray_type = carray_type
+        super().__init__(Scalar(carray_type.dtype))
 
     def __str__(self) -> str:
-        ctype = get_typename(self.dtype)
-        ndim = self._ndim
-        c_contiguous = get_cuda_code_from_constant(self._c_contiguous, bool_)
-        index_32_bits = get_cuda_code_from_constant(self._index_32_bits, bool_)
-        return f'CArray<{ctype}, {ndim}, {c_contiguous}, {index_32_bits}>::iterator'
+        return f'{str(self._carray_type)}::iterator'
 
     def __eq__(self, other: object) -> bool:
         assert isinstance(other, TypeBase)
         return (
-            isinstance(other, CArray) and
             isinstance(other, CArrayIterator) and
-            self.dtype == other.dtype and
-            self.ndim == other.ndim and
-            self._c_contiguous == other._c_contiguous and
-            self._index_32_bits == other._index_32_bits
+            self._carray_type == other._carray_type
         )
 
     def __hash__(self) -> int:
@@ -233,7 +238,7 @@ class SharedMem(ArrayBase):
 class Ptr(PointerBase):
 
     def __init__(self, child_type: TypeBase) -> None:
-        super().__init__(child_type, 1)
+        super().__init__(child_type)
 
     def __str__(self) -> str:
         return f'{self.child_type}*'
