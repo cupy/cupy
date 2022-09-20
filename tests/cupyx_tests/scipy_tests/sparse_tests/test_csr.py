@@ -1451,7 +1451,7 @@ class TestCsrMatrixScipyCompressedMinMax:
         else:
             return data.max(axis=self.axis)
 
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_argmin(self, xp, sp):
         data = self._make_data_min(xp, sp, dense=self.dense)
         # Due to a SciPy bug, the argmin output is different from the expected
@@ -1460,7 +1460,7 @@ class TestCsrMatrixScipyCompressedMinMax:
             pytest.skip()
         return xp.array(data.argmin(axis=self.axis))
 
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_argmax(self, xp, sp):
         data = self._make_data_max(xp, sp, dense=self.dense)
         # Due to a SciPy bug, the argmin output is different from the expected
