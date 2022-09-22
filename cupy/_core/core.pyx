@@ -942,6 +942,18 @@ cdef class _ndarray_base:
         """
         return _sorting._ndarray_argpartition(self, kth, axis)
 
+    def searchsorted(self, v, side='left', sorter=None):
+        """Finds indices where elements of v should be inserted to maintain order.
+
+        For full documentation, see :func:`cupy.searchsorted`
+
+        Returns:
+
+        .. seealso:: :func:`cupy.searchsorted`
+
+        """
+        return cupy.searchsorted(self, v, side, sorter)
+
     cpdef tuple nonzero(self):
         """Return the indices of the elements that are non-zero.
 
