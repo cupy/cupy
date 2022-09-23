@@ -662,21 +662,35 @@ class RandomState(object):
         elif isinstance(size, int):
             size = size,
 
-        if mx == 0:
-            return cupy.zeros(size, dtype=numpy.uint32)
+        if numpy.isscalar(mx):
+            if mx == 0:
+                return cupy.zeros(size, dtype=numpy.uint32)
 
-        if mx < 0:
-            raise ValueError(
-                'mx must be non-negative (actual: {})'.format(mx))
-        elif mx <= _UINT32_MAX:
-            dtype = numpy.uint32
-            upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
-        elif mx <= _UINT64_MAX:
-            dtype = numpy.uint64
-            upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+            if mx < 0:
+                raise ValueError(
+                    'mx must be non-negative (actual: {})'.format(mx))
+            elif mx <= _UINT32_MAX:
+                dtype = numpy.uint32
+                upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
+            elif mx <= _UINT64_MAX:
+                dtype = numpy.uint64
+                upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+            else:
+                raise ValueError(
+                    'mx must be within uint64 range (actual: {})'.format(mx))
         else:
-            raise ValueError(
-                'mx must be within uint64 range (actual: {})'.format(mx))
+            dtype = mx.dtype
+            if dtype == cupy.int32 or dtype == cupy.uint32:
+                dtype = numpy.uint32
+                mx = mx.astype(dtype)
+                upper_limit = _UINT32_MAX - (_UINT32_MAX - mx) % (mx + 1)
+            elif dtype == cupy.int64 or dtype == cupy.uint64:
+                dtype = numpy.uint64
+                mx = mx.astype(dtype)
+                upper_limit = _UINT64_MAX - (_UINT64_MAX - mx) % (mx + 1)
+            else:
+                raise ValueError(
+                    'dtype must be integer, got: {}'.format(dtype))
 
         n_sample = functools.reduce(operator.mul, size, 1)
         if n_sample == 0:
@@ -684,13 +698,17 @@ class RandomState(object):
         sample = self._curand_generate(n_sample, dtype)
 
         mx1 = mx + 1
-        if mx1 != (1 << (mx1.bit_length() - 1)):
+        if not numpy.isscalar(mx) or mx1 != (1 << (mx1.bit_length() - 1)):
             # Get index of samples that exceed the upper limit
             ng_indices = self._get_indices(sample, upper_limit, False)
             n_ng = ng_indices.size
 
+            if n_ng > 0 and not numpy.isscalar(mx):
+                upper_limit = upper_limit[ng_indices]
+
             while n_ng > 0:
-                n_supplement = max(n_ng * 2, 1024)
+                n_supplement = (max(n_ng * 2, 1024)
+                                if numpy.isscalar(mx) else upper_limit.size)
                 supplement = self._curand_generate(n_supplement, dtype)
 
                 # Get index of supplements that are within the upper limit
@@ -704,6 +722,8 @@ class RandomState(object):
                 else:
                     sample[ng_indices[:n_ok]] = supplement[ok_indices]
                     ng_indices = ng_indices[n_ok:]
+                    if not numpy.isscalar(mx):
+                        upper_limit = upper_limit[n_ok:]
                     n_ng -= n_ok
             sample %= mx1
         else:
@@ -1159,17 +1179,12 @@ class RandomState(object):
                 lo = low
                 hi = cupy.asarray(high) - 1
 
-            if cupy.any(lo > high):
-                raise ValueError('low >= high')
-
             if size is None:
                 size = cupy.broadcast(lo, hi).shape
 
             diff = hi - lo
             total_elems = functools.reduce(operator.mul, size, 1)
-            out = cupy.empty(total_elems, dtype=low.dtype)
-            for i, d in enumerate(cupy.flatiter(diff)):
-                out[i] = self._interval(d.item(), None)
+            out = self._interval(diff.flatten(), total_elems)
             out = cupy.reshape(out, size)
             return out + lo
         else:
