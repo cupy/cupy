@@ -65,6 +65,13 @@ cdef extern from '../../cupy_cutensor.h' nogil:
         Operator otAC,
         DataType typeScalar, driver.Stream stream)
 
+    int cutensorPermutation(
+        cutensorHandle_t* handle,
+        void* alpha,
+        void* A, cutensorTensorDescriptor_t* descA, int32_t* modeA,
+        void* B, cutensorTensorDescriptor_t* descB, int32_t* modeB,
+        DataType typeScalar, driver.Stream stream)
+
     int cutensorInitContractionDescriptor(
         cutensorHandle_t* handle,
         cutensorContractionDescriptor_t* desc,
@@ -502,6 +509,31 @@ cpdef elementwiseBinary(
         <cutensorTensorDescriptor_t*> descD._ptr,
         <int32_t*> modeD,
         <Operator> opAC,
+        <DataType> typeScalar,
+        <driver.Stream> stream)
+    check_status(status)
+
+
+cpdef permutation(
+        Handle handle,
+        intptr_t alpha,
+        intptr_t A,
+        TensorDescriptor descA,
+        intptr_t modeA,
+        intptr_t B,
+        TensorDescriptor descB,
+        intptr_t modeB,
+        int typeScalar):
+    cdef intptr_t stream = stream_module.get_current_stream_ptr()
+    status = cutensorPermutation(
+        <cutensorHandle_t*> handle._ptr,
+        <void*> alpha,
+        <void*> A,
+        <cutensorTensorDescriptor_t*> descA._ptr,
+        <int32_t*> modeA,
+        <void*> B,
+        <cutensorTensorDescriptor_t*> descB._ptr,
+        <int32_t*> modeB,
         <DataType> typeScalar,
         <driver.Stream> stream)
     check_status(status)
