@@ -122,3 +122,67 @@ class TestDistanceFunction(unittest.TestCase):
         a = self._make_matrix(xp, self.dtype, self.order)
         out = scp.spatial.distance.minkowski(a, a, p=self.p)
         return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_canberra_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.canberra(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_chebyshev_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.chebyshev(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_cityblock_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.cityblock(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_correlation_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.correlation(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_cosine_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.cosine(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_hamming_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.hamming(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_euclidean_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.euclidean(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_jensenshannon_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.jensenshannon(a, a, p=self.p)
+        return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_russellrao_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.russellrao(a, a, p=self.p)
+        return out
+
