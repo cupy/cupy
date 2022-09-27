@@ -351,6 +351,79 @@ def russellrao(u, v):
     return output_arr[0]
 
 
+def sqeuclidean(u, v):
+    """Compute the squared Euclidean distance between two 1-D arrays.
+
+    The squared Euclidean distance is defined as
+
+    .. math::
+        d(u, v) = \\sum_{i} (u_i - v_i)^2
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        sqeuclidean (double): The squared Euclidean distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "sqeuclidean")
+
+    return output_arr[0]
+
+
+def hellinger(u, v):
+    """Compute the Hellinger distance between two 1-D arrays.
+
+    The Hellinger distance is defined as
+
+    .. math::
+        d(u, v) = \\frac{1}{\\sqrt{2}} \\sqrt{
+            \\sum_{i} (\\sqrt{u_i} - \\sqrt{v_i})^2}
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        hellinger (double): The Hellinger distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "hellinger")
+
+    return output_arr[0]
+
+
+def kl_divergence(u, v):
+    """Compute the Kullback-Leibler divergence between two 1-D arrays.
+
+    The Kullback-Leibler divergence is defined as
+
+    .. math::
+        KL(U \\| V) = \\sum_{i} U_i \log{\\left(\\frac{U_i}{V_i}\\right)}
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        kl_divergence (double): The Kullback-Leibler divergence between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "kl_divergence")
+
+    return output_arr[0]
+
+
 def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     """Compute distance between each pair of the two collections of inputs.
 

@@ -44,4 +44,7 @@ Distance functions between two numeric vectors `u` and `v`. Computing distances 
    euclidean
    jensenshannon
    russellrao
+   sqeuclidean
+   hellinger
+   kl_divergence
 

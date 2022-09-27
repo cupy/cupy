@@ -185,3 +185,10 @@ class TestDistanceFunction(unittest.TestCase):
         a = self._make_matrix(xp, self.dtype, self.order)
         out = scp.spatial.distance.russellrao(a, a, p=self.p)
         return out
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_sqeuclidean_(self, xp, scp):
+
+        a = self._make_matrix(xp, self.dtype, self.order)
+        out = scp.spatial.distance.sqeuclidean(a, a, p=self.p)
+        return out
