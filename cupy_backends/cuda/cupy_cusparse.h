@@ -645,6 +645,21 @@ cusparseStatus_t cusparseSpSM_solve(...) {
 
 #endif // #if CUSPARSE_VERSION < 11600
 
+// See cusparse.pyx
+cusparseStatus_t _cusparseSpSM_solve(cusparseHandle_t     handle,
+                                     cusparseOperation_t  opA,
+                                     cusparseOperation_t  opB,
+                                     const void*          alpha,
+                                     cusparseSpMatDescr_t matA,
+                                     cusparseDnMatDescr_t matB,
+                                     cusparseDnMatDescr_t matC,
+                                     cudaDataType         computeType,
+                                     cusparseSpSMAlg_t    alg,
+                                     cusparseSpSMDescr_t  spsmDescr,
+                                     void*                externalBuffer) {
+    return cusparseSpSM_solve(handle, opA, opB, alpha, matA, matB, matC, computeType, alg, spsmDescr);
+}
+
 #if CUSPARSE_VERSION >= 12000
 // Types and functions deleted in cuSPARSE 12.0 (CUDA 12.0)
 

@@ -1329,10 +1329,14 @@ cdef extern from '../../cupy_sparse.h' nogil:
                                  DnMatDescr matC, DataType computeType,
                                  SpSMAlg alg, SpSMDescr spsmDescr,
                                  void* externalBuffer)
-    Status cusparseSpSM_solve(Handle handle, Operation opA, Operation opB,
-                              void* alpha, SpMatDescr matA, DnMatDescr matB,
-                              DnMatDescr matC, DataType computeType,
-                              SpSMAlg alg, SpSMDescr spsmDescr)
+    # hipsparseSpSM_solve has the extra `externalBuffer` parameter that
+    # cusparseSpSM_solve does not require. So we make use of an additional
+    # wrapper _cusparseSpSM_solve for them.
+    Status _cusparseSpSM_solve(Handle handle, Operation opA, Operation opB,
+                               void* alpha, SpMatDescr matA, DnMatDescr matB,
+                               DnMatDescr matC, DataType computeType,
+                               SpSMAlg alg, SpSMDescr spsmDescr,
+                               void* externalBuffer)
     Status cusparseSpMM_bufferSize(Handle handle, Operation opA, Operation opB,
                                    void* alpha, SpMatDescr matA,
                                    DnMatDescr matB, void* beta,
@@ -4892,12 +4896,12 @@ cpdef spSM_analysis(intptr_t handle, Operation opA, Operation opB,
 
 cpdef spSM_solve(intptr_t handle, Operation opA, Operation opB, intptr_t alpha,
                  size_t matA, size_t matB, size_t matC, DataType computeType,
-                 SpSMAlg alg, size_t spsmDescr):
+                 SpSMAlg alg, size_t spsmDescr, intptr_t externalBuffer=0):
     _setStream(handle)
-    status = cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
-                                <SpMatDescr>matA, <DnMatDescr>matB,
-                                <DnMatDescr>matC, computeType, alg,
-                                <SpSMDescr>spsmDescr)
+    status = _cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
+                                 <SpMatDescr>matA, <DnMatDescr>matB,
+                                 <DnMatDescr>matC, computeType, alg,
+                                 <SpSMDescr>spsmDescr, <void*>externalBuffer)
     check_status(status)
 
 cpdef size_t spMM_bufferSize(intptr_t handle, Operation opA, Operation opB,
