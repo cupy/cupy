@@ -254,7 +254,7 @@ def hamming(u, v):
     in both `u` and `v` that are not in the exact same position:
 
     .. math::
-        d(u, v) = \\frac{1}{n} \sum_{k=0}^n u_i \\neq v_i
+        d(u, v) = \\frac{1}{n} \\sum_{k=0}^n u_i \\neq v_i
 
     where :math:`x \\neq y` is one if :math:`x` is different from :math:`y`
     and zero otherwise.
@@ -280,7 +280,7 @@ def euclidean(u, v):
     The Euclidean distance is defined as
 
     .. math::
-        d(u, v) = \\left(\sum_{i} (u_i - v_i)^2\\right)^{\sfrac{1}{2}}
+        d(u, v) = \\left(\\sum_{i} (u_i - v_i)^2\\right)^{\\sfrac{1}{2}}
 
     Args:
         u (array_like): Input array of size (N,)
@@ -331,7 +331,7 @@ def russellrao(u, v):
     in both `u` and `v` that are in the exact same position:
 
     .. math::
-        d(u, v) = \\frac{1}{n} \sum_{k=0}^n u_i = v_i
+        d(u, v) = \\frac{1}{n} \\sum_{k=0}^n u_i = v_i
 
     where :math:`x = y` is one if :math:`x` is different from :math:`y`
     and zero otherwise.

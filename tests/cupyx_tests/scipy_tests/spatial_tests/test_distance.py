@@ -185,4 +185,3 @@ class TestDistanceFunction(unittest.TestCase):
         a = self._make_matrix(xp, self.dtype, self.order)
         out = scp.spatial.distance.russellrao(a, a, p=self.p)
         return out
-
