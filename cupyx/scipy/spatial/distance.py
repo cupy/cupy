@@ -406,7 +406,7 @@ def kl_divergence(u, v):
     The Kullback-Leibler divergence is defined as
 
     .. math::
-        KL(U \\| V) = \\sum_{i} U_i \log{\\left(\\frac{U_i}{V_i}\\right)}
+        KL(U \\| V) = \\sum_{i} U_i \\log{\\left(\\frac{U_i}{V_i}\\right)}
 
     Args:
         u (array_like): Input array of size (N,)
