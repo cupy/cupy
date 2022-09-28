@@ -112,7 +112,7 @@ class TestDistanceMatrix(unittest.TestCase):
 class TestDistanceFunction(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
-        shape = (1, self.cols)
+        shape = (1, self.cols) if xp is cupy else (self.cols,)
         return testing.shaped_random(shape, xp, dtype=dtype,
                                      scale=1, order=order)
 
@@ -127,68 +127,70 @@ class TestDistanceFunction(unittest.TestCase):
     def test_canberra_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.canberra(a, a, p=self.p)
+        out = scp.spatial.distance.canberra(a, a)
         return out
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_chebyshev_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.chebyshev(a, a, p=self.p)
+        out = scp.spatial.distance.chebyshev(a, a)
         return out
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_cityblock_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.cityblock(a, a, p=self.p)
+        out = scp.spatial.distance.cityblock(a, a)
         return out
 
-    @testing.numpy_cupy_equal(scipy_name='scp')
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', type_check=False)
     def test_correlation_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.correlation(a, a, p=self.p)
-        return out
+        out = scp.spatial.distance.correlation(a, a)
+        return xp.asarray(out)
 
-    @testing.numpy_cupy_equal(scipy_name='scp')
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', type_check=False)
     def test_cosine_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.cosine(a, a, p=self.p)
-        return out
+        out = scp.spatial.distance.cosine(a, a)
+        return xp.asarray(out)
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_hamming_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.hamming(a, a, p=self.p)
+        out = scp.spatial.distance.hamming(a, a)
         return out
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_euclidean_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.euclidean(a, a, p=self.p)
+        out = scp.spatial.distance.euclidean(a, a)
         return out
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_jensenshannon_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.jensenshannon(a, a, p=self.p)
+        out = scp.spatial.distance.jensenshannon(a, a)
         return out
 
-    @testing.numpy_cupy_equal(scipy_name='scp')
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', type_check=False)
     def test_russellrao_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.russellrao(a, a, p=self.p)
-        return out
+        a[a < 0.5] = 0
+        a[a >= 0.5] = 1
+        out = scp.spatial.distance.russellrao(a, a)
+        return xp.asarray(out)
 
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_sqeuclidean_(self, xp, scp):
 
         a = self._make_matrix(xp, self.dtype, self.order)
-        out = scp.spatial.distance.sqeuclidean(a, a, p=self.p)
+        out = scp.spatial.distance.sqeuclidean(a, a)
         return out
