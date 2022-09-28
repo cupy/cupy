@@ -276,8 +276,13 @@ def map_coordinates(input, coordinates, output=None, order=3,
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
-        prefilter (bool): It is not used yet. It just exists for compatibility
-            with :mod:`scipy.ndimage`.
+        prefilter (bool): Determines if the input array is prefiltered with
+            ``spline_filter`` before interpolation. The default is True, which
+            will create a temporary ``float64`` array of filtered values if
+            ``order > 1``. If setting this to False, the output will be
+            slightly blurred if ``order > 1``, unless the input is prefiltered,
+            i.e. it is the result of calling ``spline_filter`` on the original
+            input.
 
     Returns:
         cupy.ndarray:
@@ -354,8 +359,13 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
-        prefilter (bool): It is not used yet. It just exists for compatibility
-            with :mod:`scipy.ndimage`.
+        prefilter (bool): Determines if the input array is prefiltered with
+            ``spline_filter`` before interpolation. The default is True, which
+            will create a temporary ``float64`` array of filtered values if
+            ``order > 1``. If setting this to False, the output will be
+            slightly blurred if ``order > 1``, unless the input is prefiltered,
+            i.e. it is the result of calling ``spline_filter`` on the original
+            input.
         texture_memory (bool): If True, uses GPU texture memory. Supports only:
 
             - 2D and 3D float32 arrays as input
@@ -494,8 +504,13 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
-        prefilter (bool): It is not used yet. It just exists for compatibility
-            with :mod:`scipy.ndimage`.
+        prefilter (bool): Determines if the input array is prefiltered with
+            ``spline_filter`` before interpolation. The default is True, which
+            will create a temporary ``float64`` array of filtered values if
+            ``order > 1``. If setting this to False, the output will be
+            slightly blurred if ``order > 1``, unless the input is prefiltered,
+            i.e. it is the result of calling ``spline_filter`` on the original
+            input.
 
     Returns:
         cupy.ndarray or None:
@@ -588,8 +603,13 @@ def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
-        prefilter (bool): It is not used yet. It just exists for compatibility
-            with :mod:`scipy.ndimage`.
+        prefilter (bool): Determines if the input array is prefiltered with
+            ``spline_filter`` before interpolation. The default is True, which
+            will create a temporary ``float64`` array of filtered values if
+            ``order > 1``. If setting this to False, the output will be
+            slightly blurred if ``order > 1``, unless the input is prefiltered,
+            i.e. it is the result of calling ``spline_filter`` on the original
+            input.
 
     Returns:
         cupy.ndarray or None:
@@ -658,8 +678,13 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
-        prefilter (bool): It is not used yet. It just exists for compatibility
-            with :mod:`scipy.ndimage`.
+        prefilter (bool): Determines if the input array is prefiltered with
+            ``spline_filter`` before interpolation. The default is True, which
+            will create a temporary ``float64`` array of filtered values if
+            ``order > 1``. If setting this to False, the output will be
+            slightly blurred if ``order > 1``, unless the input is prefiltered,
+            i.e. it is the result of calling ``spline_filter`` on the original
+            input.
         grid_mode (bool, optional): If False, the distance from the pixel
             centers is zoomed. Otherwise, the distance including the full pixel
             extent is used. For example, a 1d signal of length 5 is considered

@@ -324,16 +324,74 @@ class TestArrayReduction(unittest.TestCase):
         return a.argmin()
 
 
-# This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    # TODO(leofang): make a @testing.for_all_axes decorator
+    'shape_and_axis': [
+        ((), None),
+        ((0,), (0,)),
+        ((0, 2), (0,)),
+        ((0, 2), (1,)),
+        ((0, 2), (0, 1)),
+        ((2, 0), (0,)),
+        ((2, 0), (1,)),
+        ((2, 0), (0, 1)),
+        ((0, 2, 3), (0,)),
+        ((0, 2, 3), (1,)),
+        ((0, 2, 3), (2,)),
+        ((0, 2, 3), (0, 1)),
+        ((0, 2, 3), (1, 2)),
+        ((0, 2, 3), (0, 2)),
+        ((0, 2, 3), (0, 1, 2)),
+        ((2, 0, 3), (0,)),
+        ((2, 0, 3), (1,)),
+        ((2, 0, 3), (2,)),
+        ((2, 0, 3), (0, 1)),
+        ((2, 0, 3), (1, 2)),
+        ((2, 0, 3), (0, 2)),
+        ((2, 0, 3), (0, 1, 2)),
+        ((2, 3, 0), (0,)),
+        ((2, 3, 0), (1,)),
+        ((2, 3, 0), (2,)),
+        ((2, 3, 0), (0, 1)),
+        ((2, 3, 0), (1, 2)),
+        ((2, 3, 0), (0, 2)),
+        ((2, 3, 0), (0, 1, 2)),
+    ],
     'order': ('C', 'F'),
-    'backend': ('device', 'block'),
+    'func': ('min', 'max', 'argmax', 'argmin'),
 }))
-@testing.gpu
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
-class TestCubReduction(unittest.TestCase):
+class TestArrayReductionZeroSize:
 
+    @testing.numpy_cupy_allclose(
+        contiguous_check=False, accept_error=ValueError)
+    def test_zero_size(self, xp):
+        shape, axis = self.shape_and_axis
+        # NumPy only supports axis being an int
+        if self.func in ('argmax', 'argmin'):
+            if axis is not None and len(axis) == 1:
+                axis = axis[0]
+            else:
+                pytest.skip(
+                    f"NumPy does not support axis={axis} for {self.func}")
+        # dtype is irrelevant here, just pick one
+        a = testing.shaped_random(shape, xp, xp.float32, order=self.order)
+        return getattr(a, self.func)(axis=axis)
+
+
+# This class compares CUB results against NumPy's. ("fallback" is CuPy's
+# original kernel, also tested here to reduce code duplication.)
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40),
+              # skip (2, 3, 0) because it would not hit the CUB code path
+              (0,), (2, 0), (0, 2), (0, 2, 3), (2, 3, 0)],
+    'order': ('C', 'F'),
+    'backend': ('device', 'block', 'fallback'),
+}))
+@pytest.mark.skipif(
+    not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+class TestCubReduction:
+
+    @pytest.fixture(autouse=True)
     def setUp(self):
         self.old_routine_accelerators = _acc.get_routine_accelerators()
         self.old_reduction_accelerators = _acc.get_reduction_accelerators()
@@ -343,14 +401,17 @@ class TestCubReduction(unittest.TestCase):
         elif self.backend == 'block':
             _acc.set_routine_accelerators([])
             _acc.set_reduction_accelerators(['cub'])
-
-    def tearDown(self):
+        elif self.backend == 'fallback':
+            _acc.set_routine_accelerators([])
+            _acc.set_reduction_accelerators([])
+        yield
         _acc.set_routine_accelerators(self.old_routine_accelerators)
         _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(
+        contiguous_check=False, accept_error=ValueError)
     def test_cub_min(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
 
@@ -376,21 +437,26 @@ class TestCubReduction(unittest.TestCase):
                 times_called = 2  # two passes
             else:
                 times_called = 1  # one pass
+            if a.size == 0:
+                times_called = 0  # _reduction.pyx has an early return path
             with testing.AssertFunctionIsCalled(
                     func_name, wraps=func, times_called=times_called):
                 a.min(axis=axis)
+        elif self.backend == 'fallback':
+            pass
         # ...then perform the actual computation
         return a.min(axis=axis)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cub_min_empty_axis(self, xp, dtype, contiguous_check=False):
         a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
         return a.min(axis=())
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(
+        contiguous_check=False, accept_error=ValueError)
     def test_cub_max(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
 
@@ -416,60 +482,18 @@ class TestCubReduction(unittest.TestCase):
                 times_called = 2  # two passes
             else:
                 times_called = 1  # one pass
+            if a.size == 0:
+                times_called = 0  # _reduction.pyx has an early return path
             with testing.AssertFunctionIsCalled(
                     func_name, wraps=func, times_called=times_called):
                 a.max(axis=axis)
+        elif self.backend == 'fallback':
+            pass
         # ...then perform the actual computation
         return a.max(axis=axis)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cub_max_empty_axis(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
-        return a.max(axis=())
-
-
-# This class compares unaccelerated reduction results against NumPy's
-@testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
-    'order': ('C', 'F'),
-}))
-@testing.gpu
-class TestUnacceleratedReduction(unittest.TestCase):
-
-    def setUp(self):
-        self.old_accelerators = _acc.get_routine_accelerators()
-        _acc.set_routine_accelerators([])
-        # also avoid fallback to CUB via the general reduction kernel
-        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
-        _acc.set_reduction_accelerators([])
-
-    def tearDown(self):
-        _acc.set_routine_accelerators(self.old_accelerators)
-        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
-
-    @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_unaccelerated_min(self, xp, dtype, axis):
-        a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
-        return a.min(axis=axis)
-
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_unaccelerated_min_empty_axis(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
-        return a.min(axis=())
-
-    @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_unaccelerated_max(self, xp, dtype, axis):
-        a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
-        return a.max(axis=axis)
-
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_unaccelerated_max_empty_axis(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
         return a.max(axis=())

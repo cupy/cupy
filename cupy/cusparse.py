@@ -9,6 +9,7 @@ from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype
 from cupy.cuda import device as _device
+from cupy.cuda import stream as _stream
 from cupy import _util
 import cupyx.scipy.sparse
 
@@ -1604,6 +1605,10 @@ def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
     solve(handle, algo, transa, transb, m, nrhs, a.nnz, alpha.ctypes.data,
           a_desc.descriptor, a.data.data.ptr, a.indptr.data.ptr,
           a.indices.data.ptr, b.data.ptr, ldb, info, policy, ws.data.ptr)
+
+    # without sync we'd get either segfault or cuda context error
+    _stream.get_current_stream().synchronize()
+    _cusparse.destroyCsrsm2Info(info)
 
 
 def csrilu02(a, level_info=False):

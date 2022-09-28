@@ -16,6 +16,6 @@ RUN apt-get update -y && \
 RUN curl https://bootstrap.pypa.io/get-pip.py | sudo python3.7
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir -f https://github.com/cupy/cupy/releases/v11.0.0rc1 "cupy-rocm-5-0[all]==11.0.0rc1"
+RUN pip3 install --no-cache-dir -f https://github.com/cupy/cupy/releases/v12.0.0a1 "cupy-rocm-5-0[all]==12.0.0a1"
 
 USER rocm-user
