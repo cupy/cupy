@@ -2372,12 +2372,11 @@ cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
         return _array_from_cupy_ndarray(
             obj.__cupy_get_ndarray__(), dtype, copy, order, ndmin)
 
-    concat_shape, concat_type, concat_dtype, supports_ndarray_iface = (
+    concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
     if concat_shape is not None:
         return _array_from_nested_sequence(
-            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype,
-            supports_ndarray_iface)
+            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype)
 
     return _array_default(obj, dtype, order, ndmin)
 
@@ -2416,7 +2415,7 @@ cdef _ndarray_base _array_from_cuda_array_interface(
 
 cdef _ndarray_base _array_from_nested_sequence(
         obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
-        concat_dtype, supports_ndarray_iface):
+        concat_dtype):
     cdef Py_ssize_t ndim
 
     # resulting array is C order unless 'F' is explicitly specified
@@ -2437,9 +2436,6 @@ cdef _ndarray_base _array_from_nested_sequence(
         return _array_from_nested_numpy_sequence(
             obj, concat_dtype, dtype, concat_shape, order, ndmin)
     elif concat_type is ndarray:  # TODO(takagi) Consider subclases
-        return _array_from_nested_cupy_sequence(
-            obj, dtype, concat_shape, order)
-    elif supports_ndarray_iface:
         return _array_from_nested_cupy_sequence(
             obj, dtype, concat_shape, order)
     else:
@@ -2556,38 +2552,37 @@ cdef tuple _compute_concat_info_impl(obj):
     cdef Py_ssize_t dim
 
     if isinstance(obj, (numpy.ndarray, ndarray)):
-        return obj.shape, type(obj), obj.dtype, True
+        return obj.shape, type(obj), obj.dtype
 
     if hasattr(obj, '__cupy_get_ndarray__'):
-        return obj.shape, type(obj), obj.dtype, True
+        return obj.shape, ndarray, obj.dtype
 
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
         if dim == 0:
-            return None, None, None, False
+            return None, None, None
 
-        concat_shape, concat_type, concat_dtype, ndarray_iface = (
+        concat_shape, concat_type, concat_dtype = (
             _compute_concat_info_impl(obj[0]))
         if concat_shape is None:
-            return None, None, None, False
+            return None, None, None
 
         for elem in obj[1:]:
-            concat_shape1, concat_type1, concat_dtype1, ndarray_iface1 = (
+            concat_shape1, concat_type1, concat_dtype1 = (
                 _compute_concat_info_impl(elem))
             if concat_shape1 is None:
-                return None, None, None, False
+                return None, None, None
 
             if concat_shape != concat_shape1:
-                return None, None, None, False
+                return None, None, None
             if concat_type is not concat_type1:
-                return None, None, None, False
+                return None, None, None
             if concat_dtype != concat_dtype1:
                 concat_dtype = numpy.promote_types(concat_dtype, concat_dtype1)
-            ndarray_iface &= ndarray_iface1
 
-        return (dim,) + concat_shape, concat_type, concat_dtype, ndarray_iface
+        return (dim,) + concat_shape, concat_type, concat_dtype
 
-    return None, None, None, False
+    return None, None, None
 
 
 cdef list _flatten_list(object obj):
