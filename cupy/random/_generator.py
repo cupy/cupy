@@ -682,11 +682,11 @@ class RandomState(object):
             dtype = mx.dtype
             if dtype == cupy.int32 or dtype == cupy.uint32:
                 dtype = numpy.uint32
-                mx = mx.astype(dtype)
+                mx = mx.astype(dtype, copy=False)
                 upper_limit = _UINT32_MAX - (_UINT32_MAX - mx) % (mx + 1)
             elif dtype == cupy.int64 or dtype == cupy.uint64:
                 dtype = numpy.uint64
-                mx = mx.astype(dtype)
+                mx = mx.astype(dtype, copy=False)
                 upper_limit = _UINT64_MAX - (_UINT64_MAX - mx) % (mx + 1)
             else:
                 raise ValueError(
