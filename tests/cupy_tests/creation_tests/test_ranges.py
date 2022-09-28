@@ -217,11 +217,6 @@ class TestRanges(unittest.TestCase):
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_linspace_array_start_stop_axis1(self, xp, dtype_range, dtype_out):
-        if (
-            not cupy.cuda.runtime.is_hip
-            and cupy.cuda.driver.get_build_version() < 11000
-        ):
-            pytest.skip('CUDA 10.2 shows rounding problems')
         start = xp.array([0, 120], dtype=dtype_range)
         stop = xp.array([100, 0], dtype=dtype_range)
         return xp.linspace(start, stop, num=50, dtype=dtype_out, axis=1)

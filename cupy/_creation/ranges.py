@@ -243,6 +243,11 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
     y = linspace(start, stop, num=num, endpoint=endpoint, axis=axis)
     if dtype is None:
         return _core.power(base, y)
+    # This is to avoid cupy strange behaviors such as
+    # cupy.power(10.0, cupy.array(2.0, dtype=cupy.float32)) == 99.9999
+    # numpy.power(10.0, cupy.array(2.0, dtype=numpy.float32)) == 100.0
+    if cupy.dtype(dtype).kind in 'iu':
+        y = y.astype(cupy.float64)
     return _core.power(base, y).astype(dtype)
 
 
