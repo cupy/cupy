@@ -128,6 +128,8 @@ Other special functions
 .. autosummary::
    :toctree: generated/
 
+   exp1
+   expi
    expn
    softmax
    log_softmax
@@ -154,4 +156,5 @@ Convenience functions
    round
    xlogy
    xlog1py
+   logsumexp
    sinc

@@ -614,84 +614,62 @@ cdef _put_clip_kernel = ElementwiseKernel(
     'cupy_put_clip')
 
 
-_scatter_update_kernel = ElementwiseKernel(
-    'T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      a[(li * adim + wrap_indices) * rdim + ri] = v;
-    ''',
-    'cupy_scatter_update')
+cdef _create_scatter_kernel(name, code):
+    return ElementwiseKernel(
+        'T v, S indices, int32 cdim, int32 rdim, int32 adim',
+        'raw T a',
+        string.Template('''
+            S wrap_indices = indices % adim;
+            if (wrap_indices < 0) wrap_indices += adim;
+            ptrdiff_t li = i / (rdim * cdim);
+            ptrdiff_t ri = i % rdim;
+            T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
+            T &in0 = out0;
+            const T &in1 = v;
+            ${code};
+        ''').substitute(code=code),
+        name,
+    )
 
 
-_scatter_add_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_add')
+cdef _scatter_update_kernel = _create_scatter_kernel(
+    'cupy_scatter_update', 'out0 = in1')
+
+cdef _scatter_add_kernel = _create_scatter_kernel(
+    'cupy_scatter_add', 'atomicAdd(&out0, in1)')
+
+cdef _scatter_max_kernel = _create_scatter_kernel(
+    'cupy_scatter_max', 'atomicMax(&out0, in1)')
+
+cdef _scatter_min_kernel = _create_scatter_kernel(
+    'cupy_scatter_min', 'atomicMin(&out0, in1)')
 
 
-_scatter_max_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicMax(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_max')
+cdef _create_scatter_mask_kernel(name, code):
+    return ElementwiseKernel(
+        'raw T v, bool mask, S mask_scanned',
+        'T a',
+        string.Template('''
+            T &out0 = a;
+            T &in0 = a;
+            const T &in1 = v[mask_scanned - 1];
+            if (mask) ${code};
+        ''').substitute(code=code),
+        name,
+    )
 
 
-_scatter_min_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_min')
+cdef _scatter_update_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_update_mask', 'out0 = in1')
 
+cdef _scatter_add_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_add_mask', 'out0 = in0 + in1')
 
-_scatter_update_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = v[mask_scanned - 1]',
-    'cupy_scatter_update_mask')
+cdef _scatter_max_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_max_mask', 'out0 = max(in0, in1)')
 
-
-_scatter_add_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = a + v[mask_scanned - 1]',
-    'cupy_scatter_add_mask')
-
-
-_scatter_max_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = max(a, v[mask_scanned - 1])',
-    'cupy_scatter_max_mask')
-
-
-_scatter_min_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = min(a, v[mask_scanned - 1])',
-    'cupy_scatter_min_mask')
+cdef _scatter_min_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_min_mask', 'out0 = min(in0, in1)')
 
 
 _getitem_mask_kernel = ElementwiseKernel(
