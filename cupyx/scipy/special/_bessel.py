@@ -122,7 +122,7 @@ k0_implementation = """
  *
  * lim(x->0){ K0(x) + log(x/2) I0(x) } = -EUL.
  */
-__device__ double A[] = {
+__device__ double k0_A[] = {
     1.37446543561352307156E-16,
     4.25981614279661018399E-14,
     1.03496952576338420167E-11,
@@ -134,7 +134,7 @@ __device__ double A[] = {
     3.44289899924628486886E-1,
     -5.35327393233902768720E-1
 };
-__device__ float AF[] = {
+__device__ float k0_AF[] = {
     1.37446543561352307156E-16,
     4.25981614279661018399E-14,
     1.03496952576338420167E-11,
@@ -153,7 +153,7 @@ __device__ float AF[] = {
  *
  * lim(x->inf){ exp(x) sqrt(x) K0(x) } = sqrt(pi/2).
  */
-__device__ double B[] = {
+__device__ double k0_B[] = {
     5.30043377268626276149E-18,
     -1.64758043015242134646E-17,
     5.21039150503902756861E-17,
@@ -180,7 +180,7 @@ __device__ double B[] = {
     -3.14481013119645005427E-2,
     2.44030308206595545468E0
 };
-__device__ float BF[] = {
+__device__ float k0_BF[] = {
     5.30043377268626276149E-18,
     -1.64758043015242134646E-17,
     5.21039150503902756861E-17,
@@ -221,12 +221,12 @@ __device__ double k0(double x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = chbevl(y, A, 10) - log(0.5 * x) * cyl_bessel_i0(x);
+        y = chbevl(y, k0_A, 10) - log(0.5 * x) * cyl_bessel_i0(x);
         return y;
     }
 
     z = 8.0 / x - 2.0;
-    y = chbevl(z, B, 25) / sqrt(x);
+    y = chbevl(z, k0_B, 25) / sqrt(x);
     return y * exp(-x);
 }
 
@@ -243,12 +243,12 @@ __device__ float k0f(float x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = chbevl(y, AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
+        y = chbevl(y, k0_AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
         return y;
     }
 
     z = 8.0 / x - 2.0;
-    y = chbevl(z, BF, 25) / sqrtf(x);
+    y = chbevl(z, k0_BF, 25) / sqrtf(x);
     return y * expf(-x);
 }
 """
@@ -295,7 +295,7 @@ k1_implementation = """
  *
  * lim(x->0){ x(K1(x) - log(x/2) I1(x)) } = 1.
  */
-__device__ static double A[] = {
+__device__ static double k1_A[] = {
     -7.02386347938628759343E-18,
     -2.42744985051936593393E-15,
     -6.66690169419932900609E-13,
@@ -308,7 +308,7 @@ __device__ static double A[] = {
     -3.53155960776544875667E-1,
     1.52530022733894777053E0
 };
-__device__ static float AF[] = {
+__device__ static float k1_AF[] = {
     -7.02386347938628759343E-18,
     -2.42744985051936593393E-15,
     -6.66690169419932900609E-13,
@@ -328,7 +328,7 @@ __device__ static float AF[] = {
  *
  * lim(x->inf){ exp(x) sqrt(x) K1(x) } = sqrt(pi/2).
  */
-__device__ static double B[] = {
+__device__ static double k1_B[] = {
     -5.75674448366501715755E-18,
     1.79405087314755922667E-17,
     -5.68946255844285935196E-17,
@@ -355,7 +355,7 @@ __device__ static double B[] = {
     1.03923736576817238437E-1,
     2.72062619048444266945E0
 };
-__device__ static float BF[] = {
+__device__ static float k1_BF[] = {
     -5.75674448366501715755E-18,
     1.79405087314755922667E-17,
     -5.68946255844285935196E-17,
@@ -396,11 +396,11 @@ __device__ double k1(double x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = log(0.5 * x) * cyl_bessel_i1(x) + chbevl(y, A, 11) / x;
+        y = log(0.5 * x) * cyl_bessel_i1(x) + chbevl(y, k1_A, 11) / x;
         return y;
     }
 
-    return (exp(-x) * chbevl(8.0 / x - 2.0, B, 25) / sqrt(x));
+    return (exp(-x) * chbevl(8.0 / x - 2.0, k1_B, 25) / sqrt(x));
 }
 
 __device__ float k1f(float x){
@@ -416,12 +416,12 @@ __device__ float k1f(float x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = logf(0.5 * x) * cyl_bessel_i1f(x) + chbevl(y, AF, 11) / x;
+        y = logf(0.5 * x) * cyl_bessel_i1f(x) + chbevl(y, k1_AF, 11) / x;
         return y;
     }
 
     float z = 8.0 / x - 2.0;
-    return (expf(-x) * chbevl(z, BF, 25) / sqrtf(x));
+    return (expf(-x) * chbevl(z, k1_BF, 25) / sqrtf(x));
 }
 """
 
