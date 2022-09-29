@@ -41,7 +41,7 @@
   os: "ubuntu:20.04"
   cuda: "11.0"
   rocm: null
-  nccl: "2.9"
+  nccl: "2.13"
   cutensor: "1.4"
   cusparselt: null
   cudnn: "8.2"
@@ -221,7 +221,7 @@
   os: "ubuntu:20.04"
   cuda: "11.6"
   rocm: null
-  nccl: "2.11"
+  nccl: "2.12"
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.4"
@@ -252,7 +252,7 @@
   os: "ubuntu:20.04"
   cuda: "11.7"
   rocm: null
-  nccl: null  # TODO use 2.12 once supported
+  nccl: "2.14"
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.4"
@@ -448,7 +448,7 @@
   os: "ubuntu:20.04"
   cuda: "11.7"
   rocm: null
-  nccl: null  # TODO use 2.12 once supported
+  nccl: "2.14"
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.4"
