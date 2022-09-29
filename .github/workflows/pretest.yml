@@ -25,7 +25,7 @@ jobs:
     - name: Check
       run: |
         pip install pre-commit
-        pre-commit run -a --show-diff-on-failure
+        SKIP="no-commit-to-branch" pre-commit run -a --show-diff-on-failure
 
   cuda-build:
     runs-on: ubuntu-22.04
