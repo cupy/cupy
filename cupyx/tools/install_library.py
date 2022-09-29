@@ -156,7 +156,7 @@ def _make_nccl_record(
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
     '11.x', '2.14.3', '2.14',  # CUDA 11.2+
-    'nccl_2.14.3-1+cuda11.4_x86_64.txz'))
+    'nccl_2.14.3-1+cuda11.7_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.1', '2.8.4', '2.8',
     'nccl_2.8.4-1+cuda11.1_x86_64.txz'))
