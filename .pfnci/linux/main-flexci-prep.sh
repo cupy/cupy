@@ -6,7 +6,7 @@ set -ue
 
 env
 
-gcloud auth configure-docker
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 for DF in $(find "$(dirname ${0})/tests" -name "*.Dockerfile" -type f); do
     echo "$(basename "${DF}" .Dockerfile)"
