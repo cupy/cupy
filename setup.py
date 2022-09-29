@@ -32,6 +32,7 @@ extras_require = {
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
+    # TODO(kmaehashi): remove stylecheck and update the contribution guide
     'stylecheck': [
         'autopep8==1.5.5',
         'flake8==3.8.4',
