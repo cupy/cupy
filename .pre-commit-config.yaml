@@ -29,6 +29,7 @@ repos:
         # use config from setup.cfg
     -   id: flake8
         name: flake8 (cython)
+        types: ["cython"]
         args: [--config, ".flake8.cython"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
