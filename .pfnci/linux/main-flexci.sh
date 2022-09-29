@@ -20,7 +20,7 @@ fi
 # TODO(kmaehashi): Hack for CUDA 11.6+ until FlexCI base image update
 .pfnci/linux/update-cuda-driver.sh
 
-gcloud auth configure-docker
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
