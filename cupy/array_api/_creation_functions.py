@@ -77,7 +77,6 @@ def asarray(
         # Give a better error message in this case. NumPy would convert this
         # to an object array. TODO: This won't handle large integers in lists.
         raise OverflowError("Integer out of bounds for array dtypes")
-
     prev_device = runtime.getDevice()
     try:
         runtime.setDevice(device.id)

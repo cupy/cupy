@@ -28,7 +28,7 @@ from typing import (
     Union,
     TYPE_CHECKING,
     TypeVar,
-    Protocol
+    Protocol,
 )
 
 from ._array_object import Array
