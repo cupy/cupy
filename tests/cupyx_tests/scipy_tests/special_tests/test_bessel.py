@@ -116,3 +116,22 @@ class TestFusionSpecial(unittest.TestCase):
 
     def test_k1e(self):
         self.check_unary('k1e')
+
+    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
+    def test_chbevl_dependent_fusion(self, dtype, xp, scp):
+        @cupy.fuse
+        def fused(x):
+            _k0 = scp.special.k0(x)
+            _k0e = scp.special.k0e(x)
+            _k1 = scp.special.k1(x)
+            _k1e = scp.special.k1e(x)
+
+            # rgamma depends on `chbevl` too
+            # see rgamma definition for additional info
+            _rgamma = scp.special.rgamma(x)
+
+            return _k0 + _k0e + _k1 + _k1e + _rgamma
+
+        a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
+        return fused(a)
