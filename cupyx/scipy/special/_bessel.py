@@ -375,10 +375,12 @@ __device__ float k1f(float x){
     }
 
     float y;
+    float i1;
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = logf(0.5 * x) * cyl_bessel_i1f(x) + bessel_k_chbevl(y, k1_AF, 11) / x;
+        i1 = cyl_bessel_i1f(x);
+        y = logf(0.5 * x) * i1 + bessel_k_chbevl(y, k1_AF, 11) / x;
         return y;
     }
 

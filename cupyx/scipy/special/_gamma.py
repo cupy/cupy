@@ -62,10 +62,11 @@ gamma = _core.create_ufunc(
 
     """)
 
-# Kernel fusion involves preambles concatenating so if there're several kernels
-# that depend on the same cpp function, compiler throws an error because of duplicates
-# Formatting allows to define the same function with different names in different kernel preambles
-# that allows to compile fused kernel
+# Kernel fusion involves preambles concatenating so
+# if there're several kernels that depend on the same cpp function,
+# compiler throws an error because of duplicates
+# Formatting allows to define the same function with different names
+# in different kernel preambles that allows to compile fused kernel
 chbevl_template = """
 template<typename T>
 __device__ T {prefix}_chbevl(T x, T array[], int n)
