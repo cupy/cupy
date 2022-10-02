@@ -62,12 +62,14 @@ gamma = _core.create_ufunc(
 
     """)
 
-
-chbevl_implementation = """
-
+# Kernel fusion involves preambles concatenating so if there're several kernels
+# that depend on the same cpp function, compiler throws an error because of duplicates
+# Formatting allows to define the same function with different names in different kernel preambles
+# that allows to compile fused kernel
+chbevl_template = """
 template<typename T>
-__device__ T chbevl(T x, T array[], int n)
-{
+__device__ T {prefix}_chbevl(T x, T array[], int n)
+{{
     T b0, b1, b2, *p;
     int i;
 
@@ -76,17 +78,19 @@ __device__ T chbevl(T x, T array[], int n)
     b1 = 0.0;
     i = n - 1;
 
-    do {
+    do {{
         b2 = b1;
         b1 = b0;
         b0 = x * b1 - b2 + *p++;
-    }
+    }}
     while (--i);
 
     return (0.5 * (b0 - b2));
-}
+}}
 
 """
+
+chbevl_implementation = chbevl_template.format(prefix='gamma')
 
 
 rgamma_implementation = chbevl_implementation + """
@@ -169,7 +173,7 @@ __device__ double rgamma(double x)
     if (w == 1.0) {      /* Other integer */
         return 1.0 / z;
     }
-    y = w * (1.0 + chbevl(4.0 * w - 2.0, R, 16)) / z;
+    y = w * (1.0 + gamma_chbevl(4.0 * w - 2.0, R, 16)) / z;
     return y;
 }
 

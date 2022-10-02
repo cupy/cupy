@@ -7,8 +7,7 @@
 # Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
 
 from cupy import _core
-from cupyx.scipy.special._gamma import chbevl_implementation
-
+from cupyx.scipy.special._gamma import chbevl_template
 
 j0 = _core.create_ufunc(
     'cupyx_scipy_special_j0', ('f->f', 'd->d'),
@@ -113,7 +112,7 @@ i1e = _core.create_ufunc(
     ''')
 
 
-k0_implementation = """
+k_preamble = chbevl_template.format(prefix='bessel_k') + """
 #include <cupy/math_constants.h>
 
 /* Chebyshev coefficients for K0(x) + log(x/2) I0(x)
@@ -208,87 +207,6 @@ __device__ float k0_BF[] = {
     2.44030308206595545468E0
 };
 
-__device__ double k0(double x){
-    if (x == 0) {
-        return CUDART_INF;
-    }
-
-    if (x < 0) {
-        return CUDART_NAN;
-    }
-
-    double y, z;
-
-    if (x <= 2.0) {
-        y = x * x - 2.0;
-        y = chbevl(y, k0_A, 10) - log(0.5 * x) * cyl_bessel_i0(x);
-        return y;
-    }
-
-    z = 8.0 / x - 2.0;
-    y = chbevl(z, k0_B, 25) / sqrt(x);
-    return y * exp(-x);
-}
-
-__device__ float k0f(float x){
-    if (x == 0) {
-        return CUDART_INF;
-    }
-
-    if (x < 0) {
-        return CUDART_NAN;
-    }
-
-    float y, z;
-
-    if (x <= 2.0) {
-        y = x * x - 2.0;
-        y = chbevl(y, k0_AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
-        return y;
-    }
-
-    z = 8.0 / x - 2.0;
-    y = chbevl(z, k0_BF, 25) / sqrtf(x);
-    return y * expf(-x);
-}
-"""
-
-k0 = _core.create_ufunc(
-    'cupyx_scipy_special_k0',
-    (('f->f', 'out0 = k0f(in0)'), 'd->d'),
-    'out0 = k0(in0)',
-    preamble=chbevl_implementation + k0_implementation,
-    doc='''Modified Bessel function of the second kind of order 0.
-
-    Args:
-        x (cupy.ndarray): argument (float)
-
-    Returns:
-        cupy.ndarray: Value of the modified Bessel function K of order 0 at x.
-
-    .. seealso:: :meth:`scipy.special.k0`
-
-    ''')
-
-k0e = _core.create_ufunc(
-    'cupyx_scipy_special_k0e',
-    (('f->f', 'out0 = expf(in0) * k0f(in0)'), 'd->d'),
-    'out0 = exp(in0) * k0(in0)',
-    preamble=chbevl_implementation + k0_implementation,
-    doc='''Exponentially scaled modified Bessel function K of order 0
-
-    Args:
-        x (cupy.ndarray): argument (float)
-
-    Returns:
-        cupy.ndarray: Value at x.
-
-    .. seealso:: :meth:`scipy.special.k0e`
-
-    ''')
-
-k1_implementation = """
-#include <cupy/math_constants.h>
 
 /* Chebyshev coefficients for x(K1(x) - log(x/2) I1(x))
  * in the interval [0,2].
@@ -383,6 +301,50 @@ __device__ static float k1_BF[] = {
     2.72062619048444266945E0
 };
 
+__device__ double k0(double x){
+    if (x == 0) {
+        return CUDART_INF;
+    }
+
+    if (x < 0) {
+        return CUDART_NAN;
+    }
+
+    double y, z;
+
+    if (x <= 2.0) {
+        y = x * x - 2.0;
+        y = bessel_k_chbevl(y, k0_A, 10) - log(0.5 * x) * cyl_bessel_i0(x);
+        return y;
+    }
+
+    z = 8.0 / x - 2.0;
+    y = bessel_k_chbevl(z, k0_B, 25) / sqrt(x);
+    return y * exp(-x);
+}
+
+__device__ float k0f(float x){
+    if (x == 0) {
+        return CUDART_INF;
+    }
+
+    if (x < 0) {
+        return CUDART_NAN;
+    }
+
+    float y, z;
+
+    if (x <= 2.0) {
+        y = x * x - 2.0;
+        y = bessel_k_chbevl(y, k0_AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
+        return y;
+    }
+
+    z = 8.0 / x - 2.0;
+    y = bessel_k_chbevl(z, k0_BF, 25) / sqrtf(x);
+    return y * expf(-x);
+}
+
 __device__ double k1(double x){
     if (x == 0) {
         return CUDART_INF;
@@ -396,11 +358,11 @@ __device__ double k1(double x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = log(0.5 * x) * cyl_bessel_i1(x) + chbevl(y, k1_A, 11) / x;
+        y = log(0.5 * x) * cyl_bessel_i1(x) + bessel_k_chbevl(y, k1_A, 11) / x;
         return y;
     }
 
-    return (exp(-x) * chbevl(8.0 / x - 2.0, k1_B, 25) / sqrt(x));
+    return (exp(-x) * bessel_k_chbevl(8.0 / x - 2.0, k1_B, 25) / sqrt(x));
 }
 
 __device__ float k1f(float x){
@@ -416,20 +378,57 @@ __device__ float k1f(float x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = logf(0.5 * x) * cyl_bessel_i1f(x) + chbevl(y, k1_AF, 11) / x;
+        y = logf(0.5 * x) * cyl_bessel_i1f(x) + bessel_k_chbevl(y, k1_AF, 11) / x;
         return y;
     }
 
     float z = 8.0 / x - 2.0;
-    return (expf(-x) * chbevl(z, k1_BF, 25) / sqrtf(x));
+    return (expf(-x) * bessel_k_chbevl(z, k1_BF, 25) / sqrtf(x));
 }
 """
+
+
+k0 = _core.create_ufunc(
+    'cupyx_scipy_special_k0',
+    (('f->f', 'out0 = k0f(in0)'), 'd->d'),
+    'out0 = k0(in0)',
+    preamble=k_preamble,
+    doc='''Modified Bessel function of the second kind of order 0.
+
+    Args:
+        x (cupy.ndarray): argument (float)
+
+    Returns:
+        cupy.ndarray: Value of the modified Bessel function K of order 0 at x.
+
+    .. seealso:: :meth:`scipy.special.k0`
+
+    ''')
+
+
+k0e = _core.create_ufunc(
+    'cupyx_scipy_special_k0e',
+    (('f->f', 'out0 = expf(in0) * k0f(in0)'), 'd->d'),
+    'out0 = exp(in0) * k0(in0)',
+    preamble=k_preamble,
+    doc='''Exponentially scaled modified Bessel function K of order 0
+
+    Args:
+        x (cupy.ndarray): argument (float)
+
+    Returns:
+        cupy.ndarray: Value at x.
+
+    .. seealso:: :meth:`scipy.special.k0e`
+
+    ''')
+
 
 k1 = _core.create_ufunc(
     'cupyx_scipy_special_k1',
     (('f->f', 'out0 = k1f(in0)'), 'd->d'),
     'out0 = k1(in0)',
-    preamble=chbevl_implementation + k1_implementation,
+    preamble=k_preamble,
     doc='''Modified Bessel function of the second kind of order 1.
 
     Args:
@@ -442,11 +441,12 @@ k1 = _core.create_ufunc(
 
     ''')
 
+
 k1e = _core.create_ufunc(
     'cupyx_scipy_special_k1e',
     (('f->f', 'out0 = expf(in0) * k1f(in0)'), 'd->d'),
     'out0 = exp(in0) * k1(in0)',
-    preamble=chbevl_implementation + k1_implementation,
+    preamble=k_preamble,
     doc='''Exponentially scaled modified Bessel function K of order 1
 
     Args:
