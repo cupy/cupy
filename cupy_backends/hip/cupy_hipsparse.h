@@ -2,7 +2,7 @@
 
 #ifndef INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
 #define INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
-#include <hipsparse.h>
+#include <hipsparse/hipsparse.h>
 #include <hip/hip_version.h>    // for HIP_VERSION
 #include <hip/library_types.h>  // for hipDataType
 #include <stdexcept>  // for gcc 10.0

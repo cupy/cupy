@@ -12,7 +12,7 @@
 #include <cufftXt.h>
 
 #elif defined(CUPY_USE_HIP)
-#include <hipfft.h>
+#include <hipfft/hipfft.h>
 
 extern "C" {
 
