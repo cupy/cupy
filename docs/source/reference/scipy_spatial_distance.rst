@@ -23,6 +23,7 @@ Distance matrix computation from a collection of raw observation vectors stored 
    :toctree: generated/
 
    cdist
+   distance_matrix
 
 
 Distance functions
@@ -34,4 +35,16 @@ Distance functions between two numeric vectors `u` and `v`. Computing distances 
    :toctree: generated/
 
    minkowski
+   canberra
+   chebyshev
+   cityblock
+   correlation
+   cosine
+   hamming
+   euclidean
+   jensenshannon
+   russellrao
+   sqeuclidean
+   hellinger
+   kl_divergence
 
