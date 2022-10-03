@@ -521,9 +521,8 @@ def pdist(X, metric='euclidean', out=None, **kwargs):
             :math:`ij` th entry.
     """
     all_dist = cdist(X, X, metric=metric, out=out, **kwargs)
-    tr_all_dist = cupy.triu(all_dist)
-    nonzero_indices = cupy.nonzero(tr_all_dist)
-    return tr_all_dist[nonzero_indices]
+    up_idx = cupy.triu_indices_from(all_dist, 1)
+    return all_dist[up_idx]
 
 
 def distance_matrix(x, y, p=2.0):
