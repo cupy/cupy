@@ -10,6 +10,7 @@ class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
     @property
     def device(self):
         # This override is needed to assign an invalid device id
+        # Since the array is not residing in a single device now
         return cupy.cuda.device.Device(-1)
 
 
@@ -42,10 +43,10 @@ class _DistributedArray(cupy.ndarray):
 
     def _prepare_args(self, dist_args, regular_args, device):
         # Dist arrays must have chunks of compatible shapes, otherwise
-        # hard error?
+        # hard error.
         # In case that they are of different, but broadcastable shapes
         # Data movement may be needed
-        # First: Support only same shape chunks
+        # Currently: Support only same shape chunks
         args = []
         c_shape = None
         for (i, arg) in dist_args:
@@ -53,8 +54,7 @@ class _DistributedArray(cupy.ndarray):
             args.append((i, chunk))
             if c_shape is None:
                 c_shape = chunk.shape
-            # All the chunks must have the same shape or
-            # broadcastable one, if broadcastable, the array must have been
+            # TODO(ecastill) check if broadcastable, the array must have been
             # split in the same axis?
             if chunk.shape != c_shape:
                 raise RuntimeError(
@@ -82,7 +82,6 @@ class _DistributedArray(cupy.ndarray):
             # The key of chunks is the device id
             for dev in arg._chunks:
                 devices.add(dev)
-        # TODO: Assert that all the args have chunks in the same devices
         return devices
 
     def _execute_kernel(self, kernel, args, kwargs):
@@ -102,18 +101,10 @@ class _DistributedArray(cupy.ndarray):
                 regular_arrays.append((k, arg))
 
         args = list(args)
-        # TODO check that regular devices are in valid devices
         devices = self._get_execution_devices(distributed_arrays)
         dev_outs = {}
         dtype = None
         for dev in devices:
-            # For all the distributed arrays check the shape of the chunks
-            # if the shapes of the chunks are the same we can just execute
-            # the kernel otherwise we need to check broadcastability
-            # and if they are views with different overlapping chunks
-            # If we have regular arrays we need to check if peer access is
-            # enabled to avoid copy, otherwise Check broadcastabilitly
-            # to the WHOLE shape Split it or copy it if needed
             array_args = self._prepare_args(
                 distributed_arrays, regular_arrays, dev)
             for (i, arg) in array_args:
