@@ -120,18 +120,6 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
     return dst
 
 
-cdef _ndarray_scatter_add(_ndarray_base self, slices, value):
-    _scatter_op(self, slices, value, 'add')
-
-
-cdef _ndarray_scatter_max(_ndarray_base self, slices, value):
-    _scatter_op(self, slices, value, 'max')
-
-
-cdef _ndarray_scatter_min(_ndarray_base self, slices, value):
-    _scatter_op(self, slices, value, 'min')
-
-
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
