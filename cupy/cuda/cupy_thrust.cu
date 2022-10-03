@@ -73,7 +73,7 @@ public:
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ 
+__host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
 THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
@@ -349,7 +349,17 @@ struct _sort {
             transform(cuda::par(alloc).on(stream_),
                       make_counting_iterator<size_t>(0),
                       make_counting_iterator<size_t>(size),
+                      #ifdef __HIP_PLATFORM_HCC__
+                      // HIP_VERSION value format was changed after ROCm v4.2 to include the patch number
+                      // Fix compilation error due to missing rocprim identifier for > ROCm5.2
+                      #if (HIP_VERSION > 500 && ((HIP_VERSION / 10000000) >= 5) && ((HIP_VERSION / 100000 % 100) > 2))
+                      rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #else
                       make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #endif
+                      #else
+                      make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #endif
                       dp_keys_first,
                       divides<size_t>());
 
@@ -442,7 +452,17 @@ struct _argsort {
         transform(cuda::par(alloc).on(stream_),
                   make_counting_iterator<size_t>(0),
                   make_counting_iterator<size_t>(size),
+                  #ifdef __HIP_PLATFORM_HCC__
+                  // HIP_VERSION value format was changed after ROCm v4.2 to include the patch number
+                  // Fix compilation error due to missing rocprim identifier for > ROCm5.2
+                  #if (HIP_VERSION > 500 && ((HIP_VERSION / 10000000) >= 5) && ((HIP_VERSION / 100000 % 100) > 2))
+                  rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  #else
                   make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  #endif
+                  #else
+                  make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  #endif
                   dp_idx_first,
                   modulus<size_t>());
 
@@ -459,7 +479,17 @@ struct _argsort {
             transform(cuda::par(alloc).on(stream_),
                       make_counting_iterator<size_t>(0),
                       make_counting_iterator<size_t>(size),
+                      #ifdef __HIP_PLATFORM_HCC__
+                      // HIP_VERSION value format was changed after ROCm v4.2 to include the patch number
+                      // Fix compilation error due to missing rocprim identifier for > ROCm5.2
+                      #if (HIP_VERSION > 500 && ((HIP_VERSION / 10000000) >= 5) && ((HIP_VERSION / 100000 % 100) > 2))
+                      rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #else
                       make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #endif
+                      #else
+                      make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #endif
                       dp_keys_first,
                       divides<size_t>());
 
@@ -504,3 +534,4 @@ void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     return dtype_dispatcher(dtype_id, op, idx_start, data_start, keys_start, shape,
                             stream, memory);
 }
+
