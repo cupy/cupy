@@ -7,7 +7,7 @@
 # Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
 
 from cupy import _core
-from cupyx.scipy.special._gamma import chbevl_template
+from cupyx.scipy.special._gamma import chbevl_implementation
 
 j0 = _core.create_ufunc(
     'cupyx_scipy_special_j0', ('f->f', 'd->d'),
@@ -112,7 +112,7 @@ i1e = _core.create_ufunc(
     ''')
 
 
-k_preamble = chbevl_template.format(prefix='bessel_k') + """
+k_preamble = chbevl_implementation + """
 #include <cupy/math_constants.h>
 
 /* Chebyshev coefficients for K0(x) + log(x/2) I0(x)
@@ -314,12 +314,12 @@ __device__ double k0(double x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = bessel_k_chbevl(y, k0_A, 10) - log(0.5 * x) * cyl_bessel_i0(x);
+        y = chbevl(y, k0_A, 10) - log(0.5 * x) * cyl_bessel_i0(x);
         return y;
     }
 
     z = 8.0 / x - 2.0;
-    y = bessel_k_chbevl(z, k0_B, 25) / sqrt(x);
+    y = chbevl(z, k0_B, 25) / sqrt(x);
     return y * exp(-x);
 }
 
@@ -336,12 +336,12 @@ __device__ float k0f(float x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = bessel_k_chbevl(y, k0_AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
+        y = chbevl(y, k0_AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
         return y;
     }
 
     z = 8.0 / x - 2.0;
-    y = bessel_k_chbevl(z, k0_BF, 25) / sqrtf(x);
+    y = chbevl(z, k0_BF, 25) / sqrtf(x);
     return y * expf(-x);
 }
 
@@ -358,11 +358,11 @@ __device__ double k1(double x){
 
     if (x <= 2.0) {
         y = x * x - 2.0;
-        y = log(0.5 * x) * cyl_bessel_i1(x) + bessel_k_chbevl(y, k1_A, 11) / x;
+        y = log(0.5 * x) * cyl_bessel_i1(x) + chbevl(y, k1_A, 11) / x;
         return y;
     }
 
-    return (exp(-x) * bessel_k_chbevl(8.0 / x - 2.0, k1_B, 25) / sqrt(x));
+    return (exp(-x) * chbevl(8.0 / x - 2.0, k1_B, 25) / sqrt(x));
 }
 
 __device__ float k1f(float x){
@@ -380,12 +380,12 @@ __device__ float k1f(float x){
     if (x <= 2.0) {
         y = x * x - 2.0;
         i1 = cyl_bessel_i1f(x);
-        y = logf(0.5 * x) * i1 + bessel_k_chbevl(y, k1_AF, 11) / x;
+        y = logf(0.5 * x) * i1 + chbevl(y, k1_AF, 11) / x;
         return y;
     }
 
     float z = 8.0 / x - 2.0;
-    return (expf(-x) * bessel_k_chbevl(z, k1_BF, 25) / sqrtf(x));
+    return (expf(-x) * chbevl(z, k1_BF, 25) / sqrtf(x));
 }
 """
 
