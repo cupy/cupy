@@ -681,11 +681,11 @@ class RandomState(object):
         else:
             dtype = mx.dtype
             if dtype == cupy.int32 or dtype == cupy.uint32:
-                dtype = numpy.int32
+                dtype = numpy.uint32
                 mx = mx.astype(dtype, copy=False)
                 upper_limit = _UINT32_MAX - (_UINT32_MAX - mx) % (mx + 1)
             elif dtype == cupy.int64 or dtype == cupy.uint64:
-                dtype = numpy.int64
+                dtype = numpy.uint64
                 mx = mx.astype(dtype, copy=False)
                 upper_limit = _UINT64_MAX - (_UINT64_MAX - mx) % (mx + 1)
             else:
@@ -1187,6 +1187,7 @@ class RandomState(object):
             out = self._interval(diff.flatten(), total_elems)
             out = out.astype(dtype)
             out = cupy.reshape(out, size)
+            lo = lo.astype(dtype, copy=False)
             cupy.add(out, lo, out=out)
             return out
         else:
