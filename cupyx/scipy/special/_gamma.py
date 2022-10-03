@@ -67,7 +67,8 @@ gamma = _core.create_ufunc(
 # compiler throws an error because of duplicates
 # ifndef allows to fixes it as compiler throw all duplicates away
 chbevl_implementation = """
-#ifndef chbevl
+#ifndef chbevl_defined
+#define chbevl_defined
 template<typename T>
 __device__ T chbevl(T x, T array[], int n)
 {
