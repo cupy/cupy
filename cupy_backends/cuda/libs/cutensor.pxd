@@ -7,10 +7,11 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 cpdef enum:
     # cutensorAlgo_t (values > 0 correspond to certain algorithms of GETT)
-    ALGO_GETT = -4     # NOQA, Choose the GETT algorithm
-    ALGO_TGETT = -3    # NOQA, Transpose (A or B) + GETT
-    ALGO_TTGT = -2     # NOQA, Transpose-Transpose-GEMM-Transpose (requires additional memory)
-    ALGO_DEFAULT = -1  # NOQA, Lets the internal heuristic choose
+    ALGO_DEFAULT_PATIENT = -6  # NOQA, Uses the more accurate but also more time-consuming performance model
+    ALGO_GETT = -4             # NOQA, Choose the GETT algorithm
+    ALGO_TGETT = -3            # NOQA, Transpose (A or B) + GETT
+    ALGO_TTGT = -2             # NOQA, Transpose-Transpose-GEMM-Transpose (requires additional memory)
+    ALGO_DEFAULT = -1          # NOQA, Lets the internal heuristic choose
 
     # cutensorWorksizePreference_t
     WORKSPACE_MIN = 1          # NOQA, At least one algorithm will be available
@@ -210,6 +211,12 @@ cpdef contraction(
     intptr_t workspace,
     uint64_t workspaceSize)
 
+cpdef uint64_t contractionGetWorkspaceSize(
+    Handle handle,
+    ContractionDescriptor desc,
+    ContractionFind find,
+    int pref)
+
 cpdef uint64_t contractionGetWorkspace(
     Handle handle,
     ContractionDescriptor desc,
@@ -235,6 +242,20 @@ cpdef reduction(
     int minTypeCompute,
     intptr_t workspace,
     uint64_t workspaceSize)
+
+cpdef uint64_t reductionGetWorkspaceSize(
+    Handle handle,
+    intptr_t A,
+    TensorDescriptor descA,
+    intptr_t modeA,
+    intptr_t C,
+    TensorDescriptor descC,
+    intptr_t modeC,
+    intptr_t D,
+    TensorDescriptor descD,
+    intptr_t modeD,
+    int opReduce,
+    int typeCompute)
 
 cpdef uint64_t reductionGetWorkspace(
     Handle handle,

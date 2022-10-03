@@ -1,5 +1,6 @@
 import copy
 import itertools
+import operator
 import string
 import warnings
 
@@ -8,6 +9,7 @@ from cupy._core import _accelerator
 from cupy import _util
 from cupy.linalg._einsum_opt import _greedy_path
 from cupy.linalg._einsum_opt import _optimal_path
+from cupy.linalg._einsum_cutn import _try_use_cutensornet
 
 
 try:
@@ -55,12 +57,14 @@ def _parse_int_subscript(list_subscript):
     for s in list_subscript:
         if s is Ellipsis:
             str_subscript += '@'
-        elif isinstance(s, int):
-            str_subscript += einsum_symbols[s]
         else:
-            raise TypeError(
-                'each subscript must be either an integer or an ellipsis'
-                ' to provide subscripts strings as lists')
+            try:
+                s = operator.index(s)
+            except TypeError as e:
+                raise TypeError(
+                    'For this input type lists must contain '
+                    'either int or Ellipsis') from e
+            str_subscript += einsum_symbols[s]
     return str_subscript
 
 
@@ -441,7 +445,7 @@ def _tuple_sorted_by_0(zs):
 
 
 def einsum(*operands, **kwargs):
-    """einsum(subscripts, *operands, dtype=False)
+    """einsum(subscripts, *operands, dtype=None, optimize=False)
 
     Evaluates the Einstein summation convention on the operands.
     Using the Einstein summation convention, many common multi-dimensional
@@ -449,21 +453,46 @@ def einsum(*operands, **kwargs):
     provides a way to compute such summations.
 
     .. note::
-       Memory contiguity of calculation result is not always compatible with
-       `numpy.einsum`.
-       ``out``, ``order``, and ``casting`` options are not supported.
+
+       - Memory contiguity of the returned array is not always compatible with
+         that of :func:`numpy.einsum`.
+       - ``out``, ``order``, and ``casting`` options are not supported.
+       - If :envvar:`CUPY_ACCELERATORS` includes ``cutensornet``, the `einsum`
+         calculation will be performed by the cuTensorNet backend if possible.
+
+           - The support of the ``optimize`` option is limited (currently, only
+             `False`, 'cutensornet', or a custom path for pairwise contraction
+             is supported, and the maximum intermediate size is ignored). If
+             you need finer control for path optimization, consider replacing
+             :func:`cupy.einsum` by :func:`cuquantum.contract` instead.
+           - Requires `cuQuantum Python`_ (v22.03+).
+
+       - If :envvar:`CUPY_ACCELERATORS` includes ``cutensor``, `einsum` will be
+         accelerated by the cuTENSOR backend whenever possible.
 
     Args:
         subscripts (str): Specifies the subscripts for summation.
         operands (sequence of arrays): These are the arrays for the operation.
+        dtype: If provided, forces the calculation to use the data type
+            specified. Default is None.
+        optimize: Valid options include {`False`, `True`, 'greedy', 'optimal'}.
+            Controls if intermediate optimization should occur. No optimization
+            will occur if `False`, and `True` will default to the 'greedy'
+            algorithm. Also accepts an explicit contraction list from
+            :func:`numpy.einsum_path`. Defaults to `False`. If a pair is
+            supplied, the second argument is assumed to be the maximum
+            intermediate size created.
 
     Returns:
         cupy.ndarray:
             The calculation based on the Einstein summation convention.
 
     .. seealso:: :func:`numpy.einsum`
-
+    .. _cuQuantum Python: https://docs.nvidia.com/cuda/cuquantum/python/
     """
+    out = _try_use_cutensornet(*operands, **kwargs)
+    if out is not None:
+        return out
 
     input_subscripts, output_subscript, operands = \
         _parse_einsum_input(operands)

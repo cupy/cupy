@@ -91,6 +91,14 @@ class TestApplyAlongAxis(unittest.TestCase):
                 xp.ones((10,))
             )
 
+    @testing.numpy_cupy_array_equal()
+    def test_tuple_outs(self, xp):
+        def func(x):
+            return x.sum(axis=-1), x.prod(axis=-1), x.max(axis=-1)
+
+        a = testing.shaped_arange((2, 2, 2), xp, cupy.int64)
+        return xp.apply_along_axis(func, 1, a)
+
 
 @testing.gpu
 @testing.with_requires('numpy>=1.16')

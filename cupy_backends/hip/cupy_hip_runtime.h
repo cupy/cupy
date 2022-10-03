@@ -114,6 +114,21 @@ cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsig
 }
 
 // Memory management
+enum cudaMemAllocationType {};  // stub
+enum cudaMemAllocationHandleType {};  // stub
+enum cudaMemLocationType {};  // stub
+struct cudaMemLocation {  // stub
+    int id;
+    cudaMemLocationType type;
+};
+struct cudaMemPoolProps {  // stub
+    cudaMemAllocationType allocType;
+    cudaMemAllocationHandleType handleTypes;
+    struct cudaMemLocation location;
+    unsigned char reserved[64];
+    void* win32SecurityAttributes;
+};
+
 cudaError_t cudaMalloc(void** ptr, size_t size) {
     return hipMalloc(ptr, size);
 }
@@ -275,6 +290,18 @@ cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
     return hipGetDeviceProperties(prop, device);
 }
 
+cudaError_t cudaMallocFromPoolAsync(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemPoolCreate(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemPoolDestroy(...) {
+    return hipErrorUnknown;
+}
+
 cudaError_t cudaDeviceGetDefaultMemPool(...) {
     return hipErrorUnknown;
 }
@@ -301,6 +328,14 @@ cudaError_t cudaMemPoolSetAttribute(...) {
 
 
 // Stream and Event
+#if HIP_VERSION >= 40300000
+typedef hipStreamCaptureMode cudaStreamCaptureMode;
+typedef hipStreamCaptureStatus cudaStreamCaptureStatus;
+#else
+enum cudaStreamCaptureMode {};
+enum cudaStreamCaptureStatus {};
+#endif
+
 cudaError_t cudaStreamCreate(cudaStream_t *stream) {
     return hipStreamCreate(stream);
 }
@@ -366,6 +401,32 @@ cudaError_t cudaEventSynchronize(cudaEvent_t event) {
     return hipEventSynchronize(event);
 }
 
+cudaError_t cudaStreamBeginCapture(cudaStream_t stream,
+                                   cudaStreamCaptureMode mode) {
+#if HIP_VERSION >= 40300000
+    return hipStreamBeginCapture(stream, mode);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaStreamEndCapture(cudaStream_t stream, cudaGraph_t* pGraph) {
+#if HIP_VERSION >= 40300000
+    return hipStreamEndCapture(stream, pGraph);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
+                                  cudaStreamCaptureStatus* pCaptureStatus) {
+#if HIP_VERSION >= 50000000
+    return hipStreamIsCapturing(stream, pCaptureStatus);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
 
 // Texture
 cudaError_t cudaCreateTextureObject(...) {
@@ -411,6 +472,48 @@ cudaError_t cudaCreateSurfaceObject(cudaSurfaceObject_t* pSurfObject,
 
 cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
     return hipDestroySurfaceObject(surfObject);
+}
+
+// CUDA Graph
+cudaError_t cudaGraphInstantiate(
+	cudaGraphExec_t* pGraphExec,
+	cudaGraph_t graph,
+	cudaGraphNode_t* pErrorNode,
+	char* pLogBuffer,
+	size_t bufferSize) {
+#if HIP_VERSION >= 40300000
+    return hipGraphInstantiate(pGraphExec, graph, pErrorNode, pLogBuffer, bufferSize);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaGraphDestroy(cudaGraph_t graph) {
+#if HIP_VERSION >= 40300000
+    return hipGraphDestroy(graph);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaGraphExecDestroy(cudaGraphExec_t graphExec) {
+#if HIP_VERSION >= 40300000
+    return hipGraphExecDestroy(graphExec);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaGraphLaunch(cudaGraphExec_t graphExec, cudaStream_t stream) {
+#if HIP_VERSION >= 40300000
+    return hipGraphLaunch(graphExec, stream);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaGraphUpload(...) {
+    return hipErrorUnknown;
 }
 
 } // extern "C"

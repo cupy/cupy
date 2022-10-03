@@ -399,6 +399,11 @@ class TestRaw(unittest.TestCase):
 
     def setUp(self):
         if hasattr(self, 'clean_up'):
+            if cupy.cuda.runtime.is_hip:
+                # Clearing memo triggers recompiling kernels using name
+                # expressions in other tests, e.g. dot and matmul, which
+                # hits a nvrtc bug. See #5843, #5945 and #6725.
+                self.skipTest('Clearing memo hits a nvrtc bug in other tests')
             _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
@@ -808,8 +813,15 @@ class TestRaw(unittest.TestCase):
             self.skipTest('skip a potential hiprtc bug')
 
         # compile code
-        name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
-                            'my_sqrt<complex<double>>', 'my_func']
+        if cupy.cuda.runtime.is_hip:
+            # ROCm 5.0 returns HIP_HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID for
+            # my_sqrt<complex<double>>, so we use thrust::complex<double>
+            # instead.
+            name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
+                                'my_sqrt<thrust::complex<double>>', 'my_func']
+        else:
+            name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
+                                'my_sqrt<complex<double>>', 'my_func']
         mod = cupy.RawModule(code=test_cxx_template,
                              options=('--std=c++11',),
                              name_expressions=name_expressions,

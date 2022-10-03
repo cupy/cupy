@@ -7,7 +7,7 @@ import numpy
 from cupy._core cimport _carray
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy_backends.cuda.api cimport driver
@@ -15,6 +15,7 @@ from cupy.cuda cimport function
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _reduction
 
+import cupy as _cupy
 from cupy._core import _dtype
 from cupy import _util
 from cupy._core import _codeblock
@@ -191,7 +192,8 @@ cdef class FusedKernel:
             elif isinstance(param, _TraceScalar):
                 array = None
             elif self._is_base[i]:
-                array = _ndarray_init(shape, self._dtypes[i])
+                array = _ndarray_init(
+                    _cupy.ndarray, shape, self._dtypes[i], None)
             else:
                 view_of = ndarray_list[<Py_ssize_t>self._view_of[i]]
                 if param.is_broadcast:
@@ -234,7 +236,7 @@ cdef class FusedKernel:
         """Calculate the numnber of contiguous blocks in non-reduction axes
         of input arrays, and set them to ``self._contiguous_size``.
         """
-        cdef ndarray in_array, out_array
+        cdef _ndarray_base in_array, out_array
         cdef Py_ssize_t block_size, block_stride, contiguous_size
 
         cdef list block_strides = []
@@ -270,7 +272,7 @@ cdef class FusedKernel:
         """
         cdef list params = self._params
         cdef list ndims = []
-        cdef ndarray array
+        cdef _ndarray_base array
         cdef int i
 
         for i in range(len(params)):
@@ -294,7 +296,7 @@ cdef class FusedKernel:
 
         for i in range(len(self._params)):
             array = ndarray_list[i]
-            if isinstance(array, ndarray):
+            if isinstance(array, _ndarray_base):
                 indexer = _carray.Indexer.__new__(_carray.Indexer)
                 indexer.init(array._shape)
                 indexers.append(indexer)

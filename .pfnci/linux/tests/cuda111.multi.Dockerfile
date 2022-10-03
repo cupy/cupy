@@ -13,7 +13,7 @@ RUN yum -y install \
        xz-devel && \
     yum -y install epel-release && \
     yum -y install "@Development Tools" ccache git curl && \
-    yum -y install 'libnccl-2.8.*-*+cuda11.1' 'libnccl-devel-2.8.*-*+cuda11.1' 'libcutensor1-1.3.*' 'libcutensor-devel-1.3.*' 'libcudnn8-8.0.*-*.cuda11.1' 'libcudnn8-devel-8.0.*-*.cuda11.1'
+    yum -y install 'libnccl-2.8.*-*+cuda11.1' 'libnccl-devel-2.8.*-*+cuda11.1' 'libcutensor1-1.5.*' 'libcutensor-devel-1.5.*' 'libcudnn8-8.0.*-*.cuda11.1' 'libcudnn8-devel-8.0.*-*.cuda11.1'
 
 ENV PATH "/usr/lib64/ccache:${PATH}"
 
@@ -24,4 +24,6 @@ RUN pyenv install 3.7.11 && \
     pyenv global 3.7.11 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.19.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.20.*' 'cython==0.29.*'
+RUN pip uninstall -y scipy optuna mpi4py cuda-python && \
+    pip check

@@ -137,6 +137,63 @@ class TestArrayEqual(unittest.TestCase):
         return xp.array_equal(a, b)
 
 
+class TestArrayEquiv(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_equal_not_equal(self, xp, dtype):
+        a = xp.array([0, 4, 1, 1], dtype=dtype)
+        b = xp.array([0, 4, 2, 3], dtype=dtype)
+        return xp.array_equiv(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_equal_is_equal(self, xp, dtype):
+        a = xp.array([0, 4, 1, 1], dtype=dtype)
+        b = xp.array([0, 4, 1, 1], dtype=dtype)
+        return xp.array_equiv(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_diff_length(self, xp, dtype):
+        a = xp.array([0, 4, 0, 5], dtype=dtype)
+        b = xp.array([0, 4, 0], dtype=dtype)
+        return xp.array_equiv(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_diff_dtypes_not_equal(self, xp):
+        a = xp.array([0.9e-5, 1.1e-5, 100.5, 10.5])
+        b = xp.array([0, 0, 1000, 1000])
+        return xp.array_equiv(a, b)
+
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_diff_dtypes_is_equal(self, xp):
+        a = xp.array([0.0, 1.0, 100.0, 10.0])
+        b = xp.array([0, 1, 100, 10])
+        return xp.array_equiv(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_broadcast1(self, xp, dtype):
+        a = xp.array([0, 4], dtype)
+        b = xp.array([[0, 4], [0, 4]], dtype)
+        return xp.array_equiv(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_broadcast2(self, xp, dtype):
+        a = xp.array([0, 4], dtype=dtype)
+        b = xp.array([[0, 4], [0, 5]], dtype=dtype)
+        return xp.array_equiv(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equiv_non_broadcast(self, xp, dtype):
+        a = xp.array([0, 4], dtype=dtype)
+        b = xp.array([[0, 4, 0, 4], [0, 4, 0, 4]], dtype=dtype)
+        return xp.array_equiv(a, b)
+
+
 class TestAllclose(unittest.TestCase):
 
     @testing.for_all_dtypes()

@@ -1,38 +1,38 @@
 from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
-cdef ndarray _ndarray_all(ndarray self, axis, out, keepdims):
+cdef _ndarray_base _ndarray_all(_ndarray_base self, axis, out, keepdims):
     return _all(self, axis=axis, out=out, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_any(ndarray self, axis, out, keepdims):
+cdef _ndarray_base _ndarray_any(_ndarray_base self, axis, out, keepdims):
     return _any(self, axis=axis, out=out, keepdims=keepdims)
 
 
-cdef ndarray _ndarray_greater(ndarray self, other):
+cdef _ndarray_base _ndarray_greater(_ndarray_base self, other):
     return _greater(self, other)
 
 
-cdef ndarray _ndarray_greater_equal(ndarray self, other):
+cdef _ndarray_base _ndarray_greater_equal(_ndarray_base self, other):
     return _greater_equal(self, other)
 
 
-cdef ndarray _ndarray_less(ndarray self, other):
+cdef _ndarray_base _ndarray_less(_ndarray_base self, other):
     return _less(self, other)
 
 
-cdef ndarray _ndarray_less_equal(ndarray self, other):
+cdef _ndarray_base _ndarray_less_equal(_ndarray_base self, other):
     return _less_equal(self, other)
 
 
-cdef ndarray _ndarray_equal(ndarray self, other):
+cdef _ndarray_base _ndarray_equal(_ndarray_base self, other):
     return _equal(self, other)
 
 
-cdef ndarray _ndarray_not_equal(ndarray self, other):
+cdef _ndarray_base _ndarray_not_equal(_ndarray_base self, other):
     return _not_equal(self, other)
 
 

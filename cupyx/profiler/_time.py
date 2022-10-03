@@ -26,6 +26,14 @@ class _PerfCaseResult:
         self._ts = ts
         self._devices = devices
 
+    def __repr__(self) -> str:
+        """ Returns a string representation of the object.
+
+        Returns:
+            str: A string representation of the object.
+        """
+        return self.to_str(show_gpu=True)
+
     @property
     def cpu_times(self):
         """ Returns an array of CPU times of size ``n_repeat``. """
@@ -104,7 +112,8 @@ def benchmark(
             the timing test. If not given, the current device is used.
 
     Returns:
-        :class:`_PerfCaseResult`: an object collecting all test results.
+        :class:`~cupyx.profiler._time._PerfCaseResult`:
+            an object collecting all test results.
 
     """
 

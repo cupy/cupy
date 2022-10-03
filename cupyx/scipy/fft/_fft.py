@@ -11,6 +11,7 @@ from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
                            _swap_direction)
 
 _scipy_150 = False
+_scipy_160 = False
 try:
     import scipy
     import scipy.fft as _scipy_fft
@@ -23,13 +24,14 @@ except ImportError:
 else:
     from numpy.lib import NumpyVersion as Version
     _scipy_150 = Version(scipy.__version__) >= Version('1.5.0')
+    _scipy_160 = Version(scipy.__version__) >= Version('1.6.0')
     del Version
     del scipy
 
 # Backend support for scipy.fft
 
 __ua_domain__ = 'numpy.scipy.fft'
-_implemented = {}
+_implemented: dict = {}
 
 
 def __ua_convert__(dispatchables, coerce):

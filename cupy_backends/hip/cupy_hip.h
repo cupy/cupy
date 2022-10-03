@@ -47,6 +47,9 @@ CUresult cuCtxDestroy(CUcontext ctx) {
     return hipErrorUnknown;
 }
 
+CUresult cuCtxGetDevice(...) {
+    return hipErrorUnknown;
+}
 
 // Module load and kernel execution
 CUresult cuLinkCreate(...) {
@@ -165,6 +168,11 @@ CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
 }
 
 CUresult cuOccupancyMaxPotentialBlockSize(...) {
+    return hipErrorUnknown;
+}
+
+// Stream
+CUresult cuStreamGetCtx(...) {
     return hipErrorUnknown;
 }
 

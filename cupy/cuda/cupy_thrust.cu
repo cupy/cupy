@@ -23,15 +23,15 @@
 #include "cupy_thrust.h"
 
 
-using namespace thrust;
-
-
 #if CUPY_USE_HIP
 typedef hipStream_t cudaStream_t;
 namespace cuda {
     using thrust::hip::par;
 }
-
+#else // #if CUPY_USE_HIP
+namespace cuda {
+    using thrust::cuda::par;
+}
 #endif // #if CUPY_USE_HIP
 
 
@@ -77,13 +77,13 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
 THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
-bool _tuple_less(const tuple<size_t, T>& lhs,
-                                                     const tuple<size_t, T>& rhs) {
+bool _tuple_less(const thrust::tuple<size_t, T>& lhs,
+		 const thrust::tuple<size_t, T>& rhs) {
     const size_t& lhs_k = lhs.template get<0>();
     const size_t& rhs_k = rhs.template get<0>();
     const T& lhs_v = lhs.template get<1>();
     const T& rhs_v = rhs.template get<1>();
-    const less<T> _less;
+    const thrust::less<T> _less;
 
     // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
     // which should be respected
@@ -152,7 +152,7 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less<complex<float>>::operator() (
+bool thrust::less<complex<float>>::operator() (
     const complex<float>& lhs, const complex<float>& rhs) const {
 
     return _cmp_less<complex<float>>(lhs, rhs);
@@ -164,7 +164,7 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less<complex<double>>::operator() (
+bool thrust::less<complex<double>>::operator() (
     const complex<double>& lhs, const complex<double>& rhs) const {
 
     return _cmp_less<complex<double>>(lhs, rhs);
@@ -176,8 +176,8 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less< tuple<size_t, complex<float>> >::operator() (
-    const tuple<size_t, complex<float>>& lhs, const tuple<size_t, complex<float>>& rhs) const {
+bool thrust::less< thrust::tuple<size_t, complex<float>> >::operator() (
+    const thrust::tuple<size_t, complex<float>>& lhs, const thrust::tuple<size_t, complex<float>>& rhs) const {
 
     return _tuple_less<complex<float>>(lhs, rhs);
 }
@@ -188,8 +188,8 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less< tuple<size_t, complex<double>> >::operator() (
-    const tuple<size_t, complex<double>>& lhs, const tuple<size_t, complex<double>>& rhs) const {
+bool thrust::less< thrust::tuple<size_t, complex<double>> >::operator() (
+    const thrust::tuple<size_t, complex<double>>& lhs, const thrust::tuple<size_t, complex<double>>& rhs) const {
 
     return _tuple_less<complex<double>>(lhs, rhs);
 }
@@ -228,7 +228,7 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less<float>::operator() (
+bool thrust::less<float>::operator() (
     const float& lhs, const float& rhs) const {
 
     return _real_less<float>(lhs, rhs);
@@ -240,7 +240,7 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less<double>::operator() (
+bool thrust::less<double>::operator() (
     const double& lhs, const double& rhs) const {
 
     return _real_less<double>(lhs, rhs);
@@ -252,8 +252,8 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less< tuple<size_t, float> >::operator() (
-    const tuple<size_t, float>& lhs, const tuple<size_t, float>& rhs) const {
+bool thrust::less< thrust::tuple<size_t, float> >::operator() (
+    const thrust::tuple<size_t, float>& lhs, const thrust::tuple<size_t, float>& rhs) const {
 
     return _tuple_less<float>(lhs, rhs);
 }
@@ -264,8 +264,8 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less< tuple<size_t, double> >::operator() (
-    const tuple<size_t, double>& lhs, const tuple<size_t, double>& rhs) const {
+bool thrust::less< thrust::tuple<size_t, double> >::operator() (
+    const thrust::tuple<size_t, double>& lhs, const thrust::tuple<size_t, double>& rhs) const {
 
     return _tuple_less<double>(lhs, rhs);
 }
@@ -292,7 +292,7 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
+bool thrust::less<__half>::operator() (const __half& lhs, const __half& rhs) const {
     return _real_less<__half>(lhs, rhs);
 }
 
@@ -302,8 +302,8 @@ __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS
 #endif
-bool less< tuple<size_t, __half> >::operator() (
-    const tuple<size_t, __half>& lhs, const tuple<size_t, __half>& rhs) const {
+bool thrust::less< thrust::tuple<size_t, __half> >::operator() (
+    const thrust::tuple<size_t, __half>& lhs, const thrust::tuple<size_t, __half>& rhs) const {
 
     return _tuple_less<__half>(lhs, rhs);
 }
@@ -326,8 +326,8 @@ struct _sort {
                                     void* memory) {
         size_t ndim = shape.size();
         ptrdiff_t size;
-        device_ptr<T> dp_data_first, dp_data_last;
-        device_ptr<size_t> dp_keys_first, dp_keys_last;
+	thrust::device_ptr<T> dp_data_first, dp_data_last;
+        thrust::device_ptr<size_t> dp_keys_first, dp_keys_last;
         cudaStream_t stream_ = (cudaStream_t)stream;
         cupy_allocator alloc(memory);
 
@@ -337,33 +337,33 @@ struct _sort {
             size *= shape[i];
         }
 
-        dp_data_first = device_pointer_cast(static_cast<T*>(data_start));
-        dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + size);
+        dp_data_first = thrust::device_pointer_cast(static_cast<T*>(data_start));
+        dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
         if (ndim == 1) {
-            stable_sort(cuda::par(alloc).on(stream_), dp_data_first, dp_data_last, less<T>());
+            stable_sort(cuda::par(alloc).on(stream_), dp_data_first, dp_data_last, thrust::less<T>());
         } else {
             // Generate key indices.
-            dp_keys_first = device_pointer_cast(keys_start);
-            dp_keys_last  = device_pointer_cast(keys_start + size);
+            dp_keys_first = thrust::device_pointer_cast(keys_start);
+            dp_keys_last  = thrust::device_pointer_cast(keys_start + size);
             transform(cuda::par(alloc).on(stream_),
                       #ifdef __HIP_PLATFORM_HCC__
                       rocprim::make_counting_iterator<size_t>(0),
                       rocprim::make_counting_iterator<size_t>(size),
                       rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #else
-		      thrust::make_counting_iterator<size_t>(0),
+                      thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
-                      divides<size_t>());
+                      thrust::divides<size_t>());
 
             stable_sort(
                 cuda::par(alloc).on(stream_),
                 make_zip_iterator(make_tuple(dp_keys_first, dp_data_first)),
                 make_zip_iterator(make_tuple(dp_keys_last, dp_data_last)),
-                less< tuple<size_t, T> >());
+                thrust::less< thrust::tuple<size_t, T> >());
         }
     }
 };
@@ -378,7 +378,7 @@ class elem_less {
 public:
     elem_less(const T *data):_data(data) {}
     __device__ __forceinline__ bool operator()(size_t i, size_t j) const {
-        return less<T>()(_data[i], _data[j]);
+        return thrust::less<T>()(_data[i], _data[j]);
     }
 private:
     const T *_data;
@@ -391,8 +391,8 @@ struct _lexsort {
         /* idx_start is the beginning of the output array where the indexes that
            would sort the data will be placed. The original contents of idx_start
            will be destroyed. */
-        device_ptr<size_t> dp_first = device_pointer_cast(idx_start);
-        device_ptr<size_t> dp_last  = device_pointer_cast(idx_start + n);
+        thrust::device_ptr<size_t> dp_first = thrust::device_pointer_cast(idx_start);
+        thrust::device_ptr<size_t> dp_last  = thrust::device_pointer_cast(idx_start + n);
         cudaStream_t stream_ = (cudaStream_t)stream;
         cupy_allocator alloc(memory);
         sequence(cuda::par(alloc).on(stream_), dp_first, dp_last);
@@ -428,9 +428,9 @@ struct _argsort {
         cudaStream_t stream_ = (cudaStream_t)stream;
         cupy_allocator alloc(memory);
 
-        device_ptr<size_t> dp_idx_first, dp_idx_last;
-        device_ptr<T> dp_data_first, dp_data_last;
-        device_ptr<size_t> dp_keys_first, dp_keys_last;
+        thrust::device_ptr<size_t> dp_idx_first, dp_idx_last;
+        thrust::device_ptr<T> dp_data_first, dp_data_last;
+        thrust::device_ptr<size_t> dp_keys_first, dp_keys_last;
 
         // Compute the total size of the data array.
         size = shape[0];
@@ -439,24 +439,24 @@ struct _argsort {
         }
 
         // Cast device pointers of data.
-        dp_data_first = device_pointer_cast(static_cast<T*>(data_start));
-        dp_data_last  = device_pointer_cast(static_cast<T*>(data_start) + size);
+        dp_data_first = thrust::device_pointer_cast(static_cast<T*>(data_start));
+        dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
         // Generate an index sequence.
-        dp_idx_first = device_pointer_cast(static_cast<size_t*>(idx_start));
-        dp_idx_last  = device_pointer_cast(static_cast<size_t*>(idx_start) + size);
+        dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
+        dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + size);
         transform(cuda::par(alloc).on(stream_),
-		  #ifdef __HIP_PLATFORM_HCC__
-		  rocprim::make_counting_iterator<size_t>(0),
+                  #ifdef __HIP_PLATFORM_HCC__
+                  rocprim::make_counting_iterator<size_t>(0),
                   rocprim::make_counting_iterator<size_t>(size),
                   rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
-		  #else
-		  thrust::make_counting_iterator<size_t>(0),
+                  #else
+                  thrust::make_counting_iterator<size_t>(0),
                   thrust::make_counting_iterator<size_t>(size),
                   thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                   #endif
                   dp_idx_first,
-                  modulus<size_t>());
+                  thrust::modulus<size_t>());
 
         if (ndim == 1) {
             // Sort the index sequence by data.
@@ -466,20 +466,20 @@ struct _argsort {
                                dp_idx_first);
         } else {
             // Generate key indices.
-            dp_keys_first = device_pointer_cast(static_cast<size_t*>(keys_start));
-            dp_keys_last  = device_pointer_cast(static_cast<size_t*>(keys_start) + size);
+            dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
+            dp_keys_last  = thrust::device_pointer_cast(static_cast<size_t*>(keys_start) + size);
             transform(cuda::par(alloc).on(stream_),
                       #ifdef __HIP_PLATFORM_HCC__
                       rocprim::make_counting_iterator<size_t>(0),
                       rocprim::make_counting_iterator<size_t>(size),
                       rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #else
-		      thrust::make_counting_iterator<size_t>(0),
+                      thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
-                      divides<size_t>());
+                      thrust::divides<size_t>());
 
             stable_sort_by_key(
                 cuda::par(alloc).on(stream_),

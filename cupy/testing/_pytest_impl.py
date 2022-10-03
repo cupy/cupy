@@ -7,8 +7,8 @@ try:
     import _pytest
     _error = None
 except ImportError as e:
-    pytest = None
-    _pytest = None
+    pytest = None  # type: ignore
+    _pytest = None  # type: ignore
     _error = e
 
 

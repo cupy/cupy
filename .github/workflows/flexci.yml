@@ -1,6 +1,8 @@
 name: "FlexCI"
 
 on:
+  push:
+    branches: ["master", "v[0-9]+", "hotfix-*"]
   issue_comment:
     types: [created]
 
@@ -8,9 +10,13 @@ jobs:
   dispatch:
     if: |
         github.repository_owner == 'cupy' &&
-        github.event.issue.pull_request &&
-        contains(github.event.comment.body, '/test')
-    runs-on: ubuntu-20.04
+        (
+            (github.event_name == 'issue_comment' &&
+             github.event.issue.pull_request &&
+             contains(github.event.comment.body, '/test ')) ||
+            (github.event_name == 'push')
+        )
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -19,14 +25,11 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.9'
+        python-version: '3.10'
 
     - name: Setup Environment
-      env:
-        GITHUB_EVENT_PAYLOAD: ${{ toJSON(github.event) }}
       run: |
         pip install pygithub
-        echo "${GITHUB_EVENT_PAYLOAD}" > payload.json
 
     - name: Dispatch
       env:
@@ -34,5 +37,6 @@ jobs:
         FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
       run: |
         ./.github/workflows/flexci_dispatcher.py \
-            --webhook payload.json \
+            --event "${GITHUB_EVENT_NAME}" \
+            --webhook "${GITHUB_EVENT_PATH}" \
             --projects ./.pfnci/config.tags.json

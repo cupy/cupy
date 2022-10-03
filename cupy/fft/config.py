@@ -18,7 +18,7 @@ else:
     def get_current_callback_manager(*args, **kwargs):
         return None
 
-    class set_cufft_callbacks:
+    class set_cufft_callbacks:  # type: ignore
         def __init__(self, *args, **kwargs):
             raise RuntimeError('cuFFT callback is only available on Linux')
 

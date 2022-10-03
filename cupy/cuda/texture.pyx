@@ -3,7 +3,7 @@ from libc.string cimport memset as c_memset
 
 import numpy
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
@@ -112,9 +112,10 @@ cdef class ResourceDescriptor:
     .. _cudaCreateTextureObject():
         https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TEXTURE__OBJECT.html#group__CUDART__TEXTURE__OBJECT_1g16ac75814780c3a16e4c63869feb9ad3
     '''  # noqa
-    def __init__(self, int restype, CUDAarray cuArr=None, ndarray arr=None,
-                 ChannelFormatDescriptor chDesc=None, size_t sizeInBytes=0,
-                 size_t width=0, size_t height=0, size_t pitchInBytes=0):
+    def __init__(self, int restype, CUDAarray cuArr=None,
+                 _ndarray_base arr=None, ChannelFormatDescriptor chDesc=None,
+                 size_t sizeInBytes=0, size_t width=0, size_t height=0,
+                 size_t pitchInBytes=0):
         if restype == runtime.cudaResourceTypeMipmappedArray:
             # TODO(leofang): support this?
             raise NotImplementedError('cudaResourceTypeMipmappedArray is '
@@ -310,9 +311,9 @@ cdef class CUDAarray:
 
     cdef int _get_memory_kind(self, src, dst):
         cdef int kind
-        if isinstance(src, ndarray) and dst is self:
+        if isinstance(src, _ndarray_base) and dst is self:
             kind = runtime.memcpyDeviceToDevice
-        elif src is self and isinstance(dst, ndarray):
+        elif src is self and isinstance(dst, _ndarray_base):
             kind = runtime.memcpyDeviceToDevice
         elif isinstance(src, numpy.ndarray) and dst is self:
             kind = runtime.memcpyHostToDevice
@@ -346,7 +347,7 @@ cdef class CUDAarray:
             else:
                 height = 1  # same "one-stride" trick here
 
-            if isinstance(src, ndarray):
+            if isinstance(src, _ndarray_base):
                 ptr = src.data.ptr
             else:  # numpy.ndarray
                 ptr = src.ctypes.data
@@ -368,7 +369,7 @@ cdef class CUDAarray:
             else:
                 height = 1  # same "one-stride" trick here
 
-            if isinstance(dst, ndarray):
+            if isinstance(dst, _ndarray_base):
                 ptr = dst.data.ptr
             else:  # numpy.ndarray
                 ptr = dst.ctypes.data
@@ -471,7 +472,7 @@ cdef class CUDAarray:
             :attr:`~CUDAarray.desc`.
         '''
         # ensure the array is C-contiguous
-        if isinstance(in_arr, ndarray):
+        if isinstance(in_arr, _ndarray_base):
             prev_stream = None
             if stream is not None:
                 prev_stream = stream_module.get_current_stream()

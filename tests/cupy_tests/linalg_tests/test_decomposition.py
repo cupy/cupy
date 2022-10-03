@@ -4,7 +4,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy._core.internal import prod
 from cupy import cusolver
 from cupy.cuda import driver
 from cupy.cuda import runtime
@@ -114,11 +113,10 @@ class TestCholeskyInvalid(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
-@testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
-    def check_mode(self, array, mode, dtype, batched=False):
+    def check_mode(self, array, mode, dtype):
         if runtime.is_hip and driver.get_build_version() < 307:
             if dtype in (numpy.complex64, numpy.complex128):
                 pytest.skip('ungqr unsupported')
@@ -126,50 +124,12 @@ class TestQRDecomposition(unittest.TestCase):
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
-
-        if numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0rc1':
+        if (
+            mode != 'raw' or
+            numpy.lib.NumpyVersion(numpy.__version__) >= '1.22.0rc1'
+        ):
             result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
             self._check_result(result_cpu, result_gpu)
-            return
-
-        # We still want to test it to gain confidence...
-        # TODO(leofang): Use @testing.with_requires('numpy>=1.22') once
-        # NumPy 1.22 is out, and clean up this helper function
-        if not batched:
-            result_cpu = numpy.linalg.qr(a_cpu, mode=mode)
-            if mode == 'raw':
-                if dtype is numpy.float32:
-                    result_gpu = tuple(x.astype('d') for x in result_gpu)
-                elif dtype is numpy.complex64:
-                    result_gpu = tuple(x.astype('D') for x in result_gpu)
-            self._check_result(result_cpu, result_gpu)
-        else:
-            batch_shape = a_cpu.shape[:-2]
-            batch_size = prod(batch_shape)
-            a_cpu = a_cpu.reshape(batch_size, *a_cpu.shape[-2:])
-            for i in range(batch_size):
-                res_cpu = numpy.linalg.qr(a_cpu[i], mode=mode)
-                if isinstance(result_gpu, tuple):
-                    q_gpu, r_gpu = result_gpu
-                    q_gpu = q_gpu.reshape(batch_size, *q_gpu.shape[-2:])
-                    idx = -1 if mode == 'raw' else -2
-                    r_gpu = r_gpu.reshape(batch_size, *r_gpu.shape[idx:])
-                    res_gpu = (q_gpu[i], r_gpu[i])
-                    if mode == 'raw':
-                        if dtype is numpy.float32:
-                            res_gpu = tuple(x.astype('d') for x in res_gpu)
-                        elif dtype is numpy.complex64:
-                            res_gpu = tuple(x.astype('D') for x in res_gpu)
-                    self._check_result(res_cpu, res_gpu)
-                else:  # mode == 'r'
-                    res_gpu = result_gpu.reshape(
-                        batch_size, *result_gpu.shape[-2:])[i]
-                    if mode == 'raw':
-                        if dtype is numpy.float32:
-                            res_gpu = res_gpu.astype('d')
-                        elif dtype is numpy.complex64:
-                            res_gpu = res_gpu.astype('D')
-                    self._check_result(res_cpu, res_gpu)
 
     def _check_result(self, result_cpu, result_gpu):
         if isinstance(result_cpu, tuple):
@@ -187,25 +147,19 @@ class TestQRDecomposition(unittest.TestCase):
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
+    @testing.with_requires('numpy>=1.22')
     @testing.fix_random()
-    @_condition.repeat(3, 10)
     def test_mode_rank3(self):
-        self.check_mode(numpy.random.randn(3, 2, 4),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(4, 3, 3),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(2, 5, 4),
-                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(3, 2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(4, 3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 5, 4), mode=self.mode)
 
+    @testing.with_requires('numpy>=1.22')
     @testing.fix_random()
-    @_condition.repeat(3, 10)
     def test_mode_rank4(self):
-        self.check_mode(numpy.random.randn(2, 3, 2, 4),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(2, 4, 3, 3),
-                        mode=self.mode, batched=True)
-        self.check_mode(numpy.random.randn(2, 2, 5, 4),
-                        mode=self.mode, batched=True)
+        self.check_mode(numpy.random.randn(2, 3, 2, 4), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 4, 3, 3), mode=self.mode)
+        self.check_mode(numpy.random.randn(2, 2, 5, 4), mode=self.mode)
 
     @testing.with_requires('numpy>=1.16')
     def test_empty_array(self):

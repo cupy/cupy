@@ -17,9 +17,9 @@ def scatter_add(a, slices, value):
 
     Example
     -------
-    >>> import numpy
     >>> import cupy
-    >>> a = cupy.zeros((6,), dtype=numpy.float32)
+    >>> import cupyx
+    >>> a = cupy.zeros((6,), dtype=cupy.float32)
     >>> i = cupy.array([1, 0, 1])
     >>> v = cupy.array([1., 1., 1.])
     >>> cupyx.scatter_add(a, i, v);

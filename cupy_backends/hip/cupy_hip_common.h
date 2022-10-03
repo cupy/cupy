@@ -33,6 +33,15 @@ typedef hipFunction_t CUfunction;
 typedef hipFunction_attribute CUfunction_attribute;
 typedef hipModule_t CUmodule;
 typedef hipStream_t cudaStream_t;
+#if HIP_VERSION >= 40300000
+typedef hipGraph_t cudaGraph_t;
+typedef hipGraphNode_t cudaGraphNode_t;
+typedef hipGraphExec_t cudaGraphExec_t;
+#else
+typedef void* cudaGraph_t;
+typedef void* cudaGraphNode_t;
+typedef void* cudaGraphExec_t;
+#endif
 typedef struct CUlinkState_st* CUlinkState;
 typedef struct CUtexref_st* CUtexref;
 typedef struct CUarray_st* CUarray;

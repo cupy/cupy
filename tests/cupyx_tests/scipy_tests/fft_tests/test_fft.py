@@ -1677,6 +1677,8 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1688,6 +1690,8 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1753,6 +1757,8 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1764,6 +1770,8 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)

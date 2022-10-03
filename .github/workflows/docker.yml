@@ -13,7 +13,14 @@ jobs:
     if: |
         github.repository_owner == 'cupy' ||
         github.event_name != 'release'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - context: "docker/python3"
+            base: "cupy/cupy"
+          - context: "docker/rocm"
+            base: "cupy/cupy-rocm"
     env:
       DOCKER_TAG_NAME: ${{ (github.event_name == 'release' && github.event.release.tag_name) || 'pull-request-test' }}
     steps:
@@ -27,16 +34,19 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Docker Build & Push (docker/python3)
+    - name: Docker Build & Push (version tag)
       uses: docker/build-push-action@v2
       with:
-        context: docker/python3
-        tags: cupy/cupy:${{ env.DOCKER_TAG_NAME }}
+        context: ${{ matrix.context }}
+        tags: ${{ matrix.base}}:${{ env.DOCKER_TAG_NAME }}
         push: ${{ github.event_name == 'release' }}
 
-    - name: Docker Build & Push (docker/rocm)
+    - name: Docker Build & Push (latest tag)
+      if: |
+          github.event_name == 'release' &&
+          ! github.event.release.prerelease
       uses: docker/build-push-action@v2
       with:
-        context: docker/rocm
-        tags: cupy/cupy-rocm:${{ env.DOCKER_TAG_NAME }}
+        context: ${{ matrix.context }}
+        tags: ${{ matrix.base}}:latest
         push: ${{ github.event_name == 'release' }}

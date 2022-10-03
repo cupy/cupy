@@ -32,6 +32,29 @@ Fast Fourier Transforms (FFTs)
    hfftn
    ihfftn
 
+Discrete Cosine and Sine Transforms (DST and DCT)
+-------------------------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   dct
+   idct
+   dctn
+   idctn
+   dst
+   idst
+   dstn
+   idstn
+
+Fast Hankel Transforms
+----------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   fht
+   ifht
 
 Helper functions
 ----------------
@@ -48,7 +71,7 @@ Helper functions
 
 Code compatibility features
 ---------------------------
-1. As with other FFT modules in CuPy, FFT functions in this module can take advantage of an existing cuFFT plan (returned by :func:`~cupyx.scipy.fftpack.get_fft_plan`) to accelarate the computation. The plan can be either passed in explicitly via the keyword-only ``plan`` argument or used as a context manager.
+1. As with other FFT modules in CuPy, FFT functions in this module can take advantage of an existing cuFFT plan (returned by :func:`~cupyx.scipy.fftpack.get_fft_plan`) to accelerate the computation. The plan can be either passed in explicitly via the keyword-only ``plan`` argument or used as a context manager. One exception to this are the DCT and DST transforms, which do not currently support a plan argument.
 
 2. The boolean switch ``cupy.fft.config.enable_nd_planning`` also affects the FFT functions in this module, see :doc:`./fft`. This switch is neglected when planning manually using :func:`~cupyx.scipy.fftpack.get_fft_plan`.
 
@@ -57,3 +80,5 @@ Code compatibility features
 4. The ``cupyx.scipy.fft`` module can also be used as a backend for ``scipy.fft`` e.g. by installing with ``scipy.fft.set_backend(cupyx.scipy.fft)``. This can allow ``scipy.fft`` to work with both ``numpy`` and ``cupy`` arrays. For more information, see :ref:`scipy_fft_backend`.
 
 5. The boolean switch :data:`cupy.fft.config.use_multi_gpus` also affects the FFT functions in this module, see :doc:`./fft`. Moreover, this switch is *honored* when planning manually using :func:`~cupyx.scipy.fftpack.get_fft_plan`.
+
+6. Both type II and III DCT and DST transforms are implemented. Type I and IV transforms are currently unavailable.

@@ -3,6 +3,8 @@
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
 #define INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
 
+#define CUTENSOR_VERSION 0
+
 #include "cupy_cuda_common.h"
 
 extern "C" {
@@ -56,6 +58,11 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    cutensorStatus_t cutensorContractionGetWorkspaceSize(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    // Deprecated in cuTENSOR 1.5.0
     cutensorStatus_t cutensorContractionGetWorkspace(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
@@ -68,6 +75,11 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    cutensorStatus_t cutensorReductionGetWorkspaceSize(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    // Deprecated in cuTENSOR 1.5.0
     cutensorStatus_t cutensorReductionGetWorkspace(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }

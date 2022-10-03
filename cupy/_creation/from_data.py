@@ -106,7 +106,6 @@ def ascontiguousarray(a, dtype=None):
     """
     return _core.ascontiguousarray(a, dtype)
 
-
 # TODO(okuta): Implement asmatrix
 
 

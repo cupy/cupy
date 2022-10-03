@@ -1,6 +1,6 @@
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport function
 
 
@@ -23,7 +23,7 @@ cdef class _AbstractReductionKernel:
         readonly tuple _params
         readonly str __name__
 
-    cpdef ndarray _call(
+    cpdef _ndarray_base _call(
         self,
         list in_args, list out_args,
         const shape_t& a_shape, axis, dtype,

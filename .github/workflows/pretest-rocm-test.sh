@@ -4,7 +4,7 @@ set -uex
 
 # Python 3.8 (Ubuntu 20.04)
 apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install python3-pip
+DEBIAN_FRONTEND=noninteractive apt-get -y install python3-pip python3-dev
 
 hipconfig
 

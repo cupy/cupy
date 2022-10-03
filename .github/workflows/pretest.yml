@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     env:
       CUPY_CI: GitHub
 
@@ -50,24 +50,27 @@ jobs:
         autopep8 -r . --diff | tee check_autopep8
         test ! -s check_autopep8
 
+    - name: Static Type Checking (mypy)
+      run: |
+        mypy cupy cupyx cupy_backends
+
     - name: Test - Docs Build
       run: |
         # Test to detect invalid escape sequences in docstrings (#1619)
         python -Werror::DeprecationWarning -m compileall -f -q cupy cupyx examples tests docs
         pushd docs
         pip install -r requirements.txt
-        SPHINXOPTS=-W make html
+        SPHINXOPTS="-W --keep-going -j 4" make html
         popd
 
     - name: Test - Installer
       run: |
-        pip install mypy
         pushd install
-        mypy cupy_builder
+        mypy cupy_builder universal_pkg
 
     - name: Test - CI Tools
       run: |
-        pip install PyYAML types-PyYAML pygithub mypy
+        pip install PyYAML types-PyYAML pygithub
         pushd .pfnci
         ./generate.py --matrix matrix.yaml --schema schema.yaml --dry-run
         mypy generate.py
@@ -77,7 +80,7 @@ jobs:
         popd
 
   rocm-build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -87,4 +90,4 @@ jobs:
 
     - name: Build & Test
       run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:4.3.1-complete" bash .github/workflows/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:5.0-complete" bash .github/workflows/pretest-rocm-test.sh

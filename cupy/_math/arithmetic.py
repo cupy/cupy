@@ -30,9 +30,6 @@ negative = _core.negative
 conjugate = _core.conjugate
 
 
-angle = _core.angle
-
-
 # cupy.real is not a ufunc because it returns a view.
 # The ufunc implementation is used by fusion.
 _real_ufunc = _core.create_ufunc(
@@ -63,6 +60,17 @@ _imag_ufunc = _core.create_ufunc(
     .. seealso:: :func:`numpy.imag`
 
     ''')
+
+
+def angle(z, deg=False):
+    '''Returns the angle of the complex argument.
+
+    .. seealso:: :func:`numpy.angle`
+
+    '''
+    if deg:
+        return _core.angle_deg(z)
+    return _core.angle(z)
 
 
 def real(val):
@@ -111,6 +119,17 @@ true_divide = _core.true_divide
 
 floor_divide = _core.floor_divide
 
+float_power = _core.create_ufunc(
+    'cupy_float_power',
+    ('dd->d', 'FF->D',
+     ('DD->D', 'out0 = in1 == in1_type(0) ? in1_type(1): pow(in0, in1)')),
+    'out0 = pow(in0, in1)',
+    doc='''First array elements raised to powers from second array, element-wise.
+
+    .. seealso:: :data:`numpy.float_power`
+
+    '''
+)
 
 fmod = _core.create_ufunc(
     'cupy_fmod',

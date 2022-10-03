@@ -64,6 +64,17 @@ class TestMedian:
             with pytest.raises(numpy.AxisError):
                 return xp.median(a, (0, a.ndim,), keepdims=False)
 
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_allclose()
+    def test_median_nan(self, xp, dtype):
+        a = xp.array(
+            [[xp.nan, 1, 2, 3],
+             [4, 5, 6, 7],
+             [8, 9, 10, xp.nan]],
+            dtype=dtype,
+        )
+        return xp.median(a, axis=1)
+
 
 @testing.parameterize(
     *testing.product({
@@ -150,29 +161,34 @@ class TestAverage:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_average_axis_weights(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        w = testing.shaped_arange((2, 3, 4), xp, dtype)
-        return xp.average(a, axis=2, weights=w)
-
-    def check_returned(self, a, axis, weights):
-        average_cpu, sum_weights_cpu = numpy.average(
-            a, axis, weights, returned=True)
-        result = cupy.average(
-            cupy.asarray(a), axis, weights, returned=True)
-        assert isinstance(result, tuple)
-        assert len(result) == 2
-        average_gpu, sum_weights_gpu = result
-        testing.assert_allclose(average_cpu, average_gpu)
-        testing.assert_allclose(sum_weights_cpu, sum_weights_gpu)
+    @pytest.mark.parametrize(
+        'axis,weights', [(1, False), (None, True), (1, True)])
+    def test_returned(self, xp, dtype, axis, weights):
+        a = testing.shaped_arange((2, 3), numpy, dtype)
+        if weights:
+            w = testing.shaped_arange((2, 3), numpy, dtype)
+        else:
+            w = None
+        return xp.average(a, axis=axis, weights=w, returned=True)
 
     @testing.for_all_dtypes()
-    def test_returned(self, dtype):
-        a = testing.shaped_arange((2, 3), numpy, dtype)
-        w = testing.shaped_arange((2, 3), numpy, dtype)
-        self.check_returned(a, axis=1, weights=None)
-        self.check_returned(a, axis=None, weights=w)
-        self.check_returned(a, axis=1, weights=w)
+    @testing.numpy_cupy_allclose(rtol={'default': 5e-7})
+    @pytest.mark.parametrize('returned', [True, False])
+    @testing.with_requires('numpy>=1.23.1')
+    def test_average_keepdims_axis1(self, xp, dtype, returned):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        w = testing.shaped_random((2, 3), xp, dtype)
+        return xp.average(
+            a, axis=1, weights=w, returned=returned, keepdims=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol={'default': 1e-7, numpy.float16: 1e-3})
+    @pytest.mark.parametrize('returned', [True, False])
+    @testing.with_requires('numpy>=1.23.1')
+    def test_average_keepdims_noaxis(self, xp, dtype, returned):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        w = testing.shaped_random((2, 3), xp, dtype)
+        return xp.average(a, weights=w, returned=returned, keepdims=True)
 
 
 @testing.gpu
@@ -395,11 +411,10 @@ class TestNanMeanAdditional:
         'keepdims': [True, False],
         'ddof': [0, 1]
     }))
-@testing.gpu
 class TestNanVarStd:
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
@@ -409,7 +424,7 @@ class TestNanVarStd:
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
@@ -419,11 +434,10 @@ class TestNanVarStd:
             a, axis=self.axis, ddof=self.ddof, keepdims=self.keepdims)
 
 
-@testing.gpu
 class TestNanVarStdAdditional:
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar_out(self, xp, dtype):
         a = testing.shaped_random((10, 20, 30), xp, dtype)
@@ -437,7 +451,7 @@ class TestNanVarStdAdditional:
         return z
 
     @testing.slow
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanvar_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)
@@ -454,7 +468,7 @@ class TestNanVarStdAdditional:
         return xp.nanvar(a, axis=0)
 
     @ignore_runtime_warnings
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_out(self, xp, dtype):
         a = testing.shaped_random((10, 20, 30), xp, dtype)
@@ -468,7 +482,7 @@ class TestNanVarStdAdditional:
         return z
 
     @testing.slow
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_nanstd_huge(self, xp, dtype):
         a = testing.shaped_random((1024, 512), xp, dtype)

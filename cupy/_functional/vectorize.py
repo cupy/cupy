@@ -51,7 +51,8 @@ class vectorize(object):
 
         if signature is not None:
             raise NotImplementedError(
-                'cupy.vectorize does not support `excluded` option currently.')
+                'cupy.vectorize does not support `signature`'
+                ' option currently.')
 
     @staticmethod
     def _parse_out_param(return_type):
@@ -95,7 +96,9 @@ class vectorize(object):
             # defined regardless if CUPY_JIT_MODE is defined or not
             kern = _core.ElementwiseKernel(
                 in_params, out_params, body, 'cupy_vectorize',
-                preamble=result.code, options=('-DCUPY_JIT_MODE',))
+                preamble=result.code,
+                options=('-DCUPY_JIT_MODE', '--std=c++14'),
+            )
             self._kernel_cache[itypes] = kern
 
         return kern(*args)

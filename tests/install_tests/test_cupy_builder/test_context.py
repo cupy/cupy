@@ -19,7 +19,6 @@ class TestContext:
 
         assert ctx.source_root == '.'
 
-        assert ctx.enable_thrust
         assert not ctx.use_cuda_python
         assert not ctx.use_hip
 
