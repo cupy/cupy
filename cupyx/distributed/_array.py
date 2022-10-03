@@ -126,7 +126,7 @@ class _DistributedArray(cupy.ndarray):
             self.shape, dtype, dev_outs,
             self._axis, self._tile_size, devices)
 
-    def __cupy_prepare_elementwise_kernel__(self, kernel, *args, **kwargs):
+    def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
         # to override some of the ops done there
         outs = self._execute_kernel(kernel, args, kwargs)

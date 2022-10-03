@@ -857,8 +857,8 @@ cdef class ElementwiseKernel:
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
         for arg in args:
-            if hasattr(arg, '__cupy_prepare_elementwise_kernel__'):
-                return arg.__cupy_prepare_elementwise_kernel__(
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
                     self, *args, **kwargs)
         dev_id = device.get_device_id()
         arg_list = _preprocess_args(dev_id, args, True)
