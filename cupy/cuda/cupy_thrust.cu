@@ -347,18 +347,14 @@ struct _sort {
             dp_keys_first = device_pointer_cast(keys_start);
             dp_keys_last  = device_pointer_cast(keys_start + size);
             transform(cuda::par(alloc).on(stream_),
-                      make_counting_iterator<size_t>(0),
-                      make_counting_iterator<size_t>(size),
                       #ifdef __HIP_PLATFORM_HCC__
-                      // HIP_VERSION value format was changed after ROCm v4.2 to include the patch number
-                      // Fix compilation error due to missing rocprim identifier for > ROCm5.2
-                      #if (HIP_VERSION > 500 && ((HIP_VERSION / 10000000) >= 5) && ((HIP_VERSION / 100000 % 100) > 2))
+                      rocprim::make_counting_iterator<size_t>(0),
+                      rocprim::make_counting_iterator<size_t>(size),
                       rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #else
-                      make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
-                      #endif
-                      #else
-                      make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		      thrust::make_counting_iterator<size_t>(0),
+                      thrust::make_counting_iterator<size_t>(size),
+                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
                       divides<size_t>());
@@ -450,18 +446,14 @@ struct _argsort {
         dp_idx_first = device_pointer_cast(static_cast<size_t*>(idx_start));
         dp_idx_last  = device_pointer_cast(static_cast<size_t*>(idx_start) + size);
         transform(cuda::par(alloc).on(stream_),
-                  make_counting_iterator<size_t>(0),
-                  make_counting_iterator<size_t>(size),
-                  #ifdef __HIP_PLATFORM_HCC__
-                  // HIP_VERSION value format was changed after ROCm v4.2 to include the patch number
-                  // Fix compilation error due to missing rocprim identifier for > ROCm5.2
-                  #if (HIP_VERSION > 500 && ((HIP_VERSION / 10000000) >= 5) && ((HIP_VERSION / 100000 % 100) > 2))
+		  #ifdef __HIP_PLATFORM_HCC__
+		  rocprim::make_counting_iterator<size_t>(0),
+                  rocprim::make_counting_iterator<size_t>(size),
                   rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
-                  #else
-                  make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
-                  #endif
-                  #else
-                  make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		  #else
+		  thrust::make_counting_iterator<size_t>(0),
+                  thrust::make_counting_iterator<size_t>(size),
+                  thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                   #endif
                   dp_idx_first,
                   modulus<size_t>());
@@ -477,18 +469,14 @@ struct _argsort {
             dp_keys_first = device_pointer_cast(static_cast<size_t*>(keys_start));
             dp_keys_last  = device_pointer_cast(static_cast<size_t*>(keys_start) + size);
             transform(cuda::par(alloc).on(stream_),
-                      make_counting_iterator<size_t>(0),
-                      make_counting_iterator<size_t>(size),
                       #ifdef __HIP_PLATFORM_HCC__
-                      // HIP_VERSION value format was changed after ROCm v4.2 to include the patch number
-                      // Fix compilation error due to missing rocprim identifier for > ROCm5.2
-                      #if (HIP_VERSION > 500 && ((HIP_VERSION / 10000000) >= 5) && ((HIP_VERSION / 100000 % 100) > 2))
+                      rocprim::make_counting_iterator<size_t>(0),
+                      rocprim::make_counting_iterator<size_t>(size),
                       rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #else
-                      make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
-                      #endif
-                      #else
-                      make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		      thrust::make_counting_iterator<size_t>(0),
+                      thrust::make_counting_iterator<size_t>(size),
+                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
                       divides<size_t>());
