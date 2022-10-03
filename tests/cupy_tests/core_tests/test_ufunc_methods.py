@@ -34,11 +34,22 @@ class TestUfuncAtUnary:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_at_indices(self, xp, dtype):
+    def test_at_negative_indices(self, xp, dtype):
         n = 50
         x = testing.shaped_random((n,), xp, dtype, seed=0) + 1
         mask = testing.shaped_random((n,), xp, bool, scale=n, seed=1)
         indices = xp.nonzero(mask)[0] - n
+        ufunc = getattr(xp, self.ufunc_name)
+        ufunc.at(x, indices)
+        return x
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_at_multi_dim_single_indices(self, xp, dtype):
+        n, m = 20, 30
+        x = testing.shaped_random((n, m), xp, dtype, seed=0) + 1
+        mask = testing.shaped_random((n,), xp, bool, scale=n, seed=1)
+        indices = xp.nonzero(mask)[0]
         ufunc = getattr(xp, self.ufunc_name)
         ufunc.at(x, indices)
         return x
