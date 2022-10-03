@@ -520,7 +520,10 @@ def pdist(X, metric='euclidean', out=None, **kwargs):
             ``dist(u=X[i], v=X[j])`` is computed and stored in the
             :math:`ij` th entry.
     """
-    return cdist(X, X, metric=metric, out=out, **kwargs)
+    all_dist = cdist(X, X, metric=metric, out=out, **kwargs)
+    tr_all_dist = cupy.triu(all_dist)
+    nonzero_indices = cupy.nonzero(tr_all_dist)
+    return tr_all_dist[nonzero_indices]
 
 
 def distance_matrix(x, y, p=2.0):
