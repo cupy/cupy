@@ -27,6 +27,7 @@ from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
+from cupy import _ufunc_method
 from cupy_backends.cuda.api cimport runtime
 
 try:
@@ -1339,6 +1340,15 @@ cdef class ufunc:
                 params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
+
+    def outer(self, A, B, **kwargs):
+        """Apply the ufunc operation to all pairs of elements in A and B.
+
+        .. seealso::
+           :meth:`numpy.ufunc.outer`
+
+        """
+        return _ufunc_method.ufunc_outer(self, A, B, **kwargs)
 
 
 cdef class _Op:
