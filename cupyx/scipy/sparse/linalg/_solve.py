@@ -552,22 +552,32 @@ class SuperLU():
                              .format(self.shape, rhs.shape))
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
-        if not cusparse.check_availability('csrsm2'):
+
+        if cusparse.check_availability('spsm'):
+            def spsm(A, B, lower, transa):
+                return cusparse.spsm(A, B, lower=lower, transa=transa)
+            sm = spsm
+        elif cusparse.check_availability('csrsm2'):
+            def csrsm2(A, B, lower, transa):
+                cusparse.csrsm2(A, B, lower=lower, transa=transa)
+                return B
+            sm = csrsm2
+        else:
             raise NotImplementedError
 
         x = rhs.astype(self.L.dtype)
         if trans == 'N':
             if self.perm_r is not None:
                 x = x[self._perm_r_rev]
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+            x = sm(self.L, x, lower=True, transa=trans)
+            x = sm(self.U, x, lower=False, transa=trans)
             if self.perm_c is not None:
                 x = x[self.perm_c]
         else:
             if self.perm_c is not None:
                 x = x[self._perm_c_rev]
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+            x = sm(self.U, x, lower=False, transa=trans)
+            x = sm(self.L, x, lower=True, transa=trans)
             if self.perm_r is not None:
                 x = x[self.perm_r]
 
