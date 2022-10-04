@@ -642,6 +642,16 @@ class RandomState(object):
         x = cupy.multiply(x, scale, out=x)
         return x
 
+    _interval_upper_limit = _core.ElementwiseKernel(
+        'T max, T mx', 'T out',
+        'out = max - (mx != max ? (max - mx) % (mx + 1) : 0)',
+        'cupy_random_interval_upper_limit')
+
+    _interval_sample_modulo = _core.ElementwiseKernel(
+        'T max, T mx', 'T sample',
+        'if (mx != max) { sample %= mx + 1; }',
+        'cupy_random_interval_sample_modulo')
+
     def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 
@@ -662,7 +672,8 @@ class RandomState(object):
         elif isinstance(size, int):
             size = size,
 
-        if numpy.isscalar(mx):
+        is_mx_scalar = numpy.is_scalar(mx)
+        if is_mx_scalar:
             if mx == 0:
                 return cupy.zeros(size, dtype=numpy.uint32)
 
@@ -683,11 +694,11 @@ class RandomState(object):
             if dtype == cupy.int32 or dtype == cupy.uint32:
                 dtype = numpy.uint32
                 mx = mx.astype(dtype, copy=False)
-                upper_limit = _UINT32_MAX - (_UINT32_MAX - mx) % (mx + 1)
+                upper_limit = self._interval_upper_limit(_UINT32_MAX, mx)
             elif dtype == cupy.int64 or dtype == cupy.uint64:
                 dtype = numpy.uint64
                 mx = mx.astype(dtype, copy=False)
-                upper_limit = _UINT64_MAX - (_UINT64_MAX - mx) % (mx + 1)
+                upper_limit = self._interval_upper_limit(_UINT64_MAX, mx)
             else:
                 raise ValueError(
                     'dtype must be integer, got: {}'.format(dtype))
@@ -697,38 +708,46 @@ class RandomState(object):
             return cupy.empty(size, dtype=dtype)
         sample = self._curand_generate(n_sample, dtype)
 
-        mx1 = mx + 1
-        if not numpy.isscalar(mx) or mx1 != (1 << (mx1.bit_length() - 1)):
-            # Get index of samples that exceed the upper limit
-            ng_indices = self._get_indices(sample, upper_limit, False)
-            n_ng = ng_indices.size
+        if is_mx_scalar:
+            mx1 = mx + 1
+            if mx1 == 1 << (mx1.bit_length() - 1):
+                mask = (1 << mx.bit_length()) - 1
+                sample &= mask
+                return sample.reshape(size)
 
-            if n_ng > 0 and not numpy.isscalar(mx):
-                upper_limit = upper_limit[ng_indices]
+        # Get index of samples that exceed the upper limit
+        ng_indices = self._get_indices(sample, upper_limit, False)
+        n_ng = ng_indices.size
 
-            while n_ng > 0:
-                n_supplement = (max(n_ng * 2, 1024)
-                                if numpy.isscalar(mx) else upper_limit.size)
-                supplement = self._curand_generate(n_supplement, dtype)
+        if n_ng > 0 and not numpy.isscalar(mx):
+            upper_limit = upper_limit[ng_indices]
 
-                # Get index of supplements that are within the upper limit
-                ok_indices = self._get_indices(supplement, upper_limit, True)
-                n_ok = ok_indices.size
+        while n_ng > 0:
+            n_supplement = (max(n_ng * 2, 1024)
+                            if is_mx_scalar else upper_limit.size)
+            supplement = self._curand_generate(n_supplement, dtype)
 
-                # Replace the values that exceed the upper limit
-                if n_ok >= n_ng:
-                    sample[ng_indices] = supplement[ok_indices[:n_ng]]
-                    n_ng = 0
-                else:
-                    sample[ng_indices[:n_ok]] = supplement[ok_indices]
-                    ng_indices = ng_indices[n_ok:]
-                    if not numpy.isscalar(mx):
-                        upper_limit = upper_limit[n_ok:]
-                    n_ng -= n_ok
+            # Get index of supplements that are within the upper limit
+            ok_indices = self._get_indices(supplement, upper_limit, True)
+            n_ok = ok_indices.size
+
+            # Replace the values that exceed the upper limit
+            if n_ok >= n_ng:
+                sample[ng_indices] = supplement[ok_indices[:n_ng]]
+                n_ng = 0
+            else:
+                sample[ng_indices[:n_ok]] = supplement[ok_indices]
+                ng_indices = ng_indices[n_ok:]
+                if not is_mx_scalar:
+                    upper_limit = upper_limit[n_ok:]
+                n_ng -= n_ok
+
+        if is_mx_scalar:
             sample %= mx1
-        else:
-            mask = (1 << mx.bit_length()) - 1
-            sample &= mask
+        elif dtype == cupy.uint32:
+            sample = self._interval_sample_modulo(_UINT32_MAX, mx, sample)
+        else:  # dtype == cupy.uint64
+            sample = self._interval_sample_modulo(_UINT64_MAX, mx, sample)
 
         return sample.reshape(size)
 
