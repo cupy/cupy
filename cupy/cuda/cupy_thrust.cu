@@ -349,7 +349,11 @@ struct _sort {
             transform(cuda::par(alloc).on(stream_),
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
+		      #ifndef __HIP_PLATFORM_HCC__
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		      #else
+		      rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		      #endif
                       dp_keys_first,
                       thrust::divides<size_t>());
 
@@ -442,7 +446,11 @@ struct _argsort {
         transform(cuda::par(alloc).on(stream_),
                   thrust::make_counting_iterator<size_t>(0),
                   thrust::make_counting_iterator<size_t>(size),
-                  thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		  #ifndef __HIP_PLATFORM_HCC__
+		  thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		  #else
+		  rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		  #endif
                   dp_idx_first,
                   thrust::modulus<size_t>());
 
@@ -459,7 +467,11 @@ struct _argsort {
             transform(cuda::par(alloc).on(stream_),
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
+		      #ifndef __HIP_PLATFORM_HCC__
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		      #else
+		      rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+		      #endif
                       dp_keys_first,
                       thrust::divides<size_t>());
 
