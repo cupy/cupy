@@ -14,7 +14,7 @@ class TestSpecial:
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
+        a = testing.shaped_arange((2, 3), xp, dtype)
         return getattr(scp.special, name)(a)
 
     def test_j0(self):
@@ -73,7 +73,7 @@ class TestFusionSpecial(unittest.TestCase):
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
+        a = testing.shaped_arange((2, 3), xp, dtype)
 
         @cupy.fuse()
         def f(x):
