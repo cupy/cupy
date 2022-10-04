@@ -62,13 +62,17 @@ gamma = _core.create_ufunc(
 
     """)
 
-
+# Kernel fusion involves preambles concatenating so
+# if there are several kernels that depend on the same cpp function,
+# compiler throws an error because of duplicates
+# ifndef allows to fixes it as compiler throw all duplicates away
 chbevl_implementation = """
-
-
-__device__ double chbevl(double x, double array[], int n)
+#ifndef chbevl_defined
+#define chbevl_defined
+template<typename T>
+__device__ T chbevl(T x, T array[], int n)
 {
-    double b0, b1, b2, *p;
+    T b0, b1, b2, *p;
     int i;
 
     p = array;
@@ -85,6 +89,7 @@ __device__ double chbevl(double x, double array[], int n)
 
     return (0.5 * (b0 - b2));
 }
+#endif
 
 """
 
