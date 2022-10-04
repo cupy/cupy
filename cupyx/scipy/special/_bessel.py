@@ -67,6 +67,7 @@ y1 = _core.create_ufunc(
 
     ''')
 
+
 # Note: oddly, unlike for y0 or y1, SciPy always returns double for yn
 # dd->d because SciPy will accept 2.0
 yn = _core.create_ufunc(
