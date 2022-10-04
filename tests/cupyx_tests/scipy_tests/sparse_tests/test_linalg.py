@@ -794,12 +794,23 @@ class TestSpsolveTriangular:
         return a, b
 
     def _test_spsolve_triangular(self, sp, a, b):
-        return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
-                                            unit_diagonal=self.unit_diagonal)
+        @contextlib.contextmanager
+        def ignore_warning():
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', sp.SparseEfficiencyWarning)
+                yield
+        if sp is scipy.sparse:
+            ctx = ignore_warning
+        else:
+            ctx = contextlib.nullcontext
+        with ctx():
+            return sp.linalg.spsolve_triangular(
+                a, b, lower=self.lower, unit_diagonal=self.unit_diagonal)
 
     @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(
+        rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False)
     def test_sparse(self, format, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
