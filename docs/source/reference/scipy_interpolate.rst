@@ -1,11 +1,11 @@
 .. module:: cupyx.scipy.interpolate
 
-Univariate Interpolation (:mod:`cupyx.scipy.interpolate`)
+Interpolation (:mod:`cupyx.scipy.interpolate`)
 ==========================================================
 
 .. Hint:: `SciPy API Reference: Interpolation functions (scipy.interpolate) <https://docs.scipy.org/doc/scipy/reference/interpolate.html>`_
 
-Summary  statistics
+Univariate interpolation
 -------------------
 
 .. autosummary::
@@ -15,3 +15,12 @@ Summary  statistics
    KroghInterpolator
    barycentric_interpolate
    krogh_interpolate
+
+
+1-D Splines
+-----------
+
+.. autosummary::
+   :toctree: generated/
+
+   BSpline
