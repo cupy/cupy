@@ -672,7 +672,7 @@ class RandomState(object):
         elif isinstance(size, int):
             size = size,
 
-        is_mx_scalar = numpy.is_scalar(mx)
+        is_mx_scalar = numpy.isscalar(mx)
         if is_mx_scalar:
             if mx == 0:
                 return cupy.zeros(size, dtype=numpy.uint32)
