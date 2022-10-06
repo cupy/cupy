@@ -568,7 +568,10 @@ class SuperLU():
         x = rhs.astype(self.L.dtype)
         if trans == 'N':
             if self.perm_r is not None:
-                x = x[self._perm_r_rev]
+                if x.ndim == 2 and x._f_contiguous:
+                    x = x.T[:, self._perm_r_rev].T  # want to keep order
+                else:
+                    x = x[self._perm_r_rev]
             x = sm(self.L, x, lower=True, transa=trans)
             x = sm(self.U, x, lower=False, transa=trans)
             if self.perm_c is not None:

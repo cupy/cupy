@@ -13,6 +13,7 @@ from cupy import testing
 from cupy import cusparse
 from cupy.cuda import driver
 from cupy.cuda import runtime
+from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 
 
@@ -1086,6 +1087,9 @@ class TestSpsm:
     def test_spsm(self, lower, unit_diag, transa, b_order, dtype, format):
         if not cupy.cusparse.check_availability('spsm'):
             pytest.skip('spsm is not available')
+        if not runtime.is_hip and _cusparse.get_build_version() < 11700:
+            if b_order == 'c':
+                pytest.skip("b_order must be 'f'")
         if runtime.is_hip:
             if format == 'coo' or b_order == 'c':
                 pytest.skip('may be buggy or not supported')
