@@ -7,6 +7,7 @@ from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
 from cupyx.scipy.sparse.linalg._iterative import _make_system
@@ -389,6 +390,16 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     return x, istop, itn, normr, normar, normA, condA, normx
 
 
+def _does_use_spsm(b):
+    # We basically use spsm when possible, however, older spsm may cause weird
+    # results with transposed B. We use csrsm2 in such a case.
+    return not (
+        _cusparse.get_build_version() < 11700 and  # CUDA 11.3, 11.4 and 11.5
+        b.ndim == 2 and
+        b._c_contiguous
+    )
+
+
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
                        unit_diagonal=False):
     """Solves a sparse triangular system ``A x = b``.
@@ -432,7 +443,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
     if A.dtype.char not in 'fdFD':
         raise TypeError(f'unsupported dtype (actual: {A.dtype})')
 
-    if cusparse.check_availability('spsm'):
+    if cusparse.check_availability('spsm') and _does_use_spsm(b):
         if not (sparse.isspmatrix_csr(A) or
                 sparse.isspmatrix_csc(A) or
                 sparse.isspmatrix_coo(A)):
@@ -553,7 +564,7 @@ class SuperLU():
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
 
-        if cusparse.check_availability('spsm'):
+        if cusparse.check_availability('spsm') and _does_use_spsm(rhs):
             def spsm(A, B, lower, transa):
                 return cusparse.spsm(A, B, lower=lower, transa=transa)
             sm = spsm
@@ -569,7 +580,7 @@ class SuperLU():
         if trans == 'N':
             if self.perm_r is not None:
                 if x.ndim == 2 and x._f_contiguous:
-                    x = x.T[:, self._perm_r_rev].T  # want to keep order
+                    x = x.T[:, self._perm_r_rev].T  # want to keep f-order
                 else:
                     x = x[self._perm_r_rev]
             x = sm(self.L, x, lower=True, transa=trans)
@@ -578,7 +589,10 @@ class SuperLU():
                 x = x[self.perm_c]
         else:
             if self.perm_c is not None:
-                x = x[self._perm_c_rev]
+                if x.ndim == 2 and x._f_contiguous:
+                    x = x.T[:, self._perm_c_rev].T  # want to keep f-order
+                else:
+                    x = x[self._perm_c_rev]
             x = sm(self.U, x, lower=False, transa=trans)
             x = sm(self.L, x, lower=True, transa=trans)
             if self.perm_r is not None:
