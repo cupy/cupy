@@ -393,10 +393,10 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 def _does_use_spsm(b):
     if not runtime.is_hip:
-        # cusparseSpSM in CUDA 11.4 and eariler produces wrong results with
+        # cusparseSpSM in CUDA 11.5 and eariler produces wrong results with
         # transposed B
         return not (
-            _cusparse.get_build_version() < 11700 and
+            _cusparse.get_build_version() < 11701 and
             b.ndim == 2 and
             b._c_contiguous
         )
