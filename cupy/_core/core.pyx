@@ -2554,6 +2554,9 @@ cdef tuple _compute_concat_info_impl(obj):
     if isinstance(obj, (numpy.ndarray, ndarray)):
         return obj.shape, type(obj), obj.dtype
 
+    if hasattr(obj, '__cupy_get_ndarray__'):
+        return obj.shape, ndarray, obj.dtype
+
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
         if dim == 0:
