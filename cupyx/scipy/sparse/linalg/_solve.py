@@ -7,6 +7,7 @@ from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
@@ -391,13 +392,22 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 
 def _does_use_spsm(b):
-    # cusparseSpSM in CUDA 11.4 and eariler produces wrong results with
-    # transposed B
-    return not (
-        _cusparse.get_build_version() < 11700 and  # CUDA 11.3, 11.4
-        b.ndim == 2 and
-        b._c_contiguous
-    )
+    if not runtime.is_hip:
+        # cusparseSpSM in CUDA 11.4 and eariler produces wrong results with
+        # transposed B
+        return not (
+            _cusparse.get_build_version() < 11700 and
+            b.ndim == 2 and
+            b._c_contiguous
+        )
+    else:
+        # Also for older ROcm.
+        return not (
+            _driver.get_build_version() < 50200000 and
+            b.ndim == 2 and
+            b._c_contiguous
+        )
+
 
 
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
