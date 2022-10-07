@@ -3,7 +3,6 @@ import numpy
 import pytest
 
 import cupy
-import cupyx
 from cupyx import jit
 from cupy import testing
 from cupy.cuda import device
@@ -348,7 +347,7 @@ class TestRaw:
         f((32,), (32,), (x, index, out))
 
         expected = cupy.zeros((2,), dtype=dtype)
-        cupyx.scatter_add(expected, index, x)
+        cupy.add.at(expected, index, x)
         self._check(out, expected)
 
     @testing.for_dtypes('iI')
