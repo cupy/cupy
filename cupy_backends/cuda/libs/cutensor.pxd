@@ -170,6 +170,17 @@ cpdef elementwiseBinary(
     int opAC,
     int typeScalar)
 
+cpdef permutation(
+    Handle handle,
+    intptr_t alpha,
+    intptr_t A,
+    TensorDescriptor descA,
+    intptr_t modeA,
+    intptr_t B,
+    TensorDescriptor descB,
+    intptr_t modeB,
+    int typeScalar)
+
 cpdef initContractionDescriptor(
     Handle handle,
     ContractionDescriptor desc,
