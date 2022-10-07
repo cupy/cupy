@@ -391,10 +391,10 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 
 def _does_use_spsm(b):
-    # We basically use spsm when possible, however, older spsm may cause weird
-    # results with transposed B. We use csrsm2 in such a case.
+    # cusparseSpSM in CUDA 11.4 and eariler produces wrong results with
+    # transposed B
     return not (
-        _cusparse.get_build_version() < 11700 and  # CUDA 11.3, 11.4 and 11.5
+        _cusparse.get_build_version() < 11700 and  # CUDA 11.3, 11.4
         b.ndim == 2 and
         b._c_contiguous
     )

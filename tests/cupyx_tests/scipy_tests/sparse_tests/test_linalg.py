@@ -20,7 +20,6 @@ from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy.testing import _condition
-from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
 
@@ -795,27 +794,14 @@ class TestSpsolveTriangular:
         return a, b
 
     def _test_spsolve_triangular(self, sp, a, b):
-        @contextlib.contextmanager
-        def ignore_warning():
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', sp.SparseEfficiencyWarning)
-                yield
-        if sp is scipy.sparse:
-            ctx = ignore_warning
-        else:
-            ctx = contextlib.nullcontext
-        with ctx():
-            return sp.linalg.spsolve_triangular(
-                a, b, lower=self.lower, unit_diagonal=self.unit_diagonal)
+        return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
+                                            unit_diagonal=self.unit_diagonal)
 
     @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(
         rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False)
     def test_sparse(self, format, dtype, xp, sp):
-        if not runtime.is_hip and _cusparse.get_build_version() < 11700:
-            if self.order == 'C':
-                pytest.skip("order must be 'F'")
         a, b = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         return self._test_spsolve_triangular(sp, a, b)
@@ -1327,9 +1313,6 @@ class TestSplu:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_splu(self, dtype, xp, sp):
-        if not runtime.is_hip and _cusparse.get_build_version() < 11700:
-            if self.order == 'C':
-                pytest.skip("order must be 'F'")
         a, b = self._make_matrix(dtype, xp, sp)
         return sp.linalg.splu(a).solve(b)
 

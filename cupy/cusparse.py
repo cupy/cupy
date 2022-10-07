@@ -1907,14 +1907,15 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
     else:
         raise ValueError('b must be F-contiguous or C-contiguous.')
 
-    # Allocate space for matrix C
+    # Allocate space for matrix C. Note that it is known cusparseSpSM requires
+    # the output matrix zero initialized.
     m, _ = a.shape
     if op_b == _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE:
         _, n = b.shape
     else:
         n, _ = b.shape
     c_shape = m, n
-    c = _cupy.empty(c_shape, dtype=a.dtype, order='f')
+    c = _cupy.zeros(c_shape, dtype=a.dtype, order='f')
 
     # Prepare descriptors and other parameters
     handle = _device.get_cusparse_handle()
