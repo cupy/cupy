@@ -32,6 +32,16 @@ class TestUfuncAtAtomicOps:
         xp.add.at(x, indices, 3)
         return x
 
+    @testing.for_dtypes('iIQefd')
+    @testing.numpy_cupy_array_equal()
+    def test_at_add_duplicate_indices(self, xp, dtype):
+        shape = (50,)
+        x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
+        indices = testing.shaped_random(
+            shape, xp=xp, dtype=numpy.int32, scale=shape[0], seed=1)
+        xp.add.at(x, indices, 3)
+        return x
+
     @testing.for_dtypes('iIQfd')
     @testing.numpy_cupy_allclose()
     def test_at_min(self, xp, dtype):
@@ -44,12 +54,36 @@ class TestUfuncAtAtomicOps:
 
     @testing.for_dtypes('iIQfd')
     @testing.numpy_cupy_allclose()
+    def test_at_min_duplicate_indices(self, xp, dtype):
+        shape = (50,)
+        x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
+        indices = testing.shaped_random(
+            shape, xp=xp, dtype=numpy.int32, scale=shape[0], seed=1)
+        values = testing.shaped_random(
+            indices.shape, xp=xp, dtype=dtype, seed=2)
+        xp.minimum.at(x, indices, values)
+        return x
+
+    @testing.for_dtypes('iIQfd')
+    @testing.numpy_cupy_allclose()
     def test_at_max(self, xp, dtype):
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         mask = testing.shaped_random(shape, xp=xp, dtype=bool, seed=1)
         indices = xp.nonzero(mask)[0]
         xp.maximum.at(x, indices, 3)
+        return x
+
+    @testing.for_dtypes('iIQfd')
+    @testing.numpy_cupy_allclose()
+    def test_at_max_duplicate_indices(self, xp, dtype):
+        shape = (50,)
+        x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
+        indices = testing.shaped_random(
+            shape, xp=xp, dtype=numpy.int32, scale=shape[0], seed=1)
+        values = testing.shaped_random(
+            indices.shape, xp=xp, dtype=dtype, seed=2)
+        xp.maximum.at(x, indices, values)
         return x
 
     @testing.for_dtypes('iIQefd')
