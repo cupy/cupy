@@ -409,7 +409,6 @@ def _does_use_spsm(b):
         )
 
 
-
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
                        unit_diagonal=False):
     """Solves a sparse triangular system ``A x = b``.
