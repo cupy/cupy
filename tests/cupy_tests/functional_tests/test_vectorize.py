@@ -18,6 +18,15 @@ class TestVectorizeOps(unittest.TestCase):
         ]
         return f(*args)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_vectorize_reciprocal(self, xp, dtype):
+        def my_reciprocal(x):
+            scalar = xp.dtype(dtype).type(10)
+            return xp.reciprocal(x + scalar)
+
+        return self._run(my_reciprocal, xp, [dtype])
+
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal()
     def test_vectorize_add(self, xp, dtype1, dtype2):
