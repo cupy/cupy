@@ -45,12 +45,16 @@ Math operations
    negative
    positive
    power
+   float_power
    remainder
    mod
    fmod
+   divmod
    absolute
+   fabs
    rint
    sign
+   heaviside
    conj
    conjugate
    exp
@@ -139,6 +143,7 @@ Floating functions
    isfinite
    isinf
    isnan
+   fabs
    signbit
    copysign
    nextafter
