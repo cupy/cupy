@@ -12,8 +12,6 @@ CuPy's ufunc supports following features of NumPy's one:
 - Output type determination
 - Casting rules
 
-CuPy's ufunc currently does not provide methods such as ``reduce``, ``accumulate``, ``reduceat``, ``outer``, and ``at``.
-
 
 ufunc
 -----
@@ -22,6 +20,21 @@ ufunc
    :toctree: generated/
 
    ufunc
+
+Methods
+~~~~~~~
+
+These methods are only available for selected ufuncs.
+
+* ``ufunc.reduce``: Not implemented yet
+* ``ufunc.accumulate``: Not implemented yet
+* ``ufunc.reduceat``: Not implemented yet
+* :meth:`ufunc.outer <cupy.ufunc.outer>`: All ufuncs
+* :meth:`ufunc.at <cupy.ufunc.at>`: :func:`~cupy.add`, :func:`~cupy.maximum`, :func:`~cupy.minimum`
+
+.. hint::
+
+   In case you need support for other ufuncs, submit a feature request along with your use-case in `the tracker issue <https://github.com/cupy/cupy/issues/7082>`_.
 
 
 Available ufuncs
@@ -149,13 +162,6 @@ Floating functions
    floor
    ceil
    trunc
-
-
-ufunc.at
---------
-
-Currently, CuPy does not support ``at`` for ufuncs in general.
-However, :func:`cupyx.scatter_add` can substitute ``add.at`` as both behave identically.
 
 
 Generalized Universal Functions
