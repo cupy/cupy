@@ -7,12 +7,75 @@ from cupy._core import internal
 import numpy as np
 
 
+INTERVAL_KERNEL = cupy.RawKernel(r'''
+extern "C" __global__
+void find_interval(
+        const double* t, const double* x, long long* out,
+        int k, int n, bool extrapolate) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    float xp = x[idx];
+    float tb = t[k];
+    float te = t[n];
+
+    if(isnan(xp)) {
+        out[idx] = -1;
+        return;
+    }
+
+    if((xp > tb || xp < te) && !extrapolate) {
+        out[idx] = -1;
+        return;
+    }
+
+    int left = k;
+    int right = n;
+    int mid = ((right - left) / 2) + k;
+
+    while(mid != left) {
+        mid = ((right - left) / 2) + k;
+        if(xp > t[mid]) {
+            left = mid;
+        } else {
+            right = mid;
+        }
+    }
+
+    out[idx] = mid;
+}
+''', 'find_interval')
+
+
 def _get_dtype(dtype):
     """Return np.complex128 for complex dtypes, np.float64 otherwise."""
     if cupy.issubdtype(dtype, cupy.complexfloating):
         return cupy.complex_
     else:
         return cupy.float_
+
+
+def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
+    """
+    Evaluate a spline in the B-spline basis.
+
+    Parameters
+    ----------
+    t : ndarray, shape (n+k+1)
+        knots
+    c : ndarray, shape (n, m)
+        B-spline coefficients
+    xp : ndarray, shape (s,)
+        Points to evaluate the spline at.
+    nu : int
+        Order of derivative to evaluate.
+    extrapolate : int, optional
+        Whether to extrapolate to ouf-of-bounds points, or to return NaNs.
+    out : ndarray, shape (s, m)
+        Computed values of the spline at each of the input points.
+        This argument is modified in-place.
+    """
+
+
 
 
 class BSpline:
@@ -203,4 +266,5 @@ class BSpline:
 
 
     def _evaluate(self, xp, nu, extrapolate, out):
-        pass
+        _evaluate_spline(self.t, self.c.reshape(self.c.shape[0], -1),
+                         self.k, xp, nu, extrapolate, out)
