@@ -1,5 +1,7 @@
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -21,6 +23,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIQefd')
     @testing.numpy_cupy_array_equal()
     def test_at_add(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         mask = testing.shaped_random(shape, xp=xp, dtype=bool, seed=1)
@@ -60,6 +64,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIQefd')
     @testing.numpy_cupy_array_equal()
     def test_at_array_values(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         mask = testing.shaped_random(shape, xp=xp, dtype=bool, seed=1)
@@ -72,6 +78,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIQefd')
     @testing.numpy_cupy_array_equal()
     def test_at_multi_dimensional(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (20, 30)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         mask = testing.shaped_random(shape, xp=xp, dtype=bool, seed=1)
