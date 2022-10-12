@@ -1596,7 +1596,7 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_add` for full documentation.
 
         """
-        _indexing._ndarray_scatter_add(self, slices, value)
+        self._scatter_op(slices, value, 'add')
 
     def scatter_max(self, slices, value):
         """Stores a maximum value of elements specified by indices to an array.
@@ -1605,7 +1605,7 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_max` for full documentation.
 
         """
-        _indexing._ndarray_scatter_max(self, slices, value)
+        self._scatter_op(slices, value, 'max')
 
     def scatter_min(self, slices, value):
         """Stores a minimum value of elements specified by indices to an array.
@@ -1614,7 +1614,10 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_min` for full documentation.
 
         """
-        _indexing._ndarray_scatter_min(self, slices, value)
+        self._scatter_op(slices, value, 'min')
+
+    def _scatter_op(self, slices, value, op):
+        _indexing._scatter_op(self, slices, value, op)
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
