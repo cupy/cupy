@@ -982,6 +982,10 @@ class RandomState(object):
         a = cupy.asarray(a)
         if cupy.any(a < 0):  # synchronize!
             raise ValueError('a < 0')
+
+        if size is None:
+            size = a.shape
+
         x = self.standard_exponential(size, dtype)
         cupy.power(x, 1./a, out=x)
         return x
