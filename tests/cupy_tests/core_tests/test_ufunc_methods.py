@@ -35,6 +35,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIQefd')
     @testing.numpy_cupy_array_equal()
     def test_at_add_duplicate_indices(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         indices = testing.shaped_random(
@@ -109,6 +111,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIlLqQ')
     @testing.numpy_cupy_array_equal()
     def test_at_bitwise_and(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and numpy.dtype(dtype).char in 'lq':
+            pytest.skip('atomicOr does not support int64 in HIP')
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         indices = testing.shaped_random(
@@ -121,6 +125,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIlLqQ')
     @testing.numpy_cupy_array_equal()
     def test_at_bitwise_or(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and numpy.dtype(dtype).char in 'lq':
+            pytest.skip('atomicOr does not support int64 in HIP')
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         indices = testing.shaped_random(
@@ -133,6 +139,8 @@ class TestUfuncAtAtomicOps:
     @testing.for_dtypes('iIlLqQ')
     @testing.numpy_cupy_array_equal()
     def test_at_bitwise_xor(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and numpy.dtype(dtype).char in 'lq':
+            pytest.skip('atomicXor does not support int64 in HIP')
         shape = (50,)
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, seed=0)
         indices = testing.shaped_random(
