@@ -94,7 +94,7 @@ class TestCdist(unittest.TestCase):
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
 @pytest.mark.skipif(not scipy_available or not pylibraft_available,
                     reason='requires scipy and pylibraft')
-class TestPdist(unittest.TestCase):
+class TestPdist:
 
     def _make_matrix(self, xp, dtype, order):
         shape = (self.rows, self.cols)

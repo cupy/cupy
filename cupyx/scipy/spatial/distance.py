@@ -494,7 +494,7 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
         raise TypeError('2nd argument metric must be a string identifier')
 
 
-def pdist(X, metric='euclidean', out=None, **kwargs):
+def pdist(X, metric='euclidean', *, out=None, **kwargs):
     """Compute distance between observations in n-dimensional space.
 
     Args:
@@ -515,7 +515,8 @@ def pdist(X, metric='euclidean', out=None, **kwargs):
             unweighted. Default: 2.0
 
     Returns:
-        Y (cupy.ndarray): A :math:`m` by :math:`m` distance matrix is
+        Y (cupy.ndarray):
+            A :math:`m` by :math:`m` distance matrix is
             returned. For each :math:`i` and :math:`j`, the metric
             ``dist(u=X[i], v=X[j])`` is computed and stored in the
             :math:`ij` th entry.
