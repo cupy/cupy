@@ -1176,6 +1176,9 @@ cdef class _ndarray_base:
         """
         return _math._ndarray_cumprod(self, axis, dtype, out)
 
+    cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out):
+        return _indexing._add_reduceat(self, indices, axis, dtype, out)
+
     cpdef _ndarray_base all(self, axis=None, out=None, keepdims=False):
         # TODO(niboshi): Write docstring
         return _logic._ndarray_all(self, axis, out, keepdims)

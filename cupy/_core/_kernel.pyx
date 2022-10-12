@@ -1392,6 +1392,17 @@ cdef class ufunc:
         raise NotImplementedError(
             f'`{self.name}.accumulate` is not supported yet')
 
+    def reduceat(self, array, indices, axis=0, dtype=None, out=None):
+        """Reduce ``array`` applying ufunc with indices.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduceat`
+        """
+        if self.name == 'cupy_add':
+            return array._add_reduceat(indices, axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.reduceat` is not supported yet')
+
 
 cdef class _Op:
 
