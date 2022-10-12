@@ -760,7 +760,6 @@ class TestSearchSortedWithSorter:
                 xp.searchsorted(bins, x, sorter=sorter)
 
 
-@testing.gpu
 @testing.parameterize(
     {'side': 'left'},
     {'side': 'right'})
