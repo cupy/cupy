@@ -823,7 +823,6 @@ class TestNdarraySearchSortedNanInf:
         return y,
 
 
-@testing.gpu
 class TestNdarraySearchSortedWithSorter:
 
     @testing.numpy_cupy_array_equal()
