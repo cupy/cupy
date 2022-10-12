@@ -42,9 +42,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
             'Cannot apply_along_axis when any iteration dimensions are 0'
         )
     res = func1d(inarr_view[ind0], *args, **kwargs)
-    if cupy.isscalar(res):
-        # scalar outputs need to be transfered to a device ndarray
-        res = cupy.asarray(res)
+    res = cupy.asarray(res)
 
     # build a buffer for storing evaluations of func1d.
     # remove the requested axis, and add the new ones on the end.
@@ -55,7 +53,8 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
     # save the first result, then compute and save all remaining results
     buff[ind0] = res
     for ind in inds:
-        buff[ind] = func1d(inarr_view[ind], *args, **kwargs)
+        out = func1d(inarr_view[ind], *args, **kwargs)
+        buff[ind] = cupy.asarray(out)
 
     # restore the inserted axes back to where they belong
     for i in range(res.ndim):

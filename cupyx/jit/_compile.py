@@ -415,6 +415,8 @@ def _call_ufunc(
         for i in range(ufunc.nin):
             if len(list(re.finditer(r'in{}'.format(i), op.routine))) > 1:
                 can_use_inline_expansion = False
+            if f'in{i}_type' in op.routine:
+                can_use_inline_expansion = False
 
         if can_use_inline_expansion:
             # Code pass for readable generated code
@@ -424,9 +426,9 @@ def _call_ufunc(
             env.generated.add_code(ufunc._preamble)
         else:
             template_typenames = ', '.join([
-                f'typename T{i}' for i in range(ufunc.nin)])
+                f'typename in{i}_type' for i in range(ufunc.nin)])
             ufunc_name = f'{ufunc.name}_{str(numpy.dtype(op.out_types[0]))}'
-            params = ', '.join([f'T{i} in{i}' for i in range(ufunc.nin)])
+            params = ', '.join([f'in{i}_type in{i}' for i in range(ufunc.nin)])
             ufunc_code = f"""template <{template_typenames}>
 __device__ {out_type} {ufunc_name}({params}) {{
     return {expr};
