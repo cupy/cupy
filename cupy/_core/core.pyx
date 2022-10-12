@@ -949,7 +949,7 @@ cdef class _ndarray_base:
 
         Returns:
 
-        .. seealso:: :func:`cupy.searchsorted`
+        .. seealso:: :func:`numpy.searchsorted`
 
         """
         return cupy.searchsorted(self, v, side, sorter)
