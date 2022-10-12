@@ -1046,10 +1046,10 @@ class TestSpsm:
             m, m, density=0.5, format=format, dtype=dtype)
 
         if unit_diag:
-            diag = numpy.ones(m).astype(dtype)
+            diag = numpy.diag(numpy.ones(m).astype(dtype))
         else:
-            diag = numpy.random.uniform(0.1, 1, m).astype(dtype)
-        a = a - a.diagonal() + diag
+            diag = numpy.diag(numpy.random.uniform(0.1, 1, m).astype(dtype))
+        a = a - numpy.diag(a.diagonal()) + diag
 
         if lower:
             a = scipy.sparse.tril(a)
