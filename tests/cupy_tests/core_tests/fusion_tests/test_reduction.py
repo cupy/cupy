@@ -232,3 +232,21 @@ class TestFusionReductionRoutines(unittest.TestCase):
     @fusion_utils.check_fusion()
     def test_nanprod(self, xp):
         return lambda x: xp.nanprod(x)
+
+
+@testing.gpu
+class TestFusionMisc(unittest.TestCase):
+
+    def generate_inputs(self, xp):
+        x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        return (x,), {}
+
+    @unittest.skipUnless(
+        fusion_utils.can_use_grid_synchronization(),
+        'Requires CUDA grid synchronization')
+    @fusion_utils.check_fusion()
+    def test_sum_div_clip(self, xp):
+        def impl(x):
+            x = x / xp.sum(x)
+            return xp.clip(x, 2, 7)
+        return impl

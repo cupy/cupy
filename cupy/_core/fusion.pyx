@@ -524,7 +524,7 @@ class _FusionHistory(object):
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise TypeError('Unsupported type {}'.format(type(arg)))
 
-    def call_ufunc(self, ufunc, args, kwargs):
+    def call_ufunc(self, ufunc, *args, **kwargs):
         nin = ufunc.nin
         nout = ufunc.nout
 
@@ -958,7 +958,7 @@ def fuse(*args, **kwargs):
 
 
 def _call_ufunc(fusion_op, *args, **kwargs):
-    return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
+    return _thread_local.history.call_ufunc(fusion_op, *args, **kwargs)
 
 
 def _call_reduction(fusion_op, *args, **kwargs):
