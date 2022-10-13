@@ -54,6 +54,10 @@ class TCPStore:
         self._lock = threading.Lock()
         self._current_barrier = None
 
+    def __del__(self):
+        if not _exit_mode:
+            self.stop()
+
     def _set_process(self, process):
         self._process = process
 
