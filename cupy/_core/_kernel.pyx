@@ -1367,6 +1367,31 @@ cdef class ufunc:
         else:
             raise NotImplementedError(f'`{self.name}.at` is not supported yet')
 
+    def reduce(self, array, axis=0, dtype=None, out=None, keepdims=False):
+        """Reduce ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduce`
+        """
+        if self.name == 'cupy_add':
+            return array.sum(axis, dtype, out, keepdims)
+        if self.name == 'cupy_multiply':
+            return array.prod(axis, dtype, out, keepdims)
+        raise NotImplementedError(f'`{self.name}.reduce` is not supported yet')
+
+    def accumulate(self, array, axis=0, dtype=None, out=None):
+        """Accumulate ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.accumulate`
+        """
+        if self.name == 'cupy_add':
+            return array.cumsum(axis, dtype, out)
+        if self.name == 'cupy_multiply':
+            return array.cumprod(axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.accumulate` is not supported yet')
+
 
 cdef class _Op:
 
