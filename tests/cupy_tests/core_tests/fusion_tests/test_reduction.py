@@ -96,7 +96,7 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
 
     def generate_inputs(self, xp):
         x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=1)
         return (x, y), {}
 
     @fusion_utils.check_fusion()
@@ -155,7 +155,7 @@ class TestFusionMultipleReductions(unittest.TestCase):
 
     def generate_inputs(self, xp):
         x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
-        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
+        y = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=1)
         return (x, y), {}
 
     @unittest.skipUnless(
