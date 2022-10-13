@@ -54,7 +54,6 @@ Math operations
    fabs
    rint
    sign
-   heaviside
    conj
    conjugate
    exp
