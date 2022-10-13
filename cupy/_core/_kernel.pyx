@@ -22,14 +22,13 @@ from cupy._core cimport _scalar
 from cupy._core._dtype cimport get_dtype
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
+from cupy._core cimport core
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
-
-from cupy import _ufunc_method
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -1353,7 +1352,13 @@ cdef class ufunc:
            :meth:`numpy.ufunc.outer`
 
         """
-        return _ufunc_method.ufunc_outer(self, A, B, **kwargs)
+        A = core.array(A)
+        B = core.array(B)
+        ndim_a = A.ndim
+        ndim_b = B.ndim
+        A = A.reshape(A.shape + (1,) * ndim_b)
+        B = B.reshape((1,) * ndim_a + B.shape)
+        return self(A, B, **kwargs)
 
     def at(self, a, indices, b=None):
         """Apply in place operation on the operand ``a`` for elements
