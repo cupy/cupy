@@ -14,9 +14,9 @@ void find_interval(
         int k, int n, bool extrapolate) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    float xp = x[idx];
-    float tb = t[k];
-    float te = t[n];
+    float xp = *&x[idx];
+    float tb = *&t[k];
+    float te = *&t[n];
 
     if(isnan(xp)) {
         out[idx] = -1;
@@ -34,7 +34,7 @@ void find_interval(
 
     while(mid != left) {
         mid = ((right - left) / 2) + k;
-        if(xp > t[mid]) {
+        if(xp > *&t[mid]) {
             left = mid;
         } else {
             right = mid;
@@ -44,6 +44,92 @@ void find_interval(
     out[idx] = mid;
 }
 ''', 'find_interval')
+
+
+D_BOOR_KERNEL = cupy.RawKernel(r'''
+#include <math_constants.h>
+
+extern "C" __global__
+void d_boor(
+        const double* t, const double* c, const int k, const int mu,
+        const double* x, const long long* intervals, double* out,
+        double* temp, int num_c) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    double xp = *&x[idx];
+    long long interval = *&intervals[idx];
+
+    double* h = temp + idx * (2 * k + 1);
+    double* hh = h + k + 1;
+
+    int ind, j, n;
+    double xa, xb, w;
+
+    if(interval < 0) {
+        for(j = 0; j < num_c; j++) {
+            out[idx + j] = CUDART_NAN;
+        }
+        return;
+    }
+
+    /*
+     * Perform k-m "standard" deBoor iterations
+     * so that h contains the k+1 non-zero values of beta_{ell,k-m}(x)
+     * needed to calculate the remaining derivatives.
+     */
+    h[0] = 1.0;
+    for (j = 1; j <= k - mu; j++) {
+        for(int p = 0; p < j; p++) {
+            hh[p] = h[p];
+        }
+        h[0] = 0.0;
+        for (n = 1; n <= j; n++) {
+            ind = interval + n;
+            xb = t[ind];
+            xa = t[ind - j];
+            if (xb == xa) {
+                h[n] = 0.0;
+                continue;
+            }
+            w = hh[n - 1]/(xb - xa);
+            h[n - 1] += w*(xb - xp);
+            h[n] = w*(xp - xa);
+        }
+    }
+
+    /*
+     * Now do m "derivative" recursions
+     * to convert the values of beta into the mth derivative
+     */
+    for (j = k - mu + 1; j <= k; j++) {
+        for(int p = 0; p < j; p++) {
+            hh[p] = h[p];
+        }
+        h[0] = 0.0;
+        for (n = 1; n <= j; n++) {
+            ind = interval + n;
+            xb = t[ind];
+            xa = t[ind - j];
+            if (xb == xa) {
+                h[mu] = 0.0;
+                continue;
+            }
+            w = j * hh[n - 1]/(xb - xa);
+            h[n - 1] -= w;
+            h[n] = w;
+        }
+    }
+
+    // Compute linear combinations
+    for(j = 0; j < num_c; j++) {
+        out[idx + j] = 0;
+        for(n = 0; n < k + 1; n++) {
+            out[idx + j] = out[idx + j] + c[interval + n - k + j] * h[n];
+        }
+    }
+
+}
+''', 'd_boor')
 
 
 def _get_dtype(dtype):
@@ -74,7 +160,18 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
         Computed values of the spline at each of the input points.
         This argument is modified in-place.
     """
+    n = t.shape[0] - k - 1
+    intervals = cupy.empty_like(xp, dtype=cupy.int_)
 
+    # Compute intervals for each value
+    INTERVAL_KERNEL((128,), (128,), (t, xp, intervals, k, n, extrapolate))
+
+    # Compute interpolation
+    for i in range(intervals.shape[0]):
+        interval = intervals[i]
+        if interval < 0:
+            out[i, :] = cupy.nan
+            continue
 
 
 
