@@ -164,15 +164,14 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     intervals = cupy.empty_like(xp, dtype=cupy.int_)
 
     # Compute intervals for each value
-    INTERVAL_KERNEL((128,), (128,), (t, xp, intervals, k, n, extrapolate))
+    INTERVAL_KERNEL((max(1, xp.shape[0] // 128),), (min(128, xp.shape[0]),),
+                    (t, xp, intervals, k, n, extrapolate))
 
     # Compute interpolation
-    for i in range(intervals.shape[0]):
-        interval = intervals[i]
-        if interval < 0:
-            out[i, :] = cupy.nan
-            continue
-
+    num_c = int(np.prod(c.shape[1:]))
+    temp = cupy.empty(xp.shape[0] * (2 * k + 1))
+    D_BOOR_KERNEL((max(1, xp.shape[0] // 128),), (min(128, xp.shape[0]),),
+                  (t, c, k, 0, xp, intervals, out, temp, num_c))
 
 
 class BSpline:
@@ -360,7 +359,7 @@ class BSpline:
             (len(x), np.prod(self.c.shape[1:])), dtype=self.c.dtype)
 
         self._evaluate(x, nu, extrapolate, out)
-
+        return out
 
     def _evaluate(self, xp, nu, extrapolate, out):
         _evaluate_spline(self.t, self.c.reshape(self.c.shape[0], -1),
