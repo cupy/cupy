@@ -1035,7 +1035,7 @@ _subtract = create_arithmetic(
     .. seealso:: :data:`numpy.subtract`
 
     ''',
-    cutensor_op=('OP_ADD', 1, -1))
+    cutensor_op=('OP_ADD', 1, -1), scatter_op='sub')
 
 
 _true_divide = create_ufunc(
