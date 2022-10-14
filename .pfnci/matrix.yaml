@@ -247,7 +247,7 @@
 # The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda117"
   target: "cuda117"
-  tags: ["@push", "full", "mini", "cuda117"]
+  tags: ["@push", "full", "cuda117"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.7"
@@ -269,8 +269,39 @@
 # CUDA 11.7 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda117.multi"
   _inherits: "cupy.linux.cuda117"
-  tags: ["@push", "full", "mini", "multi", "cuda117"]
+  tags: ["@push", "full", "multi", "cuda117"]
   target: "cuda117.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 11.8 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda118"
+  target: "cuda118"
+  tags: ["@push", "full", "mini", "cuda118"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.8"
+  rocm: null
+  nccl: "2.15"
+  cutensor: "1.6"
+  cusparselt: "0.2.0"
+  cudnn: "8.6"
+  python: "3.10"
+  numpy: "1.23"
+  scipy: "1.9"
+  optuna: "2"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.8 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda118.multi"
+  _inherits: "cupy.linux.cuda118"
+  tags: ["@push", "full", "mini", "multi", "cuda118"]
+  target: "cuda118.multi"
   mpi4py: "3"
   test: "unit-multi"
 
@@ -388,12 +419,12 @@
   tags: ["slow"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.4"
+  cuda: "11.8"
   rocm: null
-  nccl: "2.10"
-  cutensor: "1.5"
+  nccl: "2.15"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.5"
+  cudnn: "8.6"
   python: "3.9"
   numpy: "1.21"
   scipy: "1.7"
@@ -419,12 +450,12 @@
   tags: ["@push", "full", "mini", "example"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.4"
+  cuda: "11.8"
   rocm: null
-  nccl: "2.10"
-  cutensor: "1.5"
+  nccl: "2.15"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.5"
+  cudnn: "8.6"
   python: "3.8"
   numpy: "1.20"
   scipy: "1.7"
@@ -446,12 +477,12 @@
   tags: ["head"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.7"
+  cuda: "11.8"
   rocm: null
-  nccl: "2.14"
-  cutensor: "1.5"
+  nccl: "2.15"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.5"
+  cudnn: "8.6"
   python: "3.10"
   numpy: "pre"
   scipy: "pre"
@@ -560,14 +591,14 @@
   system: "linux"
 
 - project: "cupy.linux.benchmark.head"
-  _inherits: "cupy.linux.cuda114"
+  _inherits: "cupy.linux.cuda118"
   target: "benchmark.head"
   tags: ["benchmark"]
   system: "linux"
   test: "benchmark"
 
 - project: "cupy.linux.benchmark.pr"
-  _inherits: "cupy.linux.cuda114"
+  _inherits: "cupy.linux.cuda118"
   target: "benchmark"
   tags: ["benchmark"]
   system: "linux"

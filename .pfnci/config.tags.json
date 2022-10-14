@@ -102,6 +102,19 @@
         "multi",
         "cuda117"
     ],
+    "cupy.linux.cuda118": [
+        "@push",
+        "full",
+        "mini",
+        "cuda118"
+    ],
+    "cupy.linux.cuda118.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda118"
+    ],
     "cupy.linux.cuda-slow": [
         "slow"
     ],

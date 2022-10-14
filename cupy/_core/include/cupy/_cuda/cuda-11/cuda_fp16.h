@@ -324,6 +324,104 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float __low2float(const __half2 a);
 * \endinternal
 */
 __CUDA_HOSTDEVICE_FP16_DECL__ float __high2float(const __half2 a);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to a signed short integer in round-towards-zero mode.
+*
+* \details Convert the half-precision floating-point value \p h to a signed short
+* integer in round-towards-zero mode. NaN inputs are converted to 0.
+* \param[in] h - half. Is only being read.
+*
+* \returns short int
+* - \p h converted to a signed short integer.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ short int __half2short_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to an unsigned short integer in round-towards-zero
+* mode.
+*
+* \details Convert the half-precision floating-point value \p h to an unsigned short
+* integer in round-towards-zero mode. NaN inputs are converted to 0.
+* \param[in] h - half. Is only being read.
+*
+* \returns unsigned short int
+* - \p h converted to an unsigned short integer.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half2ushort_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to a signed integer in round-towards-zero mode.
+*
+* \details Convert the half-precision floating-point value \p h to a signed integer in
+* round-towards-zero mode. NaN inputs are converted to 0.
+* \param[in] h - half. Is only being read.
+*
+* \returns int
+* - \p h converted to a signed integer.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ int __half2int_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to an unsigned integer in round-towards-zero mode.
+*
+* \details Convert the half-precision floating-point value \p h to an unsigned integer
+* in round-towards-zero mode. NaN inputs are converted to 0.
+* \param[in] h - half. Is only being read.
+*
+* \returns unsigned int
+* - \p h converted to an unsigned integer.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned int __half2uint_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to a signed 64-bit integer in round-towards-zero mode.
+*
+* \details Convert the half-precision floating-point value \p h to a signed 64-bit
+* integer in round-towards-zero mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
+* \param[in] h - half. Is only being read.
+*
+* \returns long long int
+* - \p h converted to a signed 64-bit integer.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ long long int __half2ll_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to an unsigned 64-bit integer in round-towards-zero
+* mode.
+*
+* \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
+* integer in round-towards-zero mode. NaN inputs return 0x8000000000000000.
+* \param[in] h - half. Is only being read.
+*
+* \returns unsigned long long int
+* - \p h converted to an unsigned 64-bit integer.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half h);
 
 #if defined(__CUDACC__)
 /**
@@ -378,22 +476,6 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float2 __half22float2(const __half2 a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ int __half2int_rn(const __half h);
-/**
-* \ingroup CUDA_MATH__HALF_MISC
-* \brief Convert a half to a signed integer in round-towards-zero mode.
-* 
-* \details Convert the half-precision floating-point value \p h to a signed integer in
-* round-towards-zero mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
-* \returns int
-* - \p h converted to a signed integer. 
-* \internal
-* \exception-guarantee no-throw guarantee
-* \behavior reentrant, thread safe
-* \endinternal
-*/
-__CUDA_HOSTDEVICE_FP16_DECL__ int __half2int_rz(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed integer in round-down mode.
@@ -511,22 +593,6 @@ __CUDA_FP16_DECL__ __half __int2half_ru(const int i);
 __CUDA_FP16_DECL__ short int __half2short_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Convert a half to a signed short integer in round-towards-zero mode.
-* 
-* \details Convert the half-precision floating-point value \p h to a signed short
-* integer in round-towards-zero mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
-* \returns short int
-* - \p h converted to a signed short integer. 
-* \internal
-* \exception-guarantee no-throw guarantee
-* \behavior reentrant, thread safe
-* \endinternal
-*/
-__CUDA_HOSTDEVICE_FP16_DECL__ short int __half2short_rz(const __half h);
-/**
-* \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed short integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to a signed short
@@ -640,22 +706,6 @@ __CUDA_FP16_DECL__ __half __short2half_ru(const short int i);
 * \endinternal
 */
 __CUDA_FP16_DECL__ unsigned int __half2uint_rn(const __half h);
-/**
-* \ingroup CUDA_MATH__HALF_MISC
-* \brief Convert a half to an unsigned integer in round-towards-zero mode.
-* 
-* \details Convert the half-precision floating-point value \p h to an unsigned integer
-* in round-towards-zero mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
-* \returns unsigned int
-* - \p h converted to an unsigned integer. 
-* \internal
-* \exception-guarantee no-throw guarantee
-* \behavior reentrant, thread safe
-* \endinternal
-*/
-__CUDA_HOSTDEVICE_FP16_DECL__ unsigned int __half2uint_rz(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned integer in round-down mode.
@@ -773,23 +823,6 @@ __CUDA_FP16_DECL__ __half __uint2half_ru(const unsigned int i);
 __CUDA_FP16_DECL__ unsigned short int __half2ushort_rn(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
-* \brief Convert a half to an unsigned short integer in round-towards-zero
-* mode.
-* 
-* \details Convert the half-precision floating-point value \p h to an unsigned short
-* integer in round-towards-zero mode. NaN inputs are converted to 0.
-* \param[in] h - half. Is only being read. 
-* 
-* \returns unsigned short int
-* - \p h converted to an unsigned short integer. 
-* \internal
-* \exception-guarantee no-throw guarantee
-* \behavior reentrant, thread safe
-* \endinternal
-*/
-__CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half2ushort_rz(const __half h);
-/**
-* \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned short integer in round-down mode.
 * 
 * \details Convert the half-precision floating-point value \p h to an unsigned short
@@ -897,23 +930,6 @@ __CUDA_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i);
 * \endinternal
 */
 __CUDA_FP16_DECL__ unsigned long long int __half2ull_rn(const __half h);
-/**
-* \ingroup CUDA_MATH__HALF_MISC
-* \brief Convert a half to an unsigned 64-bit integer in round-towards-zero
-* mode.
-* 
-* \details Convert the half-precision floating-point value \p h to an unsigned 64-bit
-* integer in round-towards-zero mode. NaN inputs return 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
-* \returns unsigned long long int
-* - \p h converted to an unsigned 64-bit integer. 
-* \internal
-* \exception-guarantee no-throw guarantee
-* \behavior reentrant, thread safe
-* \endinternal
-*/
-__CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned 64-bit integer in round-down mode.
@@ -1031,22 +1047,6 @@ __CUDA_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i);
 * \endinternal
 */
 __CUDA_FP16_DECL__ long long int __half2ll_rn(const __half h);
-/**
-* \ingroup CUDA_MATH__HALF_MISC
-* \brief Convert a half to a signed 64-bit integer in round-towards-zero mode.
-* 
-* \details Convert the half-precision floating-point value \p h to a signed 64-bit
-* integer in round-towards-zero mode. NaN inputs return a long long int with hex value of 0x8000000000000000.
-* \param[in] h - half. Is only being read. 
-* 
-* \returns long long int
-* - \p h converted to a signed 64-bit integer. 
-* \internal
-* \exception-guarantee no-throw guarantee
-* \behavior reentrant, thread safe
-* \endinternal
-*/
-__CUDA_HOSTDEVICE_FP16_DECL__ long long int __half2ll_rz(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed 64-bit integer in round-down mode.

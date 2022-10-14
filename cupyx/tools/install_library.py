@@ -65,9 +65,9 @@ def __make_cudnn_record(
 
 def _make_cudnn_record(cuda_version):
     return __make_cudnn_record(
-        cuda_version, '8.5.0', '11.7',
-        'cudnn-linux-x86_64-8.5.0.96_cuda11-archive.tar.xz',
-        'cudnn-windows-x86_64-8.5.0.96_cuda11-archive.zip')
+        cuda_version, '8.6.0', '11.8',
+        'cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz',
+        'cudnn-windows-x86_64-8.6.0.163_cuda11-archive.zip')
 
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
@@ -75,9 +75,9 @@ _cudnn_records.append(_make_cudnn_record('11.x'))  # CUDA 11.2+
 _cudnn_records.append(_make_cudnn_record('11.1'))
 _cudnn_records.append(_make_cudnn_record('11.0'))
 _cudnn_records.append(__make_cudnn_record(
-    '10.2', '8.5.0', '10.2',
-    'cudnn-linux-x86_64-8.5.0.96_cuda10-archive.tar.xz',
-    'cudnn-windows-x86_64-8.5.0.96_cuda10-archive.zip'))
+    '10.2', '8.6.0', '10.2',
+    'cudnn-linux-x86_64-8.6.0.163_cuda10-archive.tar.xz',
+    'cudnn-windows-x86_64-8.6.0.163_cuda10-archive.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
@@ -108,9 +108,9 @@ def __make_cutensor_record(
 
 def _make_cutensor_record(cuda_version):
     return __make_cutensor_record(
-        cuda_version, '1.5.0',
-        'libcutensor-linux-x86_64-1.5.0.3-archive.tar.xz',
-        'libcutensor-windows-x86_64-1.5.0.3-archive.zip')
+        cuda_version, '1.6.1',
+        'libcutensor-linux-x86_64-1.6.1.5-archive.tar.xz',
+        'libcutensor-windows-x86_64-1.6.1.5-archive.zip')
 
 
 _cutensor_records.append(_make_cutensor_record('11.x'))  # CUDA 11.2+
@@ -143,17 +143,17 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '11.x', '2.14.3', '2.14',  # CUDA 11.2+
-    'nccl_2.14.3-1+cuda11.7_x86_64.txz'))
+    '11.x', '2.15.1', '2.15',  # CUDA 11.2+
+    'nccl_2.15.1-1+cuda11.8_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.1', '2.8.4', '2.8',
     'nccl_2.8.4-1+cuda11.1_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.0', '2.14.3', '2.14',
-    'nccl_2.14.3-1+cuda11.0_x86_64.txz'))
+    '11.0', '2.15.1', '2.15',
+    'nccl_2.15.1-1+cuda11.0_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '10.2', '2.14.3', '2.14',
-    'nccl_2.14.3-1+cuda10.2_x86_64.txz'))
+    '10.2', '2.15.1', '2.15',
+    'nccl_2.15.1-1+cuda10.2_x86_64.txz'))
 library_records['nccl'] = _nccl_records
 
 
