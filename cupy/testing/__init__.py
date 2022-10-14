@@ -19,6 +19,7 @@ from cupy.testing._helper import shaped_random  # NOQA
 from cupy.testing._helper import generate_matrix  # NOQA
 from cupy.testing._helper import shaped_reverse_arange  # NOQA
 from cupy.testing._helper import with_requires  # NOQA
+from cupy.testing._helper import installed  # NOQA
 from cupy.testing._loops import for_all_dtypes  # NOQA
 from cupy.testing._loops import for_all_dtypes_combination  # NOQA
 from cupy.testing._loops import for_CF_orders  # NOQA

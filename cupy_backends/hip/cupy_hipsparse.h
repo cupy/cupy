@@ -3618,6 +3618,28 @@ cusparseStatus_t cusparseCsr2cscEx2(...) {
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
+typedef void* cusparseSpGEMMDescr_t;
+typedef enum {} cusparseSpGEMMAlg_t;
+
+cusparseStatus_t cusparseSpGEMM_createDescr(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
+
+cusparseStatus_t cusparseSpGEMM_destroyDescr(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
+
+cusparseStatus_t cusparseSpGEMM_workEstimation(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
+
+cusparseStatus_t cusparseSpGEMM_compute(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
+
+cusparseStatus_t cusparseSpGEMM_copy(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Definitions are for compatibility

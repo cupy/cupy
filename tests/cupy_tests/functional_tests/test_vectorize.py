@@ -18,6 +18,15 @@ class TestVectorizeOps(unittest.TestCase):
         ]
         return f(*args)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_vectorize_reciprocal(self, xp, dtype):
+        def my_reciprocal(x):
+            scalar = xp.dtype(dtype).type(10)
+            return xp.reciprocal(x + scalar)
+
+        return self._run(my_reciprocal, xp, [dtype])
+
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal()
     def test_vectorize_add(self, xp, dtype1, dtype2):
@@ -64,6 +73,7 @@ class TestVectorizeOps(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.with_requires('numpy>=1.23')
     def test_vectorize_div(self, xp, dtype1, dtype2):
         def my_div(x, y):
             return x / y
@@ -79,7 +89,8 @@ class TestVectorizeOps(unittest.TestCase):
         return self.run_div(my_floor_div, xp, [dtype1, dtype2])
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(
+        rtol=1e-6, atol=1e-6, accept_error=TypeError)
     def test_vectorize_mod(self, xp, dtype1, dtype2):
         def my_mod(x, y):
             return x % y
@@ -423,7 +434,7 @@ class TestVectorizeStmts(unittest.TestCase):
             res = 0
             for i in range(x, y, z):
                 res += i * i
-            return x
+            return res
 
         f = xp.vectorize(func_for)
         start = xp.array([0, 1, 2, 3, 4, 5])
@@ -631,3 +642,15 @@ class TestVectorize(unittest.TestCase):
         x2 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=2)
         with pytest.raises(ValueError, match='Multiple callables are found'):
             return f(x1, x2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_relu(self, xp):
+        f = xp.vectorize(lambda x: x if x > 0.0 else 0.0)
+        a = xp.array([0.4, -0.2, 1.8, -1.2], dtype=xp.float32)
+        return f(a)  # float32
+
+    def test_relu_type_error(self):
+        f = cupy.vectorize(lambda x: x if x > 0.0 else cupy.float64(0.0))
+        a = cupy.array([0.4, -0.2, 1.8, -1.2], dtype=cupy.float32)
+        with pytest.raises(TypeError):
+            return f(a)

@@ -6,6 +6,7 @@ import string
 import numpy
 
 import cupy
+import cupy._core.core as core
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 
@@ -17,17 +18,17 @@ from cupy._core._carray cimport strides_t
 from cupy._core cimport core
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 
-# ndarray members
+# _ndarray_base members
 
 
-cdef ndarray _ndarray_getitem(ndarray self, slices):
+cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     cdef Py_ssize_t axis
     cdef list slice_list
-    cdef ndarray a, mask
+    cdef _ndarray_base a, mask
 
     slice_list = _prepare_slice_list(slices)
     a, adv = _view_getitem(self, slice_list)
@@ -45,15 +46,15 @@ cdef ndarray _ndarray_getitem(ndarray self, slices):
     return _getitem_multiple(a, axis, slice_list)
 
 
-cdef _ndarray_setitem(ndarray self, slices, value):
-    if isinstance(value, ndarray):
+cdef _ndarray_setitem(_ndarray_base self, slices, value):
+    if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
     _scatter_op(self, slices, value, 'update')
 
 
-cdef tuple _ndarray_nonzero(ndarray self):
+cdef tuple _ndarray_nonzero(_ndarray_base self):
     cdef int ndim
-    cdef ndarray dst = _ndarray_argwhere(self)
+    cdef _ndarray_base dst = _ndarray_argwhere(self)
     ndim = self.ndim
     if ndim >= 1:
         return tuple([dst[:, i] for i in range(ndim)])
@@ -64,12 +65,12 @@ cdef tuple _ndarray_nonzero(ndarray self):
         return cupy.zeros(dst.shape[0], numpy.int64),
 
 
-# TODO(kataoka): Rename the function because `ndarray` does not have
+# TODO(kataoka): Rename the function because `_ndarray_base` does not have
 # `argwhere` method
-cpdef ndarray _ndarray_argwhere(ndarray self):
+cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
-    cdef ndarray nonzero
+    cdef _ndarray_base nonzero
     numpy_int64 = numpy.int64
     if self.size == 0:
         count_nonzero = 0
@@ -101,7 +102,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         count_nonzero = int(scan_index[-1])  # synchronize!
 
     ndim = self._shape.size()
-    dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
+    dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
 
@@ -119,19 +120,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     return dst
 
 
-cdef _ndarray_scatter_add(ndarray self, slices, value):
-    _scatter_op(self, slices, value, 'add')
-
-
-cdef _ndarray_scatter_max(ndarray self, slices, value):
-    _scatter_op(self, slices, value, 'max')
-
-
-cdef _ndarray_scatter_min(ndarray self, slices, value):
-    _scatter_op(self, slices, value, 'min')
-
-
-cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
+cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
         return _take(self, indices, 0, ndim, out)
@@ -144,16 +133,16 @@ cdef ndarray _ndarray_take(ndarray self, indices, axis, out):
         return _take(self, indices, axis, axis + 1, out)
 
 
-cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
+cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode):
     if mode not in ('raise', 'wrap', 'clip'):
         raise ValueError('clipmode not understood')
 
     n = self.size
-    if not isinstance(indices, ndarray):
+    if not isinstance(indices, _ndarray_base):
         indices = core.array(indices)
     indices = indices.ravel()
 
-    if not isinstance(values, ndarray):
+    if not isinstance(values, _ndarray_base):
         values = core.array(values, dtype=self.dtype)
     if values.size == 0:
         return
@@ -169,7 +158,7 @@ cdef ndarray _ndarray_put(ndarray self, indices, values, mode):
         _put_clip_kernel(indices, values, values.size, n, self)
 
 
-cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
+cdef _ndarray_base _ndarray_choose(_ndarray_base self, choices, out, mode):
     a = self
     n = choices.shape[0]
 
@@ -183,7 +172,7 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
     ba, bcs = _manipulation.broadcast(a, choices).values
 
     if out is None:
-        out = ndarray(ba.shape[1:], choices.dtype)
+        out = core.ndarray(ba.shape[1:], choices.dtype)
 
     n_channel = numpy.prod(bcs[0].shape)
     if mode == 'raise':
@@ -201,13 +190,13 @@ cdef ndarray _ndarray_choose(ndarray self, choices, out, mode):
     return out
 
 
-cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
+cdef _ndarray_base _ndarray_compress(_ndarray_base self, condition, axis, out):
     a = self
 
     if numpy.isscalar(condition):
         raise ValueError('condition must be a 1-d array')
 
-    if not isinstance(condition, ndarray):
+    if not isinstance(condition, _ndarray_base):
         condition = core.array(condition, dtype=int)
         if condition.ndim != 1:
             raise ValueError('condition must be a 1-d array')
@@ -219,14 +208,14 @@ cdef ndarray _ndarray_compress(ndarray self, condition, axis, out):
     return _ndarray_take(a, res[0], axis, out)
 
 
-cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2):
+cdef _ndarray_base _ndarray_diagonal(_ndarray_base self, offset, axis1, axis2):
     return _diagonal(self, offset, axis1, axis2)
 
 
 # private/internal
 
 
-cdef ndarray _squeeze_leading_unit_dims(ndarray src):
+cdef _ndarray_base _squeeze_leading_unit_dims(_ndarray_base src):
     # remove leading 1s from the shape greedily.
     # TODO(kataoka): compute requested ndim and do not remove too much for
     # printing correct shape in error message.
@@ -255,20 +244,6 @@ cpdef list _prepare_slice_list(slices):
 
     if isinstance(slices, tuple):
         slice_list = list(slices)
-    elif isinstance(slices, list):
-        slice_list = list(slices)  # copy list
-        for s in slice_list:
-            if not isinstance(s, int):
-                warnings.warn(
-                    'Using a non-tuple sequence for multidimensional indexing '
-                    'is deprecated; use `arr[tuple(seq)]` instead of '
-                    '`arr[seq]`. In the future this will be interpreted as an '
-                    'array index, `arr[cupy.array(seq)]`, which will result '
-                    'either in an error or a different result.',
-                    FutureWarning)
-                break
-        else:
-            slice_list = [slice_list]
     else:
         slice_list = [slices]
 
@@ -277,7 +252,7 @@ cpdef list _prepare_slice_list(slices):
     # - Other array-like (including ()-shaped array) in indices forces to
     #   return a new array.
     for i, s in enumerate(slice_list):
-        if s is None or s is Ellipsis or isinstance(s, (slice, ndarray)):
+        if s is None or s is Ellipsis or isinstance(s, (slice, _ndarray_base)):
             continue
 
         fix_empty_dtype = False
@@ -308,7 +283,7 @@ cpdef list _prepare_slice_list(slices):
     return slice_list
 
 
-cdef tuple _view_getitem(ndarray a, list slice_list):
+cdef tuple _view_getitem(_ndarray_base a, list slice_list):
     # Process scalar/slice/ellipsis indices
     # Returns a 2-tuple
     # - [0] (ndarray): view of a
@@ -321,7 +296,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
     #         cupy.ndarray
     cdef shape_t shape
     cdef strides_t strides
-    cdef ndarray v
+    cdef _ndarray_base v
     cdef Py_ssize_t ndim_a, axis_a, ndim_v, axis_v, ndim_ellipsis
     cdef Py_ssize_t i, k, offset, start
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
@@ -342,7 +317,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
                 raise IndexError(
                     "an index can only have a single ellipsis ('...')")
             has_ellipsis = True
-        elif isinstance(s, ndarray):
+        elif isinstance(s, _ndarray_base):
             kind = ord(s.dtype.kind)
             if kind == b'b':
                 k = s.ndim
@@ -381,7 +356,7 @@ cdef tuple _view_getitem(ndarray a, list slice_list):
             strides.push_back(0)
             axis_v += 1
             array_like_flags.push_back(False)
-        elif isinstance(s, ndarray):
+        elif isinstance(s, _ndarray_base):
             k = array_ndims[i]
             index_list.append((s, axis_v, k))
             i += 1
@@ -627,84 +602,86 @@ cdef _put_clip_kernel = ElementwiseKernel(
     'cupy_put_clip')
 
 
-_scatter_update_kernel = ElementwiseKernel(
-    'T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      a[(li * adim + wrap_indices) * rdim + ri] = v;
-    ''',
-    'cupy_scatter_update')
+cdef _create_scatter_kernel(name, code):
+    return ElementwiseKernel(
+        'T v, S indices, int32 cdim, int32 rdim, int32 adim',
+        'raw T a',
+        string.Template('''
+            S wrap_indices = indices % adim;
+            if (wrap_indices < 0) wrap_indices += adim;
+            ptrdiff_t li = i / (rdim * cdim);
+            ptrdiff_t ri = i % rdim;
+            T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
+            T &in0 = out0;
+            const T &in1 = v;
+            ${code};
+        ''').substitute(code=code),
+        name,
+    )
 
 
-_scatter_add_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_add')
+cdef _scatter_update_kernel = _create_scatter_kernel(
+    'cupy_scatter_update', 'out0 = in1')
+
+cdef _scatter_add_kernel = _create_scatter_kernel(
+    'cupy_scatter_add', 'atomicAdd(&out0, in1)')
+
+cdef _scatter_sub_kernel = _create_scatter_kernel(
+    'cupy_scatter_sub', 'atomicSub(&out0, in1)')
+
+cdef _scatter_max_kernel = _create_scatter_kernel(
+    'cupy_scatter_max', 'atomicMax(&out0, in1)')
+
+cdef _scatter_min_kernel = _create_scatter_kernel(
+    'cupy_scatter_min', 'atomicMin(&out0, in1)')
+
+cdef _scatter_and_kernel = _create_scatter_kernel(
+    'cupy_scatter_and', 'atomicAnd(&out0, in1)')
+
+cdef _scatter_or_kernel = _create_scatter_kernel(
+    'cupy_scatter_or', 'atomicOr(&out0, in1)')
+
+cdef _scatter_xor_kernel = _create_scatter_kernel(
+    'cupy_scatter_xor', 'atomicXor(&out0, in1)')
 
 
-_scatter_max_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicMax(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_max')
+cdef _create_scatter_mask_kernel(name, code):
+    return ElementwiseKernel(
+        'raw T v, bool mask, S mask_scanned',
+        'T a',
+        string.Template('''
+            T &out0 = a;
+            T &in0 = a;
+            const T &in1 = v[mask_scanned - 1];
+            if (mask) ${code};
+        ''').substitute(code=code),
+        name,
+    )
 
 
-_scatter_min_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_min')
+cdef _scatter_update_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_update_mask', 'out0 = in1')
 
+cdef _scatter_add_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_add_mask', 'out0 = in0 + in1')
 
-_scatter_update_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = v[mask_scanned - 1]',
-    'cupy_scatter_update_mask')
+cdef _scatter_sub_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_add_mask', 'out0 = in0 - in1')
 
+cdef _scatter_max_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_max_mask', 'out0 = max(in0, in1)')
 
-_scatter_add_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = a + v[mask_scanned - 1]',
-    'cupy_scatter_add_mask')
+cdef _scatter_min_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_min_mask', 'out0 = min(in0, in1)')
 
+cdef _scatter_and_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_and_mask', 'out0 = (in0 & in1)')
 
-_scatter_max_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = max(a, v[mask_scanned - 1])',
-    'cupy_scatter_max_mask')
+cdef _scatter_or_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_or_mask', 'out0 = (in0 | in1)')
 
-
-_scatter_min_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = min(a, v[mask_scanned - 1])',
-    'cupy_scatter_min_mask')
+cdef _scatter_xor_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_xor_mask', 'out0 = (in0 ^ in1)')
 
 
 _getitem_mask_kernel = ElementwiseKernel(
@@ -714,7 +691,7 @@ _getitem_mask_kernel = ElementwiseKernel(
     'cupy_getitem_mask')
 
 
-cdef _check_mask_shape(ndarray a, ndarray mask, Py_ssize_t axis):
+cdef _check_mask_shape(_ndarray_base a, _ndarray_base mask, Py_ssize_t axis):
     cdef Py_ssize_t i, a_sh, m_sh
     for i, m_sh in enumerate(mask._shape):
         a_sh = a._shape[axis + i]
@@ -726,8 +703,9 @@ cdef _check_mask_shape(ndarray a, ndarray mask, Py_ssize_t axis):
             )
 
 
-cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
-    cdef ndarray mask_scanned, mask_br, mask_br_scanned
+cpdef _prepare_mask_indexing_single(
+        _ndarray_base a, _ndarray_base mask, Py_ssize_t axis):
+    cdef _ndarray_base mask_scanned, mask_br, mask_br_scanned
     cdef int n_true
     cdef tuple lshape, rshape, out_shape, a_shape
     cdef Py_ssize_t a_ndim, mask_ndim
@@ -781,19 +759,21 @@ cpdef _prepare_mask_indexing_single(ndarray a, ndarray mask, Py_ssize_t axis):
     return mask, mask_scanned, masked_shape
 
 
-cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
-    cdef ndarray mask_scanned
+cpdef _ndarray_base _getitem_mask_single(
+        _ndarray_base a, _ndarray_base mask, int axis):
+    cdef _ndarray_base mask_scanned
     cdef tuple masked_shape
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
-    out = ndarray(masked_shape, dtype=a.dtype)
+    out = core.ndarray(masked_shape, dtype=a.dtype)
     if out.size == 0:
         return out
     return _getitem_mask_kernel(a, mask, mask_scanned, out)
 
 
-cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
+cdef _ndarray_base _take(
+        _ndarray_base a, indices, int start, int stop, _ndarray_base out=None):
     # Take along (flattened) axes from start to stop.
     # When start + 1 == stop this function behaves similarly to np.take
     cdef tuple out_shape, ind_shape, indices_shape
@@ -806,7 +786,7 @@ cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
         indices_shape = ()
         cdim = 1
     else:
-        if not isinstance(indices, ndarray):
+        if not isinstance(indices, _ndarray_base):
             indices = core.array(indices, dtype=int)
         indices_shape = indices.shape
         cdim = indices.size
@@ -831,7 +811,7 @@ cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
             index_range *= a._shape[i]
 
     if out is None:
-        out = ndarray(out_shape, dtype=a.dtype)
+        out = core.ndarray(out_shape, dtype=a.dtype)
     else:
         if out.dtype != a.dtype:
             raise TypeError('Output dtype mismatch')
@@ -840,7 +820,7 @@ cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
     if a.size == 0 and out.size != 0:
         raise IndexError('cannot do a non-empty take from an empty axes.')
 
-    if isinstance(indices, ndarray):
+    if isinstance(indices, _ndarray_base):
         return _take_kernel(
             a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
     else:
@@ -849,8 +829,8 @@ cdef ndarray _take(ndarray a, indices, int start, int stop, ndarray out=None):
 
 
 cdef _scatter_op_single(
-        ndarray a, ndarray indices, value, Py_ssize_t start, Py_ssize_t stop,
-        op=''):
+        _ndarray_base a, _ndarray_base indices, value, Py_ssize_t start,
+        Py_ssize_t stop, op=''):
     # When op == 'update', this function behaves similarly to
     # a code below using NumPy under the condition that a = a._reshape(shape)
     # does not invoke copy.
@@ -863,11 +843,11 @@ cdef _scatter_op_single(
     # a[slices] = value
     cdef Py_ssize_t ndim, adim, cdim, rdim
     cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
-    cdef ndarray v
+    cdef _ndarray_base v
 
     ndim = a._shape.size()
 
-    if not isinstance(value, ndarray):
+    if not isinstance(value, _ndarray_base):
         v = core.array(value, dtype=a.dtype)
     else:
         v = value.astype(a.dtype, copy=False)
@@ -900,9 +880,17 @@ cdef _scatter_op_single(
                            numpy.float64, numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32, float16, float32, float64, '
+                'cupy.add.at only supports int32, float16, float32, float64, '
                 'uint32, uint64, as data type')
         _scatter_add_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'sub':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.uint32,
+                           numpy.intc, numpy.uintc)):
+            raise TypeError(
+                'cupy.subtract.at only supports int32, uint32, as data type')
+        _scatter_sub_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
         if not issubclass(v.dtype.type,
@@ -910,7 +898,7 @@ cdef _scatter_op_single(
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_max only supports int32, float32, float64, '
+                'cupy.maximum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
@@ -920,16 +908,50 @@ cdef _scatter_op_single(
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_min only supports int32, float32, float64, '
+                'cupy.minimum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
         _scatter_min_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'and':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_and.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_and_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'or':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_or.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_or_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'xor':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_xor.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_xor_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
 
 
-cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
-    cdef ndarray mask_scanned, src
+cdef _scatter_op_mask_single(
+        _ndarray_base a, _ndarray_base mask, v, Py_ssize_t axis, op):
+    cdef _ndarray_base mask_scanned, src
     cdef tuple masked_shape
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
@@ -937,7 +959,7 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
     if internal.prod(masked_shape) == 0:
         return
 
-    if not isinstance(v, ndarray):
+    if not isinstance(v, _ndarray_base):
         src = core.array(v, dtype=a.dtype)
     else:
         src = v
@@ -950,17 +972,25 @@ cdef _scatter_op_mask_single(ndarray a, ndarray mask, v, Py_ssize_t axis, op):
         _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
         _scatter_add_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'sub':
+        _scatter_sub_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'max':
         _scatter_max_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'min':
         _scatter_min_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'and':
+        _scatter_and_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'or':
+        _scatter_or_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'xor':
+        _scatter_xor_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
 
-cdef _scatter_op(ndarray a, slices, value, op):
+cdef _scatter_op(_ndarray_base a, slices, value, op):
     cdef Py_ssize_t i, start, stop, axis
-    cdef ndarray v, x, y, reduced_idx, mask
+    cdef _ndarray_base v, x, y, reduced_idx, mask
     cdef list slice_list
 
     slice_list = _prepare_slice_list(slices)
@@ -983,7 +1013,7 @@ cdef _scatter_op(ndarray a, slices, value, op):
     y = a
 
     if op == 'update':
-        if not isinstance(value, ndarray):
+        if not isinstance(value, _ndarray_base):
             y.fill(value)
             return
         x = value
@@ -999,17 +1029,29 @@ cdef _scatter_op(ndarray a, slices, value, op):
     if op == 'add':
         _math._add(y, value, y)
         return
+    if op == 'sub':
+        _math._subtract(y, value, y)
+        return
     if op == 'max':
         cupy.maximum(y, value, y)
         return
     if op == 'min':
         cupy.minimum(y, value, y)
         return
+    if op == 'and':
+        cupy.bitwise_and(y, value, y)
+        return
+    if op == 'or':
+        cupy.bitwise_or(y, value, y)
+        return
+    if op == 'xor':
+        cupy.bitwise_xor(y, value, y)
+        return
     raise ValueError('this op is not supported')
 
 
-cdef ndarray _diagonal(
-        ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
+cdef _ndarray_base _diagonal(
+        _ndarray_base a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
         Py_ssize_t axis2=1):
     cdef Py_ssize_t ndim = a.ndim
     if not (-ndim <= axis1 < ndim and -ndim <= axis2 < ndim):
@@ -1036,7 +1078,7 @@ cdef ndarray _diagonal(
     diag_size = max(0, min(a.shape[-2], a.shape[-1] - offset))
     ret_shape = a.shape[:-2] + (diag_size,)
     if diag_size == 0:
-        return ndarray(ret_shape, dtype=a.dtype)
+        return core.ndarray(ret_shape, dtype=a.dtype)
 
     a = a[..., :diag_size, offset:offset + diag_size]
 
@@ -1058,12 +1100,12 @@ _prepare_array_indexing = ElementwiseKernel(
 
 
 cdef tuple _prepare_multiple_array_indexing(
-    ndarray a, Py_ssize_t start, list slices
+    _ndarray_base a, Py_ssize_t start, list slices
 ):
     # slices consist of ndarray
     cdef list indices = [], shapes = []  # int ndarrays
     cdef Py_ssize_t i, stop, stride
-    cdef ndarray reduced_idx, s
+    cdef _ndarray_base reduced_idx, s
 
     for s in slices:
         if s.dtype.kind == 'b':
@@ -1079,7 +1121,7 @@ cdef tuple _prepare_multiple_array_indexing(
     # br = _manipulation.broadcast(*indices)
     # indices = list(br.values)
 
-    reduced_idx = ndarray(
+    reduced_idx = core.ndarray(
         internal._broadcast_shapes(shapes), dtype=numpy.int64)
     reduced_idx.fill(0)
     stride = 1
@@ -1095,7 +1137,8 @@ cdef tuple _prepare_multiple_array_indexing(
     return reduced_idx, start, stop
 
 
-cdef ndarray _getitem_multiple(ndarray a, Py_ssize_t start, list slices):
+cdef _ndarray_base _getitem_multiple(
+        _ndarray_base a, Py_ssize_t start, list slices):
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
     return _take(a, reduced_idx, start, stop)

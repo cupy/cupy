@@ -16,6 +16,7 @@ Arguments:
   - test: Run tests.
   - shell: Start an interactive shell in the docker image for debugging.
            The source tree will be read-write mounted for convenience.
+  - benchmark: Run performance benchmarks.
 
 Environment variables:
 
@@ -25,6 +26,9 @@ Environment variables:
 - CACHE_DIR: Path to the local directory to store cache files.
 - CACHE_GCS_DIR: Path to the GCS directory to store a cache archive.
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
+- DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
+                      image.
+- BENCHMARK_DIR: Path to the directory to store benchmark results.
 "
 
 set -eu
@@ -45,9 +49,14 @@ main() {
 
   repo_root="$(cd "$(dirname "${BASH_SOURCE}")/../.."; pwd)"
   base_branch="$(cat "${repo_root}/.pfnci/BRANCH")"
-  docker_image="${DOCKER_IMAGE:-asia.gcr.io/pfn-public-ci/cupy-ci}:${TARGET}-${base_branch}"
+  docker_image="${DOCKER_IMAGE:-asia-northeast1-docker.pkg.dev/pfn-artifactregistry/tmp-public-ci-dlfw/cupy-ci}:${TARGET}-${base_branch}"
+  docker_cache_from="${docker_image}"
   cache_archive="linux-${TARGET}-${base_branch}.tar.gz"
   cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci/cache}"
+
+  if [[ "${DOCKER_IMAGE_CACHE:-1}" = "0" ]]; then
+    docker_cache_from=""
+  fi
 
   echo "
     =====================================================================
@@ -60,6 +69,7 @@ main() {
     Repository Root     : ${repo_root}
     Base Branch         : ${base_branch}
     Docker Image        : ${docker_image}
+    Docker Image Cache  : ${docker_cache_from}
     Remote Cache        : ${cache_gcs_dir}/${cache_archive}
     Local Cache         : ${CACHE_DIR:-(not set)}
     =====================================================================
@@ -71,7 +81,7 @@ main() {
       tests_dir="${repo_root}/.pfnci/linux/tests"
       DOCKER_BUILDKIT=1 docker build \
           -t "${docker_image}" \
-          --cache-from "${docker_image}" \
+          --cache-from "${docker_cache_from}" \
           --build-arg BUILDKIT_INLINE_CACHE=1 \
           -f "${tests_dir}/${TARGET}.Dockerfile" \
           "${tests_dir}"
@@ -110,13 +120,14 @@ main() {
       rm -f "${cache_archive}"
       ;;
 
-    test | shell )
+    test | shell | benchmark)
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
         --rm
         --name "${container_name}"
         --env "BASE_BRANCH=${base_branch}"
+        --shm-size=512m
       )
       if [[ -t 1 ]]; then
         docker_args+=(--interactive)
@@ -137,7 +148,12 @@ main() {
       fi
 
       test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
-      if [[ "${stage}" = "test" ]]; then
+      if [[ "${stage}" = "benchmark" ]]; then
+        mkdir -p ${BENCHMARK_DIR}
+        docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
+      fi
+
+      if [[ "${stage}" = "test" || "${stage}" = "benchmark" ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
             "${docker_image}" timeout 8h "${test_command[@]}" &
         docker_pid=$!
@@ -151,7 +167,6 @@ main() {
             "${docker_image}" bash
       fi
       ;;
-
     * )
       echo "Unsupported stage: ${stage}" >&2
       exit 1

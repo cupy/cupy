@@ -9,13 +9,13 @@ $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\_flexci.ps1"
 
-$cupy_kernel_cache_file = "cupy_kernel_cache_windows.zip"
 
+$cache_gcs_dir = "gs://tmp-asia-pfn-public-ci/cupy-ci/cache"
 
-function DownloadCache {
+function DownloadCache([String]$cupy_kernel_cache_file) {
     pushd $Env:USERPROFILE
     echo "Downloading kernel cache..."
-    gsutil -m -q cp gs://tmp-asia-pfn-public-ci/cupy-ci/$cupy_kernel_cache_file .
+    gsutil -m -q cp "$cache_gcs_dir/$cupy_kernel_cache_file" .
     if (-not $?) {
         echo "*** Kernel cache unavailable"
     } else {
@@ -26,7 +26,7 @@ function DownloadCache {
     popd
 }
 
-function UploadCache {
+function UploadCache([String]$cupy_kernel_cache_file) {
     # Maximum 1 GB
     echo "Trimming kernel cache..."
     RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 1000000000 --rm
@@ -37,7 +37,7 @@ function UploadCache {
     echo "Compressing kernel cache..."
     RunOrDie 7z a -tzip -mx=0 -mtc=on $cupy_kernel_cache_file .cupy
     echo "Uploading kernel cache..."
-    RunOrDie gsutil -m -q cp $cupy_kernel_cache_file gs://tmp-asia-pfn-public-ci/cupy-ci/
+    RunOrDie gsutil -m -q cp $cupy_kernel_cache_file $cache_gcs_dir/
     popd
 }
 
@@ -67,13 +67,12 @@ function Main {
     # Build
     echo "Setting up test environment"
     RunOrDie python -V
-    RunOrDie python -m pip install -U pip 'setuptools<60'
-    RunOrDie python -m pip install Cython 'scipy<1.7' optuna
+    RunOrDie python -m pip install -U pip setuptools wheel
     RunOrDie python -m pip freeze
 
     echo "Building..."
     $build_retval = 0
-    python -m pip install ".[all,jenkins]" -vvv > cupy_build_log.txt
+    python -m pip install ".[all,test]" -vvv > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
@@ -100,13 +99,13 @@ function Main {
         throw "Unsupported test target: $target"
     }
 
-    $use_cache = ($Env:CUPY_CI_CACHE_KERNEL -eq "1")
-    $upload_cache = -Not (IsPullRequestTest)
+    $base_branch = (Get-Content .pfnci\BRANCH)
+    $is_pull_request = IsPullRequestTest
+    $cache_archive = "windows-cuda${cuda}-${base_branch}.zip"
 
-    if ($use_cache) {
-        DownloadCache
-    }
-    if ($upload_cache) {
+    DownloadCache "${cache_archive}"
+
+    if (-Not $is_pull_request) {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
     }
 
@@ -122,8 +121,8 @@ function Main {
     }
     popd
 
-    if ($use_cache -And $upload_cache) {
-        UploadCache
+    if (-Not $is_pull_request) {
+        UploadCache "${cache_archive}"
     }
 
     echo "Last 10 lines from the test output:"

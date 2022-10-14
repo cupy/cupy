@@ -11,6 +11,7 @@ cdef extern from '../../cupy_backend.h' nogil:
     int cuCtxSetCurrent(Context ctx)
     int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
     int cuCtxDestroy(Context ctx)
+    int cuCtxGetDevice(Device*)
 
     # Module load and kernel execution
     int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
@@ -72,6 +73,9 @@ cdef extern from '../../cupy_backend.h' nogil:
     int cuOccupancyMaxPotentialBlockSize(
         int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize
         block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
+
+    # Stream
+    int cuStreamGetCtx(Stream hStream, Context* pctx)
 
     # Build-time version
     enum: CUDA_VERSION

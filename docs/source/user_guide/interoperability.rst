@@ -7,6 +7,14 @@ CuPy can be used in conjunction with other libraries.
 CUDA functionalities
 --------------------
 
+Device management
+*****************
+
+Under construction. Starting CuPy v10, the ``with Device`` context manager would no longer respect ``cudaSetDevice()``, see :ref:`change in CuPy Device behavior`.
+
+Stream and event management
+***************************
+
 Under construction. For using CUDA streams created in foreign libraries in CuPy, see :ref:`cuda_stream_event`.
 
 

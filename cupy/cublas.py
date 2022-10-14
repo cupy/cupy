@@ -4,6 +4,7 @@ from numpy import linalg
 import warnings
 
 import cupy
+from cupy import _core
 from cupy_backends.cuda.libs import cublas
 from cupy.cuda import device
 from cupy.linalg import _util
@@ -156,7 +157,7 @@ def _iamaxmin(x, out, name):
     if out is None:
         out = result
     elif out.dtype != result_dtype:
-        out[...] = result
+        _core.elementwise_copy(result, out)
     return out
 
 
@@ -189,7 +190,7 @@ def asum(x, out=None):
     if out is None:
         out = result
     elif out.dtype != result_dtype:
-        out[...] = result
+        _core.elementwise_copy(result, out)
     return out
 
 
@@ -245,7 +246,7 @@ def dot(x, y, out=None):
     if out is None:
         out = result
     elif out.dtype != result_dtype:
-        out[...] = result
+        _core.elementwise_copy(result, out)
     return out
 
 
@@ -274,7 +275,7 @@ def dotu(x, y, out=None):
     if out is None:
         out = result
     elif out.dtype != result_dtype:
-        out[...] = result
+        _core.elementwise_copy(result, out)
     return out
 
 
@@ -303,7 +304,7 @@ def dotc(x, y, out=None):
     if out is None:
         out = result
     elif out.dtype != result_dtype:
-        out[...] = result
+        _core.elementwise_copy(result, out)
     return out
 
 
@@ -336,7 +337,7 @@ def nrm2(x, out=None):
     if out is None:
         out = result
     elif out.dtype != result_dtype:
-        out[...] = result
+        _core.elementwise_copy(result, out)
     return out
 
 
@@ -522,7 +523,7 @@ def ger(alpha, x, y, a):
         else:
             aa = a.copy(order='F')
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
-            a[...] = aa
+            _core.elementwise_copy(aa, a)
     finally:
         cublas.setPointerMode(handle, orig_mode)
 
@@ -559,7 +560,7 @@ def geru(alpha, x, y, a):
         else:
             aa = a.copy(order='F')
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
-            a[...] = aa
+            _core.elementwise_copy(aa, a)
     finally:
         cublas.setPointerMode(handle, orig_mode)
 
@@ -594,7 +595,7 @@ def gerc(alpha, x, y, a):
         else:
             aa = a.copy(order='F')
             func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
-            a[...] = aa
+            _core.elementwise_copy(aa, a)
     finally:
         cublas.setPointerMode(handle, orig_mode)
 
@@ -772,7 +773,7 @@ def gemm(transa, transb, a, b, out=None, alpha=1.0, beta=0.0):
     finally:
         cublas.setPointerMode(handle, orig_mode)
     if not out._f_contiguous:
-        out[...] = c
+        _core.elementwise_copy(c, out)
     return out
 
 
@@ -860,7 +861,7 @@ def geam(transa, transb, alpha, a, beta, b, out=None):
     finally:
         cublas.setPointerMode(handle, orig_mode)
     if not out._f_contiguous:
-        out[...] = c
+        _core.elementwise_copy(c, out)
     return out
 
 
@@ -920,7 +921,7 @@ def dgmm(side, a, x, out=None, incx=1):
         func(handle, side, m, n, a.data.ptr, m, x.data.ptr, incx,
              c.data.ptr, m)
         if not out._f_contiguous:
-            out[...] = c
+            _core.elementwise_copy(c, out)
     return out
 
 

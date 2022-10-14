@@ -38,6 +38,9 @@ CUresult cuCtxDestroy(...) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuCtxGetDevice(...) {
+    return CUDA_SUCCESS;
+}
 
 // Module load and kernel execution
 CUresult cuLinkCreate (...) {
@@ -146,6 +149,11 @@ CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
 }
 
 CUresult cuOccupancyMaxPotentialBlockSize(...) {
+    return CUDA_SUCCESS;
+}
+
+// Stream
+CUresult cuStreamGetCtx(...) {
     return CUDA_SUCCESS;
 }
 

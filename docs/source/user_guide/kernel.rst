@@ -576,7 +576,4 @@ The types of local variables are inferred at the first assignment in the functio
 Limitations
 ^^^^^^^^^^^
 
-CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the source code of the target function, so the compiler does not work in the following situations:
-
-* In Python REPL
-* Lambda expressions as target functions
+JIT does not work inside Python's interactive interpreter (REPL) as the compiler needs to get the source code of the target function.

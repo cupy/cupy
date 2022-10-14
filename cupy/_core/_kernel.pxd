@@ -3,7 +3,7 @@ from libcpp cimport vector
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._carray cimport shape_t
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 from cupy.cuda cimport texture
 
@@ -50,7 +50,7 @@ cdef class _ArgInfo:
     cdef _ArgInfo from_arg(object arg)
 
     @staticmethod
-    cdef _ArgInfo from_ndarray(ndarray arg)
+    cdef _ArgInfo from_ndarray(_ndarray_base arg)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg)
@@ -146,7 +146,8 @@ cdef class _Ops:
 
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
-                   default_casting=*, loop_prep=*, out_ops=*, cutensor_op=*)
+                   default_casting=*, loop_prep=*, out_ops=*,
+                   cutensor_op=*, scatter_op=*)
 
 cdef tuple _get_arginfos(list args)
 
@@ -154,14 +155,15 @@ cdef str _get_kernel_params(tuple params, tuple arginfos)
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
-cdef list _get_out_args(list out_args, tuple out_types,
-                        const shape_t& out_shape, casting)
+cdef list _get_out_args_from_optionals(
+    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
+    obj)
 
 cdef list _get_out_args_with_params(
     list out_args, tuple out_types,
     const shape_t& out_shape, tuple out_params, bint is_size_specified)
 
-cdef _check_peer_access(ndarray arr, int device_id)
+cdef _check_peer_access(_ndarray_base arr, int device_id)
 
 cdef list _preprocess_args(int dev_id, args, bint use_c_scalar)
 

@@ -1,13 +1,14 @@
 from distutils import ccompiler
 from distutils import sysconfig
+import os
 import unittest
 
 import pytest
 
-from . import _from_install_import
+from cupy_builder import install_build as build
 
 
-build = _from_install_import('cupy_builder.install_build')
+test_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 
 class TestCheckVersion(unittest.TestCase):
@@ -18,17 +19,7 @@ class TestCheckVersion(unittest.TestCase):
         self.settings = build.get_compiler_setting(False)
 
     @pytest.mark.gpu
-    @pytest.mark.skipif(build.use_hip, reason='For CUDA environment')
-    def test_check_cuda_version(self):
-        with self.assertRaises(RuntimeError):
-            build.get_cuda_version()
-        assert build.check_cuda_version(
-            self.compiler, self.settings)
-        assert isinstance(build.get_cuda_version(), int)
-        assert isinstance(build.get_cuda_version(True), str)
-
-    @pytest.mark.gpu
-    @pytest.mark.skipif(not build.use_hip, reason='For ROCm/HIP environment')
+    @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
     def test_check_hip_version(self):
         with self.assertRaises(RuntimeError):
             build.get_hip_version()
@@ -39,7 +30,7 @@ class TestCheckVersion(unittest.TestCase):
 
     @pytest.mark.gpu
     @pytest.mark.cudnn
-    @pytest.mark.xfail(build.use_hip,
+    @pytest.mark.xfail(test_hip,
                        reason='ROCm/HIP DNN support is not ready')
     def test_check_cudnn_version(self):
         with self.assertRaises(RuntimeError):

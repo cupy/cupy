@@ -1,3 +1,4 @@
+import atexit
 from ctypes import sizeof
 import multiprocessing
 import threading
@@ -10,6 +11,14 @@ from cupyx.distributed import _store_actions
 
 _DEFAULT_HOST = '127.0.0.1'
 _DEFAULT_PORT = 13333
+
+_exit_mode = False
+
+
+@atexit.register
+def _exit():
+    global _exit_mode
+    _exit_mode = True
 
 
 class ExceptionAwareProcess(multiprocessing.Process):
@@ -46,7 +55,8 @@ class TCPStore:
         self._current_barrier = None
 
     def __del__(self):
-        self.stop()
+        if not _exit_mode:
+            self.stop()
 
     def _set_process(self, process):
         self._process = process
@@ -91,6 +101,8 @@ class TCPStore:
         self._process = p
 
     def stop(self):
+        if _exit_mode:
+            return  # Prevent shutdown errors
         if self._process is not None:
             with self._run.get_lock():
                 self._run.value = 0

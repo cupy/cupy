@@ -23,12 +23,12 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.18,<1.24',  # see #4773
+    'numpy>=1.20,<1.26',  # see #4773
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.4,<1.10',  # see #4773
+        'scipy>=1.6,<1.12',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
@@ -37,19 +37,14 @@ extras_require = {
         'flake8==3.8.4',
         'pbr==5.5.1',
         'pycodestyle==2.6.0',
+
+        'mypy==0.950',
+        'types-setuptools==57.4.14',
     ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
-    ],
-    # TODO(kmaehashi): Remove 'jenkins' requirements.
-    'jenkins': [
-        'pytest>=6.2',
-        'pytest-timeout',
-        'pytest-cov',
-        'coveralls',
-        'codecov',
-        'coverage<5',  # Otherwise, Python must be built with sqlite
+        'hypothesis>=6.37.2,<6.55.0',
     ],
 }
 tests_require = extras_require['test']
@@ -82,8 +77,14 @@ package_data = {
 
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
-ext_modules = cupy_setup_build.get_ext_modules(False, ctx)
-build_ext = cupy_setup_build.custom_build_ext
+
+if len(sys.argv) < 2 or sys.argv[1] == 'egg_info':
+    # Extensions are unnecessary for egg_info generation as all sources files
+    # can be enumerated via MANIFEST.in.
+    ext_modules = []
+else:
+    ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
+
 
 # Get __version__ variable
 with open(os.path.join(source_root, 'cupy', '_version.py')) as f:
@@ -140,5 +141,5 @@ setup(
     tests_require=tests_require,
     extras_require=extras_require,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext},
+    cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
 )

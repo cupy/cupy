@@ -196,6 +196,28 @@ class TestMatmulLarge(unittest.TestCase):
         return xp.matmul(x1, x2)
 
 
+@pytest.mark.parametrize('shape1,shape2', [
+    ((256, 256, 3, 2), (256, 256, 2, 4)),
+    ((256, 256, 3, 2), (2, 4)),
+    ((3, 2), (256, 256, 2, 4))
+])
+class TestMatmulIntegralLargeBatch:
+
+    @testing.for_int_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_operator_matmul(self, xp, dtype, shape1, shape2):
+        x1 = testing.shaped_random(shape1, xp, dtype)
+        x2 = testing.shaped_random(shape2, xp, dtype)
+        return operator.matmul(x1, x2)
+
+    @testing.for_int_dtypes(name='dtype')
+    @testing.numpy_cupy_array_equal()
+    def test_cupy_matmul(self, xp, dtype, shape1, shape2):
+        x1 = testing.shaped_random(shape1, xp, dtype)
+        x2 = testing.shaped_random(shape2, xp, dtype)
+        return xp.matmul(x1, x2)
+
+
 class TestMatmulOverflow(unittest.TestCase):
 
     @testing.for_int_dtypes(name='dtype', no_bool=True)

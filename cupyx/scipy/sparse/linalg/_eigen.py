@@ -7,7 +7,7 @@ from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusparse as _cusparse
-from cupyx.scipy.sparse import csr
+from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
 
@@ -98,13 +98,17 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     beta_k = beta[-1] * s[-1, :]
     res = cublas.nrm2(beta_k)
 
+    uu = cupy.empty((k,), dtype=a.dtype)
+
     while res > tol and iter < maxiter:
         # Setup for thick-restart
         beta[:k] = 0
         alpha[:k] = w
         V[:k] = x.T
 
-        u -= u.T @ V[:k].conj().T @ V[:k]
+        # u -= u.T @ V[:k].conj().T @ V[:k]
+        cublas.gemv(_cublas.CUBLAS_OP_C, 1, V[:k].T, u, 0, uu)
+        cublas.gemv(_cublas.CUBLAS_OP_N, -1, V[:k].T, uu, 1, u)
         V[k] = u / cublas.nrm2(u)
 
         u[...] = a @ V[k]
@@ -149,24 +153,24 @@ def _lanczos_fast(A, n, ncv):
     if A.dtype.char == 'f':
         dotc = _cublas.sdot
         nrm2 = _cublas.snrm2
-        gemm = _cublas.sgemm
+        gemv = _cublas.sgemv
     elif A.dtype.char == 'd':
         dotc = _cublas.ddot
         nrm2 = _cublas.dnrm2
-        gemm = _cublas.dgemm
+        gemv = _cublas.dgemv
     elif A.dtype.char == 'F':
         dotc = _cublas.cdotc
         nrm2 = _cublas.scnrm2
-        gemm = _cublas.cgemm
+        gemv = _cublas.cgemv
     elif A.dtype.char == 'D':
         dotc = _cublas.zdotc
         nrm2 = _cublas.dznrm2
-        gemm = _cublas.zgemm
+        gemv = _cublas.zgemv
     else:
         raise TypeError('invalid dtype ({})'.format(A.dtype))
 
     cusparse_handle = None
-    if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+    if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
         cusparse_handle = device.get_cusparse_handle()
         spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         spmv_alpha = numpy.array(1.0, A.dtype)
@@ -221,14 +225,16 @@ def _lanczos_fast(A, n, ncv):
                 _cublas.setPointerMode(cublas_handle, cublas_pointer_mode)
 
             # Orthogonalize
-            gemm(cublas_handle, _cublas.CUBLAS_OP_C, _cublas.CUBLAS_OP_N,
-                 1, i + 1, n,
-                 one.ctypes.data, u.data.ptr, n, V.data.ptr, n,
+            gemv(cublas_handle, _cublas.CUBLAS_OP_C,
+                 n, i + 1,
+                 one.ctypes.data, V.data.ptr, n,
+                 u.data.ptr, 1,
                  zero.ctypes.data, uu.data.ptr, 1)
-            gemm(cublas_handle, _cublas.CUBLAS_OP_N, _cublas.CUBLAS_OP_C,
-                 n, 1, i + 1,
-                 mone.ctypes.data, V.data.ptr, n, uu.data.ptr, 1,
-                 one.ctypes.data, u.data.ptr, n)
+            gemv(cublas_handle, _cublas.CUBLAS_OP_N,
+                 n, i + 1,
+                 mone.ctypes.data, V.data.ptr, n,
+                 uu.data.ptr, 1,
+                 one.ctypes.data, u.data.ptr, 1)
 
             # Call nrm2
             _cublas.setPointerMode(

@@ -110,9 +110,7 @@ cdef class Memory(BaseMemory):
 cdef inline void check_async_alloc_supported(int device_id) except*:
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
     cdef list support
@@ -407,7 +405,10 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if runtime.streamIsCapturing(stream_ptr):
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -451,7 +452,10 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if runtime.streamIsCapturing(stream_ptr):
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -475,7 +479,10 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
-        if runtime.streamIsCapturing(stream_ptr):
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
             raise RuntimeError(
                 'the current stream is capturing, so H2D transfers '
                 'are disallowed')
@@ -543,7 +550,10 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if runtime.streamIsCapturing(stream_ptr):
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -567,7 +577,10 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
-        if runtime.streamIsCapturing(stream_ptr):
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
             raise RuntimeError(
                 'the current stream is capturing, so D2H transfers '
                 'are disallowed')
@@ -591,7 +604,10 @@ cdef class MemoryPointer:
 
         """
         stream_ptr = stream_module.get_current_stream_ptr()
-        if runtime.streamIsCapturing(stream_ptr):
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
             raise RuntimeError(
                 'the current stream is capturing, so synchronous API calls '
                 'are disallowed')
@@ -1582,33 +1598,32 @@ cdef class MemoryAsyncPool:
 
     def __init__(self, pool_handles='current'):
         _util.experimental('cupy.cuda.MemoryAsyncPool')
-        cdef int dev_id, dev_counts
+        cdef int dev_id, prev_dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
         self._pools = []
         self.memoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
+        prev_dev_id = runtime.getDevice()
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
                 finally:
-                    runtime.setDevice(dev_id)
+                    runtime.setDevice(prev_dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
                 finally:
-                    runtime.setDevice(dev_id)
+                    runtime.setDevice(prev_dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool

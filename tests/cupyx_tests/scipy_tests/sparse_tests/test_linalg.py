@@ -1139,6 +1139,7 @@ class TestLOBPCG:
         output = saved_stdout.getvalue().strip()
         return output
 
+    @testing.with_requires('scipy>=1.8.0rc1')
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs
            and is identical to scipy's output format.
@@ -1155,8 +1156,9 @@ class TestLOBPCG:
                                                cupy: %s''' % (stdout_numpy,
                                                               stdout_cupy)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-3, sp_name='sp',
-                                 contiguous_check=False)
+    @testing.numpy_cupy_allclose(
+        rtol=1e-5, atol=5e-3 if runtime.is_hip else 1e-3, sp_name='sp',
+        contiguous_check=False)
     def test_random_initial_float32(self, xp, sp):
         """Check lobpcg in float32 for specific initial.
         """
@@ -1170,19 +1172,33 @@ class TestLOBPCG:
                                          verbosityLevel=1)
         return eigvals, _eigen_vec_transform(vecs, xp)
 
+    @pytest.mark.xfail(
+        runtime.is_hip and driver.get_build_version() >= 5_00_00000,
+        reason='ROCm 5.0+ may have a bug')
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should
         be the number of iterations plus 2 (initial and final values).
         """
+        def make(xp, sp):
+            vals = -xp.arange(1, n + 1)
+            A = sp.diags([vals], [0], (n, n))
+            A = A.astype(xp.float32)
+            X = testing.shaped_random((n, m), xp=xp, seed=1566950023)
+            return A, X
         n = 50
         m = 4
-        vals = -cupy.arange(1, n + 1)
-        A = sparse.diags([vals], [0], (n, n))
-        A = A.astype(cupy.float32)
-        X = testing.shaped_random((n, m), xp=cupy, seed=1566950023)
-        _, _, l_h = sparse.linalg.lobpcg(A, X, tol=1e-8, maxiter=None,
-                                         retLambdaHistory=True)
+        A, X = make(cupy, sparse)
+        w, _, l_h = sparse.linalg.lobpcg(
+            A, X, tol=1e-8, maxiter=None, retLambdaHistory=True)
+
+        # Assert the eigenavlues against SciPy
+        A_np, X_np = make(numpy, scipy.sparse)
+        w_np, _ = scipy.sparse.linalg.lobpcg(
+            A_np, X_np, tol=1e-8, maxiter=None)
+        testing.assert_allclose(w, w_np, rtol=1e-5)
+
+        # Assert the number of iterations
         assert len(l_h) == 22
 
 

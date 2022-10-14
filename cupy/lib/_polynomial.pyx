@@ -2,7 +2,7 @@ import numbers
 
 import numpy
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 import cupy
 from cupy.lib import _routines_poly
@@ -31,7 +31,7 @@ cdef class poly1d:
     __hash__ = None
 
     cdef:
-        readonly ndarray _coeffs
+        readonly _ndarray_base _coeffs
         readonly str _variable
         readonly bint _trimmed
 
@@ -90,9 +90,8 @@ cdef class poly1d:
             if variable is not None:
                 self._variable = variable
             return
-        # TODO(Dahlia-Chehata): if r: c_or_r = poly(c_or_r)
         if r:
-            raise NotImplementedError
+            c_or_r = _routines_poly.poly(c_or_r)
         c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
@@ -102,9 +101,8 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
-    @property
-    def __cuda_array_interface__(self):
-        return self.coeffs.__cuda_array_interface__
+    def __cupy_get_ndarray__(self):
+        return self.coeffs
 
     def __array__(self, dtype=None):
         raise TypeError(

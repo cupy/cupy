@@ -17,8 +17,6 @@ __host__ __device__ inline complex<T> pow(const complex<T>& z, const T& exponent
 
 template <typename T>
 __host__ __device__ inline complex<T> pow(const T& x, const complex<T>& exponent) {
-  // Find `log` by ADL.
-  using std::log;
   return exp(log(T(x)) * complex<T>(exponent));
 }
 

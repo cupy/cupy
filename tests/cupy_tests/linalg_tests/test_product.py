@@ -476,7 +476,7 @@ class TestMatrixPower(unittest.TestCase):
 class TestMatrixPowerBatched:
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol=5e-5)
     def test_matrix_power_batched(self, xp, dtype, shape, n):
         a = testing.shaped_arange(shape, xp, dtype)
         a += xp.identity(shape[-1], dtype)

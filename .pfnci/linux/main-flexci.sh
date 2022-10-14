@@ -17,23 +17,21 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 fi
 
-# TODO(kmaehashi): Hack for CUDA 11.5 until FlexCI base image update
-if [[ "${TARGET}" == cuda115* ]]; then
-    if [[ $(dpkg -s cuda-drivers | grep Version: | cut -d ' ' -f 2) == 470.* ]]; then
-        add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
-        apt-get purge -qqy "cuda-drivers*" "*nvidia*-470"
-        apt-get install -qqy "cuda-drivers"
-        modprobe -r nvidia_drm nvidia_uvm nvidia_modeset nvidia
-        nvidia-smi
-    fi
-fi
+# TODO(kmaehashi): Hack for CUDA 11.6+ until FlexCI base image update
+.pfnci/linux/update-cuda-driver.sh
 
-gcloud auth configure-docker
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 echo "Starting: "${TARGET}""
 echo "****************************************************************************************************"
-CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" cache_get build test 2>&1 | tee "${LOG_FILE}"
+
+STAGES="cache_get build test"
+if [[ "${TARGET}" == "benchmark" ]]; then
+    STAGES="cache_get build benchmark"
+fi
+BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
+
 echo "****************************************************************************************************"
 echo "Build & Test: Exit with status ${test_retval}"
 

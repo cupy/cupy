@@ -1,4 +1,4 @@
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
@@ -7,6 +7,6 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
     int device_ROCM 'kDLROCM'
 
 
-cpdef object toDlpack(ndarray array) except +
-cpdef ndarray fromDlpack(object dltensor) except +
+cpdef object toDlpack(_ndarray_base array) except +
+cpdef _ndarray_base fromDlpack(object dltensor) except +
 cpdef from_dlpack(array)

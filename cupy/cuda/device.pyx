@@ -36,10 +36,10 @@ cdef class _ThreadLocalStack:
             _thread_local._device_stack = stack
         return <_ThreadLocalStack>stack
 
-    cdef void push_device(self, int device_id) except *:
+    cdef void enter_device(self, int device_id) except *:
         self._devices.append(device_id)
 
-    cdef int pop_device(self) except -1:
+    cdef int exit_device(self) except -1:
         self._devices.pop()
         return <int>self._devices[-1]
 
@@ -182,11 +182,11 @@ cdef class Device:
         # codebase. See #5943 and #5963.
         if self.id != runtime.getDevice():
             runtime.setDevice(self.id)
-        _ThreadLocalStack.get().push_device(self.id)
+        _ThreadLocalStack.get().enter_device(self.id)
         return self
 
     def __exit__(self, *args):
-        cdef int prev_device = _ThreadLocalStack.get().pop_device()
+        cdef int prev_device = _ThreadLocalStack.get().exit_device()
         if prev_device != runtime.getDevice():
             runtime.setDevice(prev_device)
 

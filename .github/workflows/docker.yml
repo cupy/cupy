@@ -7,36 +7,60 @@ on:
     paths:
       - docker/**
       - .github/workflows/docker.yml
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag of the docker image to push"
+        required: true
+        default: "vX.X.X"
+      prerelease:
+        description: "Pre-Release (do not push latest tag)"
+        type: boolean
 
 jobs:
   docker-build-push:
     if: |
         github.repository_owner == 'cupy' ||
         github.event_name != 'release'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - context: "docker/python3"
+            base: "cupy/cupy"
+          - context: "docker/rocm"
+            base: "cupy/cupy-rocm"
     env:
-      DOCKER_TAG_NAME: ${{ (github.event_name == 'release' && github.event.release.tag_name) || 'pull-request-test' }}
+      DOCKER_TAG_NAME: |
+        ${{
+          (github.event_name == 'release' && github.event.release.tag_name) ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name) ||
+          'pull-request-test'
+        }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Login to DockerHub
-      if: github.event_name == 'release'
+      if: github.event_name != 'pull_request'
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Docker Build & Push (docker/python3)
+    - name: Docker Build & Push (version tag)
       uses: docker/build-push-action@v2
       with:
-        context: docker/python3
-        tags: cupy/cupy:${{ env.DOCKER_TAG_NAME }}
-        push: ${{ github.event_name == 'release' }}
+        context: ${{ matrix.context }}
+        tags: ${{ matrix.base }}:${{ env.DOCKER_TAG_NAME }}
+        push: ${{ github.event_name != 'pull_request' }}
 
-    - name: Docker Build & Push (docker/rocm)
+    - name: Docker Build & Push (latest tag)
+      if: |
+          (github.event_name == 'release' && ! github.event.release.prerelease) ||
+          (github.event_name == 'workflow_dispatch' && ! github.event.inputs.prerelease)
       uses: docker/build-push-action@v2
       with:
-        context: docker/rocm
-        tags: cupy/cupy-rocm:${{ env.DOCKER_TAG_NAME }}
-        push: ${{ github.event_name == 'release' }}
+        context: ${{ matrix.context }}
+        tags: ${{ matrix.base }}:latest
+        push: ${{ github.event_name != 'pull_request' }}

@@ -1,7 +1,7 @@
 from libc.stdint cimport intptr_t
 
-from cupy_backends.cuda.api.runtime cimport _is_hip_environment
-from cupy._core.core cimport ndarray
+from cupy_backends.cuda.api cimport runtime
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda.device cimport get_compute_capability
 
 import hashlib
@@ -89,7 +89,7 @@ cdef inline void _set_vars() except*:
         if not os.path.isfile(_nvprune):
             _nvprune = None
 
-    _build_ver = str(CUPY_CUDA_VERSION)
+    _build_ver = str(runtime.runtimeGetVersion())
     _cufft_ver = get_cufft_version()
     _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
@@ -132,8 +132,8 @@ cdef inline void _set_nvcc_path() except*:
 
 cdef inline void _sanity_checks(
         str cb_load, str cb_store,
-        ndarray cb_load_aux_arr, ndarray cb_store_aux_arr) except*:
-    if _is_hip_environment:
+        _ndarray_base cb_load_aux_arr, _ndarray_base cb_store_aux_arr) except*:
+    if runtime._is_hip_environment:
         raise RuntimeError('hipFFT does not support callbacks')
     if not sys.platform.startswith('linux'):
         raise RuntimeError('cuFFT callbacks are only available on Linux')
@@ -199,7 +199,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
 # other SMs always use sm_X0's symbols only and do not have their own
 # specializations.
 cdef dict _cc_major_map = {
-    '8': ('80', '86'),
+    '8': ('80', '86', '87'),
     '7': ('70', '72', '75'),
     '6': ('60', '61', '62'),
     '5': ('50', '52', '53'),
@@ -327,15 +327,15 @@ cdef class _CallbackManager:
     cdef:
         readonly str cb_load
         readonly str cb_store
-        readonly ndarray cb_load_aux_arr
-        readonly ndarray cb_store_aux_arr
+        readonly _ndarray_base cb_load_aux_arr
+        readonly _ndarray_base cb_store_aux_arr
         object mod
 
     def __init__(self,
                  str cb_load='',
                  str cb_store='',
-                 ndarray cb_load_aux_arr=None,
-                 ndarray cb_store_aux_arr=None):
+                 _ndarray_base cb_load_aux_arr=None,
+                 _ndarray_base cb_store_aux_arr=None):
         if not _is_init:
             _set_vars()
         _sanity_checks(cb_load, cb_store,
@@ -434,8 +434,8 @@ cdef class _CallbackManager:
             follow.
 
         '''
-        cdef ndarray cb_load_aux_arr = self.cb_load_aux_arr
-        cdef ndarray cb_store_aux_arr = self.cb_store_aux_arr
+        cdef _ndarray_base cb_load_aux_arr = self.cb_load_aux_arr
+        cdef _ndarray_base cb_store_aux_arr = self.cb_store_aux_arr
         cdef intptr_t cb_load_ptr=0, cb_store_ptr=0
 
         fft_type = plan.fft_type
@@ -472,8 +472,8 @@ cdef class _CallbackManager:
                 plan.handle, cb_store_type, False, cb_store_ptr)
 
     cdef set_caller_infos(self,
-                          ndarray cb_load_aux_arr=None,
-                          ndarray cb_store_aux_arr=None):
+                          _ndarray_base cb_load_aux_arr=None,
+                          _ndarray_base cb_store_aux_arr=None):
         '''Set the auxilliary arrays to be used by the load/store callbacks.
         Corresponding to the ``callerInfo`` field in cuFFT's callback API.
 
@@ -572,8 +572,8 @@ cdef class set_cufft_callbacks:
                  str cb_load='',
                  str cb_store='',
                  *,
-                 ndarray cb_load_aux_arr=None,
-                 ndarray cb_store_aux_arr=None):
+                 _ndarray_base cb_load_aux_arr=None,
+                 _ndarray_base cb_store_aux_arr=None):
         # For every distinct pair of load & store callbacks, we compile an
         # external Python module and cache it.
         cdef tuple key = (cb_load, cb_store)

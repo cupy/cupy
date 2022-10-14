@@ -134,5 +134,5 @@ class TestCompileWithCache:
         compiler._compile_module_with_cache('__device__ void func() {}')
 
     def test_deprecated_compile_with_cache(self):
-        with pytest.warns(DeprecationWarning):
+        with pytest.warns(UserWarning):
             compiler.compile_with_cache('__device__ void func() {}')

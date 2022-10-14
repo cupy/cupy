@@ -1,5 +1,6 @@
 import contextlib
 import inspect
+from typing import Callable
 import unittest
 from unittest import mock
 import warnings
@@ -16,7 +17,7 @@ from cupy.testing._pytest_impl import is_available
 
 if is_available():
     import pytest
-    _skipif = pytest.mark.skipif
+    _skipif: Callable[..., Callable[[Callable], Callable]] = pytest.mark.skipif
 else:
     _skipif = unittest.skipIf
 
@@ -39,19 +40,27 @@ def with_requires(*requirements):
             run a given test case.
 
     """
+    msg = 'requires: {}'.format(','.join(requirements))
+    return _skipif(not installed(requirements), reason=msg)
+
+
+def installed(*specifiers):
+    """Returns True if the current environment satisfies the specified
+    package requirement.
+
+    Args:
+        specifiers: Version specifiers (e.g., `numpy>=1.20.0`).
+    """
     # Delay import of pkg_resources because it is excruciatingly slow.
     # See https://github.com/pypa/setuptools/issues/510
     import pkg_resources
 
-    ws = pkg_resources.WorkingSet()
-    try:
-        ws.require(*requirements)
-        skip = False
-    except pkg_resources.ResolutionError:
-        skip = True
-
-    msg = 'requires: {}'.format(','.join(requirements))
-    return _skipif(skip, reason=msg)
+    for spec in specifiers:
+        try:
+            pkg_resources.require(spec)
+        except pkg_resources.ResolutionError:
+            return False
+    return True
 
 
 def numpy_satisfies(version_range):
@@ -60,16 +69,7 @@ def numpy_satisfies(version_range):
     Args:
         version_range: A version specifier (e.g., `>=1.13.0`).
     """
-    # Delay import of pkg_resources because it is excruciatingly slow.
-    # See https://github.com/pypa/setuptools/issues/510
-    import pkg_resources
-
-    spec = 'numpy{}'.format(version_range)
-    try:
-        pkg_resources.require(spec)
-    except pkg_resources.VersionConflict:
-        return False
-    return True
+    return installed('numpy{}'.format(version_range))
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32, order='C'):

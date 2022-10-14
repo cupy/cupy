@@ -1,15 +1,13 @@
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
-cpdef ndarray _ndarray_argwhere(ndarray self)
-cdef ndarray _ndarray_getitem(ndarray self, slices)
-cdef _ndarray_setitem(ndarray self, slices, value)
-cdef tuple _ndarray_nonzero(ndarray self)
-cdef _ndarray_scatter_add(ndarray self, slices, value)
-cdef _ndarray_scatter_max(ndarray self, slices, value)
-cdef _ndarray_scatter_min(ndarray self, slices, value)
-cdef ndarray _ndarray_take(ndarray self, indices, axis, out)
-cdef ndarray _ndarray_put(ndarray self, indices, values, mode)
-cdef ndarray _ndarray_choose(ndarray self, choices, out, mode)
-cdef ndarray _ndarray_compress(ndarray self, condition, axis, out)
-cdef ndarray _ndarray_diagonal(ndarray self, offset, axis1, axis2)
+cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self)
+cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices)
+cdef _ndarray_setitem(_ndarray_base self, slices, value)
+cdef tuple _ndarray_nonzero(_ndarray_base self)
+cdef _scatter_op(_ndarray_base a, slices, value, op)
+cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out)
+cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode)
+cdef _ndarray_base _ndarray_choose(_ndarray_base self, choices, out, mode)
+cdef _ndarray_base _ndarray_compress(_ndarray_base self, condition, axis, out)
+cdef _ndarray_base _ndarray_diagonal(_ndarray_base self, offset, axis1, axis2)
