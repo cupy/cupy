@@ -1608,6 +1608,10 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_add` for full documentation.
 
         """
+        warnings.warn(
+            '`ndarray.scatter_add` is deprecated. '
+            'Please use `cupy.add.at` instead.',
+            DeprecationWarning)
         self._scatter_op(slices, value, 'add')
 
     def scatter_max(self, slices, value):
@@ -1617,6 +1621,10 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_max` for full documentation.
 
         """
+        warnings.warn(
+            '`ndarray.scatter_max` is deprecated ',
+            'Please use `cupy.maximum.at` instead.',
+            DeprecationWarning)
         self._scatter_op(slices, value, 'max')
 
     def scatter_min(self, slices, value):
@@ -1626,6 +1634,10 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_min` for full documentation.
 
         """
+        warnings.warn(
+            '`ndarray.scatter_min` is deprecated ',
+            'Please use `cupy.minimum.at` instead.',
+            DeprecationWarning)
         self._scatter_op(slices, value, 'min')
 
     def _scatter_op(self, slices, value, op):
