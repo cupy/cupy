@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:5.1.3"
+ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:5.3"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -30,10 +30,10 @@ ENV LDFLAGS "-L${ROCM_HOME}/lib"
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.9.6 && \
-    pyenv global 3.9.6 && \
+RUN pyenv install 3.10.0 && \
+    pyenv global 3.10.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.23.*' 'scipy==1.8.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.23.*' 'scipy==1.9.*' 'optuna==2.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
