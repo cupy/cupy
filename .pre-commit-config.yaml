@@ -42,7 +42,7 @@ repos:
         name: "mypy (install)"
         files: "^install/"
         args: [--config-file, "install/mypy.ini"]
-        additional_dependencies: [numpy, types-setuptools==57.4.14]
+        additional_dependencies: [numpy, types-setuptools==57.4.14, types-PyYAML]
 
 -   repo: local
     hooks:
