@@ -156,7 +156,7 @@ def main(argv: Any) -> int:
             return 0
         if len(requested_tags - set(options.external_tag)) == 0:
             _log('All tests requested are not for FlexCI')
-            return 0
+            requested_tags = {'skip'}
 
         # Note: this is not for security but to show a friendly message.
         # FlexCI server also validates the membership of the user triggered.
