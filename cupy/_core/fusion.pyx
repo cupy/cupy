@@ -1,6 +1,6 @@
 from cupy._core cimport _accelerator
 from cupy._core._accelerator cimport ACCELERATOR_CUB
-from cupy._core._scalar cimport get_typename
+from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
 
 import functools
 import string
@@ -114,23 +114,8 @@ class _FusionVarCUDA(object):
         if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
 
-        if isinstance(val, bool):
-            init = '= {}'.format(str(c).lower())
-        elif isinstance(val, complex):
-            init = '({}, {})'.format(c.real, c.imag)
-        elif isinstance(val, (int, float)):
-            if numpy.isnan(val):
-                init = '= __int_as_float(0x7f800001)'
-            elif numpy.isinf(val):
-                if val > 0:
-                    init = '= __int_as_float(0x7f800000)'
-                else:
-                    init = '= __int_as_float(0xff800000)'
-            else:
-                init = '= {}'.format(c)
-        else:
-            raise TypeError('Invalid constant type: {}'.format(type(c)))
-        return 'const {} v{} {};\n'.format(ctype, self.index, init)
+        code = _get_cuda_scalar_repr(val, self.dtype)
+        return 'const {} v{} = {};\n'.format(ctype, self.index, code)
 
     def declaration_in_param(self):
         non_const = '_non_const ' if self.mutable else ''
