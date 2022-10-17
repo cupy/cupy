@@ -13,7 +13,6 @@ Bessel functions
 
    j0
    j1
-   jn
    k0
    k0e
    k1
