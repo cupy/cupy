@@ -9,6 +9,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        # Checkout using commit hash to make "no-commit-to-branch" test pass.
+        ref: ${{ github.sha }}
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -25,7 +28,7 @@ jobs:
     - name: Check
       run: |
         pip install pre-commit
-        SKIP="no-commit-to-branch" pre-commit run -a --show-diff-on-failure
+        pre-commit run -a --show-diff-on-failure
 
   build-cuda:
     runs-on: ubuntu-22.04
