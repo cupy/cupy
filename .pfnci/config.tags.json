@@ -171,9 +171,15 @@
     "cupy.win.cuda117": [
         "@push",
         "full",
-        "mini",
         "windows",
         "cuda117"
+    ],
+    "cupy.win.cuda118": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda118"
     ],
     "cupy.linux.cuda-rapids": [
         "@push",
