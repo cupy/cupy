@@ -123,6 +123,9 @@ def parse_args(argv: Any) -> Any:
     parser.add_argument(
         '--flexci-context', type=str, default='pfn-public-ci',
         help='Context prefix of the FlexCI server (default: %(default)s)')
+    parser.add_argument(
+        '--external-tag', action='append', default=[],
+        help='Test tags to be ignored by FlexCI Dispatcher')
     return parser.parse_args(argv[1:])
 
 
@@ -151,7 +154,12 @@ def main(argv: Any) -> int:
         if requested_tags is None:
             _log('No test requested in comment.')
             return 0
+        if len(requested_tags - set(options.external_tag)) == 0:
+            _log('All tests requested are not for FlexCI')
+            return 0
 
+        # Note: this is not for security but to show a friendly message.
+        # FlexCI server also validates the membership of the user triggered.
         association = payload['comment']['author_association']
         if association not in ('OWNER', 'MEMBER'):
             _log(f'Tests cannot be triggered by {association}')
@@ -165,11 +173,12 @@ def main(argv: Any) -> int:
     projects_dispatch: Set[str] = set()
     projects_skip: Set[str] = set()
     for project, tags in project_tags.items():
-        _log(f'Project: {project} (tags: {tags})')
-        if len(set(tags) & requested_tags) != 0:
+        dispatch = (len(set(tags) & requested_tags) != 0)
+        if dispatch:
             projects_dispatch.add(project)
         else:
             projects_skip.add(project)
+        _log(f'Project: {"✅" if dispatch else "🚫"} {project} (tags: {tags})')
 
     if len(projects_dispatch) == 0:
         if requested_tags == {'skip'}:
