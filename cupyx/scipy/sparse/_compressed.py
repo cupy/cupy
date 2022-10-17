@@ -14,7 +14,7 @@ import cupyx
 from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
-from cupy import cusparse
+from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _data as sparse_data

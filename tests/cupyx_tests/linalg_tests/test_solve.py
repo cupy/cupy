@@ -5,7 +5,7 @@ import pytest
 
 import cupy
 from cupy.cuda import runtime
-from cupy import cusolver
+from cupyx import cusolver
 from cupy import testing
 import cupyx
 

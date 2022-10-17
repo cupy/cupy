@@ -7,7 +7,7 @@ import cupy
 from cupy import testing
 from cupy.testing import _attr
 import cupyx
-from cupyx import lapack
+from cupyx import cusolver, lapack
 
 
 @testing.parameterize(*testing.product({
@@ -115,7 +115,7 @@ class TestGels(unittest.TestCase):
 class TestPosv(unittest.TestCase):
 
     def setUp(self):
-        if not cupy.cusolver.check_availability('potrsBatched'):
+        if not cusolver.check_availability('potrsBatched'):
             pytest.skip('potrsBatched is not available')
 
     @testing.for_dtypes('fdFD')
@@ -153,7 +153,7 @@ class TestPosv(unittest.TestCase):
 class TestXFailBatchedPosv(unittest.TestCase):
 
     def test_posv(self):
-        if not cupy.cusolver.check_availability('potrsBatched'):
+        if not cusolver.check_availability('potrsBatched'):
             pytest.skip('potrsBatched is not available')
         a = self._create_posdef_matrix(cupy, self.shape, self.dtype)
         n = a.shape[-1]
