@@ -27,7 +27,7 @@ jobs:
         pip install pre-commit
         SKIP="no-commit-to-branch" pre-commit run -a --show-diff-on-failure
 
-  cuda-build:
+  build-cuda:
     runs-on: ubuntu-22.04
     env:
       CUPY_CI: GitHub
@@ -73,7 +73,7 @@ jobs:
         SPHINXOPTS="-W --keep-going -j 4" make html
         popd
 
-  rocm-build:
+  build-rocm:
     runs-on: ubuntu-22.04
 
     steps:
