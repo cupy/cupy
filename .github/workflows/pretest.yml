@@ -25,9 +25,12 @@ jobs:
         path: ~/.cache
         key: static-checks-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
-    - name: Check
+    - name: Setup pre-commit
       run: |
         pip install pre-commit
+
+    - name: Check
+      run: |
         pre-commit run -a --show-diff-on-failure
 
   build-cuda:
