@@ -119,7 +119,15 @@ class _FusionVarCUDA(object):
         elif isinstance(val, complex):
             init = '({}, {})'.format(c.real, c.imag)
         elif isinstance(val, (int, float)):
-            init = '= {}'.format(c)
+            if numpy.isnan(val):
+                init = '= __int_as_float(0x7f800001)'
+            elif numpy.isinf(val):
+                if val > 0:
+                    init = '= __int_as_float(0x7f800000)'
+                else:
+                    init = '= __int_as_float(0xff800000)'
+            else:
+                init = '= {}'.format(c)
         else:
             raise TypeError('Invalid constant type: {}'.format(type(c)))
         return 'const {} v{} {};\n'.format(ctype, self.index, init)
