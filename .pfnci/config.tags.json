@@ -92,13 +92,11 @@
     "cupy.linux.cuda117": [
         "@push",
         "full",
-        "mini",
         "cuda117"
     ],
     "cupy.linux.cuda117.multi": [
         "@push",
         "full",
-        "mini",
         "multi",
         "cuda117"
     ],
