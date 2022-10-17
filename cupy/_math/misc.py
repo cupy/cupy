@@ -288,7 +288,7 @@ maximum = _core.create_ufunc(
     .. seealso:: :data:`numpy.maximum`
 
     ''',
-    cutensor_op=('OP_MAX', 1, 1))
+    cutensor_op=('OP_MAX', 1, 1), scatter_op='max')
 
 
 _float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
@@ -311,7 +311,7 @@ minimum = _core.create_ufunc(
     .. seealso:: :data:`numpy.minimum`
 
     ''',
-    cutensor_op=('OP_MIN', 1, 1))
+    cutensor_op=('OP_MIN', 1, 1), scatter_op='min')
 
 
 fmax = _core.create_ufunc(

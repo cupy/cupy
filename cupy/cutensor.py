@@ -4,5 +4,5 @@ from cupyx.cutensor import *  # NOQA
 
 
 warnings.warn(
-    'cupy.cusparse is deprecated. Use cupyx.cusparse instead',
+    'cupy.cutensor is deprecated. Use cupyx.cutensor instead',
     DeprecationWarning)

@@ -22,6 +22,7 @@ Distance matrix computation from a collection of raw observation vectors stored 
 .. autosummary::
    :toctree: generated/
 
+   pdist
    cdist
    distance_matrix
 

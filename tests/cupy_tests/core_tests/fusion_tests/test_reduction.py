@@ -208,3 +208,27 @@ class TestFusionMultistageReductionsMultiAxis(unittest.TestCase):
     @fusion_utils.check_fusion()
     def test_multistage_reductions(self, xp):
         return lambda x: x.prod(axis=(-1, 1)).sum(axis=(0, 1))
+
+
+@testing.gpu
+class TestFusionReductionRoutines(unittest.TestCase):
+
+    def generate_inputs(self, xp):
+        x = testing.shaped_random((30,), xp, 'int64', scale=10, seed=0)
+        return (x,), {}
+
+    @fusion_utils.check_fusion()
+    def test_sum(self, xp):
+        return lambda x: xp.sum(x)
+
+    @fusion_utils.check_fusion()
+    def test_prod(self, xp):
+        return lambda x: xp.prod(x)
+
+    @fusion_utils.check_fusion()
+    def test_nansum(self, xp):
+        return lambda x: xp.nansum(x)
+
+    @fusion_utils.check_fusion()
+    def test_nanprod(self, xp):
+        return lambda x: xp.nanprod(x)

@@ -942,6 +942,18 @@ cdef class _ndarray_base:
         """
         return _sorting._ndarray_argpartition(self, kth, axis)
 
+    def searchsorted(self, v, side='left', sorter=None):
+        """Finds indices where elements of v should be inserted to maintain order.
+
+        For full documentation, see :func:`cupy.searchsorted`
+
+        Returns:
+
+        .. seealso:: :func:`numpy.searchsorted`
+
+        """
+        return cupy.searchsorted(self, v, side, sorter)
+
     cpdef tuple nonzero(self):
         """Return the indices of the elements that are non-zero.
 
@@ -1596,7 +1608,11 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_add` for full documentation.
 
         """
-        _indexing._ndarray_scatter_add(self, slices, value)
+        warnings.warn(
+            '`ndarray.scatter_add` is deprecated. '
+            'Please use `cupy.add.at` instead.',
+            DeprecationWarning)
+        self._scatter_op(slices, value, 'add')
 
     def scatter_max(self, slices, value):
         """Stores a maximum value of elements specified by indices to an array.
@@ -1605,7 +1621,11 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_max` for full documentation.
 
         """
-        _indexing._ndarray_scatter_max(self, slices, value)
+        warnings.warn(
+            '`ndarray.scatter_max` is deprecated ',
+            'Please use `cupy.maximum.at` instead.',
+            DeprecationWarning)
+        self._scatter_op(slices, value, 'max')
 
     def scatter_min(self, slices, value):
         """Stores a minimum value of elements specified by indices to an array.
@@ -1614,7 +1634,14 @@ cdef class _ndarray_base:
             :func:`cupyx.scatter_min` for full documentation.
 
         """
-        _indexing._ndarray_scatter_min(self, slices, value)
+        warnings.warn(
+            '`ndarray.scatter_min` is deprecated ',
+            'Please use `cupy.minimum.at` instead.',
+            DeprecationWarning)
+        self._scatter_op(slices, value, 'min')
+
+    def _scatter_op(self, slices, value, op):
+        _indexing._scatter_op(self, slices, value, op)
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
@@ -2553,6 +2580,9 @@ cdef tuple _compute_concat_info_impl(obj):
 
     if isinstance(obj, (numpy.ndarray, ndarray)):
         return obj.shape, type(obj), obj.dtype
+
+    if hasattr(obj, '__cupy_get_ndarray__'):
+        return obj.shape, ndarray, obj.dtype
 
     if isinstance(obj, (list, tuple)):
         dim = len(obj)

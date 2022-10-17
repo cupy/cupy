@@ -331,46 +331,23 @@
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
-# ROCm 5.1 | Linux
-- project: "cupy.linux.rocm-5-1"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-1,label=mnj-mi50/"
-  tags: null  # Jenkins
-  target: "rocm-5-1"
-  system: "linux"
-  os: "ubuntu:20.04"
-  cuda: null
-  rocm: '5.1'
-  nccl: null
-  cutensor: null
-  cusparselt: null
-  cudnn: null
-  python: "3.9"
-  numpy: "1.23"
-  scipy: "1.8"
-  optuna: "2"
-  mpi4py: null
-  cython: "0.29"
-  cuda-python: null
-  env:CUPY_ACCELERATORS: null
-  test: "unit"
-
-# ROCm 5.2 | Linux
+# ROCm 5.3 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-5-2"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-2,label=mnj-mi50/"
+- project: "cupy.linux.rocm-5-3"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-3,label=mnj-mi50/"
   tags: null  # Jenkins
-  target: "rocm-5-2"
+  target: "rocm-5-3"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: null
-  rocm: '5.2'
+  rocm: '5.3'
   nccl: null
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.9"
+  python: "3.10"
   numpy: "1.23"
-  scipy: "1.8"
+  scipy: "1.9"
   optuna: "2"
   mpi4py: null
   cython: "0.29"
