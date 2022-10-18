@@ -153,6 +153,33 @@ class TestFusionNoneParams(unittest.TestCase):
         return f(x, None, z) + f(x, y, z)
 
 
+class TestSpecialValues(FusionTestBase):
+
+    @testing.for_float_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_nan(self, xp, dtype):
+        def func(x):
+            x[:] = cupy.nan
+            return x
+        return func
+
+    @testing.for_float_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_inf(self, xp, dtype):
+        def func(x):
+            x[:] = cupy.inf
+            return x
+        return func
+
+    @testing.for_float_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_neginf(self, xp, dtype):
+        def func(x):
+            x[:] = -cupy.inf
+            return x
+        return func
+
+
 @testing.gpu
 class TestFusionDecorator(unittest.TestCase):
     def test_without_paren(self):

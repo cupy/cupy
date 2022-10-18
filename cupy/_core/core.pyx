@@ -2073,9 +2073,9 @@ cdef list cupy_header_list = [
     'cupy/complex.cuh',
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
+    'cupy/math_constants.h',
 ]
 if _is_hip:
-    cupy_header_list.append('cupy/math_constants.h')
     cupy_header_list.append('cupy/hip_workaround.cuh')
 
 # expose to Python for unit testing
