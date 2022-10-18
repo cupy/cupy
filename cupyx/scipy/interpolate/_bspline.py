@@ -171,7 +171,7 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     num_c = int(np.prod(c.shape[1:]))
     temp = cupy.empty(xp.shape[0] * (2 * k + 1))
     D_BOOR_KERNEL((max(1, xp.shape[0] // 128),), (min(128, xp.shape[0]),),
-                  (t, c, k, 0, xp, intervals, out, temp, num_c))
+                  (t, c, k, nu, xp, intervals, out, temp, num_c))
 
 
 class BSpline:
@@ -345,7 +345,7 @@ class BSpline:
 
         x = cupy.asarray(x)
         x_shape, x_ndim = x.shape, x.ndim
-        x = cupy.ascontiguousarray(cupy.ravel(), dtype=cupy.float_)
+        x = cupy.ascontiguousarray(cupy.ravel(x), dtype=cupy.float_)
 
         # With periodic extrapolation we map x to the segment
         # [self.t[k], self.t[n]].
@@ -356,9 +356,16 @@ class BSpline:
             extrapolate = False
 
         out = cupy.empty(
-            (len(x), np.prod(self.c.shape[1:])), dtype=self.c.dtype)
+            (len(x), int(np.prod(self.c.shape[1:]))), dtype=self.c.dtype)
 
         self._evaluate(x, nu, extrapolate, out)
+        out = out.reshape(x_shape + self.c.shape[1:])
+        if self.axis != 0:
+            # transpose to move the calculated values to the interpolation axis
+            l = list(range(out.ndim))
+            l = l[x_ndim:x_ndim+self.axis] + l[:x_ndim] + l[x_ndim+self.axis:]
+            out = out.transpose(l)
+
         return out
 
     def _evaluate(self, xp, nu, extrapolate, out):
