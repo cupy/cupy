@@ -303,7 +303,7 @@ public:
     this->head_ = head;
     this->step_ = step;
   }
-  __device__ CArrayIterator(const CArrayIterator& itr) {
+  __host__ __device__ CArrayIterator(const CArrayIterator& itr) {
     this->head_ = itr.head_;
     this->step_ = itr.step_;
   }
