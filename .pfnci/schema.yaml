@@ -63,17 +63,12 @@ rocm:
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "5.0":
-    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
+    full_version: "5.0"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
-  "5.1":
-    full_version: "5.1.3"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.2":
-    full_version: "5.2"
+  "5.3":
+    full_version: "5.3"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']

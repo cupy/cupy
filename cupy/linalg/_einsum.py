@@ -14,7 +14,7 @@ from cupy.linalg._einsum_cutn import _try_use_cutensornet
 
 try:
     import cupy_backends.cuda.libs.cutensor  # NOQA
-    from cupy import cutensor
+    from cupyx import cutensor
 except ImportError:
     cutensor = None
 

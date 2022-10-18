@@ -4,7 +4,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import cusolver
+from cupyx import cusolver
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy.linalg import _util

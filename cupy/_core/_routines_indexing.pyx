@@ -626,11 +626,23 @@ cdef _scatter_update_kernel = _create_scatter_kernel(
 cdef _scatter_add_kernel = _create_scatter_kernel(
     'cupy_scatter_add', 'atomicAdd(&out0, in1)')
 
+cdef _scatter_sub_kernel = _create_scatter_kernel(
+    'cupy_scatter_sub', 'atomicSub(&out0, in1)')
+
 cdef _scatter_max_kernel = _create_scatter_kernel(
     'cupy_scatter_max', 'atomicMax(&out0, in1)')
 
 cdef _scatter_min_kernel = _create_scatter_kernel(
     'cupy_scatter_min', 'atomicMin(&out0, in1)')
+
+cdef _scatter_and_kernel = _create_scatter_kernel(
+    'cupy_scatter_and', 'atomicAnd(&out0, in1)')
+
+cdef _scatter_or_kernel = _create_scatter_kernel(
+    'cupy_scatter_or', 'atomicOr(&out0, in1)')
+
+cdef _scatter_xor_kernel = _create_scatter_kernel(
+    'cupy_scatter_xor', 'atomicXor(&out0, in1)')
 
 
 cdef _create_scatter_mask_kernel(name, code):
@@ -653,11 +665,23 @@ cdef _scatter_update_mask_kernel = _create_scatter_mask_kernel(
 cdef _scatter_add_mask_kernel = _create_scatter_mask_kernel(
     'cupy_scatter_add_mask', 'out0 = in0 + in1')
 
+cdef _scatter_sub_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_add_mask', 'out0 = in0 - in1')
+
 cdef _scatter_max_mask_kernel = _create_scatter_mask_kernel(
     'cupy_scatter_max_mask', 'out0 = max(in0, in1)')
 
 cdef _scatter_min_mask_kernel = _create_scatter_mask_kernel(
     'cupy_scatter_min_mask', 'out0 = min(in0, in1)')
+
+cdef _scatter_and_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_and_mask', 'out0 = (in0 & in1)')
+
+cdef _scatter_or_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_or_mask', 'out0 = (in0 | in1)')
+
+cdef _scatter_xor_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_xor_mask', 'out0 = (in0 ^ in1)')
 
 
 _getitem_mask_kernel = ElementwiseKernel(
@@ -856,9 +880,17 @@ cdef _scatter_op_single(
                            numpy.float64, numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32, float16, float32, float64, '
+                'cupy.add.at only supports int32, float16, float32, float64, '
                 'uint32, uint64, as data type')
         _scatter_add_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'sub':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.uint32,
+                           numpy.intc, numpy.uintc)):
+            raise TypeError(
+                'cupy.subtract.at only supports int32, uint32, as data type')
+        _scatter_sub_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
         if not issubclass(v.dtype.type,
@@ -866,7 +898,7 @@ cdef _scatter_op_single(
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_max only supports int32, float32, float64, '
+                'cupy.maximum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
@@ -876,9 +908,42 @@ cdef _scatter_op_single(
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_min only supports int32, float32, float64, '
+                'cupy.minimum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
         _scatter_min_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'and':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_and.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_and_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'or':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_or.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_or_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'xor':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_xor.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_xor_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
@@ -907,10 +972,18 @@ cdef _scatter_op_mask_single(
         _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
         _scatter_add_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'sub':
+        _scatter_sub_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'max':
         _scatter_max_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'min':
         _scatter_min_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'and':
+        _scatter_and_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'or':
+        _scatter_or_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'xor':
+        _scatter_xor_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
@@ -956,11 +1029,23 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
     if op == 'add':
         _math._add(y, value, y)
         return
+    if op == 'sub':
+        _math._subtract(y, value, y)
+        return
     if op == 'max':
         cupy.maximum(y, value, y)
         return
     if op == 'min':
         cupy.minimum(y, value, y)
+        return
+    if op == 'and':
+        cupy.bitwise_and(y, value, y)
+        return
+    if op == 'or':
+        cupy.bitwise_or(y, value, y)
+        return
+    if op == 'xor':
+        cupy.bitwise_xor(y, value, y)
         return
     raise ValueError('this op is not supported')
 

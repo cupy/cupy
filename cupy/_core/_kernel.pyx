@@ -1262,7 +1262,8 @@ cdef class ufunc:
             if (self.nin == 2 and self.nout == 1 and
                     isinstance(in_args[0], _ndarray_base) and
                     isinstance(in_args[1], _ndarray_base)):
-                ret = cupy.cutensor._try_elementwise_binary_routine(
+                import cupyx.cutensor
+                ret = cupyx.cutensor._try_elementwise_binary_routine(
                     in_args[0], in_args[1], dtype,
                     out_args[0] if len(out_args) == 1 else None,
                     self._cutensor_op,

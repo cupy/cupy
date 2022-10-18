@@ -14,7 +14,7 @@ import cupyx
 from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
-from cupy import cusparse
+from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _data as sparse_data
@@ -640,8 +640,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # Compute the counts for each row in the insertion array
         row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
-        cupyx.scatter_add(
-            row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
+        cupy.add.at(row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
 
         self._perform_insert(indices_inserts, data_inserts,
                              rows, row_counts, idx_dtype)

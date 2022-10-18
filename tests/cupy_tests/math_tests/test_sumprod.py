@@ -421,7 +421,7 @@ class TestCuTensorReduction:
 
         # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.cutensor._try_reduction_routine'
+        func = 'cupyx.cutensor._try_reduction_routine'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
