@@ -132,13 +132,13 @@ def _get_max_compute_capability():
     elif major == 11 and minor == 0:
         # CUDA 11.0
         nvrtc_max_compute_capability = '80'
-    elif major == 11 and minor < 4:
-        # CUDA 11.1 / 11.2 / 11.3
-        nvrtc_max_compute_capability = '86'
-    else:
-        # CUDA 11.4+
+    elif major == 11 and minor < 8:
+        # CUDA 11.1 - 11.7
         # Note: 87 is for Jetson Orin
         nvrtc_max_compute_capability = '86'
+    else:
+        # CUDA 11.8+
+        nvrtc_max_compute_capability = '90'
 
     return nvrtc_max_compute_capability
 
