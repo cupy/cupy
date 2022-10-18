@@ -1,8 +1,9 @@
 import numpy
 
 import cupy
+import cupyx.cusolver
 from cupy import cublas
-from cupy import cusparse
+from cupyx import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
@@ -498,7 +499,7 @@ def spsolve(A, b):
         cupy.ndarray:
             Solution to the system ``A x = b``.
     """
-    if not cupy.cusolver.check_availability('csrlsvqr'):
+    if not cupyx.cusolver.check_availability('csrlsvqr'):
         raise NotImplementedError
     if not sparse.isspmatrix(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
@@ -520,7 +521,7 @@ def spsolve(A, b):
     A.sum_duplicates()
     b = b.astype(A.dtype, copy=False).ravel()
 
-    return cupy.cusolver.csrlsvqr(A, b)
+    return cupyx.cusolver.csrlsvqr(A, b)
 
 
 class SuperLU():

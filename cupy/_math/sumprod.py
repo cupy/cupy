@@ -92,7 +92,7 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
         if keepdims:
             raise NotImplementedError(
                 'cupy.nansum does not support `keepdims` in fusion yet.')
-        if a.dtype in 'FD':
+        if a.dtype.char in 'FD':
             func = _math._nansum_complex_dtype
         elif dtype is None:
             func = _math._nansum_auto_dtype

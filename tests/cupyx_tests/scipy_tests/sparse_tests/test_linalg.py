@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 import cupy
-from cupy import cusparse
+from cupyx import cusparse, cusolver
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
@@ -879,8 +879,8 @@ class TestCsrlsvqr:
         cp_a = cupy.array(a)
         sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
         cp_b = cupy.array(b)
-        x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
-                                   reorder=self.reorder)
+        x = cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
+                              reorder=self.reorder)
         cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
                                      atol=test_tol)
 

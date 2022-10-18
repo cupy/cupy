@@ -5,7 +5,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy import cusparse
+from cupyx import cusparse
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse

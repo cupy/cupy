@@ -10,7 +10,7 @@ except ImportError:
 
 import cupy
 from cupy import testing
-from cupy import cusparse
+from cupyx import cusparse
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
@@ -59,7 +59,7 @@ class TestCsrmm:
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
-        y = cupy.cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
+        y = cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.b)
         testing.assert_array_almost_equal(y, expect)
 
@@ -73,7 +73,7 @@ class TestCsrmm:
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
-        y = cupy.cusparse.csrmm(
+        y = cusparse.csrmm(
             a, b, c=c, alpha=self.alpha, beta=self.beta, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.b) + self.beta * self.c
         assert y is c
@@ -114,7 +114,7 @@ class TestCsrmm2:
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
-        y = cupy.cusparse.csrmm2(
+        y = cusparse.csrmm2(
             a, b, alpha=self.alpha, transa=self.transa, transb=self.transb)
         expect = self.alpha * self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(y, expect)
@@ -129,7 +129,7 @@ class TestCsrmm2:
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
-        y = cupy.cusparse.csrmm2(
+        y = cusparse.csrmm2(
             a, b, c=c, alpha=self.alpha, beta=self.beta,
             transa=self.transa, transb=self.transb)
         expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
@@ -154,20 +154,20 @@ class TestCsrgeam:
         self.b = scipy.sparse.random(m, n, density=0.3, dtype=self.dtype)
 
     def test_csrgeam(self):
-        if not cupy.cusparse.check_availability('csrgeam'):
+        if not cusparse.check_availability('csrgeam'):
             pytest.skip('csrgeam is not available')
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        c = cupy.cusparse.csrgeam(a, b, alpha=self.alpha, beta=self.beta)
+        c = cusparse.csrgeam(a, b, alpha=self.alpha, beta=self.beta)
         expect = self.alpha * self.a + self.beta * self.b
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
     def test_csrgeam2(self):
-        if not cupy.cusparse.check_availability('csrgeam2'):
+        if not cusparse.check_availability('csrgeam2'):
             pytest.skip('csrgeam2 is not available')
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        c = cupy.cusparse.csrgeam2(a, b, alpha=self.alpha, beta=self.beta)
+        c = cusparse.csrgeam2(a, b, alpha=self.alpha, beta=self.beta)
         expect = self.alpha * self.a + self.beta * self.b
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
@@ -185,54 +185,54 @@ class TestCsrgeamInvalidCases:
         self.b = scipy.sparse.random(m, n, density=0.3, dtype=self.dtype)
 
     def test_csrgeam_invalid_format(self):
-        if not cupy.cusparse.check_availability('csrgeam'):
+        if not cusparse.check_availability('csrgeam'):
             pytest.skip('csrgeam is not available')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgeam(a, b)
+            cusparse.csrgeam(a, b)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgeam(b, a)
+            cusparse.csrgeam(b, a)
 
     def test_csrgeam_invalid_shape(self):
-        if not cupy.cusparse.check_availability('csrgeam'):
+        if not cusparse.check_availability('csrgeam'):
             pytest.skip('csrgeam is not available')
         a = sparse.csr_matrix(self.a.T)
         b = sparse.csr_matrix(self.b)
         with pytest.raises(ValueError):
-            cupy.cusparse.csrgeam(a, b)
+            cusparse.csrgeam(a, b)
 
     def test_csrgeam_availability(self):
-        if not cupy.cusparse.check_availability('csrgeam'):
+        if not cusparse.check_availability('csrgeam'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
             with pytest.raises(RuntimeError):
-                cupy.cusparse.csrgeam(a, b)
+                cusparse.csrgeam(a, b)
 
     def test_csrgeam2_invalid_format(self):
-        if not cupy.cusparse.check_availability('csrgeam2'):
+        if not cusparse.check_availability('csrgeam2'):
             pytest.skip('csrgeam2 is not available')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgeam2(a, b)
+            cusparse.csrgeam2(a, b)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgeam2(b, a)
+            cusparse.csrgeam2(b, a)
 
     def test_csrgeam2_invalid_shape(self):
-        if not cupy.cusparse.check_availability('csrgeam2'):
+        if not cusparse.check_availability('csrgeam2'):
             pytest.skip('csrgeam2 is not available')
         a = sparse.csr_matrix(self.a.T)
         b = sparse.csr_matrix(self.b)
         with pytest.raises(ValueError):
-            cupy.cusparse.csrgeam2(a, b)
+            cusparse.csrgeam2(a, b)
 
     def test_csrgeam2_availability(self):
-        if not cupy.cusparse.check_availability('csrgeam2'):
+        if not cusparse.check_availability('csrgeam2'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
             with pytest.raises(RuntimeError):
-                cupy.cusparse.csrgeam2(a, b)
+                cusparse.csrgeam2(a, b)
 
 
 @testing.parameterize(*testing.product({
@@ -257,7 +257,7 @@ class TestCsrgemm:
             self.b = self.op_b
 
     def test_csrgemm(self):
-        if not cupy.cusparse.check_availability('csrgemm'):
+        if not cusparse.check_availability('csrgemm'):
             pytest.skip('csrgemm is not available.')
         if runtime.is_hip:
             if self.transa or self.transb:
@@ -265,7 +265,7 @@ class TestCsrgemm:
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        y = cupy.cusparse.csrgemm(a, b, transa=self.transa, transb=self.transb)
+        y = cusparse.csrgemm(a, b, transa=self.transa, transb=self.transb)
         expect = self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(y.toarray(), expect.toarray())
 
@@ -288,17 +288,17 @@ class TestCsrgemm2:
         self.d = scipy.sparse.random(m, n, density=0.5, dtype=self.dtype)
 
     def test_csrgemm2_ab(self):
-        if not cupy.cusparse.check_availability('csrgemm2'):
+        if not cusparse.check_availability('csrgemm2'):
             pytest.skip('csrgemm2 is not available.')
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        c = cupy.cusparse.csrgemm2(a, b, alpha=self.alpha)
+        c = cusparse.csrgemm2(a, b, alpha=self.alpha)
         expect = self.alpha * self.a.dot(self.b)
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
     def test_csrgemm2_abpd(self):
-        if not cupy.cusparse.check_availability('csrgemm2'):
+        if not cusparse.check_availability('csrgemm2'):
             pytest.skip('csrgemm2 is not available.')
         if runtime.is_hip and driver.get_build_version() < 402:
             pytest.xfail('csrgemm2 is buggy')
@@ -306,7 +306,7 @@ class TestCsrgemm2:
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         d = sparse.csr_matrix(self.d)
-        c = cupy.cusparse.csrgemm2(a, b, d=d, alpha=self.alpha, beta=self.beta)
+        c = cusparse.csrgemm2(a, b, d=d, alpha=self.alpha, beta=self.beta)
         expect = self.alpha * self.a.dot(self.b) + self.beta * self.d
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
@@ -325,45 +325,45 @@ class TestCsrgemm2InvalidCases:
         self.d = scipy.sparse.random(m, n, density=0.5, dtype=self.dtype)
 
     def test_csrgemm2_invalid_format(self):
-        if not cupy.cusparse.check_availability('csrgemm2'):
+        if not cusparse.check_availability('csrgemm2'):
             pytest.skip('csrgemm2 is not available.')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgemm2(a, b)
+            cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csc_matrix(self.b)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgemm2(a, b)
+            cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         d = sparse.csc_matrix(self.d)
         with pytest.raises(TypeError):
-            cupy.cusparse.csrgemm2(a, b, d=d)
+            cusparse.csrgemm2(a, b, d=d)
 
     def test_csrgemm2_invalid_shape(self):
-        if not cupy.cusparse.check_availability('csrgemm2'):
+        if not cusparse.check_availability('csrgemm2'):
             pytest.skip('csrgemm2 is not available.')
         a = sparse.csc_matrix(self.a).T
         b = sparse.csr_matrix(self.b)
         with pytest.raises(ValueError):
-            cupy.cusparse.csrgemm2(a, b)
+            cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csc_matrix(self.b).T
         with pytest.raises(ValueError):
-            cupy.cusparse.csrgemm2(a, b)
+            cusparse.csrgemm2(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         d = sparse.csc_matrix(self.d).T
         with pytest.raises(ValueError):
-            cupy.cusparse.csrgemm2(a, b, d=d)
+            cusparse.csrgemm2(a, b, d=d)
 
     def test_csrgemm2_availability(self):
-        if not cupy.cusparse.check_availability('csrgemm2'):
+        if not cusparse.check_availability('csrgemm2'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
             with pytest.raises(RuntimeError):
-                cupy.cusparse.csrgemm2(a, b)
+                cusparse.csrgemm2(a, b)
 
 
 @testing.parameterize(*testing.product({
@@ -382,12 +382,12 @@ class TestSpgemm:
         self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
 
     def test_spgemm_ab(self):
-        if not cupy.cusparse.check_availability('spgemm'):
+        if not cusparse.check_availability('spgemm'):
             pytest.skip('spgemm is not available.')
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
-        c = cupy.cusparse.spgemm(a, b, alpha=self.alpha)
+        c = cusparse.spgemm(a, b, alpha=self.alpha)
         expect = self.alpha * self.a.dot(self.b)
         testing.assert_array_almost_equal(c.toarray(), expect.toarray())
 
@@ -405,35 +405,35 @@ class TestSpgemmInvalidCases:
         self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
 
     def test_spgemm_invalid_format(self):
-        if not cupy.cusparse.check_availability('spgemm'):
+        if not cusparse.check_availability('spgemm'):
             pytest.skip('spgemm is not available.')
         a = sparse.csc_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         with pytest.raises(TypeError):
-            cupy.cusparse.spgemm(a, b)
+            cusparse.spgemm(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csc_matrix(self.b)
         with pytest.raises(TypeError):
-            cupy.cusparse.spgemm(a, b)
+            cusparse.spgemm(a, b)
 
     def test_spgemm_invalid_shape(self):
-        if not cupy.cusparse.check_availability('spgemm'):
+        if not cusparse.check_availability('spgemm'):
             pytest.skip('spgemm is not available.')
         a = sparse.csc_matrix(self.a).T
         b = sparse.csr_matrix(self.b)
         with pytest.raises(ValueError):
-            cupy.cusparse.spgemm(a, b)
+            cusparse.spgemm(a, b)
         a = sparse.csr_matrix(self.a)
         b = sparse.csc_matrix(self.b).T
         with pytest.raises(ValueError):
-            cupy.cusparse.spgemm(a, b)
+            cusparse.spgemm(a, b)
 
     def test_spgemm_availability(self):
-        if not cupy.cusparse.check_availability('spgemm'):
+        if not cusparse.check_availability('spgemm'):
             a = sparse.csr_matrix(self.a)
             b = sparse.csr_matrix(self.b)
             with pytest.raises(RuntimeError):
-                cupy.cusparse.spgemm(a, b)
+                cusparse.spgemm(a, b)
 
 
 @testing.parameterize(*testing.product({
@@ -465,7 +465,7 @@ class TestCsrmv:
 
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
-        y = cupy.cusparse.csrmv(
+        y = cusparse.csrmv(
             a, x, alpha=self.alpha, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.x)
         testing.assert_array_almost_equal(y, expect)
@@ -480,7 +480,7 @@ class TestCsrmv:
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
-        z = cupy.cusparse.csrmv(
+        z = cusparse.csrmv(
             a, x, y=y, alpha=self.alpha, beta=self.beta, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         assert y is z
@@ -492,7 +492,7 @@ class TestCsrmv:
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
 
-        assert cupy.cusparse.csrmvExIsAligned(a, x)
+        assert cusparse.csrmvExIsAligned(a, x)
 
     def test_csrmvEx_not_aligned(self):
         if not cusparse.check_availability('csrmvEx'):
@@ -501,7 +501,7 @@ class TestCsrmv:
         tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
         x = tmp[0:len(self.x)]
         y = tmp[len(self.x):]
-        assert not cupy.cusparse.csrmvExIsAligned(a, x, y)
+        assert not cusparse.csrmvExIsAligned(a, x, y)
 
     def test_csrmvEx(self):
         if not cusparse.check_availability('csrmvEx'):
@@ -512,7 +512,7 @@ class TestCsrmv:
 
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
-        y = cupy.cusparse.csrmvEx(a, x, alpha=self.alpha)
+        y = cusparse.csrmvEx(a, x, alpha=self.alpha)
         expect = self.alpha * self.op_a.dot(self.x)
         testing.assert_array_almost_equal(y, expect)
 
@@ -525,7 +525,7 @@ class TestCsrmv:
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
-        z = cupy.cusparse.csrmvEx(
+        z = cusparse.csrmvEx(
             a, x, y=y, alpha=self.alpha, beta=self.beta)
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         assert y is z
@@ -547,7 +547,7 @@ class TestCoosort:
 
     def test_coosort(self):
         a = sparse.coo_matrix(self.a)
-        cupy.cusparse.coosort(a)
+        cusparse.coosort(a)
         # lexsort by row first and col second
         argsort = numpy.lexsort((self.a.col, self.a.row))
         testing.assert_array_equal(self.a.row[argsort], a.row)
@@ -556,7 +556,7 @@ class TestCoosort:
 
     def test_coosort_by_column(self):
         a = sparse.coo_matrix(self.a)
-        cupy.cusparse.coosort(a, sort_by='c')
+        cusparse.coosort(a, sort_by='c')
         # lexsort by col first and row second
         argsort = numpy.lexsort((self.a.row, self.a.col))
         testing.assert_array_equal(self.a.row[argsort], a.row)
@@ -579,7 +579,7 @@ class TestCsrsort:
 
     def test_csrsort(self):
         a = sparse.csr_matrix(self.a)
-        cupy.cusparse.csrsort(a)
+        cusparse.csrsort(a)
 
         self.a.sort_indices()
         testing.assert_array_equal(self.a.indptr, a.indptr)
@@ -602,7 +602,7 @@ class TestCscsort:
 
     def test_cscsort(self):
         a = sparse.csc_matrix(self.a)
-        cupy.cusparse.cscsort(a)
+        cusparse.cscsort(a)
 
         self.a.sort_indices()
         testing.assert_array_equal(self.a.indptr, a.indptr)
@@ -641,7 +641,7 @@ class TestSpmv:
             self.sparse_matrix = sparse.coo_matrix
 
     def test_spmv(self):
-        if not cupy.cusparse.check_availability('spmv'):
+        if not cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
         if runtime.is_hip:
             if ((self.format == 'csr' and self.transa is True)
@@ -653,12 +653,12 @@ class TestSpmv:
         if not a.has_canonical_format:
             a.sum_duplicates()
         x = cupy.array(self.x)
-        y = cupy.cusparse.spmv(a, x, alpha=self.alpha, transa=self.transa)
+        y = cusparse.spmv(a, x, alpha=self.alpha, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.x)
         testing.assert_array_almost_equal(y, expect)
 
     def test_spmv_with_y(self):
-        if not cupy.cusparse.check_availability('spmv'):
+        if not cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
         if runtime.is_hip:
             if ((self.format == 'csr' and self.transa is True)
@@ -671,8 +671,8 @@ class TestSpmv:
             a.sum_duplicates()
         x = cupy.array(self.x)
         y = cupy.array(self.y)
-        z = cupy.cusparse.spmv(a, x, y=y, alpha=self.alpha, beta=self.beta,
-                               transa=self.transa)
+        z = cusparse.spmv(a, x, y=y, alpha=self.alpha, beta=self.beta,
+                          transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
         assert y is z
         testing.assert_array_almost_equal(y, expect)
@@ -692,23 +692,23 @@ class TestErrorSpmv:
         self.y = numpy.random.uniform(-1, 1, m).astype(self.dtype)
 
     def test_error_shape(self):
-        if not cupy.cusparse.check_availability('spmv'):
+        if not cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
 
         a = sparse.csr_matrix(self.a.T)
         x = cupy.array(self.x)
         with pytest.raises(ValueError):
-            cupy.cusparse.spmv(a, x)
+            cusparse.spmv(a, x)
 
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x)
         with pytest.raises(ValueError):
-            cupy.cusparse.spmv(a, x, transa=True)
+            cusparse.spmv(a, x, transa=True)
 
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.y)
         with pytest.raises(ValueError):
-            cupy.cusparse.spmv(a, x)
+            cusparse.spmv(a, x)
 
 
 @testing.parameterize(*testing.product({
@@ -747,7 +747,7 @@ class TestSpmm:
             self.sparse_matrix = sparse.coo_matrix
 
     def test_spmm(self):
-        if not cupy.cusparse.check_availability('spmm'):
+        if not cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
         if runtime.is_hip:
             if ((self.format == 'csr' and self.transa is True)
@@ -759,13 +759,13 @@ class TestSpmm:
         if not a.has_canonical_format:
             a.sum_duplicates()
         b = cupy.array(self.b, order='f')
-        c = cupy.cusparse.spmm(
+        c = cusparse.spmm(
             a, b, alpha=self.alpha, transa=self.transa, transb=self.transb)
         expect = self.alpha * self.op_a.dot(self.op_b)
         testing.assert_array_almost_equal(c, expect)
 
     def test_spmm_with_c(self):
-        if not cupy.cusparse.check_availability('spmm'):
+        if not cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
         if runtime.is_hip:
             if ((self.format == 'csr' and self.transa is True)
@@ -778,7 +778,7 @@ class TestSpmm:
             a.sum_duplicates()
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
-        y = cupy.cusparse.spmm(
+        y = cusparse.spmm(
             a, b, c=c, alpha=self.alpha, beta=self.beta,
             transa=self.transa, transb=self.transb)
         expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
@@ -800,34 +800,34 @@ class TestErrorSpmm:
         self.c = numpy.random.uniform(-1, 1, (m, n)).astype(self.dtype)
 
     def test_error_shape(self):
-        if not cupy.cusparse.check_availability('spmm'):
+        if not cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
 
         a = sparse.csr_matrix(self.a.T)
         b = cupy.array(self.b, order='f')
         with pytest.raises(ValueError):
-            cupy.cusparse.spmm(a, b)
+            cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         with pytest.raises(AssertionError):
-            cupy.cusparse.spmm(a, b.T)
+            cusparse.spmm(a, b.T)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b)
         with pytest.raises(AssertionError):
-            cupy.cusparse.spmm(a, b)
+            cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.c, order='f')
         with pytest.raises(ValueError):
-            cupy.cusparse.spmm(a, b)
+            cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.b, order='f')
         with pytest.raises(ValueError):
-            cupy.cusparse.spmm(a, b, c=c)
+            cusparse.spmm(a, b, c=c)
 
 
 @testing.parameterize(*testing.product({
