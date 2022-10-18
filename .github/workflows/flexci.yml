@@ -39,4 +39,5 @@ jobs:
         ./.github/workflows/flexci_dispatcher.py \
             --event "${GITHUB_EVENT_NAME}" \
             --webhook "${GITHUB_EVENT_PATH}" \
-            --projects ./.pfnci/config.tags.json
+            --projects ./.pfnci/config.tags.json \
+            --external-tag jenkins
