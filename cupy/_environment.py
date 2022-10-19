@@ -423,6 +423,7 @@ def _detect_duplicate_installation():
         'cupy-cuda115',
         'cupy-cuda116',
         'cupy-cuda117',
+        'cupy-cuda118',
         'cupy-cuda11x',
         'cupy-rocm-4-0',
         'cupy-rocm-4-1',
