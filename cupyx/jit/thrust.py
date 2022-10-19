@@ -32,3 +32,19 @@ def count(env, exec_policy, first, last, value):
     args = [exec_policy, first, last, value]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
     return _internal_types.Data(f'thrust::count({params})', _cuda_types.int32)
+
+
+@_wrap_thrust_func(['thrust/find.h', 'thrust/execution_policy.h'])
+def find(env, exec_policy, first, last, value):
+    """Count the number of elements in [first, last) that equals to ``value``.
+    """
+    if exec_policy.code != 'thrust::device':
+        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    args = [exec_policy, first, last, value]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(f'thrust::find({params})', first.ctype)

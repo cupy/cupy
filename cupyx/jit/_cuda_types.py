@@ -103,6 +103,16 @@ class PointerBase(ArrayBase):
             return _internal_types.Data(f'({x.code} + {y.code})', y.ctype)
         return NotImplemented
 
+    @staticmethod
+    def _sub(env, x: 'Data', y: 'Data') -> 'Data':
+        print('_sub called')
+        from cupyx.jit import _internal_types  # avoid circular import
+        if isinstance(y.ctype, Scalar) and y.ctype.dtype.kind in 'iu':
+            return _internal_types.Data(f'({x.code} - {y.code})', x.ctype)
+        if x.ctype == y.ctype:
+            return _internal_types.Data(f'({x.code} - {y.code})', PtrDiff())
+        return NotImplemented
+
 
 class CArray(ArrayBase):
     from cupyx.jit import _internal_types  # avoid circular import
