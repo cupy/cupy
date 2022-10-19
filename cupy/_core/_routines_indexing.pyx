@@ -1142,3 +1142,21 @@ cdef _ndarray_base _getitem_multiple(
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
     return _take(a, reduced_idx, start, stop)
+
+
+cdef _ndarray_base _add_reduceat(
+        _ndarray_base array, indices, axis, dtype, out):
+    from cupy._sorting import search
+    axis = internal._normalize_axis_index(axis, array.ndim)
+    indices = cupy.append(indices, array.shape[axis])
+    shape = [1 if i == axis else dim for i, dim in enumerate(array.shape)]
+    acc = array.cumsum(axis, dtype)
+    acc = cupy.append(cupy.zeros(shape, acc.dtype), acc, axis)
+    mask = indices[:-1] >= indices[1:]
+    mask = mask.reshape(-1, *([1] * (array.ndim - axis - 1)))
+    return search._where_ufunc(
+        mask,
+        array.take(indices[:-1], axis),
+        acc.take(indices[1:], axis) - acc.take(indices[:-1], axis),
+        out
+    )

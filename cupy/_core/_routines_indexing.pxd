@@ -11,3 +11,5 @@ cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode)
 cdef _ndarray_base _ndarray_choose(_ndarray_base self, choices, out, mode)
 cdef _ndarray_base _ndarray_compress(_ndarray_base self, condition, axis, out)
 cdef _ndarray_base _ndarray_diagonal(_ndarray_base self, offset, axis1, axis2)
+cdef _ndarray_base _add_reduceat(
+    _ndarray_base array, indices, axis, dtype, out)
