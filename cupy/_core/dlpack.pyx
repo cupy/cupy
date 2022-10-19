@@ -389,9 +389,9 @@ cpdef from_dlpack(array):
         finally:
             cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLCPU:
-        # TODO(kmaehashi): Call `np.from_dlpack` when DLPack support is in:
-        # https://github.com/numpy/numpy/pull/19083
-        raise ValueError('CPU arrays cannot be imported to CuPy.')
+        raise ValueError(
+            'CPU arrays cannot be directly imported to CuPy. '
+            'Use `cupy.array(numpy.from_dlpack(input))` instead.')
     else:
         # TODO(leofang): support kDLCUDAPinned etc
         dltensor = None
