@@ -140,6 +140,18 @@ def _get_dtype(dtype):
         return cupy.float_
 
 
+def _as_float_array(x, check_finite=False):
+    """Convert the input into a C contiguous float array.
+    NB: Upcasts half- and single-precision floats to double precision.
+    """
+    x = cupy.ascontiguousarray(x)
+    dtyp = _get_dtype(x.dtype)
+    x = x.astype(dtyp, copy=False)
+    if check_finite and not cupy.isfinite(x).all():
+        raise ValueError("Array must not contain infs or nans.")
+    return x
+
+
 def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     """
     Evaluate a spline in the B-spline basis.
@@ -318,6 +330,41 @@ class BSpline:
         """Equivalent to ``(self.t, self.c, self.k)`` (read-only).
         """
         return self.t, self.c, self.k
+
+    @classmethod
+    def basis_element(cls, t, extrapolate=True):
+        """Return a B-spline basis element ``B(x | t[0], ..., t[k+1])``.
+
+        Parameters
+        ----------
+        t : ndarray, shape (k+2,)
+            internal knots
+        extrapolate : bool or 'periodic', optional
+            whether to extrapolate beyond the base interval,
+            ``t[0] .. t[k+1]``, or to return nans.
+            If 'periodic', periodic extrapolation is used.
+            Default is True.
+
+        Returns
+        -------
+        basis_element : callable
+            A callable representing a B-spline basis element for the knot
+            vector `t`.
+
+        Notes
+        -----
+        The degree of the B-spline, `k`, is inferred from the length of `t` as
+        ``len(t)-2``. The knot vector is constructed by appending and prepending
+        ``k+1`` elements to internal knots `t`.
+
+        .. seealso:: :class:`scipy.interpolate.BSpline`
+        """
+        k = len(t) - 2
+        t = _as_float_array(t)
+        t = np.r_[(t[0]-1,) * k, t, (t[-1]+1,) * k]
+        c = np.zeros_like(t)
+        c[k] = 1.
+        return cls.construct_fast(t, c, k, extrapolate)
 
     def __call__(self, x, nu=0, extrapolate=None):
         """
