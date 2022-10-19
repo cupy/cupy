@@ -26,7 +26,8 @@ cdef class RawKernel:
             or NVCC). For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
             https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
-        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
+        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc` , but if you
+            need headers like `<cub/cub.cuh>` you will need to use `nvcc`.
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
@@ -313,7 +314,8 @@ cdef class RawModule:
             or NVCC). For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
             https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description.
-        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
+        backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`, but if you
+            need headers like `<cub/cub.cuh>` you will need to use `nvcc`.
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
             functions from `cuComplex.h` will be translated to its Thrust
