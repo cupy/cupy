@@ -351,8 +351,12 @@ cpdef from_dlpack(array):
         are responsible to ensure data safety.
 
     .. seealso::
-        `Data interchange mechanisms`_
+        :func:`numpy.from_dlpack`,
+        `Python Specification for DLPack`_
+        `Data interchange mechanisms`_,
 
+    .. _Python Specification for DLPack:
+        https://dmlc.github.io/dlpack/latest/python_spec.html
     .. _Data interchange mechanisms:
         https://data-apis.org/array-api/latest/design_topics/data_interchange.html
     """
