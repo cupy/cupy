@@ -33,8 +33,8 @@ def main():
     options = parser.parse_args()
 
     cache_dir = os.environ.get(
-            'CUPY_CACHE_DIR',
-            os.path.expanduser('~/.cupy/kernel_cache/'))
+        'CUPY_CACHE_DIR',
+        os.path.expanduser('~/.cupy/kernel_cache/'))
     _log('Looking for cache files under {}...'.format(cache_dir))
     records = []
     for f in itertools.chain(
@@ -46,7 +46,7 @@ def main():
 
     if options.expiry:
         expiry = datetime.datetime.now() - datetime.timedelta(
-                    seconds=options.expiry)
+            seconds=options.expiry)
         expiry_ts = expiry.timestamp()
     else:
         expiry_ts = None
