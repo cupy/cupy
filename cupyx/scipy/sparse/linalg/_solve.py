@@ -8,7 +8,6 @@ from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
-from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
