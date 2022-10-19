@@ -394,20 +394,11 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 def _should_use_spsm(b):
     if not runtime.is_hip:
-        # cusparseSpSM in CUDA 11.5 and eariler produces wrong results with
-        # transposed B
-        return not (
-            _cusparse.get_build_version() < 11701 and
-            b.ndim == 2 and
-            b._c_contiguous
-        )
+        # Starting with CUDA 12.0, we use cusparseSpSM
+        return _cusparse.get_build_version() >= 12000
     else:
-        # Also for older ROcm.
-        return not (
-            _driver.get_build_version() < 50200000 and
-            b.ndim == 2 and
-            b._c_contiguous
-        )
+        # Keep using hipsparse<t>csrsm2 for ROCm before it is dropped
+        return False
 
 
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
