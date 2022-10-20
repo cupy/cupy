@@ -352,8 +352,8 @@ cpdef from_dlpack(array):
 
     .. seealso::
         :func:`numpy.from_dlpack`,
-        `Python Specification for DLPack`_
-        `Data interchange mechanisms`_,
+        `Python Specification for DLPack`_,
+        `Data interchange mechanisms`_
 
     .. _Python Specification for DLPack:
         https://dmlc.github.io/dlpack/latest/python_spec.html
