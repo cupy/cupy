@@ -25,25 +25,29 @@ void find_interval(
         return;
     }
 
-    if((xp > tb || xp < te) && !extrapolate) {
+    if((xp < tb || xp > te) && !extrapolate) {
         out[idx] = -1;
         return;
     }
 
     int left = k;
     int right = n;
-    int mid = ((right - left) / 2) + k;
+    int mid;
+    bool found = false;
 
-    while(mid != left) {
-        mid = ((right - left) / 2) + k;
+    while(left < right && !found) {
+        mid = ((right + left) / 2);
         if(xp > *&t[mid]) {
-            left = mid;
+            left = mid + 1;
+        } else if (xp < *&t[mid]) {
+            right = mid - 1;
         } else {
-            right = mid;
+            found = true;
         }
     }
 
-    out[idx] = mid;
+    int default_value = left - 1 < k ? k : left - 1;
+    out[idx] = found ? mid : default_value;
 }
 ''', 'find_interval')
 
@@ -70,7 +74,7 @@ void d_boor(
 
     if(mode == COMPUTE_LINEAR && interval < 0) {
         for(j = 0; j < num_c; j++) {
-            out[idx + j] = CUDART_NAN;
+            out[num_c * idx + j] = CUDART_NAN;
         }
         return;
     }
@@ -129,9 +133,9 @@ void d_boor(
 
     // Compute linear combinations
     for(j = 0; j < num_c; j++) {
-        out[idx + j] = 0;
+        out[num_c * idx + j] = 0;
         for(n = 0; n < k + 1; n++) {
-            out[idx + j] = out[idx + j] + c[interval + n - k + j] * h[n];
+            out[num_c * idx + j] = out[num_c * idx + j] + c[(interval + n - k) * num_c + j] * h[n];
         }
     }
 
@@ -142,8 +146,8 @@ void d_boor(
 DESIGN_MAT_KERNEL = cupy.RawKernel(r'''
 extern "C" __global__
 void compute_design_matrix(
-        const int k, const long long* intervals, const double* bspline_basis,
-        double* data, long long* indices) {
+        const int k, const long long* intervals, double* bspline_basis,
+        double* data, int* indices) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     long long interval = *&intervals[idx];
