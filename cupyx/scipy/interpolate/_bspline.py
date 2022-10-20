@@ -4,6 +4,8 @@ import operator
 import cupy
 from cupy._core import internal
 
+from cupyx.scipy.sparse import csr_matrix
+
 import numpy as np
 
 
@@ -48,12 +50,13 @@ void find_interval(
 
 D_BOOR_KERNEL = cupy.RawKernel(r'''
 #include <math_constants.h>
+#define COMPUTE_LINEAR 0x1
 
 extern "C" __global__
 void d_boor(
         const double* t, const double* c, const int k, const int mu,
         const double* x, const long long* intervals, double* out,
-        double* temp, int num_c) {
+        double* temp, int num_c, int mode) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     double xp = *&x[idx];
@@ -65,7 +68,7 @@ void d_boor(
     int ind, j, n;
     double xa, xb, w;
 
-    if(interval < 0) {
+    if(mode == COMPUTE_LINEAR && interval < 0) {
         for(j = 0; j < num_c; j++) {
             out[idx + j] = CUDART_NAN;
         }
@@ -120,6 +123,10 @@ void d_boor(
         }
     }
 
+    if(mode != COMPUTE_LINEAR) {
+        return;
+    }
+
     // Compute linear combinations
     for(j = 0; j < num_c; j++) {
         out[idx + j] = 0;
@@ -130,6 +137,26 @@ void d_boor(
 
 }
 ''', 'd_boor')
+
+
+DESIGN_MAT_KERNEL = cupy.RawKernel(r'''
+extern "C" __global__
+void compute_design_matrix(
+        const int k, const long long* intervals, const double* bspline_basis,
+        double* data, long long* indices) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    long long interval = *&intervals[idx];
+
+    double* work = bspline_basis + idx * (2 * k + 1);
+
+    for(int j = 0; j <= k; j++) {
+        int m = (k + 1) * idx + j;
+        data[m] = work[j];
+        indices[m] = interval - k + j;
+    }
+}
+''', 'compute_design_matrix')
 
 
 def _get_dtype(dtype):
@@ -183,7 +210,54 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     num_c = int(np.prod(c.shape[1:]))
     temp = cupy.empty(xp.shape[0] * (2 * k + 1))
     D_BOOR_KERNEL((max(1, xp.shape[0] // 128),), (min(128, xp.shape[0]),),
-                  (t, c, k, nu, xp, intervals, out, temp, num_c))
+                  (t, c, k, nu, xp, intervals, out, temp, num_c, 1))
+
+
+def _make_design_matrix(x, t, k, extrapolate, indices):
+    """
+    Returns a design matrix in CSR format.
+    Note that only indices is passed, but not indptr because indptr is already
+    precomputed in the calling Python function design_matrix.
+
+    Parameters
+    ----------
+    x : array_like, shape (n,)
+        Points to evaluate the spline at.
+    t : array_like, shape (nt,)
+        Sorted 1D array of knots.
+    k : int
+        B-spline degree.
+    extrapolate : bool, optional
+        Whether to extrapolate to ouf-of-bounds points.
+    indices : ndarray, shape (n * (k + 1),)
+        Preallocated indices of the final CSR array.
+    Returns
+    -------
+    data
+        The data array of a CSR array of the b-spline design matrix.
+        In each row all the basis elements are evaluated at the certain point
+        (first row - x[0], ..., last row - x[-1]).
+
+    indices
+        The indices array of a CSR array of the b-spline design matrix.
+    """
+    n = t.shape[0] - k - 1
+    intervals = cupy.empty_like(x, dtype=cupy.int_)
+
+    # Compute intervals for each value
+    INTERVAL_KERNEL((max(1, x.shape[0] // 128),), (min(128, x.shape[0]),),
+                    (t, x, intervals, k, n, extrapolate))
+
+    # Compute interpolation
+    bspline_basis = cupy.empty(x.shape[0] * (2 * k + 1))
+    D_BOOR_KERNEL((max(1, x.shape[0] // 128),), (min(128, x.shape[0]),),
+                  (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0))
+
+    data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float_)
+    DESIGN_MAT_KERNEL((max(1, x.shape[0] // 128),), (min(128, x.shape[0]),),
+                      (k, intervals, bspline_basis, data, indices))
+
+    return data, indices
 
 
 class BSpline:
@@ -290,7 +364,7 @@ class BSpline:
             # and axis !=0 means that we have c.shape (..., n, ...)
             #                                               ^
             #                                              axis
-            self.c = np.moveaxis(self.c, axis, 0)
+            self.c = cupy.moveaxis(self.c, axis, 0)
 
         if k < 0:
             raise ValueError("Spline order cannot be negative.")
@@ -361,10 +435,98 @@ class BSpline:
         """
         k = len(t) - 2
         t = _as_float_array(t)
-        t = np.r_[(t[0]-1,) * k, t, (t[-1]+1,) * k]
-        c = np.zeros_like(t)
+        t = cupy.r_[(t[0]-1,) * k, t, (t[-1]+1,) * k]
+        c = cupy.zeros_like(t)
         c[k] = 1.
         return cls.construct_fast(t, c, k, extrapolate)
+
+    @classmethod
+    def design_matrix(cls, x, t, k, extrapolate=False):
+        """
+        Returns a design matrix as a CSR format sparse array.
+
+        Parameters
+        ----------
+        x : array_like, shape (n,)
+            Points to evaluate the spline at.
+        t : array_like, shape (nt,)
+            Sorted 1D array of knots.
+        k : int
+            B-spline degree.
+        extrapolate : bool or 'periodic', optional
+            Whether to extrapolate based on the first and last intervals
+            or raise an error. If 'periodic', periodic extrapolation is used.
+            Default is False.
+
+        Returns
+        -------
+        design_matrix : `csr_array` object
+            Sparse matrix in CSR format where each row contains all the basis
+            elements of the input row (first row = basis elements of x[0],
+            ..., last row = basis elements x[-1]).
+
+        Notes
+        -----
+        In each row of the design matrix all the basis elements are evaluated
+        at the certain point (first row - x[0], ..., last row - x[-1]).
+        `nt` is a length of the vector of knots: as far as there are
+        `nt - k - 1` basis elements, `nt` should be not less than `2 * k + 2`
+        to have at least `k + 1` basis element.
+
+        Out of bounds `x` raises a ValueError.
+
+        .. seealso:: :class:`scipy.interpolate.BSpline`
+        """
+        x = _as_float_array(x, True)
+        t = _as_float_array(t, True)
+
+        if extrapolate != 'periodic':
+            extrapolate = bool(extrapolate)
+
+        if k < 0:
+            raise ValueError("Spline order cannot be negative.")
+        if t.ndim != 1 or np.any(t[1:] < t[:-1]):
+            raise ValueError(f"Expect t to be a 1-D sorted array_like, but "
+                             f"got t={t}.")
+        # There are `nt - k - 1` basis elements in a BSpline built on the
+        # vector of knots with length `nt`, so to have at least `k + 1` basis
+        # elements we need to have at least `2 * k + 2` elements in the vector
+        # of knots.
+        if len(t) < 2 * k + 2:
+            raise ValueError(f"Length t is not enough for k={k}.")
+
+        if extrapolate == 'periodic':
+            # With periodic extrapolation we map x to the segment
+            # [t[k], t[n]].
+            n = t.size - k - 1
+            x = t[k] + (x - t[k]) % (t[n] - t[k])
+            extrapolate = False
+        elif not extrapolate and (
+            (min(x) < t[k]) or (max(x) > t[t.shape[0] - k - 1])
+        ):
+            # Checks from `find_interval` function
+            raise ValueError(f'Out of bounds w/ x = {x}.')
+
+        # Compute number of non-zeros of final CSR array in order to determine
+        # the dtype of indices and indptr of the CSR array.
+        n = x.shape[0]
+        nnz = n * (k + 1)
+        if nnz < cupy.iinfo(cupy.int32).max:
+            int_dtype = cupy.int32
+        else:
+            int_dtype = cupy.int64
+        # Preallocate indptr and indices
+        indices = cupy.empty(n * (k + 1), dtype=int_dtype)
+        indptr = cupy.arange(0, (n + 1) * (k + 1), k + 1, dtype=int_dtype)
+
+        # indptr is not passed to CUDA as it is already fully computed
+        data, indices = _make_design_matrix(
+            x, t, k, extrapolate, indices
+        )
+        return csr_matrix(
+            (data, indices, indptr),
+            shape=(x.shape[0], t.shape[0] - k - 1)
+        )
 
     def __call__(self, x, nu=0, extrapolate=None):
         """
