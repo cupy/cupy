@@ -109,6 +109,12 @@ function Main {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
     }
 
+    # Install dependency for cuDNN 8.3+
+    echo ">> Installing zlib"
+    RunOrDie curl.exe -LO http://www.winimage.com/zLibDll/zlib123dllx64.zip
+    RunOrDie 7z x "zlib123dllx64.zip"
+    Copy-Item -Path "dll_x64\zlibwapi.dll" -Destination "C:\Windows\System32"
+
     pushd tests
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
