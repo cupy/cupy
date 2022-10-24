@@ -82,3 +82,33 @@ class TestThrust:
         sort[1, 256](x)
 
         testing.assert_array_equal(x, numpy.sort(x_numpy, axis=-1))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_sort_by_key_iterator(self, order):
+        @jit.rawkernel()
+        def sort_by_key(x, y):
+            i = jit.threadIdx.x
+            x_array = x[i]
+            y_array = y[i]
+            jit.thrust.sort_by_key(
+                jit.thrust.device,
+                x_array.begin(),
+                x_array.end(),
+                y_array.begin(),
+            )
+
+        h, w = (256, 256)
+        x = cupy.arange(h * w, dtype=numpy.int32)
+        cupy.random.shuffle(x)
+        x = x.reshape(h, w)
+        y = testing.shaped_random(
+            (h, w), dtype=numpy.int32, scale=20000, order=order, seed=1)
+        x_numpy = cupy.asnumpy(x)
+        y_numpy = cupy.asnumpy(y)
+        sort_by_key[1, 256](x, y)
+
+        indices = numpy.argsort(x_numpy, axis=-1)
+        x_expected = numpy.array([a[i] for a, i in zip(x_numpy, indices)])
+        y_expected = numpy.array([a[i] for a, i in zip(y_numpy, indices)])
+        testing.assert_array_equal(x, x_expected)
+        testing.assert_array_equal(y, y_expected)

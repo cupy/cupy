@@ -64,3 +64,23 @@ def sort(env, exec_policy, first, last):
     args = [exec_policy, first, last]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
     return _internal_types.Data(f'thrust::sort({params})', _cuda_types.void)
+
+
+@_wrap_thrust_func(['thrust/sort.h', 'thrust/execution_policy.h'])
+def sort_by_key(env, exec_policy, keys_first, keys_last, values_first):
+    """Sorts the elements in [first, last) into ascending order.
+    """
+    if exec_policy.code != 'thrust::device':
+        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(keys_first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`keys_first` must be of pointer type')
+    if keys_first.ctype != keys_last.ctype:
+        raise TypeError(
+            '`keys_first` and `keys_last` must be of the same type')
+    if not isinstance(values_first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`values_first` must be of pointer type')
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    args = [exec_policy, keys_first, keys_last, values_first]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::sort_by_key({params})', _cuda_types.void)
