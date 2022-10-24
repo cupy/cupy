@@ -66,3 +66,19 @@ class TestThrust:
                     elem = x_numpy[i, j, k]
                     expected[i, j, elem] = min(expected[i, j, elem], k)
         testing.assert_array_equal(y, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_sort_iterator(self, order):
+        @jit.rawkernel()
+        def sort(x):
+            i = jit.threadIdx.x
+            array = x[i]
+            jit.thrust.sort(jit.thrust.device, array.begin(), array.end())
+
+        h, w = (256, 256)
+        x = testing.shaped_random(
+            (h, w), dtype=numpy.int32, scale=4, order=order)
+        x_numpy = cupy.asnumpy(x)
+        sort[1, 256](x)
+
+        testing.assert_array_equal(x, numpy.sort(x_numpy, axis=-1))

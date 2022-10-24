@@ -48,3 +48,19 @@ def find(env, exec_policy, first, last, value):
     args = [exec_policy, first, last, value]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
     return _internal_types.Data(f'thrust::find({params})', first.ctype)
+
+
+@_wrap_thrust_func(['thrust/sort.h', 'thrust/execution_policy.h'])
+def sort(env, exec_policy, first, last):
+    """Sorts the elements in [first, last) into ascending order.
+    """
+    if exec_policy.code != 'thrust::device':
+        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    args = [exec_policy, first, last]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(f'thrust::sort({params})', _cuda_types.void)
