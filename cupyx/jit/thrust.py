@@ -50,6 +50,27 @@ def find(env, exec_policy, first, last, value):
     return _internal_types.Data(f'thrust::find({params})', first.ctype)
 
 
+@_wrap_thrust_func(['thrust/mismatch.h', 'thrust/execution_policy.h'])
+def mismatch(env, exec_policy, first1, last1, first2):
+    """Sorts the elements in [first, last) into ascending order.
+    """
+    if exec_policy.code != 'thrust::device':
+        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(first1.ctype, _cuda_types.PointerBase):
+        raise TypeError('`keys_first` must be of pointer type')
+    if first1.ctype != last1.ctype:
+        raise TypeError('`first1` and `last1` must be of the same type')
+    if first1.ctype.child_type != first2.ctype.child_type:
+        raise TypeError('`first1` and `first2` must be of the same type')
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    args = [exec_policy, first1, last1, first2]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::mismatch({params})',
+        _cuda_types.Tuple([first1.ctype, first2.ctype])
+    )
+
+
 @_wrap_thrust_func(['thrust/sort.h', 'thrust/execution_policy.h'])
 def sort(env, exec_policy, first, last):
     """Sorts the elements in [first, last) into ascending order.
@@ -60,7 +81,7 @@ def sort(env, exec_policy, first, last):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
         raise TypeError('`first` and `last` must be of the same type')
-    # TODO(asi1024): Typecheck for EqualityComparable.
+    # TODO(asi1024): Typecheck for Comparable.
     args = [exec_policy, first, last]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
     return _internal_types.Data(f'thrust::sort({params})', _cuda_types.void)
@@ -79,7 +100,7 @@ def sort_by_key(env, exec_policy, keys_first, keys_last, values_first):
             '`keys_first` and `keys_last` must be of the same type')
     if not isinstance(values_first.ctype, _cuda_types.PointerBase):
         raise TypeError('`values_first` must be of pointer type')
-    # TODO(asi1024): Typecheck for EqualityComparable.
+    # TODO(asi1024): Typecheck for Comparable.
     args = [exec_policy, keys_first, keys_last, values_first]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
     return _internal_types.Data(

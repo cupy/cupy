@@ -68,6 +68,37 @@ class TestThrust:
         testing.assert_array_equal(y, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_mismatch_iterator(self, order):
+        @jit.rawkernel()
+        def mismatch(x1, x2, out1, out2):
+            i = jit.threadIdx.x
+            x1_array = x1[i]
+            x2_array = x2[i]
+            pair = jit.thrust.mismatch(
+                jit.thrust.device,
+                x1_array.begin(),
+                x1_array.end(),
+                x2_array.begin(),
+            )
+            out1[i] = pair[0] - x1_array.begin()
+            out2[i] = pair[1] - x2_array.begin()
+
+        h, w = (5, 256)
+        x1 = testing.shaped_random(
+            (h, w), dtype=numpy.float32, scale=20000, order=order, seed=0)
+        x2 = x1.copy()
+        x2[0][0] = -1
+        x2[1][100] = -1
+        x2[2][30] = -1
+        x2[3][200] = -1
+        out1 = cupy.zeros(5, numpy.int32)
+        out2 = cupy.zeros(5, numpy.int32)
+        mismatch[1, 5](x1, x2, out1, out2)
+
+        testing.assert_array_equal(out1, [0, 100, 30, 200, w])
+        testing.assert_array_equal(out2, [0, 100, 30, 200, w])
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         @jit.rawkernel()
         def sort(x):
