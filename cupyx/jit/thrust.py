@@ -18,6 +18,24 @@ def _wrap_thrust_func(headers):
 device = _internal_types.Data('thrust::device', _cuda_types.Unknown())
 
 
+@_wrap_thrust_func(['thrust/copy.h', 'thrust/execution_policy.h'])
+def copy(env, exec_policy, first, last, result):
+    """Sorts the elements in [first, last) into ascending order.
+    """
+    if exec_policy.code != 'thrust::device':
+        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`keys_first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    if first.ctype.child_type != result.ctype.child_type:
+        raise TypeError('`first` and `result` must be of the same type')
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    args = [exec_policy, first, last, result]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(f'thrust::copy({params})', result.ctype)
+
+
 @_wrap_thrust_func(['thrust/count.h', 'thrust/execution_policy.h'])
 def count(env, exec_policy, first, last, value):
     """Count the number of elements in [first, last) that equals to ``value``.

@@ -43,6 +43,26 @@ class TestThrust:
         testing.assert_array_equal(y, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_copy_iterator(self, order):
+        @jit.rawkernel()
+        def copy(x, y):
+            i = jit.threadIdx.x
+            x_array = x[i]
+            y_array = y[i]
+            jit.thrust.copy(
+                jit.thrust.device,
+                x_array.begin(),
+                x_array.end(),
+                y_array.begin(),
+            )
+
+        h, w = (256, 256)
+        x = testing.shaped_random((h, w), dtype=numpy.int32, order=order)
+        y = cupy.zeros((h, w), dtype=numpy.int32)
+        copy[1, 256](x, y)
+        testing.assert_array_equal(x, y)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):
