@@ -53,7 +53,7 @@ jobs:
     - name: Load ccache
       uses: actions/cache@v3
       with:
-        path: ~/.ccache
+        path: ~/.cache/ccache
         key: ccache-${{ github.sha }}
         restore-keys: ccache-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
 
