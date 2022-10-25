@@ -62,13 +62,14 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y ccache
         echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
-        ccache --max-size 0.5Gi --cleanup --show-stats
+        ccache --show-stats -v
 
     - name: Build
       run: |
         pip install -U pip wheel
         pip install cython
         READTHEDOCS=True pip install -v -e .
+        ccache --max-size 0.5Gi --cleanup --show-stats
 
     - name: Docs Build
       run: |
