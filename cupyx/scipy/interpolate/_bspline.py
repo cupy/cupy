@@ -4,6 +4,7 @@ import operator
 import cupy
 from cupy._core import internal
 
+import cupyx
 from cupyx.scipy.sparse import csr_matrix
 
 import numpy as np
@@ -262,6 +263,121 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
                       (k, intervals, bspline_basis, data, indices))
 
     return data, indices
+
+
+def splder(tck, n=1):
+    """
+    Compute the spline representation of the derivative of a given spline
+
+    Parameters
+    ----------
+    tck : tuple of (t, c, k)
+        Spline whose derivative to compute
+    n : int, optional
+        Order of derivative to evaluate. Default: 1
+
+    Returns
+    -------
+    tck_der : tuple of (t2, c2, k2)
+        Spline of order k2=k-n representing the derivative
+        of the input spline.
+
+    Notes
+    -----
+    .. seealso:: :class:`scipy.interpolate.splder`
+
+    See Also
+    --------
+    splantider, splev, spalde
+    """
+    if n < 0:
+        return splantider(tck, -n)
+
+    t, c, k = tck
+
+    if n > k:
+        raise ValueError(("Order of derivative (n = %r) must be <= "
+                          "order of spline (k = %r)") % (n, tck[2]))
+
+    # Extra axes for the trailing dims of the `c` array:
+    sh = (slice(None),) + ((None,)*len(c.shape[1:]))
+
+    with cupyx.errstate(invalid='raise', divide='raise'):
+        try:
+            for j in range(n):
+                # See e.g. Schumaker, Spline Functions: Basic Theory, Chapter 5
+
+                # Compute the denominator in the differentiation formula.
+                # (and append traling dims, if necessary)
+                dt = t[k+1:-1] - t[1:-k-1]
+                dt = dt[sh]
+                # Compute the new coefficients
+                c = (c[1:-1-k] - c[:-2-k]) * k / dt
+                # Pad coefficient array to same size as knots (FITPACK
+                # convention)
+                c = cupy.r_[c, np.zeros((k,) + c.shape[1:])]
+                # Adjust knots
+                t = t[1:-1]
+                k -= 1
+        except FloatingPointError as e:
+            raise ValueError(("The spline has internal repeated knots "
+                              "and is not differentiable %d times") % n) from e
+
+    return t, c, k
+
+
+def splantider(tck, n=1):
+    """
+    Compute the spline for the antiderivative (integral) of a given spline.
+
+    Parameters
+    ----------
+    tck : tuple of (t, c, k)
+        Spline whose antiderivative to compute
+    n : int, optional
+        Order of antiderivative to evaluate. Default: 1
+
+    Returns
+    -------
+    tck_ader : tuple of (t2, c2, k2)
+        Spline of order k2=k+n representing the antiderivative of the input
+        spline.
+
+    See Also
+    --------
+    splder, splev, spalde
+
+    Notes
+    -----
+    The `splder` function is the inverse operation of this function.
+    Namely, ``splder(splantider(tck))`` is identical to `tck`, modulo
+    rounding error.
+
+    .. seealso:: :class:`scipy.interpolate.splantider`
+    """
+    if n < 0:
+        return splder(tck, -n)
+
+    t, c, k = tck
+
+    # Extra axes for the trailing dims of the `c` array:
+    sh = (slice(None),) + (None,)*len(c.shape[1:])
+
+    for j in range(n):
+        # This is the inverse set of operations to splder.
+
+        # Compute the multiplier in the antiderivative formula.
+        dt = t[k+1:] - t[:-k-1]
+        dt = dt[sh]
+        # Compute the new coefficients
+        c = cupy.cumsum(c[:-k-1] * dt, axis=0) / (k + 1)
+        c = cupy.r_[cupy.zeros((1,) + c.shape[1:]),
+                    c, [c[-1]] * (k+2)]
+        # New knots
+        t = cupy.r_[t[0], t, t[-1]]
+        k += 1
+
+    return t, c, k
 
 
 class BSpline:
@@ -584,3 +700,30 @@ class BSpline:
     def _evaluate(self, xp, nu, extrapolate, out):
         _evaluate_spline(self.t, self.c.reshape(self.c.shape[0], -1),
                          self.k, xp, nu, extrapolate, out)
+
+    def derivative(self, nu=1):
+        """Return a B-spline representing the derivative.
+
+        Parameters
+        ----------
+        nu : int, optional
+            Derivative order.
+            Default is 1.
+
+        Returns
+        -------
+        b : BSpline object
+            A new instance representing the derivative.
+
+        See Also
+        --------
+        splder, splantider
+        """
+        c = self.c
+        # pad the c array if needed
+        ct = len(self.t) - len(c)
+        if ct > 0:
+            c = cupy.r_[c, cupy.zeros((ct,) + c.shape[1:])]
+        tck = splder((self.t, c, self.k), nu)
+        return self.construct_fast(*tck, extrapolate=self.extrapolate,
+                                    axis=self.axis)
