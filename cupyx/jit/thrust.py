@@ -20,7 +20,7 @@ device = _internal_types.Data('thrust::device', _cuda_types.Unknown())
 
 @_wrap_thrust_func(['thrust/copy.h', 'thrust/execution_policy.h'])
 def copy(env, exec_policy, first, last, result):
-    """Sorts the elements in [first, last) into ascending order.
+    """Copies the elements.
     """
     if exec_policy.code != 'thrust::device':
         raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
@@ -38,7 +38,7 @@ def copy(env, exec_policy, first, last, result):
 
 @_wrap_thrust_func(['thrust/count.h', 'thrust/execution_policy.h'])
 def count(env, exec_policy, first, last, value):
-    """Count the number of elements in [first, last) that equals to ``value``.
+    """Counts the number of elements in [first, last) that equals to ``value``.
     """
     if exec_policy.code != 'thrust::device':
         raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
@@ -54,7 +54,7 @@ def count(env, exec_policy, first, last, value):
 
 @_wrap_thrust_func(['thrust/find.h', 'thrust/execution_policy.h'])
 def find(env, exec_policy, first, last, value):
-    """Count the number of elements in [first, last) that equals to ``value``.
+    """Finds the first iterator whose value equals to ``value``.
     """
     if exec_policy.code != 'thrust::device':
         raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
@@ -70,7 +70,7 @@ def find(env, exec_policy, first, last, value):
 
 @_wrap_thrust_func(['thrust/mismatch.h', 'thrust/execution_policy.h'])
 def mismatch(env, exec_policy, first1, last1, first2):
-    """Sorts the elements in [first, last) into ascending order.
+    """Finds the first positions whose values differ.
     """
     if exec_policy.code != 'thrust::device':
         raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
@@ -107,7 +107,7 @@ def sort(env, exec_policy, first, last):
 
 @_wrap_thrust_func(['thrust/sort.h', 'thrust/execution_policy.h'])
 def sort_by_key(env, exec_policy, keys_first, keys_last, values_first):
-    """Sorts the elements in [first, last) into ascending order.
+    """Performs key-value sort.
     """
     if exec_policy.code != 'thrust::device':
         raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
