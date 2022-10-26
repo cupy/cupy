@@ -302,26 +302,25 @@ def splder(tck, n=1):
     # Extra axes for the trailing dims of the `c` array:
     sh = (slice(None),) + ((None,)*len(c.shape[1:]))
 
-    with cupyx.errstate(invalid='raise', divide='raise'):
-        try:
-            for j in range(n):
-                # See e.g. Schumaker, Spline Functions: Basic Theory, Chapter 5
+    try:
+        for j in range(n):
+            # See e.g. Schumaker, Spline Functions: Basic Theory, Chapter 5
 
-                # Compute the denominator in the differentiation formula.
-                # (and append traling dims, if necessary)
-                dt = t[k+1:-1] - t[1:-k-1]
-                dt = dt[sh]
-                # Compute the new coefficients
-                c = (c[1:-1-k] - c[:-2-k]) * k / dt
-                # Pad coefficient array to same size as knots (FITPACK
-                # convention)
-                c = cupy.r_[c, np.zeros((k,) + c.shape[1:])]
-                # Adjust knots
-                t = t[1:-1]
-                k -= 1
-        except FloatingPointError as e:
-            raise ValueError(("The spline has internal repeated knots "
-                              "and is not differentiable %d times") % n) from e
+            # Compute the denominator in the differentiation formula.
+            # (and append traling dims, if necessary)
+            dt = t[k+1:-1] - t[1:-k-1]
+            dt = dt[sh]
+            # Compute the new coefficients
+            c = (c[1:-1-k] - c[:-2-k]) * k / dt
+            # Pad coefficient array to same size as knots (FITPACK
+            # convention)
+            c = cupy.r_[c, np.zeros((k,) + c.shape[1:])]
+            # Adjust knots
+            t = t[1:-1]
+            k -= 1
+    except FloatingPointError as e:
+        raise ValueError(("The spline has internal repeated knots "
+                          "and is not differentiable %d times") % n) from e
 
     return t, c, k
 
@@ -697,12 +696,19 @@ class BSpline:
 
         return out
 
+    def _ensure_c_contiguous(self):
+        if not self.t.flags.c_contiguous:
+            self.t = self.t.copy()
+        if not self.c.flags.c_contiguous:
+            self.c = self.c.copy()
+
     def _evaluate(self, xp, nu, extrapolate, out):
         _evaluate_spline(self.t, self.c.reshape(self.c.shape[0], -1),
                          self.k, xp, nu, extrapolate, out)
 
     def derivative(self, nu=1):
-        """Return a B-spline representing the derivative.
+        """
+        Return a B-spline representing the derivative.
 
         Parameters
         ----------
@@ -727,3 +733,108 @@ class BSpline:
         tck = splder((self.t, c, self.k), nu)
         return self.construct_fast(*tck, extrapolate=self.extrapolate,
                                     axis=self.axis)
+
+    def integrate(self, a, b, extrapolate=None):
+        """
+        Compute a definite integral of the spline.
+
+        Parameters
+        ----------
+        a : float
+            Lower limit of integration.
+        b : float
+            Upper limit of integration.
+        extrapolate : bool or 'periodic', optional
+            whether to extrapolate beyond the base interval,
+            ``t[k] .. t[-k-1]``, or take the spline to be zero outside of the
+            base interval. If 'periodic', periodic extrapolation is used.
+            If None (default), use `self.extrapolate`.
+
+        Returns
+        -------
+        I : array_like
+            Definite integral of the spline over the interval ``[a, b]``.
+        """
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+
+        # Prepare self.t and self.c.
+        self._ensure_c_contiguous()
+
+        # Swap integration bounds if needed.
+        sign = 1
+        if b < a:
+            a, b = b, a
+            sign = -1
+        n = self.t.size - self.k - 1
+
+        if extrapolate != "periodic" and not extrapolate:
+            # Shrink the integration interval, if needed.
+            a = max(a, self.t[self.k])
+            b = min(b, self.t[n])
+
+            # if self.c.ndim == 1:
+            #     # Fast path: use FITPACK's routine
+            #     # (cf _fitpack_impl.splint).
+            #     integral = splint(a, b, self.tck)
+            #     return integral * sign
+
+        out = cupy.empty((2, np.prod(self.c.shape[1:])), dtype=self.c.dtype)
+
+        # Compute the antiderivative.
+        c = self.c
+        ct = len(self.t) - len(c)
+        if ct > 0:
+            c = cupy.r_[c, cupy.zeros((ct,) + c.shape[1:])]
+        ta, ca, ka = splantider((self.t, c, self.k), 1)
+
+        if extrapolate == 'periodic':
+            # Split the integral into the part over period (can be several
+            # of them) and the remaining part.
+
+            ts, te = self.t[self.k], self.t[n]
+            period = te - ts
+            interval = b - a
+            n_periods, left = divmod(interval, period)
+
+            if n_periods > 0:
+                # Evaluate the difference of antiderivatives.
+                x = cupy.asarray([ts, te], dtype=cupy.float_)
+                _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
+                                      ka, x, 0, False, out)
+                integral = out[1] - out[0]
+                integral *= n_periods
+            else:
+                integral = cupy.zeros((1, np.prod(self.c.shape[1:])),
+                                      dtype=self.c.dtype)
+
+            # Map a to [ts, te], b is always a + left.
+            a = ts + (a - ts) % period
+            b = a + left
+
+            # If b <= te then we need to integrate over [a, b], otherwise
+            # over [a, te] and from xs to what is remained.
+            if b <= te:
+                x = cupy.asarray([a, b], dtype=cupy.float_)
+                _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
+                                 ka, x, 0, False, out)
+                integral += out[1] - out[0]
+            else:
+                x = cupy.asarray([a, te], dtype=cupy.float_)
+                _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
+                                 ka, x, 0, False, out)
+                integral += out[1] - out[0]
+
+                x = cupy.asarray([ts, ts + b - te], dtype=cupy.float_)
+                _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
+                                 ka, x, 0, False, out)
+                integral += out[1] - out[0]
+        else:
+            # Evaluate the difference of antiderivatives.
+            x = cupy.asarray([a, b], dtype=cupy.float_)
+            _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
+                             ka, x, 0, extrapolate, out)
+            integral = out[1] - out[0]
+
+        integral *= sign
+        return integral.reshape(ca.shape[1:])
