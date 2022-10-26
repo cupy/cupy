@@ -1,6 +1,7 @@
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
+from cupy_backends.cuda.api import runtime
 
 
 class _ClassTemplate:
@@ -14,8 +15,15 @@ class _ClassTemplate:
 
 
 def _include_cub(env):
-    env.generated.add_code('#include <cub/cub.cuh>')
+    if runtime.is_hip:
+        env.generated.add_code('#include <hipcub/hipcub.hpp>')
+    else:
+        env.generated.add_code('#include <cub/cub.cuh>')
     env.generated.backend = 'nvcc'
+
+
+def _get_cub_namespace():
+    return 'hipcub' if runtime.is_hip else 'cub'
 
 
 class _TempStorageType(_cuda_types.TypeBase):
@@ -37,7 +45,8 @@ class _WarpReduceType(_cuda_types.TypeBase):
         super().__init__()
 
     def __str__(self) -> str:
-        return f'cub::WarpReduce<{self.child_type}>'
+        namespace = _get_cub_namespace()
+        return f'{namespace}::WarpReduce<{self.child_type}>'
 
     def _instantiate(self, env, temp_storage) -> _internal_types.Data:
         _include_cub(env)
