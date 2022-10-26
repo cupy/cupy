@@ -20,6 +20,8 @@
  *         until nvcc can compile tr1::type_traits.
  */
 
+#pragma once
+
 namespace thrust
 {
 

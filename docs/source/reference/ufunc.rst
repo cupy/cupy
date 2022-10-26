@@ -26,11 +26,11 @@ Methods
 
 These methods are only available for selected ufuncs.
 
-* ``ufunc.reduce``: Not implemented yet
-* ``ufunc.accumulate``: Not implemented yet
-* ``ufunc.reduceat``: Not implemented yet
+* :meth:`ufunc.reduce <cupy.ufunc.reduce>`: :func:`~cupy.add`, :func:`~cupy.multiply`
+* :meth:`ufunc.accumulate <cupy.ufunc.accumulate>`: :func:`~cupy.add`, :func:`~cupy.multiply`
+* :meth:`ufunc.reduceat <ufunc.reduceat>`: :func:`~cupy.add`
 * :meth:`ufunc.outer <cupy.ufunc.outer>`: All ufuncs
-* :meth:`ufunc.at <cupy.ufunc.at>`: :func:`~cupy.add`, :func:`~cupy.maximum`, :func:`~cupy.minimum`
+* :meth:`ufunc.at <cupy.ufunc.at>`: :func:`~cupy.add`, :func:`~cupy.subtract`, :func:`~cupy.maximum`, :func:`~cupy.minimum`, :func:`~cupy.bitwise_and`, :func:`~cupy.bitwise_or`, :func:`~cupy.bitwise_xor`
 
 .. hint::
 

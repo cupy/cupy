@@ -214,3 +214,14 @@ class TestUfuncAccumulate:
     def test_multiply_add(self, xp, dtype):
         x = testing.shaped_random((3, 4), xp=xp, dtype=dtype, seed=0)
         return xp.multiply.accumulate(x, axis=-1)
+
+
+class TestUfuncReduceAt:
+
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_reduce_add(self, xp, dtype):
+        x = testing.shaped_random((3, 4, 5), xp=xp, dtype=dtype, seed=0)
+        indices = testing.shaped_random(
+            (20,), xp=xp, dtype=numpy.int32, scale=4, seed=1)
+        return xp.add.reduceat(x, indices, axis=1)
