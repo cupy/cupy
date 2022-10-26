@@ -105,7 +105,6 @@ class PointerBase(ArrayBase):
 
     @staticmethod
     def _sub(env, x: 'Data', y: 'Data') -> 'Data':
-        print('_sub called')
         from cupyx.jit import _internal_types  # avoid circular import
         if isinstance(y.ctype, Scalar) and y.ctype.dtype.kind in 'iu':
             return _internal_types.Data(f'({x.code} - {y.code})', x.ctype)
