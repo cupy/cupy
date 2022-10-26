@@ -10,8 +10,11 @@ class _ClassTemplate:
         self._class_type = class_type
         self.__doc__ = self._class_type.__doc__
 
-    def __getitem__(self, template_type):
-        return self._class_type(_cuda_typerules.to_ctype(template_type))
+    def __getitem__(self, args):
+        if isinstance(args, tuple):
+            return self._class_type(*args)
+        else:
+            return self._class_type(args)
 
 
 def _include_cub(env):
@@ -29,7 +32,7 @@ def _get_cub_namespace():
 class _TempStorageType(_cuda_types.TypeBase):
 
     def __init__(self, parent_type):
-        assert isinstance(parent_type, _WarpReduceType)
+        assert isinstance(parent_type, _CubReduceBaseType)
         self.parent_type = parent_type
         super().__init__()
 
@@ -37,16 +40,7 @@ class _TempStorageType(_cuda_types.TypeBase):
         return f'typename {self.parent_type}::TempStorage'
 
 
-class _WarpReduceType(_cuda_types.TypeBase):
-
-    def __init__(self, child_type) -> None:
-        self.child_type = child_type
-        self.TempStorage = _TempStorageType(self)
-        super().__init__()
-
-    def __str__(self) -> str:
-        namespace = _get_cub_namespace()
-        return f'{namespace}::WarpReduce<{self.child_type}>'
+class _CubReduceBaseType(_cuda_types.TypeBase):
 
     def _instantiate(self, env, temp_storage) -> _internal_types.Data:
         _include_cub(env)
@@ -58,4 +52,30 @@ class _WarpReduceType(_cuda_types.TypeBase):
             f'{instance.code}.Sum({input.code})', input.ctype)
 
 
+class _WarpReduceType(_CubReduceBaseType):
+
+    def __init__(self, T) -> None:
+        self.T = _cuda_typerules.to_ctype(T)
+        self.TempStorage = _TempStorageType(self)
+        super().__init__()
+
+    def __str__(self) -> str:
+        namespace = _get_cub_namespace()
+        return f'{namespace}::WarpReduce<{self.T}>'
+
+
+class _BlockReduceType(_CubReduceBaseType):
+
+    def __init__(self, T, BLOCK_DIM_X: int) -> None:
+        self.T = _cuda_typerules.to_ctype(T)
+        self.BLOCK_DIM_X = BLOCK_DIM_X
+        self.TempStorage = _TempStorageType(self)
+        super().__init__()
+
+    def __str__(self) -> str:
+        namespace = _get_cub_namespace()
+        return f'{namespace}::BlockReduce<{self.T}, {self.BLOCK_DIM_X}>'
+
+
 WarpReduce = _ClassTemplate(_WarpReduceType)
+BlockReduce = _ClassTemplate(_BlockReduceType)

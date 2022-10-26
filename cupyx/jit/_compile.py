@@ -810,7 +810,10 @@ def _transpile_expr_internal(
 
     if isinstance(expr, ast.Tuple):
         elts = [_transpile_expr(x, env) for x in expr.elts]
-        # TODO: Support compile time constants.
+
+        if all([isinstance(x, Constant) for x in elts]):
+            return Constant(tuple([x.obj for x in elts]))
+
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
         if len(elts) == 2:
@@ -868,7 +871,7 @@ def _transpile_assign_stmt(
 
     if isinstance(target, ast.Subscript):
         target = _transpile_expr(target, env)
-        assert isinstance(target, Data)
+        target = Data.init(target, env)
         return _emit_assign_stmt(target, value, env)
 
     if isinstance(target, ast.Tuple):

@@ -40,6 +40,16 @@ class Data(Expr):
         if isinstance(x, Data):
             return x
         if isinstance(x, Constant):
+            if isinstance(x.obj, tuple):
+                elts = [Data.init(Constant(e), env) for e in x.obj]
+                elts_code = ', '.join([e.code for e in elts])
+                if len(elts) == 2:
+                    return Data(
+                        f'thrust::make_pair({elts_code})',
+                        _cuda_types.Tuple([x.ctype for x in elts]))
+                return Data(
+                    f'thrust::make_tuple({elts_code})',
+                    _cuda_types.Tuple([x.ctype for x in elts]))
             ctype = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj)
             code = _cuda_types.get_cuda_code_from_constant(x.obj, ctype)
             return Data(code, ctype)
