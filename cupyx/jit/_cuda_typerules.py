@@ -154,3 +154,9 @@ def guess_routine(
         return ufunc._ops._guess_routine_from_dtype(dtype)
     can_cast = numpy.can_cast if mode == 'numpy' else _cuda_can_cast
     return ufunc._ops._guess_routine_from_in_types(tuple(in_types), can_cast)
+
+
+def to_ctype(t) -> _cuda_types.TypeBase:
+    if isinstance(t, _cuda_types.TypeBase):
+        return t
+    return _cuda_types.Scalar(numpy.dtype(t))

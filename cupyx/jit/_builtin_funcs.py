@@ -6,6 +6,7 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupyx.jit import _cuda_types
+from cupyx.jit import _cuda_typerules
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
@@ -212,11 +213,11 @@ class SharedMemory(BuiltinFunc):
 
     def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_smem')
-        child_type = _cuda_types.Scalar(dtype)
-        var = Data(name, _cuda_types.SharedMem(child_type, size, alignment))
+        ctype = _cuda_typerules.to_ctype(dtype)
+        var = Data(name, _cuda_types.SharedMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
-        return Data(name, _cuda_types.Ptr(child_type))
+        return Data(name, _cuda_types.Ptr(ctype))
 
 
 class AtomicOp(BuiltinFunc):

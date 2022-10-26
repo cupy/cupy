@@ -196,6 +196,10 @@ def transpile(func, attributes, mode, in_types, ret_type):
     code = '\n'.join(generated.codes)
     backend = generated.backend
     enable_cg = generated.enable_cg
+
+    if _is_debug_mode:
+        print(code)
+
     return Result(
         func_name=func_name, code=code, return_type=return_type,
         enable_cooperative_groups=enable_cg, backend=backend)
@@ -731,6 +735,9 @@ def _transpile_expr_internal(
 
         func = func.obj
 
+        if isinstance(func, _interface._cuda_types.TypeBase):
+            return func._instantiate(env, *args, **kwargs)
+
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
                 raise TypeError(
@@ -793,8 +800,6 @@ def _transpile_expr_internal(
         value = _transpile_expr(expr.value, env)
         if isinstance(value, Constant):
             return Constant(getattr(value.obj, expr.attr))
-        if isinstance(value, _internal_types.BuiltinFunc):
-            return Constant(getattr(value, expr.attr))
         if isinstance(value, Data) and hasattr(value.ctype, expr.attr):
             attr = getattr(value.ctype, expr.attr, None)
             if isinstance(attr, types.MethodType):
