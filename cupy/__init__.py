@@ -317,7 +317,7 @@ def binary_repr(num, width=None):
 
 
 # -----------------------------------------------------------------------------
-# Data type routines (borrowed from NumPy)
+# Data type routines (mostly borrowed from NumPy)
 # -----------------------------------------------------------------------------
 def can_cast(from_, to, casting='safe'):
     """Returns True if cast between data types can occur according to the
@@ -362,7 +362,8 @@ def result_type(*arrays_and_dtypes):
     return _numpy.result_type(*dtypes)
 
 
-from numpy import min_scalar_type  # NOQA
+from cupy._core.core import min_scalar_type  # NOQA
+
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
