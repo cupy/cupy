@@ -299,7 +299,7 @@ private:
   T* head_;
   index_t step_;
 public:
-  __device__ CArrayIterator(T* head, index_t step) {
+  __host__ __device__ CArrayIterator(T* head, index_t step) {
     this->head_ = head;
     this->step_ = step;
   }
@@ -307,70 +307,70 @@ public:
     this->head_ = itr.head_;
     this->step_ = itr.step_;
   }
-  __device__ bool operator==(const CArrayIterator& itr) const {
+  __host__ __device__ bool operator==(const CArrayIterator& itr) const {
     return (this->head_ == itr.head_) && (this->step_ == itr.step_);
   }
-  __device__ bool operator!=(const CArrayIterator& itr) const {
+  __host__ __device__ bool operator!=(const CArrayIterator& itr) const {
     return !(*this == itr);
   }
-  __device__ T& operator*() const {
+  __host__ __device__ T& operator*() const {
     return *(this->head_);
   }
-  __device__ const T* operator->() const {
+  __host__ __device__ const T* operator->() const {
     return this->head_;
   }
-  __device__ CArrayIterator& operator++() {
+  __host__ __device__ CArrayIterator& operator++() {
     this->head_ += this->step_;
     return *this;
   }
-  __device__ CArrayIterator operator++(int) {
+  __host__ __device__ CArrayIterator operator++(int) {
     CArrayIterator tmp = *this;
     this->head_ += this->step_;
     return tmp;
   }
-  __device__ CArrayIterator& operator--() {
+  __host__ __device__ CArrayIterator& operator--() {
     this->head_ -= this->step_;
     return *this;
   }
-  __device__ CArrayIterator operator--(int) {
+  __host__ __device__ CArrayIterator operator--(int) {
     CArrayIterator tmp = *this;
     this->head_ -= this->step_;
     return tmp;
   }
-  __device__ CArrayIterator operator+(ptrdiff_t n) const {
+  __host__ __device__ CArrayIterator operator+(ptrdiff_t n) const {
     CArrayIterator out = *this;
     out.head_ += out.step_ * n;
     return out;
   }
-  __device__ difference_type operator-(const CArrayIterator& itr) const {
+  __host__ __device__ difference_type operator-(const CArrayIterator& itr) const {
     return (this->head_ - itr.head_) / this->step_;
   }
-  __device__ CArrayIterator operator-(ptrdiff_t n) const {
+  __host__ __device__ CArrayIterator operator-(ptrdiff_t n) const {
     CArrayIterator out = *this;
     out.head_ -= out.step_ * n;
     return out;
   }
-  __device__ CArrayIterator& operator+=(ptrdiff_t n) {
+  __host__ __device__ CArrayIterator& operator+=(ptrdiff_t n) {
     this->head_ += this->step_ * n;
     return *this;
   }
-  __device__ CArrayIterator& operator-=(ptrdiff_t n) {
+  __host__ __device__ CArrayIterator& operator-=(ptrdiff_t n) {
     this->head_ -= this->step_ * n;
     return *this;
   }
-  __device__ T& operator[](index_t n) const {
+  __host__ __device__ T& operator[](index_t n) const {
     return *(this->head_ + this->step_ * n);
   }
-  __device__ bool operator<(const CArrayIterator& itr) const {
+  __host__ __device__ bool operator<(const CArrayIterator& itr) const {
     return this->head_ < itr.head_;
   }
-  __device__ bool operator>(const CArrayIterator& itr) const {
+  __host__ __device__ bool operator>(const CArrayIterator& itr) const {
     return this->head_ > itr.head_;
   }
-  __device__ bool operator<=(const CArrayIterator& itr) const {
+  __host__ __device__ bool operator<=(const CArrayIterator& itr) const {
     return !(*this > itr);
   }
-  __device__ bool operator>=(const CArrayIterator& itr) const {
+  __host__ __device__ bool operator>=(const CArrayIterator& itr) const {
     return !(*this < itr);
   }
 };

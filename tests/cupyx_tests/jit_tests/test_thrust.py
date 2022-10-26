@@ -4,6 +4,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy_backends.cuda.api import runtime
 from cupyx import jit
 
 
@@ -89,6 +90,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_mismatch_iterator(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support pair of pointer type')
+
         @jit.rawkernel()
         def mismatch(x1, x2, out1, out2):
             i = jit.threadIdx.x
