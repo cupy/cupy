@@ -1,5 +1,3 @@
-import pytest
-
 import cupy
 from cupy import testing
 from cupy_backends.cuda.api import runtime

@@ -79,3 +79,21 @@ class _BlockReduceType(_CubReduceBaseType):
 
 WarpReduce = _ClassTemplate(_WarpReduceType)
 BlockReduce = _ClassTemplate(_BlockReduceType)
+
+
+class _CubFunctor(_internal_types.BuiltinFunc):
+
+    def __init__(self, name):
+        namespace = _get_cub_namespace()
+        self.fname = f'{namespace}::{name}()'
+
+    def call_const(self, env):
+        return _internal_types.Data(
+            self.fname, _cuda_types.Unknown(label='cub_functor'))
+
+
+Sum = _CubFunctor('Sum')
+Max = _CubFunctor('Max')
+ArgMax = _CubFunctor('ArgMax')
+Min = _CubFunctor('Min')
+ArgMin = _CubFunctor('ArgMin')
