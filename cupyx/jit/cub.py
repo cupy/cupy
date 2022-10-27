@@ -44,10 +44,17 @@ class _CubReduceBaseType(_cuda_types.TypeBase):
 
     def _instantiate(self, env, temp_storage) -> _internal_types.Data:
         _include_cub(env)
+        if temp_storage.ctype != self.TempStorage:
+            raise TypeError(
+                f'Invalid temp_storage type {temp_storage.ctype}. '
+                f'({self.TempStorage} is expected.)')
         return _internal_types.Data(f'{self}({temp_storage.code})', self)
 
     @_internal_types.wraps_class_method
     def Sum(self, env, instance, input) -> _internal_types.Data:
+        if input.ctype != self.T:
+            raise TypeError(
+                f'Invalid input type {input.ctype}. ({self.T} is expected.)')
         return _internal_types.Data(
             f'{instance.code}.Sum({input.code})', input.ctype)
 
