@@ -58,6 +58,15 @@ class _CubReduceBaseType(_cuda_types.TypeBase):
         return _internal_types.Data(
             f'{instance.code}.Sum({input.code})', input.ctype)
 
+    @_internal_types.wraps_class_method
+    def Reduce(self, env, instance, input, reduction_op):
+        if input.ctype != self.T:
+            raise TypeError(
+                f'Invalid input type {input.ctype}. ({self.T} is expected.)')
+        return _internal_types.Data(
+            f'{instance.code}.Reduce({input.code}, {reduction_op.code})',
+            input.ctype)
+
 
 class _WarpReduceType(_CubReduceBaseType):
 
@@ -101,6 +110,4 @@ class _CubFunctor(_internal_types.BuiltinFunc):
 
 Sum = _CubFunctor('Sum')
 Max = _CubFunctor('Max')
-ArgMax = _CubFunctor('ArgMax')
 Min = _CubFunctor('Min')
-ArgMin = _CubFunctor('ArgMin')
