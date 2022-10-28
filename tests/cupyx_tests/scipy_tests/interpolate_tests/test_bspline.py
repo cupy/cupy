@@ -77,3 +77,16 @@ class TestBSpline:
 
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return b.antiderivative().tck
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate(self, xp, scp, dtype):
+        if xp.dtype(dtype).kind == 'u':
+            pytest.skip()
+
+        k = 2
+        t = xp.arange(7, dtype=dtype)
+        c = xp.asarray(self.c, dtype=dtype)
+
+        b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
+        return xp.asarray(b.integrate(0, 5))

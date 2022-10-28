@@ -852,7 +852,7 @@ class BSpline:
             #     integral = splint(a, b, self.tck)
             #     return integral * sign
 
-        out = cupy.empty((2, np.prod(self.c.shape[1:])), dtype=self.c.dtype)
+        out = cupy.empty((2, int(np.prod(self.c.shape[1:]))), dtype=self.c.dtype)
 
         # Compute the antiderivative.
         c = self.c
