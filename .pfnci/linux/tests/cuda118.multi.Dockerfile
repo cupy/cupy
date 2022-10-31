@@ -1,11 +1,7 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:5.1.3"
+ARG BASE_IMAGE="nvidia/cuda:11.8.0-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ( apt-get -qqy update || true ) && \
-    apt-get -qqy install ca-certificates && \
-    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install \
@@ -14,26 +10,21 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-\
+       libopenmpi-dev \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
+            --allow-downgrades install 'libnccl2=2.15.*+cuda11.8' 'libnccl-dev=2.15.*+cuda11.8' 'libcutensor1=1.6.*' 'libcutensor-dev=1.6.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.6.*+cuda11.8' 'libcudnn8-dev=8.6.*+cuda11.8'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
-
-ENV ROCM_HOME "/opt/rocm"
-ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
-ENV CPATH "${ROCM_HOME}/include"
-ENV LDFLAGS "-L${ROCM_HOME}/lib"
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.9.6 && \
-    pyenv global 3.9.6 && \
+RUN pyenv install 3.10.0 && \
+    pyenv global 3.10.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.23.*' 'scipy==1.8.*' 'optuna==2.*' 'cython==0.29.*'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip install -U 'numpy==1.23.*' 'scipy==1.9.*' 'optuna==2.*' 'mpi4py==3.*' 'cython==0.29.*'
+RUN pip uninstall -y cuda-python && \
     pip check

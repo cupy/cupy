@@ -1,6 +1,6 @@
 from cupy._core cimport _accelerator
 from cupy._core._accelerator cimport ACCELERATOR_CUB
-from cupy._core._scalar cimport get_typename
+from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
 
 import functools
 import string
@@ -114,15 +114,8 @@ class _FusionVarCUDA(object):
         if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
 
-        if isinstance(val, bool):
-            init = '= {}'.format(str(c).lower())
-        elif isinstance(val, complex):
-            init = '({}, {})'.format(c.real, c.imag)
-        elif isinstance(val, (int, float)):
-            init = '= {}'.format(c)
-        else:
-            raise TypeError('Invalid constant type: {}'.format(type(c)))
-        return 'const {} v{} {};\n'.format(ctype, self.index, init)
+        code = _get_cuda_scalar_repr(val, self.dtype)
+        return 'const {} v{} = {};\n'.format(ctype, self.index, code)
 
     def declaration_in_param(self):
         non_const = '_non_const ' if self.mutable else ''
@@ -524,7 +517,7 @@ class _FusionHistory(object):
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise TypeError('Unsupported type {}'.format(type(arg)))
 
-    def call_ufunc(self, ufunc, args, kwargs):
+    def call_ufunc(self, ufunc, *args, **kwargs):
         nin = ufunc.nin
         nout = ufunc.nout
 
@@ -958,7 +951,7 @@ def fuse(*args, **kwargs):
 
 
 def _call_ufunc(fusion_op, *args, **kwargs):
-    return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
+    return _thread_local.history.call_ufunc(fusion_op, *args, **kwargs)
 
 
 def _call_reduction(fusion_op, *args, **kwargs):

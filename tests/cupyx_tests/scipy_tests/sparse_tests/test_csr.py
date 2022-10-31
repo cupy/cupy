@@ -1707,6 +1707,7 @@ class TestCsrMatrixGetitem:
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.with_requires('scipy>=1.9.3')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]

@@ -639,6 +639,14 @@ class TestSearchSorted:
         y = xp.searchsorted(bins, x, side=self.side)
         return y,
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_ndarray_searchsorted(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype)
+        bins = xp.array(self.bins)
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
 
 @testing.gpu
 @testing.parameterize(
@@ -716,6 +724,13 @@ class TestSearchSortedInvalid:
             with pytest.raises(ValueError):
                 xp.searchsorted(bins, x)
 
+    def test_ndarray_searchsorted_ndbins(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((10,), xp, xp.float64)
+            bins = xp.array([[10, 4], [2, 1], [7, 8]])
+            with pytest.raises(ValueError):
+                bins.searchsorted(x)
+
 
 @testing.gpu
 class TestSearchSortedWithSorter:
@@ -743,3 +758,92 @@ class TestSearchSortedWithSorter:
             sorter = xp.array([], dtype=xp.float64)
             with pytest.raises(TypeError):
                 xp.searchsorted(bins, x, sorter=sorter)
+
+
+@testing.parameterize(
+    {'side': 'left'},
+    {'side': 'right'})
+class TestNdarraySearchSortedNanInf:
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_nanbins(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        bins = xp.array([0, 1, 2, 4, 10, float('nan')])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_nan(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('nan')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_nan_last(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([0, 1, 2, 4, float('nan')])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_nan_last_repeat(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([0, 1, 2, float('nan'), float('nan')])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_all_nans(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[-1] = float('nan')
+        bins = xp.array([float('nan'), float('nan'), float('nan'),
+                         float('nan'), float('nan')])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_inf(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_minf(self, xp):
+        x = testing.shaped_arange((10,), xp, xp.float64)
+        x[5] = float('-inf')
+        bins = xp.array([0, 1, 2, 4, 10])
+        y = bins.searchsorted(x, side=self.side)
+        return y,
+
+
+class TestNdarraySearchSortedWithSorter:
+
+    @testing.numpy_cupy_array_equal()
+    def test_sorter(self, xp):
+        x = testing.shaped_arange((12,), xp, xp.float64)
+        bins = xp.array([10, 4, 2, 1, 8])
+        sorter = xp.array([3, 2, 1, 4, 0])
+        y = bins.searchsorted(x, sorter=sorter)
+        return y,
+
+    def test_invalid_sorter(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((12,), xp, xp.float64)
+            bins = xp.array([10, 4, 2, 1, 8])
+            sorter = xp.array([0])
+            with pytest.raises(ValueError):
+                bins.searchsorted(x, sorter=sorter)
+
+    def test_nonint_sorter(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((12,), xp, xp.float64)
+            bins = xp.array([10, 4, 2, 1, 8])
+            sorter = xp.array([], dtype=xp.float64)
+            with pytest.raises(TypeError):
+                bins.searchsorted(x, sorter=sorter)

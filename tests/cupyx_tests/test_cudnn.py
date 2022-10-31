@@ -28,7 +28,7 @@ if cudnn_enabled:
     if cudnn_version >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
-    from cupy import cudnn
+    from cupyx import cudnn
 else:
     cudnn_version = -1
     modes = []

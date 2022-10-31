@@ -66,6 +66,7 @@ cdef class _ndarray_base:
     cpdef _ndarray_base std(self, axis=*, dtype=*, out=*, ddof=*, keepdims=*)
     cpdef _ndarray_base prod(self, axis=*, dtype=*, out=*, keepdims=*)
     cpdef _ndarray_base cumprod(self, axis=*, dtype=*, out=*)
+    cpdef _ndarray_base _add_reduceat(self, indices, axis, dtype, out)
     cpdef _ndarray_base all(self, axis=*, out=*, keepdims=*)
     cpdef _ndarray_base any(self, axis=*, out=*, keepdims=*)
     cpdef _ndarray_base conj(self)
