@@ -2808,3 +2808,19 @@ cdef _ndarray_base _create_ndarray_from_shape_strides(
     ptr = memory.alloc(end - begin) + begin
     return ndarray.__new__(
         subtype, shape, dtype, _obj=obj, memptr=ptr, strides=strides)
+
+
+cpdef min_scalar_type(a):
+    """
+    For scalar ``a``, returns the data type with the smallest size
+    and smallest scalar kind which can hold its value.  For non-scalar
+    array ``a``, returns the vector's dtype unmodified.
+
+    .. seealso:: :func:`numpy.min_scalar_type`
+    """
+    if isinstance(a, ndarray):
+        return a.dtype
+    _, concat_type, concat_dtype = _array_info_from_nested_sequence(a)
+    if concat_type is not None:
+        return concat_dtype
+    return numpy.min_scalar_type(a)

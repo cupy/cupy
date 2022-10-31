@@ -9,6 +9,7 @@ Data type routines
    :toctree: generated/
 
    can_cast
+   min_scalar_type
    result_type
    common_type
 
@@ -16,7 +17,6 @@ Data type routines
    :align: left
 
    ``promote_types`` (alias of :func:`numpy.promote_types`)
-   ``min_scalar_type`` (alias of :func:`numpy.min_scalar_type`)
    ``obj2sctype`` (alias of :func:`numpy.obj2sctype`)
 
 Creating data types
