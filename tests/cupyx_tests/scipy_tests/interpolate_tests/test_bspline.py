@@ -1,7 +1,5 @@
-import numpy
 import pytest
 
-import cupy
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
 
@@ -9,6 +7,7 @@ try:
     from scipy import interpolate  # NOQA
 except ImportError:
     pass
+
 
 @testing.parameterize(*testing.product({
     'extrapolate': [True, False],
@@ -27,7 +26,6 @@ class TestBSpline:
         test_xs = xp.linspace(-5, 10, 100, dtype=dtype)
         B = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return B(test_xs)
-
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')

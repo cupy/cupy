@@ -146,7 +146,9 @@ __global__ void d_boor(
     for(j = 0; j < num_c; j++) {
         out[num_c * idx + j] = 0;
         for(n = 0; n < k + 1; n++) {
-            out[num_c * idx + j] = out[num_c * idx + j] + c[(interval + n - k) * num_c + j] * h[n];
+            out[num_c * idx + j] = (
+                out[num_c * idx + j] +
+                c[(interval + n - k) * num_c + j] * h[n]);
         }
     }
 
@@ -524,7 +526,7 @@ class BSpline:
             raise ValueError("Knot vector must be one-dimensional.")
         if n < self.k + 1:
             raise ValueError("Need at least %d knots for degree %d" %
-                    (2*k + 2, k))
+                             (2*k + 2, k))
         if (cupy.diff(self.t) < 0).any():
             raise ValueError("Knots must be in a non-decreasing order.")
         if len(cupy.unique(self.t[k:n+1])) < 2:
@@ -534,7 +536,8 @@ class BSpline:
         if self.c.ndim < 1:
             raise ValueError("Coefficients must be at least 1-dimensional.")
         if self.c.shape[0] < n:
-            raise ValueError("Knots, coefficients and degree are inconsistent.")
+            raise ValueError(
+                "Knots, coefficients and degree are inconsistent.")
 
         dt = _get_dtype(self.c.dtype)
         self.c = cupy.ascontiguousarray(self.c, dtype=dt)
@@ -580,8 +583,8 @@ class BSpline:
         Notes
         -----
         The degree of the B-spline, `k`, is inferred from the length of `t` as
-        ``len(t)-2``. The knot vector is constructed by appending and prepending
-        ``k+1`` elements to internal knots `t`.
+        ``len(t)-2``. The knot vector is constructed by appending and
+        prepending ``k+1`` elements to internal knots `t`.
 
         .. seealso:: :class:`scipy.interpolate.BSpline`
         """
@@ -723,9 +726,12 @@ class BSpline:
         out = out.reshape(x_shape + self.c.shape[1:])
         if self.axis != 0:
             # transpose to move the calculated values to the interpolation axis
-            l = list(range(out.ndim))
-            l = l[x_ndim:x_ndim+self.axis] + l[:x_ndim] + l[x_ndim+self.axis:]
-            out = out.transpose(l)
+            dim_order = list(range(out.ndim))
+            dim_order = (
+                dim_order[x_ndim:x_ndim+self.axis] +
+                dim_order[:x_ndim] +
+                dim_order[x_ndim+self.axis:])
+            out = out.transpose(dim_order)
 
         return out
 
@@ -765,7 +771,7 @@ class BSpline:
             c = cupy.r_[c, cupy.zeros((ct,) + c.shape[1:])]
         tck = splder((self.t, c, self.k), nu)
         return self.construct_fast(*tck, extrapolate=self.extrapolate,
-                                    axis=self.axis)
+                                   axis=self.axis)
 
     def antiderivative(self, nu=1):
         """
@@ -852,7 +858,8 @@ class BSpline:
             #     integral = splint(a, b, self.tck)
             #     return integral * sign
 
-        out = cupy.empty((2, int(np.prod(self.c.shape[1:]))), dtype=self.c.dtype)
+        out = cupy.empty(
+            (2, int(np.prod(self.c.shape[1:]))), dtype=self.c.dtype)
 
         # Compute the antiderivative.
         c = self.c
@@ -874,7 +881,7 @@ class BSpline:
                 # Evaluate the difference of antiderivatives.
                 x = cupy.asarray([ts, te], dtype=cupy.float_)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
-                                      ka, x, 0, False, out)
+                                 ka, x, 0, False, out)
                 integral = out[1] - out[0]
                 integral *= n_periods
             else:
