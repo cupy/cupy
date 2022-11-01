@@ -458,16 +458,6 @@ class BSpline:
     tck : tuple
         A read-only equivalent of ``(self.t, self.c, self.k)``
 
-    Methods
-    -------
-    __call__
-    basis_element
-    derivative
-    antiderivative
-    integrate
-    construct_fast
-    design_matrix
-
     Notes
     -----
     B-spline basis elements are defined via
@@ -486,6 +476,8 @@ class BSpline:
 
     - B-spline basis elements of degree `k` form a partition of unity on the
       *base interval*, ``t[k] <= x <= t[n]``.
+
+    - Based on [1]_ and [2]_
 
     .. seealso:: :class:`scipy.interpolate.BSpline`
 
