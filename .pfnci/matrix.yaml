@@ -225,9 +225,9 @@
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.5"
-  python: "3.10"
-  numpy: "1.22"
-  scipy: "1.7"
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.9"
   optuna: "2"
   mpi4py: null
   cython: "0.29"
@@ -256,7 +256,7 @@
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.5"
-  python: "3.10"
+  python: "3.11"
   numpy: "1.23"
   scipy: "1.9"
   optuna: "2"
@@ -287,7 +287,7 @@
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
-  python: "3.10"
+  python: "3.11"
   numpy: "1.23"
   scipy: "1.9"
   optuna: "2"
@@ -352,7 +352,7 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.9"
+  python: "3.10"
   numpy: "1.23"
   scipy: "1.9"
   optuna: "2"
@@ -376,7 +376,7 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.10"
+  python: "3.11"
   numpy: "1.23"
   scipy: "1.9"
   optuna: "2"
@@ -402,9 +402,9 @@
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
-  python: "3.9"
-  numpy: "1.21"
-  scipy: "1.7"
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.9"
   optuna: "2"
   mpi4py: null
   cython: "0.29"
@@ -460,7 +460,7 @@
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
-  python: "3.10"
+  python: "3.11"
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
@@ -486,9 +486,9 @@
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.5"
-  python: "3.10"
-  numpy: "1.21"
-  scipy: "1.7"
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.9"
   optuna: "2"
   mpi4py: null
   cython: "0.29"
