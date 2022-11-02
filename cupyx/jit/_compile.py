@@ -870,9 +870,8 @@ def _transpile_assign_stmt(
         return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Subscript):
-        target = _transpile_expr(target, env)
-        target = Data.init(target, env)
-        return _emit_assign_stmt(target, value, env)
+        lvalue = Data.init(_transpile_expr(target, env), env)
+        return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Tuple):
         if not isinstance(value.ctype, _cuda_types.Tuple):
