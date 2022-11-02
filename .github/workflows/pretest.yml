@@ -50,25 +50,26 @@ jobs:
         # cupyx.array_api uses Python 3.8 syntaxes
         python-version: '3.8'
 
-    - name: Load ccache
+    - name: Setup cache
       uses: actions/cache@v3
       with:
-        path: ~/.ccache
-        key: ccache-${{ github.sha }}
-        restore-keys: ccache-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+        path: ~/.cache
+        key: build-cuda-${{ github.sha }}
+        restore-keys: build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
 
     - name: Setup ccache
       run: |
         sudo apt-get update -y
         sudo apt-get install -y ccache
         echo "PATH=/usr/lib/ccache:${PATH}" >> "${GITHUB_ENV}"
-        ccache --max-size 0.5Gi --cleanup --show-stats
+        ccache --show-stats -v
 
     - name: Build
       run: |
         pip install -U pip wheel
         pip install cython
         READTHEDOCS=True pip install -v -e .
+        ccache --max-size 0.5Gi --cleanup --show-stats
 
     - name: Docs Build
       run: |
