@@ -63,7 +63,10 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
         throw "Unsupported CUDA version: $cuda_version"
     }
 
-    $Env:PATH = "C:\Development\cuDNN\$cudnn\cuda$cuda\bin;" + $Env:PATH
+    $base = "C:\Development\cuDNN\$cudnn\cuda$cuda"
+    $Env:CL = "-I$base\include;" + $Env:CL
+    $Env:LINK = "/LIBPATH:$base\lib\x64;" + $Env:LINK
+    $Env:PATH = "$base\bin;" + $Env:PATH
 }
 
 function IsPullRequestTest() {
