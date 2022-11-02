@@ -421,7 +421,7 @@ class TestCuTensorReduction:
 
         # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.cutensor._try_reduction_routine'
+        func = 'cupyx.cutensor._try_reduction_routine'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
@@ -494,9 +494,9 @@ class TestNansumNanprodExtra:
 
     def test_nansum_axis_float16(self):
         # Note that the above test example overflows in float16. We use a
-        # smaller array instead, return True if array is too large.
+        # smaller array instead, just return if array is too large.
         if (numpy.prod(self.shape) > 24):
-            return True
+            return
         a = testing.shaped_arange(self.shape, dtype='e')
         a[:, 1] = cupy.nan
         sa = cupy.nansum(a, axis=1)

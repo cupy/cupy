@@ -120,18 +120,6 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
     return dst
 
 
-cdef _ndarray_scatter_add(_ndarray_base self, slices, value):
-    _scatter_op(self, slices, value, 'add')
-
-
-cdef _ndarray_scatter_max(_ndarray_base self, slices, value):
-    _scatter_op(self, slices, value, 'max')
-
-
-cdef _ndarray_scatter_min(_ndarray_base self, slices, value):
-    _scatter_op(self, slices, value, 'min')
-
-
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
@@ -614,84 +602,86 @@ cdef _put_clip_kernel = ElementwiseKernel(
     'cupy_put_clip')
 
 
-_scatter_update_kernel = ElementwiseKernel(
-    'T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      a[(li * adim + wrap_indices) * rdim + ri] = v;
-    ''',
-    'cupy_scatter_update')
+cdef _create_scatter_kernel(name, code):
+    return ElementwiseKernel(
+        'T v, S indices, int32 cdim, int32 rdim, int32 adim',
+        'raw T a',
+        string.Template('''
+            S wrap_indices = indices % adim;
+            if (wrap_indices < 0) wrap_indices += adim;
+            ptrdiff_t li = i / (rdim * cdim);
+            ptrdiff_t ri = i % rdim;
+            T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
+            T &in0 = out0;
+            const T &in1 = v;
+            ${code};
+        ''').substitute(code=code),
+        name,
+    )
 
 
-_scatter_add_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicAdd(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_add')
+cdef _scatter_update_kernel = _create_scatter_kernel(
+    'cupy_scatter_update', 'out0 = in1')
+
+cdef _scatter_add_kernel = _create_scatter_kernel(
+    'cupy_scatter_add', 'atomicAdd(&out0, in1)')
+
+cdef _scatter_sub_kernel = _create_scatter_kernel(
+    'cupy_scatter_sub', 'atomicSub(&out0, in1)')
+
+cdef _scatter_max_kernel = _create_scatter_kernel(
+    'cupy_scatter_max', 'atomicMax(&out0, in1)')
+
+cdef _scatter_min_kernel = _create_scatter_kernel(
+    'cupy_scatter_min', 'atomicMin(&out0, in1)')
+
+cdef _scatter_and_kernel = _create_scatter_kernel(
+    'cupy_scatter_and', 'atomicAnd(&out0, in1)')
+
+cdef _scatter_or_kernel = _create_scatter_kernel(
+    'cupy_scatter_or', 'atomicOr(&out0, in1)')
+
+cdef _scatter_xor_kernel = _create_scatter_kernel(
+    'cupy_scatter_xor', 'atomicXor(&out0, in1)')
 
 
-_scatter_max_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicMax(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_max')
+cdef _create_scatter_mask_kernel(name, code):
+    return ElementwiseKernel(
+        'raw T v, bool mask, S mask_scanned',
+        'T a',
+        string.Template('''
+            T &out0 = a;
+            T &in0 = a;
+            const T &in1 = v[mask_scanned - 1];
+            if (mask) ${code};
+        ''').substitute(code=code),
+        name,
+    )
 
 
-_scatter_min_kernel = ElementwiseKernel(
-    'raw T v, S indices, int32 cdim, int32 rdim, int32 adim',
-    'raw T a',
-    '''
-      S wrap_indices = indices % adim;
-      if (wrap_indices < 0) wrap_indices += adim;
-      ptrdiff_t li = i / (rdim * cdim);
-      ptrdiff_t ri = i % rdim;
-      atomicMin(&a[(li * adim + wrap_indices) * rdim + ri], v[i]);
-    ''',
-    'cupy_scatter_min')
+cdef _scatter_update_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_update_mask', 'out0 = in1')
 
+cdef _scatter_add_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_add_mask', 'out0 = in0 + in1')
 
-_scatter_update_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = v[mask_scanned - 1]',
-    'cupy_scatter_update_mask')
+cdef _scatter_sub_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_add_mask', 'out0 = in0 - in1')
 
+cdef _scatter_max_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_max_mask', 'out0 = max(in0, in1)')
 
-_scatter_add_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = a + v[mask_scanned - 1]',
-    'cupy_scatter_add_mask')
+cdef _scatter_min_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_min_mask', 'out0 = min(in0, in1)')
 
+cdef _scatter_and_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_and_mask', 'out0 = (in0 & in1)')
 
-_scatter_max_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = max(a, v[mask_scanned - 1])',
-    'cupy_scatter_max_mask')
+cdef _scatter_or_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_or_mask', 'out0 = (in0 | in1)')
 
-
-_scatter_min_mask_kernel = ElementwiseKernel(
-    'raw T v, bool mask, S mask_scanned',
-    'T a',
-    'if (mask) a = min(a, v[mask_scanned - 1])',
-    'cupy_scatter_min_mask')
+cdef _scatter_xor_mask_kernel = _create_scatter_mask_kernel(
+    'cupy_scatter_xor_mask', 'out0 = (in0 ^ in1)')
 
 
 _getitem_mask_kernel = ElementwiseKernel(
@@ -890,9 +880,17 @@ cdef _scatter_op_single(
                            numpy.float64, numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_add only supports int32, float16, float32, float64, '
+                'cupy.add.at only supports int32, float16, float32, float64, '
                 'uint32, uint64, as data type')
         _scatter_add_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'sub':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.uint32,
+                           numpy.intc, numpy.uintc)):
+            raise TypeError(
+                'cupy.subtract.at only supports int32, uint32, as data type')
+        _scatter_sub_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
         if not issubclass(v.dtype.type,
@@ -900,7 +898,7 @@ cdef _scatter_op_single(
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_max only supports int32, float32, float64, '
+                'cupy.maximum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
@@ -910,9 +908,42 @@ cdef _scatter_op_single(
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc, numpy.ulonglong)):
             raise TypeError(
-                'scatter_min only supports int32, float32, float64, '
+                'cupy.minimum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type')
         _scatter_min_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'and':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_and.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_and_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'or':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_or.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_or_kernel(
+            v, indices, cdim, rdim, adim, a.reduced_view())
+    elif op == 'xor':
+        if not issubclass(v.dtype.type,
+                          (numpy.int32, numpy.int64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
+            raise TypeError(
+                'cupy.bitwise_xor.at only supports int32, int64, '
+                'uint32, uint64 as data type')
+        _scatter_xor_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     else:
         raise ValueError('provided op is not supported')
@@ -941,10 +972,18 @@ cdef _scatter_op_mask_single(
         _scatter_update_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'add':
         _scatter_add_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'sub':
+        _scatter_sub_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'max':
         _scatter_max_mask_kernel(src, mask, mask_scanned, a)
     elif op == 'min':
         _scatter_min_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'and':
+        _scatter_and_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'or':
+        _scatter_or_mask_kernel(src, mask, mask_scanned, a)
+    elif op == 'xor':
+        _scatter_xor_mask_kernel(src, mask, mask_scanned, a)
     else:
         raise ValueError('provided op is not supported')
 
@@ -990,11 +1029,23 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
     if op == 'add':
         _math._add(y, value, y)
         return
+    if op == 'sub':
+        _math._subtract(y, value, y)
+        return
     if op == 'max':
         cupy.maximum(y, value, y)
         return
     if op == 'min':
         cupy.minimum(y, value, y)
+        return
+    if op == 'and':
+        cupy.bitwise_and(y, value, y)
+        return
+    if op == 'or':
+        cupy.bitwise_or(y, value, y)
+        return
+    if op == 'xor':
+        cupy.bitwise_xor(y, value, y)
         return
     raise ValueError('this op is not supported')
 
@@ -1091,3 +1142,21 @@ cdef _ndarray_base _getitem_multiple(
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
     return _take(a, reduced_idx, start, stop)
+
+
+cdef _ndarray_base _add_reduceat(
+        _ndarray_base array, indices, axis, dtype, out):
+    from cupy._sorting import search
+    axis = internal._normalize_axis_index(axis, array.ndim)
+    indices = cupy.append(indices, array.shape[axis])
+    shape = [1 if i == axis else dim for i, dim in enumerate(array.shape)]
+    acc = array.cumsum(axis, dtype)
+    acc = cupy.append(cupy.zeros(shape, acc.dtype), acc, axis)
+    mask = indices[:-1] >= indices[1:]
+    mask = mask.reshape(-1, *([1] * (array.ndim - axis - 1)))
+    return search._where_ufunc(
+        mask,
+        array.take(indices[:-1], axis),
+        acc.take(indices[1:], axis) - acc.take(indices[:-1], axis),
+        out
+    )

@@ -22,6 +22,7 @@ from cupy._core cimport _scalar
 from cupy._core._dtype cimport get_dtype
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
+from cupy._core cimport core
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
@@ -1095,6 +1096,7 @@ cdef class ufunc:
         readonly object _cutensor_op
         readonly int _cutensor_alpha
         readonly int _cutensor_gamma
+        readonly str _scatter_op
         readonly tuple _params
         readonly tuple _params_with_where
         readonly dict _routine_cache
@@ -1105,7 +1107,8 @@ cdef class ufunc:
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
-            default_casting=None, *, _Ops out_ops=None, cutensor_op=None):
+            default_casting=None, *, _Ops out_ops=None, cutensor_op=None,
+            scatter_op=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1124,6 +1127,8 @@ cdef class ufunc:
             self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
                 getattr(cuda_cutensor, cutensor_op[0]),
                 cutensor_op[1], cutensor_op[2])
+        self._scatter_op = scatter_op
+
         _in_params = tuple(
             ParameterInfo('T in%d' % i, True)
             for i in range(nin))
@@ -1256,7 +1261,8 @@ cdef class ufunc:
             if (self.nin == 2 and self.nout == 1 and
                     isinstance(in_args[0], _ndarray_base) and
                     isinstance(in_args[1], _ndarray_base)):
-                ret = cupy.cutensor._try_elementwise_binary_routine(
+                import cupyx.cutensor
+                ret = cupyx.cutensor._try_elementwise_binary_routine(
                     in_args[0], in_args[1], dtype,
                     out_args[0] if len(out_args) == 1 else None,
                     self._cutensor_op,
@@ -1339,6 +1345,69 @@ cdef class ufunc:
                 params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
+
+    def outer(self, A, B, **kwargs):
+        """Apply the ufunc operation to all pairs of elements in A and B.
+
+        .. seealso::
+           :meth:`numpy.ufunc.outer`
+
+        """
+        A = core.array(A)
+        B = core.array(B)
+        ndim_a = A.ndim
+        ndim_b = B.ndim
+        A = A.reshape(A.shape + (1,) * ndim_b)
+        B = B.reshape((1,) * ndim_a + B.shape)
+        return self(A, B, **kwargs)
+
+    def at(self, a, indices, b=None):
+        """Apply in place operation on the operand ``a`` for elements
+        specified by ``indices``.
+
+        .. seealso::
+           :meth:`numpy.ufunc.at`
+        """
+        if self._scatter_op is not None:
+            a._scatter_op(indices, b, self._scatter_op)
+        else:
+            raise NotImplementedError(f'`{self.name}.at` is not supported yet')
+
+    def reduce(self, array, axis=0, dtype=None, out=None, keepdims=False):
+        """Reduce ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduce`
+        """
+        if self.name == 'cupy_add':
+            return array.sum(axis, dtype, out, keepdims)
+        if self.name == 'cupy_multiply':
+            return array.prod(axis, dtype, out, keepdims)
+        raise NotImplementedError(f'`{self.name}.reduce` is not supported yet')
+
+    def accumulate(self, array, axis=0, dtype=None, out=None):
+        """Accumulate ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.accumulate`
+        """
+        if self.name == 'cupy_add':
+            return array.cumsum(axis, dtype, out)
+        if self.name == 'cupy_multiply':
+            return array.cumprod(axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.accumulate` is not supported yet')
+
+    def reduceat(self, array, indices, axis=0, dtype=None, out=None):
+        """Reduce ``array`` applying ufunc with indices.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduceat`
+        """
+        if self.name == 'cupy_add':
+            return array._add_reduceat(indices, axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.reduceat` is not supported yet')
 
 
 cdef class _Op:
@@ -1488,10 +1557,10 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                    default_casting=None, loop_prep='', out_ops=None,
-                   cutensor_op=None):
+                   cutensor_op=None, scatter_op=None):
     ops_ = _Ops.from_tuples(ops, routine)
     _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
-        cutensor_op=cutensor_op)
+        cutensor_op=cutensor_op, scatter_op=scatter_op)

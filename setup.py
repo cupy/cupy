@@ -32,6 +32,7 @@ extras_require = {
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
+    # TODO(kmaehashi): remove stylecheck and update the contribution guide
     'stylecheck': [
         'autopep8==1.5.5',
         'flake8==3.8.4',
@@ -43,8 +44,9 @@ extras_require = {
     ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
-        'pytest>=6.2',
-        'hypothesis>=6.37.2',
+        # pytest < 7.2 has some different behavior that makes our CI fail
+        'pytest>=7.2',
+        'hypothesis>=6.37.2,<6.55.0',
     ],
 }
 tests_require = extras_require['test']

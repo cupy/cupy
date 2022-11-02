@@ -124,6 +124,306 @@ def minkowski(u, v, p):
     return output_arr[0]
 
 
+def canberra(u, v):
+    """Compute the Canberra distance between two 1-D arrays.
+
+    The Canberra distance is defined as
+
+    .. math::
+        d(u, v) = \\sum_{i} \\frac{| u_i - v_i |}{|u_i| + |v_i|}
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        canberra (double): The Canberra distance between vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "canberra")
+
+    return output_arr[0]
+
+
+def chebyshev(u, v):
+    """Compute the Chebyshev distance between two 1-D arrays.
+
+    The Chebyshev distance is defined as
+
+    .. math::
+        d(u, v) = \\max_{i} |u_i - v_i|
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        chebyshev (double): The Chebyshev distance between vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "chebyshev")
+
+    return output_arr[0]
+
+
+def cityblock(u, v):
+    """Compute the City Block (Manhattan) distance between two 1-D arrays.
+
+    The City Block distance is defined as
+
+    .. math::
+        d(u, v) = \\sum_{i} |u_i - v_i|
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        cityblock (double): The City Block distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "cityblock")
+
+    return output_arr[0]
+
+
+def correlation(u, v):
+    """Compute the correlation distance between two 1-D arrays.
+
+    The correlation distance is defined as
+
+    .. math::
+        d(u, v) = 1 - \\frac{(u - \\bar{u}) \\cdot (v - \\bar{v})}{
+        \\|(u - \\bar{u})\\|_2 \\|(v - \\bar{v})\\|_2}
+
+    where :math:`\\bar{u}` is the mean of the elements of :math:`u` and
+    :math:`x \\cdot y` is the dot product.
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        correlation (double): The correlation distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "correlation")
+
+    return output_arr[0]
+
+
+def cosine(u, v):
+    """Compute the Cosine distance between two 1-D arrays.
+
+    The Cosine distance is defined as
+
+    .. math::
+        d(u, v) = 1 - \\frac{u \\cdot v}{\\|u\\|_2 \\|v\\|_2}
+
+    where :math:`x \\cdot y` is the dot product.
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        cosine (double): The Cosine distance between vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "cosine")
+
+    return output_arr[0]
+
+
+def hamming(u, v):
+    """Compute the Hamming distance between two 1-D arrays.
+
+    The Hamming distance is defined as the proportion of elements
+    in both `u` and `v` that are not in the exact same position:
+
+    .. math::
+        d(u, v) = \\frac{1}{n} \\sum_{k=0}^n u_i \\neq v_i
+
+    where :math:`x \\neq y` is one if :math:`x` is different from :math:`y`
+    and zero otherwise.
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        hamming (double): The Hamming distance between vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "hamming")
+
+    return output_arr[0]
+
+
+def euclidean(u, v):
+    """Compute the Euclidean distance between two 1-D arrays.
+
+    The Euclidean distance is defined as
+
+    .. math::
+        d(u, v) = \\left(\\sum_{i} (u_i - v_i)^2\\right)^{\\sfrac{1}{2}}
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        euclidean (double): The Euclidean distance between vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "euclidean")
+
+    return output_arr[0]
+
+
+def jensenshannon(u, v):
+    """Compute the Jensen-Shannon distance between two 1-D arrays.
+
+    The Jensen-Shannon distance is defined as
+
+    .. math::
+        d(u, v) = \\sqrt{\\frac{KL(u \\| m) + KL(v \\| m)}{2}}
+
+    where :math:`KL` is the Kullback-Leibler divergence and :math:`m` is the
+    pointwise mean of `u` and `v`.
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        jensenshannon (double): The Jensen-Shannon distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "jensenshannon")
+
+    return output_arr[0]
+
+
+def russellrao(u, v):
+    """Compute the Russell-Rao distance between two 1-D arrays.
+
+    The Russell-Rao distance is defined as the proportion of elements
+    in both `u` and `v` that are in the exact same position:
+
+    .. math::
+        d(u, v) = \\frac{1}{n} \\sum_{k=0}^n u_i = v_i
+
+    where :math:`x = y` is one if :math:`x` is different from :math:`y`
+    and zero otherwise.
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        hamming (double): The Hamming distance between vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "russellrao")
+
+    return output_arr[0]
+
+
+def sqeuclidean(u, v):
+    """Compute the squared Euclidean distance between two 1-D arrays.
+
+    The squared Euclidean distance is defined as
+
+    .. math::
+        d(u, v) = \\sum_{i} (u_i - v_i)^2
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        sqeuclidean (double): The squared Euclidean distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "sqeuclidean")
+
+    return output_arr[0]
+
+
+def hellinger(u, v):
+    """Compute the Hellinger distance between two 1-D arrays.
+
+    The Hellinger distance is defined as
+
+    .. math::
+        d(u, v) = \\frac{1}{\\sqrt{2}} \\sqrt{
+            \\sum_{i} (\\sqrt{u_i} - \\sqrt{v_i})^2}
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        hellinger (double): The Hellinger distance between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "hellinger")
+
+    return output_arr[0]
+
+
+def kl_divergence(u, v):
+    """Compute the Kullback-Leibler divergence between two 1-D arrays.
+
+    The Kullback-Leibler divergence is defined as
+
+    .. math::
+        KL(U \\| V) = \\sum_{i} U_i \\log{\\left(\\frac{U_i}{V_i}\\right)}
+
+    Args:
+        u (array_like): Input array of size (N,)
+        v (array_like): Input array of size (N,)
+
+    Returns:
+        kl_divergence (double): The Kullback-Leibler divergence between
+        vectors `u` and `v`.
+    """
+    u = cupy.asarray(u)
+    v = cupy.asarray(v)
+    output_arr = cupy.zeros((1,), dtype=u.dtype)
+    pairwise_distance(u, v, output_arr, "kl_divergence")
+
+    return output_arr[0]
+
+
 def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     """Compute distance between each pair of the two collections of inputs.
 
@@ -192,6 +492,38 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             raise ValueError('Unknown Distance Metric: %s' % mstr)
     else:
         raise TypeError('2nd argument metric must be a string identifier')
+
+
+def pdist(X, metric='euclidean', *, out=None, **kwargs):
+    """Compute distance between observations in n-dimensional space.
+
+    Args:
+        X (array_like): An :math:`m` by :math:`n` array of :math:`m`
+            original observations in an :math:`n`-dimensional space.
+            Inputs are converted to float type.
+        metric (str, optional): The distance metric to use.
+            The distance function can be 'canberra', 'chebyshev',
+            'cityblock', 'correlation', 'cosine', 'euclidean', 'hamming',
+            'hellinger', 'jensenshannon', 'kl_divergence', 'matching',
+            'minkowski', 'russellrao', 'sqeuclidean'.
+        out (cupy.ndarray, optional): The output array. If not None, the
+            distance matrix Y is stored in this array.
+        **kwargs (dict, optional): Extra arguments to `metric`: refer to each
+            metric documentation for a list of all possible arguments.
+            Some possible arguments:
+            p (float): The p-norm to apply for Minkowski, weighted and
+            unweighted. Default: 2.0
+
+    Returns:
+        Y (cupy.ndarray):
+            A :math:`m` by :math:`m` distance matrix is
+            returned. For each :math:`i` and :math:`j`, the metric
+            ``dist(u=X[i], v=X[j])`` is computed and stored in the
+            :math:`ij` th entry.
+    """
+    all_dist = cdist(X, X, metric=metric, out=out, **kwargs)
+    up_idx = cupy.triu_indices_from(all_dist, 1)
+    return all_dist[up_idx]
 
 
 def distance_matrix(x, y, p=2.0):

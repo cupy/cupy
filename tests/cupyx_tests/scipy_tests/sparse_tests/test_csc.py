@@ -1258,21 +1258,23 @@ class TestCscMatrixScipyCompressedMinMax:
         else:
             return data.max(axis=self.axis)
 
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_argmin(self, xp, sp):
-        # TODO(takagi) Fix axis=None
-        if self.axis is None:
-            pytest.skip()
         data = self._make_data_min(xp, sp, dense=self.dense)
-        return data.argmin(axis=self.axis)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_argmax(self, xp, sp):
-        # TODO(takagi) Fix axis=None
-        if self.axis is None:
+        # Due to a SciPy bug, the argmin output is different from the expected
+        # one
+        if self.axis is None and self.dense:
             pytest.skip()
+        return xp.array(data.argmin(axis=self.axis))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_argmax(self, xp, sp):
         data = self._make_data_max(xp, sp, dense=self.dense)
-        return data.argmax(axis=self.axis)
+        # Due to a SciPy bug, the argmin output is different from the expected
+        # one
+        if self.axis is None and self.dense:
+            pytest.skip()
+        return xp.array(data.argmax(axis=self.axis))
 
 
 @testing.parameterize(*testing.product({
@@ -1494,6 +1496,7 @@ class TestCsrMatrixGetitem:
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.with_requires('scipy>=1.9.3')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy's CSC tests
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]

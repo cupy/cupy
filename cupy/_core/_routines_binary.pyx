@@ -2,14 +2,14 @@ from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
 
 
-cdef _create_bit_op(name, op, no_bool, doc=''):
+cdef _create_bit_op(name, op, no_bool, doc='', scatter_op=None):
     types = () if no_bool else ('??->?',)
     return create_ufunc(
         'cupy_' + name,
         types + ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
                  'LL->L', 'qq->q', 'QQ->Q'),
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc, scatter_op=scatter_op)
 
 
 cdef _bitwise_and = _create_bit_op(
@@ -20,7 +20,8 @@ cdef _bitwise_and = _create_bit_op(
 
     .. seealso:: :data:`numpy.bitwise_and`
 
-    ''')
+    ''',
+    scatter_op='and')
 
 
 cdef _bitwise_or = _create_bit_op(
@@ -31,7 +32,8 @@ cdef _bitwise_or = _create_bit_op(
 
     .. seealso:: :data:`numpy.bitwise_or`
 
-    ''')
+    ''',
+    scatter_op='or')
 
 
 cdef _bitwise_xor = _create_bit_op(
@@ -42,7 +44,8 @@ cdef _bitwise_xor = _create_bit_op(
 
     .. seealso:: :data:`numpy.bitwise_xor`
 
-    ''')
+    ''',
+    scatter_op='xor')
 
 
 cdef _invert = create_ufunc(

@@ -55,23 +55,23 @@ class vectorize(object):
                 ' option currently.')
 
     @staticmethod
-    def _parse_out_param(return_type):
+    def _get_body(return_type, call):
         if isinstance(return_type, _cuda_types.Scalar):
             dtypes = [return_type.dtype]
-            out_lval = 'out0'
+            code = f'out0 = {call};'
         elif isinstance(return_type, _cuda_types.Tuple):
             dtypes = []
-            for t in return_type.types:
+            code = f"auto out = {call};\n"
+            for i, t in enumerate(return_type.types):
                 if not isinstance(t, _cuda_types.Scalar):
                     raise TypeError(f'Invalid return type: {return_type}')
                 dtypes.append(t.dtype)
-            out_lvals = ', '.join([f'out{i}' for i in range(len(dtypes))])
-            out_lval = f'thrust::tie({out_lvals})'
+                code += f'out{i} = thrust::get<{i}>(out);\n'
         else:
             raise TypeError(f'Invalid return type: {return_type}')
 
         out_params = [f'{dtype} out{i}' for i, dtype in enumerate(dtypes)]
-        return ', '.join(out_params), out_lval
+        return ', '.join(out_params), code
 
     def __call__(self, *args):
         itypes = ''.join([_get_input_type(x) for x in args])
@@ -89,8 +89,8 @@ class vectorize(object):
             in_params = ', '.join(
                 f'{t.dtype} in{i}' for i, t in enumerate(in_types))
             in_args = ', '.join([f'in{i}' for i in range(len(in_types))])
-            out_params, out_lval = self._parse_out_param(result.return_type)
-            body = '{} = {}({})'.format(out_lval, result.func_name, in_args)
+            call = f'{result.func_name}({in_args})'
+            out_params, body = self._get_body(result.return_type, call)
             # note: we don't worry about -D not working on ROCm here, because
             # we unroll all headers for HIP and so thrust::tuple et al are all
             # defined regardless if CUPY_JIT_MODE is defined or not

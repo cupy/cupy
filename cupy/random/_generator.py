@@ -642,6 +642,16 @@ class RandomState(object):
         x = cupy.multiply(x, scale, out=x)
         return x
 
+    _interval_upper_limit = _core.ElementwiseKernel(
+        'T max, T mx', 'T out',
+        'out = max - (mx != max ? (max - mx) % (mx + 1) : 0)',
+        'cupy_random_interval_upper_limit')
+
+    _interval_sample_modulo = _core.ElementwiseKernel(
+        'T max, T mx', 'T sample',
+        'if (mx != max) { sample %= mx + 1; }',
+        'cupy_random_interval_sample_modulo')
+
     def _interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 
@@ -662,53 +672,82 @@ class RandomState(object):
         elif isinstance(size, int):
             size = size,
 
-        if mx == 0:
-            return cupy.zeros(size, dtype=numpy.uint32)
+        is_mx_scalar = numpy.isscalar(mx)
+        if is_mx_scalar:
+            if mx == 0:
+                return cupy.zeros(size, dtype=numpy.uint32)
 
-        if mx < 0:
-            raise ValueError(
-                'mx must be non-negative (actual: {})'.format(mx))
-        elif mx <= _UINT32_MAX:
-            dtype = numpy.uint32
-            upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
-        elif mx <= _UINT64_MAX:
-            dtype = numpy.uint64
-            upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+            if mx < 0:
+                raise ValueError(
+                    'mx must be non-negative (actual: {})'.format(mx))
+            elif mx <= _UINT32_MAX:
+                dtype = numpy.uint32
+                upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
+            elif mx <= _UINT64_MAX:
+                dtype = numpy.uint64
+                upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
+            else:
+                raise ValueError(
+                    'mx must be within uint64 range (actual: {})'.format(mx))
         else:
-            raise ValueError(
-                'mx must be within uint64 range (actual: {})'.format(mx))
+            dtype = mx.dtype
+            if dtype == cupy.int32 or dtype == cupy.uint32:
+                dtype = numpy.uint32
+                mx = mx.astype(dtype, copy=False)
+                upper_limit = self._interval_upper_limit(_UINT32_MAX, mx)
+            elif dtype == cupy.int64 or dtype == cupy.uint64:
+                dtype = numpy.uint64
+                mx = mx.astype(dtype, copy=False)
+                upper_limit = self._interval_upper_limit(_UINT64_MAX, mx)
+            else:
+                raise ValueError(
+                    'dtype must be integer, got: {}'.format(dtype))
 
         n_sample = functools.reduce(operator.mul, size, 1)
         if n_sample == 0:
             return cupy.empty(size, dtype=dtype)
         sample = self._curand_generate(n_sample, dtype)
 
-        mx1 = mx + 1
-        if mx1 != (1 << (mx1.bit_length() - 1)):
-            # Get index of samples that exceed the upper limit
-            ng_indices = self._get_indices(sample, upper_limit, False)
-            n_ng = ng_indices.size
+        if is_mx_scalar:
+            mx1 = mx + 1
+            if mx1 == 1 << (mx1.bit_length() - 1):
+                mask = (1 << mx.bit_length()) - 1
+                sample &= mask
+                return sample.reshape(size)
 
-            while n_ng > 0:
-                n_supplement = max(n_ng * 2, 1024)
-                supplement = self._curand_generate(n_supplement, dtype)
+        # Get index of samples that exceed the upper limit
+        ng_indices = self._get_indices(sample, upper_limit, False)
+        n_ng = ng_indices.size
 
-                # Get index of supplements that are within the upper limit
-                ok_indices = self._get_indices(supplement, upper_limit, True)
-                n_ok = ok_indices.size
+        if n_ng > 0 and not numpy.isscalar(mx):
+            upper_limit = upper_limit[ng_indices]
 
-                # Replace the values that exceed the upper limit
-                if n_ok >= n_ng:
-                    sample[ng_indices] = supplement[ok_indices[:n_ng]]
-                    n_ng = 0
-                else:
-                    sample[ng_indices[:n_ok]] = supplement[ok_indices]
-                    ng_indices = ng_indices[n_ok:]
-                    n_ng -= n_ok
+        while n_ng > 0:
+            n_supplement = (max(n_ng * 2, 1024)
+                            if is_mx_scalar else upper_limit.size)
+            supplement = self._curand_generate(n_supplement, dtype)
+
+            # Get index of supplements that are within the upper limit
+            ok_indices = self._get_indices(supplement, upper_limit, True)
+            n_ok = ok_indices.size
+
+            # Replace the values that exceed the upper limit
+            if n_ok >= n_ng:
+                sample[ng_indices] = supplement[ok_indices[:n_ng]]
+                n_ng = 0
+            else:
+                sample[ng_indices[:n_ok]] = supplement[ok_indices]
+                ng_indices = ng_indices[n_ok:]
+                if not is_mx_scalar:
+                    upper_limit = upper_limit[n_ok:]
+                n_ng -= n_ok
+
+        if is_mx_scalar:
             sample %= mx1
-        else:
-            mask = (1 << mx.bit_length()) - 1
-            sample &= mask
+        elif dtype == cupy.uint32:
+            sample = self._interval_sample_modulo(_UINT32_MAX, mx, sample)
+        else:  # dtype == cupy.uint64
+            sample = self._interval_sample_modulo(_UINT64_MAX, mx, sample)
 
         return sample.reshape(size)
 
@@ -986,6 +1025,10 @@ class RandomState(object):
         a = cupy.asarray(a)
         if cupy.any(a < 0):  # synchronize!
             raise ValueError('a < 0')
+
+        if size is None:
+            size = a.shape
+
         x = self.standard_exponential(size, dtype)
         cupy.power(x, 1./a, out=x)
         return x
@@ -1150,26 +1193,49 @@ class RandomState(object):
             - :func:`cupy.random.randint` for full documentation
             - :meth:`numpy.random.RandomState.randint`
         """
-        if high is None:
-            lo = 0
-            hi1 = int(low) - 1
+        if not numpy.isscalar(low):
+            low = cupy.asarray(low)
+            if high is None:
+                lo = cupy.zeros_like(low)
+                hi = low - 1
+            else:
+                lo = low
+                hi = cupy.asarray(high) - 1
+
+            if size is None:
+                size = cupy.broadcast(lo, hi).shape
+
+            diff = hi - lo
+            total_elems = functools.reduce(operator.mul, size, 1)
+            out = self._interval(diff.flatten(), total_elems)
+            out = out.astype(dtype)
+            out = cupy.reshape(out, size)
+            lo = lo.astype(dtype, copy=False)
+            cupy.add(out, lo, out=out)
+            return out
         else:
-            lo = int(low)
-            hi1 = int(high) - 1
+            if high is None:
+                lo = 0
+                hi1 = int(low) - 1
+            else:
+                lo = int(low)
+                hi1 = int(high) - 1
 
-        if lo > hi1:
-            raise ValueError('low >= high')
-        if lo < cupy.iinfo(dtype).min:
-            raise ValueError(
-                'low is out of bounds for {}'.format(cupy.dtype(dtype).name))
-        if hi1 > cupy.iinfo(dtype).max:
-            raise ValueError(
-                'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
+            if lo > hi1:
+                raise ValueError('low >= high')
+            if lo < cupy.iinfo(dtype).min:
+                raise ValueError(
+                    'low is out of bounds for {}'.format(
+                        cupy.dtype(dtype).name))
+            if hi1 > cupy.iinfo(dtype).max:
+                raise ValueError(
+                    'high is out of bounds for {}'.format(
+                        cupy.dtype(dtype).name))
 
-        diff = hi1 - lo
-        x = self._interval(diff, size).astype(dtype, copy=False)
-        cupy.add(x, lo, out=x)
-        return x
+            diff = hi1 - lo
+            x = self._interval(diff, size).astype(dtype, copy=False)
+            cupy.add(x, lo, out=x)
+            return x
 
 
 def seed(seed=None):

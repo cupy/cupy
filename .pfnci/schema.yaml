@@ -51,6 +51,8 @@ cuda:
     full_version: "11.6.0"
   "11.7":
     full_version: "11.7.0"
+  "11.8":
+    full_version: "11.8.0"
 rocm:
   null:
     full_version: null
@@ -61,17 +63,12 @@ rocm:
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "5.0":
-    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
+    full_version: "5.0"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
-  "5.1":
-    full_version: "5.1.3"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.2":
-    full_version: "5.2"
+  "5.3":
+    full_version: "5.3"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -116,6 +113,31 @@ nccl:
       "11.4":
       "11.5":
       "11.6":
+  "2.12":
+    spec: "2.12.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.6":
+      "11.7":
+  "2.13":
+    spec: "2.13.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.7":
+  "2.14":
+    spec: "2.14.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.7":
+  "2.15":
+    spec: "2.15.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.8":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -144,6 +166,19 @@ cutensor:
       "11.5":
       "11.6":
       "11.7":
+  "1.6":
+    spec: "1.6.*"
+    cuda:
+      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
+      "11.0":
+      "11.1":
+      "11.2":
+      "11.3":
+      "11.4":
+      "11.5":
+      "11.6":
+      "11.7":
+      "11.8":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -158,6 +193,7 @@ cusparselt:
       "11.5":
       "11.6":
       "11.7":
+      "11.8":
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -241,6 +277,48 @@ cudnn:
         alias: "11.6"
       "11.7":
         alias: "11.6"
+  "8.5":
+    spec: "8.5.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.7"
+      "11.1":
+        alias: "11.7"
+      "11.2":
+        alias: "11.7"
+      "11.3":
+        alias: "11.7"
+      "11.4":
+        alias: "11.7"
+      "11.5":
+        alias: "11.7"
+      "11.6":
+        alias: "11.7"
+      "11.7":
+        alias: "11.7"
+  "8.6":
+    spec: "8.6.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.8"
+      "11.1":
+        alias: "11.8"
+      "11.2":
+        alias: "11.8"
+      "11.3":
+        alias: "11.8"
+      "11.4":
+        alias: "11.8"
+      "11.5":
+        alias: "11.8"
+      "11.6":
+        alias: "11.8"
+      "11.7":
+        alias: "11.8"
+      "11.8":
+        alias: "11.8"
 
 ###############################################################################
 # Python

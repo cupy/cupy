@@ -1004,6 +1004,9 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_int64_1(self):
         self.generate(2**34, 2**40, 3, dtype='q')
 
+    def test_randint_array(self):
+        self.generate([[[-1], [0]], [[-2], [1]], [[3], [4]]], [[10, 11, 12]])
+
 
 @testing.gpu
 @testing.fix_random()
@@ -1089,6 +1092,9 @@ class TestWeibull(RandomGeneratorTestCase):
 
     def test_weibull(self):
         self.generate(a=self.a, size=(3, 2))
+
+    def test_weibull_size_none(self):
+        self.generate([[0.5, 1.0, 3.0]], size=None)
 
     @testing.for_dtypes('fd')
     @_condition.repeat_with_success_at_least(10, 3)

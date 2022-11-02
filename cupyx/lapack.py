@@ -4,6 +4,7 @@ import cupy as _cupy
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
 from cupy.cuda import device as _device
+import cupyx.cusolver
 
 
 def gesv(a, b):
@@ -209,7 +210,7 @@ def gels(a, b):
 
 def _batched_posv(a, b):
 
-    if not _cupy.cusolver.check_availability('potrsBatched'):
+    if not cupyx.cusolver.check_availability('potrsBatched'):
         raise RuntimeError('potrsBatched is not available')
 
     dtype = _numpy.promote_types(a.dtype, b.dtype)

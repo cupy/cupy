@@ -717,6 +717,168 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float __high2float(const __half2 a)
 #endif
     return val;
 }
+__CUDA_HOSTDEVICE_FP16_DECL__ short int __half2short_rz(const __half h)
+{
+    short int i;
+#if defined __CUDA_ARCH__
+    asm("cvt.rzi.s16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
+#else
+    const float f = __half2float(h);
+    const short int max_val = (short int)0x7fffU;
+    const short int min_val = (short int)0x8000U;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<short int>(f);
+    }
+#endif
+    return i;
+}
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half2ushort_rz(const __half h)
+{
+    unsigned short int i;
+#if defined __CUDA_ARCH__
+    asm("cvt.rzi.u16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
+#else
+    const float f = __half2float(h);
+    const unsigned short int max_val = 0xffffU;
+    const unsigned short int min_val = 0U;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0U;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<unsigned short int>(f);
+    }
+#endif
+    return i;
+}
+__CUDA_HOSTDEVICE_FP16_DECL__ int __half2int_rz(const __half h)
+{
+    int i;
+#if defined __CUDA_ARCH__
+    asm("cvt.rzi.s32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
+#else
+    const float f = __half2float(h);
+    const int max_val = (int)0x7fffffffU;
+    const int min_val = (int)0x80000000U;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<int>(f);
+    }
+#endif
+    return i;
+}
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned int __half2uint_rz(const __half h)
+{
+    unsigned int i;
+#if defined __CUDA_ARCH__
+    asm("cvt.rzi.u32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
+#else
+    const float f = __half2float(h);
+    const unsigned int max_val = 0xffffffffU;
+    const unsigned int min_val = 0U;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0U;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<unsigned int>(f);
+    }
+#endif
+    return i;
+}
+__CUDA_HOSTDEVICE_FP16_DECL__ long long int __half2ll_rz(const __half h)
+{
+    long long int i;
+#if defined __CUDA_ARCH__
+    asm("cvt.rzi.s64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
+#else
+    const float f = __half2float(h);
+    const long long int max_val = (long long int)0x7fffffffffffffffULL;
+    const long long int min_val = (long long int)0x8000000000000000ULL;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = min_val;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<long long int>(f);
+    }
+#endif
+    return i;
+}
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half h)
+{
+    unsigned long long int i;
+#if defined __CUDA_ARCH__
+    asm("cvt.rzi.u64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
+#else
+    const float f = __half2float(h);
+    const unsigned long long int max_val = 0xffffffffffffffffULL;
+    const unsigned long long int min_val = 0ULL;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0x8000000000000000ULL;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<unsigned long long int>(f);
+    }
+#endif
+    return i;
+}
 
 /* Intrinsic functions only available to nvcc compilers */
 #if defined(__CUDACC__)
@@ -757,33 +919,6 @@ __CUDA_FP16_DECL__ int __half2int_rn(const __half h)
 {
     int i;
     asm("cvt.rni.s32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
-    return i;
-}
-__CUDA_HOSTDEVICE_FP16_DECL__ int __half2int_rz(const __half h)
-{
-    int i;
-#if defined __CUDA_ARCH__
-    asm("cvt.rzi.s32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
-#else
-    const float f = __half2float(h);
-                i = static_cast<int>(f);
-    const int max_val = (int)0x7fffffffU;
-    const int min_val = (int)0x80000000U;
-    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
-    // saturation fixup
-    if (bits > (unsigned short)0xF800U) {
-        // NaN
-        i = 0;
-    } else if (f > static_cast<float>(max_val)) {
-        // saturate maximum
-        i = max_val;
-    } else if (f < static_cast<float>(min_val)) {
-        // saturate minimum
-        i = min_val;
-    } else {
-        // normal value, do nothing
-    }
-#endif
     return i;
 }
 __CUDA_FP16_DECL__ int __half2int_rd(const __half h)
@@ -838,33 +973,6 @@ __CUDA_FP16_DECL__ short int __half2short_rn(const __half h)
     asm("cvt.rni.s16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
-__CUDA_HOSTDEVICE_FP16_DECL__ short int __half2short_rz(const __half h)
-{
-    short int i;
-#if defined __CUDA_ARCH__
-    asm("cvt.rzi.s16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
-#else
-    const float f = __half2float(h);
-                i = static_cast<short int>(f);
-    const short int max_val = (short int)0x7fffU;
-    const short int min_val = (short int)0x8000U;
-    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
-    // saturation fixup
-    if (bits > (unsigned short)0xF800U) {
-        // NaN
-        i = 0;
-    } else if (f > static_cast<float>(max_val)) {
-        // saturate maximum
-        i = max_val;
-    } else if (f < static_cast<float>(min_val)) {
-        // saturate minimum
-        i = min_val;
-    } else {
-        // normal value, do nothing
-    }
-#endif
-    return i;
-}
 __CUDA_FP16_DECL__ short int __half2short_rd(const __half h)
 {
     short int i;
@@ -911,33 +1019,6 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_rn(const __half h)
 {
     unsigned int i;
     asm("cvt.rni.u32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
-    return i;
-}
-__CUDA_HOSTDEVICE_FP16_DECL__ unsigned int __half2uint_rz(const __half h)
-{
-    unsigned int i;
-#if defined __CUDA_ARCH__
-    asm("cvt.rzi.u32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
-#else
-    const float f = __half2float(h);
-                i = static_cast<unsigned int>(f);
-    const unsigned int max_val = 0xffffffffU;
-    const unsigned int min_val = 0U;
-    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
-    // saturation fixup
-    if (bits > (unsigned short)0xF800U) {
-        // NaN
-        i = 0U;
-    } else if (f > static_cast<float>(max_val)) {
-        // saturate maximum
-        i = max_val;
-    } else if (f < static_cast<float>(min_val)) {
-        // saturate minimum
-        i = min_val;
-    } else {
-        // normal value, do nothing
-    }
-#endif
     return i;
 }
 __CUDA_FP16_DECL__ unsigned int __half2uint_rd(const __half h)
@@ -992,33 +1073,6 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_rn(const __half h)
     asm("cvt.rni.u16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
-__CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half2ushort_rz(const __half h)
-{
-    unsigned short int i;
-#if defined __CUDA_ARCH__
-    asm("cvt.rzi.u16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
-#else
-    const float f = __half2float(h);
-                i = static_cast<unsigned short int>(f);
-    const unsigned short int max_val = 0xffffU;
-    const unsigned short int min_val = 0U;
-    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
-    // saturation fixup
-    if (bits > (unsigned short)0xF800U) {
-        // NaN
-        i = 0U;
-    } else if (f > static_cast<float>(max_val)) {
-        // saturate maximum
-        i = max_val;
-    } else if (f < static_cast<float>(min_val)) {
-        // saturate minimum
-        i = min_val;
-    } else {
-        // normal value, do nothing
-    }
-#endif
-    return i;
-}
 __CUDA_FP16_DECL__ unsigned short int __half2ushort_rd(const __half h)
 {
     unsigned short int i;
@@ -1065,33 +1119,6 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_rn(const __half h)
 {
     unsigned long long int i;
     asm("cvt.rni.u64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
-    return i;
-}
-__CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half h)
-{
-    unsigned long long int i;
-#if defined __CUDA_ARCH__
-    asm("cvt.rzi.u64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
-#else
-    const float f = __half2float(h);
-                i = static_cast<unsigned long long int>(f);
-    const unsigned long long int max_val = 0xffffffffffffffffULL;
-    const unsigned long long int min_val = 0ULL;
-    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
-    // saturation fixup
-    if (bits > (unsigned short)0xF800U) {
-        // NaN
-        i = 0x8000000000000000ULL;
-    } else if (f > static_cast<float>(max_val)) {
-        // saturate maximum
-        i = max_val;
-    } else if (f < static_cast<float>(min_val)) {
-        // saturate minimum
-        i = min_val;
-    } else {
-        // normal value, do nothing
-    }
-#endif
     return i;
 }
 __CUDA_FP16_DECL__ unsigned long long int __half2ull_rd(const __half h)
@@ -1144,33 +1171,6 @@ __CUDA_FP16_DECL__ long long int __half2ll_rn(const __half h)
 {
     long long int i;
     asm("cvt.rni.s64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
-    return i;
-}
-__CUDA_HOSTDEVICE_FP16_DECL__ long long int __half2ll_rz(const __half h)
-{
-    long long int i;
-#if defined __CUDA_ARCH__
-    asm("cvt.rzi.s64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
-#else
-    const float f = __half2float(h);
-                i = static_cast<long long int>(f);
-    const long long int max_val = (long long int)0x7fffffffffffffffULL;
-    const long long int min_val = (long long int)0x8000000000000000ULL;
-    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
-    // saturation fixup
-    if (bits > (unsigned short)0xF800U) {
-        // NaN
-        i = min_val;
-    } else if (f > static_cast<float>(max_val)) {
-        // saturate maximum
-        i = max_val;
-    } else if (f < static_cast<float>(min_val)) {
-        // saturate minimum
-        i = min_val;
-    } else {
-        // normal value, do nothing
-    }
-#endif
     return i;
 }
 __CUDA_FP16_DECL__ long long int __half2ll_rd(const __half h)

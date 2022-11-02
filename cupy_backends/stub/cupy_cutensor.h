@@ -42,6 +42,10 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    cutensorStatus_t cutensorPermutation(...) {
+    return CUTENSOR_STATUS_SUCCESS;
+    }
+
     cutensorStatus_t cutensorInitContractionDescriptor(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
