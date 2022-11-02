@@ -64,8 +64,8 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
     }
 
     $base = "C:\Development\cuDNN\$cudnn\cuda$cuda"
-    $Env:CL = "-I$base\include;" + $Env:CL
-    $Env:LINK = "/LIBPATH:$base\lib\x64;" + $Env:LINK
+    $Env:CL = "-I$base\include " + $Env:CL
+    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
     $Env:PATH = "$base\bin;" + $Env:PATH
 }
 
