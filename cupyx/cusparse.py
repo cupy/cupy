@@ -110,7 +110,7 @@ _available_cusparse_version = {
     'denseToSparse': (11300, None),
     'sparseToDense': (11300, None),
     'spgemm': (11100, None),
-    'spsm': (11600, None),
+    'spsm': (11600, None),  # CUDA 11.3.1
 }
 
 
