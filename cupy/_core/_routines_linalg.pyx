@@ -999,54 +999,26 @@ cpdef _ndarray_base matmul(
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
     cdef intptr_t handle = device.get_cublas_handle()
+    cdef int cuda_dtype = to_cuda_dtype(dtype)
+    cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
     one = numpy.array(1, dtype=dtype)
     zero = numpy.array(0, dtype=dtype)
-    # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(c_view)
-        if dtype == numpy.float32:
-            cublas.sgemmStridedBatched(
+        if dtype.char in 'fFdD':
+            cublas.gemmStridedBatchedEx(
                 handle,
                 0,  # transa
                 0,  # transb
                 n, m, ka, one.ctypes.data,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
-                batchCount)
-        elif dtype == numpy.float64:
-            cublas.dgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
-                batchCount)
-        elif dtype == numpy.complex64:
-            cublas.cgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
-                batchCount)
-        elif dtype == numpy.complex128:
-            cublas.zgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                zero.ctypes.data, c_view.data.ptr, ldc, strideC,
-                batchCount)
+                a.data.ptr, cuda_dtype, lda, strideA,
+                b.data.ptr, cuda_dtype, ldb, strideB,
+                zero.ctypes.data,
+                c_view.data.ptr, cuda_dtype, ldc, strideC,
+                batchCount, cuda_dtype, algo)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:
