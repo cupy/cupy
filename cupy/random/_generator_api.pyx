@@ -251,7 +251,7 @@ class Generator:
             :meth:`numpy.random.Generator.beta`
         """
         cdef _ndarray_base y
-        cdef a_arr, b_arr
+        cdef _ndarray_base a_arr, b_arr
 
         if not isinstance(a, _ndarray_base):
             if type(a) in (float, int):

@@ -363,7 +363,7 @@ cdef Descriptor _create_rnn_data_descriptor():
 cdef Descriptor _make_unpacked_rnn_data_descriptor(_ndarray_base xs, lengths):
     cdef Descriptor descriptor = _create_rnn_data_descriptor()
     cdef int data_type = get_data_type(xs.dtype)
-    cdef max_length, batch, n_dim
+    cdef Py_ssize_t max_length, batch, n_dim
     max_length, batch, n_dim = xs.shape
     cudnn.setRNNDataDescriptor(
         descriptor.value, data_type,
