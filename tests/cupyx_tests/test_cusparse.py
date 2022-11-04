@@ -1096,7 +1096,7 @@ class TestSpsm:
                 pytest.skip('may be buggy or not supported')
         a = self.sparse_matrix(self.a)
         b = cupy.array(self.b, order=b_order)
-        c = cupy.cusparse.spsm(
+        c = cusparse.spsm(
             a, b, alpha=self.alpha, lower=lower, unit_diag=unit_diag,
             transa=transa)
 
