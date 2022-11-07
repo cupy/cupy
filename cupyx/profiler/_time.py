@@ -169,9 +169,6 @@ def _repeat(
         finally:
             runtime.setDevice(prev_device)
 
-    ev1 = _cupy.cuda.stream.Event()
-    ev2 = _cupy.cuda.stream.Event()
-
     for i in range(n_warmup):
         func(*args, **kwargs)
 
