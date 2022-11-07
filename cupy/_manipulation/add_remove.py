@@ -200,80 +200,25 @@ def unique(ar, return_index=False, return_inverse=False,
     idx = cupy.arange(0, orig_shape[0], dtype=cupy.intp)
     ar = ar.reshape(orig_shape[0], math.prod(orig_shape[1:]))
     ar = cupy.ascontiguousarray(ar)
+    is_unsigned = cupy.issubdtype(ar.dtype, cupy.unsignedinteger)
     is_complex = cupy.iscomplexobj(ar)
 
+    ar_cmp = ar
+    if is_unsigned:
+        ar_cmp = ar.astype(cupy.intp)
+
     def compare_axis_elems(idx1, idx2):
-        for i in range(0, ar.shape[1]):
-            left = ar[idx1, i]
-            right = ar[idx2, i]
-
-            if cupy.isnan(left) and cupy.isnan(right):
-                if is_complex:
-                    # Check for the real parts
-                    if (cupy.isnan(left.real) and
-                            cupy.isnan(right.real)):
-                        # Check for the imaginary parts
-                        if cupy.isnan(left.imag) and cupy.isnan(right.imag):
-                            if not equal_nan:
-                                # Move NaNs to the left of the result
-                                return True
-                        elif (not cupy.isnan(left.imag) and
-                                cupy.isnan(right.imag)):
-                            # Move NaNs to the left of the result
-                            return False
-                        elif (cupy.isnan(left.imag) and
-                                not cupy.isnan(right.imag)):
-                            # Move NaNs to the left of the result
-                            return True
-                        else:
-                            # Compare using the imaginary values
-                            left = left.imag
-                            right = right.imag
-                    elif not (cupy.isnan(left.real) or cupy.isnan(right.real)):
-                        # Compare using the real values
-                        left = left.real
-                        right = right.real
-                    else:
-                        # Move NaNs to the left of the result
-                        return (cupy.isnan(left.real) and
-                                not cupy.isnan(right.real))
-                else:
-                    if not equal_nan:
-                        # Move NaNs to the left of the result
-                        return True
-            elif cupy.isnan(left) and not cupy.isnan(right):
-                if is_complex:
-                    # Try to compare left and right on the real
-                    # part that is not None, else move the NaN to the left
-                    if cupy.isnan(left.real):
-                        return False
-                    else:
-                        left = left.real
-                        right = right.real
-                else:
-                    # Move NaNs to the left of the result
-                    return False
-            elif not cupy.isnan(left) and cupy.isnan(right):
-                if is_complex:
-                    # Try to compare left and right on the real
-                    # part that is not None, else move the NaN to the left
-                    if cupy.isnan(right.real):
-                        return True
-                    else:
-                        left = left.real
-                        right = right.real
-                else:
-                    # Move NaNs to the left of the result
-                    return True
-
-            if left < right:
+        left, right = ar_cmp[idx1], ar_cmp[idx2]
+        comp = cupy.trim_zeros(left - right, 'f')
+        if comp.shape[0] > 0:
+            diff = comp[0]
+            if is_complex and cupy.isnan(diff):
                 return True
-            elif left > right:
-                return False
+            return diff < 0
         return False
 
-    # The array is sorted lexicographically using the first item of each
     # element on the axis
+    # The array is sorted lexicographically using the first item of each
     sorted_indices = cupy.empty(orig_shape[0], dtype=cupy.intp)
     queue = [(idx.tolist(), 0)]
     while queue != []:
