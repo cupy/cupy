@@ -320,6 +320,14 @@ cublasStatus_t cublasGemmEx_v11(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasGemmStridedBatchedEx(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGemmStridedBatchedEx_v11(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 // BLAS extension
 cublasStatus_t cublasSgeam(...) {
     return CUBLAS_STATUS_SUCCESS;
