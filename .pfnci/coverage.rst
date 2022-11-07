@@ -1731,10 +1731,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
-     - 
-     - 5
+     - 6
    * - 
      - 3.11
      - 
@@ -1763,10 +1763,10 @@ CuPy CI Test Coverage
      - ✅
      - 
      - ✅
+     - 
      - ✅
      - ✅
-     - ✅
-     - 12
+     - 11
    * - 
      - pre
      - 
@@ -1859,10 +1859,10 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
      - 
      - 
-     - 
-     - 2
+     - 3
    * - 
      - 1.22
      - 
@@ -1923,10 +1923,10 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
+     - 
      - ✅
      - ✅
-     - ✅
-     - 14
+     - 13
    * - 
      - pre
      - 
@@ -2051,10 +2051,10 @@ CuPy CI Test Coverage
      - 
      - ✅
      - 
+     - ✅
      - 
      - 
-     - 
-     - 7
+     - 8
    * - 
      - 1.8
      - 
@@ -2115,10 +2115,10 @@ CuPy CI Test Coverage
      - ✅
      - 
      - 
+     - 
      - ✅
      - ✅
-     - ✅
-     - 12
+     - 11
    * - 
      - pre
      - 

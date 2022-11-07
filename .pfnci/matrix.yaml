@@ -486,9 +486,9 @@
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.5"
-  python: "3.11"
-  numpy: "1.23"
-  scipy: "1.9"
+  python: "3.10"
+  numpy: "1.21"
+  scipy: "1.7"
   optuna: "2"
   mpi4py: null
   cython: "0.29"
