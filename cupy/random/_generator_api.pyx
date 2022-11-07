@@ -954,12 +954,8 @@ class Generator:
 
         y = _core.ndarray(size if size is not None else (), numpy.int64)
 
-        n = cupy.broadcast_to(n, y.shape)
-        p = cupy.broadcast_to(p, y.shape)
-        n_arr = _array_data(n)
-        p_arr = _array_data(p)
-        n_ptr = n_arr.data.ptr
-        p_ptr = p_arr.data.ptr
+        n = cupy.broadcast_to(n, y.shape).ravel()
+        p = cupy.broadcast_to(p, y.shape).ravel()
 
         if self._binomial_state is None:
             state_size = self.bit_generator._state_size()
@@ -968,7 +964,7 @@ class Generator:
         binomial_state_ptr = <intptr_t>self._binomial_state.data.ptr
         _launch_dist(
             self.bit_generator, binomial, y,
-            (n_ptr, p_ptr, binomial_state_ptr))
+            (n, p, binomial_state_ptr))
         return y
 
 
@@ -1005,7 +1001,15 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
         func(generator, state, y_ptr, out.size, strm, *args)
     else:
         chunks = (out.size + bsize - 1) // bsize
+        n_args = []
         for i in range(chunks):
-            chunk = out[i*bsize:]
+            chunk = out[i * bsize:]
+            # Look for arrays in the args and split them if necessary
+            n_args.append([
+                _array_data(a[i * bsize:])
+                if isinstance(a, cupy.ndarray) else a for a in args])
+            args_ptr = tuple(
+                <intptr_t>a.data.ptr if isinstance(a, cupy.ndarray) else a
+                for a in n_args[-1])
             y_ptr = <intptr_t>chunk.data.ptr
-            func(generator, state, y_ptr, min(bsize, chunk.size), strm, *args)
+            func(generator, state, y_ptr, min(bsize, chunk.size), strm, *args_ptr)
