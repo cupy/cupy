@@ -324,12 +324,12 @@ class CoverageGenerator:
     def generate_rst(self) -> Tuple[str, List[str]]:
         # Generate a matrix table.
         table = [
-            ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
-            ['', 'System'] + [m.system for m in self.matrixes] + [''],
-            ['', 'Target'] + [
+            ['Param', '', '#', 'Test'] + [''] * (len(self.matrixes) - 1),
+            ['', 'System', ''] + [m.system for m in self.matrixes],
+            ['', 'Target', ''] + [
                 f'`{m.target} <t{i}_>`_ `🐳 <d{i}_>`_ `📜 <s{i}_>`_'
                 for i, m in enumerate(self.matrixes)
-            ] + [''],
+            ],
             [''] * (len(self.matrixes) + 3)
         ]
         coverage_warns = []
@@ -340,10 +340,12 @@ class CoverageGenerator:
             for value in possible_values:
                 count = matrix_values.count(value)
                 table += [
-                    [key_header, value if value else 'null'] + [
-                        '✅' if mv == value else '' for mv in matrix_values
+                    [
+                        key_header,
+                        value if value else 'null',
+                        str(count) if count != 0 else '🚨',
                     ] + [
-                        str(count) if count != 0 else '0 🚨'
+                        '✅' if mv == value else '' for mv in matrix_values
                     ],
                 ]
                 key_header = ''
