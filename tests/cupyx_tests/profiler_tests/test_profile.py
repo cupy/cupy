@@ -7,8 +7,8 @@ from cupyx import profiler
 class TestProfile(unittest.TestCase):
 
     def test_profile(self):
-        start_patch = mock.patch('cupy.cuda.profiler.start')
-        stop_patch = mock.patch('cupy.cuda.profiler.stop')
+        start_patch = mock.patch('cupy_backends.cuda.libs.profiler.start')
+        stop_patch = mock.patch('cupy_backends.cuda.libs.profiler.stop')
         with start_patch as start, stop_patch as stop:
             with profiler.profile():
                 pass
@@ -16,8 +16,8 @@ class TestProfile(unittest.TestCase):
             stop.assert_called_once_with()
 
     def test_err_case(self):
-        start_patch = mock.patch('cupy.cuda.profiler.start')
-        stop_patch = mock.patch('cupy.cuda.profiler.stop')
+        start_patch = mock.patch('cupy_backends.cuda.libs.profiler.start')
+        stop_patch = mock.patch('cupy_backends.cuda.libs.profiler.stop')
         with start_patch as start, stop_patch as stop:
             try:
                 with profiler.profile():
