@@ -39,6 +39,7 @@ class TestBSpline:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires('scipy>=1.8.0')
     def test_design_matrix(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
