@@ -217,8 +217,8 @@ def unique(ar, return_index=False, return_inverse=False,
             return diff < 0
         return False
 
-    # element on the axis
     # The array is sorted lexicographically using the first item of each
+    # element on the axis
     sorted_indices = cupy.empty(orig_shape[0], dtype=cupy.intp)
     queue = [(idx.tolist(), 0)]
     while queue != []:
