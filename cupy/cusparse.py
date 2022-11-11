@@ -1,6 +1,6 @@
 import warnings
 
-from cupyx.cutensor import *  # NOQA
+from cupyx.cusparse import *  # NOQA
 
 
 warnings.warn(

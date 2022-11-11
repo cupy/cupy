@@ -199,6 +199,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
 # other SMs always use sm_X0's symbols only and do not have their own
 # specializations.
 cdef dict _cc_major_map = {
+    '9': ('90',),
     '8': ('80', '86', '87'),
     '7': ('70', '72', '75'),
     '6': ('60', '61', '62'),
