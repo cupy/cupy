@@ -15,6 +15,54 @@ except ImportError:
 @testing.with_requires("scipy")
 class TestBSpline:
 
+    def _make_random_spline(self, xp, scp, n=35, k=3):
+        xp.random.seed(123)
+        t = xp.sort(xp.random.random(n + k + 1))
+        c = xp.random.random(n)
+        return scp.interpolate.BSpline.construct_fast(t, c, k)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    def test_ctor(self, xp, scp):
+        # knots should be an ordered 1-D array of finite real numbers
+        t = [1, 1.j]
+        c = [1.0]
+        k = 0
+        scp.interpolate.BSpline(t, c, k)
+
+        t = [1, xp.nan]
+        scp.interpolate.BSpline(t, c, k)
+
+        t = [1, xp.inf]
+        scp.interpolate.BSpline(t, c, k)
+
+        t = [1, -1]
+        scp.interpolate.BSpline(t, c, k)
+
+        t = [[1], [1]]
+        scp.interpolate.BSpline(t, c, k)
+
+        # for n+k+1 knots and degree k need at least n coefficients
+        t = [0, 1, 2]
+        c = [1]
+        scp.interpolate.BSpline(t, c, k)
+
+        t = [0, 1, 2, 3, 4]
+        c = [1., 1.]
+        k = 2
+        scp.interpolate.BSpline(t, c, k)
+
+        # non-integer orders
+        t = [0., 0., 1., 2., 3., 4.]
+        c = [1., 1., 1.]
+        k = "cubic"
+        scp.interpolate.BSpline(t, c, k)
+
+        t = [0., 0., 1., 2., 3., 4.]
+        c = [1., 1., 1.]
+        k = 2.5
+        scp.interpolate.BSpline(t, c, k)
+
+
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bspline(self, xp, scp, dtype):
