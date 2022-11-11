@@ -460,12 +460,13 @@ def _call_ufunc(
             if f'in{i}_type' in op.routine:
                 can_use_inline_expansion = False
 
+        env.generated.add_code(ufunc._preamble)
+
         if can_use_inline_expansion:
             # Code pass for readable generated code
             for i, x in enumerate(in_params):
                 expr = expr.replace(f'in{i}', x.code)
             expr = '(' + expr.replace('out0_type', str(out_type)) + ')'
-            env.generated.add_code(ufunc._preamble)
         else:
             template_typenames = ', '.join([
                 f'typename in{i}_type' for i in range(ufunc.nin)])
@@ -473,6 +474,7 @@ def _call_ufunc(
             params = ', '.join([f'in{i}_type in{i}' for i in range(ufunc.nin)])
             ufunc_code = f"""template <{template_typenames}>
 __device__ {out_type} {ufunc_name}({params}) {{
+    typedef {out_type} out0_type;
     return {expr};
 }}
 """

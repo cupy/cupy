@@ -124,6 +124,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
+        if runtime.is_hip:
+            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+
         @jit.rawkernel()
         def sort(x):
             i = jit.threadIdx.x
@@ -140,6 +143,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_by_key_iterator(self, order):
+        if runtime.is_hip:
+            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+
         @jit.rawkernel()
         def sort_by_key(x, y):
             i = jit.threadIdx.x

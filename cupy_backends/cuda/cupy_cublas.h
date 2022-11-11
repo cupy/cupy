@@ -7,11 +7,15 @@
 #if CUDA_VERSION >= 11000
 
 #define cublasGemmEx_v11 cublasGemmEx
+#define cublasGemmStridedBatchedEx_v11 cublasGemmStridedBatchedEx
 
 #else
 
 typedef enum{} cublasComputeType_t;
 cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+cublasStatus_t cublasGemmStridedBatchedEx_v11(...) {
     return CUBLAS_STATUS_NOT_SUPPORTED;
 }
 

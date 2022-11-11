@@ -279,7 +279,7 @@ class TestRaw:
             laneId = jit.threadIdx.x & 0x1f
             if laneId < m:
                 x[laneId] = 1
-                jit.syncwarp(mask=m)
+                jit.syncwarp(mask=(1 << m) - 1)
 
         for mask in (2, 4, 8, 16, 32):
             x = cupy.zeros((32,), dtype=numpy.int32)

@@ -360,6 +360,26 @@ cublasStatus_t cublasDsbmv(cublasHandle_t handle, cublasFillMode_t uplo, int n, 
 
 
 // BLAS Level 3
+cublasStatus_t cublasGemmStridedBatchedEx(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+                                          int m, int n, int k, const void* alpha,
+                                          const void* A, cudaDataType Atype, int lda, long long int strideA,
+                                          const void* B, cudaDataType Btype, int ldb, long long int strideB,
+                                          const void* beta,
+                                          void* C, cudaDataType Ctype, int ldc, long long int strideC,
+                                          int batchCount, cudaDataType_t computeType, cublasGemmAlgo_t algo) {
+    if (algo != -1) { // must be CUBLAS_GEMM_DEFAULT
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasGemmStridedBatchedEx(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+                                       m, n, k, alpha,
+                                       A, convert_hipblasDatatype_t(Atype), lda, strideA,
+                                       B, convert_hipblasDatatype_t(Btype), ldb, strideB,
+                                       beta,
+                                       C, convert_hipblasDatatype_t(Ctype), ldc, strideC,
+                                       batchCount, convert_hipblasDatatype_t(computeType),
+                                       static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
+}
+
 cublasStatus_t cublasSgemm(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
                             int m, int n, int k, const float *alpha,
                             const float *A, int lda,
@@ -510,6 +530,9 @@ cublasStatus_t cublasGemmEx(cublasHandle_t handle, cublasOperation_t transa, cub
 }
 
 cublasStatus_t cublasGemmEx_v11(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+cublasStatus_t cublasGemmStridedBatchedEx_v11(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 

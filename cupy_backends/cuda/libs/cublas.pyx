@@ -353,6 +353,24 @@ cdef extern from '../../cupy_blas.h' nogil:
         const void *beta,
         void *C, DataType Ctype, int ldc,
         ComputeType computetype, GemmAlgo algo)
+    int cublasGemmStridedBatchedEx(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k,
+        const void *alpha,
+        const void *A, DataType Atype, int lda, long long strideA,
+        const void *B, DataType Btype, int ldb, long long strideB,
+        const void *beta,
+        void *C, DataType Ctype, int ldc, long long strideC,
+        int batchCount, DataType computetype, GemmAlgo algo)
+    int cublasGemmStridedBatchedEx_v11(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k,
+        const void *alpha,
+        const void *A, DataType Atype, int lda, long long strideA,
+        const void *B, DataType Btype, int ldb, long long strideB,
+        const void *beta,
+        void *C, DataType Ctype, int ldc, long long strideC,
+        int batchCount, ComputeType computetype, GemmAlgo algo)
     int cublasStpttr(
         Handle handle, FillMode uplo, int n, const float *AP, float *A,
         int lda)
@@ -1429,6 +1447,37 @@ cpdef gemmEx(
                 <const void*>beta,
                 <void*>C, <DataType>Ctype, ldc,
                 <DataType>computeType, <GemmAlgo>algo)
+    check_status(status)
+
+
+cpdef gemmStridedBatchedEx(
+        intptr_t handle, int transa, int transb, int m, int n, int k,
+        size_t alpha,
+        size_t A, int Atype, int lda, long long strideA,
+        size_t B, int Btype, int ldb, long long strideB,
+        size_t beta,
+        size_t C, int Ctype, int ldc, long long strideC,
+        int batchCount, int computeType, int algo):
+    _setStream(handle)
+    with nogil:
+        if computeType >= CUBLAS_COMPUTE_16F:
+            status = cublasGemmStridedBatchedEx_v11(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void*>A, <DataType>Atype, lda, <long long>strideA,
+                <const void*>B, <DataType>Btype, ldb, <long long>strideB,
+                <const void*>beta,
+                <void*>C, <DataType>Ctype, ldc, <long long>strideC,
+                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
+        else:
+            status = cublasGemmStridedBatchedEx(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void*>A, <DataType>Atype, lda, <long long>strideA,
+                <const void*>B, <DataType>Btype, ldb, <long long>strideB,
+                <const void*>beta,
+                <void*>C, <DataType>Ctype, ldc, <long long>strideC,
+                batchCount, <DataType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 
