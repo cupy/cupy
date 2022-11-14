@@ -1,7 +1,7 @@
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
-from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.api import runtime as _runtime
 
 
 class _ClassTemplate:
@@ -18,15 +18,17 @@ class _ClassTemplate:
 
 
 def _include_cub(env):
-    if runtime.is_hip:
+    if _runtime.is_hip:
         env.generated.add_code('#include <hipcub/hipcub.hpp>')
+    elif _runtime.runtimeGetVersion() < 11000:
+        env.generated.add_code('#include <cupy/cub/cub/cub.cuh>')
     else:
         env.generated.add_code('#include <cub/cub.cuh>')
     env.generated.backend = 'nvcc'
 
 
 def _get_cub_namespace():
-    return 'hipcub' if runtime.is_hip else 'cub'
+    return 'hipcub' if _runtime.is_hip else 'cub'
 
 
 class _TempStorageType(_cuda_types.TypeBase):
