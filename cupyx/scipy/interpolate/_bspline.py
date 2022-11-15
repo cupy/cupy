@@ -53,7 +53,13 @@ __global__ void find_interval(
     }
 
     int default_value = left - 1 < k ? k : left - 1;
-    out[idx] = found ? mid : default_value;
+    int result = found ? mid + 1 : default_value + 1;
+
+    while(xp >= *&t[result] && result != n) {
+        result++;
+    }
+
+    out[idx] = result - 1;
 }
 '''
 
