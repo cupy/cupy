@@ -196,6 +196,10 @@ def transpile(func, attributes, mode, in_types, ret_type):
     code = '\n'.join(generated.codes)
     backend = generated.backend
     enable_cg = generated.enable_cg
+
+    if _is_debug_mode:
+        print(code)
+
     return Result(
         func_name=func_name, code=code, return_type=return_type,
         enable_cooperative_groups=enable_cg, backend=backend)
@@ -733,6 +737,9 @@ def _transpile_expr_internal(
 
         func = func.obj
 
+        if isinstance(func, _interface._cuda_types.TypeBase):
+            return func._instantiate(env, *args, **kwargs)
+
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
                 raise TypeError(
@@ -795,8 +802,6 @@ def _transpile_expr_internal(
         value = _transpile_expr(expr.value, env)
         if isinstance(value, Constant):
             return Constant(getattr(value.obj, expr.attr))
-        if isinstance(value, _internal_types.BuiltinFunc):
-            return Constant(getattr(value, expr.attr))
         if isinstance(value, Data) and hasattr(value.ctype, expr.attr):
             attr = getattr(value.ctype, expr.attr, None)
             if isinstance(attr, types.MethodType):
@@ -807,7 +812,10 @@ def _transpile_expr_internal(
 
     if isinstance(expr, ast.Tuple):
         elts = [_transpile_expr(x, env) for x in expr.elts]
-        # TODO: Support compile time constants.
+
+        if all([isinstance(x, Constant) for x in elts]):
+            return Constant(tuple([x.obj for x in elts]))
+
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
         if len(elts) == 2:
@@ -864,9 +872,8 @@ def _transpile_assign_stmt(
         return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Subscript):
-        target = _transpile_expr(target, env)
-        assert isinstance(target, Data)
-        return _emit_assign_stmt(target, value, env)
+        lvalue = Data.init(_transpile_expr(target, env), env)
+        return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Tuple):
         if not isinstance(value.ctype, _cuda_types.Tuple):
