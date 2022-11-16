@@ -1,6 +1,7 @@
 import pytest
 
 from cupy import testing
+import numpy as np
 import cupyx.scipy.interpolate  # NOQA
 
 try:
@@ -16,9 +17,8 @@ except ImportError:
 class TestBSpline:
 
     def _make_random_spline(self, xp, scp, n=35, k=3):
-        xp.random.seed(123)
-        t = xp.sort(xp.random.random(n + k + 1))
-        c = xp.random.random(n)
+        t = xp.sort(testing.shaped_random((n + k + 1,), xp, dtype=np.float64))
+        c = testing.shaped_random((n,), xp, dtype=np.float64)
         return scp.interpolate.BSpline.construct_fast(t, c, k)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
@@ -129,10 +129,104 @@ class TestBSpline:
         dt = t[-1] - t[0]
 
         # Locally, linspace produces relatively different values (1e-7) between
-        # NumPy and CuPy during testing. Such difference results in an 1e-3
+        # NumPy and CuPy during testing. Such difference result in a 1e-3
         # tolerance
         xx = xp.linspace(t[0] - dt, t[-1] + dt, 50, dtype=dtype)
         return b(xx), b_pad(xx)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_endpoints(self, xp, scp):
+        # base interval is closed
+        b = self._make_random_spline(xp, scp)
+        t, _, k = b.tck
+        tm, tp = t[k], t[-k-1]
+        return (
+            b(xp.asarray([tm, tp]), self.extrapolate),
+            b(xp.asarray([tm + 1e-10, tp - 1e-10]), self.extrapolate))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_continuity(self, xp, scp):
+        # assert continuity at internal knots
+        b = self._make_random_spline(xp, scp)
+        t, _, k = b.tck
+        return b(t[k+1:-k-1] - 1e-10), b(t[k+1:-k-1] + 1e-10)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_extrap(self, xp, scp):
+        b = self._make_random_spline(xp, scp)
+        t, c, k = b.tck
+        dt = t[-1] - t[0]
+        xx = xp.linspace(t[k] - dt, t[-k-1] + dt, 50)
+        mask = (t[k] < xx) & (xx < t[-k-1])
+
+        return (b(xx[mask], extrapolate=self.extrapolate),
+                b(xx, extrapolate=self.extrapolate))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_default_extrap(self, xp, scp):
+        # BSpline defaults to extrapolate=True
+        b = self._make_random_spline(xp, scp)
+        t, _, k = b.tck
+        xx = [t[0] - 1, t[-1] + 1]
+        yy = b(xx)
+        return not xp.all(xp.isnan(yy))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_periodic_extrap(self, xp, scp):
+        b = self._make_random_spline(xp, scp, n=4, k=3)
+        t, c, k = b.tck
+        n = t.size - (k + 1)
+
+        # Direct check
+        xx = xp.asarray([-1, 0, 0.5, 1])
+        xy = t[k] + (xx - t[k]) % (t[n] - t[k])
+        return b(xx, extrapolate='periodic'), b(xy, extrapolate=True)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_derivative_rndm(self, xp, scp):
+        b = self._make_random_spline(xp, scp)
+        t, _, k = b.tck
+        xx = xp.linspace(t[0], t[-1], 50)
+        xx = xp.r_[xx, t]
+
+        derivatives = []
+        for der in range(1, k+2):
+            derivatives.append(b(xx, nu=der))
+
+        return derivatives
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bspline_derivative_jumps(self, xp, scp):
+        # example from de Boor, Chap IX, example (24)
+        # NB: knots augmented & corresp coefs are zeroed out
+        # in agreement with the convention (29)
+        k = 2
+        t = xp.asarray([-1, -1, 0, 1, 1, 3, 4, 6, 6, 6, 7, 7])
+        c = xp.r_[0, 0, testing.shaped_random((5,), xp), 0, 0]
+        b = scp.interpolate.BSpline(t, c, k)
+
+        comp = []
+        # b is continuous at x != 6 (triple knot)
+        x = xp.asarray([1, 3, 4, 6])
+        comp.append(b(x[x != 6] - 1e-10))
+        comp.append(b(x[x != 6] + 1e-10))
+        comp.append(b(6. - 1e-10))
+        comp.append(b(6. + 1e-10))
+
+        # 1st derivative jumps at double knots, 1 & 6:
+        x0 = xp.asarray([3, 4])
+        comp.append(b(x0 - 1e-10, nu=1))
+        comp.append(b(x0 + 1e-10, nu=1))
+
+        x1 = xp.asarray([1, 6])
+        comp.append(b(x1 - 1e-10, nu=1))
+        comp.append(b(x1 + 1e-10, nu=1))
+
+        # 2nd derivative is not guaranteed to be continuous either
+        comp.append(b(x - 1e-10, nu=2))
+        comp.append(b(x + 1e-10, nu=2))
+
+        return comp
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
