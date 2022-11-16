@@ -36,8 +36,8 @@ class Void(TypeBase):
 
 class Unknown(TypeBase):
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, *, label: Optional[str] = None) -> None:
+        self.label = label
 
     def __str__(self) -> str:
         raise TypeError('unknown type can be used only in ary of a function.')
