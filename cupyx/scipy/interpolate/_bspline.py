@@ -19,9 +19,13 @@ INTERVAL_KERNEL = r'''
 template<typename T>
 __global__ void find_interval(
         const T* t, const T* x, long long* out,
-        int k, int n, bool extrapolate) {
+        int k, int n, bool extrapolate, int total_x) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= total_x) {
+        return;
+    }
+
     T xp = *&x[idx];
     T tb = *&t[k];
     T te = *&t[n];
@@ -77,9 +81,14 @@ template<typename T>
 __global__ void d_boor(
         const T* t, const T* c, const int k, const int mu,
         const T* x, const long long* intervals, T* out,
-        T* temp, int num_c, int mode) {
+        T* temp, int num_c, int mode, int num_x) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if(idx >= num_x) {
+        return;
+    }
+
     T xp = *&x[idx];
     long long interval = *&intervals[idx];
 
@@ -172,9 +181,13 @@ DESIGN_MAT_KERNEL = r'''
 template<typename T, typename U>
 __global__ void compute_design_matrix(
         const int k, const long long* intervals, T* bspline_basis,
-        T* data, U* indices) {
+        T* data, U* indices, int num_intervals) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= num_intervals) {
+        return;
+    }
+
     long long interval = *&intervals[idx];
 
     T* work = bspline_basis + idx * (2 * k + 1);
@@ -245,15 +258,18 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
 
     # Compute intervals for each value
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval', xp)
-    interval_kernel((max(1, xp.shape[0] // 128),), (min(128, xp.shape[0]),),
-                    (t, xp, intervals, k, n, extrapolate))
+    interval_kernel(((xp.shape[0] + 128 - 1) // 128,),
+                    (min(128, xp.shape[0]),),
+                    (t, xp, intervals, k, n, extrapolate, xp.shape[0]))
 
     # Compute interpolation
     num_c = int(np.prod(c.shape[1:]))
     temp = cupy.empty(xp.shape[0] * (2 * k + 1))
     d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', xp)
-    d_boor_kernel((max(1, xp.shape[0] // 128),), (min(128, xp.shape[0]),),
-                  (t, c, k, nu, xp, intervals, out, temp, num_c, 1))
+    d_boor_kernel(((xp.shape[0] + 128 - 1) // 128,),
+                  (min(128, xp.shape[0]),),
+                  (t, c, k, nu, xp, intervals, out, temp, num_c, 1,
+                   xp.shape[0]))
 
 
 def _make_design_matrix(x, t, k, extrapolate, indices):
@@ -289,20 +305,25 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
 
     # Compute intervals for each value
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval', x)
-    interval_kernel((max(1, x.shape[0] // 128),), (min(128, x.shape[0]),),
-                    (t, x, intervals, k, n, extrapolate))
+    interval_kernel(((x.shape[0] + 128 - 1) // 128,),
+                    (min(128, x.shape[0]),),
+                    (t, x, intervals, k, n, extrapolate, x.shape[0]))
 
     # Compute interpolation
     bspline_basis = cupy.empty(x.shape[0] * (2 * k + 1))
     d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', x)
-    d_boor_kernel((max(1, x.shape[0] // 128),), (min(128, x.shape[0]),),
-                  (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0))
+    d_boor_kernel(((x.shape[0] + 128 - 1) // 128,),
+                  (min(128, x.shape[0]),),
+                  (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0,
+                   x.shape[0]))
 
     data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float_)
     design_mat_kernel = _get_module_func(
         DESIGN_MAT_MODULE, 'compute_design_matrix', x, indices)
-    design_mat_kernel((max(1, x.shape[0] // 128),), (min(128, x.shape[0]),),
-                      (k, intervals, bspline_basis, data, indices))
+    design_mat_kernel(((x.shape[0] + 128 - 1) // 128,),
+                      (min(128, x.shape[0]),),
+                      (k, intervals, bspline_basis, data, indices,
+                       x.shape[0]))
 
     return data, indices
 
