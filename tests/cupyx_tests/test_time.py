@@ -89,10 +89,10 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0,))
         expected = (
             'test_name_xxx       :'
-            '    CPU:    5.620 us   +/- 0.943 '
-            '(min:    4.200 / max:    7.100) us '
-            '    GPU-0:    6.600 us   +/- 2.344 '
-            '(min:    3.800 / max:    9.600) us'
+            '    CPU:     5.620 us   +/-  0.943 '
+            '(min:     4.200 / max:     7.100) us '
+            '    GPU-0:     6.600 us   +/-  2.344 '
+            '(min:     3.800 / max:     9.600) us'
         )
         assert str(perf) == expected
 
@@ -104,8 +104,8 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0,))
         expected = (
             'test_name_xxx       :'
-            '    CPU:    5.620 us   +/- 0.943 '
-            '(min:    4.200 / max:    7.100) us'
+            '    CPU:     5.620 us   +/-  0.943 '
+            '(min:     4.200 / max:     7.100) us'
         )
         assert perf.to_str() == expected
         # Checks if the result does not change.
@@ -114,18 +114,18 @@ class TestPerfCaseResult(unittest.TestCase):
     def test_single_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0,))
-        assert str(perf) == ('test_name_xxx       :    CPU:    5.400 us '
-                             '    GPU-0:    6.400 us')
+        assert str(perf) == ('test_name_xxx       :    CPU:     5.400 us '
+                             '    GPU-0:     6.400 us')
 
     def test_single_no_show_gpu(self):
         times = numpy.array([[5.4], [6.4]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0,))
-        assert perf.to_str() == 'test_name_xxx       :    CPU:    5.400 us'
+        assert perf.to_str() == 'test_name_xxx       :    CPU:     5.400 us'
 
     def test_show_multigpu(self):
         times = numpy.array([[5.4], [6.4], [7.0], [8.1]]) * 1e-6
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0, 1, 2))
-        assert str(perf) == ('test_name_xxx       :    CPU:    5.400 us '
-                             '    GPU-0:    6.400 us '
-                             '    GPU-1:    7.000 us '
-                             '    GPU-2:    8.100 us')
+        assert str(perf) == ('test_name_xxx       :    CPU:     5.400 us '
+                             '    GPU-0:     6.400 us '
+                             '    GPU-1:     7.000 us '
+                             '    GPU-2:     8.100 us')
