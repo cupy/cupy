@@ -1,6 +1,5 @@
 
 import operator
-from itertools import product
 
 import cupy
 from cupy._core import internal
