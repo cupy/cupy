@@ -1,5 +1,6 @@
 import math as _math
 import time as _time
+import copy as _copy
 
 import numpy as _numpy
 
@@ -81,7 +82,7 @@ class _PerfCaseResult:
 
 def benchmark(
         func, args=(), kwargs={}, n_repeat=10000, *,
-        name=None, n_warmup=10, max_duration=_math.inf, devices=None):
+        name=None, n_warmup=10, max_duration=_math.inf, devices=None, copy_args=False):
     """ Timing utility for measuring time spent by both CPU and GPU.
 
     This function is a very convenient helper for setting up a timing test. The
@@ -105,7 +106,7 @@ def benchmark(
 
     Args:
         func (callable): a callable object to be timed.
-        args (tuple): positional argumens to be passed to the callable.
+        args (tuple): positional arguments to be passed to the callable.
         kwargs (dict): keyword arguments to be passed to the callable.
         n_repeat (int): number of times the callable is called. Increasing
             this value would improve the collected statistics at the cost
@@ -120,6 +121,9 @@ def benchmark(
             reported.
         devices (tuple): a tuple of device IDs (int) that will be timed during
             the timing test. If not given, the current device is used.
+        copy_args (bool): a flag indicating the positional arguments should be
+            copied before calling the function under test. Useful if the function
+            under test modifies data in place, and this modification effects runtime.
 
     Returns:
         :class:`~cupyx.profiler._time._PerfCaseResult`:
@@ -151,11 +155,11 @@ def benchmark(
         raise ValueError('`devices` should be of tuple type')
 
     return _repeat(
-        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices)
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices, copy_args)
 
 
 def _repeat(
-        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices):
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices, copy_args):
 
     events_1 = []
     events_2 = []
@@ -170,7 +174,11 @@ def _repeat(
             runtime.setDevice(prev_device)
 
     for i in range(n_warmup):
-        func(*args, **kwargs)
+        if copy_args:
+            c_args = _copy.deepcopy(args)
+            func(*c_args, **kwargs)
+        else:
+            func(*args, **kwargs)
 
     for event, device in zip(events_1, devices):
         prev_device = runtime.getDevice()
@@ -193,9 +201,14 @@ def _repeat(
             finally:
                 runtime.setDevice(prev_device)
 
+        if copy_args:
+            c_args = _copy.deepcopy(args)
+        else:
+            c_args = args
+
         t1 = _time.perf_counter()
 
-        func(*args, **kwargs)
+        func(*c_args, **kwargs)
 
         t2 = _time.perf_counter()
         cpu_time = t2 - t1
