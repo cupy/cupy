@@ -238,6 +238,53 @@ class TestBSpline:
             t, extrapolate=self.extrapolate)
         return b.tck
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basis_element_quadratic(self, xp, scp):
+        xx = xp.linspace(-1, 4, 20)
+        b = scp.interpolate.BSpline.basis_element(
+            t=xp.asarray([0, 1, 2, 3]))
+        r1 = b(xx)
+
+        b = scp.interpolate.BSpline.basis_element(
+            t=xp.asarray([0, 1, 1, 2]))
+        xx = xp.linspace(0, 2, 10)
+        r2 = b(xx)
+        return r1, r2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basis_element_rndm(self, xp, scp):
+        b = self._make_random_spline(xp, scp)
+        t, c, k = b.tck
+        xx = xp.linspace(t[k], t[-k-1], 20)
+        n = len(t) - (k+1)
+        s = 0.
+        for i in range(n):
+            b = scp.interpolate.BSpline.basis_element(
+                t[i:i+k+2], extrapolate=False)(xx)
+            # zero out out-of-bounds elements
+            s += c[i] * xp.nan_to_num(b)
+        return s
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cmplx(self, xp, scp):
+        b = self._make_random_spline(xp, scp)
+        t, c, k = b.tck
+        cc = c * (1. + 3.j)
+
+        b = scp.interpolate.BSpline(t, cc, k)
+        b_re = scp.interpolate.BSpline(t, b.c.real, k)
+        b_im = scp.interpolate.BSpline(t, b.c.imag, k)
+
+        xx = xp.linspace(t[k], t[-k-1], 20)
+        return b(xx), b_re(xx) + 1j * b_im(xx)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_nan(self, xp, scp):
+        # nan in, nan out.
+        b = scp.interpolate.BSpline.basis_element(
+                xp.asarray([0, 1, 1, 2]))
+        return b(xp.asarray([xp.nan]))
+
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @testing.with_requires('scipy>=1.8.0')

@@ -10,15 +10,14 @@ from cupyx.scipy.sparse import csr_matrix
 
 import numpy as np
 
-TYPES = ['float', 'double', 'complex<float>', 'complex<double>']
+TYPES = ['double', 'complex<double>']
 INT_TYPES = ['int', 'long long']
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
-
-template<typename T>
+extern "C" {
 __global__ void find_interval(
-        const T* t, const T* x, long long* out,
+        const double* t, const double* x, long long* out,
         int k, int n, bool extrapolate, int total_x) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -26,9 +25,9 @@ __global__ void find_interval(
         return;
     }
 
-    T xp = *&x[idx];
-    T tb = *&t[k];
-    T te = *&t[n];
+    double xp = *&x[idx];
+    double tb = *&t[k];
+    double te = *&t[n];
 
     if(isnan(xp)) {
         out[idx] = -1;
@@ -65,11 +64,12 @@ __global__ void find_interval(
 
     out[idx] = result - 1;
 }
+}
 '''
 
 INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
+    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+#    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
 D_BOOR_KERNEL = r'''
@@ -79,9 +79,9 @@ D_BOOR_KERNEL = r'''
 
 template<typename T>
 __global__ void d_boor(
-        const T* t, const T* c, const int k, const int mu,
-        const T* x, const long long* intervals, T* out,
-        T* temp, int num_c, int mode, int num_x) {
+        const double* t, const T* c, const int k, const int mu,
+        const double* x, const long long* intervals, T* out,
+        double* temp, int num_c, int mode, int num_x) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -89,14 +89,14 @@ __global__ void d_boor(
         return;
     }
 
-    T xp = *&x[idx];
+    double xp = *&x[idx];
     long long interval = *&intervals[idx];
 
-    T* h = temp + idx * (2 * k + 1);
-    T* hh = h + k + 1;
+    double* h = temp + idx * (2 * k + 1);
+    double* hh = h + k + 1;
 
     int ind, j, n;
-    T xa, xb, w;
+    double xa, xb, w;
 
     if(mode == COMPUTE_LINEAR && interval < 0) {
         for(j = 0; j < num_c; j++) {
@@ -147,7 +147,7 @@ __global__ void d_boor(
                 h[mu] = 0.0;
                 continue;
             }
-            w = ((T)j) * hh[n - 1]/(xb - xa);
+            w = ((double) j) * hh[n - 1]/(xb - xa);
             h[n - 1] -= w;
             h[n] = w;
         }
@@ -163,7 +163,7 @@ __global__ void d_boor(
         for(n = 0; n < k + 1; n++) {
             out[num_c * idx + j] = (
                 out[num_c * idx + j] +
-                c[(interval + n - k) * num_c + j] * h[n]);
+                c[(interval + n - k) * num_c + j] * ((T) h[n]));
         }
     }
 
@@ -178,10 +178,10 @@ D_BOOR_MODULE = cupy.RawModule(
 DESIGN_MAT_KERNEL = r'''
 #include <cupy/complex.cuh>
 
-template<typename T, typename U>
+template<typename U>
 __global__ void compute_design_matrix(
-        const int k, const long long* intervals, T* bspline_basis,
-        T* data, U* indices, int num_intervals) {
+        const int k, const long long* intervals, double* bspline_basis,
+        double* data, U* indices, int num_intervals) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= num_intervals) {
@@ -190,7 +190,7 @@ __global__ void compute_design_matrix(
 
     long long interval = *&intervals[idx];
 
-    T* work = bspline_basis + idx * (2 * k + 1);
+    double* work = bspline_basis + idx * (2 * k + 1);
 
     for(int j = 0; j <= k; j++) {
         int m = (k + 1) * idx + j;
@@ -202,14 +202,15 @@ __global__ void compute_design_matrix(
 
 DESIGN_MAT_MODULE = cupy.RawModule(
     code=DESIGN_MAT_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'compute_design_matrix<{type_name}, {itype}>'
-                      for type_name, itype in product(TYPES, INT_TYPES)])
+    name_expressions=[f'compute_design_matrix<{itype}>'
+                      for itype in INT_TYPES])
 
 
 def _get_module_func(module, func_name, *template_args):
     args_dtypes = [get_typename(arg.dtype) for arg in template_args]
     template = ', '.join(args_dtypes)
-    kernel = module.get_function(f'{func_name}<{template}>')
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
     return kernel
 
 
@@ -257,7 +258,7 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     intervals = cupy.empty_like(xp, dtype=cupy.int_)
 
     # Compute intervals for each value
-    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval', xp)
+    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,),
                     (min(128, xp.shape[0]),),
                     (t, xp, intervals, k, n, extrapolate, xp.shape[0]))
@@ -265,7 +266,7 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
     # Compute interpolation
     num_c = int(np.prod(c.shape[1:]))
     temp = cupy.empty(xp.shape[0] * (2 * k + 1))
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', xp)
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', c)
     d_boor_kernel(((xp.shape[0] + 128 - 1) // 128,),
                   (min(128, xp.shape[0]),),
                   (t, c, k, nu, xp, intervals, out, temp, num_c, 1,
@@ -304,7 +305,7 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
     intervals = cupy.empty_like(x, dtype=cupy.int_)
 
     # Compute intervals for each value
-    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval', x)
+    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
     interval_kernel(((x.shape[0] + 128 - 1) // 128,),
                     (min(128, x.shape[0]),),
                     (t, x, intervals, k, n, extrapolate, x.shape[0]))
@@ -319,7 +320,7 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
 
     data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float_)
     design_mat_kernel = _get_module_func(
-        DESIGN_MAT_MODULE, 'compute_design_matrix', x, indices)
+        DESIGN_MAT_MODULE, 'compute_design_matrix', indices)
     design_mat_kernel(((x.shape[0] + 128 - 1) // 128,),
                       (min(128, x.shape[0]),),
                       (k, intervals, bspline_basis, data, indices,
