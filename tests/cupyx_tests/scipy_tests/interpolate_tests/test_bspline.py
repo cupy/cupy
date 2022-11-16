@@ -282,7 +282,7 @@ class TestBSpline:
     def test_nan(self, xp, scp):
         # nan in, nan out.
         b = scp.interpolate.BSpline.basis_element(
-                xp.asarray([0, 1, 1, 2]))
+            xp.asarray([0, 1, 1, 2]))
         return b(xp.asarray([xp.nan]))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
