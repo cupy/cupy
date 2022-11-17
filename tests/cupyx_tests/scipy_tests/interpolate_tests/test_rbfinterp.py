@@ -19,7 +19,6 @@ from numpy.linalg import LinAlgError
 from cupyx.scipy.interpolate._rbfinterp import (
     _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, _monomial_powers,
     _polynomial_matrix, _kernel_matrix)
-#from cupyx.scipy.interpolate import RBFInterpolator
 
 
 def _vandermonde(x, degree):
@@ -49,7 +48,7 @@ def _2d_test_function(x, xp):
     return y
 
 
-def _is_conditionally_positive_definite(kernel, m):
+def _is_conditionally_positive_definite(kernel, m, xp, scp):
     # Tests whether the kernel is conditionally positive definite of order m.
     # See chapter 7 of Fasshauer's "Meshfree Approximation Methods with
     # MATLAB".
@@ -60,7 +59,7 @@ def _is_conditionally_positive_definite(kernel, m):
         # are too close to eachother, which can make the matrix singular.
         seq = Halton(ndim, scramble=False, seed=_np.random.RandomState())
         for _ in range(ntests):
-            x = 2*seq.random(nx) - 1
+            x = xp.asarray(2*seq.random(nx)) - 1
             A = _kernel_matrix(x, kernel)
             P = _vandermonde(x, m - 1)
             Q, R = cp.linalg.qr(P, mode='complete')
@@ -80,13 +79,15 @@ def _is_conditionally_positive_definite(kernel, m):
 
 # Sorting the parametrize arguments is necessary to avoid a parallelization
 # issue described here: https://github.com/pytest-dev/pytest-xdist/issues/432.
+@pytest.mark.xfail(reason='conditionally posdef: vandermonde')
+@testing.numpy_cupy_allclose(scipy_name='scp')
 @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
-def test_conditionally_positive_definite(kernel):
+def test_conditionally_positive_definite(xp, scp, kernel):
     # Test if each kernel in _AVAILABLE is conditionally positive definite of
     # order m, where m comes from _NAME_TO_MIN_DEGREE. This is a necessary
     # condition for the smoothed RBF interpolant to be well-posed in general.
     m = _NAME_TO_MIN_DEGREE.get(kernel, -1) + 1
-    assert _is_conditionally_positive_definite(kernel, m)
+    assert _is_conditionally_positive_definite(kernel, m, xp, scp)
 
 
 class _TestRBFInterpolator:
@@ -395,7 +396,7 @@ class _TestRBFInterpolator:
             with pytest.warns(Warning, match=match):
                 self.build(y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
 
-    @pytest.mark.xfail("gesv does not raise LinalgError")    # FIXME
+    @pytest.mark.xfail(reason="gesv does not raise LinalgError")    # FIXME
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=LinAlgError)
     def test_rank_error(self, xp, scp):
         # An error should be raised when `kernel` is "thin_plate_spline" and
