@@ -80,7 +80,7 @@ def _is_conditionally_positive_definite(kernel, m, xp, scp):
 
 # Sorting the parametrize arguments is necessary to avoid a parallelization
 # issue described here: https://github.com/pytest-dev/pytest-xdist/issues/432.
-@pytest.mark.xfail(reason='conditionally posdef: vandermonde')
+@pytest.mark.skip(reason='conditionally posdef: skip for now')
 @testing.numpy_cupy_allclose(scipy_name='scp')
 @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
 def test_conditionally_positive_definite(xp, scp, kernel):
@@ -175,9 +175,9 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @pytest.mark.xfail(reason="chunking: xp/scp")    # FIXME
     @pytest.mark.slow
-    def test_chunking(self, monkeypatch):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_chunking(self, xp, scp, monkeypatch):
         # If the observed data comes from a polynomial, then the interpolant
         # should be able to reproduce the polynomial exactly, provided that
         # `degree` is sufficiently high.
@@ -187,18 +187,22 @@ class _TestRBFInterpolator:
 
         largeN = 1000 + 33
         # this is large to check that chunking of the RBFInterpolator is tested
-        x = cp.asarray(seq.random(50))
-        xitp = cp.asarray(seq.random(largeN))
+        x = xp.asarray(seq.random(50))
+        xitp = xp.asarray(seq.random(largeN))
 
-        P = _vandermonde(x, degree)
-        Pitp = _vandermonde(xitp, degree)
+        if xp is _np:
+            P = _vandermonde(cp.asarray(x), degree).get()
+            Pitp = _vandermonde(cp.asarray(xitp), degree).get()
+        else:
+            P = _vandermonde(x, degree)
+            Pitp = _vandermonde(xitp, degree)
 
         poly_coeffs = rng.normal(0.0, 1.0, P.shape[1])
-        poly_coeffs = cp.asarray(poly_coeffs)
+        poly_coeffs = xp.asarray(poly_coeffs)
 
         y = P.dot(poly_coeffs)
         yitp1 = Pitp.dot(poly_coeffs)
-        interp = self.build(x, y, degree=degree)
+        interp = self.build(scp, x, y, degree=degree)
         ce_real = interp._chunk_evaluator
 
         def _chunk_evaluator(*args, **kwargs):
@@ -207,7 +211,7 @@ class _TestRBFInterpolator:
 
         monkeypatch.setattr(interp, '_chunk_evaluator', _chunk_evaluator)
         yitp2 = interp(xitp)
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        return yitp1, yitp2
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_vector_data(self, xp, scp):
@@ -424,7 +428,6 @@ class _TestRBFInterpolator:
         f = self.build(scp, y, d, kernel='linear')(y)
         return d, f
 
-    @pytest.mark.xfail(reason='pickling')
     def test_pickleable(self):
         # Make sure we can pickle and unpickle the interpolant without any
         # changes in the behavior.
@@ -433,15 +436,14 @@ class _TestRBFInterpolator:
 
         x = cp.asarray(3*seq.random(50))
         xitp = cp.asarray(3*seq.random(50))
+        y = _1d_test_function(x, cp)
 
-        y = _1d_test_function(x)
-
-        interp = self.build(x, y)
+        interp = cupyx.scipy.interpolate.RBFInterpolator(x, y)
 
         yitp1 = interp(xitp)
         yitp2 = pickle.loads(pickle.dumps(interp))(xitp)
 
-        assert_array_equal(yitp1, yitp2)
+        testing.assert_array_equal(yitp1, yitp2)
 
 
 class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
