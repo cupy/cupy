@@ -429,8 +429,6 @@ class RBFInterpolator:
     `neighbors` argument can be specified to compute an RBF interpolant for
     each evaluation point using only the nearest data points.
 
-    .. versionadded:: 1.7.0
-
     See Also
     --------
     NearestNDInterpolator
@@ -544,6 +542,7 @@ class RBFInterpolator:
         if neighbors is None:
             nobs = ny
         else:
+            raise NotImplementedError("neighbors is not implemented yet")
             # Make sure the number of nearest neighbors used for interpolation
             # does not exceed the number of observations.
             neighbors = int(min(neighbors, ny))

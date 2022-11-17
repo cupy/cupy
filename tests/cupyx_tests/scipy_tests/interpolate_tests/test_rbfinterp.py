@@ -473,6 +473,9 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         assert_allclose(yitp1, yitp2, atol=1e-8)
 
 
+"""
+# Disable `all neighbors not None` tests : they need KDTree
+
 class TestRBFInterpolatorNeighbors20(_TestRBFInterpolator):
     # RBFInterpolator using 20 nearest neighbors.
     def build(self, *args, **kwargs):
@@ -514,3 +517,4 @@ class TestRBFInterpolatorNeighborsInf(TestRBFInterpolatorNeighborsNone):
         yitp2 = RBFInterpolator(x, y)(xitp)
 
         assert_allclose(yitp1, yitp2, atol=1e-8)
+"""
