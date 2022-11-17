@@ -2,10 +2,11 @@ import pickle
 import pytest
 import numpy as _np
 import cupy as cp
+from cupy import testing
 
 from numpy.testing import assert_allclose, assert_array_equal
 from scipy.stats.qmc import Halton
-from scipy.spatial import cKDTree
+# from scipy.spatial import cKDTree    # FIXME
 from numpy.linalg import LinAlgError
 
 
@@ -83,17 +84,19 @@ def test_conditionally_positive_definite(kernel):
 
 
 class _TestRBFInterpolator:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
-    def test_scale_invariance_1d(self, kernel):
+    def test_scale_invariance_1d(self, xp, scp, kernel):
         # Verify that the functions in _SCALE_INVARIANT are insensitive to the
         # shape parameter (when smoothing == 0) in 1d.
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
-        x = cp.asarray(3*seq.random(50))
+        x = xp.asarray(3*seq.random(50))
         y = _1d_test_function(x)
-        xitp = cp.asarray(3*seq.random(50))
+        xitp = xp.asarray(3*seq.random(50))
         yitp1 = self.build(x, y, epsilon=1.0, kernel=kernel)(xitp)
         yitp2 = self.build(x, y, epsilon=2.0, kernel=kernel)(xitp)
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        return yitp1, yitp2
+        #assert_allclose(yitp1, yitp2, atol=1e-8)
 
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
     def test_scale_invariance_2d(self, kernel):
