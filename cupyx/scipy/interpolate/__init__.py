@@ -10,5 +10,5 @@ from cupyx.scipy.interpolate._bspline import BSpline, splantider, splder  # NOQA
 
 
 # Radial basis functions
-from cupyx.scipy.interpolate._rbfinterp import RBFInterpolator
+from cupyx.scipy.interpolate._rbfinterp import RBFInterpolator  # NOQA
 

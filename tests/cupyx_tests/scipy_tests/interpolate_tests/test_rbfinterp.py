@@ -3,17 +3,16 @@ import pytest
 import numpy as _np
 import cupy as cp
 
-from numpy.linalg import LinAlgError
 from numpy.testing import assert_allclose, assert_array_equal
 from scipy.stats.qmc import Halton
 from scipy.spatial import cKDTree
+from numpy.linalg import LinAlgError
 
 
 from cupyx.scipy.interpolate._rbfinterp import (
     _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, _monomial_powers,
     _polynomial_matrix, _kernel_matrix)
 from cupyx.scipy.interpolate import RBFInterpolator
-
 
 
 def _vandermonde(x, degree):
@@ -125,14 +124,14 @@ class _TestRBFInterpolator:
             yitp2 = self.build(
                 x*scale + shift, y,
                 kernel=kernel
-                )(xitp*scale + shift)
+            )(xitp*scale + shift)
         else:
             yitp1 = self.build(x, y, epsilon=5.0, kernel=kernel)(xitp)
             yitp2 = self.build(
                 x*scale + shift, y,
                 epsilon=5.0/scale,
                 kernel=kernel
-                )(xitp*scale + shift)
+            )(xitp*scale + shift)
 
         assert_allclose(yitp1, yitp2, atol=1e-8)
 
@@ -403,7 +402,8 @@ class _TestRBFInterpolator:
     def test_pickleable(self):
         # Make sure we can pickle and unpickle the interpolant without any
         # changes in the behavior.
-        seq = Halton(1, scramble=False, seed=_np.random.RandomState(2305982309))
+        seq = Halton(1, scramble=False,
+                     seed=_np.random.RandomState(2305982309))
 
         x = cp.asarray(3*seq.random(50))
         xitp = cp.asarray(3*seq.random(50))
@@ -439,7 +439,7 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
             x, y,
             degree=degree,
             smoothing=smoothing
-            )(xitp)
+        )(xitp)
 
         P = _vandermonde(x, degree)
         Pitp = _vandermonde(xitp, degree)
@@ -464,7 +464,7 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
             x, y,
             degree=degree,
             smoothing=smoothing
-            )(xitp)
+        )(xitp)
 
         P = _vandermonde(x, degree)
         Pitp = _vandermonde(xitp, degree)

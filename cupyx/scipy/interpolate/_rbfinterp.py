@@ -3,11 +3,8 @@ import warnings
 from itertools import combinations_with_replacement
 
 import cupy as cp
-from numpy.linalg import LinAlgError    # FIXME
 from scipy.spatial import KDTree        # FIXME
 from scipy.special import comb          # FIXME
-##from cupy.scipyx.linalg.lapack import dgesv  # type: ignore[attr-defined]
-from cupyx.lapack import gesv
 
 
 # individual kernels et al
@@ -48,15 +45,15 @@ def gaussian(r):
 
 
 NAME_TO_FUNC = {
-   "linear": linear,
-   "thin_plate_spline": thin_plate_spline,
-   "cubic": cubic,
-   "quintic": quintic,
-   "multiquadric": multiquadric,
-   "inverse_multiquadric": inverse_multiquadric,
-   "inverse_quadratic": inverse_quadratic,
-   "gaussian": gaussian
-   }
+    "linear": linear,
+    "thin_plate_spline": thin_plate_spline,
+    "cubic": cubic,
+    "quintic": quintic,
+    "multiquadric": multiquadric,
+    "inverse_multiquadric": inverse_multiquadric,
+    "inverse_quadratic": inverse_quadratic,
+    "gaussian": gaussian
+}
 
 
 def kernel_vector(x, y, kernel_func, out):
@@ -238,7 +235,7 @@ _AVAILABLE = {
     "inverse_multiquadric",
     "inverse_quadratic",
     "gaussian"
-    }
+}
 
 
 # The shape parameter does not need to be specified when using these RBFs.
@@ -256,7 +253,7 @@ _NAME_TO_MIN_DEGREE = {
     "thin_plate_spline": 1,
     "cubic": 1,
     "quintic": 2
-    }
+}
 
 
 def _monomial_powers(ndim, degree):
@@ -321,26 +318,8 @@ def _build_and_solve_system(y, d, smoothing, kernel, epsilon, powers):
     """
     lhs, rhs, shift, scale = _build_system(
         y, d, smoothing, kernel, epsilon, powers
-        )
-   ### _, _, coeffs, info = gesv(lhs, rhs) #, overwrite_a=True, overwrite_b=True)
+    )
     coeffs = cp.linalg.solve(lhs, rhs)
-   # if info < 0:
-   #     raise ValueError(f"The {-info}-th argument had an illegal value.")
-   # elif info > 0:
-   #     msg = "Singular matrix."
-   #     nmonos = powers.shape[0]
-   #     if nmonos > 0:
-   #         pmat = _polynomial_matrix((y - shift)/scale, powers)
-   #         rank = cp.linalg.matrix_rank(pmat)
-   #         if rank < nmonos:
-   #             msg = (
-   #                 "Singular matrix. The matrix of monomials evaluated at "
-   #                 "the data point coordinates does not have full column "
-   #                 f"rank ({rank}/{nmonos})."
-   #                 )
-   #
-   #     raise LinAlgError(msg)
-
     return shift, scale, coeffs
 
 
@@ -512,7 +491,7 @@ class RBFInterpolator:
         if d.shape[0] != ny:
             raise ValueError(
                 f"Expected the first axis of `d` to have length {ny}."
-                )
+            )
 
         d_shape = d.shape[1:]
         d = d.reshape((ny, -1))
@@ -529,7 +508,7 @@ class RBFInterpolator:
                 raise ValueError(
                     "Expected `smoothing` to be a scalar or have shape "
                     f"({ny},)."
-                    )
+                )
 
         kernel = kernel.lower()
         if kernel not in _AVAILABLE:
@@ -542,7 +521,7 @@ class RBFInterpolator:
                 raise ValueError(
                     "`epsilon` must be specified if `kernel` is not one of "
                     f"{_SCALE_INVARIANT}."
-                    )
+                )
         else:
             epsilon = float(epsilon)
 
@@ -560,7 +539,7 @@ class RBFInterpolator:
                     "solvable, and the smoothing parameter may have an "
                     "unintuitive effect.",
                     UserWarning
-                    )
+                )
 
         if neighbors is None:
             nobs = ny
@@ -578,12 +557,12 @@ class RBFInterpolator:
             raise ValueError(
                 f"At least {powers.shape[0]} data points are required when "
                 f"`degree` is {degree} and the number of dimensions is {ndim}."
-                )
+            )
 
         if neighbors is None:
             shift, scale, coeffs = _build_and_solve_system(
                 y, d, smoothing, kernel, epsilon, powers
-                )
+            )
 
             # Make these attributes private since they do not always exist.
             self._shift = shift
