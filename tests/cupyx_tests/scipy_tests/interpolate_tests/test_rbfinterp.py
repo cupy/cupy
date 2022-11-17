@@ -2,6 +2,7 @@ import pickle
 import pytest
 import numpy as _np
 import cupy as cp
+import cupyx
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
 
@@ -396,14 +397,14 @@ class _TestRBFInterpolator:
             with pytest.warns(Warning, match=match):
                 self.build(y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
 
-    @pytest.mark.xfail(reason="gesv does not raise LinalgError")    # FIXME
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=LinAlgError)
     def test_rank_error(self, xp, scp):
         # An error should be raised when `kernel` is "thin_plate_spline" and
         # observations are 2-D and collinear.
         y = xp.array([[2.0, 0.0], [1.0, 0.0], [0.0, 0.0]])
         d = xp.array([0.0, 0.0, 0.0])
-        self.build(scp, y, d, kernel='thin_plate_spline')(y)
+        with cupyx.errstate(linalg='raise'):
+            self.build(scp, y, d, kernel='thin_plate_spline')(y)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('dim', [1, 2, 3])
