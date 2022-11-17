@@ -255,7 +255,7 @@ class _TestRBFInterpolator:
 
         mse = xp.mean((yitp - ytrue)**2)
         assert mse < 1.0e-4
-        return mse
+        return yitp
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
@@ -264,16 +264,16 @@ class _TestRBFInterpolator:
         # appropriate `epsilon`, does a good job at interpolation in 2d.
         seq = Halton(2, scramble=False, seed=_np.random.RandomState())
 
-        x = cp.asarray(seq.random(100))
-        xitp = cp.asarray(seq.random(100))
+        x = xp.asarray(seq.random(100))
+        xitp = xp.asarray(seq.random(100))
 
-        y = _2d_test_function(x)
-        ytrue = _2d_test_function(xitp)
-        yitp = self.build(x, y, epsilon=5.0, kernel=kernel)(xitp)
+        y = _2d_test_function(x, xp)
+        ytrue = _2d_test_function(xitp, xp)
+        yitp = self.build(scp, x, y, epsilon=5.0, kernel=kernel)(xitp)
 
-        mse = cp.mean((yitp - ytrue)**2)
+        mse = xp.mean((yitp - ytrue)**2)
         assert mse < 2.0e-4
-        return mse
+        return yitp
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
@@ -303,7 +303,7 @@ class _TestRBFInterpolator:
                 break
 
         assert rmse_within_tol
-        return rmse_within_tol
+        return ysmooth
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_array_smoothing(self, xp, scp):
@@ -313,7 +313,7 @@ class _TestRBFInterpolator:
         seq = Halton(1, scramble=False, seed=rng)
         degree = 2
 
-        x = cp.asarray(seq.random(50))
+        x = xp.asarray(seq.random(50))
         P = _vandermonde(x, degree)
         poly_coeffs = rng.normal(0.0, 1.0, P.shape[1])
         y = P.dot(poly_coeffs)

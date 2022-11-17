@@ -498,7 +498,8 @@ class RBFInterpolator:
         # complex and take up 2x more memory than necessary.
         d = d.view(float)
 
-        if cp.isscalar(smoothing):
+        isscalar = cp.isscalar(smoothing) or smoothing.shape == ()
+        if isscalar:
             smoothing = cp.full(ny, smoothing, dtype=float)
         else:
             smoothing = cp.asarray(smoothing, dtype=float, order="C")
