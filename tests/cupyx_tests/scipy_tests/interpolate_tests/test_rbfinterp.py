@@ -16,12 +16,10 @@ from scipy.stats.qmc import Halton
 from numpy.linalg import LinAlgError
 
 
-
-
 from cupyx.scipy.interpolate._rbfinterp import (
     _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, _monomial_powers,
     _polynomial_matrix, _kernel_matrix)
-from cupyx.scipy.interpolate import RBFInterpolator
+#from cupyx.scipy.interpolate import RBFInterpolator
 
 
 def _vandermonde(x, degree):
@@ -39,14 +37,14 @@ def _1d_test_function(x, xp):
     return y
 
 
-def _2d_test_function(x):
+def _2d_test_function(x, xp):
     # Franke's test function.
     # domain ~= (0, 1) X (0, 1), range ~= (0.0, 1.2)
     x1, x2 = x[:, 0], x[:, 1]
-    term1 = 0.75 * cp.exp(-(9*x1-2)**2/4 - (9*x2-2)**2/4)
-    term2 = 0.75 * cp.exp(-(9*x1+1)**2/49 - (9*x2+1)/10)
-    term3 = 0.5 * cp.exp(-(9*x1-7)**2/4 - (9*x2-3)**2/4)
-    term4 = -0.2 * cp.exp(-(9*x1-4)**2 - (9*x2-7)**2)
+    term1 = 0.75 * xp.exp(-(9*x1-2)**2/4 - (9*x2-2)**2/4)
+    term2 = 0.75 * xp.exp(-(9*x1+1)**2/49 - (9*x2+1)/10)
+    term3 = 0.5 * xp.exp(-(9*x1-7)**2/4 - (9*x2-3)**2/4)
+    term4 = -0.2 * xp.exp(-(9*x1-4)**2 - (9*x2-7)**2)
     y = term1 + term2 + term3 + term4
     return y
 
@@ -105,47 +103,51 @@ class _TestRBFInterpolator:
         yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
-    def test_scale_invariance_2d(self, kernel):
+    def test_scale_invariance_2d(self, xp, scp, kernel):
         # Verify that the functions in _SCALE_INVARIANT are insensitive to the
         # shape parameter (when smoothing == 0) in 2d.
         seq = Halton(2, scramble=False, seed=_np.random.RandomState())
-        x = cp.asarray(seq.random(100))
-        y = _2d_test_function(x)
-        xitp = cp.asarray(seq.random(100))
-        yitp1 = self.build(x, y, epsilon=1.0, kernel=kernel)(xitp)
-        yitp2 = self.build(x, y, epsilon=2.0, kernel=kernel)(xitp)
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        x = xp.asarray(seq.random(100))
+        y = _2d_test_function(x, xp)
+        xitp = xp.asarray(seq.random(100))
+        yitp1 = self.build(scp, x, y, epsilon=1.0, kernel=kernel)(xitp)
+        yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
+        return yitp1, yitp2
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
-    def test_extreme_domains(self, kernel):
+    def test_extreme_domains(self, xp, scp, kernel):
         # Make sure the interpolant remains numerically stable for very
         # large/small domains.
         seq = Halton(2, scramble=False, seed=_np.random.RandomState())
         scale = 1e50
         shift = 1e55
 
-        x = cp.asarray(seq.random(100))
-        y = _2d_test_function(x)
-        xitp = cp.asarray(seq.random(100))
+        x = xp.asarray(seq.random(100))
+        y = _2d_test_function(x, xp)
+        xitp = xp.asarray(seq.random(100))
 
         if kernel in _SCALE_INVARIANT:
-            yitp1 = self.build(x, y, kernel=kernel)(xitp)
-            yitp2 = self.build(
+            yitp1 = self.build(scp, x, y, kernel=kernel)(xitp)
+            yitp2 = self.build(scp,
                 x*scale + shift, y,
                 kernel=kernel
             )(xitp*scale + shift)
         else:
-            yitp1 = self.build(x, y, epsilon=5.0, kernel=kernel)(xitp)
-            yitp2 = self.build(
+            yitp1 = self.build(scp, x, y, epsilon=5.0, kernel=kernel)(xitp)
+            yitp2 = self.build(scp,
                 x*scale + shift, y,
                 epsilon=5.0/scale,
                 kernel=kernel
             )(xitp*scale + shift)
 
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        return yitp1, yitp2
 
-    def test_polynomial_reproduction(self):
+    @pytest.xfail("polynomial_reproduction: xp/scp")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_polynomial_reproduction(self, xp, scp):
         # If the observed data comes from a polynomial, then the interpolant
         # should be able to reproduce the polynomial exactly, provided that
         # `degree` is sufficiently high.
@@ -153,18 +155,18 @@ class _TestRBFInterpolator:
         seq = Halton(2, scramble=False, seed=rng)
         degree = 3
 
-        x = cp.asarray(seq.random(50))
-        xitp = cp.asarray(seq.random(50))
+        x = xp.asarray(seq.random(50))
+        xitp = xp.asarray(seq.random(50))
 
         P = _vandermonde(x, degree)
         Pitp = _vandermonde(xitp, degree)
 
         poly_coeffs = rng.normal(0.0, 1.0, P.shape[1])
-        poly_coeffs = cp.asarray(poly_coeffs)
+        poly_coeffs = xp.asarray(poly_coeffs)
 
         y = P.dot(poly_coeffs)
         yitp1 = Pitp.dot(poly_coeffs)
-        yitp2 = self.build(x, y, degree=degree)(xitp)
+        yitp2 = self.build(scp, x, y, degree=degree)(xitp)
 
         assert_allclose(yitp1, yitp2, atol=1e-8)
 
