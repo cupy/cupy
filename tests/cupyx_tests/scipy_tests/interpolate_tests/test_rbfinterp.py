@@ -132,16 +132,16 @@ class _TestRBFInterpolator:
         if kernel in _SCALE_INVARIANT:
             yitp1 = self.build(scp, x, y, kernel=kernel)(xitp)
             yitp2 = self.build(scp,
-                x*scale + shift, y,
-                kernel=kernel
-            )(xitp*scale + shift)
+                               x*scale + shift, y,
+                               kernel=kernel
+                               )(xitp*scale + shift)
         else:
             yitp1 = self.build(scp, x, y, epsilon=5.0, kernel=kernel)(xitp)
             yitp2 = self.build(scp,
-                x*scale + shift, y,
-                epsilon=5.0/scale,
-                kernel=kernel
-            )(xitp*scale + shift)
+                               x*scale + shift, y,
+                               epsilon=5.0/scale,
+                               kernel=kernel
+                               )(xitp*scale + shift)
 
         return yitp1, yitp2
 
@@ -288,15 +288,16 @@ class _TestRBFInterpolator:
         smoothing_range = 10**xp.linspace(-4, 1, 20)
 
         x = xp.asarray(3*seq.random(100))
-        y = _1d_test_function(x, xp) + xp.asarray(rng.normal(0.0, noise, (100,)))
+        y = _1d_test_function(
+            x, xp) + xp.asarray(rng.normal(0.0, noise, (100,)))
         ytrue = _1d_test_function(x, xp)
         rmse_within_tol = False
         for smoothing in smoothing_range:
             ysmooth = self.build(scp,
-                x, y,
-                epsilon=1.0,
-                smoothing=smoothing,
-                kernel=kernel)(x)
+                                 x, y,
+                                 epsilon=1.0,
+                                 smoothing=smoothing,
+                                 kernel=kernel)(x)
             rmse = xp.sqrt(xp.mean((ysmooth - ytrue)**2))
             if rmse < rmse_tol:
                 rmse_within_tol = True
