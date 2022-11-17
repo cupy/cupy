@@ -147,7 +147,6 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @pytest.mark.xfail(reason="polynomial_reproduction: xp/scp")    # FIXME
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_polynomial_reproduction(self, xp, scp):
         # If the observed data comes from a polynomial, then the interpolant
@@ -160,8 +159,12 @@ class _TestRBFInterpolator:
         x = xp.asarray(seq.random(50))
         xitp = xp.asarray(seq.random(50))
 
-        P = _vandermonde(x, degree)
-        Pitp = _vandermonde(xitp, degree)
+        if xp is _np:
+            P = _vandermonde(cp.asarray(x), degree).get()
+            Pitp = _vandermonde(cp.asarray(xitp), degree).get()
+        else:
+            P = _vandermonde(x, degree)
+            Pitp = _vandermonde(xitp, degree)
 
         poly_coeffs = rng.normal(0.0, 1.0, P.shape[1])
         poly_coeffs = xp.asarray(poly_coeffs)
@@ -170,7 +173,7 @@ class _TestRBFInterpolator:
         yitp1 = Pitp.dot(poly_coeffs)
         yitp2 = self.build(scp, x, y, degree=degree)(xitp)
 
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        return yitp1, yitp2
 
     @pytest.mark.xfail(reason="chunking: xp/scp")    # FIXME
     @pytest.mark.slow
@@ -308,7 +311,6 @@ class _TestRBFInterpolator:
         assert rmse_within_tol
         return ysmooth
 
-    @pytest.mark.xfail(reason="array_smoothing: xp/scp")    # FIXME
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_array_smoothing(self, xp, scp):
         # Test using an array for `smoothing` to give less weight to a known
@@ -318,16 +320,20 @@ class _TestRBFInterpolator:
         degree = 2
 
         x = xp.asarray(seq.random(50))
-        P = _vandermonde(x, degree)
-        poly_coeffs = rng.normal(0.0, 1.0, P.shape[1])
+        if xp is _np:
+            P = _vandermonde(cp.asarray(x), degree).get()
+        else:
+            P = _vandermonde(x, degree)
+        poly_coeffs = xp.asarray(rng.normal(0.0, 1.0, P.shape[1]))
         y = P.dot(poly_coeffs)
-        y_with_outlier = cp.copy(y)
+        y_with_outlier = xp.copy(y)
         y_with_outlier[10] += 1.0
-        smoothing = cp.zeros((50,))
+        smoothing = xp.zeros((50,))
         smoothing[10] = 1000.0
-        yitp = self.build(x, y_with_outlier, smoothing=smoothing)(x)
+        yitp = self.build(scp, x, y_with_outlier, smoothing=smoothing)(x)
         # Should be able to reproduce the uncorrupted data almost exactly.
-        assert_allclose(yitp, y, atol=1e-4)
+        #assert_allclose(yitp, y, atol=1e-4)
+        return yitp, y
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     def test_inconsistent_x_dimensions_error(self, xp, scp):
@@ -388,14 +394,16 @@ class _TestRBFInterpolator:
         d = xp.zeros(1)
         self.build(scp, y, d, kernel='thin_plate_spline')
 
-    @pytest.mark.xfail(reason='warnings')
-    def test_degree_warning(self):
-        y = cp.linspace(0, 1, 5)[:, None]
-        d = cp.zeros(5)
-        for kernel, deg in _NAME_TO_MIN_DEGREE.items():
-            match = f'`degree` should not be below {deg}'
-            with pytest.warns(Warning, match=match):
-                self.build(y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    @pytest.mark.parametrize('kernel',
+                             [kl for kl in _NAME_TO_MIN_DEGREE])
+    def test_degree_warning(self, xp, scp, kernel):
+        y = xp.linspace(0, 1, 5)[:, None]
+        d = xp.zeros(5)
+        deg = _NAME_TO_MIN_DEGREE[kl]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=LinAlgError)
     def test_rank_error(self, xp, scp):
@@ -440,8 +448,8 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
     def build(self, scp, *args, **kwargs):
         return scp.interpolate.RBFInterpolator(*args, **kwargs)
 
-    @pytest.mark.xfail(reason='smoothing_limit 1d')
-    def test_smoothing_limit_1d(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_smoothing_limit_1d(self, xp, scp):
         # For large smoothing parameters, the interpolant should approach a
         # least squares fit of a polynomial with the specified degree.
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
@@ -449,25 +457,30 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         degree = 3
         smoothing = 1e8
 
-        x = cp.asarray(3*seq.random(50))
-        xitp = cp.asarray(3*seq.random(50))
+        x = xp.asarray(3*seq.random(50))
+        xitp = xp.asarray(3*seq.random(50))
 
-        y = _1d_test_function(x)
+        y = _1d_test_function(x, xp)
 
-        yitp1 = self.build(
+        yitp1 = self.build(scp,
             x, y,
             degree=degree,
             smoothing=smoothing
         )(xitp)
 
-        P = _vandermonde(x, degree)
-        Pitp = _vandermonde(xitp, degree)
-        yitp2 = Pitp.dot(cp.linalg.lstsq(P, y, rcond=None)[0])
+        if xp is _np:
+            P = _vandermonde(cp.asarray(x), degree).get()
+            Pitp = _vandermonde(cp.asarray(xitp), degree).get()
+        else:
+            P = _vandermonde(x, degree)
+            Pitp = _vandermonde(xitp, degree)
 
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        yitp2 = Pitp.dot(xp.linalg.lstsq(P, y, rcond=None)[0])
 
-    @pytest.mark.xfail(reason='smoothing_limit 2d')
-    def test_smoothing_limit_2d(self):
+        return yitp1, yitp2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_smoothing_limit_2d(self, xp, scp):
         # For large smoothing parameters, the interpolant should approach a
         # least squares fit of a polynomial with the specified degree.
         seq = Halton(2, scramble=False, seed=_np.random.RandomState())
@@ -475,22 +488,27 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         degree = 3
         smoothing = 1e8
 
-        x = cp.asarray(seq.random(100))
-        xitp = cp.asarray(seq.random(100))
+        x = xp.asarray(seq.random(100))
+        xitp = xp.asarray(seq.random(100))
 
-        y = _2d_test_function(x)
+        y = _2d_test_function(x, xp)
 
-        yitp1 = self.build(
+        yitp1 = self.build(scp,
             x, y,
             degree=degree,
             smoothing=smoothing
         )(xitp)
 
-        P = _vandermonde(x, degree)
-        Pitp = _vandermonde(xitp, degree)
-        yitp2 = Pitp.dot(cp.linalg.lstsq(P, y, rcond=None)[0])
+        if xp is _np:
+            P = _vandermonde(cp.asarray(x), degree).get()
+            Pitp = _vandermonde(cp.asarray(xitp), degree).get()
+        else:
+            P = _vandermonde(x, degree)
+            Pitp = _vandermonde(xitp, degree)
+        yitp2 = Pitp.dot(xp.linalg.lstsq(P, y, rcond=None)[0])
 
-        assert_allclose(yitp1, yitp2, atol=1e-8)
+        return yitp1, yitp2
+#        assert_allclose(yitp1, yitp2, atol=1e-8)
 
 
 """
