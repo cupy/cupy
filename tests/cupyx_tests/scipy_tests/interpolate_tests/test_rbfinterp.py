@@ -3,11 +3,19 @@ import pytest
 import numpy as _np
 import cupy as cp
 from cupy import testing
+import cupyx.scipy.interpolate  # NOQA
+
+try:
+    from scipy import interpolate  # NOQA
+except ImportError:
+    pass
 
 from numpy.testing import assert_allclose, assert_array_equal
 from scipy.stats.qmc import Halton
 # from scipy.spatial import cKDTree    # FIXME
 from numpy.linalg import LinAlgError
+
+
 
 
 from cupyx.scipy.interpolate._rbfinterp import (
@@ -23,11 +31,11 @@ def _vandermonde(x, degree):
     return _polynomial_matrix(x, powers)
 
 
-def _1d_test_function(x):
+def _1d_test_function(x, xp):
     # Test function used in Wahba's "Spline Models for Observational Data".
     # domain ~= (0, 3), range ~= (-1.0, 0.2)
     x = x[:, 0]
-    y = 4.26*(cp.exp(-x) - 4*cp.exp(-2*x) + 3*cp.exp(-3*x))
+    y = 4.26*(xp.exp(-x) - 4*xp.exp(-2*x) + 3*xp.exp(-3*x))
     return y
 
 
@@ -91,12 +99,11 @@ class _TestRBFInterpolator:
         # shape parameter (when smoothing == 0) in 1d.
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
         x = xp.asarray(3*seq.random(50))
-        y = _1d_test_function(x)
+        y = _1d_test_function(x, xp)
         xitp = xp.asarray(3*seq.random(50))
-        yitp1 = self.build(x, y, epsilon=1.0, kernel=kernel)(xitp)
-        yitp2 = self.build(x, y, epsilon=2.0, kernel=kernel)(xitp)
+        yitp1 = self.build(scp, x, y, epsilon=1.0, kernel=kernel)(xitp)
+        yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
-        #assert_allclose(yitp1, yitp2, atol=1e-8)
 
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
     def test_scale_invariance_2d(self, kernel):
@@ -422,8 +429,8 @@ class _TestRBFInterpolator:
 
 
 class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
-    def build(self, *args, **kwargs):
-        return RBFInterpolator(*args, **kwargs)
+    def build(self, scp, *args, **kwargs):
+        return scp.interpolate.RBFInterpolator(*args, **kwargs)
 
     def test_smoothing_limit_1d(self):
         # For large smoothing parameters, the interpolant should approach a
