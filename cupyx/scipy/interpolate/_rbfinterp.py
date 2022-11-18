@@ -151,7 +151,7 @@ def _build_system(y, d, smoothing, kernel, epsilon, powers):
     # zeros with ones.
     scale[scale == 0.0] = 1.0
 
-    yeps = y*epsilon
+    yeps = y * epsilon
     yhat = (y - shift)/scale
 
     # Transpose to make the array fortran contiguous. This is required for

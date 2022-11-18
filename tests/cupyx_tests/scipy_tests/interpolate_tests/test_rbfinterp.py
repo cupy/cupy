@@ -1,5 +1,7 @@
 import pickle
 import pytest
+import warnings
+
 import numpy as _np
 import cupy as cp
 import cupyx
@@ -11,9 +13,7 @@ try:
 except ImportError:
     pass
 
-from numpy.testing import assert_allclose, assert_array_equal
 from scipy.stats.qmc import Halton
-# from scipy.spatial import cKDTree    # FIXME
 from numpy.linalg import LinAlgError
 
 
@@ -336,7 +336,6 @@ class _TestRBFInterpolator:
         smoothing[10] = 1000.0
         yitp = self.build(scp, x, y_with_outlier, smoothing=smoothing)(x)
         # Should be able to reproduce the uncorrupted data almost exactly.
-        #assert_allclose(yitp, y, atol=1e-4)
         return yitp, y
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
@@ -404,7 +403,7 @@ class _TestRBFInterpolator:
     def test_degree_warning(self, xp, scp, kernel):
         y = xp.linspace(0, 1, 5)[:, None]
         d = xp.zeros(5)
-        deg = _NAME_TO_MIN_DEGREE[kl]
+        deg = _NAME_TO_MIN_DEGREE[kernel]
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             self.build(scp, y, d, epsilon=1.0, kernel=kernel, degree=deg-1)
@@ -465,10 +464,10 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         y = _1d_test_function(x, xp)
 
         yitp1 = self.build(scp,
-            x, y,
-            degree=degree,
-            smoothing=smoothing
-        )(xitp)
+                           x, y,
+                           degree=degree,
+                           smoothing=smoothing
+                           )(xitp)
 
         if xp is _np:
             P = _vandermonde(cp.asarray(x), degree).get()
@@ -496,10 +495,10 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         y = _2d_test_function(x, xp)
 
         yitp1 = self.build(scp,
-            x, y,
-            degree=degree,
-            smoothing=smoothing
-        )(xitp)
+                           x, y,
+                           degree=degree,
+                           smoothing=smoothing
+                           )(xitp)
 
         if xp is _np:
             P = _vandermonde(cp.asarray(x), degree).get()
@@ -510,7 +509,6 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         yitp2 = Pitp.dot(xp.linalg.lstsq(P, y, rcond=None)[0])
 
         return yitp1, yitp2
-#        assert_allclose(yitp1, yitp2, atol=1e-8)
 
 
 """
