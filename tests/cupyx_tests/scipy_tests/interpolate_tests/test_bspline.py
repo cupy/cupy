@@ -397,3 +397,43 @@ class TestBSpline:
 
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return xp.asarray(b.integrate(0, 5))
+
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    def test_axis(self, xp, scp):
+        n, k = 22, 3
+        t = xp.linspace(0, 1, n + k + 1)
+        x = testing.shaped_random((3, 4, 5), xp)
+
+        ret = []
+        for ax in range(-4, 4):
+            sh = [6, 7, 8]
+            # We need the positive axis for some of the indexing and
+            # slices used in this test.
+            pos_axis = self.axis % 4
+            sh.insert(pos_axis, n)   # [22, 6, 7, 8] etc
+            c = testing.shaped_random(sh, xp)
+            b = scp.interpolate.BSpline(t, c, k, axis=ax)
+            ret.append(b(x))
+
+        # -c.ndim <= axis < c.ndim
+        for ax in [-c.ndim - 1, c.ndim]:
+            scp.interpolate.BSpline(t, c, k, axis=ax)
+
+        # derivative, antiderivative keeps the axis
+        BSpline = scp.interpolate.BSpline
+        for b1 in [BSpline(t, c, k, axis=self.axis).derivative(),
+                   BSpline(t, c, k, axis=self.axis).derivative(2),
+                   BSpline(t, c, k, axis=self.axis).antiderivative(),
+                   BSpline(t, c, k, axis=self.axis).antiderivative(2)]:
+            ret.append(b1.axis)
+        return b1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_neg_axis(self, xp, scp):
+        k = 2
+        t = xp.asarray([0, 1, 2, 3, 4, 5, 6])
+        c = xp.asarray([[-1, 2, 0, -1], [2, 0, -3, 1]])
+
+        spl = scp.interpolate.BSpline(t, c, k, axis=-1)
+        return spl(xp.asarray([2.5]))
