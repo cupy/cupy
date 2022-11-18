@@ -397,7 +397,7 @@ class _TestRBFInterpolator:
         d = xp.zeros(1)
         self.build(scp, y, d, kernel='thin_plate_spline')
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=UserWarning)
     @pytest.mark.parametrize('kernel',
                              [kl for kl in _NAME_TO_MIN_DEGREE])
     def test_degree_warning(self, xp, scp, kernel):
