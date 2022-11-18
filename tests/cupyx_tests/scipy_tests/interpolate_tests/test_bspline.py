@@ -301,7 +301,7 @@ class TestBSpline:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_derivative(self, xp, scp, dtype):
+    def test_single_derivative(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
 
@@ -312,9 +312,20 @@ class TestBSpline:
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return b.derivative().tck
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_multiple_derivative(self, xp, scp):
+        b = self._make_random_spline(xp, scp, k=5)
+        t, c, k = b.tck
+        xx = xp.linspace(t[k], t[-k-1], 20)
+        comp = []
+        for j in range(1, k):
+            b = b.derivative()
+            comp.append(b(xx))
+        return comp
+
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_antiderivative(self, xp, scp, dtype):
+    def test_antiderivative_tck(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
 
@@ -324,6 +335,55 @@ class TestBSpline:
 
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return b.antiderivative().tck
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_antiderivative(self, xp, scp):
+        b = self._make_random_spline(xp, scp)
+        t, c, k = b.tck
+        xx = xp.linspace(t[k], t[-k-1], 20)
+        r1 = b.antiderivative().derivative()(xx)
+
+        # repeat with N-D array for c
+        c = xp.c_[c, c, c]
+        c = xp.dstack((c, c))
+        b = scp.interpolate.BSpline(t, c, k)
+        r2 = b.antiderivative().derivative()(xx)
+        return r1, r2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integral(self, xp, scp):
+        # x for x < 1 else 2 - x
+        b = scp.interpolate.BSpline.basis_element(xp.asarray([0, 1, 2]))
+
+        ret = []
+        ret.append(b.integrate(0, 1))
+        ret.append(b.integrate(1, 0))
+        ret.append(b.integrate(1, 0))
+
+        # extrapolate or zeros outside of [0, 2]; default is yes
+        ret.append(b.integrate(-1, 1))
+        ret.append(b.integrate(-1, 1, extrapolate=True))
+        ret.append(b.integrate(-1, 1, extrapolate=False))
+        ret.append(b.integrate(1, -1, extrapolate=False))
+
+        # Test ``_fitpack._splint()``
+        ret.append(b.integrate(1, -1, extrapolate=False))
+
+        # Test ``extrapolate='periodic'``.
+        b.extrapolate = 'periodic'
+
+        ret.append(b.integrate(0, 2))
+        ret.append(b.integrate(2, 0))
+        ret.append(b.integrate(-9, -7))
+        ret.append(b.integrate(-8, -4))
+        ret.append(b.integrate(0.5, 1.5))
+        ret.append(b.integrate(1.5, 3))
+        ret.append(b.integrate(1.5 + 12, 3 + 12))
+        ret.append(b.integrate(1.5, 3 + 12))
+        ret.append(b.integrate(0, -1))
+        ret.append(b.integrate(-9, -10))
+        ret.append(b.integrate(0, -9))
+        return [xp.asarray(x) for x in ret]
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')

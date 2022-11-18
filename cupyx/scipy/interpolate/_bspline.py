@@ -868,8 +868,8 @@ class BSpline:
 
         if extrapolate != "periodic" and not extrapolate:
             # Shrink the integration interval, if needed.
-            a = max(a, self.t[self.k])
-            b = min(b, self.t[n])
+            a = max(a, self.t[self.k].item())
+            b = min(b, self.t[n].item())
 
             # if self.c.ndim == 1:
             #     # Fast path: use FITPACK's routine
@@ -904,7 +904,7 @@ class BSpline:
                 integral = out[1] - out[0]
                 integral *= n_periods
             else:
-                integral = cupy.zeros((1, np.prod(self.c.shape[1:])),
+                integral = cupy.zeros((1, int(np.prod(self.c.shape[1:]))),
                                       dtype=self.c.dtype)
 
             # Map a to [ts, te], b is always a + left.
