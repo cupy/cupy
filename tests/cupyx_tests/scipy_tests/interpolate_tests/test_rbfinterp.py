@@ -284,7 +284,7 @@ class _TestRBFInterpolator:
         assert mse < 2.0e-4
         return yitp
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-9)
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_smoothing_misfit(self, xp, scp, kernel):
         # Make sure we can find a smoothing parameter for each kernel that

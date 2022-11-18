@@ -7,41 +7,210 @@ from scipy.spatial import KDTree        # FIXME
 from scipy.special import comb          # FIXME
 
 
-# individual kernels et al
+# Define the kernel functions.
 
-def linear(r):
-    return -r
+kernel_definitions = """
+static __device__ double linear(double r)
+{
+     return -r;
+}
 
-
-def thin_plate_spline(r):
-    if r == 0:
-        return 0.0
-    else:
-        return r**2*cp.log(r)
-
-
-def cubic(r):
-    return r**3
+static __device__ float linear_f(float r)
+{
+    return -r;
+}
 
 
-def quintic(r):
-    return -r**5
+static __device__ double cubic(double r)
+{
+     return r*r*r;
+}
+
+static __device__ float cubic_f(float r)
+{
+    return r*r*r;
+}
 
 
-def multiquadric(r):
-    return -cp.sqrt(r**2 + 1)
+static __device__ double thin_plate_spline(double r)
+{
+    if (r == 0.0) {
+        return 0.0;
+    }
+    else {
+        return r*r*log(r);
+    }
+}
+
+static __device__ float thin_plate_spline_f(float r)
+{
+    if (r == 0.0) {
+        return 0.0;
+    }
+    else {
+        return r*r*log(r);
+    }
+}
 
 
-def inverse_multiquadric(r):
-    return 1/cp.sqrt(r**2 + 1)
+static __device__ double multiquadric(double r)
+{
+    return -sqrt(r*r + 1);
+}
+
+static __device__ float multiquadric_f(float r)
+{
+    return -sqrt(r*r + 1);
+}
 
 
-def inverse_quadratic(r):
-    return 1/(r**2 + 1)
+static __device__ double inverse_multiquadric(double r)
+{
+    return 1.0 / sqrt(r*r + 1);
+}
+
+static __device__ float inverse_multiquadric_f(float r)
+{
+    return 1.0 / sqrt(r*r + 1);
+}
 
 
-def gaussian(r):
-    return cp.exp(-r**2)
+static __device__ double inverse_quadratic(double r)
+{
+    return 1.0 / (r*r + 1);
+}
+
+static __device__ float inverse_quadrtic_f(float r)
+{
+    return 1.0 / (r*r + 1);
+}
+
+
+static __device__ double gaussian(double r)
+{
+    return exp(-r*r);
+}
+
+static __device__ float gaussian_f(float r)
+{
+    return exp(-r*r);
+}
+
+
+static __device__ double quintic(double r)
+{
+    double r2 = r*r;
+    return -r2*r2*r;
+}
+
+static __device__ float qunitic_f(float r)
+{
+    float r2 = r*r;
+    return -r2*r2*r;
+}
+
+"""
+
+linear = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_linear',
+    (('f->f', 'out0 = linear_f(in0)'),
+     'd->d'),
+    'out0 = linear(in0)',
+    preamble=kernel_definitions,
+    doc="""Linear kernel function.
+
+    ``-r``
+    """,
+)
+
+cubic = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_cubic',
+    (('f->f', 'out0 = cubic_f(in0)'),
+     'd->d'),
+    'out0 = cubic(in0)',
+    preamble=kernel_definitions,
+    doc="""Cubic kernel function.
+
+    ``r**3``
+    """,
+)
+
+thin_plate_spline = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_thin_plate_spline',
+    (('f->f', 'out0 = thin_plate_spline_f(in0)'),
+     'd->d'),
+    'out0 = thin_plate_spline(in0)',
+    preamble=kernel_definitions,
+    doc="""Thin-plate spline kernel function.
+
+    ``r**2 * log(r) if r != 0 else 0``
+    """,
+)
+
+
+multiquadric = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_multiquadric',
+    (('f->f', 'out0 = multiquadric_f(in0)'),
+     'd->d'),
+    'out0 = multiquadric(in0)',
+    preamble=kernel_definitions,
+    doc="""Multiquadric kernel function.
+
+    ``-sqrt(r**2 + 1)``
+    """,
+)
+
+
+inverse_multiquadric = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_inverse_multiquadric',
+    (('f->f', 'out0 = inverse_multiquadric_f(in0)'),
+     'd->d'),
+    'out0 = inverse_multiquadric(in0)',
+    preamble=kernel_definitions,
+    doc="""Inverse multiquadric kernel function.
+
+    ``1 / sqrt(r**2 + 1)``
+    """,
+)
+
+
+inverse_quadratic = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_inverse_quadratic',
+    (('f->f', 'out0 = inverse_quadratic_f(in0)'),
+     'd->d'),
+    'out0 = inverse_quadratic(in0)',
+    preamble=kernel_definitions,
+    doc="""Inverse quadratic kernel function.
+
+    ``1 / (r**2 + 1)``
+    """,
+)
+
+
+gaussian = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_gaussian',
+    (('f->f', 'out0 = gaussian_f(in0)'),
+     'd->d'),
+    'out0 = gaussian(in0)',
+    preamble=kernel_definitions,
+    doc="""Gaussian kernel function.
+
+    ``exp(-r**2)``
+    """,
+)
+
+
+quintic = cp._core.create_ufunc(
+    'cupyx_scipy_interpolate_quintic',
+    (('f->f', 'out0 = quintic_f(in0)'),
+     'd->d'),
+    'out0 = quintic(in0)',
+    preamble=kernel_definitions,
+    doc="""Quintic kernel function.
+
+    ``-r**5``
+    """,
+)
 
 
 NAME_TO_FUNC = {
