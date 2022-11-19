@@ -175,44 +175,6 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @pytest.mark.slow
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_chunking(self, xp, scp, monkeypatch):
-        # If the observed data comes from a polynomial, then the interpolant
-        # should be able to reproduce the polynomial exactly, provided that
-        # `degree` is sufficiently high.
-        rng = _np.random.RandomState(0)
-        seq = Halton(2, scramble=False, seed=rng)
-        degree = 3
-
-        largeN = 1000 + 33
-        # this is large to check that chunking of the RBFInterpolator is tested
-        x = xp.asarray(seq.random(50))
-        xitp = xp.asarray(seq.random(largeN))
-
-        if xp is _np:
-            P = _vandermonde(cp.asarray(x), degree).get()
-            Pitp = _vandermonde(cp.asarray(xitp), degree).get()
-        else:
-            P = _vandermonde(x, degree)
-            Pitp = _vandermonde(xitp, degree)
-
-        poly_coeffs = rng.normal(0.0, 1.0, P.shape[1])
-        poly_coeffs = xp.asarray(poly_coeffs)
-
-        y = P.dot(poly_coeffs)
-        yitp1 = Pitp.dot(poly_coeffs)
-        interp = self.build(scp, x, y, degree=degree)
-        ce_real = interp._chunk_evaluator
-
-        def _chunk_evaluator(*args, **kwargs):
-            kwargs.update(memory_budget=100)
-            return ce_real(*args, **kwargs)
-
-        monkeypatch.setattr(interp, '_chunk_evaluator', _chunk_evaluator)
-        yitp2 = interp(xitp)
-        return yitp1, yitp2
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_vector_data(self, xp, scp):
         # Make sure interpolating a vector field is the same as interpolating

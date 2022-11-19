@@ -758,7 +758,6 @@ class RBFInterpolator:
             shift,
             scale,
             coeffs,
-            memory_budget=1000000
     ):
         """
         Evaluate the interpolation while controlling memory consumption.
@@ -776,11 +775,6 @@ class RBFInterpolator:
             Domain scaling used to create the polynomial matrix.
         coeffs: (P+R, S) float ndarray
             Coefficients in front of basis functions
-        memory_budget: int
-            Total amount of memory (in units of sizeof(float)) we wish
-            to devote for storing the array of coefficients for
-            interpolated points. If we need more memory than that, we
-            chunk the input.
 
         Returns
         -------
@@ -792,22 +786,8 @@ class RBFInterpolator:
             nnei = len(y)
         else:
             nnei = self.neighbors
-        # in each chunk we consume the same space we already occupy
-        chunksize = memory_budget // ((self.powers.shape[0] + nnei)) + 1
-        if chunksize <= nx:
-            out = cp.empty((nx, self.d.shape[1]), dtype=float)
-            for i in range(0, nx, chunksize):
-                vec = _build_evaluation_coefficients(
-                    x[i:i + chunksize, :],
-                    y,
-                    self.kernel,
-                    self.epsilon,
-                    self.powers,
-                    shift,
-                    scale)
-                out[i:i + chunksize, :] = cp.dot(vec, coeffs)
-        else:
-            vec = _build_evaluation_coefficients(
+
+        vec = _build_evaluation_coefficients(
                 x,
                 y,
                 self.kernel,
@@ -815,7 +795,7 @@ class RBFInterpolator:
                 self.powers,
                 shift,
                 scale)
-            out = cp.dot(vec, coeffs)
+        out = cp.dot(vec, coeffs)
         return out
 
     def __call__(self, x):
@@ -841,21 +821,13 @@ class RBFInterpolator:
             raise ValueError("Expected the second axis of `x` to have length "
                              f"{self.y.shape[1]}.")
 
-        # Our memory budget for storing RBF coefficients is
-        # based on how many floats in memory we already occupy
-        # If this number is below 1e6 we just use 1e6
-        # This memory budget is used to decide how we chunk
-        # the inputs
-        memory_budget = max(x.size + self.y.size + self.d.size, 1000000)
-
         if self.neighbors is None:
             out = self._chunk_evaluator(
                 x,
                 self.y,
                 self._shift,
                 self._scale,
-                self._coeffs,
-                memory_budget=memory_budget)
+                self._coeffs)
         else:
             # Get the indices of the k nearest observation points to each
             # evaluation point.
@@ -899,8 +871,7 @@ class RBFInterpolator:
                     ynbr,
                     shift,
                     scale,
-                    coeffs,
-                    memory_budget=memory_budget)
+                    coeffs)
 
         out = out.view(self.d_dtype)
         out = out.reshape((nx, ) + self.d_shape)
