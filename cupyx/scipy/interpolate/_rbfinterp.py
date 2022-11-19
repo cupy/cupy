@@ -225,12 +225,6 @@ NAME_TO_FUNC = {
 }
 
 
-def polynomial_vector(x, powers, out):
-    """Evaluate monomials, with exponents from `powers`, at the point `x`."""
-    for i in range(powers.shape[0]):
-        out[i] = cp.prod(x**powers[i])
-
-
 def kernel_matrix(x, kernel_func, out):
     """Evaluate RBFs, with centers at `x`, at `x`."""
     delta = x[None, :, :] - x[:, None, :]
@@ -243,18 +237,13 @@ def kernel_matrix(x, kernel_func, out):
 
 def polynomial_matrix(x, powers, out):
     """Evaluate monomials, with exponents from `powers`, at `x`."""
-    for i in range(x.shape[0]):
-        for j in range(powers.shape[0]):
-            out[i, j] = cp.prod(x[i]**powers[j])
+    pwr = x[:, None, :] ** powers[None, :, :]
+    cp.prod(pwr, axis=-1, out=out)
+# The above is equivalent to the following loop
+#    for i in range(x.shape[0]):
+#        for j in range(powers.shape[0]):
+#            out[i, j] = cp.prod(x[i]**powers[j])
 
-
-
-# pythran export _polynomial_matrix(float[:, :], int[:, :])
-def _polynomial_matrix(x, powers):
-    """Return monomials, with exponents from `powers`, evaluated at `x`."""
-    out = cp.empty((x.shape[0], powers.shape[0]), dtype=float)
-    polynomial_matrix(x, powers, out)
-    return out
 
 
 # pythran export _build_system(float[:, :],
@@ -378,8 +367,11 @@ def _build_evaluation_coefficients(x, y, kernel, epsilon, powers,
     delta = xeps[:, None, :] - yeps[None, :, :]
     vec[:, :p] = kernel_func(cp.linalg.norm(delta, axis=-1))
 
-    for i in range(q):
-        polynomial_vector(xhat[i], powers, vec[i, p:])
+    # Evaluate monomials, with exponents from `powers`, at the point `x`.
+    pwr = xhat[:, None, :]**powers[None, :, :]
+    vec[:, p:] = cp.prod(pwr, axis=-1)
+#    for i in range(q):
+#        polynomial_vector(xhat[i], powers, vec[i, p:])
 
     return vec
 
