@@ -225,12 +225,6 @@ NAME_TO_FUNC = {
 }
 
 
-def kernel_vector(x, y, kernel_func, out):
-    """Evaluate RBFs, with centers at `y`, at the point `x`."""
-    for i in range(y.shape[0]):
-        out[i] = kernel_func(cp.linalg.norm(x - y[i]))
-
-
 def polynomial_vector(x, powers, out):
     """Evaluate monomials, with exponents from `powers`, at the point `x`."""
     for i in range(powers.shape[0]):
@@ -379,8 +373,12 @@ def _build_evaluation_coefficients(x, y, kernel, epsilon, powers,
     xhat = (x - shift)/scale
 
     vec = cp.empty((q, p + r), dtype=float)
+
+    # Evaluate RBFs, with centers at `y`, at the point `x`.
+    delta = xeps[:, None, :] - yeps[None, :, :]
+    vec[:, :p] = kernel_func(cp.linalg.norm(delta, axis=-1))
+
     for i in range(q):
-        kernel_vector(xeps[i], yeps, kernel_func, vec[i, :p])
         polynomial_vector(xhat[i], powers, vec[i, p:])
 
     return vec
