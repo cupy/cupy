@@ -239,10 +239,12 @@ def polynomial_vector(x, powers, out):
 
 def kernel_matrix(x, kernel_func, out):
     """Evaluate RBFs, with centers at `x`, at `x`."""
-    for i in range(x.shape[0]):
-        for j in range(i+1):
-            out[i, j] = kernel_func(cp.linalg.norm(x[i] - x[j]))
-            out[j, i] = out[i, j]
+    delta = x[None, :, :] - x[:, None, :]
+    out[...] = kernel_func(cp.linalg.norm(delta, axis=-1))
+# The above is equivalent to the original semi-scalar version:
+#        for j in range(i+1):
+#            out[i, j] = kernel_func(cp.linalg.norm(x[i] - x[j]))
+#            out[j, i] = out[i, j]
 
 
 def polynomial_matrix(x, powers, out):
@@ -251,14 +253,6 @@ def polynomial_matrix(x, powers, out):
         for j in range(powers.shape[0]):
             out[i, j] = cp.prod(x[i]**powers[j])
 
-
-# pythran export _kernel_matrix(float[:, :], str)
-def _kernel_matrix(x, kernel):
-    """Return RBFs, with centers at `x`, evaluated at `x`."""
-    out = cp.empty((x.shape[0], x.shape[0]), dtype=float)
-    kernel_func = NAME_TO_FUNC[kernel]
-    kernel_matrix(x, kernel_func, out)
-    return out
 
 
 # pythran export _polynomial_matrix(float[:, :], int[:, :])

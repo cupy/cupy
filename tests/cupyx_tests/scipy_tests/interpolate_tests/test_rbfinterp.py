@@ -19,8 +19,15 @@ from numpy.linalg import LinAlgError
 
 from cupyx.scipy.interpolate._rbfinterp import (
     _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, _monomial_powers,
-    _polynomial_matrix, _kernel_matrix)
+    _polynomial_matrix)
 
+
+def _kernel_matrix(x, kernel):
+    """Return RBFs, with centers at `x`, evaluated at `x`."""
+    out = cp.empty((x.shape[0], x.shape[0]), dtype=float)
+    kernel_func = NAME_TO_FUNC[kernel]
+    kernel_matrix(x, kernel_func, out)
+    return out
 
 def _vandermonde(x, degree):
     # Returns a matrix of monomials that span polynomials with the specified
