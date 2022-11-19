@@ -18,8 +18,8 @@ from numpy.linalg import LinAlgError
 
 
 from cupyx.scipy.interpolate._rbfinterp import (
-    _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, _monomial_powers,
-    polynomial_matrix)
+    _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, NAME_TO_FUNC,
+    _monomial_powers, polynomial_matrix, kernel_matrix)
 
 
 def _kernel_matrix(x, kernel):
@@ -29,11 +29,12 @@ def _kernel_matrix(x, kernel):
     kernel_matrix(x, kernel_func, out)
     return out
 
+
 def _polynomial_matrix(x, powers):
-     """Return monomials, with exponents from `powers`, evaluated at `x`."""
-     out = cp.empty((x.shape[0], powers.shape[0]), dtype=float)
-     polynomial_matrix(x, powers, out)
-     return out
+    """Return monomials, with exponents from `powers`, evaluated at `x`."""
+    out = cp.empty((x.shape[0], powers.shape[0]), dtype=float)
+    polynomial_matrix(x, powers, out)
+    return out
 
 
 def _vandermonde(x, degree):

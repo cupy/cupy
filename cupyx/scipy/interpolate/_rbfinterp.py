@@ -245,7 +245,6 @@ def polynomial_matrix(x, powers, out):
 #            out[i, j] = cp.prod(x[i]**powers[j])
 
 
-
 # pythran export _build_system(float[:, :],
 #                              float[:, :],
 #                              float[:],
@@ -735,17 +734,9 @@ class RBFInterpolator:
         self.epsilon = epsilon
         self.powers = powers
 
-    def _chunk_evaluator(
-            self,
-            x,
-            y,
-            shift,
-            scale,
-            coeffs,
-    ):
+    def _evaluate(self, x, y, shift, scale, coeffs):
         """
-        Evaluate the interpolation while controlling memory consumption.
-        We chunk the input if we need more memory than specified.
+        Evaluate the interpolation.
 
         Parameters
         ----------
@@ -765,20 +756,14 @@ class RBFInterpolator:
         (Q, S) float ndarray
         Interpolated array
         """
-        nx, ndim = x.shape
-        if self.neighbors is None:
-            nnei = len(y)
-        else:
-            nnei = self.neighbors
-
         vec = _build_evaluation_coefficients(
-                x,
-                y,
-                self.kernel,
-                self.epsilon,
-                self.powers,
-                shift,
-                scale)
+            x,
+            y,
+            self.kernel,
+            self.epsilon,
+            self.powers,
+            shift,
+            scale)
         out = cp.dot(vec, coeffs)
         return out
 
@@ -806,13 +791,15 @@ class RBFInterpolator:
                              f"{self.y.shape[1]}.")
 
         if self.neighbors is None:
-            out = self._chunk_evaluator(
+            out = self._evaluate(
                 x,
                 self.y,
                 self._shift,
                 self._scale,
                 self._coeffs)
         else:
+            raise NotImplementedError    # XXX: needs KDTree
+
             # Get the indices of the k nearest observation points to each
             # evaluation point.
             _, yindices = self._tree.query(x, self.neighbors)
