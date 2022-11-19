@@ -954,8 +954,8 @@ class Generator:
 
         y = _core.ndarray(size if size is not None else (), numpy.int64)
 
-        n = cupy.broadcast_to(n, y.shape).ravel()
-        p = cupy.broadcast_to(p, y.shape).ravel()
+        n = cupy.broadcast_to(n, y.shape)
+        p = cupy.broadcast_to(p, y.shape)
 
         if self._binomial_state is None:
             state_size = self.bit_generator._state_size()
@@ -982,34 +982,44 @@ def random_raw(generator, out):
     _launch_dist(generator, raw, out, ())
 
 
+
+cdef void _launch_dist_split(
+        func, int generator, intptr_t state, intptr_t strm,
+        int bsize, out, args):
+    cdef ssize_t size = out.size
+    shape = out.shape
+    if size <= bsize:
+        nargs = [
+            _array_data(a)
+            if isinstance(a, cupy.ndarray) else a for a in args]
+        args_ptr = [
+            <intptr_t>a.data.ptr
+            if isinstance(a, cupy.ndarray) else a for a in nargs]
+        func(generator, state, <intptr_t>out.data.ptr, size, strm, *args_ptr)
+    elif size // shape[0] <= bsize:
+        step = bsize // (size // shape[0])
+        for start in range(0, shape[0], step):
+            end = min(start + step, shape[0])
+            nargs = [
+                a[start:end]
+                if isinstance(a, cupy.ndarray) else a for a in args]
+            _launch_dist_split(
+                func, generator, state, strm, bsize, out[start:end], nargs)
+    else:
+        for index in range(shape[0]):
+            nargs = [
+                a[index]
+                if isinstance(a, cupy.ndarray) else a for a in args]
+            _launch_dist_split(
+                func, generator, state, strm, bsize, out[index], nargs)
+
+
 cdef void _launch_dist(bit_generator, func, out, args) except*:
     # The generator might only have state for a few number of threads,
     # what we do is to split the array filling in several chunks that are
     # generated sequentially using the same state
     cdef intptr_t strm = stream.get_current_stream_ptr()
-    state_ptr = bit_generator.state()
-    cdef state = <intptr_t>state_ptr
-    cdef y_ptr = <intptr_t>out.data.ptr
-    cdef ssize_t size = out.size
-    cdef _ndarray_base chunk
+    cdef intptr_t state = <intptr_t>bit_generator.state()
     cdef int generator = bit_generator.generator
-    # out is always contiguous, when out parameter is specified the checks
-    # ensure it
-    out = out.ravel(order='A')
     cdef bsize = bit_generator._state_size()
-    if bsize == 0:
-        func(generator, state, y_ptr, out.size, strm, *args)
-    else:
-        chunks = (out.size + bsize - 1) // bsize
-        n_args = []
-        for i in range(chunks):
-            chunk = out[i * bsize:]
-            # Look for arrays in the args and split them if necessary
-            n_args.append([
-                _array_data(a[i * bsize:])
-                if isinstance(a, cupy.ndarray) else a for a in args])
-            args_ptr = tuple(
-                <intptr_t>a.data.ptr if isinstance(a, cupy.ndarray) else a
-                for a in n_args[-1])
-            y_ptr = <intptr_t>chunk.data.ptr
-            func(generator, state, y_ptr, min(bsize, chunk.size), strm, *args_ptr)
+    _launch_dist_split(func, generator, state, strm, bsize, out, args)
