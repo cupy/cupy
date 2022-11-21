@@ -258,16 +258,14 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
 
     # Compute intervals for each value
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
-    interval_kernel(((xp.shape[0] + 128 - 1) // 128,),
-                    (min(128, xp.shape[0]),),
+    interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (t, xp, intervals, k, n, extrapolate, xp.shape[0]))
 
     # Compute interpolation
     num_c = int(np.prod(c.shape[1:]))
     temp = cupy.empty(xp.shape[0] * (2 * k + 1))
     d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', c)
-    d_boor_kernel(((xp.shape[0] + 128 - 1) // 128,),
-                  (min(128, xp.shape[0]),),
+    d_boor_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                   (t, c, k, nu, xp, intervals, out, temp, num_c, 1,
                    xp.shape[0]))
 
@@ -305,23 +303,20 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
 
     # Compute intervals for each value
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
-    interval_kernel(((x.shape[0] + 128 - 1) // 128,),
-                    (min(128, x.shape[0]),),
+    interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                     (t, x, intervals, k, n, extrapolate, x.shape[0]))
 
     # Compute interpolation
     bspline_basis = cupy.empty(x.shape[0] * (2 * k + 1))
     d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', x)
-    d_boor_kernel(((x.shape[0] + 128 - 1) // 128,),
-                  (min(128, x.shape[0]),),
+    d_boor_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                   (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0,
                    x.shape[0]))
 
     data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float_)
     design_mat_kernel = _get_module_func(
         DESIGN_MAT_MODULE, 'compute_design_matrix', indices)
-    design_mat_kernel(((x.shape[0] + 128 - 1) // 128,),
-                      (min(128, x.shape[0]),),
+    design_mat_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                       (k, intervals, bspline_basis, data, indices,
                        x.shape[0]))
 
