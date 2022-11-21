@@ -1,4 +1,5 @@
 import pytest
+import inspect
 
 from cupy import testing
 import numpy as np
@@ -11,7 +12,7 @@ except ImportError:
 
 
 @testing.parameterize(*testing.product({
-    'extrapolate': [True, False],
+    'extrapolate': [True, False, 'periodic'],
     'c': [[-1, 2, 0, -1], [[-1, 2, 0, -1]] * 5]}))
 @testing.with_requires("scipy")
 class TestBSpline:
@@ -141,8 +142,9 @@ class TestBSpline:
         t, _, k = b.tck
         tm, tp = t[k], t[-k-1]
         return (
-            b(xp.asarray([tm, tp]), self.extrapolate),
-            b(xp.asarray([tm + 1e-10, tp - 1e-10]), self.extrapolate))
+            b(xp.asarray([tm, tp]), extrapolate=self.extrapolate),
+            b(xp.asarray([tm + 1e-10, tp - 1e-10]),
+              extrapolate=self.extrapolate))
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bspline_continuity(self, xp, scp):
@@ -398,7 +400,6 @@ class TestBSpline:
         b = scp.interpolate.BSpline(t, c, k, extrapolate=self.extrapolate)
         return xp.asarray(b.integrate(0, 5))
 
-
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
     def test_axis(self, xp, scp):
         n, k = 22, 3
@@ -437,3 +438,46 @@ class TestBSpline:
 
         spl = scp.interpolate.BSpline(t, c, k, axis=-1)
         return spl(xp.asarray([2.5]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires('scipy>=1.8.0')
+    def test_design_matrix_same_as_BSpline_call(self, xp, scp):
+        """Test that design_matrix(x) is equivalent to BSpline(..)(x)."""
+        ret = []
+
+        has_extrapolate = True
+        for mod in [cupyx.scipy.interpolate, interpolate]:
+            sig = inspect.signature(mod.BSpline.design_matrix)
+            has_extrapolate = has_extrapolate and (
+                'extrapolate' in sig.parameters)
+
+        kwargs = {}
+        if has_extrapolate:
+            kwargs = {'extrapolate': self.extrapolate}
+
+        for k in range(0, 5):
+            np.random.seed(1234)
+            x = xp.asarray(np.random.random_sample(10 * (k + 1)))
+            xmin, xmax = xp.amin(x), xp.amax(x)
+
+            t = xp.r_[xp.linspace(xmin - 2, xmin - 1, k),
+                      xp.linspace(xmin, xmax, 2 * (k + 1)),
+                      xp.linspace(xmax + 1, xmax + 2, k)]
+            c = xp.eye(len(t) - k - 1)
+            bspline = scp.interpolate.BSpline(t, c, k, self.extrapolate)
+            ret.append(bspline(x))
+            ret.append(scp.interpolate.BSpline.design_matrix(
+                x, t, k, **kwargs).todense())
+
+            # extrapolation regime
+            if has_extrapolate:
+                x = xp.array([xmin - 10, xmin - 1, xmax + 1.5, xmax + 10])
+                if not self.extrapolate:
+                    scp.interpolate.BSpline.design_matrix(
+                        x, t, k, self.extrapolate)
+                else:
+                    ret.append(bspline(x))
+                    ret.append(scp.interpolate.BSpline.design_matrix(
+                        x, t, k, self.extrapolate).todense())
+
+        return ret
