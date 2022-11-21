@@ -907,6 +907,18 @@ class TestZoomOpenCV:
             output_shape = numpy.rint(numpy.multiply(a.shape, self.zoom))
             return cv2.resize(a, tuple(output_shape.astype(int)))
 
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-4)
+    def test_zoom_opencv_output_size1(self, xp, dtype):
+        a = testing.shaped_random((100, 100, 1), xp, dtype)
+        if xp == cupy:
+            return cupyx.scipy.ndimage.zoom(a, (self.zoom, self.zoom, 1),
+                                            order=1, mode='opencv')
+        else:
+            output_shape = numpy.rint(numpy.multiply(a.shape[:2], self.zoom))
+            return numpy.expand_dims(
+                cv2.resize(a, tuple(output_shape.astype(int))), axis=-1)
+
 
 @testing.parameterize(*testing.product({
     # these 3 modes have analytical spline boundary conditions
