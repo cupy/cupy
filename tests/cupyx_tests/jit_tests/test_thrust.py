@@ -25,6 +25,24 @@ class TestThrust:
         testing.assert_array_equal(y, cupy.ones(size, dtype=cupy.int32))
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_adjacent_difference(self, order):
+        @jit.rawkernel()
+        def adjacent_difference(x, y):
+            i = jit.threadIdx.x
+            array = x[i]
+            result = y[i]
+            jit.thrust.adjacent_difference(
+                jit.thrust.device, array.begin(), array.end(), result.begin())
+
+        h, w = (128, 128)
+        x = testing.shaped_random(
+            (h, w), dtype=numpy.int32, scale=4, order=order)
+        y = cupy.zeros(h * w, dtype=cupy.int32).reshape(h, w)
+        adjacent_difference[1, 128](x, y)
+        testing.assert_array_equal(y[:, 0], x[:, 0])
+        testing.assert_array_equal(y[:, 1:], x[:, 1:] - x[:, :-1])
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_count_iterator(self, order):
         @jit.rawkernel()
         def count(x, y):

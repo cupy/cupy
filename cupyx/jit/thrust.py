@@ -8,6 +8,7 @@ def _wrap_thrust_func(headers):
             def call(self, env, *args, **kwargs):
                 for header in headers:
                     env.generated.add_code(f'#include <{header}>')
+                env.generated.add_code('#include <thrust/execution_policy.h>')
                 env.generated.add_code('#include <thrust/functional.h>')
                 env.generated.backend = 'nvcc'
                 return func(env, *args, **kwargs)
@@ -18,7 +19,27 @@ def _wrap_thrust_func(headers):
 device = _internal_types.Data('thrust::device', _cuda_types.Unknown())
 
 
-@_wrap_thrust_func(['thrust/copy.h', 'thrust/execution_policy.h'])
+@_wrap_thrust_func(['thrust/adjacent_difference.h'])
+def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
+    """Computes the differences of adjacent elements.
+    """
+    if exec_policy.code != 'thrust::device':
+        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`keys_first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    if first.ctype.child_type != result.ctype.child_type:
+        raise TypeError('`first` and `result` must be of the same type')
+    if binary_op is not None:
+        raise NotImplementedError('binary_op option is not supported')
+    args = [exec_policy, first, last, result]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::adjacent_difference({params})', result.ctype)
+
+
+@_wrap_thrust_func(['thrust/copy.h'])
 def copy(env, exec_policy, first, last, result):
     """Copies the elements.
     """
@@ -36,7 +57,7 @@ def copy(env, exec_policy, first, last, result):
     return _internal_types.Data(f'thrust::copy({params})', result.ctype)
 
 
-@_wrap_thrust_func(['thrust/count.h', 'thrust/execution_policy.h'])
+@_wrap_thrust_func(['thrust/count.h'])
 def count(env, exec_policy, first, last, value):
     """Counts the number of elements in [first, last) that equals to ``value``.
     """
@@ -52,7 +73,7 @@ def count(env, exec_policy, first, last, value):
     return _internal_types.Data(f'thrust::count({params})', _cuda_types.int32)
 
 
-@_wrap_thrust_func(['thrust/find.h', 'thrust/execution_policy.h'])
+@_wrap_thrust_func(['thrust/find.h'])
 def find(env, exec_policy, first, last, value):
     """Finds the first iterator whose value equals to ``value``.
     """
@@ -68,7 +89,7 @@ def find(env, exec_policy, first, last, value):
     return _internal_types.Data(f'thrust::find({params})', first.ctype)
 
 
-@_wrap_thrust_func(['thrust/mismatch.h', 'thrust/execution_policy.h'])
+@_wrap_thrust_func(['thrust/mismatch.h'])
 def mismatch(env, exec_policy, first1, last1, first2):
     """Finds the first positions whose values differ.
     """
@@ -89,7 +110,7 @@ def mismatch(env, exec_policy, first1, last1, first2):
     )
 
 
-@_wrap_thrust_func(['thrust/sort.h', 'thrust/execution_policy.h'])
+@_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last):
     """Sorts the elements in [first, last) into ascending order.
     """
@@ -105,7 +126,7 @@ def sort(env, exec_policy, first, last):
     return _internal_types.Data(f'thrust::sort({params})', _cuda_types.void)
 
 
-@_wrap_thrust_func(['thrust/sort.h', 'thrust/execution_policy.h'])
+@_wrap_thrust_func(['thrust/sort.h'])
 def sort_by_key(env, exec_policy, keys_first, keys_last, values_first):
     """Performs key-value sort.
     """
