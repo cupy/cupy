@@ -275,12 +275,8 @@ class Generator:
 
         a = cupy.broadcast_to(a, y.shape)
         b = cupy.broadcast_to(b, y.shape)
-        a_arr = _array_data(a)
-        b_arr = _array_data(b)
-        a_ptr = a_arr.data.ptr
-        b_ptr = b_arr.data.ptr
 
-        _launch_dist(self.bit_generator, beta, y, (a_ptr, b_ptr))
+        _launch_dist(self.bit_generator, beta, y, (a, b))
         # we cast the array to a python object because
         # cython cant call astype with the default values for
         # omitted args.
@@ -493,9 +489,8 @@ class Generator:
         y = _core.ndarray(size if size is not None else (), numpy.int64)
 
         p = cupy.broadcast_to(p, y.shape)
-        p_arr = _array_data(p)
-        p_ptr = p_arr.data.ptr
-        _launch_dist(self.bit_generator, geometric, y, (p_ptr,))
+
+        _launch_dist(self.bit_generator, geometric, y, (p,))
         return y
 
     def hypergeometric(self, ngood, nbad, nsample, size=None):
@@ -570,15 +565,9 @@ class Generator:
         ngood = cupy.broadcast_to(ngood, y.shape)
         nbad = cupy.broadcast_to(nbad, y.shape)
         nsample = cupy.broadcast_to(nsample, y.shape)
-        ngood_arr = _array_data(ngood)
-        nbad_arr = _array_data(nbad)
-        nsample_arr = _array_data(nsample)
-        ngood_ptr = ngood_arr.data.ptr
-        nbad_ptr = nbad_arr.data.ptr
-        nsample_ptr = nsample_arr.data.ptr
 
         _launch_dist(self.bit_generator, hypergeometric, y,
-                     (ngood_ptr, nbad_ptr, nsample_ptr))
+                     (ngood, nbad, nsample))
         return y
 
     def logseries(self, p, size=None):
@@ -623,9 +612,7 @@ class Generator:
         y = _core.ndarray(size, numpy.int64)
 
         p = cupy.broadcast_to(p, y.shape)
-        p_arr = _array_data(p)
-        p_ptr = p_arr.data.ptr
-        _launch_dist(self.bit_generator, logseries, y, (p_ptr,))
+        _launch_dist(self.bit_generator, logseries, y, (p,))
         return y
 
     def standard_exponential(
@@ -719,9 +706,7 @@ class Generator:
         y = _core.ndarray(size if size is not None else (), numpy.int64)
 
         lam = cupy.broadcast_to(lam, y.shape)
-        lam_arr = _array_data(lam)
-        lam_ptr = lam_arr.data.ptr
-        _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
+        _launch_dist(self.bit_generator, poisson, y, (lam,))
         return y
 
     def power(self, a, size=None):
@@ -892,10 +877,8 @@ class Generator:
                 f'Unsupported dtype {y.dtype.name} for standard_gamma')
 
         shape = cupy.broadcast_to(shape, y.shape)
-        shape_arr = _array_data(shape)
-        shape_ptr = shape_arr.data.ptr
 
-        _launch_dist(self.bit_generator, standard_gamma, y, (shape_ptr,))
+        _launch_dist(self.bit_generator, standard_gamma, y, (shape,))
         if out is not None and y is not out:
             _core.elementwise_copy(y, out)
             y = out
@@ -980,7 +963,6 @@ def init_curand(generator, state, seed, size):
 
 def random_raw(generator, out):
     _launch_dist(generator, raw, out, ())
-
 
 
 cdef void _launch_dist_split(
