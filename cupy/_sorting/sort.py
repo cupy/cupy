@@ -69,7 +69,7 @@ def lexsort(keys):
         raise TypeError('need sequence of keys with len > 0 in lexsort')
 
     if keys.ndim == 1:
-        return 0
+        return cupy.array(0, dtype=numpy.intp)
 
     # TODO(takagi): Support ranks of three or more.
     if keys.ndim > 2:
