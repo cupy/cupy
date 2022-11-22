@@ -16,15 +16,21 @@ def _wrap_thrust_func(headers):
     return wrapper
 
 
-device = _internal_types.Data('thrust::device', _cuda_types.Unknown())
+class _ExecPolicyType(_cuda_types.TypeBase):
+    pass
+
+
+host = _internal_types.Data('thrust::host', _ExecPolicyType())
+device = _internal_types.Data('thrust::device', _ExecPolicyType())
+seq = _internal_types.Data('thrust::seq', _ExecPolicyType())
 
 
 @_wrap_thrust_func(['thrust/adjacent_difference.h'])
 def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
     """Computes the differences of adjacent elements.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -43,8 +49,8 @@ def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
 def copy(env, exec_policy, first, last, result):
     """Copies the elements.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -61,8 +67,8 @@ def copy(env, exec_policy, first, last, result):
 def count(env, exec_policy, first, last, value):
     """Counts the number of elements in [first, last) that equals to ``value``.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -77,8 +83,9 @@ def count(env, exec_policy, first, last, value):
 def find(env, exec_policy, first, last, value):
     """Finds the first iterator whose value equals to ``value``.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    value = _internal_types.Data.init(value, env)
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -90,17 +97,19 @@ def find(env, exec_policy, first, last, value):
 
 
 @_wrap_thrust_func(['thrust/mismatch.h'])
-def mismatch(env, exec_policy, first1, last1, first2):
+def mismatch(env, exec_policy, first1, last1, first2, pred=None):
     """Finds the first positions whose values differ.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first1.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first1.ctype != last1.ctype:
         raise TypeError('`first1` and `last1` must be of the same type')
     if first1.ctype.child_type != first2.ctype.child_type:
         raise TypeError('`first1` and `first2` must be of the same type')
+    if pred is not None:
+        raise NotImplementedError('pred option is not supported')
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first1, last1, first2]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
@@ -111,15 +120,17 @@ def mismatch(env, exec_policy, first1, last1, first2):
 
 
 @_wrap_thrust_func(['thrust/sort.h'])
-def sort(env, exec_policy, first, last):
+def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
         raise TypeError('`first` and `last` must be of the same type')
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
     # TODO(asi1024): Typecheck for Comparable.
     args = [exec_policy, first, last]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
@@ -127,11 +138,12 @@ def sort(env, exec_policy, first, last):
 
 
 @_wrap_thrust_func(['thrust/sort.h'])
-def sort_by_key(env, exec_policy, keys_first, keys_last, values_first):
+def sort_by_key(
+        env, exec_policy, keys_first, keys_last, values_first, comp=None):
     """Performs key-value sort.
     """
-    if exec_policy.code != 'thrust::device':
-        raise ValueError('`exec_policy` must be `cupyx.jit.thrust.device`')
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
     if not isinstance(keys_first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if keys_first.ctype != keys_last.ctype:
@@ -139,6 +151,8 @@ def sort_by_key(env, exec_policy, keys_first, keys_last, values_first):
             '`keys_first` and `keys_last` must be of the same type')
     if not isinstance(values_first.ctype, _cuda_types.PointerBase):
         raise TypeError('`values_first` must be of pointer type')
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
     # TODO(asi1024): Typecheck for Comparable.
     args = [exec_policy, keys_first, keys_last, values_first]
     params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
