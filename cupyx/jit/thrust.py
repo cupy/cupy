@@ -153,7 +153,25 @@ def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
     return _internal_types.Data(f'thrust::equal({params})', _cuda_types.bool_)
 
 
-# TODO(asi1024): Add equal_range
+@_wrap_thrust_func(['thrust/binary_search.h'])
+def equal_range(env, exec_policy, first, last, value, comp=None):
+    """Attempts to find the element value in an ordered range.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    args = [exec_policy, first, last, value]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::equal_range({params})',
+        _cuda_types.Tuple([first.ctype, first.ctype]))
+
+
 # TODO(asi1024): Add exclusive_scan
 # TODO(asi1024): Add exclusive_scan_by_key
 # TODO(asi1024): Add fill

@@ -151,6 +151,26 @@ class TestThrust:
         testing.assert_array_equal(z, (x == y).all(axis=1))
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_equal_range(self, order):
+        @jit.rawkernel()
+        def equal_range(x, y):
+            i = jit.threadIdx.x
+            array = x[i]
+            start, end = jit.thrust.equal_range(
+                jit.thrust.seq, array.begin(), array.end(), 100)
+            y[i] = end - start
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, scale=200, order=order)
+        x = cupy.sort(x, axis=-1)
+        y = cupy.zeros(n1, dtype=cupy.int32)
+        equal_range[1, n1](x, y)
+
+        expected = (x == 100).sum(axis=-1)
+        testing.assert_array_equal(y, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):
