@@ -45,6 +45,52 @@ def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
         f'thrust::adjacent_difference({params})', result.ctype)
 
 
+# TODO(asi1024): Support all_of
+# TODO(asi1024): Support any_of
+
+
+@_wrap_thrust_func(['thrust/binary_search.h'])
+def binary_search(env, exec_policy, first, last, *args):
+    """Attempts to find the element value with binary search.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`keys_first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+
+    if 1 <= len(args) <= 2:
+        value = _internal_types.Data.init(args[0], env)
+        comp = args[1] if len(args) == 2 else None
+        if first.ctype.child_type != value.ctype:
+            raise TypeError('`first` and `result` must be of the same type')
+        if comp is not None:
+            raise NotImplementedError('comp option is not supported')
+        result_ctype = _cuda_types.bool_
+    elif 3 <= len(args) <= 4:
+        value_first = args[0]
+        value_last = args[1]
+        result = args[2]
+        comp = args[3] if len(args) == 4 else None
+        if first.ctype.child_type != value_first.ctype.child_type:
+            raise TypeError(
+                '`first` and `value_first` must be of the same type')
+        if value_first.ctype != value_last.ctype:
+            raise TypeError(
+                '`value_first` and `value_last` must be of the same type')
+        if comp is not None:
+            raise NotImplementedError('comp option is not supported')
+        result_ctype = result.ctype
+    else:
+        raise TypeError('Invalid number of inputs of thrust.binary_search')
+
+    args = [exec_policy, first, last, *args]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::binary_search({params})', result_ctype)
+
+
 @_wrap_thrust_func(['thrust/copy.h'])
 def copy(env, exec_policy, first, last, result):
     """Copies the elements.

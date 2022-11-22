@@ -36,11 +36,57 @@ class TestThrust:
 
         h, w = (128, 128)
         x = testing.shaped_random(
-            (h, w), dtype=numpy.int32, scale=4, order=order)
+            (h, w), dtype=numpy.int32, order=order)
         y = cupy.zeros(h * w, dtype=cupy.int32).reshape(h, w)
         adjacent_difference[1, 128](x, y)
         testing.assert_array_equal(y[:, 0], x[:, 0])
         testing.assert_array_equal(y[:, 1:], x[:, 1:] - x[:, :-1])
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_binary_search(self, order):
+        @jit.rawkernel()
+        def binary_search(x, y):
+            i = jit.threadIdx.x
+            array = x[i]
+            y[i] = jit.thrust.binary_search(
+                jit.thrust.seq, array.begin(), array.end(), 100)
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, scale=200, order=order)
+        x = cupy.sort(x, axis=-1)
+        y = cupy.zeros(n1, dtype=cupy.bool_)
+        binary_search[1, n1](x, y)
+
+        expected = (x == 100).any(axis=-1)
+        assert 70 < expected.sum().item() < 80
+        testing.assert_array_equal(y, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_binary_search_vec(self, order):
+        @jit.rawkernel()
+        def binary_search(x, y, z):
+            i = jit.threadIdx.x
+            array = x[i]
+            value = y[i]
+            output = z[i]
+            jit.thrust.binary_search(
+                jit.thrust.seq,
+                array.begin(), array.end(),
+                value.begin(), value.end(),
+                output.begin())
+
+        n1, n2, n3 = (128, 160, 200)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, scale=200, order=order, seed=0)
+        x = cupy.sort(x, axis=-1)
+        y = testing.shaped_random(
+            (n1, n3), dtype=numpy.int32, scale=200, order=order, seed=1)
+        z = cupy.zeros((n1, n3), dtype=cupy.bool_)
+        binary_search[1, n1](x, y, z)
+
+        expected = (x[:, :, None] == y[:, None, :]).any(axis=1)
+        testing.assert_array_equal(z, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_count_iterator(self, order):
