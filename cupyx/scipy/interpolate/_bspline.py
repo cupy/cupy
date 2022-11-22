@@ -73,7 +73,7 @@ INTERVAL_MODULE = cupy.RawModule(
 
 D_BOOR_KERNEL = r'''
 #include <cupy/complex.cuh>
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 #define COMPUTE_LINEAR 0x1
 
 template<typename T>
