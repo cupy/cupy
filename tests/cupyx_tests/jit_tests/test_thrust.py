@@ -128,6 +128,29 @@ class TestThrust:
         testing.assert_array_equal(x, y)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_equal(self, order):
+        @jit.rawkernel()
+        def equal(x, y, z):
+            i = jit.threadIdx.x
+            x_array = x[i]
+            y_array = y[i]
+            z[i] = jit.thrust.equal(
+                jit.thrust.device,
+                x_array.begin(),
+                x_array.end(),
+                y_array.begin(),
+            )
+
+        n1, n2 = (256, 256)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, order=order, seed=0)
+        y = x.copy()
+        y[100][200] = 0
+        z = cupy.zeros((n1,), dtype=numpy.int32)
+        equal[1, 256](x, y, z)
+        testing.assert_array_equal(z, (x == y).all(axis=1))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):
