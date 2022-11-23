@@ -1,18 +1,17 @@
+import pytest
 import cupy
 from cupy import testing
-from cupy.testing import assert_allclose
+
 import numpy as _np
 import cupyx.scipy.interpolate as csi  # NOQA
 make_interp_spline = csi._bspline2.make_interp_spline   # XXX
 BSpline = csi._bspline.BSpline
 
-import pytest
 
 try:
     from scipy import interpolate  # NOQA
 except ImportError:
     pass
-
 
 
 class TestInterp:
@@ -104,8 +103,6 @@ class TestInterp:
         x, y = self.get_xy(xp)
         der = [(1, 8.)]  # order, value: f'(x) = 8.
 
-   ###     breakpoint()
-
         # derivative at right-hand edge
         b = scp.interpolate.make_interp_spline(x, y, k=2, bc_type=(None, der))
         return b(x), b(x[-1], 1)
@@ -124,7 +121,8 @@ class TestInterp:
         x, y = self.get_xy(xp)
         # first derivatives at left & right edges:
         der_l, der_r = [(1, 3.)], [(1, 4.)]
-        b = scp.interpolate.make_interp_spline(x, y, k=3, bc_type=(der_l, der_r))
+        b = scp.interpolate.make_interp_spline(
+            x, y, k=3, bc_type=(der_l, der_r))
         return b(x), b(x[0], 1), b(x[-1], 1)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
@@ -263,8 +261,10 @@ class TestInterp:
         y = xp.sin(x)
 
         # 'not-a-knot' is equivalent to None
-        b1 = scp.interpolate.make_interp_spline(x, y, k=3, bc_type='not-a-knot')
-        b2 = scp.interpolate.make_interp_spline(x, y, k=3, bc_type=None)
+        b1 = scp.interpolate.make_interp_spline(x, y, k=3,
+                                                bc_type='not-a-knot')
+        b2 = scp.interpolate.make_interp_spline(x, y, k=3,
+                                                bc_type=None)
         return b1.c, b2.c
 
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
@@ -278,25 +278,31 @@ class TestInterp:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_string_aliases_6(self, xp, scp):
         x, _ = self.get_xy(xp)
-        y = xp.sin(x)
 
         # string aliases are handled for 2D values
         yy = xp.c_[xp.sin(x), xp.cos(x)]
         der_l = [(1, [0., 0.])]
         der_r = [(2, [0., 0.])]
-        b2 = scp.interpolate.make_interp_spline(x, y, k=3,
+
+        b2 = scp.interpolate.make_interp_spline(x, yy, k=3,
                                                 bc_type=(der_l, der_r))
-        b1 = scp.interpolate.make_interp_spline(x, y, k=3,
+        b1 = scp.interpolate.make_interp_spline(x, yy, k=3,
                                                 bc_type=('clamped', 'natural'))
         return b1.c, b2.c
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_string_aliases_7(self, xp, scp):
         # ... and for N-D values:
-        xp.random.seed(1234)
+
+        # cupy and numpy random streams differ for the same seed,
+        # hence use numpy.random for both numpy and cupy
+        rng = _np.random.RandomState(1234)
         k, n = 3, 22
-        x = xp.sort(xp.random.random(size=n))
-        y = xp.random.random(size=(n, 5, 6, 7))
+        x = _np.sort(rng.uniform(size=n))
+        y = rng.uniform(size=(n, 5, 6, 7))
+        if xp is cupy:
+            x = cupy.asarray(x)
+            y = cupy.asarray(y)
 
         # now throw in some derivatives
         d_l = [(1, xp.zeros((5, 6, 7)))]
@@ -338,7 +344,7 @@ class TestInterp:
         t = csi._bspline2._not_a_knot(x, k)
         b = csi.make_interp_spline(x, y, k, t)
 
-        from scipy.interpolate.tests.test_bsplines import make_interp_full_matrix
+        from scipy.interpolate.tests.test_bsplines import (
+            make_interp_full_matrix)
         cf = make_interp_full_matr(x, y, t, k)
         cupy.testing.assert_allclose(b.c, cf, atol=1e-14, rtol=1e-14)
-

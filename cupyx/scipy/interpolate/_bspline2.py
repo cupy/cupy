@@ -1,6 +1,5 @@
 import operator
 
-import numpy as _np
 from numpy.core.multiarray import normalize_axis_index
 
 import cupy
@@ -184,7 +183,8 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     # special-case k=1 (e.g., Lyche and Morken, Eq.(2.16))
     if k == 1 and t is None:
         if not (deriv_l is None and deriv_r is None):
-            raise ValueError("Too much info for k=1: bc_type can only be None.")
+            raise ValueError(
+                "Too much info for k=1: bc_type can only be None.")
         t = cupy.r_[x[0], x, x[-1]]
         c = cupy.asarray(y)
         c = cupy.ascontiguousarray(c, dtype=_get_dtype(c.dtype))
@@ -194,7 +194,8 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
 
     if bc_type == 'periodic' and t is not None:
         raise NotImplementedError("For periodic case t is constructed "
-                         "automatically and can not be passed manually")
+                                  "automatically and can not be passed "
+                                  "manually")
 
     # come up with a sensible knot vector, if needed
     if t is None:
@@ -206,8 +207,8 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                 # 2nd and 2nd-to-last points, a la not-a-knot
                 t = (x[1:] + x[:-1]) / 2.
                 t = cupy.r_[(x[0],)*(k+1),
-                             t[1:-1],
-                             (x[-1],)*(k+1)]
+                            t[1:-1],
+                            (x[-1],)*(k+1)]
             else:
                 t = _not_a_knot(x, k)
         else:
@@ -244,7 +245,8 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
 
     if nt - n != nleft + nright:
         raise ValueError("The number of derivatives at boundaries does not "
-                         "match: expected %s, got %s+%s" % (nt-n, nleft, nright))
+                         "match: expected %s, got %s + %s" %
+                         (nt-n, nleft, nright))
 
     # XXX: copy-paste from the BSpline
     n = t.shape[0] - k - 1     # FIXME : do not redefine `n`
@@ -254,8 +256,6 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
     interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                     (t, x, intervals, k, n, False, x.shape[0]))
-
-  ##  import pdb; pdb.set_trace()
 
     # Compute interpolation
     c = cupy.empty((n, 1), dtype=float)
@@ -282,10 +282,10 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         intervals_bc[0] = intervals[0]
         x0 = cupy.array([x[0]], dtype=x.dtype)
         for j, m in enumerate(deriv_l_ords):
-            # place the derivatives of the order m at x[0] into `temp` 
+            # place the derivatives of the order m at x[0] into `temp`
             d_boor_kernel((1,), (1,),
-                          (t, c, k, int(m), x0, intervals_bc, out, temp, num_c, 0,
-                           1))
+                          (t, c, k, int(m), x0, intervals_bc, out, temp,
+                           num_c, 0, 1))
             left = intervals_bc[0]
             A[j, left-k:left+1] = temp[:k+1]
 
@@ -293,15 +293,13 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         intervals_bc[0] = intervals[-1]
         x0 = cupy.array([x[-1]], dtype=x.dtype)
         for j, m in enumerate(deriv_r_ords):
-            # place the derivatives of the order m at x[0] into `temp` 
+            # place the derivatives of the order m at x[0] into `temp`
             d_boor_kernel((1,), (1,),
-                          (t, c, k, int(m), x0, intervals_bc, out, temp, num_c, 1,
-                           1))
+                          (t, c, k, int(m), x0, intervals_bc, out, temp,
+                           num_c, 1, 1))
             left = intervals_bc[0]
             row = nleft + len(x) + j
             A[row, left-k:left+1] = temp[:k+1]
-
-            print("nright = ", nright, " : ", temp[:k+1])
 
     # prepare the RHS
     # set up the RHS: values to interpolate (+ derivative values, if any)
@@ -313,45 +311,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     if nright > 0:
         rhs[nt - nright:] = deriv_r_vals.reshape(-1, extradim)
 
-
     from cupy.linalg import solve
     coef = solve(A, rhs)
     coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
-    return BSpline(t, coef, k)     # XXX: coef trailing dims
-
-    raise RuntimeError
-
-    # set up the LHS: the collocation matrix + derivatives at boundaries
-    kl = ku = k
-    ab = cupy.zeros((2*kl + ku + 1, nt), dtype=float, order='F')
-    _bspl._colloc(x, t, k, ab, offset=nleft)
-    if nleft > 0:
-        _bspl._handle_lhs_derivatives(t, k, x[0], ab, kl, ku, deriv_l_ords)
-    if nright > 0:
-        _bspl._handle_lhs_derivatives(t, k, x[-1], ab, kl, ku, deriv_r_ords,
-                                offset=nt-nright)
-
-    # set up the RHS: values to interpolate (+ derivative values, if any)
-    extradim = prod(y.shape[1:])
-    rhs = cupy.empty((nt, extradim), dtype=y.dtype)
-    if nleft > 0:
-        rhs[:nleft] = deriv_l_vals.reshape(-1, extradim)
-    rhs[nleft:nt - nright] = y.reshape(-1, extradim)
-    if nright > 0:
-        rhs[nt - nright:] = deriv_r_vals.reshape(-1, extradim)
-
-    # solve Ab @ x = rhs; this is the relevant part of linalg.solve_banded
-    if check_finite:
-        ab, rhs = map(cupy.asarray_chkfinite, (ab, rhs))
-    gbsv, = get_lapack_funcs(('gbsv',), (ab, rhs))
-    lu, piv, c, info = gbsv(kl, ku, ab, rhs,
-            overwrite_ab=True, overwrite_b=True)
-
-    if info > 0:
-        raise LinAlgError("Collocation matrix is singular.")
-    elif info < 0:
-        raise ValueError('illegal value in %d-th argument of internal gbsv' % -info)
-
-    c = cupy.ascontiguousarray(c.reshape((nt,) + y.shape[1:]))
-    return BSpline.construct_fast(t, c, k, axis=axis)
-
+    return BSpline(t, coef, k)
