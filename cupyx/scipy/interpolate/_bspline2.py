@@ -248,35 +248,54 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                          "match: expected %s, got %s + %s" %
                          (nt-n, nleft, nright))
 
-    # XXX: copy-paste from the BSpline
-    n = t.shape[0] - k - 1     # FIXME : do not redefine `n`
-    intervals = cupy.empty_like(x, dtype=cupy.int_)
+    # Consruct the colocation matrix of b-splines + boundary conditions.
+    # The coefficients of the interpolating B-spline function are the solution
+    # of the linear system `A @ c = rhs` where `A` is the colocation matrix
+    # (i.e., each row of A corresponds to a data point in the `x` array and
+    #  contains b-splines which are non-zero at this value of x)
+    # Each boundary condition is a fixed value of a certain derivative
+    # at the edge, so each derivative adds a row to `A`.
+    # The `rhs` is the array of data values, `y`, plus derivatives from
+    # boundary conditions, if any.
 
-    # Compute intervals for each value
+    # 1. Compute intervals for each value
+    intervals = cupy.empty_like(x, dtype=cupy.int_)
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
     interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
-                    (t, x, intervals, k, n, False, x.shape[0]))
+                    (t, x, intervals, k, nt, False, x.shape[0]))
 
-    # Compute interpolation
-    c = cupy.empty((n, 1), dtype=float)
+    # 2. Compute non-zero b-spline basis elements for each value in `x`
+    # The way de_Boor_D kernel is written, it wants `c` and `out` arrays
+    # which we do not use (but need to provide to the kernel), and the
+    # `temp` array contains non-zero b-spline basis elements, which we do want.
+    dummy_c = cupy.empty((nt, 1), dtype=float)
     out = cupy.empty(
-        (len(x), prod(c.shape[1:])), dtype=c.dtype)
+        (len(x), prod(dummy_c.shape[1:])), dtype=dummy_c.dtype)
 
-    num_c = prod(c.shape[1:])
+    num_c = prod(dummy_c.shape[1:])
     temp = cupy.empty(x.shape[0] * (2 * k + 1))
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', c)
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
     d_boor_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
-                  (t, c, k, 0, x, intervals, out, temp, num_c, 1,
+                  (t, dummy_c, k, 0, x, intervals, out, temp, num_c, 0,
                    x.shape[0]))
 
-    # full matrix XXX
+    # 3. Construct the colocation matrix.
+    # For each value in `x`, the `temp` array contains 2k+1 entries : first
+    # k+1 elements are b-splines, followed by k entries used for work storage
+    # which we ignore.
+    # XXX: full matrices! Can / should use banded linear algebra instead.
     A = cupy.zeros((nt, nt), dtype=float)
     offset = nleft
     for j in range(len(x)):
         left = intervals[j]
         A[j + offset, left-k:left+1] = temp[j*(2*k+1):j*(2*k+1)+k+1]
 
-    # now handle the boundary conditions in the LHS
+    # 4. Handle boundary conditions: The colocation matrix is augmented with
+    # additional rows, one row per derivative at the left and right edges.
+    # We need a python loop for each derivative because in general they can be
+    # of any order, `m`.
+    # The left-side boundary conditions go to the first rows of the matrix
+    # and the right-side boundary conditions go to the last rows.
     intervals_bc = cupy.empty(1, dtype=cupy.int_)
     if nleft > 0:
         intervals_bc[0] = intervals[0]
@@ -284,25 +303,25 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         for j, m in enumerate(deriv_l_ords):
             # place the derivatives of the order m at x[0] into `temp`
             d_boor_kernel((1,), (1,),
-                          (t, c, k, int(m), x0, intervals_bc, out, temp,
+                          (t, dummy_c, k, int(m), x0, intervals_bc, out, temp,
                            num_c, 0, 1))
             left = intervals_bc[0]
             A[j, left-k:left+1] = temp[:k+1]
 
+    # repeat for the b.c. at the right edge.
     if nright > 0:
         intervals_bc[0] = intervals[-1]
         x0 = cupy.array([x[-1]], dtype=x.dtype)
         for j, m in enumerate(deriv_r_ords):
             # place the derivatives of the order m at x[0] into `temp`
             d_boor_kernel((1,), (1,),
-                          (t, c, k, int(m), x0, intervals_bc, out, temp,
-                           num_c, 1, 1))
+                          (t, dummy_c, k, int(m), x0, intervals_bc, out, temp,
+                           num_c, 0, 1))
             left = intervals_bc[0]
             row = nleft + len(x) + j
             A[row, left-k:left+1] = temp[:k+1]
 
-    # prepare the RHS
-    # set up the RHS: values to interpolate (+ derivative values, if any)
+    # 5. Prepare the RHS: `y` values to interpolate (+ derivatives, if any)
     extradim = prod(y.shape[1:])
     rhs = cupy.empty((nt, extradim), dtype=y.dtype)
     if nleft > 0:
@@ -311,6 +330,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     if nright > 0:
         rhs[nt - nright:] = deriv_r_vals.reshape(-1, extradim)
 
+    # 6. Finally, solve for the coefficients.
     from cupy.linalg import solve
     coef = solve(A, rhs)
     coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
