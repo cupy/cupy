@@ -3,6 +3,7 @@ __all__ = ['RegularGridInterpolator', 'interpn']
 import itertools
 import cupy as cp
 
+
 def _ndim_coords_from_arrays(points, ndim=None):
     """
     Convert a tuple of coordinate arrays to a (..., ndim)-shaped array.
@@ -15,10 +16,11 @@ def _ndim_coords_from_arrays(points, ndim=None):
         n = len(p)
         for j in range(1, n):
             if p[j].shape != p[0].shape:
-                raise ValueError("coordinate arrays do not have the same shape")
+                raise ValueError(
+                    "coordinate arrays do not have the same shape")
         points = cp.empty(p[0].shape + (len(points),), dtype=float)
         for j, item in enumerate(p):
-            points[...,j] = item
+            points[..., j] = item
     else:
         points = cp.asanyarray(points)
         if points.ndim == 1:
@@ -29,7 +31,7 @@ def _ndim_coords_from_arrays(points, ndim=None):
     return points
 
 
-class RegularGridInterpolator:    
+class RegularGridInterpolator:
     _ALL_METHODS = ["linear", "nearest"]
 
     def __init__(self, points, values, method="linear", bounds_error=True,
@@ -61,7 +63,7 @@ class RegularGridInterpolator:
                 raise ValueError("fill_value must be either 'None' or "
                                  "of a type compatible with values")
 
-        points = list(points) #make modifiable
+        points = list(points)  # make modifiable
         for i, p in enumerate(points):
             diff_p = cp.diff(p)
             if not cp.all(diff_p > 0.):
@@ -118,7 +120,6 @@ class RegularGridInterpolator:
         >>> interp([[1.5, 1.3], [0.3, 4.5]], method='linear')
         array([ 4.7, 24.3])
         """
-        is_method_changed = self.method != method
         method = self.method if method is None else method
         if method not in self._ALL_METHODS:
             raise ValueError("Method '%s' is not defined" % method)
@@ -140,8 +141,8 @@ class RegularGridInterpolator:
             for i, p in enumerate(xi.T):
                 if not cp.logical_and(cp.all(self.grid[i][0] <= p),
                                       cp.all(p <= self.grid[i][-1])):
-                    raise ValueError("One of the requested xi is out of bounds "
-                                     "in dimension %d" % i)
+                    raise ValueError("One of the requested xi is out of "
+                                     "bounds in dimension %d" % i)
 
         indices, norm_distances, out_of_bounds = self._find_indices(xi.T)
         if method == "linear":
@@ -180,7 +181,6 @@ class RegularGridInterpolator:
         idx_res = [cp.where(yi <= .5, i, i + 1)
                    for i, yi in zip(indices, norm_distances)]
         return self.values[tuple(idx_res)]
-        
 
     def _find_indices(self, xi):
         # find relevant edges between which xi are situated
@@ -276,13 +276,17 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                               in arbitrary dimensions (`interpn` wraps this
                               class).
 
-    cupyx.scipy.ndimage.map_coordinates : interpolation on grids with equal spacing
-                                    (suitable for e.g., N-D image resampling)
+    cupyx.scipy.ndimage.map_coordinates : interpolation on grids with equal
+                                          spacing (suitable for e.g., N-D image
+                                          resampling)
 
     """
     # sanity check 'method' kwarg
     if method not in ["linear", "nearest"]:
-        raise ValueError("interpn only understands the methods 'linear', 'nearest'. 'splinef2d' is not yet implemented. You provided %s." % method)
+        raise ValueError(
+            "interpn only understands the methods 'linear', "
+            "'nearest'. 'splinef2d' is not yet implemented. "
+            "You provided %s." % method)
 
     if not hasattr(values, 'ndim'):
         values = cp.asarray(values)
@@ -324,9 +328,9 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
     if bounds_error:
         for i, p in enumerate(xi.T):
             if not cp.logical_and(cp.all(grid[i][0] <= p),
-                                                cp.all(p <= grid[i][-1])):
+                                  cp.all(p <= grid[i][-1])):
                 raise ValueError("One of the requested xi is out of bounds "
-                                "in dimension %d" % i)
+                                 "in dimension %d" % i)
 
     # perform interpolation
     if method == "linear":
@@ -341,4 +345,3 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
         return interp(xi)
     elif method == "splinef2d":
         raise NotImplementedError("splinef2d not implemented yet")
-       
