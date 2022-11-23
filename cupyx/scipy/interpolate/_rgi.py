@@ -28,29 +28,6 @@ def _ndim_coords_from_arrays(points, ndim=None):
                 points = points.reshape(-1, ndim)
     return points
 
-def _make_points_and_values_ascending(points, values):
-    # create ascending points
-    sorted_indexes = tuple(cp.argsort(point) for point in points)
-    points_asc = tuple(
-        cp.asarray(point)[sort_index] for (point, sort_index) in
-        zip(points, sorted_indexes))
-
-    # create ascending values
-    ordered_indexes = tuple([*range(len(x))] for x in sorted_indexes)
-    #import pdb
-    #pdb.set_trace()
-    print(ordered_indexes[0])
-    ordered_indexes_array = cp.array(
-        [i.flatten() for i in cp.meshgrid(*ordered_indexes)]).transpose()
-    sorted_indexes_array = cp.array(
-        [i.flatten() for i in cp.meshgrid(*sorted_indexes)]).transpose()
-
-    values_asc = cp.zeros_like(cp.asarray(values))
-    for o, s in zip(ordered_indexes_array, sorted_indexes_array):
-        values_asc[tuple(o)] = values[tuple(s)]
-
-    return points_asc, values_asc
-
 
 class RegularGridInterpolator:    
     _ALL_METHODS = ["linear", "nearest"]
