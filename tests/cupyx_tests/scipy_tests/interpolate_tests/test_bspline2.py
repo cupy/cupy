@@ -93,11 +93,11 @@ class TestInterp:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('k', [1, 2, 3, 5])
-    def test_list_input(self, k):
+    def test_list_input(self, xp, scp, k):
         # regression test for gh-8714: TypeError for x, y being lists and k=2
         x = list(range(10))
         y = [a**2 for a in x]
-        return scp.interpolate.make_interp_spline(x, y, k=k)
+        return scp.interpolate.make_interp_spline(x, y, k=k)(x)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_quadratic_deriv_right(self, xp, scp):
@@ -178,7 +178,7 @@ class TestInterp:
 
         # first derivatives at left & right edges:
         der_l, der_r = [(1, 3.j)], [(1, 4.+2.j)]
-        b = scp.interpolate.make_interp_spline(xx, yy, k=3,
+        b = scp.interpolate.make_interp_spline(x, y, k=3,
                                                bc_type=(der_l, der_r))
         return b(x), b(x[0], 1), b(x[-1], 1)
 
@@ -325,11 +325,12 @@ class TestInterp:
         with pytest.raises(ValueError):
             make_interp_spline(x, y, bc_type=(l, r))
 
+    @pytest.mark.skip
     def test_full_matrix(self):
         # XXX: make less brittle with private imports?
-        np.random.seed(1234)
+        cupy.random.seed(1234)
         k, n = 3, 7
-        x = cupy.sort(np.random.random(size=n))
+        x = cupy.sort(cupy.random.random(size=n))
         y = cupy.random.random(size=n)
         t = csi._bspline2._not_a_knot(x, k)
         b = csi.make_interp_spline(x, y, k, t)
