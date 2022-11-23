@@ -150,9 +150,6 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         except TypeError as e:
             raise ValueError("Unknown boundary condition: %s" % bc_type) from e
 
-    if deriv_l is not None or deriv_r is not None:    # XXX
-        raise NotImplementedError
-
     y = cupy.asarray(y)
 
     axis = normalize_axis_index(axis, y.ndim)
@@ -250,7 +247,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                          "match: expected %s, got %s+%s" % (nt-n, nleft, nright))
 
     # XXX: copy-paste from the BSpline
-    n = t.shape[0] - k - 1
+    n = t.shape[0] - k - 1     # FIXME : do not redefine `n`
     intervals = cupy.empty_like(x, dtype=cupy.int_)
 
     # Compute intervals for each value
@@ -273,13 +270,53 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                    x.shape[0]))
 
     # full matrix XXX
-    A = cupy.zeros((x.shape[0], x.shape[0]), dtype=float)
+    A = cupy.zeros((nt, nt), dtype=float)
+    offset = nleft
     for j in range(len(x)):
         left = intervals[j]
-        A[j, left-k:left+1] = temp[j*(2*k+1):j*(2*k+1)+k+1]
+        A[j + offset, left-k:left+1] = temp[j*(2*k+1):j*(2*k+1)+k+1]
+
+    # now handle the boundary conditions in the LHS
+    intervals_bc = cupy.empty(1, dtype=cupy.int_)
+    if nleft > 0:
+        intervals_bc[0] = intervals[0]
+        x0 = cupy.array([x[0]], dtype=x.dtype)
+        for j, m in enumerate(deriv_l_ords):
+            # place the derivatives of the order m at x[0] into `temp` 
+            d_boor_kernel((1,), (1,),
+                          (t, c, k, int(m), x0, intervals_bc, out, temp, num_c, 0,
+                           1))
+            left = intervals_bc[0]
+            A[j, left-k:left+1] = temp[:k+1]
+
+    if nright > 0:
+        intervals_bc[0] = intervals[-1]
+        x0 = cupy.array([x[-1]], dtype=x.dtype)
+        for j, m in enumerate(deriv_r_ords):
+            # place the derivatives of the order m at x[0] into `temp` 
+            d_boor_kernel((1,), (1,),
+                          (t, c, k, int(m), x0, intervals_bc, out, temp, num_c, 1,
+                           1))
+            left = intervals_bc[0]
+            row = nleft + len(x) + j
+            A[row, left-k:left+1] = temp[:k+1]
+
+            print("nright = ", nright, " : ", temp[:k+1])
+
+    # prepare the RHS
+    # set up the RHS: values to interpolate (+ derivative values, if any)
+    extradim = prod(y.shape[1:])
+    rhs = cupy.empty((nt, extradim), dtype=y.dtype)
+    if nleft > 0:
+        rhs[:nleft] = deriv_l_vals.reshape(-1, extradim)
+    rhs[nleft:nt - nright] = y.reshape(-1, extradim)
+    if nright > 0:
+        rhs[nt - nright:] = deriv_r_vals.reshape(-1, extradim)
+
 
     from cupy.linalg import solve
-    coef = solve(A, y)
+    coef = solve(A, rhs)
+    coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
     return BSpline(t, coef, k)     # XXX: coef trailing dims
 
     raise RuntimeError

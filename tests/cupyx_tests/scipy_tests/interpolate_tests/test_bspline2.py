@@ -99,16 +99,18 @@ class TestInterp:
         y = [a**2 for a in x]
         return scp.interpolate.make_interp_spline(x, y, k=k)(x)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_quadratic_deriv_right(self, xp, scp):
         x, y = self.get_xy(xp)
         der = [(1, 8.)]  # order, value: f'(x) = 8.
+
+   ###     breakpoint()
 
         # derivative at right-hand edge
         b = scp.interpolate.make_interp_spline(x, y, k=2, bc_type=(None, der))
         return b(x), b(x[-1], 1)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_quadratic_deriv_left(self, xp, scp):
         x, y = self.get_xy(xp)
         der = [(1, 8.)]  # order, value: f'(x) = 8.
@@ -117,7 +119,7 @@ class TestInterp:
         b = scp.interpolate.make_interp_spline(x, y, k=2, bc_type=(der, None))
         return b(x), b(x[0], 1)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_cubic_deriv_deriv(self, xp, scp):
         x, y = self.get_xy(xp)
         # first derivatives at left & right edges:
@@ -125,19 +127,20 @@ class TestInterp:
         b = scp.interpolate.make_interp_spline(x, y, k=3, bc_type=(der_l, der_r))
         return b(x), b(x[0], 1), b(x[-1], 1)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_cubic_deriv_natural(self, xp, scp):
         x, y = self.get_xy(xp)
 
         # 'natural' cubic spline, zero out 2nd derivatives at the boundaries
         der_l, der_r = [(2, 0)], [(2, 0)]
-        b = scp.interpolate.make_interp_spline(x, y, k, bc_type=(der_l, der_r))
+        b = scp.interpolate.make_interp_spline(x, y, k=3,
+                                               bc_type=(der_l, der_r))
         return b(x), b(x[0], 2), b(x[-1], 2)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_quintic_derivs(self, xp, scp):
         k, n = 5, 7
-        x = xp.arange(n).astype(np.float_)
+        x = xp.arange(n).astype(xp.float_)
         y = xp.sin(x)
         der_l = [(1, -12.), (2, 1)]
         der_r = [(1, 8.), (2, 3.)]
@@ -145,7 +148,7 @@ class TestInterp:
                                                bc_type=(der_l, der_r))
         return b(x), b(x[0], 1), b(x[0], 2), b(x[-1], 1), b(x[-1], 2)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_knots_not_data_sites(self, xp, scp):
         # Knots need not coincide with the data sites.
         # use a quadratic spline, knots are at data averages,
@@ -171,7 +174,7 @@ class TestInterp:
         xx = xp.linspace(0., 1.)
         return b(xx)    # assert_allclose(b(xx), xx**3)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_complex(self, xp, scp):
         x, y = self.get_xy(xp)
         y = y + 1j*y
@@ -190,10 +193,10 @@ class TestInterp:
         return (scp.interpolate.make_interp_spline(x, y, k=0)(x),
                 scp.interpolate.make_interp_spline(x, y, k=1)(x))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_multiple_rhs(self, xp, scp):
         x, _ = self.get_xy(xp)
-        yy = xp.c_[np.sin(x), np.cos(x)]
+        yy = xp.c_[xp.sin(x), xp.cos(x)]
         der_l = [(1, [1., 2.])]
         der_r = [(1, [3., 4.])]
 
@@ -212,14 +215,14 @@ class TestInterp:
         assert b1.c.shape == (n, 5, 6, 7)
 
         # now throw in some derivatives
-        d_l = [(1, np.random.random((5, 6, 7)))]
-        d_r = [(1, np.random.random((5, 6, 7)))]
+        d_l = [(1, xp.random.random((5, 6, 7)))]
+        d_r = [(1, xp.random.random((5, 6, 7)))]
         b2 = scp.interpolate.make_interp_spline(x, y, k, bc_type=(d_l, d_r))
         assert b2.c.shape == (n + k - 1, 5, 6, 7)
 
-        return b1.c.shape, b2.c.shape
+        return b1.c.shape + b2.c.shape
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_string_aliases_1(self, xp, scp):
         x, _ = self.get_xy(xp)
         y = xp.sin(x)
@@ -229,9 +232,9 @@ class TestInterp:
                                                 bc_type='natural')
         b2 = scp.interpolate.make_interp_spline(x, y, k=3,
                                                 bc_type=([(2, 0)], [(2, 0)]))
-        return b1.c, bc2.c
+        return b1.c, b2.c
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_string_aliases_2(self, xp, scp):
         x, _ = self.get_xy(xp)
         y = xp.sin(x)
@@ -242,7 +245,7 @@ class TestInterp:
                                                 bc_type=([(2, 0)], [(1, 0)]))
         return b1.c, b2.c
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_string_aliases_3(self, xp, scp):
         x, _ = self.get_xy(xp)
         y = xp.sin(x)
@@ -254,7 +257,7 @@ class TestInterp:
                                                 bc_type=(None, [(1, 0.0)]))
         return b1.c, b2.c
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_string_aliases_4(self, xp, scp):
         x, _ = self.get_xy(xp)
         y = xp.sin(x)
@@ -264,7 +267,7 @@ class TestInterp:
         b2 = scp.interpolate.make_interp_spline(x, y, k=3, bc_type=None)
         return b1.c, b2.c
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=TypeError)
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     def test_string_aliases_5(self, xp, scp):
         x, _ = self.get_xy(xp)
         y = xp.sin(x)
@@ -290,14 +293,14 @@ class TestInterp:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_string_aliases_7(self, xp, scp):
         # ... and for N-D values:
-        np.random.seed(1234)
+        xp.random.seed(1234)
         k, n = 3, 22
-        x = xp.sort(np.random.random(size=n))
+        x = xp.sort(xp.random.random(size=n))
         y = xp.random.random(size=(n, 5, 6, 7))
 
         # now throw in some derivatives
-        d_l = [(1, np.zeros((5, 6, 7)))]
-        d_r = [(1, np.zeros((5, 6, 7)))]
+        d_l = [(1, xp.zeros((5, 6, 7)))]
+        d_r = [(1, xp.zeros((5, 6, 7)))]
         b1 = scp.interpolate.make_interp_spline(x, y, k, bc_type=(d_l, d_r))
         b2 = scp.interpolate.make_interp_spline(x, y, k, bc_type='clamped')
         return b1.c, b2.c
