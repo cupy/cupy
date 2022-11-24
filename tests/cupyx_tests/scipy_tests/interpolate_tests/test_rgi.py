@@ -788,7 +788,7 @@ class TestInterpN:
         points = [(0, 1)]
         values = [0, 1]
         xi = cp.ones((1, 1, 3))
-        msg = ("The requested sample points xi have dimension 3, but this "
+        msg = ("The requested sample points xi have dimension 3 but this "
                "RegularGridInterpolator has dimension 1")
         with assert_raises(ValueError, match=msg):
             interpn(points, values, xi)
