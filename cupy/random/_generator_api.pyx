@@ -970,6 +970,9 @@ cdef void _launch_dist_split(
         int bsize, out, args):
     cdef ssize_t size = out.size
     shape = out.shape
+    if size == 0:
+        # Avoid issues launching empty grids in CUDA 10.2
+        return
     if size <= bsize:
         nargs = [
             _array_data(a)
