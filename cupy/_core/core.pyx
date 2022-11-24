@@ -1625,7 +1625,7 @@ cdef class _ndarray_base:
 
         """
         warnings.warn(
-            '`ndarray.scatter_max` is deprecated ',
+            '`ndarray.scatter_max` is deprecated '
             'Please use `cupy.maximum.at` instead.',
             DeprecationWarning)
         self._scatter_op(slices, value, 'max')
@@ -1638,7 +1638,7 @@ cdef class _ndarray_base:
 
         """
         warnings.warn(
-            '`ndarray.scatter_min` is deprecated ',
+            '`ndarray.scatter_min` is deprecated '
             'Please use `cupy.minimum.at` instead.',
             DeprecationWarning)
         self._scatter_op(slices, value, 'min')

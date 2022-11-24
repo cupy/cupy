@@ -721,7 +721,7 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
         zoom = []
         offset = []
         for in_size, out_size in zip(input.shape, output_shape):
-            if out_size > 1:
+            if out_size > 0:
                 zoom.append(float(in_size) / out_size)
                 offset.append((zoom[-1] - 1) / 2.0)
             else:
