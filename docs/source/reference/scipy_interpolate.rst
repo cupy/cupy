@@ -1,7 +1,7 @@
 .. module:: cupyx.scipy.interpolate
 
 Interpolation (:mod:`cupyx.scipy.interpolate`)
-==========================================================
+==============================================
 
 .. Hint:: `SciPy API Reference: Interpolation functions (scipy.interpolate) <https://docs.scipy.org/doc/scipy/reference/interpolate.html>`_
 
@@ -26,3 +26,13 @@ Univariate interpolation
    BSpline
    splder
    splantider
+
+
+Multivariate interpolation
+--------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   RBFInterpolator
+
