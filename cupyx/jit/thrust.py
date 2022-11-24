@@ -172,7 +172,31 @@ def equal_range(env, exec_policy, first, last, value, comp=None):
         _cuda_types.Tuple([first.ctype, first.ctype]))
 
 
-# TODO(asi1024): Add exclusive_scan
+@_wrap_thrust_func(['thrust/scan.h'])
+def exclusive_scan(
+        env, exec_policy, first, last, result, init=None, binary_op=None):
+    """Computes an exclusive prefix sum operation.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if not isinstance(result.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    if first.ctype.child_type != result.ctype.child_type:
+        raise TypeError('`first` and `last` must be of the same type')
+    if binary_op is not None:
+        raise NotImplementedError('binary_op option is not supported')
+    args = [exec_policy, first, last, result]
+    if init is not None:
+        args.append(init)
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::exclusive_scan({params})', result.ctype)
+
+
 # TODO(asi1024): Add exclusive_scan_by_key
 # TODO(asi1024): Add fill
 # TODO(asi1024): Add fill_n

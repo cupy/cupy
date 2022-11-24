@@ -171,6 +171,44 @@ class TestThrust:
         testing.assert_array_equal(y, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_exclusive_scan(self, order):
+        @jit.rawkernel()
+        def exclusive_scan(x, y):
+            i = jit.threadIdx.x
+            array = x[i]
+            result = y[i]
+            jit.thrust.exclusive_scan(
+                jit.thrust.seq, array.begin(), array.end(), result.begin())
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, order=order)
+        y = cupy.zeros((n1, n2), dtype=cupy.int32)
+        exclusive_scan[1, n1](x, y)
+
+        expected = x.cumsum(axis=-1)[:, :-1]
+        testing.assert_array_equal(y[:, 1:], expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_exclusive_scan_init(self, order):
+        @jit.rawkernel()
+        def exclusive_scan_init(x, y):
+            i = jit.threadIdx.x
+            array = x[i]
+            result = y[i]
+            jit.thrust.exclusive_scan(
+                jit.thrust.seq, array.begin(), array.end(), result.begin(), 10)
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, order=order)
+        y = cupy.zeros((n1, n2), dtype=cupy.int32)
+        exclusive_scan_init[1, n1](x, y)
+
+        expected = x.cumsum(axis=-1)[:, :-1] + 10
+        testing.assert_array_equal(y[:, 1:], expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):
