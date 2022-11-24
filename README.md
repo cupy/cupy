@@ -7,7 +7,7 @@
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Gitter](https://badges.gitter.im/cupy/community.svg)](https://gitter.im/cupy/community)
-[![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
+[![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team) [![Join the chat at https://gitter.im/cupy/gsoc23](https://badges.gitter.im/cupy/gsoc23.svg)](https://gitter.im/cupy/gsoc23?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 [**Website**](https://cupy.dev/)
 | [**Install**](https://docs.cupy.dev/en/stable/install.html)
