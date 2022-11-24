@@ -245,12 +245,6 @@ def polynomial_matrix(x, powers, out):
 #            out[i, j] = cp.prod(x[i]**powers[j])
 
 
-# pythran export _build_system(float[:, :],
-#                              float[:, :],
-#                              float[:],
-#                              str,
-#                              float,
-#                              int[:, :])
 def _build_system(y, d, smoothing, kernel, epsilon, powers):
     """Build the system used to solve for the RBF interpolant coefficients.
 
@@ -317,13 +311,6 @@ def _build_system(y, d, smoothing, kernel, epsilon, powers):
     return lhs, rhs, shift, scale
 
 
-# pythran export _build_evaluation_coefficients(float[:, :],
-#                          float[:, :],
-#                          str,
-#                          float,
-#                          int[:, :],
-#                          float[:],
-#                          float[:])
 def _build_evaluation_coefficients(x, y, kernel, epsilon, powers,
                                    shift, scale):
     """Construct the coefficients needed to evaluate
