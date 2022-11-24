@@ -722,7 +722,7 @@ class RBFInterpolator:
         self.epsilon = epsilon
         self.powers = powers
 
-    def _evaluate(self, x, y, shift, scale, coeffs):
+    def _chunk_evaluator(self, x, y, shift, scale, coeffs, memory_budget=1000000):
         """
         Evaluate the interpolation.
 
@@ -744,15 +744,34 @@ class RBFInterpolator:
         (Q, S) float ndarray
         Interpolated array
         """
-        vec = _build_evaluation_coefficients(
-            x,
-            y,
-            self.kernel,
-            self.epsilon,
-            self.powers,
-            shift,
-            scale)
-        out = cp.dot(vec, coeffs)
+        nx, ndim = x.shape
+        nnei = len(y)
+
+        # in each chunk we consume the same space we already occupy
+        chunksize = memory_budget // ((self.powers.shape[0] + nnei)) + 1
+        if chunksize <= nx:
+            out = cp.empty((nx, self.d.shape[1]), dtype=float)
+            for i in range(0, nx, chunksize):
+                vec = _build_evaluation_coefficients(
+                    x[i:i + chunksize, :],
+                    y,
+                    self.kernel,
+                    self.epsilon,
+                    self.powers,
+                    shift,
+                    scale)
+                out[i:i + chunksize, :] = cp.dot(vec, coeffs)
+        else:
+            vec = _build_evaluation_coefficients(
+                x,
+                y,
+                self.kernel,
+                self.epsilon,
+                self.powers,
+                shift,
+                scale)
+            out = cp.dot(vec, coeffs)
+
         return out
 
     def __call__(self, x):
@@ -778,13 +797,20 @@ class RBFInterpolator:
             raise ValueError("Expected the second axis of `x` to have length "
                              f"{self.y.shape[1]}.")
 
+        # Our memory budget for storing RBF coefficients is
+        # based on how many floats in memory we already occupy
+        # If this number is below 1e6 we just use 1e6
+        # This memory budget is used to decide how we chunk
+        # the inputs
+        memory_budget = max(x.size + self.y.size + self.d.size, 1000000)
+
         if self.neighbors is None:
-            out = self._evaluate(
+            out = self._chunk_evaluator(
                 x,
                 self.y,
                 self._shift,
                 self._scale,
-                self._coeffs)
+                self._coeffs, memory_budget=memory_budget)
         else:
             raise NotImplementedError    # XXX: needs KDTree
 

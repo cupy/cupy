@@ -507,6 +507,41 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
 
         return yitp1, yitp2
 
+    @pytest.mark.slow
+    @testing.with_requires("scipy>=1.7.0")
+    def test_chunking(self):
+        # If the observed data comes from a polynomial, then the interpolant
+        # should be able to reproduce the polynomial exactly, provided that
+        # `degree` is sufficiently high.
+        rng = _np.random.RandomState(0)
+        seq = Halton(2, scramble=False, seed=rng)
+        degree = 3
+
+        largeN = 1000 + 33
+        # this is large to check that chunking of the RBFInterpolator is tested
+        x = cp.asarray(seq.random(50))
+        xitp = cp.asarray(seq.random(largeN))
+
+        P = _vandermonde(x, degree)
+        Pitp = _vandermonde(xitp, degree)
+
+        poly_coeffs = cp.asarray(rng.normal(0.0, 1.0, P.shape[1]))
+
+        y = P.dot(poly_coeffs)
+        yitp1 = Pitp.dot(poly_coeffs)
+        interp = cupyx.scipy.interpolate.RBFInterpolator(x, y, degree=degree)
+        ce_real = interp._chunk_evaluator
+
+        def _chunk_evaluator(*args, **kwargs):
+            kwargs.update(memory_budget=100)
+            return ce_real(*args, **kwargs)
+
+       # monkeypatch.setattr(interp, '_chunk_evaluator', _chunk_evaluator)
+        interp._chunk_evaluator = _chunk_evaluator
+        yitp2 = interp(xitp)
+        testing.assert_allclose(yitp1, yitp2, atol=1e-8)
+
+
 
 """
 # Disable `all neighbors not None` tests : they need KDTree
