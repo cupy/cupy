@@ -2,6 +2,8 @@ import pytest
 import inspect
 
 from cupy import testing
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 import numpy as np
 import cupyx.scipy.interpolate  # NOQA
 
@@ -267,6 +269,9 @@ class TestBSpline:
             s += c[i] * xp.nan_to_num(b)
         return s
 
+    @pytest.mark.xfail(
+        runtime.is_hip and driver.get_build_version() < 5_00_00000,
+        reason='name_expression with ROCm 4.3 may not work')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cmplx(self, xp, scp):
         b = self._make_random_spline(xp, scp)
