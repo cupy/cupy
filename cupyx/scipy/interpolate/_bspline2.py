@@ -3,6 +3,7 @@ import operator
 from numpy.core.multiarray import normalize_axis_index
 
 import cupy
+from cupyx.scipy import sparse
 
 from ._bspline import _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline
 
@@ -333,5 +334,27 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     # 6. Finally, solve for the coefficients.
     from cupy.linalg import solve
     coef = solve(A, rhs)
-    coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
-    return BSpline(t, coef, k)
+
+    # try the sparse solver
+    matr = BSpline.design_matrix(x, t, k)
+
+    if nleft > 0:
+        matr = sparse.vstack([sparse.csr_matrix(A[:nleft, :]),
+                              matr])
+    if nright > 0:
+        matr = sparse.vstack([matr,
+                             sparse.csr_matrix(A[nleft+len(x):, :])])
+
+    from cupyx.scipy.sparse.linalg import spsolve
+    coef2 = cupy.empty((nt, extradim), dtype=y.dtype)
+    for dim in range(extradim):
+
+        # spsolve only accepts a single r.h.s.
+        if cupy.issubdtype(rhs.dtype, cupy.complexfloating):
+            coef2[:, dim] = (spsolve(matr, rhs[:, dim].real) +
+                             spsolve(matr, rhs[:, dim].imag) * 1.j) 
+        else:
+            coef2[:, dim] = spsolve(matr, rhs[:, dim])
+
+    coef2 = cupy.ascontiguousarray(coef2.reshape((nt,) + y.shape[1:]))
+    return BSpline(t, coef2, k)
