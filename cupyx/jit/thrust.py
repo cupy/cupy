@@ -6,15 +6,19 @@ from cupyx.jit._internal_types import Data as _Data
 def _wrap_thrust_func(headers):
     def wrapper(func):
         class FuncWrapper(_internal_types.BuiltinFunc):
-            def call(self, env, *args, **kwargs):
+            def call(self, env, exec_policy, *args, **kwargs):
                 for header in headers:
                     env.generated.add_code(f'#include <{header}>')
                 env.generated.add_code('#include <thrust/execution_policy.h>')
                 env.generated.add_code('#include <thrust/functional.h>')
                 env.generated.backend = 'nvcc'
+                exec_policy = _Data.init(exec_policy, env)
                 data_args = [_Data.init(a, env) for a in args]
                 data_kwargs = {k: _Data.init(kwargs[k], env) for k in kwargs}
-                return func(env, *data_args, **data_kwargs)
+                if not isinstance(exec_policy.ctype, _ExecPolicyType):
+                    raise ValueError(
+                        f'{exec_policy.code} must be execution policy type')
+                return func(env, exec_policy, *data_args, **data_kwargs)
         return FuncWrapper()
     return wrapper
 
@@ -32,8 +36,6 @@ seq = _Data('thrust::seq', _ExecPolicyType())
 def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
     """Computes the differences of adjacent elements.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -55,8 +57,6 @@ def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
 def binary_search(env, exec_policy, first, last, *args):
     """Attempts to find the element value with binary search.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -96,8 +96,6 @@ def binary_search(env, exec_policy, first, last, *args):
 def copy(env, exec_policy, first, last, result):
     """Copies the elements.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -118,8 +116,6 @@ def copy(env, exec_policy, first, last, result):
 def count(env, exec_policy, first, last, value):
     """Counts the number of elements in [first, last) that equals to ``value``.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -137,8 +133,6 @@ def count(env, exec_policy, first, last, value):
 def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
     """Returns true if the two ranges are identical.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first1.ctype, _cuda_types.PointerBase):
         raise TypeError('`first1` must be of pointer type')
     if not isinstance(first2.ctype, _cuda_types.PointerBase):
@@ -158,8 +152,6 @@ def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
 def equal_range(env, exec_policy, first, last, value, comp=None):
     """Attempts to find the element value in an ordered range.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -178,8 +170,6 @@ def exclusive_scan(
         env, exec_policy, first, last, result, init=None, binary_op=None):
     """Computes an exclusive prefix sum operation.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if not isinstance(result.ctype, _cuda_types.PointerBase):
@@ -203,8 +193,6 @@ def exclusive_scan_by_key(
         init=None, binary_pred=None, binary_op=None):
     """Computes an exclusive prefix sum operation by key.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first1.ctype, _cuda_types.PointerBase):
         raise TypeError('`first1` must be of pointer type')
     if not isinstance(first2.ctype, _cuda_types.PointerBase):
@@ -230,8 +218,6 @@ def exclusive_scan_by_key(
 def fill(env, exec_policy, first, last, value):
     """Assigns the value to every element in the range.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -250,8 +236,6 @@ def fill(env, exec_policy, first, last, value):
 def find(env, exec_policy, first, last, value):
     """Finds the first iterator whose value equals to ``value``.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -266,8 +250,6 @@ def find(env, exec_policy, first, last, value):
 def mismatch(env, exec_policy, first1, last1, first2, pred=None):
     """Finds the first positions whose values differ.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first1.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if first1.ctype != last1.ctype:
@@ -295,8 +277,6 @@ def mismatch(env, exec_policy, first1, last1, first2, pred=None):
 def gather(env, exec_policy, map_first, map_last, input_first, result):
     """Copies elements from source into destination  according to a map.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(map_first.ctype, _cuda_types.PointerBase):
         raise TypeError('`map_first` must be of pointer type')
     if not isinstance(input_first.ctype, _cuda_types.PointerBase):
@@ -322,8 +302,6 @@ def inclusive_scan(
         env, exec_policy, first, last, result, binary_op=None):
     """Computes an inclusive prefix sum operation.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if not isinstance(result.ctype, _cuda_types.PointerBase):
@@ -345,8 +323,6 @@ def inclusive_scan_by_key(
         binary_pred=None, binary_op=None):
     """Computes an inclusive prefix sum operation by key.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first1.ctype, _cuda_types.PointerBase):
         raise TypeError('`first1` must be of pointer type')
     if not isinstance(first2.ctype, _cuda_types.PointerBase):
@@ -381,8 +357,6 @@ def inclusive_scan_by_key(
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -400,8 +374,6 @@ def sort_by_key(
         env, exec_policy, keys_first, keys_last, values_first, comp=None):
     """Performs key-value sort.
     """
-    if not isinstance(exec_policy.ctype, _ExecPolicyType):
-        raise ValueError('The first argument must be execution policy type')
     if not isinstance(keys_first.ctype, _cuda_types.PointerBase):
         raise TypeError('`keys_first` must be of pointer type')
     if keys_first.ctype != keys_last.ctype:
