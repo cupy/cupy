@@ -227,7 +227,24 @@ def exclusive_scan_by_key(
         f'thrust::exclusive_scan_by_key({params})', result.ctype)
 
 
-# TODO(asi1024): Add fill
+@_wrap_thrust_func(['thrust/fill.h'])
+def fill(env, exec_policy, first, last, value):
+    """Assigns the value to every element in the range.
+    """
+    value = _internal_types.Data.init(value, env)
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    if first.ctype.child_type != value.ctype:
+        raise TypeError('`*first` and `value` must be of the same type')
+    args = [exec_policy, first, last, value]
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(f'thrust::fill({params})', _cuda_types.void)
+
+
 # TODO(asi1024): Add fill_n
 
 

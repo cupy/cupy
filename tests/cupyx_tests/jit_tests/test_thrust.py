@@ -224,6 +224,20 @@ class TestThrust:
         testing.assert_array_equal(value, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_fill(self, order):
+        @jit.rawkernel()
+        def fill(x):
+            i = jit.threadIdx.x
+            array = x[i]
+            jit.thrust.fill(jit.thrust.device, array.begin(), array.end(), 10)
+
+        n1, n2 = (128, 160)
+        x = cupy.zeros((n1, n2), dtype=numpy.int32)
+        fill[1, n1](x)
+        expected = cupy.full((n1, n2), 10, dtype=numpy.int32)
+        testing.assert_array_equal(x, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):
