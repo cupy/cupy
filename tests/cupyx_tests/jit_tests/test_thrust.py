@@ -258,6 +258,40 @@ class TestThrust:
         testing.assert_array_equal(z, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_inclusive_scan(self, order):
+        @jit.rawkernel()
+        def inclusive_scan(x, y):
+            i = jit.threadIdx.x
+            array = x[i]
+            result = y[i]
+            jit.thrust.inclusive_scan(
+                jit.thrust.seq, array.begin(), array.end(), result.begin())
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.int32, order=order)
+        y = cupy.zeros((n1, n2), dtype=cupy.int32)
+        inclusive_scan[1, n1](x, y)
+
+        expected = x.cumsum(axis=-1)
+        testing.assert_array_equal(y, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_inclusive_scan_by_key(self, order):
+        @jit.rawkernel()
+        def inclusive_scan_by_key(key, value):
+            jit.thrust.inclusive_scan_by_key(
+                jit.thrust.device, key.begin(), key.end(),
+                value.begin(), value.begin())
+
+        key = cupy.array([0, 0, 0, 1, 1, 2, 3, 3, 3, 3])
+        value = cupy.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        inclusive_scan_by_key[1, 1](key, value)
+
+        expected = cupy.array([1, 2, 3, 1, 2, 1, 1, 2, 3, 4])
+        testing.assert_array_equal(value, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):

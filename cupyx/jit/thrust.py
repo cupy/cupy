@@ -315,8 +315,57 @@ def gather(env, exec_policy, map_first, map_last, input_first, result):
 
 # TODO(asi1024): Add gather_if
 # TODO(asi1024): Add generate_n
-# TODO(asi1024): Add inclusive_scan
-# TODO(asi1024): Add inclusive_scan_by_key
+
+
+@_wrap_thrust_func(['thrust/scan.h'])
+def inclusive_scan(
+        env, exec_policy, first, last, result, binary_op=None):
+    """Computes an inclusive prefix sum operation.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first` must be of pointer type')
+    if not isinstance(result.ctype, _cuda_types.PointerBase):
+        raise TypeError('`result` must be of pointer type')
+    if first.ctype != last.ctype:
+        raise TypeError('`first` and `last` must be of the same type')
+    if first.ctype.child_type != result.ctype.child_type:
+        raise TypeError('`first` and `last` must be of the same type')
+    if binary_op is not None:
+        raise NotImplementedError('binary_op option is not supported')
+    args = [exec_policy, first, last, result]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::inclusive_scan({params})', result.ctype)
+
+
+@_wrap_thrust_func(['thrust/scan.h'])
+def inclusive_scan_by_key(
+        env, exec_policy, first1, last1, first2, result,
+        binary_pred=None, binary_op=None):
+    """Computes an inclusive prefix sum operation by key.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first1.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first1` must be of pointer type')
+    if not isinstance(first2.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first2` must be of pointer type')
+    if not isinstance(result.ctype, _cuda_types.PointerBase):
+        raise TypeError('`result` must be of pointer type')
+    if first1.ctype != last1.ctype:
+        raise TypeError('`first1` and `last1` must be of the same type')
+    if first2.ctype.child_type != result.ctype.child_type:
+        raise TypeError('`first2` and `result` must be of the same type')
+    if binary_pred is not None:
+        raise NotImplementedError('binary_pred option is not supported')
+    if binary_op is not None:
+        raise NotImplementedError('binary_op option is not supported')
+    args = [exec_policy, first1, last1, first2, result]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::inclusive_scan_by_key({params})', result.ctype)
+
+
 # TODO(asi1024): Add inner_product
 # TODO(asi1024): Add is_partitioned
 # TODO(asi1024): Add is_sorted
