@@ -1,5 +1,6 @@
 from cupyx.jit import _internal_types
 from cupyx.jit import _cuda_types
+from cupyx.jit._internal_types import Data as _Data
 
 
 def _wrap_thrust_func(headers):
@@ -11,7 +12,9 @@ def _wrap_thrust_func(headers):
                 env.generated.add_code('#include <thrust/execution_policy.h>')
                 env.generated.add_code('#include <thrust/functional.h>')
                 env.generated.backend = 'nvcc'
-                return func(env, *args, **kwargs)
+                data_args = [_Data.init(a, env) for a in args]
+                data_kwargs = {k: _Data.init(kwargs[k], env) for k in kwargs}
+                return func(env, *data_args, **data_kwargs)
         return FuncWrapper()
     return wrapper
 
@@ -20,9 +23,9 @@ class _ExecPolicyType(_cuda_types.TypeBase):
     pass
 
 
-host = _internal_types.Data('thrust::host', _ExecPolicyType())
-device = _internal_types.Data('thrust::device', _ExecPolicyType())
-seq = _internal_types.Data('thrust::seq', _ExecPolicyType())
+host = _Data('thrust::host', _ExecPolicyType())
+device = _Data('thrust::device', _ExecPolicyType())
+seq = _Data('thrust::seq', _ExecPolicyType())
 
 
 @_wrap_thrust_func(['thrust/adjacent_difference.h'])
@@ -40,9 +43,8 @@ def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
     if binary_op is not None:
         raise NotImplementedError('binary_op option is not supported')
     args = [exec_policy, first, last, result]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
-        f'thrust::adjacent_difference({params})', result.ctype)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::adjacent_difference({params})', result.ctype)
 
 
 # TODO(asi1024): Support all_of
@@ -61,7 +63,7 @@ def binary_search(env, exec_policy, first, last, *args):
         raise TypeError('`first` and `last` must be of the same type')
 
     if 1 <= len(args) <= 2:
-        value = _internal_types.Data.init(args[0], env)
+        value = args[0]
         comp = args[1] if len(args) == 2 else None
         if first.ctype.child_type != value.ctype:
             raise TypeError('`first` and `result` must be of the same type')
@@ -86,9 +88,8 @@ def binary_search(env, exec_policy, first, last, *args):
         raise TypeError('Invalid number of inputs of thrust.binary_search')
 
     args = [exec_policy, first, last, *args]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
-        f'thrust::binary_search({params})', result_ctype)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::binary_search({params})', result_ctype)
 
 
 @_wrap_thrust_func(['thrust/copy.h'])
@@ -105,8 +106,8 @@ def copy(env, exec_policy, first, last, result):
         raise TypeError('`first` and `result` must be of the same type')
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, result]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(f'thrust::copy({params})', result.ctype)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::copy({params})', result.ctype)
 
 
 # TODO(asi1024): Add copy_if
@@ -125,8 +126,8 @@ def count(env, exec_policy, first, last, value):
         raise TypeError('`first` and `last` must be of the same type')
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, value]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(f'thrust::count({params})', _cuda_types.int32)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::count({params})', _cuda_types.int32)
 
 
 # TODO(asi1024): Add count_if
@@ -149,8 +150,8 @@ def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
     if binary_pred is not None:
         raise NotImplementedError('binary_pred option is not supported')
     args = [exec_policy, first1, last1, first2]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(f'thrust::equal({params})', _cuda_types.bool_)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::equal({params})', _cuda_types.bool_)
 
 
 @_wrap_thrust_func(['thrust/binary_search.h'])
@@ -166,8 +167,8 @@ def equal_range(env, exec_policy, first, last, value, comp=None):
     if comp is not None:
         raise NotImplementedError('comp option is not supported')
     args = [exec_policy, first, last, value]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
+    params = ', '.join([a.code for a in args])
+    return _Data(
         f'thrust::equal_range({params})',
         _cuda_types.Tuple([first.ctype, first.ctype]))
 
@@ -192,9 +193,8 @@ def exclusive_scan(
     args = [exec_policy, first, last, result]
     if init is not None:
         args.append(init)
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
-        f'thrust::exclusive_scan({params})', result.ctype)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::exclusive_scan({params})', result.ctype)
 
 
 @_wrap_thrust_func(['thrust/scan.h'])
@@ -222,16 +222,14 @@ def exclusive_scan_by_key(
     args = [exec_policy, first1, last1, first2, result]
     if init is not None:
         args.append(init)
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
-        f'thrust::exclusive_scan_by_key({params})', result.ctype)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::exclusive_scan_by_key({params})', result.ctype)
 
 
 @_wrap_thrust_func(['thrust/fill.h'])
 def fill(env, exec_policy, first, last, value):
     """Assigns the value to every element in the range.
     """
-    value = _internal_types.Data.init(value, env)
     if not isinstance(exec_policy.ctype, _ExecPolicyType):
         raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
@@ -241,8 +239,8 @@ def fill(env, exec_policy, first, last, value):
     if first.ctype.child_type != value.ctype:
         raise TypeError('`*first` and `value` must be of the same type')
     args = [exec_policy, first, last, value]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(f'thrust::fill({params})', _cuda_types.void)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::fill({params})', _cuda_types.void)
 
 
 # TODO(asi1024): Add fill_n
@@ -252,7 +250,6 @@ def fill(env, exec_policy, first, last, value):
 def find(env, exec_policy, first, last, value):
     """Finds the first iterator whose value equals to ``value``.
     """
-    value = _internal_types.Data.init(value, env)
     if not isinstance(exec_policy.ctype, _ExecPolicyType):
         raise ValueError('The first argument must be execution policy type')
     if not isinstance(first.ctype, _cuda_types.PointerBase):
@@ -261,8 +258,8 @@ def find(env, exec_policy, first, last, value):
         raise TypeError('`first` and `last` must be of the same type')
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, value]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(f'thrust::find({params})', first.ctype)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::find({params})', first.ctype)
 
 
 @_wrap_thrust_func(['thrust/mismatch.h'])
@@ -281,8 +278,8 @@ def mismatch(env, exec_policy, first1, last1, first2, pred=None):
         raise NotImplementedError('pred option is not supported')
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first1, last1, first2]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
+    params = ', '.join([a.code for a in args])
+    return _Data(
         f'thrust::mismatch({params})',
         _cuda_types.Tuple([first1.ctype, first2.ctype])
     )
@@ -322,8 +319,8 @@ def sort(env, exec_policy, first, last, comp=None):
         raise NotImplementedError('comp option is not supported')
     # TODO(asi1024): Typecheck for Comparable.
     args = [exec_policy, first, last]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(f'thrust::sort({params})', _cuda_types.void)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::sort({params})', _cuda_types.void)
 
 
 @_wrap_thrust_func(['thrust/sort.h'])
@@ -344,6 +341,5 @@ def sort_by_key(
         raise NotImplementedError('comp option is not supported')
     # TODO(asi1024): Typecheck for Comparable.
     args = [exec_policy, keys_first, keys_last, values_first]
-    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
-    return _internal_types.Data(
-        f'thrust::sort_by_key({params})', _cuda_types.void)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::sort_by_key({params})', _cuda_types.void)
