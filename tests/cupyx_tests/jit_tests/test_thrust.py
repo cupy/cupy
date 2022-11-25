@@ -238,6 +238,26 @@ class TestThrust:
         testing.assert_array_equal(x, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_gather(self, order):
+        @jit.rawkernel()
+        def gather(x, y, z):
+            i = jit.threadIdx.x
+            map_ = x[i]
+            input_ = y
+            result = z[i]
+            jit.thrust.gather(
+                jit.thrust.device, map_.begin(), map_.end(),
+                input_.begin(), result.begin())
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=cupy.int32, scale=n2, seed=0)
+        y = testing.shaped_random((n2,), dtype=cupy.float32, seed=1)
+        z = cupy.zeros((n1, n2), cupy.float32)
+        gather[1, n1](x, y, z)
+        expected = y[x]
+        testing.assert_array_equal(z, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):

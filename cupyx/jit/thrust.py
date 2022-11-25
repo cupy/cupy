@@ -289,7 +289,30 @@ def mismatch(env, exec_policy, first1, last1, first2, pred=None):
 # TODO(asi1024): Add find_if_not
 # TODO(asi1024): Add for_each
 # TODO(asi1024): Add for_each_n
-# TODO(asi1024): Add gather
+
+
+@_wrap_thrust_func(['thrust/gather.h'])
+def gather(env, exec_policy, map_first, map_last, input_first, result):
+    """Copies elements from source into destination  according to a map.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(map_first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`map_first` must be of pointer type')
+    if not isinstance(input_first.ctype, _cuda_types.PointerBase):
+        raise TypeError('`input_first` must be of pointer type')
+    if not isinstance(result.ctype, _cuda_types.PointerBase):
+        raise TypeError('`result_first` must be of pointer type')
+    if map_first.ctype != map_last.ctype:
+        raise TypeError('`map_first` and `map_last` must be of the same type')
+    if input_first.ctype.child_type != result.ctype.child_type:
+        raise TypeError(
+            '`*input_first` and `*result` must be of the same type')
+    args = [exec_policy, map_first, map_last, input_first, result]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::gather({params})', result.ctype)
+
+
 # TODO(asi1024): Add gather_if
 # TODO(asi1024): Add generate_n
 # TODO(asi1024): Add inclusive_scan
