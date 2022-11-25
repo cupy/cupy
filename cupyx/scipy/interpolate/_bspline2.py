@@ -4,6 +4,7 @@ from numpy.core.multiarray import normalize_axis_index
 
 import cupy
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse.linalg import spsolve
 
 from ._bspline import _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline
 
@@ -63,6 +64,24 @@ def _not_a_knot(x, k):
 def _augknt(x, k):
     """Construct a knot vector appropriate for the order-k interpolation."""
     return cupy.r_[(x[0],)*k, x, (x[-1],)*k]
+
+
+def _periodic_knots(x, k):
+    """Returns vector of nodes on a circle."""
+    xc = cupy.copy(x)
+    n = len(xc)
+    if k % 2 == 0:
+        dx = cupy.diff(xc)
+        xc[1: -1] -= dx[:-1] / 2
+    dx = cupy.diff(xc)
+    t = cupy.zeros(n + 2 * k)
+    t[k: -k] = xc
+    for i in range(0, k):
+        # filling first `k` elements in descending order
+        t[k - i - 1] = t[k - i] - dx[-(i % (n - 1)) - 1]
+        # filling last `k` elements in ascending order
+        t[-k + i] = t[-k + i - 1] + dx[i % (n - 1)]
+    return t
 
 
 def _convert_string_aliases(deriv, target_shape):
@@ -228,7 +247,6 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         raise ValueError('Out of bounds w/ x = %s.' % x)
 
     if bc_type == 'periodic':
-        raise NotImplementedError     # XXX
         return _make_periodic_spline(x, y, t, k, axis)
 
     # Here : deriv_l, r = [(nu, value), ...]
@@ -248,6 +266,154 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         raise ValueError("The number of derivatives at boundaries does not "
                          "match: expected %s, got %s + %s" %
                          (nt-n, nleft, nright))
+
+    # Consruct the colocation matrix of b-splines + boundary conditions.
+    # The coefficients of the interpolating B-spline function are the solution
+    # of the linear system `A @ c = rhs` where `A` is the colocation matrix
+    # (i.e., each row of A corresponds to a data point in the `x` array and
+    #  contains b-splines which are non-zero at this value of x)
+    # Each boundary condition is a fixed value of a certain derivative
+    # at the edge, so each derivative adds a row to `A`.
+    # The `rhs` is the array of data values, `y`, plus derivatives from
+    # boundary conditions, if any.
+    # The colocation matrix is banded (has at most k+1 diagonals). Since LAPACK
+    # linear algebra (?gbsv) is not available, we store it as a CSR array
+
+    # 1. Construct the colocation matrix itself.
+    matr = BSpline.design_matrix(x, t, k)
+
+    # 2. Boundary conditions: need to augment the design matrix with additional
+    # rows, one row per derivative at the left and right edges.
+    # The left-side boundary conditions go to the first rows of the matrix
+    # and the right-side boundary conditions go to the last rows.
+    # Will need a python loop for each derivative because in general they
+    # can be of any order, `m`.
+    # To compute the derivatives, will invoke the de Boor D kernel.
+    if nleft > 0 or nright > 0:
+        # Prepare the I/O arrays for the kernels. We only need the non-zero
+        # b-splines at x[0] and x[-1], but the kernel wants more arrays which
+        # we allocate and ignore (mode != 1)
+        temp = cupy.zeros((nt, ), dtype=float)
+        num_c = 1
+        dummy_c = cupy.empty((nt, num_c), dtype=float)
+        out = cupy.empty((1, 1), dtype=dummy_c.dtype)
+
+        d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+
+        # find the intervals for x[0] and x[-1]
+        intervals_bc = cupy.empty(2, dtype=cupy.int_)
+        interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+        interval_kernel((1,), (2,),
+                        (t, cupy.r_[x[0], x[-1]], intervals_bc, k, nt,
+                         False, 2))
+
+    # 3. B.C.s at x[0]
+    if nleft > 0:
+        x0 = cupy.array([x[0]], dtype=x.dtype)
+        rows = cupy.zeros((nleft, nt), dtype=float)
+
+        for j, m in enumerate(deriv_l_ords):
+            # place the derivatives of the order m at x[0] into `temp`
+            d_boor_kernel((1,), (1,),
+                          (t, dummy_c, k, int(m), x0, intervals_bc,
+                           out,     # ignore (mode !=1),
+                           temp,    # non-zero b-splines
+                           num_c,   # the 2nd dimension of `dummy_c`. Ignore.
+                           0,       # mode != 1 => do not touch dummy_c array
+                           1))      # the length of the `x0` array
+            left = intervals_bc[0]
+            rows[j, left-k:left+1] = temp[:k+1]
+
+        matr = sparse.vstack([sparse.csr_matrix(rows),   # A[:nleft, :]
+                              matr])
+
+    # 4. Repeat for B.C.s at x[-1]
+    if nright > 0:
+        intervals_bc[0] = intervals_bc[-1]   # use the intervals for x[-1]
+        x0 = cupy.array([x[-1]], dtype=x.dtype)
+        rows = cupy.zeros((nright, nt), dtype=float)
+
+        for j, m in enumerate(deriv_r_ords):
+            # place the derivatives of the order m at x[0] into `temp`
+            d_boor_kernel((1,), (1,),
+                          (t, dummy_c, k, int(m), x0, intervals_bc,
+                           out,     # ignore (mode !=1),
+                           temp,    # non-zero b-splines
+                           num_c,   # the 2nd dimension of `dummy_c`. Ignore.
+                           0,       # mode != 1 => do not touch dummy_c array
+                           1))      # the length of the `x0` array
+            left = intervals_bc[0]
+            rows[j, left-k:left+1] = temp[:k+1]
+
+        matr = sparse.vstack([matr,
+                              sparse.csr_matrix(rows)])  # A[nleft+len(x):, :]
+
+    # 5. Prepare the RHS: `y` values to interpolate (+ derivatives, if any)
+    extradim = prod(y.shape[1:])
+    rhs = cupy.empty((nt, extradim), dtype=y.dtype)
+    if nleft > 0:
+        rhs[:nleft] = deriv_l_vals.reshape(-1, extradim)
+    rhs[nleft:nt - nright] = y.reshape(-1, extradim)
+    if nright > 0:
+        rhs[nt - nright:] = deriv_r_vals.reshape(-1, extradim)
+
+    # 6. Finally, solve the linear system for the coefficients.
+    # `spsolve` only accepts a single r.h.s., so loop over extradim
+    coef = cupy.empty((nt, extradim), dtype=y.dtype)
+    for dim in range(extradim):
+        # spsolve only accepts a single r.h.s.
+        if cupy.issubdtype(rhs.dtype, cupy.complexfloating):
+            coef[:, dim] = (spsolve(matr, rhs[:, dim].real) +
+                            spsolve(matr, rhs[:, dim].imag) * 1.j)
+        else:
+            coef[:, dim] = spsolve(matr, rhs[:, dim])
+
+    coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
+    return BSpline(t, coef, k)
+
+
+def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
+    """ Construct the interpolating spline spl(x) = y with *full* linalg.
+
+        Only useful for testing, do not call directly!
+        This version is O(N**2) in memory and O(N**3) in flop count.
+    """
+    # convert string aliases for the boundary conditions
+    if bc_type is None or bc_type == 'not-a-knot':
+        deriv_l, deriv_r = None, None
+    elif isinstance(bc_type, str):
+        deriv_l, deriv_r = bc_type, bc_type
+    else:
+        try:
+            deriv_l, deriv_r = bc_type
+        except TypeError as e:
+            raise ValueError("Unknown boundary condition: %s" % bc_type) from e
+
+    # Here : deriv_l, r = [(nu, value), ...]
+    deriv_l = _convert_string_aliases(deriv_l, y.shape[1:])
+    deriv_l_ords, deriv_l_vals = _process_deriv_spec(deriv_l)
+    nleft = deriv_l_ords.shape[0]
+
+    deriv_r = _convert_string_aliases(deriv_r, y.shape[1:])
+    deriv_r_ords, deriv_r_vals = _process_deriv_spec(deriv_r)
+    nright = deriv_r_ords.shape[0]
+
+    # have `n` conditions for `nt` coefficients; need nt-n derivatives
+    n = x.size
+    nt = t.size - k - 1
+    # Here : deriv_l, r = [(nu, value), ...]
+    deriv_l = _convert_string_aliases(deriv_l, y.shape[1:])
+    deriv_l_ords, deriv_l_vals = _process_deriv_spec(deriv_l)
+    nleft = deriv_l_ords.shape[0]
+
+    deriv_r = _convert_string_aliases(deriv_r, y.shape[1:])
+    deriv_r_ords, deriv_r_vals = _process_deriv_spec(deriv_r)
+    nright = deriv_r_ords.shape[0]
+
+    # have `n` conditions for `nt` coefficients; need nt-n derivatives
+    n = x.size
+    nt = t.size - k - 1
+    assert nt - n == nleft + nright
 
     # Consruct the colocation matrix of b-splines + boundary conditions.
     # The coefficients of the interpolating B-spline function are the solution
@@ -335,26 +501,9 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     from cupy.linalg import solve
     coef = solve(A, rhs)
 
-    # try the sparse solver
-    matr = BSpline.design_matrix(x, t, k)
+    coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
+    return BSpline(t, coef, k)
 
-    if nleft > 0:
-        matr = sparse.vstack([sparse.csr_matrix(A[:nleft, :]),
-                              matr])
-    if nright > 0:
-        matr = sparse.vstack([matr,
-                             sparse.csr_matrix(A[nleft+len(x):, :])])
 
-    from cupyx.scipy.sparse.linalg import spsolve
-    coef2 = cupy.empty((nt, extradim), dtype=y.dtype)
-    for dim in range(extradim):
-
-        # spsolve only accepts a single r.h.s.
-        if cupy.issubdtype(rhs.dtype, cupy.complexfloating):
-            coef2[:, dim] = (spsolve(matr, rhs[:, dim].real) +
-                             spsolve(matr, rhs[:, dim].imag) * 1.j) 
-        else:
-            coef2[:, dim] = spsolve(matr, rhs[:, dim])
-
-    coef2 = cupy.ascontiguousarray(coef2.reshape((nt,) + y.shape[1:]))
-    return BSpline(t, coef2, k)
+def _make_periodic_spline(x, y, t, k, axis):
+    raise NotImplementedError

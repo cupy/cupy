@@ -331,17 +331,20 @@ class TestInterp:
         with pytest.raises(ValueError):
             csi.make_interp_spline(x, y, bc_type=(l, r))
 
-    @pytest.mark.skip
     def test_full_matrix(self):
-        # XXX: make less brittle with private imports?
+        from cupyx.scipy.interpolate._bspline2 import (
+            _make_interp_spline_full_matrix)
         cupy.random.seed(1234)
         k, n = 3, 7
         x = cupy.sort(cupy.random.random(size=n))
         y = cupy.random.random(size=n)
-        t = csi._bspline2._not_a_knot(x, k)
-        b = csi.make_interp_spline(x, y, k, t)
 
-        from scipy.interpolate.tests.test_bsplines import (
-            make_interp_full_matrix)
-        cf = make_interp_full_matr(x, y, t, k)
-        cupy.testing.assert_allclose(b.c, cf, atol=1e-14, rtol=1e-14)
+        # test not-a-knot
+        b = csi.make_interp_spline(x, y, k=3)
+        bf = _make_interp_spline_full_matrix(x, y, k, b.t, bc_type=None)
+        cupy.testing.assert_allclose(b.c, bf.c, atol=1e-14, rtol=1e-14)
+
+        # test with some b.c.
+        b = csi.make_interp_spline(x, y, k=3, bc_type='natural')
+        bf = _make_interp_spline_full_matrix(x, y, k, b.t, bc_type='natural')
+        cupy.testing.assert_allclose(b.c, bf.c, atol=1e-13)
