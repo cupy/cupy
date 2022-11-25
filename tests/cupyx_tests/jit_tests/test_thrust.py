@@ -209,6 +209,21 @@ class TestThrust:
         testing.assert_array_equal(y[:, 1:], expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_exclusive_scan_by_key(self, order):
+        @jit.rawkernel()
+        def exclusive_scan_by_key(key, value):
+            jit.thrust.exclusive_scan_by_key(
+                jit.thrust.device, key.begin(), key.end(),
+                value.begin(), value.begin(), 5)
+
+        key = cupy.array([0, 0, 0, 1, 1, 2, 3, 3, 3, 3])
+        value = cupy.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        exclusive_scan_by_key[1, 1](key, value)
+
+        expected = cupy.array([5, 6, 7, 5, 6, 5, 5, 6, 7, 8])
+        testing.assert_array_equal(value, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_find_iterator(self, order):
         @jit.rawkernel()
         def find(x, y):

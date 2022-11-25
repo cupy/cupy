@@ -182,7 +182,7 @@ def exclusive_scan(
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if not isinstance(result.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
+        raise TypeError('`result` must be of pointer type')
     if first.ctype != last.ctype:
         raise TypeError('`first` and `last` must be of the same type')
     if first.ctype.child_type != result.ctype.child_type:
@@ -197,7 +197,36 @@ def exclusive_scan(
         f'thrust::exclusive_scan({params})', result.ctype)
 
 
-# TODO(asi1024): Add exclusive_scan_by_key
+@_wrap_thrust_func(['thrust/scan.h'])
+def exclusive_scan_by_key(
+        env, exec_policy, first1, last1, first2, result,
+        init=None, binary_pred=None, binary_op=None):
+    """Computes an exclusive prefix sum operation by key.
+    """
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise ValueError('The first argument must be execution policy type')
+    if not isinstance(first1.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first1` must be of pointer type')
+    if not isinstance(first2.ctype, _cuda_types.PointerBase):
+        raise TypeError('`first2` must be of pointer type')
+    if not isinstance(result.ctype, _cuda_types.PointerBase):
+        raise TypeError('`result` must be of pointer type')
+    if first1.ctype != last1.ctype:
+        raise TypeError('`first1` and `last1` must be of the same type')
+    if first2.ctype.child_type != result.ctype.child_type:
+        raise TypeError('`first2` and `result` must be of the same type')
+    if binary_pred is not None:
+        raise NotImplementedError('binary_pred option is not supported')
+    if binary_op is not None:
+        raise NotImplementedError('binary_op option is not supported')
+    args = [exec_policy, first1, last1, first2, result]
+    if init is not None:
+        args.append(init)
+    params = ', '.join([_internal_types.Data.init(a, env).code for a in args])
+    return _internal_types.Data(
+        f'thrust::exclusive_scan_by_key({params})', result.ctype)
+
+
 # TODO(asi1024): Add fill
 # TODO(asi1024): Add fill_n
 
