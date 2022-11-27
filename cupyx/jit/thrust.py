@@ -233,23 +233,6 @@ def find(env, exec_policy, first, last, value):
     return _Data(f'thrust::find({params})', first.ctype)
 
 
-@_wrap_thrust_func(['thrust/mismatch.h'])
-def mismatch(env, exec_policy, first1, last1, first2, pred=None):
-    """Finds the first positions whose values differ.
-    """
-    _assert_same_type(first1, last1)
-    _assert_same_pointer_type(first1, first2)
-    # TODO(asi1024): Typecheck for EqualityComparable.
-    if pred is not None:
-        raise NotImplementedError('pred option is not supported')
-    args = [exec_policy, first1, last1, first2]
-    params = ', '.join([a.code for a in args])
-    return _Data(
-        f'thrust::mismatch({params})',
-        _cuda_types.Tuple([first1.ctype, first2.ctype])
-    )
-
-
 # TODO(asi1024): Add find_if
 # TODO(asi1024): Add find_if_not
 # TODO(asi1024): Add for_each
@@ -313,6 +296,23 @@ def inclusive_scan_by_key(
 # TODO(asi1024): Add make_counting_iterator
 # TODO(asi1024): Add make_discard_iterator
 # TODO(asi1024): Add make_index_sequence
+
+
+@_wrap_thrust_func(['thrust/mismatch.h'])
+def mismatch(env, exec_policy, first1, last1, first2, pred=None):
+    """Finds the first positions whose values differ.
+    """
+    _assert_same_type(first1, last1)
+    _assert_same_pointer_type(first1, first2)
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    if pred is not None:
+        raise NotImplementedError('pred option is not supported')
+    args = [exec_policy, first1, last1, first2]
+    params = ', '.join([a.code for a in args])
+    return _Data(
+        f'thrust::mismatch({params})',
+        _cuda_types.Tuple([first1.ctype, first2.ctype])
+    )
 
 
 @_wrap_thrust_func(['thrust/sort.h'])
