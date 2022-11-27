@@ -227,7 +227,7 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
-    
+
     def integers(
             self, low, high=None, size=None,
             dtype=numpy.int64, endpoint=False):
