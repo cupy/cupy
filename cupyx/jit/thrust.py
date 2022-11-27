@@ -23,6 +23,37 @@ def _wrap_thrust_func(headers):
     return wrapper
 
 
+def _assert_pointer_type(a: _Data) -> None:
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    if not isinstance(a.ctype, _cuda_types.PointerBase):
+        raise TypeError(f'`{a.code}` must be of pointer type: `{a.ctype}`')
+
+
+def _assert_same_type(a: _Data, b: _Data) -> None:
+    if a.ctype != b.ctype:
+        raise TypeError(
+            f'`{a.code}` and `{b.code}` must be of the same type: '
+            f'`{a.ctype}` != `{b.ctype}`')
+
+
+def _assert_same_pointer_type(a: _Data, b: _Data) -> None:
+    # TODO(asi1024): Typecheck for EqualityComparable.
+    _assert_pointer_type(a)
+    _assert_pointer_type(b)
+    if a.ctype.child_type != b.ctype.child_type:
+        raise TypeError(
+            f'`{a.code}` and `{b.code}` must be of the same pointer type: '
+            f'`{a.ctype.child_type}` != `{b.type.child_type}`')
+
+
+def _assert_pointer_of(a: _Data, b: _Data) -> None:
+    _assert_pointer_type(a)
+    if a.ctype.child_type != b.ctype:
+        raise TypeError(
+            f'`*{a.code}` and `{b.code}` must be of the same type: '
+            f'`{a.ctype.child_type}` != `{b.ctype}`')
+
+
 class _ExecPolicyType(_cuda_types.TypeBase):
     pass
 
@@ -36,12 +67,8 @@ seq = _Data('thrust::seq', _ExecPolicyType())
 def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
     """Computes the differences of adjacent elements.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`keys_first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
-    if first.ctype.child_type != result.ctype.child_type:
-        raise TypeError('`first` and `result` must be of the same type')
+    _assert_same_type(first, last)
+    _assert_same_pointer_type(first, result)
     if binary_op is not None:
         raise NotImplementedError('binary_op option is not supported')
     args = [exec_policy, first, last, result]
@@ -57,36 +84,27 @@ def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
 def binary_search(env, exec_policy, first, last, *args):
     """Attempts to find the element value with binary search.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`keys_first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
 
     if 1 <= len(args) <= 2:
         value = args[0]
         comp = args[1] if len(args) == 2 else None
-        if first.ctype.child_type != value.ctype:
-            raise TypeError('`first` and `result` must be of the same type')
-        if comp is not None:
-            raise NotImplementedError('comp option is not supported')
+        _assert_pointer_of(first, value)
         result_ctype = _cuda_types.bool_
     elif 3 <= len(args) <= 4:
         value_first = args[0]
         value_last = args[1]
         result = args[2]
         comp = args[3] if len(args) == 4 else None
-        if first.ctype.child_type != value_first.ctype.child_type:
-            raise TypeError(
-                '`first` and `value_first` must be of the same type')
-        if value_first.ctype != value_last.ctype:
-            raise TypeError(
-                '`value_first` and `value_last` must be of the same type')
-        if comp is not None:
-            raise NotImplementedError('comp option is not supported')
+        _assert_same_pointer_type(first, value_first)
+        _assert_same_type(value_first, value_last)
         result_ctype = result.ctype
     else:
         raise TypeError('Invalid number of inputs of thrust.binary_search')
 
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
     args = [exec_policy, first, last, *args]
     params = ', '.join([a.code for a in args])
     return _Data(f'thrust::binary_search({params})', result_ctype)
@@ -96,12 +114,8 @@ def binary_search(env, exec_policy, first, last, *args):
 def copy(env, exec_policy, first, last, result):
     """Copies the elements.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`keys_first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
-    if first.ctype.child_type != result.ctype.child_type:
-        raise TypeError('`first` and `result` must be of the same type')
+    _assert_same_type(first, last)
+    _assert_same_pointer_type(first, result)
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, result]
     params = ', '.join([a.code for a in args])
@@ -133,14 +147,8 @@ def count(env, exec_policy, first, last, value):
 def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
     """Returns true if the two ranges are identical.
     """
-    if not isinstance(first1.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first1` must be of pointer type')
-    if not isinstance(first2.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first2` must be of pointer type')
-    if first1.ctype != last1.ctype:
-        raise TypeError('`first1` and `last1` must be of the same type')
-    if first1.ctype.child_type != first2.ctype.child_type:
-        raise TypeError('`first1` and `first2` must be of the same type')
+    _assert_same_type(first1, last1)
+    _assert_same_pointer_type(first1, first2)
     if binary_pred is not None:
         raise NotImplementedError('binary_pred option is not supported')
     args = [exec_policy, first1, last1, first2]
@@ -152,10 +160,8 @@ def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
 def equal_range(env, exec_policy, first, last, value, comp=None):
     """Attempts to find the element value in an ordered range.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
     if comp is not None:
         raise NotImplementedError('comp option is not supported')
     args = [exec_policy, first, last, value]
@@ -170,14 +176,8 @@ def exclusive_scan(
         env, exec_policy, first, last, result, init=None, binary_op=None):
     """Computes an exclusive prefix sum operation.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
-    if not isinstance(result.ctype, _cuda_types.PointerBase):
-        raise TypeError('`result` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
-    if first.ctype.child_type != result.ctype.child_type:
-        raise TypeError('`first` and `last` must be of the same type')
+    _assert_same_type(first, last)
+    _assert_same_pointer_type(first, result)
     if binary_op is not None:
         raise NotImplementedError('binary_op option is not supported')
     args = [exec_policy, first, last, result]
@@ -193,16 +193,9 @@ def exclusive_scan_by_key(
         init=None, binary_pred=None, binary_op=None):
     """Computes an exclusive prefix sum operation by key.
     """
-    if not isinstance(first1.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first1` must be of pointer type')
-    if not isinstance(first2.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first2` must be of pointer type')
-    if not isinstance(result.ctype, _cuda_types.PointerBase):
-        raise TypeError('`result` must be of pointer type')
-    if first1.ctype != last1.ctype:
-        raise TypeError('`first1` and `last1` must be of the same type')
-    if first2.ctype.child_type != result.ctype.child_type:
-        raise TypeError('`first2` and `result` must be of the same type')
+    _assert_pointer_type(first1)
+    _assert_same_type(first1, last1)
+    _assert_same_pointer_type(first2, result)
     if binary_pred is not None:
         raise NotImplementedError('binary_pred option is not supported')
     if binary_op is not None:
@@ -218,12 +211,8 @@ def exclusive_scan_by_key(
 def fill(env, exec_policy, first, last, value):
     """Assigns the value to every element in the range.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
-    if first.ctype.child_type != value.ctype:
-        raise TypeError('`*first` and `value` must be of the same type')
+    _assert_same_type(first, last)
+    # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, value]
     params = ', '.join([a.code for a in args])
     return _Data(f'thrust::fill({params})', _cuda_types.void)
@@ -236,10 +225,8 @@ def fill(env, exec_policy, first, last, value):
 def find(env, exec_policy, first, last, value):
     """Finds the first iterator whose value equals to ``value``.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, value]
     params = ', '.join([a.code for a in args])
@@ -250,15 +237,11 @@ def find(env, exec_policy, first, last, value):
 def mismatch(env, exec_policy, first1, last1, first2, pred=None):
     """Finds the first positions whose values differ.
     """
-    if not isinstance(first1.ctype, _cuda_types.PointerBase):
-        raise TypeError('`keys_first` must be of pointer type')
-    if first1.ctype != last1.ctype:
-        raise TypeError('`first1` and `last1` must be of the same type')
-    if first1.ctype.child_type != first2.ctype.child_type:
-        raise TypeError('`first1` and `first2` must be of the same type')
+    _assert_same_type(first1, last1)
+    _assert_same_pointer_type(first1, first2)
+    # TODO(asi1024): Typecheck for EqualityComparable.
     if pred is not None:
         raise NotImplementedError('pred option is not supported')
-    # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first1, last1, first2]
     params = ', '.join([a.code for a in args])
     return _Data(
@@ -277,17 +260,9 @@ def mismatch(env, exec_policy, first1, last1, first2, pred=None):
 def gather(env, exec_policy, map_first, map_last, input_first, result):
     """Copies elements from source into destination  according to a map.
     """
-    if not isinstance(map_first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`map_first` must be of pointer type')
-    if not isinstance(input_first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`input_first` must be of pointer type')
-    if not isinstance(result.ctype, _cuda_types.PointerBase):
-        raise TypeError('`result_first` must be of pointer type')
-    if map_first.ctype != map_last.ctype:
-        raise TypeError('`map_first` and `map_last` must be of the same type')
-    if input_first.ctype.child_type != result.ctype.child_type:
-        raise TypeError(
-            '`*input_first` and `*result` must be of the same type')
+    _assert_pointer_type(map_first)
+    _assert_same_type(map_first, map_last)
+    _assert_same_pointer_type(input_first, result)
     args = [exec_policy, map_first, map_last, input_first, result]
     params = ', '.join([a.code for a in args])
     return _Data(f'thrust::gather({params})', result.ctype)
@@ -302,14 +277,8 @@ def inclusive_scan(
         env, exec_policy, first, last, result, binary_op=None):
     """Computes an inclusive prefix sum operation.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
-    if not isinstance(result.ctype, _cuda_types.PointerBase):
-        raise TypeError('`result` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
-    if first.ctype.child_type != result.ctype.child_type:
-        raise TypeError('`first` and `last` must be of the same type')
+    _assert_same_type(first, last)
+    _assert_same_pointer_type(first, result)
     if binary_op is not None:
         raise NotImplementedError('binary_op option is not supported')
     args = [exec_policy, first, last, result]
@@ -323,16 +292,9 @@ def inclusive_scan_by_key(
         binary_pred=None, binary_op=None):
     """Computes an inclusive prefix sum operation by key.
     """
-    if not isinstance(first1.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first1` must be of pointer type')
-    if not isinstance(first2.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first2` must be of pointer type')
-    if not isinstance(result.ctype, _cuda_types.PointerBase):
-        raise TypeError('`result` must be of pointer type')
-    if first1.ctype != last1.ctype:
-        raise TypeError('`first1` and `last1` must be of the same type')
-    if first2.ctype.child_type != result.ctype.child_type:
-        raise TypeError('`first2` and `result` must be of the same type')
+    _assert_pointer_type(first1)
+    _assert_same_type(first1, last1)
+    _assert_same_pointer_type(first2, result)
     if binary_pred is not None:
         raise NotImplementedError('binary_pred option is not supported')
     if binary_op is not None:
@@ -357,10 +319,8 @@ def inclusive_scan_by_key(
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
     """
-    if not isinstance(first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`first` must be of pointer type')
-    if first.ctype != last.ctype:
-        raise TypeError('`first` and `last` must be of the same type')
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
     if comp is not None:
         raise NotImplementedError('comp option is not supported')
     # TODO(asi1024): Typecheck for Comparable.
@@ -374,13 +334,9 @@ def sort_by_key(
         env, exec_policy, keys_first, keys_last, values_first, comp=None):
     """Performs key-value sort.
     """
-    if not isinstance(keys_first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`keys_first` must be of pointer type')
-    if keys_first.ctype != keys_last.ctype:
-        raise TypeError(
-            '`keys_first` and `keys_last` must be of the same type')
-    if not isinstance(values_first.ctype, _cuda_types.PointerBase):
-        raise TypeError('`values_first` must be of pointer type')
+    _assert_pointer_type(keys_first)
+    _assert_same_type(keys_first, keys_last)
+    _assert_pointer_type(values_first)
     if comp is not None:
         raise NotImplementedError('comp option is not supported')
     # TODO(asi1024): Typecheck for Comparable.
