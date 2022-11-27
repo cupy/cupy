@@ -127,6 +127,23 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
             raise AssertionError(message)
 
 
+uniform_params = [
+    {'low': 1, 'high': 10.0, 'size': (3, 5)},
+    {'low': cupy.array([1, 2]), 'high': 3, 'size': None},
+    {'low': 20, 'high': 20.1, 'size': 1000}
+]
+
+
+class Uniform:
+    target_method = 'uniform'
+
+    def test_uniform(self):
+        print("testing uniform")
+        result = self.generate(self.low, self.high, self.size)
+        assert cupy.all(result >= cupy.asarray(self.low).min())
+        assert cupy.all(result < cupy.asarray(self.high).max())
+
+
 beta_params = [
     {'a': 1.0, 'b': 3.0},
     {'a': 3.0, 'b': 3.0},
