@@ -6,21 +6,26 @@ from cupyx.jit._internal_types import Data as _Data
 def _wrap_thrust_func(headers):
     def wrapper(func):
         class FuncWrapper(_internal_types.BuiltinFunc):
-            def call(self, env, exec_policy, *args, **kwargs):
+            def call(self, env, *args, **kwargs):
                 for header in headers:
                     env.generated.add_code(f'#include <{header}>')
                 env.generated.add_code('#include <thrust/execution_policy.h>')
                 env.generated.add_code('#include <thrust/functional.h>')
                 env.generated.backend = 'nvcc'
-                exec_policy = _Data.init(exec_policy, env)
                 data_args = [_Data.init(a, env) for a in args]
                 data_kwargs = {k: _Data.init(kwargs[k], env) for k in kwargs}
-                if not isinstance(exec_policy.ctype, _ExecPolicyType):
-                    raise ValueError(
-                        f'{exec_policy.code} must be execution policy type')
-                return func(env, exec_policy, *data_args, **data_kwargs)
+                return func(env, *data_args, **data_kwargs)
         return FuncWrapper()
     return wrapper
+
+
+class _ExecPolicyType(_cuda_types.TypeBase):
+    pass
+
+
+def _assert_exec_policy_type(exec_policy: _Data):
+    if not isinstance(exec_policy.ctype, _ExecPolicyType):
+        raise TypeError(f'{exec_policy.code} must be execution policy type')
 
 
 def _assert_pointer_type(a: _Data) -> None:
@@ -54,10 +59,6 @@ def _assert_pointer_of(a: _Data, b: _Data) -> None:
             f'`{a.ctype.child_type}` != `{b.ctype}`')
 
 
-class _ExecPolicyType(_cuda_types.TypeBase):
-    pass
-
-
 host = _Data('thrust::host', _ExecPolicyType())
 device = _Data('thrust::device', _ExecPolicyType())
 seq = _Data('thrust::seq', _ExecPolicyType())
@@ -67,6 +68,7 @@ seq = _Data('thrust::seq', _ExecPolicyType())
 def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
     """Computes the differences of adjacent elements.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first, last)
     _assert_same_pointer_type(first, result)
     if binary_op is not None:
@@ -84,6 +86,7 @@ def adjacent_difference(env, exec_policy, first, last, result, binary_op=None):
 def binary_search(env, exec_policy, first, last, *args):
     """Attempts to find the element value with binary search.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
 
@@ -114,6 +117,7 @@ def binary_search(env, exec_policy, first, last, *args):
 def copy(env, exec_policy, first, last, result):
     """Copies the elements.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first, last)
     _assert_same_pointer_type(first, result)
     # TODO(asi1024): Typecheck for EqualityComparable.
@@ -130,6 +134,7 @@ def copy(env, exec_policy, first, last, result):
 def count(env, exec_policy, first, last, value):
     """Counts the number of elements in [first, last) that equals to ``value``.
     """
+    _assert_exec_policy_type(exec_policy)
     if not isinstance(first.ctype, _cuda_types.PointerBase):
         raise TypeError('`first` must be of pointer type')
     if first.ctype != last.ctype:
@@ -147,6 +152,7 @@ def count(env, exec_policy, first, last, value):
 def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
     """Returns true if the two ranges are identical.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first1, last1)
     _assert_same_pointer_type(first1, first2)
     if binary_pred is not None:
@@ -160,6 +166,7 @@ def equal(env, exec_policy, first1, last1, first2, binary_pred=None):
 def equal_range(env, exec_policy, first, last, value, comp=None):
     """Attempts to find the element value in an ordered range.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
     if comp is not None:
@@ -176,6 +183,7 @@ def exclusive_scan(
         env, exec_policy, first, last, result, init=None, binary_op=None):
     """Computes an exclusive prefix sum operation.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first, last)
     _assert_same_pointer_type(first, result)
     if binary_op is not None:
@@ -192,6 +200,7 @@ def exclusive_scan_by_key(
         env, exec_policy, first1, last1, first2, result,
         init=None, binary_pred=None, binary_op=None):
     """Computes an exclusive prefix sum operation by key.
+    _assert_exec_policy_type(exec_policy)
     """
     _assert_pointer_type(first1)
     _assert_same_type(first1, last1)
@@ -211,6 +220,7 @@ def exclusive_scan_by_key(
 def fill(env, exec_policy, first, last, value):
     """Assigns the value to every element in the range.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first, last)
     # TODO(asi1024): Typecheck for EqualityComparable.
     args = [exec_policy, first, last, value]
@@ -225,6 +235,7 @@ def fill(env, exec_policy, first, last, value):
 def find(env, exec_policy, first, last, value):
     """Finds the first iterator whose value equals to ``value``.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
     # TODO(asi1024): Typecheck for EqualityComparable.
@@ -243,6 +254,7 @@ def find(env, exec_policy, first, last, value):
 def gather(env, exec_policy, map_first, map_last, input_first, result):
     """Copies elements from source into destination  according to a map.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(map_first)
     _assert_same_type(map_first, map_last)
     _assert_same_pointer_type(input_first, result)
@@ -260,6 +272,7 @@ def inclusive_scan(
         env, exec_policy, first, last, result, binary_op=None):
     """Computes an inclusive prefix sum operation.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first, last)
     _assert_same_pointer_type(first, result)
     if binary_op is not None:
@@ -275,6 +288,7 @@ def inclusive_scan_by_key(
         binary_pred=None, binary_op=None):
     """Computes an inclusive prefix sum operation by key.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first1)
     _assert_same_type(first1, last1)
     _assert_same_pointer_type(first2, result)
@@ -293,6 +307,7 @@ def inner_product(
         binary_op1=None, binary_op2=None):
     """Calculates an inner product of the ranges.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first1, last1)
     _assert_same_pointer_type(first1, first2)
     if binary_op1 is not None:
@@ -311,6 +326,7 @@ def inner_product(
 def is_sorted(env, exec_policy, first, last, comp=None):
     """Returns true if the range is sorted in ascending order.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
     if comp is not None:
@@ -324,6 +340,7 @@ def is_sorted(env, exec_policy, first, last, comp=None):
 def is_sorted_until(env, exec_policy, first, last, comp=None):
     """Returns the last iterator for which the range is sorted.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
     if comp is not None:
@@ -337,6 +354,7 @@ def is_sorted_until(env, exec_policy, first, last, comp=None):
 def lower_bound(env, exec_policy, first, last, *args):
     """Attempts to find the element value with binary search.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
 
@@ -373,6 +391,7 @@ def lower_bound(env, exec_policy, first, last, *args):
 def mismatch(env, exec_policy, first1, last1, first2, pred=None):
     """Finds the first positions whose values differ.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_same_type(first1, last1)
     _assert_same_pointer_type(first1, first2)
     # TODO(asi1024): Typecheck for EqualityComparable.
@@ -390,6 +409,7 @@ def mismatch(env, exec_policy, first1, last1, first2, pred=None):
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
     _assert_same_type(first, last)
     if comp is not None:
@@ -405,6 +425,7 @@ def sort_by_key(
         env, exec_policy, keys_first, keys_last, values_first, comp=None):
     """Performs key-value sort.
     """
+    _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(keys_first)
     _assert_same_type(keys_first, keys_last)
     _assert_pointer_type(values_first)
