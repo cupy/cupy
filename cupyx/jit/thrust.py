@@ -333,7 +333,36 @@ def is_sorted_until(env, exec_policy, first, last, comp=None):
     return _Data(f'thrust::is_sorted_until({params})', first.ctype)
 
 
-# TODO(asi1024): Add lower_bound
+@_wrap_thrust_func(['thrust/binary_search.h'])
+def lower_bound(env, exec_policy, first, last, *args):
+    """Attempts to find the element value with binary search.
+    """
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+
+    if 1 <= len(args) <= 2:
+        value = args[0]
+        comp = args[1] if len(args) == 2 else None
+        _assert_pointer_of(first, value)
+        result_ctype = first.ctype
+    elif 3 <= len(args) <= 4:
+        value_first = args[0]
+        value_last = args[1]
+        result = args[2]
+        comp = args[3] if len(args) == 4 else None
+        _assert_same_pointer_type(first, value_first)
+        _assert_same_type(value_first, value_last)
+        result_ctype = result.ctype
+    else:
+        raise TypeError('Invalid number of inputs of thrust.lower_bound')
+
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    args = [exec_policy, first, last, *args]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::lower_bound({params})', result_ctype)
+
+
 # TODO(asi1024): Add make_constant_iterator
 # TODO(asi1024): Add make_counting_iterator
 # TODO(asi1024): Add make_discard_iterator

@@ -372,6 +372,46 @@ class TestThrust:
         testing.assert_array_equal(out, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_lower_bound(self, order):
+        @jit.rawkernel()
+        def lower_bound(x, v, out):
+            i = jit.threadIdx.x
+            it = jit.thrust.lower_bound(
+                jit.thrust.seq, x.begin(), x.end(), v[i])
+            out[i] = it - x.begin()
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random((n2,), dtype=numpy.int32, order=order)
+        x = cupy.sort(x)
+        values = testing.shaped_random((n1,), dtype=numpy.int32, order=order)
+        out = cupy.zeros(n1, dtype=numpy.int32)
+        lower_bound[1, n1](x, values, out)
+
+        expected = cupy.searchsorted(x, values, side='left')
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_lower_bound_vec(self, order):
+        @jit.rawkernel()
+        def lower_bound(x, v, out):
+            i = jit.threadIdx.x
+            jit.thrust.lower_bound(
+                jit.thrust.seq, x.begin(), x.end(),
+                v[i].begin(), v[i].end(), out[i].begin())
+
+        n1, n2, n3 = (128, 160, 200)
+        x = testing.shaped_random(
+            (n2,), dtype=numpy.int32, scale=200, order=order, seed=0)
+        x = cupy.sort(x)
+        values = testing.shaped_random(
+            (n1, n3), dtype=numpy.int32, scale=200, order=order, seed=1)
+        out = cupy.zeros((n1, n3), dtype=numpy.int32)
+        lower_bound[1, n1](x, values, out)
+
+        expected = cupy.searchsorted(x, values, side='left')
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_mismatch_iterator(self, order):
         if runtime.is_hip:
             pytest.xfail('HIP does not support pair of pointer type')
