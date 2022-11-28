@@ -583,6 +583,20 @@ def reverse_copy(env, exec_policy, first, last, result):
     return _Data(f'thrust::reverse_copy({params})', _cuda_types.void)
 
 
+@_wrap_thrust_func(['thrust/scatter.h'])
+def scatter(env, exec_policy, first, last, map, result):
+    """Copies elements from source range into an output range according to map.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    _assert_pointer_type(map)
+    _assert_pointer_type(result)
+    args = [exec_policy, first, last, map, result]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::scatter({params})', _cuda_types.void)
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.

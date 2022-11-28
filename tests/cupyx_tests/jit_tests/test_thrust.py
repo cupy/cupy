@@ -632,6 +632,24 @@ class TestThrust:
         testing.assert_array_equal(out, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_scatter(self, order):
+        @jit.rawkernel()
+        def scatter(values, map, result):
+            jit.thrust.scatter(
+                jit.thrust.device, values.begin(), values.end(),
+                map.begin(), result.begin())
+
+        values = cupy.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=numpy.int32)
+        map = cupy.array([0, 5, 1, 6, 2, 7, 3, 8, 4, 9], dtype=numpy.int32)
+        result = cupy.zeros((10,), dtype=numpy.int64)
+        scatter[1, 1](values, map, result)
+
+        testing.assert_array_equal(
+            result,
+            cupy.array([1, 3, 5, 7, 9, 2, 4, 6, 8, 10]),
+        )
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')
