@@ -445,6 +445,32 @@ def mismatch(env, exec_policy, first1, last1, first2, pred=None):
     )
 
 
+# TODO(asi1024): Add none_of
+# TODO(asi1024): Add partition
+# TODO(asi1024): Add partition_copy
+# TODO(asi1024): Add partition_point
+
+
+@_wrap_thrust_func(['thrust/reduce.h'])
+def reduce(env, exec_policy, first, last, init=None, binary_op=None):
+    """Generalization of summation.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    args = [exec_policy, first, last]
+    if init is not None:
+        # TODO(asi1024): Typecheck for init.
+        args.append(init)
+        return_type = init.ctype
+    else:
+        return_type = first.ctype.child_type
+    if binary_op is not None:
+        raise NotImplementedError('binary_op option is not supported')
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::reduce({params})', return_type)
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.

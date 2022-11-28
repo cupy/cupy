@@ -476,6 +476,38 @@ class TestThrust:
         testing.assert_array_equal(out2, [0, 100, 30, 200, w])
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_reduce(self, order):
+        @jit.rawkernel()
+        def reduce(x, y):
+            i = jit.threadIdx.x
+            y[i] = jit.thrust.reduce(
+                jit.thrust.device, x[i].begin(), x[i].end())
+
+        (n1, n2) = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=numpy.int64, order=order)
+        out = cupy.zeros((n1,), numpy.int32)
+        reduce[1, n1](x, out)
+
+        expected = x.sum(axis=-1)
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_reduce_init(self, order):
+        @jit.rawkernel()
+        def reduce(x, y):
+            i = jit.threadIdx.x
+            y[i] = jit.thrust.reduce(
+                jit.thrust.device, x[i].begin(), x[i].end(), 10)
+
+        (n1, n2) = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=numpy.int64, order=order)
+        out = cupy.zeros((n1,), numpy.int32)
+        reduce[1, n1](x, out)
+
+        expected = x.sum(axis=-1) + 10
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')
