@@ -402,7 +402,27 @@ def make_constant_iterator(env, x, i=None):
     )
 
 
-# TODO(asi1024): Add make_counting_iterator
+class _CountingIterator(_cuda_types.PointerBase):
+
+    def __str__(self) -> str:
+        value_type = self.child_type
+        return f'thrust::counting_iterator<{value_type}>'
+
+
+@_wrap_thrust_func(['thrust/iterator/counting_iterator.h'])
+def make_counting_iterator(env, x, i=None):
+    """Finds the first positions whose values differ.
+    """
+    if i is not None:
+        raise NotImplementedError('index_type is not supported')
+    args = [x]
+    params = ', '.join([a.code for a in args])
+    return _Data(
+        f'thrust::make_counting_iterator({params})',
+        _CountingIterator(x.ctype)
+    )
+
+
 # TODO(asi1024): Add make_discard_iterator
 # TODO(asi1024): Add make_index_sequence
 

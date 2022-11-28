@@ -427,6 +427,21 @@ class TestThrust:
         testing.assert_array_equal(out, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_make_counting_iterator(self, order):
+        @jit.rawkernel()
+        def make_counting_iterator(x):
+            i = jit.threadIdx.x
+            it = jit.thrust.make_counting_iterator(i * i)
+            x[i] = it[i]
+
+        n = 128
+        out = cupy.zeros((n,), numpy.int32)
+        make_counting_iterator[1, n](out)
+
+        expected = cupy.arange(n) ** 2 + cupy.arange(n)
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_mismatch_iterator(self, order):
         if runtime.is_hip:
             pytest.xfail('HIP does not support pair of pointer type')
