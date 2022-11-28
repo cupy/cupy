@@ -509,7 +509,7 @@ def einsum(*operands, **kwargs):
         optimize = 'greedy'
     if kwargs:
         raise TypeError('Did not understand the following kwargs: %s'
-                        % list(kwargs))
+                        % list(kwargs.keys()))
 
     result_dtype = cupy.result_type(*operands) if dtype is None else dtype
     operands = [
