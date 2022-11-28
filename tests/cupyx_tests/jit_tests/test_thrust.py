@@ -563,6 +563,24 @@ class TestThrust:
             result[:4], cupy.array([3, 4, 5, 9], dtype=numpy.int32))
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_replace(self, order):
+        @jit.rawkernel()
+        def replace(x):
+            i = jit.threadIdx.x
+            jit.thrust.replace(
+                jit.thrust.device, x[i].begin(), x[i].end(), 0, 999)
+
+        (n1, n2) = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=numpy.int32, order=order)
+        expected = x.copy()
+        replace[1, n1](x)
+
+        mask = expected == 0
+        assert (mask.sum(axis=1) > 0).all()
+        expected[mask] = 999
+        testing.assert_array_equal(x, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')

@@ -523,6 +523,23 @@ def remove_copy(env, exec_policy, first, last, result, value):
     return _Data(f'thrust::remove_copy({params})', first.ctype)
 
 
+# TODO(asi1024): Add remove_copy_if
+# TODO(asi1024): Add remove_if
+
+
+@_wrap_thrust_func(['thrust/replace.h'])
+def replace(env, exec_policy, first, last, old_value, new_value):
+    """Replaces every element in the range equal to old_value with new_value.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    _assert_same_type(old_value, new_value)
+    args = [exec_policy, first, last, old_value, new_value]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::replace({params})', _cuda_types.void)
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
