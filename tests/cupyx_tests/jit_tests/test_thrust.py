@@ -208,8 +208,7 @@ class TestThrust:
         expected = x.cumsum(axis=-1)[:, :-1] + 10
         testing.assert_array_equal(y[:, 1:], expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
-    def test_exclusive_scan_by_key(self, order):
+    def test_exclusive_scan_by_key(self):
         @jit.rawkernel()
         def exclusive_scan_by_key(key, value):
             jit.thrust.exclusive_scan_by_key(
@@ -232,7 +231,7 @@ class TestThrust:
             jit.thrust.fill(jit.thrust.device, array.begin(), array.end(), 10)
 
         n1, n2 = (128, 160)
-        x = cupy.zeros((n1, n2), dtype=numpy.int32)
+        x = cupy.zeros((n1, n2), dtype=numpy.int32, order=order)
         fill[1, n1](x)
         expected = cupy.full((n1, n2), 10, dtype=numpy.int32)
         testing.assert_array_equal(x, expected)
@@ -275,8 +274,10 @@ class TestThrust:
                 input_.begin(), result.begin())
 
         n1, n2 = (128, 160)
-        x = testing.shaped_random((n1, n2), dtype=cupy.int32, scale=n2, seed=0)
-        y = testing.shaped_random((n2,), dtype=cupy.float32, seed=1)
+        x = testing.shaped_random(
+            (n1, n2), dtype=cupy.int32, scale=n2, order=order, seed=0)
+        y = testing.shaped_random(
+            (n2,), dtype=cupy.float32, order=order, seed=1)
         z = cupy.zeros((n1, n2), cupy.float32)
         gather[1, n1](x, y, z)
         expected = y[x]
@@ -301,8 +302,7 @@ class TestThrust:
         expected = x.cumsum(axis=-1)
         testing.assert_array_equal(y, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
-    def test_inclusive_scan_by_key(self, order):
+    def test_inclusive_scan_by_key(self):
         @jit.rawkernel()
         def inclusive_scan_by_key(key, value):
             jit.thrust.inclusive_scan_by_key(
@@ -326,8 +326,10 @@ class TestThrust:
                 b[i].begin(), 0.)
 
         (n1, n2) = (128, 160)
-        x = testing.shaped_random((n1, n2), dtype=numpy.float32, seed=0)
-        y = testing.shaped_random((n1, n2), dtype=numpy.float32, seed=1)
+        x = testing.shaped_random(
+            (n1, n2), dtype=numpy.float32, order=order, seed=0)
+        y = testing.shaped_random(
+            (n1, n2), dtype=numpy.float32, order=order, seed=1)
         z = cupy.zeros((n1,), dtype=numpy.float32)
         inner_product[1, n1](x, y, z)
 
@@ -345,7 +347,7 @@ class TestThrust:
         x = cupy.array([
             [1, 4, 2, 8, 5, 7],
             [1, 2, 4, 5, 7, 8],
-        ])
+        ], order=order)
         out = cupy.array([False, False], numpy.bool_)
         is_sorted[1, 2](x, out)
 
@@ -364,7 +366,7 @@ class TestThrust:
         x = cupy.array([
             [1, 2, 3, 4, 1, 2, 3, 4],
             [1, 2, 4, 1, 2, 3, 5, 5],
-        ])
+        ], order=order)
         out = cupy.zeros((2,), dtype=numpy.int64)
         is_sorted_until[1, 2](x, out)
 
@@ -411,8 +413,7 @@ class TestThrust:
         expected = cupy.searchsorted(x, values, side='left')
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
-    def test_make_constant_iterator(self, order):
+    def test_make_constant_iterator(self):
         @jit.rawkernel()
         def make_constant_iterator(x):
             i = jit.threadIdx.x
@@ -426,8 +427,7 @@ class TestThrust:
         expected = cupy.arange(n) ** 2
         testing.assert_array_equal(out, expected)
 
-    @pytest.mark.parametrize('order', ['C', 'F'])
-    def test_make_counting_iterator(self, order):
+    def test_make_counting_iterator(self):
         @jit.rawkernel()
         def make_counting_iterator(x):
             i = jit.threadIdx.x
