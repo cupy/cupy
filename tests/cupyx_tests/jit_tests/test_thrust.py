@@ -507,6 +507,30 @@ class TestThrust:
         expected = x.sum(axis=-1) + 10
         testing.assert_array_equal(out, expected)
 
+    def test_reduce_by_key(self):
+        @jit.rawkernel()
+        def reduce_by_key(keys, values, keys_out, values_out, size1, size2):
+            ret = jit.thrust.reduce_by_key(
+                jit.thrust.device, keys.begin(), keys.end(),
+                values.begin(), keys_out.begin(), values_out.begin())
+            size1[0] = ret[0] - keys_out.begin()
+            size2[0] = ret[1] - values_out.begin()
+
+        keys = cupy.array([1, 3, 3, 3, 2, 2, 1], dtype=numpy.int32)
+        values = cupy.array([9, 8, 7, 6, 5, 4, 3], dtype=numpy.int32)
+        keys_out = cupy.zeros((7,), dtype=numpy.int32)
+        values_out = cupy.zeros((7,), dtype=numpy.int32)
+        size1 = cupy.zeros((1,), numpy.int32)
+        size2 = cupy.zeros((2,), numpy.int32)
+        reduce_by_key[1, 1](keys, values, keys_out, values_out, size1, size2)
+
+        testing.assert_array_equal(size1[0], 4)
+        testing.assert_array_equal(size2[0], 4)
+        testing.assert_array_equal(
+            keys_out[:4], cupy.array([1, 3, 2, 1], dtype=numpy.int32))
+        testing.assert_array_equal(
+            values_out[:4], cupy.array([9, 21, 9, 3], dtype=numpy.int32))
+
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
