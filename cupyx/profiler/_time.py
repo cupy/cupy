@@ -82,7 +82,8 @@ class _PerfCaseResult:
 
 def benchmark(
         func, args=(), kwargs={}, n_repeat=10000, *,
-        name=None, n_warmup=10, max_duration=_math.inf, devices=None, copy_args=False):
+        name=None, n_warmup=10, max_duration=_math.inf, devices=None,
+        copy_args=False):
     """ Timing utility for measuring time spent by both CPU and GPU.
 
     This function is a very convenient helper for setting up a timing test. The
@@ -122,8 +123,9 @@ def benchmark(
         devices (tuple): a tuple of device IDs (int) that will be timed during
             the timing test. If not given, the current device is used.
         copy_args (bool): a flag indicating the positional arguments should be
-            copied before calling the function under test. Useful if the function
-            under test modifies data in place, and this modification effects runtime.
+            copied before calling the function under test. Useful if the
+            function under test modifies data in place, and this modification
+            effects runtime.
 
     Returns:
         :class:`~cupyx.profiler._time._PerfCaseResult`:
@@ -155,11 +157,13 @@ def benchmark(
         raise ValueError('`devices` should be of tuple type')
 
     return _repeat(
-        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices, copy_args)
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices,
+        copy_args)
 
 
 def _repeat(
-        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices, copy_args):
+        func, args, kwargs, n_repeat, name, n_warmup, max_duration, devices,
+        copy_args):
 
     events_1 = []
     events_2 = []
