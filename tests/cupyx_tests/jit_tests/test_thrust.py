@@ -546,6 +546,22 @@ class TestThrust:
         testing.assert_array_equal(
             x[:4], cupy.array([3, 4, 5, 9], dtype=numpy.int32))
 
+    def test_remove_copy(self):
+        @jit.rawkernel()
+        def remove_copy(x, result, size):
+            ptr = jit.thrust.remove_copy(
+                jit.thrust.device, x.begin(), x.end(), result.begin(), 1)
+            size[0] = ptr - result.begin()
+
+        x = cupy.array([3, 1, 4, 1, 5, 9], dtype=numpy.int32)
+        result = cupy.zeros((6,), dtype=numpy.int32)
+        size = cupy.zeros((1,), numpy.int32)
+        remove_copy[1, 1](x, result, size)
+
+        testing.assert_array_equal(size[0], 4)
+        testing.assert_array_equal(
+            result[:4], cupy.array([3, 4, 5, 9], dtype=numpy.int32))
+
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
