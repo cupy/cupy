@@ -507,4 +507,59 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
 
 
 def _make_periodic_spline(x, y, t, k, axis):
-    raise NotImplementedError
+    n = x.size
+
+    # 1. Construct the colocation matrix.
+    matr = BSpline.design_matrix(x, t, k)
+
+    # 2. Boundary conditions: need to augment the design matrix with additional
+    # rows, one row per derivative at the left and right edges.
+    # The k-1 boundary conditions go to the first rows of the matrix
+    # To compute the derivatives, will invoke the de Boor D kernel.
+
+    # Prepare the I/O arrays for the kernels. We only need the non-zero
+    # b-splines at x[0] and x[-1], but the kernel wants more arrays which
+    # we allocate and ignore (mode != 1)
+    temp = cupy.zeros(2*(2*k+1), dtype=float)
+    num_c = 1
+    dummy_c = cupy.empty((t.size - k - 1, num_c), dtype=float)
+    out = cupy.empty((2, 1), dtype=dummy_c.dtype)
+
+    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+
+    # find the intervals for x[0] and x[-1]
+    x0 = cupy.r_[x[0], x[-1]]
+    intervals_bc = cupy.array([k, n + k - 1], dtype=int)   # match scipy
+
+    # 3. B.C.s
+    rows = cupy.zeros((k-1, n + k - 1), dtype=float)
+
+    for m in range(k-1):
+        # place the derivatives of the order m at x[0] into `temp`
+        d_boor_kernel((1,), (2,),
+                      (t, dummy_c, k, m+1, x0, intervals_bc,
+                       out,     # ignore (mode !=1),
+                       temp,    # non-zero b-splines
+                       num_c,   # the 2nd dimension of `dummy_c`. Ignore.
+                       0,       # mode != 1 => do not touch dummy_c array
+                       2))      # the length of the `x0` array
+        rows[m, :k+1] = temp[:k+1]
+        rows[m, -k:] -= temp[2*k + 1:(2*k + 1) + k+1][:-1]
+
+    matr_csr = sparse.vstack([sparse.csr_matrix(rows),   # A[:nleft, :]
+                              matr])
+
+    # r.h.s.
+    extradim = prod(y.shape[1:])
+    rhs = cupy.empty((n + k - 1, extradim), dtype=float)
+    rhs[:(k - 1), :] = 0
+    rhs[(k - 1):, :] = y.reshape((-1, extradim))
+
+    # solve: `spsolve` only accepts a single r.h.s., so loop over extradim
+    coef = cupy.empty((n + k - 1, extradim), dtype=y.dtype)
+    for dim in range(extradim):
+        coef[:, dim] = spsolve(matr_csr, rhs[:, dim])
+
+    coef = cupy.ascontiguousarray(coef.reshape((n + k - 1,) + y.shape[1:]))
+    return BSpline.construct_fast(t, coef, k,
+                                  extrapolate='periodic', axis=axis)
