@@ -601,6 +601,37 @@ class TestThrust:
         testing.assert_array_equal(out, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_reverse(self, order):
+        @jit.rawkernel()
+        def reverse(x):
+            i = jit.threadIdx.x
+            jit.thrust.reverse(
+                jit.thrust.device, x[i].begin(), x[i].end())
+
+        (n1, n2) = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=numpy.int32, order=order)
+        expected = x[:, ::-1].copy()
+        reverse[1, n1](x)
+
+        testing.assert_array_equal(x, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_reverse_copy(self, order):
+        @jit.rawkernel()
+        def reverse_copy(x, out):
+            i = jit.threadIdx.x
+            jit.thrust.reverse_copy(
+                jit.thrust.device, x[i].begin(), x[i].end(), out[i].begin())
+
+        (n1, n2) = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=numpy.int32, order=order)
+        out = cupy.zeros((n1, n2), dtype=numpy.int32)
+        reverse_copy[1, n1](x, out)
+
+        expected = x[:, ::-1]
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')

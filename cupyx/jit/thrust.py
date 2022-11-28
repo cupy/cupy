@@ -558,6 +558,31 @@ def replace_copy(env, exec_policy, first, last, result, old_value, new_value):
 # TODO(asi1024): Add replace_if
 
 
+@_wrap_thrust_func(['thrust/reverse.h'])
+def reverse(env, exec_policy, first, last):
+    """Reverses a range.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    args = [exec_policy, first, last]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::reverse({params})', _cuda_types.void)
+
+
+@_wrap_thrust_func(['thrust/reverse.h'])
+def reverse_copy(env, exec_policy, first, last, result):
+    """Reverses a range.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    _assert_pointer_type(result)
+    args = [exec_policy, first, last, result]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::reverse_copy({params})', _cuda_types.void)
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
