@@ -304,9 +304,22 @@ def inner_product(
     return _Data(f'thrust::inner_product({params})', init.ctype)
 
 
-# TODO(asi1024): Add inner_product
 # TODO(asi1024): Add is_partitioned
-# TODO(asi1024): Add is_sorted
+
+
+@_wrap_thrust_func(['thrust/sort.h'])
+def is_sorted(env, exec_policy, first, last, comp=None):
+    """Retruns true if the range is sorted in ascending order.
+    """
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    args = [exec_policy, first, last]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::is_sorted({params})', _cuda_types.bool_)
+
+
 # TODO(asi1024): Add is_sorted_until
 # TODO(asi1024): Add lower_bound
 # TODO(asi1024): Add make_constant_iterator
