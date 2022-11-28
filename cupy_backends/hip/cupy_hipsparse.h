@@ -3039,6 +3039,16 @@ typedef hipsparseSpMVAlg_t cusparseSpMVAlg_t;
 typedef enum {} cusparseSpMVAlg_t;
 #endif
 
+#if HIP_VERSION >= 50000000
+typedef hipsparseSpMatAttribute_t cusparseSpMatAttribute_t;
+typedef hipsparseSpSMAlg_t cusparseSpSMAlg_t;
+typedef hipsparseSpSMDescr_t cusparseSpSMDescr_t;
+#else
+typedef enum {} cusparseSpMatAttribute_t;
+typedef enum {} cusparseSpSMAlg_t;
+typedef void * cusparseSpSMDescr_t;
+#endif
+
 #if HIP_VERSION >= 402
 typedef hipsparseSpMMAlg_t cusparseSpMMAlg_t;
 #else
@@ -3322,6 +3332,17 @@ cusparseStatus_t cusparseSpMatSetStridedBatch(...) {
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
+cusparseStatus_t cusparseSpMatSetAttribute(cusparseSpMatDescr_t     spMatDescr,
+                                           cusparseSpMatAttribute_t attribute,
+                                           void*                    data,
+                                           size_t                   dataSize) {
+#if HIP_VERSION >= 50000000
+  return hipsparseSpMatSetAttribute(spMatDescr, attribute, data, dataSize);
+#else
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+#endif
+}
+
 cusparseStatus_t cusparseCreateDnVec(cusparseDnVecDescr_t* dnVecDescr,
                                      int64_t               size,
                                      void*                 values,
@@ -3497,6 +3518,80 @@ cusparseStatus_t cusparseSpMV(cusparseHandle_t     handle,
 #if HIP_VERSION >= 402
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpMV(handle, opA, alpha, matA, vecX, beta, vecY, blah, alg, externalBuffer);
+#else
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+#endif
+}
+
+cusparseStatus_t cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) {
+#if HIP_VERSION >= 50000000
+  return hipsparseSpSM_createDescr(descr);
+#else
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+#endif
+}
+
+cusparseStatus_t cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) {
+#if HIP_VERSION >= 50000000
+  return hipsparseSpSM_destroyDescr(descr);
+#else
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+#endif
+}
+
+cusparseStatus_t cusparseSpSM_bufferSize(cusparseHandle_t     handle,
+                                         cusparseOperation_t  opA,
+                                         cusparseOperation_t  opB,
+                                         const void*          alpha,
+                                         cusparseSpMatDescr_t matA,
+                                         cusparseDnMatDescr_t matB,
+                                         cusparseDnMatDescr_t matC,
+                                         cudaDataType         computeType,
+                                         cusparseSpSMAlg_t    alg,
+                                         cusparseSpSMDescr_t  spsmDescr,
+                                         size_t*              bufferSize) {
+#if HIP_VERSION >= 50000000
+  hipDataType computeType1 = convert_hipDatatype(computeType);
+  return hipsparseSpSM_bufferSize(handle, opA, opB, alpha, matA, matB, matC, computeType1, alg, spsmDescr, bufferSize);
+#else
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+#endif
+}
+
+cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
+                                       cusparseOperation_t  opA,
+                                       cusparseOperation_t  opB,
+                                       const void*          alpha,
+                                       cusparseSpMatDescr_t matA,
+                                       cusparseDnMatDescr_t matB,
+                                       cusparseDnMatDescr_t matC,
+                                       cudaDataType         computeType,
+                                       cusparseSpSMAlg_t    alg,
+                                       cusparseSpSMDescr_t  spsmDescr,
+                                       void*                externalBuffer) {
+#if HIP_VERSION >= 50000000
+  hipDataType computeType1 = convert_hipDatatype(computeType);
+  return hipsparseSpSM_analysis(handle, opA, opB, alpha, matA, matB, matC, computeType1, alg, spsmDescr, externalBuffer);
+#else
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+#endif
+}
+
+// See cusparse.pyx for a comment
+cusparseStatus_t _cusparseSpSM_solve(cusparseHandle_t     handle,
+                                     cusparseOperation_t  opA,
+                                     cusparseOperation_t  opB,
+                                     const void*          alpha,
+                                     cusparseSpMatDescr_t matA,
+                                     cusparseDnMatDescr_t matB,
+                                     cusparseDnMatDescr_t matC,
+                                     cudaDataType         computeType,
+                                     cusparseSpSMAlg_t    alg,
+                                     cusparseSpSMDescr_t  spsmDescr,
+                                     void*                externalBuffer) {
+#if HIP_VERSION >= 50000000
+  hipDataType computeType1 = convert_hipDatatype(computeType);
+  return hipsparseSpSM_solve(handle, opA, opB, alpha, matA, matB, matC, computeType1, alg, spsmDescr, externalBuffer);
 #else
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 #endif
