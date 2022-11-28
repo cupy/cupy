@@ -381,7 +381,27 @@ def lower_bound(env, exec_policy, first, last, *args):
     return _Data(f'thrust::lower_bound({params})', result_ctype)
 
 
-# TODO(asi1024): Add make_constant_iterator
+class _ConstantIterator(_cuda_types.PointerBase):
+
+    def __str__(self) -> str:
+        value_type = self.child_type
+        return f'thrust::constant_iterator<{value_type}>'
+
+
+@_wrap_thrust_func(['thrust/iterator/constant_iterator.h'])
+def make_constant_iterator(env, x, i=None):
+    """Finds the first positions whose values differ.
+    """
+    if i is not None:
+        raise NotImplementedError('index_type is not supported')
+    args = [x]
+    params = ', '.join([a.code for a in args])
+    return _Data(
+        f'thrust::make_constant_iterator({params})',
+        _ConstantIterator(x.ctype)
+    )
+
+
 # TODO(asi1024): Add make_counting_iterator
 # TODO(asi1024): Add make_discard_iterator
 # TODO(asi1024): Add make_index_sequence
