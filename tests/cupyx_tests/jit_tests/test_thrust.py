@@ -317,6 +317,24 @@ class TestThrust:
         testing.assert_array_equal(value, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_inner_product(self, order):
+        @jit.rawkernel()
+        def inner_product(a, b, c):
+            i = jit.threadIdx.x
+            c[i] = jit.thrust.inner_product(
+                jit.thrust.device, a[i].begin(), a[i].end(),
+                b[i].begin(), 0.)
+
+        (n1, n2) = (128, 160)
+        x = testing.shaped_random((n1, n2), dtype=numpy.float32, seed=0)
+        y = testing.shaped_random((n1, n2), dtype=numpy.float32, seed=1)
+        z = cupy.zeros((n1,), dtype=numpy.float32)
+        inner_product[1, n1](x, y, z)
+
+        expected = (x * y).sum(axis=1)
+        testing.assert_allclose(z, expected, rtol=1e-6)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_mismatch_iterator(self, order):
         if runtime.is_hip:
             pytest.xfail('HIP does not support pair of pointer type')

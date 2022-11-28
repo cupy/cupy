@@ -287,6 +287,23 @@ def inclusive_scan_by_key(
     return _Data(f'thrust::inclusive_scan_by_key({params})', result.ctype)
 
 
+@_wrap_thrust_func(['thrust/inner_product.h'])
+def inner_product(
+        env, exec_policy, first1, last1, first2, init,
+        binary_op1=None, binary_op2=None):
+    """Calculates an inner product of the ranges.
+    """
+    _assert_same_type(first1, last1)
+    _assert_same_pointer_type(first1, first2)
+    if binary_op1 is not None:
+        raise NotImplementedError('binary_op1 option is not supported')
+    if binary_op2 is not None:
+        raise NotImplementedError('binary_op2 option is not supported')
+    args = [exec_policy, first1, last1, first2, init]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::inner_product({params})', init.ctype)
+
+
 # TODO(asi1024): Add inner_product
 # TODO(asi1024): Add is_partitioned
 # TODO(asi1024): Add is_sorted
