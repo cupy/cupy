@@ -353,6 +353,25 @@ class TestThrust:
         testing.assert_array_equal(out, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_is_sorted_until(self, order):
+        @jit.rawkernel()
+        def is_sorted_until(x, out):
+            i = jit.threadIdx.x
+            it = jit.thrust.is_sorted_until(
+                jit.thrust.device, x[i].begin(), x[i].end())
+            out[i] = it - x[i].begin()
+
+        x = cupy.array([
+            [1, 2, 3, 4, 1, 2, 3, 4],
+            [1, 2, 4, 1, 2, 3, 5, 5],
+        ])
+        out = cupy.zeros((2,), dtype=numpy.int64)
+        is_sorted_until[1, 2](x, out)
+
+        expected = cupy.array([4, 3])
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_mismatch_iterator(self, order):
         if runtime.is_hip:
             pytest.xfail('HIP does not support pair of pointer type')
