@@ -24,3 +24,5 @@ Univariate interpolation
    :toctree: generated/
 
    BSpline
+   splder
+   splantider
