@@ -536,11 +536,10 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
             kwargs.update(memory_budget=100)
             return ce_real(*args, **kwargs)
 
-       # monkeypatch.setattr(interp, '_chunk_evaluator', _chunk_evaluator)
+        # monkeypatch.setattr(interp, '_chunk_evaluator', _chunk_evaluator)
         interp._chunk_evaluator = _chunk_evaluator
         yitp2 = interp(xitp)
         testing.assert_allclose(yitp1, yitp2, atol=1e-8)
-
 
 
 """
