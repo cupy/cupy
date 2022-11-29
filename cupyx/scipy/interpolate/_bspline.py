@@ -634,7 +634,7 @@ class BSpline:
 
         Returns
         -------
-        design_matrix : `csr_array` object
+        design_matrix : `csr_matrix` object
             Sparse matrix in CSR format where each row contains all the basis
             elements of the input row (first row = basis elements of x[0],
             ..., last row = basis elements x[-1]).
@@ -648,6 +648,10 @@ class BSpline:
         to have at least `k + 1` basis element.
 
         Out of bounds `x` raises a ValueError.
+
+        .. note::
+            This method returns a `csr_matrix` instance as CuPy still does not
+            have `csr_array`.
 
         .. seealso:: :class:`scipy.interpolate.BSpline`
         """
