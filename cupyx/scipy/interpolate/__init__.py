@@ -12,4 +12,3 @@ from cupyx.scipy.interpolate._bspline2 import make_interp_spline  # NOQA
 
 # Radial basis functions
 from cupyx.scipy.interpolate._rbfinterp import RBFInterpolator  # NOQA
-
