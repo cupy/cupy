@@ -1981,6 +1981,9 @@ cdef dict _allocations = dict()
 cdef public void* cupy_malloc_ext(
         ssize_t size, int device, void* stream) with gil:
     # TODO(ecastill) dynamically change stream & device?
+    cdef curr_stream = stream_module.get_current_stream().ptr
+    if <intptr_t>stream != <intptr_t>curr_stream:
+        raise RuntimeError(f'stream must be the current one')
     mem = alloc(size)
     _allocations[mem.ptr] = mem
     return <void *>mem.ptr
