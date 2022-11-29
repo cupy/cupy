@@ -129,7 +129,7 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
 
 uniform_params = [
     {'low': 1, 'high': 10.0, 'size': (3, 5)},
-    {'low': cupy.array([1, 2]), 'high': 3, 'size': None},
+    {'low': [1, 2], 'high': 3, 'size': None},
     {'low': 20, 'high': 20.1, 'size': 1000}
 ]
 
@@ -138,10 +138,22 @@ class Uniform:
     target_method = 'uniform'
 
     def test_uniform(self):
-        print("testing uniform")
-        result = self.generate(self.low, self.high, self.size)
-        assert cupy.all(result >= cupy.asarray(self.low).min())
-        assert cupy.all(result < cupy.asarray(self.high).max())
+        low = self.low
+        if isinstance(low, list):
+            low = cupy.array(low)
+        high = self.high
+        if isinstance(high, list):
+            high = cupy.array(high)
+            
+        result = self.generate(low, high, self.size)
+        assert cupy.all(result >= cupy.asarray(low).min())
+        assert cupy.all(result < cupy.asarray(high).max())
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_uniform_ks(self):
+        if (isinstance(self.low, list) or isinstance(self.high, list)):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(low=self.low, high=self.low, size=2000)
 
 
 beta_params = [
