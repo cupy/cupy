@@ -268,6 +268,11 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
                          "match: expected %s, got %s + %s" %
                          (nt-n, nleft, nright))
 
+    # bail out if the `y` array is zero-sized
+    if y.size == 0:
+        c = cupy.zeros((nt,) + y.shape[1:], dtype=float)
+        return BSpline.construct_fast(t, c, k, axis=axis)
+
     # Consruct the colocation matrix of b-splines + boundary conditions.
     # The coefficients of the interpolating B-spline function are the solution
     # of the linear system `A @ c = rhs` where `A` is the colocation matrix
