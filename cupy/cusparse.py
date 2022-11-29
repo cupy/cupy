@@ -146,7 +146,7 @@ _available_hipsparse_version = {
     'denseToSparse': (402, None),
     'sparseToDense': (402, None),
     'spgemm': (_numpy.inf, None),
-    'spsm': (11600, None),  # CUDA 11.3.1
+    'spsm': (50000000, None),
 }
 
 
