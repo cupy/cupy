@@ -53,23 +53,17 @@ __global__ void find_interval(
 
     while(left < right && !found) {
         mid = ((right + left) / 2);
-        if(xp > *&t[mid]) {
+        if(xp < *&breakpoints[mid]) {
+            right = mid;
+        } else if (xp >= *&breakpoints[mid + 1]) {
             left = mid + 1;
-        } else if (xp < *&t[mid]) {
-            right = mid - 1;
         } else {
             found = true;
+            left = mid;
         }
     }
 
-    int default_value = left - 1 < k ? k : left - 1;
-    int result = found ? mid + 1 : default_value + 1;
-
-    while(xp >= *&t[result] && result != n) {
-        result++;
-    }
-
-    out[idx] = result - 1;
+    out[idx] = left;
 }
 }
 '''
@@ -102,6 +96,10 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
         Value of each polynomial at each of the input points.
         This argument is modified in-place.
     """
+    intervals = cupy.empty(xp.shape[0], dtype=cupy.int_)
+    interval_kernel = INTERVAL_MODULE.get_function('find_interval')
+    interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
+                    (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0]))
 
 
 class _PPolyBase:
