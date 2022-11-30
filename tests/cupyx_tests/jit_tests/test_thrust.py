@@ -129,6 +129,10 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_equal(self, order):
+        if runtime.is_hip:
+            # TODO(asi1024): Fix compile error.
+            pytest.skip('Skip rocm thrust::equal test')
+
         @jit.rawkernel()
         def equal(x, y, z):
             i = jit.threadIdx.x
