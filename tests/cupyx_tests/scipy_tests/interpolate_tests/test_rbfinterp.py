@@ -112,8 +112,8 @@ def test_conditionally_positive_definite(xp, scp, kernel):
     assert _is_conditionally_positive_definite(kernel, m, xp, scp)
 
 
+@testing.with_requires("scipy>=1.7.0")
 class _TestRBFInterpolator:
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
     def test_scale_invariance_1d(self, xp, scp, kernel):
@@ -127,7 +127,6 @@ class _TestRBFInterpolator:
         yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_SCALE_INVARIANT))
     def test_scale_invariance_2d(self, xp, scp, kernel):
@@ -141,7 +140,6 @@ class _TestRBFInterpolator:
         yitp2 = self.build(scp, x, y, epsilon=2.0, kernel=kernel)(xitp)
         return yitp1, yitp2
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_extreme_domains(self, xp, scp, kernel):
@@ -171,7 +169,6 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_polynomial_reproduction(self, xp, scp):
         # If the observed data comes from a polynomial, then the interpolant
@@ -200,7 +197,6 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_vector_data(self, xp, scp):
         # Make sure interpolating a vector field is the same as interpolating
@@ -219,7 +215,6 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2, yitp3
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_complex_data(self, xp, scp):
         # Interpolating complex input should be the same as interpolating the
@@ -237,7 +232,6 @@ class _TestRBFInterpolator:
 
         return yitp1, yitp2, yitp3
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_interpolation_misfit_1d(self, xp, scp, kernel):
@@ -256,7 +250,6 @@ class _TestRBFInterpolator:
         assert mse < 1.0e-4
         return yitp
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_interpolation_misfit_2d(self, xp, scp, kernel):
@@ -275,7 +268,6 @@ class _TestRBFInterpolator:
         assert mse < 2.0e-4
         return yitp
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-9)
     @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
     def test_smoothing_misfit(self, xp, scp, kernel):
@@ -307,7 +299,6 @@ class _TestRBFInterpolator:
         assert rmse_within_tol
         return ysmooth
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_array_smoothing(self, xp, scp):
         # Test using an array for `smoothing` to give less weight to a known
@@ -331,7 +322,6 @@ class _TestRBFInterpolator:
         # Should be able to reproduce the uncorrupted data almost exactly.
         return yitp, y
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     def test_inconsistent_x_dimensions_error(self, xp, scp):
         # ValueError should be raised if the observation points and evaluation
@@ -421,7 +411,6 @@ class _TestRBFInterpolator:
         f = self.build(scp, y, d, kernel='linear')(y)
         return d, f
 
-    @testing.with_requires("scipy>=1.7.0")
     def test_pickleable(self):
         # Make sure we can pickle and unpickle the interpolant without any
         # changes in the behavior.
@@ -440,11 +429,11 @@ class _TestRBFInterpolator:
         testing.assert_array_equal(yitp1, yitp2)
 
 
+@testing.with_requires("scipy>=1.7.0")
 class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
     def build(self, scp, *args, **kwargs):
         return scp.interpolate.RBFInterpolator(*args, **kwargs)
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_smoothing_limit_1d(self, xp, scp):
         # For large smoothing parameters, the interpolant should approach a
@@ -476,7 +465,6 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
 
         return yitp1, yitp2
 
-    @testing.with_requires("scipy>=1.7.0")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_smoothing_limit_2d(self, xp, scp):
         # For large smoothing parameters, the interpolant should approach a
@@ -508,7 +496,6 @@ class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
         return yitp1, yitp2
 
     @pytest.mark.slow
-    @testing.with_requires("scipy>=1.7.0")
     def test_chunking(self):
         # If the observed data comes from a polynomial, then the interpolant
         # should be able to reproduce the polynomial exactly, provided that
