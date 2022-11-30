@@ -597,6 +597,26 @@ def scatter(env, exec_policy, first, last, map, result):
     return _Data(f'thrust::scatter({params})', _cuda_types.void)
 
 
+# TODO(asi1024): Add scatter_if
+
+
+@_wrap_thrust_func(['thrust/sequence.h'])
+def sequence(env, exec_policy, first, last, init=None, step=None):
+    """Fills the range with a sequence of numbers.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    args = [exec_policy, first, last]
+    if init is not None:
+        args.append(init)
+    if step is not None:
+        _assert_same_type(init, step)
+        args.append(step)
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::sequence({params})', _cuda_types.void)
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.

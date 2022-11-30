@@ -654,6 +654,52 @@ class TestThrust:
         )
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_sequence(self, order):
+        @jit.rawkernel()
+        def sequence(x):
+            i = jit.threadIdx.x
+            jit.thrust.sequence(jit.thrust.device, x[i].begin(), x[i].end())
+
+        (n1, n2) = (128, 160)
+        x = cupy.zeros((n1, n2), dtype=numpy.int32)
+        sequence[1, n1](x)
+
+        expected = cupy.arange(n2, dtype=numpy.int32)
+        expected = expected + cupy.zeros((n1, n2), dtype=numpy.int32)
+        testing.assert_array_equal(x, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_sequence_init(self, order):
+        @jit.rawkernel()
+        def sequence(x):
+            i = jit.threadIdx.x
+            jit.thrust.sequence(jit.thrust.device, x[i].begin(), x[i].end(), 1)
+
+        (n1, n2) = (128, 160)
+        x = cupy.zeros((n1, n2), dtype=numpy.int32)
+        sequence[1, n1](x)
+
+        expected = cupy.arange(n2, dtype=numpy.int32)
+        expected = expected + cupy.ones((n1, n2), dtype=numpy.int32)
+        testing.assert_array_equal(x, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_sequence_step(self, order):
+        @jit.rawkernel()
+        def sequence(x):
+            i = numpy.int32(jit.threadIdx.x)
+            jit.thrust.sequence(
+                jit.thrust.device, x[i].begin(), x[i].end(), i, 10)
+
+        (n1, n2) = (128, 160)
+        x = cupy.zeros((n1, n2), dtype=numpy.int32)
+        sequence[1, n1](x)
+
+        expected = cupy.arange(n2, dtype=numpy.int32) * 10
+        expected = expected + cupy.arange(n1, dtype=numpy.int32)[:, None]
+        testing.assert_array_equal(x, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')
