@@ -5,6 +5,8 @@ from cupy._core._scalar import get_typename  # NOQA
 
 import numpy as np
 
+TYPES = ['double', 'thrust::complex<double>']
+INT_TYPES = ['int', 'long long']
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
@@ -76,6 +78,117 @@ __global__ void find_breakpoint_position(
 INTERVAL_MODULE = cupy.RawModule(
     code=INTERVAL_KERNEL, options=('-std=c++11',),)
 
+PPOLY_KERNEL = r"""
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+
+#include <cupy/complex.cuh>
+#include <cupy/math_constants.h>
+
+template<typename T>
+__device__ T eval_poly_1(
+        const double s, const T* coef, long long ci, int cj, int dx,
+        const long long* c_dims, const long long stride_0,
+        const long long stride_1) {
+    int kp, k;
+    T res, z;
+    double prefactor;
+
+    res = 0.0;
+    z = 1.0;
+
+    if(dx < 0) {
+        for(int i = 0; i < -dx; i++) {
+            z *= s;
+        }
+    }
+
+    int c_dim_0 = (int) *&c_dims[0];
+
+    for(kp = 0; kp < c_dim_0; kp++) {
+        if(dx == 0) {
+            prefactor = 1.0;
+        } else if(dx > 0) {
+            if(kp < dx) {
+                continue;
+            } else {
+                prefactor = 1.0;
+                for(k = kp; k > kp - dx; k--) {
+                    prefactor *= k;
+                }
+            }
+        } else {
+            prefactor = 1.0;
+            for(k = kp; k < kp - dx; k++) {
+                prefactor /= k + 1;
+            }
+        }
+
+        int off = stride_0 * (c_dim_0 - kp - 1) + stride_1 * ci + cj;
+        T cur_coef = *&coef[off];
+        res += cur_coef * z * ((T) prefactor);
+
+        if((kp < c_dim_0 - 1) && kp >= dx) {
+            z *= s;
+        }
+
+    }
+
+    return s;
+
+}
+
+template<typename T>
+__global__ void eval_ppoly(
+        const T* coef, const double* breakpoints, const double* x,
+        const long long* intervals, int dx, const long long* c_dims,
+        const long long* c_strides, int num_x, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if(idx >= num_x) {
+        return;
+    }
+
+    double xp = *&x[idx];
+    long long interval = *&intervals[idx];
+    double breakpoint = *&breakpoints[interval];
+
+    const long long num_c = *&c_strides[0];
+    const long long stride_1 = *&c_strides[1];
+
+    if(interval < 0) {
+        for(int j = 0; j < num_c; j++) {
+            out[num_c * idx + j] = CUDART_NAN;
+        }
+        return;
+    }
+
+    for(int j = 0; j < num_c; j++) {
+        out[num_c * idx + j] = eval_poly_1<T>(
+            xp - breakpoint, coef, interval, ((long long) (j)), dx,
+            c_dims, num_c, stride_1);
+    }
+}
+"""
+
+PPOLY_MODULE = cupy.RawModule(
+    code=PPOLY_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'eval_ppoly<{type_name}>' for type_name in TYPES])
+
+
+def _get_module_func(module, func_name, *template_args):
+    def _get_typename(dtype):
+        typename = get_typename(dtype)
+        if dtype.kind == 'c':
+            typename = 'thrust::' + typename
+        return typename
+    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
+
 
 def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     """
@@ -109,6 +222,15 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
+
+    # Compute coefficient displacement stride (in elements)
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int_)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int_) // c.itemsize
+
+    ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly', c)
+    ppoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
+                 (c, x, xp, intervals, dx, c_shape, c_strides,
+                  xp.shape[0], out))
 
 
 class _PPolyBase:
