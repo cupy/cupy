@@ -144,7 +144,7 @@ class Uniform:
         high = self.high
         if isinstance(high, list):
             high = cupy.array(high)
-            
+
         result = self.generate(low, high, self.size)
         assert cupy.all(result >= cupy.asarray(low).min())
         assert cupy.all(result < cupy.asarray(high).max())
