@@ -223,8 +223,6 @@ class RegularGridInterpolator:
            linear and multilinear table interpolation in many dimensions."
            MATH. COMPUT. 50.181 (1988): 189-196.
            https://www.ams.org/journals/mcom/1988-50-181/S0025-5718-1988-0917826-0/S0025-5718-1988-0917826-0.pdf
-           :doi:`10.1090/S0025-5718-1988-0917826-0`
-
     """
     # this class is based on code originally programmed by Johannes Buchner,
     # see https://github.com/JohannesBuchner/regulargrid
