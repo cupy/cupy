@@ -35,4 +35,6 @@ Multivariate interpolation
    :toctree: generated/
 
    RBFInterpolator
+   interpn
+   RegularGridInterpolator
 
