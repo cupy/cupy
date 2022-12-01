@@ -8,10 +8,15 @@ import numpy as np
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
+
+#define le_or_ge(x, y, r) ((r) ? ((x) < (y)) : ((x) > (y)))
+#define ge_or_le(x, y, r) ((r) ? ((x) > (y)) : ((x) < (y)))
+#define geq_or_leq(x, y, r) ((r) ? ((x) >= (y)) : ((x) <= (y)))
+
 extern "C" {
-__global__ void find_interval(
+__global__ void find_breakpoint_position(
         const double* breakpoints, const double* x, long long* out,
-        bool extrapolate, int total_x, int total_breakpoints) {
+        bool extrapolate, int total_x, int total_breakpoints, bool asc) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= total_x) {
@@ -27,12 +32,12 @@ __global__ void find_interval(
         return;
     }
 
-    if((xp < a || xp > b)) {
+    if(le_or_ge(xp, a, asc) || ge_or_le(xp, b, asc)) {
         if(!extrapolate) {
             out[idx] = -1;
-        } else if(xp < a) {
+        } else if(le_or_ge(xp, a, asc)) {
             out[idx] = 0;
-        } else if(xp > b) {
+        } else if(ge_or_le(xp, b, asc)) {
             out[idx] = total_breakpoints - 2;
         }
         return;
@@ -45,7 +50,7 @@ __global__ void find_interval(
     int right = total_breakpoints - 2;
     int mid;
 
-    if(xp < *&breakpoints[left + 1]) {
+    if(le_or_ge(xp, *&breakpoints[left + 1], asc)) {
         right = left;
     }
 
@@ -53,9 +58,9 @@ __global__ void find_interval(
 
     while(left < right && !found) {
         mid = ((right + left) / 2);
-        if(xp < *&breakpoints[mid]) {
+        if(le_or_ge(xp, *&breakpoints[mid], asc)) {
             right = mid;
-        } else if (xp >= *&breakpoints[mid + 1]) {
+        } else if (geq_or_leq(xp, *&breakpoints[mid + 1], asc)) {
             left = mid + 1;
         } else {
             found = true;
@@ -96,10 +101,14 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
         Value of each polynomial at each of the input points.
         This argument is modified in-place.
     """
+    # Determine if the breakpoints are in ascending order or descending one
+    ascending = x[x.shape[0] - 1] >= x[0]
+
     intervals = cupy.empty(xp.shape[0], dtype=cupy.int_)
-    interval_kernel = INTERVAL_MODULE.get_function('find_interval')
+    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
-                    (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0]))
+                    (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
+                     ascending))
 
 
 class _PPolyBase:
