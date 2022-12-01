@@ -611,10 +611,6 @@ typedef enum {} cusparseDenseToSparseAlg_t;
 
 typedef enum {} cusparseSpMatAttribute_t;
 
-cusparseStatus_t cusparseSpMatSetAttribute(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 #endif // CUSPARSE_VERSION < 11500
 
 #if CUSPARSE_VERSION < 11600
@@ -622,26 +618,6 @@ cusparseStatus_t cusparseSpMatSetAttribute(...) {
 
 typedef void* cusparseSpSMDescr_t;
 typedef enum {} cusparseSpSMAlg_t;
-
-cusparseStatus_t cusparseSpSM_createDescr(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSpSM_destroyDescr(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSpSM_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSpSM_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSpSM_solve(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
 
 #endif // #if CUSPARSE_VERSION < 11600
 
