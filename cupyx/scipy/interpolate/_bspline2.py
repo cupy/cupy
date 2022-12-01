@@ -6,7 +6,8 @@ import cupy
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import spsolve
 
-from ._bspline import _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline
+from cupyx.scipy.interpolate._bspline import (
+    _get_module_func, INTERVAL_MODULE, D_BOOR_MODULE, BSpline)
 
 
 def _get_dtype(dtype):

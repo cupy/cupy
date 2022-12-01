@@ -37,6 +37,7 @@ class TestInterp:
         return (scp.interpolate.make_interp_spline(x, y, k=1)(x),
                 scp.interpolate.make_interp_spline(x, y, k=1, axis=-1)(x))
 
+    @testing.with_requires("scipy >= 1.10")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     @pytest.mark.parametrize('k', [0, 1, 2, 3])
     def test_incompatible_x_y(self, xp, scp, k):
@@ -44,6 +45,7 @@ class TestInterp:
         y = [0, 1, 2, 3, 4, 5, 6, 7]
         scp.interpolate.make_interp_spline(x, y, k=k)
 
+    @testing.with_requires("scipy >= 1.10")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     @pytest.mark.parametrize('k', [0, 1, 2, 3])
     def test_broken_x(self, xp, scp, k):
@@ -51,6 +53,7 @@ class TestInterp:
         y = [0, 1, 2, 3, 4, 5]
         scp.interpolate.make_interp_spline(x, y, k=k)
 
+    @testing.with_requires("scipy >= 1.10")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     @pytest.mark.parametrize('k', [0, 1, 2, 3])
     def test_broken_x_2(self, xp, scp, k):
@@ -58,6 +61,7 @@ class TestInterp:
         y = [0, 1, 2, 3, 4, 5]
         scp.interpolate.make_interp_spline(x, y, k=k)
 
+    @testing.with_requires("scipy >= 1.10")
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     @pytest.mark.parametrize('k', [0, 1, 2, 3])
     def test_broken_x_3(self, xp, scp, k):
