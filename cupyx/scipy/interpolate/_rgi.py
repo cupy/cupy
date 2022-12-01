@@ -31,7 +31,204 @@ def _ndim_coords_from_arrays(points, ndim=None):
     return points
 
 
+def _check_points(points):
+    print(points)
+    descending_dimensions = []
+    grid = []
+    for i, p in enumerate(points):
+        # early make points float
+        # see https://github.com/scipy/scipy/pull/17230
+        p = cp.asarray(p, dtype=float)
+        if not cp.all(p[1:] > p[:-1]):
+            if cp.all(p[1:] < p[:-1]):
+                # input is descending, so make it ascending
+                descending_dimensions.append(i)
+                p = cp.flip(p)
+                p = cp.ascontiguousarray(p)
+            else:
+                raise ValueError(
+                    "The points in dimension %d must be strictly "
+                    "ascending or descending" % i)
+        grid.append(p)
+    return tuple(grid), tuple(descending_dimensions)
+
+
+def _check_dimensionality(points, values):
+    if len(points) > values.ndim:
+        raise ValueError("There are %d point arrays, but values has %d "
+                         "dimensions" % (len(points), values.ndim))
+    for i, p in enumerate(points):
+        if not cp.asarray(p).ndim == 1:
+            raise ValueError("The points in dimension %d must be "
+                             "1-dimensional" % i)
+        if not values.shape[i] == len(p):
+            raise ValueError("There are %d points and %d values in "
+                             "dimension %d" % (len(p), values.shape[i], i))
+
+
 class RegularGridInterpolator:
+    """
+    Interpolation on a regular or rectilinear grid in arbitrary dimensions.
+
+    The data must be defined on a rectilinear grid; that is, a rectangular
+    grid with even or uneven spacing. Linear and nearest-neighbor
+    interpolations are supported. After setting up the interpolator object,
+    the interpolation method may be chosen at each evaluation.
+
+    Parameters
+    ----------
+    points : tuple of ndarray of float, with shapes (m1, ), ..., (mn, )
+        The points defining the regular grid in n dimensions. The points in
+        each dimension (i.e. every elements of the points tuple) must be
+        strictly ascending or descending.
+
+    values : ndarray, shape (m1, ..., mn, ...)
+        The data on the regular grid in n dimensions. Complex data can be
+        acceptable.
+
+    method : str, optional
+        The method of interpolation to perform. Supported are "linear" and
+        "nearest". This parameter will become the default for the object's
+        ``__call__`` method. Default is "linear".
+
+    bounds_error : bool, optional
+        If True, when interpolated values are requested outside of the
+        domain of the input data, a ValueError is raised.
+        If False, then `fill_value` is used.
+        Default is True.
+
+    fill_value : float or None, optional
+        The value to use for points outside of the interpolation domain.
+        If None, values outside the domain are extrapolated.
+        Default is ``cp.nan``.
+
+    Methods
+    -------
+    __call__
+
+    Attributes
+    ----------
+    grid : tuple of ndarrays
+        The points defining the regular grid in n dimensions.
+        This tuple defines the full grid via
+        ``cp.meshgrid(*grid, indexing='ij')``
+    values : ndarray
+        Data values at the grid.
+    method : str
+        Interpolation method.
+    fill_value : float or ``None``
+        Use this value for out-of-bounds arguments to `__call__`.
+    bounds_error : bool
+        If ``True``, out-of-bounds argument raise a ``ValueError``.
+
+    Notes
+    -----
+    Contrary to scipy's `LinearNDInterpolator` and `NearestNDInterpolator`,
+    this class avoids expensive triangulation of the input data by taking
+    advantage of the regular grid structure.
+
+    In other words, this class assumes that the data is defined on a
+    *rectilinear* grid.
+
+    If the input data is such that dimensions have incommensurate
+    units and differ by many orders of magnitude, the interpolant may have
+    numerical artifacts. Consider rescaling the data before interpolating.
+
+    Examples
+    --------
+    **Evaluate a function on the points of a 3-D grid**
+
+    As a first example, we evaluate a simple example function on the points of
+    a 3-D grid:
+
+    >>> from cupyx.scipy.interpolate import RegularGridInterpolator
+    >>> import cupy as cp
+    >>> def f(x, y, z):
+    ...     return 2 * x**3 + 3 * y**2 - z
+    >>> x = cp.linspace(1, 4, 11)
+    >>> y = cp.linspace(4, 7, 22)
+    >>> z = cp.linspace(7, 9, 33)
+    >>> xg, yg ,zg = cp.meshgrid(x, y, z, indexing='ij', sparse=True)
+    >>> data = f(xg, yg, zg)
+
+    ``data`` is now a 3-D array with ``data[i, j, k] = f(x[i], y[j], z[k])``.
+    Next, define an interpolating function from this data:
+
+    >>> interp = RegularGridInterpolator((x, y, z), data)
+
+    Evaluate the interpolating function at the two points
+    ``(x,y,z) = (2.1, 6.2, 8.3)`` and ``(3.3, 5.2, 7.1)``:
+
+    >>> pts = cp.array([[2.1, 6.2, 8.3],
+    ...                 [3.3, 5.2, 7.1]])
+    >>> interp(pts)
+    array([ 125.80469388,  146.30069388])
+
+    which is indeed a close approximation to
+
+    >>> f(2.1, 6.2, 8.3), f(3.3, 5.2, 7.1)
+    (125.54200000000002, 145.894)
+
+    **Interpolate and extrapolate a 2D dataset**
+
+    As a second example, we interpolate and extrapolate a 2D data set:
+
+    >>> x, y = cp.array([-2, 0, 4]), cp.array([-2, 0, 2, 5])
+    >>> def ff(x, y):
+    ...     return x**2 + y**2
+
+    >>> xg, yg = cp.meshgrid(x, y, indexing='ij')
+    >>> data = ff(xg, yg)
+    >>> interp = RegularGridInterpolator((x, y), data,
+    ...                                  bounds_error=False, fill_value=None)
+
+    >>> import matplotlib.pyplot as plt
+    >>> fig = plt.figure()
+    >>> ax = fig.add_subplot(projection='3d')
+    >>> ax.scatter(xg.ravel().get(), yg.ravel().get(), data.ravel().get(),
+    ...            s=60, c='k', label='data')
+
+    Evaluate and plot the interpolator on a finer grid
+
+    >>> xx = cp.linspace(-4, 9, 31)
+    >>> yy = cp.linspace(-4, 9, 31)
+    >>> X, Y = cp.meshgrid(xx, yy, indexing='ij')
+
+    >>> # interpolator
+    >>> ax.plot_wireframe(X.get(), Y.get(), interp((X, Y)).get(),
+                          rstride=3, cstride=3, alpha=0.4, color='m',
+                          label='linear interp')
+
+    >>> # ground truth
+    >>> ax.plot_wireframe(X.get(), Y.get(), ff(X, Y).get(),
+                          rstride=3, cstride=3,
+    ...                   alpha=0.4, label='ground truth')
+    >>> plt.legend()
+    >>> plt.show()
+
+    See Also
+    --------
+    interpn : a convenience function which wraps `RegularGridInterpolator`
+
+    scipy.ndimage.map_coordinates : interpolation on grids with equal spacing
+                                    (suitable for e.g., N-D image resampling)
+
+    References
+    ----------
+    .. [1] Python package *regulargrid* by Johannes Buchner, see
+           https://pypi.python.org/pypi/regulargrid/
+    .. [2] Wikipedia, "Trilinear interpolation",
+           https://en.wikipedia.org/wiki/Trilinear_interpolation
+    .. [3] Weiser, Alan, and Sergio E. Zarantonello. "A note on piecewise
+           linear and multilinear table interpolation in many dimensions."
+           MATH. COMPUT. 50.181 (1988): 189-196.
+           https://www.ams.org/journals/mcom/1988-50-181/S0025-5718-1988-0917826-0/S0025-5718-1988-0917826-0.pdf
+           :doi:`10.1090/S0025-5718-1988-0917826-0`
+
+    """
+    # this class is based on code originally programmed by Johannes Buchner,
+    # see https://github.com/JohannesBuchner/regulargrid
+
     _ALL_METHODS = ["linear", "nearest"]
 
     def __init__(self, points, values, method="linear", bounds_error=True,
@@ -41,66 +238,34 @@ class RegularGridInterpolator:
 
         self.method = method
         self.bounds_error = bounds_error
-
-        self.grid, self._descending_dimensions = self._check_points(points)
+        self.grid, self._descending_dimensions = _check_points(points)
         self.values = self._check_values(values)
         self._check_dimensionality(self.grid, self.values)
         self.fill_value = self._check_fill_value(self.values, fill_value)
         if self._descending_dimensions:
             self.values = cp.flip(values, axis=self._descending_dimensions)
 
-    def _check_dimensionality(self, points, values):
-        if len(points) > values.ndim:
-            raise ValueError("There are %d point arrays, but values has %d "
-                             "dimensions" % (len(points), values.ndim))
-        for i, p in enumerate(points):
-            if not cp.asarray(p).ndim == 1:
-                raise ValueError("The points in dimension %d must be "
-                                 "1-dimensional" % i)
-            if not values.shape[i] == len(p):
-                raise ValueError("There are %d points and %d values in "
-                                 "dimension %d" % (len(p), values.shape[i], i))
+    def _check_dimensionality(self, grid, values):
+        _check_dimensionality(grid, values)
+
+    def _check_points(self, points):
+        return _check_points(points)
 
     def _check_values(self, values):
-        if not hasattr(values, 'ndim'):
-            # allow reasonable duck-typed values
-            values = cp.asarray(values)
-
-        if hasattr(values, 'dtype') and hasattr(values, 'astype'):
-            if not cp.issubdtype(values.dtype, cp.inexact):
-                values = values.astype(float)
+        if not cp.issubdtype(values.dtype, cp.inexact):
+            values = values.astype(float)
 
         return values
 
     def _check_fill_value(self, values, fill_value):
         if fill_value is not None:
             fill_value_dtype = cp.asarray(fill_value).dtype
-            if (hasattr(values, 'dtype') and not
-                    cp.can_cast(fill_value_dtype, values.dtype,
+            if (hasattr(values, 'dtype') and
+                not cp.can_cast(fill_value_dtype, values.dtype,
                                 casting='same_kind')):
                 raise ValueError("fill_value must be either 'None' or "
                                  "of a type compatible with values")
         return fill_value
-
-    def _check_points(self, points):
-        descending_dimensions = []
-        grid = []
-        for i, p in enumerate(points):
-            # early make points float
-            # see https://github.com/scipy/scipy/pull/17230
-            p = cp.asarray(p, dtype=float)
-            if not cp.all(p[1:] > p[:-1]):
-                if cp.all(p[1:] < p[:-1]):
-                    # input is descending, so make it ascending
-                    descending_dimensions.append(i)
-                    p = cp.flip(p)
-                else:
-                    raise ValueError(
-                        "The points in dimension %d must be strictly "
-                        "ascending or descending" % i)
-            grid.append(p)
-
-        return tuple(grid), tuple(descending_dimensions)
 
     def __call__(self, xi, method=None):
         """
@@ -111,24 +276,22 @@ class RegularGridInterpolator:
         xi : cupy.ndarray of shape (..., ndim)
             The coordinates to evaluate the interpolator at.
 
-        method : str
+        method : str, optional
             The method of interpolation to perform. Supported are "linear" and
-            "nearest".  Default is "linear".
+            "nearest".  Default is the method chosen when the interpolator was
+            created.
 
         Returns
         -------
-        values_x : ndarray, shape xi.shape[:-1] + values.shape[ndim:]
+        values_x : cupy.ndarray, shape xi.shape[:-1] + values.shape[ndim:]
             Interpolated values at `xi`. See notes for behaviour when
             ``xi.ndim == 1``.
+
         Notes
         -----
         In the case that ``xi.ndim == 1`` a new axis is inserted into
         the 0 position of the returned array, values_x, so its shape is
         instead ``(1,) + values.shape[ndim:]``.
-
-        If the input data is such that dimensions have incommensurate
-        units and differ by many orders of magnitude, the interpolant may have
-        numerical artifacts. Consider rescaling the data before interpolating.
 
         Examples
         --------
@@ -157,6 +320,7 @@ class RegularGridInterpolator:
         method = self.method if method is None else method
         if method not in self._ALL_METHODS:
             raise ValueError("Method '%s' is not defined" % method)
+
         xi, xi_shape, ndim, nans, out_of_bounds = self._prepare_xi(xi)
 
         if method == "linear":
@@ -179,11 +343,12 @@ class RegularGridInterpolator:
         xi = _ndim_coords_from_arrays(xi, ndim=ndim)
         if xi.shape[-1] != len(self.grid):
             raise ValueError("The requested sample points xi have dimension "
-                             "%d, but this RegularGridInterpolator has "
-                             "dimension %d" % (xi.shape[-1], ndim))
+                             f"{xi.shape[-1]} but this "
+                             f"RegularGridInterpolator has dimension {ndim}")
 
         xi_shape = xi.shape
         xi = xi.reshape(-1, xi_shape[-1])
+        xi = cp.asarray(xi, dtype=float)
 
         # find nans in input
         nans = cp.any(cp.isnan(xi), axis=-1)
@@ -192,8 +357,8 @@ class RegularGridInterpolator:
             for i, p in enumerate(xi.T):
                 if not cp.logical_and(cp.all(self.grid[i][0] <= p),
                                       cp.all(p <= self.grid[i][-1])):
-                    raise ValueError("One of the requested xi is out of "
-                                     "bounds in dimension %d" % i)
+                    raise ValueError("One of the requested xi is out of bounds"
+                                     " in dimension %d" % i)
             out_of_bounds = None
         else:
             out_of_bounds = self._find_out_of_bounds(xi.T)
@@ -221,14 +386,15 @@ class RegularGridInterpolator:
         # to get the terms in the above formula. This corresponds to iterating
         # over the vertices of a hypercube.
         hypercube = itertools.product(*zip(zipped1, zipped2))
-        values = 0.
+        value = cp.array([0.])
         for h in hypercube:
             edge_indices, weights = zip(*h)
-            weight = 1.
+            weight = cp.array([1.])
             for w in weights:
-                weight *= w
-            values += cp.asarray(self.values[edge_indices]) * weight[vslice]
-        return values
+                weight = weight * w
+            term = cp.asarray(self.values[edge_indices]) * weight[vslice]
+            value = value + term   # cannot use += because broadcasting
+        return value
 
     def _evaluate_nearest(self, indices, norm_distances):
         idx_res = [cp.where(yi <= .5, i, i + 1)
@@ -281,7 +447,7 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
         each dimension (i.e. every elements of the points tuple) must be
         strictly ascending or descending.
 
-    values : cupy.ndarray, shape (m1, ..., mn, ...)
+    values : cupy.ndarray of shape (m1, ..., mn, ...)
         The data on the regular grid in n dimensions. Complex data can be
         acceptable.
 
@@ -290,7 +456,7 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
 
     method : str, optional
         The method of interpolation to perform. Supported are "linear" and
-        "nearest".  Default is "linear".
+        "nearest".
 
     bounds_error : bool, optional
         If True, when interpolated values are requested outside of the
@@ -305,18 +471,19 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
     Returns
     -------
     values_x : ndarray, shape xi.shape[:-1] + values.shape[ndim:]
-        Interpolated values at `xi`.  See notes for behaviour when
+        Interpolated values at `xi`. See notes for behaviour when
         ``xi.ndim == 1``.
 
     Notes
     -----
+
     In the case that ``xi.ndim == 1`` a new axis is inserted into
     the 0 position of the returned array, values_x, so its shape is
     instead ``(1,) + values.shape[ndim:]``.
 
-    If the input data is such that dimensions have incommensurate
+    If the input data is such that input dimensions have incommensurate
     units and differ by many orders of magnitude, the interpolant may have
-    numerical artifacts. Consider rescaling the data before interpolating.
+    numerical artifacts. Consider rescaling the data before interpolation.
 
     Examples
     --------
@@ -347,16 +514,12 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
     cupyx.scipy.ndimage.map_coordinates : interpolation on grids with equal
                                           spacing (suitable for e.g., N-D image
                                           resampling)
-
     """
     # sanity check 'method' kwarg
     if method not in ["linear", "nearest"]:
         raise ValueError(
             "interpn only understands the methods 'linear' and 'nearest'. "
-            "You provided %s." % method)
-
-    if not hasattr(values, 'ndim'):
-        values = cp.asarray(values)
+            "You provided {method}.")
 
     ndim = values.ndim
 
@@ -365,32 +528,15 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
         raise ValueError("There are %d point arrays, but values has %d "
                          "dimensions" % (len(points), ndim))
 
-    points = list(points)
-    # sanity check input grid
-    for i, p in enumerate(points):
-        diff_p = cp.diff(p)
-        if not cp.all(diff_p > 0.):
-            if cp.all(diff_p < 0.):
-                # input is descending, so make it ascending
-                points[i] = points[i][::-1]
-                values = cp.flip(values, axis=i)
-            else:
-                raise ValueError("The points in dimension %d must be strictly "
-                                 "ascending or descending" % i)
-        if not cp.asarray(p).ndim == 1:
-            raise ValueError("The points in dimension %d must be "
-                             "1-dimensional" % i)
-        if not values.shape[i] == len(p):
-            raise ValueError("There are %d points and %d values in "
-                             "dimension %d" % (len(p), values.shape[i], i))
-    grid = tuple([cp.asarray(p) for p in points])
+    grid, descending_dimensions = _check_points(points)
+    _check_dimensionality(grid, values)
 
     # sanity check requested xi
     xi = _ndim_coords_from_arrays(xi, ndim=len(grid))
     if xi.shape[-1] != len(grid):
         raise ValueError("The requested sample points xi have dimension "
-                         f"{xi.shape[-1]} but this "
-                         f"RegularGridInterpolator has dimension {ndim}")
+                         "%d, but this RegularGridInterpolator has "
+                         "dimension %d" % (xi.shape[-1], len(grid)))
 
     if bounds_error:
         for i, p in enumerate(xi.T):
@@ -400,7 +546,8 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                  "in dimension %d" % i)
 
     # perform interpolation
-    interp = RegularGridInterpolator(points, values, method=method,
-                                     bounds_error=bounds_error,
-                                     fill_value=fill_value)
-    return interp(xi)
+    if method in ["linear", "nearest"]:
+        interp = RegularGridInterpolator(points, values, method=method,
+                                         bounds_error=bounds_error,
+                                         fill_value=fill_value)
+        return interp(xi)

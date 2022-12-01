@@ -58,23 +58,6 @@ class TestRegularGridInterpolator:
         return points, values
 
     @parametrize_rgi_interp_methods
-    def test_list_input(self, method):
-        points, values = self._get_sample_4d_3()
-
-        sample = cp.asarray([[0.1, 0.1, 1., .9], [0.2, 0.1, .45, .8],
-                             [0.5, 0.5, .5, .5]])
-
-        interp = RegularGridInterpolator(points,
-                                         values.tolist(),
-                                         method=method)
-        v1 = interp(sample.tolist())
-        interp = RegularGridInterpolator(points,
-                                         values,
-                                         method=method)
-        v2 = interp(sample)
-        assert_allclose(v1, v2)
-
-    @parametrize_rgi_interp_methods
     def test_complex(self, method):
         points, values = self._get_sample_4d_3()
         values = values - 2j*values
@@ -190,20 +173,6 @@ class TestRegularGridInterpolator:
         wanted = cp.asarray([1001.1, 846.2, 555.5])
         assert_array_almost_equal(interp(sample), wanted)
 
-    @pytest.mark.parametrize("method", ["nearest", "linear"])
-    def test_duck_typed_values(self, method):
-        x = cp.linspace(0, 2, 5)
-        y = cp.linspace(0, 1, 7)
-
-        values = MyValue((5, 7))
-
-        interp = RegularGridInterpolator((x, y), values, method=method)
-        v1 = interp([0.4, 0.7])
-
-        interp = RegularGridInterpolator((x, y), values._v, method=method)
-        v2 = interp([0.4, 0.7])
-        assert_allclose(v1, v2)
-
     def test_invalid_fill_value(self):
         cp.random.seed(1234)
         x = cp.linspace(0, 2, 5)
@@ -299,7 +268,8 @@ class TestRegularGridInterpolator:
     @pytest.mark.parametrize("method", ['nearest', 'linear'])
     def test_nan_x_1d(self, method):
         # gh-6624 : if x is nan, result should be nan
-        f = RegularGridInterpolator(([1, 2, 3],), [10, 20, 30], fill_value=1,
+        f = RegularGridInterpolator((cp.array([1, 2, 3]),),
+                                    cp.array([10, 20, 30]), fill_value=1,
                                     bounds_error=False, method=method)
         assert cp.isnan(f([cp.nan]))
 
@@ -543,18 +513,6 @@ class TestInterpN:
         )
         return x, y, z
 
-    @parametrize_rgi_interp_methods
-    def test_list_input(self, method):
-        x, y, z = self._sample_2d_data()
-        xi = cp.array([[1, 2.3, 5.3, 0.5, 3.3, 1.2, 3],
-                       [1, 3.3, 1.2, 4.0, 5.0, 1.0, 3]]).T
-
-        v1 = interpn((x, y), z, xi, method=method)
-        v2 = interpn(
-            (x.tolist(), y.tolist()), z.tolist(), xi.tolist(), method=method
-        )
-        assert_allclose(v1, v2, err_msg=method)
-
     def _sample_4d_data(self):
         points = [(0., .5, 1.)] * 2 + [(0., 5., 10.)] * 2
         values = cp.asarray([0., .5, 1.])
@@ -707,20 +665,6 @@ class TestInterpN:
         v2 = v2r + 1j*v2i
         assert_allclose(v1, v2)
 
-    @pytest.mark.parametrize(
-        "method",
-        ["linear", "nearest"]
-    )
-    def test_duck_typed_values(self, method):
-        x = cp.linspace(0, 2, 5)
-        y = cp.linspace(0, 1, 7)
-
-        values = MyValue((5, 7))
-
-        v1 = interpn((x, y), values, [0.4, 0.7], method=method)
-        v2 = interpn((x, y), values._v, [0.4, 0.7], method=method)
-        assert_allclose(v1, v2)
-
     def test_length_one_axis(self):
         # gh-5890, gh-9524 : length-1 axis is legal for method='linear'.
         # Along the axis it's linear interpolation; away from the length-1
@@ -785,10 +729,10 @@ class TestInterpN:
 
     def test_invalid_xi_dimensions(self):
         # https://github.com/scipy/scipy/issues/16519
-        points = [(0, 1)]
-        values = [0, 1]
+        points = [cp.array((0, 1))]
+        values = cp.array([0, 1])
         xi = cp.ones((1, 1, 3))
-        msg = ("The requested sample points xi have dimension 3 but this "
+        msg = ("The requested sample points xi have dimension 3, but this "
                "RegularGridInterpolator has dimension 1")
         with assert_raises(ValueError, match=msg):
             interpn(points, values, xi)
