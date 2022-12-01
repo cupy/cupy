@@ -102,25 +102,6 @@ class RegularGridInterpolator:
         If None, values outside the domain are extrapolated.
         Default is ``cp.nan``.
 
-    Methods
-    -------
-    __call__
-
-    Attributes
-    ----------
-    grid : tuple of ndarrays
-        The points defining the regular grid in n dimensions.
-        This tuple defines the full grid via
-        ``cp.meshgrid(*grid, indexing='ij')``
-    values : ndarray
-        Data values at the grid.
-    method : str
-        Interpolation method.
-    fill_value : float or ``None``
-        Use this value for out-of-bounds arguments to `__call__`.
-    bounds_error : bool
-        If ``True``, out-of-bounds argument raise a ``ValueError``.
-
     Notes
     -----
     Contrary to scipy's `LinearNDInterpolator` and `NearestNDInterpolator`,
@@ -215,14 +196,14 @@ class RegularGridInterpolator:
 
     References
     ----------
-    .. [1] Python package *regulargrid* by Johannes Buchner, see
-           https://pypi.python.org/pypi/regulargrid/
-    .. [2] Wikipedia, "Trilinear interpolation",
-           https://en.wikipedia.org/wiki/Trilinear_interpolation
-    .. [3] Weiser, Alan, and Sergio E. Zarantonello. "A note on piecewise
-           linear and multilinear table interpolation in many dimensions."
-           MATH. COMPUT. 50.181 (1988): 189-196.
-           https://www.ams.org/journals/mcom/1988-50-181/S0025-5718-1988-0917826-0/S0025-5718-1988-0917826-0.pdf
+    [1] Python package *regulargrid* by Johannes Buchner, see
+        https://pypi.python.org/pypi/regulargrid/
+    [2] Wikipedia, "Trilinear interpolation",
+        https://en.wikipedia.org/wiki/Trilinear_interpolation
+    [3] Weiser, Alan, and Sergio E. Zarantonello. "A note on piecewise
+        linear and multilinear table interpolation in many dimensions."
+        MATH. COMPUT. 50.181 (1988): 189-196.
+        https://www.ams.org/journals/mcom/1988-50-181/S0025-5718-1988-0917826-0/S0025-5718-1988-0917826-0.pdf
     """
     # this class is based on code originally programmed by Johannes Buchner,
     # see https://github.com/JohannesBuchner/regulargrid
