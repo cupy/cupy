@@ -3578,17 +3578,17 @@ cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
 }
 
 // See cusparse.pyx for a comment
-cusparseStatus_t _cusparseSpSM_solve(cusparseHandle_t     handle,
-                                     cusparseOperation_t  opA,
-                                     cusparseOperation_t  opB,
-                                     const void*          alpha,
-                                     cusparseSpMatDescr_t matA,
-                                     cusparseDnMatDescr_t matB,
-                                     cusparseDnMatDescr_t matC,
-                                     cudaDataType         computeType,
-                                     cusparseSpSMAlg_t    alg,
-                                     cusparseSpSMDescr_t  spsmDescr,
-                                     void*                externalBuffer) {
+cusparseStatus_t cusparseSpSM_solve(cusparseHandle_t     handle,
+                                    cusparseOperation_t  opA,
+                                    cusparseOperation_t  opB,
+                                    const void*          alpha,
+                                    cusparseSpMatDescr_t matA,
+                                    cusparseDnMatDescr_t matB,
+                                    cusparseDnMatDescr_t matC,
+                                    cudaDataType         computeType,
+                                    cusparseSpSMAlg_t    alg,
+                                    cusparseSpSMDescr_t  spsmDescr,
+                                    void*                externalBuffer) {
 #if HIP_VERSION >= 50000000
   hipDataType computeType1 = convert_hipDatatype(computeType);
   return hipsparseSpSM_solve(handle, opA, opB, alpha, matA, matB, matC, computeType1, alg, spsmDescr, externalBuffer);

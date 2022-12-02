@@ -1145,7 +1145,7 @@ cusparseStatus_t cusparseSpSM_analysis(...) {
 }
 
 // See cusparse.pyx for a comment
-cusparseStatus_t _cusparseSpSM_solve(...) {
+cusparseStatus_t cusparseSpSM_solve(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
