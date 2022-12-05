@@ -887,12 +887,8 @@ class TestCsrlsvqr:
 
 @testing.with_requires('scipy')
 class TestSpSolve:
-    @pytest.mark.parametrize('dtyp',
-                             ['float32', 'float64', 'complex64', 'complex128'])
-    @testing.numpy_cupy_allclose(sp_name='sp', atol=5e-7)
-    def test_spsolve(self, xp, sp, dtyp):
-        n = 5
-        nb = 3
+    def _check_spsolve(self, xp, sp, dtyp):
+        n, nb = 5, 3
 
         a = xp.diag(xp.arange(n) + 1)
         sa = sp.csr_matrix(a.astype(dtyp))
@@ -902,6 +898,16 @@ class TestSpSolve:
         b = b[::2, :]
         result = sp.linalg.spsolve(sa, b)
         return result
+
+    @pytest.mark.parametrize('dtyp', ['float32', 'complex64'])
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=5e-7)
+    def test_spsolve_single(self, xp, sp, dtyp):
+        return self._check_spsolve(xp, sp, dtyp)
+
+    @pytest.mark.parametrize('dtyp', ['float64', 'complex128'])
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-14)
+    def test_spsolve_double(self, xp, sp, dtyp):
+        return self._check_spsolve(xp, sp, dtyp)
 
 
 def _eigen_vec_transform(block_vec, xp):
