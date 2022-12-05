@@ -520,7 +520,7 @@ def remove_copy(env, exec_policy, first, last, result, value):
     _assert_pointer_type(result)
     args = [exec_policy, first, last, result, value]
     params = ', '.join([a.code for a in args])
-    return _Data(f'thrust::remove_copy({params})', first.ctype)
+    return _Data(f'thrust::remove_copy({params})', result.ctype)
 
 
 # TODO(asi1024): Add remove_copy_if
@@ -551,7 +551,7 @@ def replace_copy(env, exec_policy, first, last, result, old_value, new_value):
     _assert_same_type(old_value, new_value)
     args = [exec_policy, first, last, result, old_value, new_value]
     params = ', '.join([a.code for a in args])
-    return _Data(f'thrust::replace_copy({params})', _cuda_types.void)
+    return _Data(f'thrust::replace_copy({params})', result.ctype)
 
 
 # TODO(asi1024): Add replace_copy_if
@@ -580,7 +580,7 @@ def reverse_copy(env, exec_policy, first, last, result):
     _assert_pointer_type(result)
     args = [exec_policy, first, last, result]
     params = ', '.join([a.code for a in args])
-    return _Data(f'thrust::reverse_copy({params})', _cuda_types.void)
+    return _Data(f'thrust::reverse_copy({params})', result.ctype)
 
 
 @_wrap_thrust_func(['thrust/scatter.h'])
@@ -626,6 +626,7 @@ def set_difference(
     _assert_exec_policy_type(exec_policy)
     _assert_same_type(first1, last1)
     _assert_same_type(first2, last2)
+    _assert_pointer_type(result)
     args = [exec_policy, first1, last1, first2, last2, result]
     if comp is not None:
         raise NotImplementedError('comp option is not supported')
