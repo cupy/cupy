@@ -41,24 +41,29 @@ cdef extern from *:
     ctypedef int Format 'cusparseFormat_t'
     ctypedef int Order 'cusparseOrder_t'
     ctypedef int SpMVAlg 'cusparseSpMVAlg_t'
+    ctypedef int SpSMAlg 'cusparseSpSMAlg_t'
     ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
     ctypedef int SpGEMMAlg 'cusparseSpGEMMAlg_t'
     ctypedef int DataType 'cudaDataType'
+    ctypedef int SpMatAttribute 'cusparseSpMatAttribute_t'
 
     ctypedef void* SpVecDescr 'cusparseSpVecDescr_t'
     ctypedef void* DnVecDescr 'cusparseDnVecDescr_t'
     ctypedef void* SpMatDescr 'cusparseSpMatDescr_t'
     ctypedef void* DnMatDescr 'cusparseDnMatDescr_t'
+    ctypedef void* SpSMDescr 'cusparseSpSMDescr_t'
     ctypedef void* SpGEMMDescr 'cusparseSpGEMMDescr_t'
 
     ctypedef void* cusparseSpVecDescr_t
     ctypedef void* cusparseDnVecDescr_t
     ctypedef void* cusparseSpMatDescr_t
     ctypedef void* cusparseDnMatDescr_t
+    ctypedef void* cusparseSpSMDescr_t
     ctypedef void* cusparseSpGEMMDescr_t
 
     ctypedef int cusparseSparseToDenseAlg_t
     ctypedef int cusparseDenseToSparseAlg_t
+    ctypedef int cusparseSpSMAlg_t
     ctypedef int cusparseSpGEMMAlg_t
 
     # CSR2CSC
@@ -71,6 +76,7 @@ cpdef enum:
     CUSPARSE_ACTION_SYMBOLIC = 0
     CUSPARSE_ACTION_NUMERIC = 1
 
+    # cusparseIndexBase_t
     CUSPARSE_INDEX_BASE_ZERO = 0
     CUSPARSE_INDEX_BASE_ONE = 1
 
@@ -79,11 +85,11 @@ cpdef enum:
     CUSPARSE_MATRIX_TYPE_HERMITIAN = 2
     CUSPARSE_MATRIX_TYPE_TRIANGULAR = 3
 
-    # cusparseDiagType_t
+    # cusparseFillMode_t
     CUSPARSE_FILL_MODE_LOWER = 0
     CUSPARSE_FILL_MODE_UPPER = 1
 
-    # cusparseIndexBase_t
+    # cusparseDiagType_t;
     CUSPARSE_DIAG_TYPE_NON_UNIT = 0
     CUSPARSE_DIAG_TYPE_UNIT = 1
 
@@ -124,9 +130,16 @@ cpdef enum:
     CUSPARSE_INDEX_32I = 2  # 32-bit signed integer
     CUSPARSE_INDEX_64I = 3  # 64-bit signed integer
 
+    # cusparseSpMatAttribute_t
+    CUSPARSE_SPMAT_FILL_MODE = 0
+    CUSPARSE_SPMAT_DIAG_TYPE = 1
+
     # CSR2CSC
     CUSPARSE_CSR2CSC_ALG1 = 1  # faster than ALG2 (in general), deterministc
     CUSPARSE_CSR2CSC_ALG2 = 2  # low memory requirement, non-deterministc
+
+    # cusparseSpSMAlg_t
+    CUSPARSE_SPSM_ALG_DEFAULT = 0
 
     # ...
     CUSPARSE_SPGEMM_DEFAULT = 0
