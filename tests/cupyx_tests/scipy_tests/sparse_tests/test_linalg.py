@@ -885,6 +885,22 @@ class TestCsrlsvqr:
                                      atol=test_tol)
 
 
+@testing.with_requires('scipy')
+class TestSpSolve:
+    @pytest.mark.parametrize('dtyp',
+                             ['float32', 'float64', 'complex64', 'complex128'])
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_spsolve(self, xp, sp, dtyp):
+        n = 5
+        nb = 3
+
+        a = xp.diag(xp.arange(n) + 1)
+        sa = sp.csr_matrix(a.astype(dtyp))
+        b = xp.ones((n, nb), dtype=dtyp)
+        result = sp.linalg.spsolve(sa, b)
+        return result
+
+
 def _eigen_vec_transform(block_vec, xp):
     """Helper to swap sign of each eigen vector based on the first
     non-zero element. ie, to standardize the first non-zero element
