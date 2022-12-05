@@ -889,14 +889,17 @@ class TestCsrlsvqr:
 class TestSpSolve:
     @pytest.mark.parametrize('dtyp',
                              ['float32', 'float64', 'complex64', 'complex128'])
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=5e-7)
     def test_spsolve(self, xp, sp, dtyp):
         n = 5
         nb = 3
 
         a = xp.diag(xp.arange(n) + 1)
         sa = sp.csr_matrix(a.astype(dtyp))
-        b = xp.ones((n, nb), dtype=dtyp)
+
+        # prepare b to be non-contiguous
+        b = xp.arange((2*n*nb), dtype=dtyp).reshape((2*n, nb))
+        b = b[::2, :]
         result = sp.linalg.spsolve(sa, b)
         return result
 
