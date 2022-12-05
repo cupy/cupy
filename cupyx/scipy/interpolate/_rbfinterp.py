@@ -4,7 +4,6 @@ import warnings
 from itertools import combinations_with_replacement
 
 import cupy as cp
-# from scipy.spatial import KDTree        # FIXME
 
 
 # Define the kernel functions.
