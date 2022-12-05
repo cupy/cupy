@@ -617,6 +617,22 @@ def sequence(env, exec_policy, first, last, init=None, step=None):
     return _Data(f'thrust::sequence({params})', _cuda_types.void)
 
 
+@_wrap_thrust_func(['thrust/set_operations.h'])
+def set_difference(
+        env, exec_policy, first1, last1, first2, last2, result, comp=None):
+    """Constructs a sorted range that is the set difference of sorted inputs.
+    """
+    # TODO(asi1024): Typecheck for Comparable.
+    _assert_exec_policy_type(exec_policy)
+    _assert_same_type(first1, last1)
+    _assert_same_type(first2, last2)
+    args = [exec_policy, first1, last1, first2, last2, result]
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::set_difference({params})', result.ctype)
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.

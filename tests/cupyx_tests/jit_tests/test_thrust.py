@@ -700,6 +700,26 @@ class TestThrust:
         testing.assert_array_equal(x, expected)
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_set_difference(self, order):
+        @jit.rawkernel()
+        def set_difference(x, y, out, size):
+            it = jit.thrust.set_difference(
+                jit.thrust.device,
+                x.begin(), x.end(),
+                y.begin(), y.end(),
+                out.begin())
+            size[0] = it - out.begin()
+
+        x = cupy.array([0, 1, 3, 4, 5, 6, 9])
+        y = cupy.array([1, 3, 5, 7, 9])
+        out = cupy.zeros((10,), dtype=numpy.int64)
+        size = cupy.zeros((1,), dtype=numpy.int64)
+        set_difference[1, 1](x, y, out, size)
+
+        testing.assert_array_equal(size, cupy.array([3]))
+        testing.assert_array_equal(out[:3], cupy.array([0, 4, 6]))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')
