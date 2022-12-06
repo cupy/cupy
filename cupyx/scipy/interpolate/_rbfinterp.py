@@ -394,6 +394,14 @@ _NAME_TO_MIN_DEGREE = {
 }
 
 
+try:
+    _comb = math.comb
+except AttributeError:
+    # Naive combination for Python 3.7
+    def _comb(n, k):
+        return math.factorial(n) // (math.factorial(n - k) * math.factorial(k))
+
+
 def _monomial_powers(ndim, degree):
     """Return the powers for each monomial in a polynomial.
 
@@ -411,7 +419,7 @@ def _monomial_powers(ndim, degree):
         monomial.
 
     """
-    nmonos = math.comb(degree + ndim, ndim)
+    nmonos = _comb(degree + ndim, ndim)
     out = cp.zeros((nmonos, ndim), dtype=int)
     count = 0
     for deg in range(degree + 1):
