@@ -134,7 +134,7 @@ __device__ T eval_poly_1(
 
     }
 
-    return s;
+    return res;
 
 }
 
@@ -154,7 +154,8 @@ __global__ void eval_ppoly(
     long long interval = *&intervals[idx];
     double breakpoint = *&breakpoints[interval];
 
-    const long long num_c = *&c_strides[0];
+    const int num_c = *&c_dims[2];
+    const long long stride_0 = *&c_strides[0];
     const long long stride_1 = *&c_strides[1];
 
     if(interval < 0) {
@@ -165,9 +166,10 @@ __global__ void eval_ppoly(
     }
 
     for(int j = 0; j < num_c; j++) {
-        out[num_c * idx + j] = eval_poly_1<T>(
+        T res = eval_poly_1<T>(
             xp - breakpoint, coef, interval, ((long long) (j)), dx,
-            c_dims, num_c, stride_1);
+            c_dims, stride_0, stride_1);
+        out[num_c * idx + j] = res;
     }
 }
 """
@@ -215,9 +217,9 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
         This argument is modified in-place.
     """
     # Determine if the breakpoints are in ascending order or descending one
-    ascending = x[x.shape[0] - 1] >= x[0]
+    ascending = (x[x.shape[0] - 1] >= x[0]).item()
 
-    intervals = cupy.empty(xp.shape[0], dtype=cupy.int_)
+    intervals = cupy.empty(xp.shape, dtype=cupy.int64)
     interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
