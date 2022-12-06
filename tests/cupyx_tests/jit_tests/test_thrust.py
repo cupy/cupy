@@ -749,6 +749,53 @@ class TestThrust:
         testing.assert_array_equal(vals_out[:3], cupy.array([2, 2, 2]))
 
     @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_set_intersection(self, order):
+        @jit.rawkernel()
+        def set_intersection(x, y, out, size):
+            it = jit.thrust.set_intersection(
+                jit.thrust.device,
+                x.begin(), x.end(),
+                y.begin(), y.end(),
+                out.begin())
+            size[0] = it - out.begin()
+
+        x = cupy.array([1, 3, 5, 7, 9, 11])
+        y = cupy.array([1, 1, 2, 3, 5, 8, 13])
+        out = cupy.zeros((10,), dtype=numpy.int64)
+        size = cupy.zeros((1,), dtype=numpy.int64)
+        set_intersection[1, 1](x, y, out, size)
+
+        testing.assert_array_equal(size, cupy.array([3]))
+        testing.assert_array_equal(out[:3], cupy.array([1, 3, 5]))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_set_intersection_by_key(self, order):
+        @jit.rawkernel()
+        def set_intersection_by_key(
+                keys1, keys2, values1, keys_out, values_out, size):
+            it0, it1 = jit.thrust.set_intersection_by_key(
+                jit.thrust.device,
+                keys1.begin(), keys1.end(),
+                keys2.begin(), keys2.end(),
+                values1.begin(), keys_out.begin(), values_out.begin()
+            )
+            size[0] = it0 - keys_out.begin()
+            size[1] = it1 - values_out.begin()
+
+        a_keys = cupy.array([1, 3, 5, 7, 9, 11])
+        a_vals = cupy.array([2, 2, 2, 2, 2, 2, 2])
+        b_keys = cupy.array([1, 1, 2, 3, 5, 8, 13])
+        keys_out = cupy.zeros((10,), dtype=numpy.int64)
+        vals_out = cupy.zeros((10,), dtype=numpy.int64)
+        size = cupy.zeros((2,), dtype=numpy.int64)
+        set_intersection_by_key[1, 1](
+            a_keys, b_keys, a_vals, keys_out, vals_out, size)
+
+        testing.assert_array_equal(size, cupy.array([3, 3]))
+        testing.assert_array_equal(keys_out[:3], cupy.array([1, 3, 5]))
+        testing.assert_array_equal(vals_out[:3], cupy.array([2, 2, 2]))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
     def test_sort_iterator(self, order):
         if runtime.is_hip:
             pytest.skip('See https://github.com/cupy/cupy/pull/7162')
