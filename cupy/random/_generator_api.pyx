@@ -198,12 +198,12 @@ class Generator:
 
         cdef _ndarray_base y
 
-        low = cupy.asarray(low)        
+        low = cupy.asarray(low)
         high = cupy.asarray(high)
 
         if size is None:
             size = cupy.broadcast(low, high).shape
-            
+
         y = _core.ndarray(size, numpy.float64)
         low = cupy.broadcast_to(low, y.shape)
         high = cupy.broadcast_to(high, y.shape)
