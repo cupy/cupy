@@ -198,24 +198,12 @@ class Generator:
 
         cdef _ndarray_base y
 
-        if not isinstance(low, _ndarray_base):
-            if type(low) in (float, int):
-                low = cupy.asarray(low, numpy.float64)
-            else:
-                raise TypeError('low is required to be a cupy.ndarray'
-                                ' or a scalar')
-        if not isinstance(high, _ndarray_base):
-            if type(high) in (float, int):
-                high = cupy.asarray(high, numpy.float64)
-            else:
-                raise TypeError('high is required to be a cupy.ndarray'
-                                ' or a scalar')
+        low = cupy.asarray(low)        
+        high = cupy.asarray(high)
 
-        if size is not None and not isinstance(size, tuple):
-            size = (size, )
-        elif size is None:
+        if size is None:
             size = cupy.broadcast(low, high).shape
-
+            
         y = _core.ndarray(size, numpy.float64)
         low = cupy.broadcast_to(low, y.shape)
         high = cupy.broadcast_to(high, y.shape)
