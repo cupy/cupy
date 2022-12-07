@@ -1,5 +1,6 @@
 import pytest
 import numpy
+import numpy as np
 
 import cupy
 from cupy import testing
@@ -49,8 +50,8 @@ class TestPPolyCommon:
         c = 2*numpy.random.rand(order+1, len(x)-1, 2, 3) - 1
         c = xp.asarray(c)
 
-        pp = cls(c[:,:9], x[:10])
-        pp.extend(c[:,9:], x[10:])
+        pp = cls(c[:, :9], x[:10])
+        pp.extend(c[:, 9:], x[10:])
 
         pp2 = cls(c[:, 10:], x[10:])
         pp2.extend(c[:, :10], x[:10])
@@ -96,8 +97,6 @@ class TestPPolyCommon:
         x = xp.asarray(x)
         c = numpy.random.rand(order + 1, x.shape[0] - 1, 2, 3)
         c = xp.asarray(c)
-
-        p = cls(c, x)
 
         p1 = cls(c[:, :9], x[:10])
         p1.extend(c[:, 9:], x[10:])
@@ -152,11 +151,11 @@ class TestPPolyCommon:
         x = xp.array(x)
         c = numpy.random.random((8, 12)) * (1. + 0.3j)
         c = xp.array(c)
-        c_re, c_im = c.real, c.imag
+        # c_re, c_im = c.real, c.imag
         xpt = xp.array(numpy.random.random(5))
 
         p = cls(c, x)
-        return [p(xpt, nu) for nu in [0, 1, 2]]        
+        return [p(xpt, nu) for nu in [0, 1, 2]]
 
     @parametrize_cls
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
@@ -205,7 +204,8 @@ class TestPPolyCommon:
 
         # c array needs two axes for the coefficients and intervals, so
         # 0 <= axis < c.ndim-1; raise otherwise
-        cls(c=c, x=x, axis=axis)
+        instance = cls(c=c, x=x, axis=axis)
+        return instance.c, instance.x, instance.axis
 
 
 @testing.with_requires("scipy")
@@ -226,7 +226,8 @@ class TestPPoly:
         p = scp.interpolate.PPoly(c, x, extrapolate='periodic')
 
         testing.assert_allclose(p(1.3), 1 * 0.3 ** 2 + 2 * 0.3 + 3)
-        testing.assert_allclose(p(-0.3), 4 * (0.7 - 0.5) ** 2 + 5 * (0.7 - 0.5) + 6)
+        testing.assert_allclose(p(-0.3), 4 * (0.7 - 0.5)
+                                ** 2 + 5 * (0.7 - 0.5) + 6)
 
         testing.assert_allclose(p(1.3, 1), 2 * 0.3 + 2)
         testing.assert_allclose(p(-0.3, 1), 8 * (0.7 - 0.5) + 5)
@@ -273,7 +274,7 @@ class TestPPoly:
         p = scp.interpolate.PPoly.construct_fast(c, x)
         testing.assert_allclose(p(0.3), 1*0.3**2 + 2*0.3 + 3)
         testing.assert_allclose(p(0.7), 4*(0.7-0.5)**2 + 5*(0.7-0.5) + 6)
-        return True
+        return p(0.3), p(0.7)
 
     def test_from_spline(self):
         numpy.random.seed(1234)
@@ -324,7 +325,7 @@ class TestPPoly:
 
         xi = cupy.linspace(0, 1, 200)
         for dx in range(0, 3):
-            tetsing.assert_allclose(pp(xi, dx),
+            testing.assert_allclose(pp(xi, dx),
                                     sc_interpolate.splev(xi, spl, dx))
 
     def test_derivative(self):
@@ -346,19 +347,19 @@ class TestPPoly:
         PPoly = cupyx.scipy.interpolate.PPoly
         p = PPoly(cupy.asarray([[1.]]), cupy.asarray([0, 1]))
         testing.assert_allclose(p.antiderivative().c,
-                             PPoly(c=cupy.asarray([[1], [0]]),
-                                   x=cupy.asarray([0, 1])).c, atol=1e-15)
+                                PPoly(c=cupy.asarray([[1], [0]]),
+                                      x=cupy.asarray([0, 1])).c, atol=1e-15)
         testing.assert_allclose(p.antiderivative().x,
-                             PPoly(c=cupy.asarray([[1], [0]]),
-                                   x=cupy.asarray([0, 1])).x, atol=1e-15)
+                                PPoly(c=cupy.asarray([[1], [0]]),
+                                      x=cupy.asarray([0, 1])).x, atol=1e-15)
 
     def test_antiderivative_regression_4355(self):
         # https://github.com/scipy/scipy/issues/4355
         PPoly = cupyx.scipy.interpolate.PPoly
         p = PPoly(cupy.asarray([[1., 0.5]]), cupy.asarray([0, 1, 2]))
         q = p.antiderivative()
-        assert q.c == cupy.asarray([[1, 0.5], [0, 1]])
-        assert q.x == cupy.asarray([0, 1, 2])
+        testing.assert_allclose(q.c, cupy.asarray([[1, 0.5], [0, 1]]))
+        testing.assert_allclose(q.x, cupy.asarray([0, 1, 2]))
         testing.assert_allclose(p.integrate(0, 2), 1.5)
         testing.assert_allclose(q(2) - q(0), 1.5)
 
@@ -369,11 +370,11 @@ class TestPPoly:
         c = xp.array([[3, 2, 1], [0, 0, 1.6875]]).T
         # [ pp1(x) = x**3 + x**2 + x,
         #   pp2(x) = 1.6875*(x - 0.25) + pp1(0.25)]
-        ic = xp.array([[1, 1, 1, 0], [0, 0, 1.6875, 0.328125]]).T
+        # ic = xp.array([[1, 1, 1, 0], [0, 0, 1.6875, 0.328125]]).T
         # [ ppp1(x) = (1/4)*x**4 + (1/3)*x**3 + (1/2)*x**2,
         #   ppp2(x) = (1.6875/2)*(x - 0.25)**2 + pp1(0.25)*x + ppp1(0.25)]
-        iic = xp.array([[1/4, 1/3, 1/2, 0, 0],
-                        [0, 0, 1.6875/2, 0.328125, 0.037434895833333336]]).T
+        # iic = xp.array([[1/4, 1/3, 1/2, 0, 0],
+        #                 [0, 0, 1.6875/2, 0.328125, 0.037434895833333336]]).T
         x = xp.array([0, 0.25, 1])
 
         pp = scp.interpolate.PPoly(c, x)
@@ -422,7 +423,6 @@ class TestPPoly:
             spl2 = cupyx.scipy.interpolatesplantider(spl_cupy, dx)
             spl2_np = (spl2[0].get(), spl2[1].get(), spl2[2])
 
-
             xi = cupy.linspace(0, 1, 200)
             testing.assert_allclose(pp2(xi),
                                     sc_interpolate.splev(xi.get(), spl2_np),
@@ -442,14 +442,13 @@ class TestPPoly:
         p2 = ip.derivative()
         testing.assert_allclose(p2.c, p.c)
 
-
     def test_integrate(self):
         numpy.random.seed(1234)
         x = numpy.sort(numpy.r_[0, numpy.random.rand(11), 1])
         y = numpy.random.rand(len(x))
 
         spl = sc_interpolate.splrep(x, y, s=0, k=5)
-        spl_cupy = (cupy.asarray(spl[0]), cupy.asarray(spl[1]), spl[2])
+        # spl_cupy = (cupy.asarray(spl[0]), cupy.asarray(spl[1]), spl[2])
         pp = cupyx.scipy.interpolate.PPoly.from_spline(spl)
 
         a, b = 0.3, 0.9
@@ -457,7 +456,7 @@ class TestPPoly:
 
         ipp = pp.antiderivative()
         testing.assert_allclose(ig, ipp(b) - ipp(a))
-        testing.assert_allclose(ig, splint(a, b, spl))
+        testing.assert_allclose(ig, sc_interpolate.splint(a, b, spl))
 
         a, b = -0.3, 0.9
         ig = pp.integrate(a, b, extrapolate=True)
@@ -465,43 +464,49 @@ class TestPPoly:
 
         assert (cupy.isnan(pp.integrate(a, b, extrapolate=False)).all())
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate_readonly(self, xp, scp):
+        x = xp.array([1, 2, 4])
+        c = xp.array([[0., 0.], [-1., -1.], [2., -0.], [1., 2.]])
 
-    def test_integrate_readonly(self):
-        x = cupy.array([1, 2, 4])
-        c = cupy.array([[0., 0.], [-1., -1.], [2., -0.], [1., 2.]])
-
+        ret = []
         for writeable in (True, False):
             x.flags.writeable = writeable
 
-            P = cupyx.scipy.interpolate.PPoly(c, x)
+            P = scp.interpolate.PPoly(c, x)
             vals = P.integrate(1, 4)
+            ret.append(vals)
 
-            assert_(np.isfinite(vals).all())
-
+        return ret
 
     def test_integrate_periodic(self):
         x = cupy.array([1, 2, 4])
         c = cupy.array([[0., 0.], [-1., -1.], [2., -0.], [1., 2.]])
 
         P = cupyx.scipy.interpolate.PPoly(c, x, extrapolate='periodic')
-        I = P.antiderivative()
+        poly_int = P.antiderivative()
 
-        period_int = I(4) - I(1)
+        period_int = poly_int(4) - poly_int(1)
 
         assert_allclose(P.integrate(1, 4), period_int)
         assert_allclose(P.integrate(-10, -7), period_int)
         assert_allclose(P.integrate(-10, -4), 2 * period_int)
 
-        assert_allclose(P.integrate(1.5, 2.5), I(2.5) - I(1.5))
-        assert_allclose(P.integrate(3.5, 5), I(2) - I(1) + I(4) - I(3.5))
+        assert_allclose(P.integrate(1.5, 2.5), poly_int(2.5) - poly_int(1.5))
+        assert_allclose(
+            P.integrate(3.5, 5), poly_int(2) - poly_int(1) +
+            poly_int(4) - poly_int(3.5))
         assert_allclose(P.integrate(3.5 + 12, 5 + 12),
-                        I(2) - I(1) + I(4) - I(3.5))
+                        poly_int(2) - poly_int(1) + poly_int(4) -
+                        poly_int(3.5))
         assert_allclose(P.integrate(3.5, 5 + 12),
-                        I(2) - I(1) + I(4) - I(3.5) + 4 * period_int)
+                        poly_int(2) - poly_int(1) + poly_int(4) -
+                        poly_int(3.5) + 4 * period_int)
 
-        assert_allclose(P.integrate(0, -1), I(2) - I(3))
-        assert_allclose(P.integrate(-9, -10), I(2) - I(3))
-        assert_allclose(P.integrate(0, -10), I(2) - I(3) - 3 * period_int)
+        assert_allclose(P.integrate(0, -1), poly_int(2) - poly_int(3))
+        assert_allclose(P.integrate(-9, -10), poly_int(2) - poly_int(3))
+        assert_allclose(
+            P.integrate(0, -10), poly_int(2) - poly_int(3) - 3 * period_int)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_roots(self, xp, scp):
@@ -518,9 +523,6 @@ class TestPPoly:
 
         r = pp.roots()
         return r
-
-        r = r[(r >= 0 - 1e-15) & (r <= 1 + 1e-15)]
-        assert_allclose(r, sproot(spl), atol=1e-15)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_roots_idzero(self, xp, scp):
@@ -540,7 +542,8 @@ class TestPPoly:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_roots_all_zero(self, xp, scp):
-        # test the code path for the polynomial being identically zero everywhere
+        # test the code path for the polynomial being
+        # identically zero everywhere
         c = xp.asarray([[0], [0]])
         x = xp.asarray([0, 1])
         p = scp.interpolate.PPoly(c, x)
@@ -548,7 +551,8 @@ class TestPPoly:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_roots_all_zero_1(self, xp, scp):
-        # test the code path for the polynomial being identically zero everywhere
+        # test the code path for the polynomial being
+        # identically zero everywhere
         c = xp.asarray([[0, 0], [0, 0]])
         x = xp.asarray([0, 1, 2])
         p = scp.interpolate.PPoly(c, x)
@@ -576,7 +580,6 @@ class TestPPoly:
                 pp.solve(0.5), pp.solve(0.5, discontinuity=False),
                 pp.solve(1.5), pp.solve(1.5, discontinuity=False))
 
-
     def test_roots_random(self):
         # Check high-order polynomials with random coefficients
         numpy.random.seed(1234)
@@ -592,23 +595,25 @@ class TestPPoly:
 
                 pp = cupyx.scipy.interpolate.PPoly(c, x)
                 for y in [0, numpy.random.random()]:
-                    r = pp.solve(y, discontinuity=False, extrapolate=extrapolate)
+                    r = pp.solve(y, discontinuity=False,
+                                 extrapolate=extrapolate)
 
                     for i in range(2):
                         for j in range(3):
-                            rr = r[i,j]
+                            rr = r[i, j]
                             if rr.size > 0:
-                                # Check that the reported roots indeed are roots
+                                # Check that the reported roots
+                                # indeed are roots
                                 num += rr.size
-                                val = pp(rr, extrapolate=extrapolate)[:,i,j]
+                                val = pp(rr, extrapolate=extrapolate)[:, i, j]
                                 cmpval = pp(rr, nu=1,
-                                            extrapolate=extrapolate)[:,i,j]
+                                            extrapolate=extrapolate)[:, i, j]
                                 msg = "(%r) r = %s" % (extrapolate, repr(rr),)
                                 assert_allclose((val-y) / cmpval, 0, atol=1e-7,
                                                 err_msg=msg)
 
         # Check that we checked a number of roots
-        assert (num > 100, repr(num))
+        assert num > 100, repr(num)
 
     # XXX: expose _croot_poly1 or skip
     '''
@@ -663,7 +668,7 @@ class TestPPoly:
         k = numpy.arange(power + 1)
         B = sc_special.binom(n, k)
         if xp is cupy:
-            B = cupy.asarray(B) 
+            B = cupy.asarray(B)
         return B[::-1, ::-1]
 
     def _prepare_descending(self, m, xp, scp):
@@ -722,9 +727,8 @@ class TestPPoly:
             int_d = pd.integrate(a, b)
             testing.assert_allclose(int_a, int_d, rtol=1e-13)
             testing.assert_allclose(pa_i(b) - pa_i(a), pd_i(b) - pd_i(a),
-                            rtol=1e-13)
+                                    rtol=1e-13)
         return True
-
 
     @pytest.mark.parametrize('m', [10, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-12)
@@ -735,4 +739,3 @@ class TestPPoly:
         roots_d = pd.roots()
         roots_a = pa.roots()
         return roots_a, roots_d
-

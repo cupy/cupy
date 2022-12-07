@@ -186,7 +186,7 @@ __global__ void fix_continuity(
     }
 
     const double breakpoint = *&breakpoints[idx];
-    const int interval = idx - 1;
+    const long long interval = idx - 1;
     const double breakpoint_interval = *&breakpoints[interval];
     const long long c_size0 = *&c_dims[0];
     const long long c_size2 = *&c_dims[2];
@@ -197,8 +197,8 @@ __global__ void fix_continuity(
     for(int jp = 0; jp < c_size2; jp++) {
         for(int dx = order; dx > -1; dx--) {
             T res = eval_poly_1<T>(
-                breakpoint - breakpoint_interval, coef, interval,
-                ((long long) jp), c_dims, stride_0, stride_1);
+                breakpoint - breakpoint_interval, coef,
+                interval, jp, dx, c_dims, stride_0, stride_1);
 
             for(int kp = 0; kp < dx; kp++) {
                 res /= kp + 1;
@@ -217,7 +217,9 @@ __global__ void fix_continuity(
 
 PPOLY_MODULE = cupy.RawModule(
     code=PPOLY_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'eval_ppoly<{type_name}>' for type_name in TYPES])
+    name_expressions=(
+        [f'eval_ppoly<{type_name}>' for type_name in TYPES] +
+        [f'fix_continuity<{type_name}>' for type_name in TYPES]))
 
 
 def _get_module_func(module, func_name, *template_args):
