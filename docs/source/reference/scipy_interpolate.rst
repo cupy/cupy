@@ -15,6 +15,7 @@ Univariate interpolation
    KroghInterpolator
    barycentric_interpolate
    krogh_interpolate
+   PPoly
 
 
 1-D Splines
