@@ -2,6 +2,7 @@
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
+from cupyx.scipy import special as spec
 
 import numpy as np
 
@@ -172,6 +173,46 @@ __global__ void eval_ppoly(
         out[num_c * idx + j] = res;
     }
 }
+
+template<typename T>
+__global__ void fix_continuity(
+        T* coef, const double* breakpoints, const int order,
+        const long long* c_dims, const long long* c_strides,
+        int num_breakpoints) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x + 1;
+    if(idx >= num_breakpoints - 1) {
+        return;
+    }
+
+    const double breakpoint = *&breakpoints[idx];
+    const int interval = idx - 1;
+    const double breakpoint_interval = *&breakpoints[interval];
+    const long long c_size0 = *&c_dims[0];
+    const long long c_size2 = *&c_dims[2];
+    const long long stride_0 = *&c_strides[0];
+    const long long stride_1 = *&c_strides[1];
+    const long long stride_2 = *&c_strides[2];
+
+    for(int jp = 0; jp < c_size2; jp++) {
+        for(int dx = order; dx > -1; dx--) {
+            T res = eval_poly_1<T>(
+                breakpoint - breakpoint_interval, coef, interval,
+                ((long long) jp), c_dims, stride_0, stride_1);
+
+            for(int kp = 0; kp < dx; kp++) {
+                res /= kp + 1;
+            }
+
+            const long long c_idx = (
+                stride_0 * (c_size0 - dx - 1) + stride_1 * idx +
+                stride_2 * jp);
+
+            coef[c_idx] = res;
+        }
+    }
+
+}
 """
 
 PPOLY_MODULE = cupy.RawModule(
@@ -233,6 +274,32 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     ppoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                  (c, x, xp, intervals, dx, c_shape, c_strides,
                   xp.shape[0], out))
+
+
+def _fix_continuity(c, x, order):
+    """
+    Make a piecewise polynomial continuously differentiable to given order.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k, m, n)
+        Coefficients local polynomials of order `k-1` in `m` intervals.
+        There are `n` polynomials in each interval.
+        Coefficient of highest order-term comes first.
+
+        Coefficients c[-order-1:] are modified in-place.
+    x : ndarray, shape (m+1,)
+        Breakpoints of polynomials
+    order : int
+        Order up to which enforce piecewise differentiability.
+    """
+    # Compute coefficient displacement stride (in elements)
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int_)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int_) // c.itemsize
+
+    continuity_kernel = _get_module_func(PPOLY_MODULE, 'fix_continuity', c)
+    continuity_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
+                      (c, x, order, c_shape, c_strides, x.shape[0]))
 
 
 class _PPolyBase:
@@ -503,3 +570,101 @@ class PPoly(_PPolyBase):
     def _evaluate(self, x, nu, extrapolate, out):
         _ppoly_evaluate(self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
                         self.x, x, nu, bool(extrapolate), out)
+
+    def derivative(self, nu=1):
+        """
+        Construct a new piecewise polynomial representing the derivative.
+
+        Parameters
+        ----------
+        nu : int, optional
+            Order of derivative to evaluate. Default is 1, i.e., compute the
+            first derivative. If negative, the antiderivative is returned.
+
+        Returns
+        -------
+        pp : PPoly
+            Piecewise polynomial of order k2 = k - n representing the
+            derivative of this polynomial.
+
+        Notes
+        -----
+        Derivatives are evaluated piecewise for each polynomial
+        segment, even if the polynomial is not differentiable at the
+        breakpoints. The polynomial intervals are considered half-open,
+        ``[a, b)``, except for the last interval which is closed
+        ``[a, b]``.
+        """
+        if nu < 0:
+            return self.antiderivative(-nu)
+
+        # reduce order
+        if nu == 0:
+            c2 = self.c.copy()
+        else:
+            c2 = self.c[:-nu, :].copy()
+
+        if c2.shape[0] == 0:
+            # derivative of order 0 is zero
+            c2 = cupy.zeros((1,) + c2.shape[1:], dtype=c2.dtype)
+
+        # multiply by the correct rising factorials
+        factor = spec.poch(cupy.arange(c2.shape[0], 0, -1), nu)
+        c2 *= factor[(slice(None),) + (None,)*(c2.ndim-1)]
+
+        # construct a compatible polynomial
+        return self.construct_fast(c2, self.x, self.extrapolate, self.axis)
+
+    def antiderivative(self, nu=1):
+        """
+        Construct a new piecewise polynomial representing the antiderivative.
+        Antiderivative is also the indefinite integral of the function,
+        and derivative is its inverse operation.
+
+        Parameters
+        ----------
+        nu : int, optional
+            Order of antiderivative to evaluate. Default is 1, i.e., compute
+            the first integral. If negative, the derivative is returned.
+
+        Returns
+        -------
+        pp : PPoly
+            Piecewise polynomial of order k2 = k + n representing
+            the antiderivative of this polynomial.
+
+        Notes
+        -----
+        The antiderivative returned by this function is continuous and
+        continuously differentiable to order n-1, up to floating point
+        rounding error.
+
+        If antiderivative is computed and ``self.extrapolate='periodic'``,
+        it will be set to False for the returned instance. This is done because
+        the antiderivative is no longer periodic and its correct evaluation
+        outside of the initially given x interval is difficult.
+        """
+        if nu <= 0:
+            return self.derivative(-nu)
+
+        c = cupy.zeros(
+            (self.c.shape[0] + nu, self.c.shape[1]) + self.c.shape[2:],
+            dtype=self.c.dtype)
+        c[:-nu] = self.c
+
+        # divide by the correct rising factorials
+        factor = spec.poch(cupy.arange(self.c.shape[0], 0, -1), nu)
+        c[:-nu] /= factor[(slice(None),) + (None,) * (c.ndim-1)]
+
+        # fix continuity of added degrees of freedom
+        self._ensure_c_contiguous()
+        _fix_continuity(c.reshape(c.shape[0], c.shape[1], -1),
+                        self.x, nu - 1)
+
+        if self.extrapolate == 'periodic':
+            extrapolate = False
+        else:
+            extrapolate = self.extrapolate
+
+        # construct a compatible polynomial
+        return self.construct_fast(c, self.x, extrapolate, self.axis)
