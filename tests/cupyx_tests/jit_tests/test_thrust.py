@@ -1002,3 +1002,26 @@ class TestThrust:
         y_expected = numpy.array([a[i] for a, i in zip(y_numpy, indices)])
         testing.assert_array_equal(x, x_expected)
         testing.assert_array_equal(y, y_expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_swap_ranges(self, order):
+        if runtime.is_hip:
+            pytest.skip('See https://github.com/cupy/cupy/pull/7162')
+
+        @jit.rawkernel()
+        def swap_ranges(x, y):
+            i = jit.threadIdx.x
+            jit.thrust.swap_ranges(
+                jit.thrust.device, x[i].begin(), x[i].end(), y[i].begin())
+
+        h, w = (256, 256)
+        x = testing.shaped_random(
+            (h, w), dtype=numpy.int32, scale=4, order=order, seed=0)
+        y = testing.shaped_random(
+            (h, w), dtype=numpy.int32, scale=4, order=order, seed=1)
+        x_expected = y.copy()
+        y_expected = x.copy()
+        swap_ranges[1, 256](x, y)
+
+        testing.assert_array_equal(x_expected, x)
+        testing.assert_array_equal(y_expected, y)
