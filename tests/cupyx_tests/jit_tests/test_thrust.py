@@ -1059,3 +1059,43 @@ class TestThrust:
         testing.assert_array_equal(size, cupy.array([4, 4], dtype=numpy.int32))
         testing.assert_array_equal(keys[:4], cupy.array([1, 3, 2, 1]))
         testing.assert_array_equal(values[:4], cupy.array([9, 8, 5, 3]))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_upper_bound(self, order):
+        @jit.rawkernel()
+        def upper_bound(x, v, out):
+            i = jit.threadIdx.x
+            it = jit.thrust.upper_bound(
+                jit.thrust.seq, x.begin(), x.end(), v[i])
+            out[i] = it - x.begin()
+
+        n1, n2 = (128, 160)
+        x = testing.shaped_random((n2,), dtype=numpy.int32, order=order)
+        x = cupy.sort(x)
+        values = testing.shaped_random((n1,), dtype=numpy.int32, order=order)
+        out = cupy.zeros(n1, dtype=numpy.int32)
+        upper_bound[1, n1](x, values, out)
+
+        expected = cupy.searchsorted(x, values, side='right')
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_upper_bound_vec(self, order):
+        @jit.rawkernel()
+        def upper_bound(x, v, out):
+            i = jit.threadIdx.x
+            jit.thrust.upper_bound(
+                jit.thrust.seq, x.begin(), x.end(),
+                v[i].begin(), v[i].end(), out[i].begin())
+
+        n1, n2, n3 = (128, 160, 200)
+        x = testing.shaped_random(
+            (n2,), dtype=numpy.int32, scale=200, order=order, seed=0)
+        x = cupy.sort(x)
+        values = testing.shaped_random(
+            (n1, n3), dtype=numpy.int32, scale=200, order=order, seed=1)
+        out = cupy.zeros((n1, n3), dtype=numpy.int32)
+        upper_bound[1, n1](x, values, out)
+
+        expected = cupy.searchsorted(x, values, side='right')
+        testing.assert_array_equal(out, expected)

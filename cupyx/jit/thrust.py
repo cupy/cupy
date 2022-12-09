@@ -914,3 +914,39 @@ def unique_by_key(
         f'thrust::unique_by_key({params})',
         _cuda_types.Tuple([keys_first.ctype, values_first.ctype]),
     )
+
+
+# TODO(asi1024): Add unique_by_key_copy
+# TODO(asi1024): Add unique_by_key
+# TODO(asi1024): Add unique_count
+
+
+@_wrap_thrust_func(['thrust/binary_search.h'])
+def upper_bound(env, exec_policy, first, last, *args):
+    """Attempts to find the element value with binary search.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+
+    if 1 <= len(args) <= 2:
+        value = args[0]
+        comp = args[1] if len(args) == 2 else None
+        _assert_pointer_of(first, value)
+        result_ctype = first.ctype
+    elif 3 <= len(args) <= 4:
+        value_first = args[0]
+        value_last = args[1]
+        result = args[2]
+        comp = args[3] if len(args) == 4 else None
+        _assert_same_pointer_type(first, value_first)
+        _assert_same_type(value_first, value_last)
+        result_ctype = result.ctype
+    else:
+        raise TypeError('Invalid number of inputs of thrust.upper_bound')
+
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    args = [exec_policy, first, last, *args]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::upper_bound({params})', result_ctype)
