@@ -701,6 +701,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_difference(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_difference(x, y, out, size):
             it = jit.thrust.set_difference(
@@ -721,6 +724,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_difference_by_key(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_difference_by_key(
                 keys1, keys2, values1, values2, keys_out, values_out, size):
@@ -750,6 +756,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_intersection(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_intersection(x, y, out, size):
             it = jit.thrust.set_intersection(
@@ -770,6 +779,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_intersection_by_key(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_intersection_by_key(
                 keys1, keys2, values1, keys_out, values_out, size):
@@ -797,6 +809,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_symmetric_difference(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_symmetric_difference(x, y, out, size):
             it = jit.thrust.set_symmetric_difference(
@@ -817,6 +832,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_symmetric_difference_by_key(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_symmetric_difference_by_key(
                 keys1, keys2, values1, values2, keys_out, values_out, size):
@@ -848,6 +866,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_union(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_union(x, y, out, size):
             it = jit.thrust.set_union(
@@ -869,6 +890,9 @@ class TestThrust:
 
     @pytest.mark.parametrize('order', ['C', 'F'])
     def test_set_union_by_key(self, order):
+        if runtime.is_hip:
+            pytest.xfail('HIP does not support thrust set operations.')
+
         @jit.rawkernel()
         def set_union_by_key(
                 keys1, keys2, values1, values2, keys_out, values_out, size):
