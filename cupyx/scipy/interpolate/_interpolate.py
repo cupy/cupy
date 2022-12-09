@@ -211,6 +211,70 @@ __global__ void fix_continuity(
             coef[c_idx] = res;
         }
     }
+}
+
+template<typename T>
+__global__ void integrate(
+        const T* coef, const double* breakpoints,
+        const double* a_val, const double* b_val,
+        const long long* start, const long long* end,
+        const long long* c_dims, const long long* c_strides,
+        bool asc, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const long long c_dim2 = *&c_dims[2];
+
+    if(idx >= c_dim2) {
+        return;
+    }
+
+    const long long start_interval = *&start[0];
+    const long long end_interval = *&end[0];
+    const double a = *&a_val[0];
+    const double b = *&b_val[0];
+
+    const long long stride_0 = *&c_strides[0];
+    const long long stride_1 = *&c_strides[1];
+
+    if(start_interval < 0 || end_interval < 0) {
+        out[idx] = CUDART_NAN;
+        return;
+    }
+
+    T vtot = 0;
+    T vb;
+    T va;
+    for(int interval = start_interval; interval <= end_interval; interval++) {
+        const double breakpoint = *&breakpoints[interval];
+        if(interval == end_interval) {
+            vb = eval_poly_1<T>(
+                b - breakpoint, coef, interval, idx, -1, c_dims,
+                stride_0, stride_1);
+        } else {
+            const double next_breakpoint = *&breakpoints[interval + 1];
+            vb = eval_poly_1<T>(
+                next_breakpoint - breakpoint, coef, interval,
+                idx, -1, c_dims, stride_0, stride_1);
+        }
+
+        if(interval == start_interval) {
+            va = eval_poly_1<T>(
+                a - breakpoint, coef, interval, idx, -1, c_dims,
+                stride_0, stride_1);
+        } else {
+            vb = eval_poly_1<T>(
+                0, coef, interval, idx, -1, c_dims,
+                stride_0, stride_1);
+        }
+
+        vtot += (vb - va);
+    }
+
+    if(!asc) {
+        vtot = -vtot;
+    }
+
+    out[idx] = vtot;
 
 }
 """
@@ -219,7 +283,8 @@ PPOLY_MODULE = cupy.RawModule(
     code=PPOLY_KERNEL, options=('-std=c++11',),
     name_expressions=(
         [f'eval_ppoly<{type_name}>' for type_name in TYPES] +
-        [f'fix_continuity<{type_name}>' for type_name in TYPES]))
+        [f'fix_continuity<{type_name}>' for type_name in TYPES] +
+        [f'integrate<{type_name}>' for type_name in TYPES]))
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -302,6 +367,57 @@ def _fix_continuity(c, x, order):
     continuity_kernel = _get_module_func(PPOLY_MODULE, 'fix_continuity', c)
     continuity_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                       (c, x, order, c_shape, c_strides, x.shape[0]))
+
+
+def _integrate(c, x, a, b, extrapolate, out):
+    """
+    Compute integral over a piecewise polynomial.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k, m, n)
+        Coefficients local polynomials of order `k-1` in `m` intervals.
+    x : ndarray, shape (m+1,)
+        Breakpoints of polynomials
+    a : double
+        Start point of integration.
+    b : double
+        End point of integration.
+    extrapolate : bint, optional
+        Whether to extrapolate to out-of-bounds points based on first
+        and last intervals, or to return NaNs.
+    out : ndarray, shape (n,)
+        Integral of the piecewise polynomial, assuming the polynomial
+        is zero outside the range (x[0], x[-1]).
+        This argument is modified in-place.
+    """
+    # Determine if the breakpoints are in ascending order or descending one
+    ascending = (x[x.shape[0] - 1] >= x[0]).item()
+
+    a = cupy.asarray([a], dtype=cupy.float64)
+    b = cupy.asarray([b], dtype=cupy.float64)
+    if not ascending:
+        a, b = b, a
+
+    start_interval = cupy.empty(a.shape, dtype=cupy.int_)
+    end_interval = cupy.empty(b.shape, dtype=cupy.int_)
+
+    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel(((a.shape[0] + 128 - 1) // 128,), (128,),
+                    (x, a, start_interval, extrapolate, a.shape[0], x.shape[0],
+                     ascending))
+    interval_kernel(((b.shape[0] + 128 - 1) // 128,), (128,),
+                    (x, b, end_interval, extrapolate, b.shape[0], x.shape[0],
+                     ascending))
+
+    # Compute coefficient displacement stride (in elements)
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int_)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int_) // c.itemsize
+
+    int_kernel = _get_module_func(PPOLY_MODULE, 'integrate', c)
+    int_kernel(((c.shape[2] + 128 - 1) // 128,), (128,),
+               (c, x, a, b, start_interval, end_interval, c_shape, c_strides,
+                ascending, out))
 
 
 class _PPolyBase:
@@ -670,3 +786,86 @@ class PPoly(_PPolyBase):
 
         # construct a compatible polynomial
         return self.construct_fast(c, self.x, extrapolate, self.axis)
+
+    def integrate(self, a, b, extrapolate=None):
+        """
+        Compute a definite integral over a piecewise polynomial.
+
+        Parameters
+        ----------
+        a : float
+            Lower integration bound
+        b : float
+            Upper integration bound
+        extrapolate : {bool, 'periodic', None}, optional
+            If bool, determines whether to extrapolate to out-of-bounds points
+            based on first and last intervals, or to return NaNs.
+            If 'periodic', periodic extrapolation is used.
+            If None (default), use `self.extrapolate`.
+
+        Returns
+        -------
+        ig : array_like
+            Definite integral of the piecewise polynomial over [a, b]
+        """
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+
+        # Swap integration bounds if needed
+        sign = 1
+        if b < a:
+            a, b = b, a
+            sign = -1
+
+        range_int = cupy.empty(
+            (np.prod(self.c.shape[2:]),), dtype=self.c.dtype)
+        self._ensure_c_contiguous()
+
+        # Compute the integral.
+        if extrapolate == 'periodic':
+            # Split the integral into the part over period (can be several
+            # of them) and the remaining part.
+
+            xs, xe = self.x[0], self.x[-1]
+            period = xe - xs
+            interval = b - a
+            n_periods, left = divmod(interval, period)
+
+            if n_periods > 0:
+                _integrate(
+                    self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
+                    self.x, xs, xe, False, out=range_int)
+                range_int *= n_periods
+            else:
+                range_int.fill(0)
+
+            # Map a to [xs, xe], b is always a + left.
+            a = xs + (a - xs) % period
+            b = a + left
+
+            # If b <= xe then we need to integrate over [a, b], otherwise
+            # over [a, xe] and from xs to what is remained.
+            remainder_int = cupy.empty_like(range_int)
+            if b <= xe:
+                _integrate(
+                    self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
+                    self.x, a, b, False, out=remainder_int)
+                range_int += remainder_int
+            else:
+                _integrate(
+                    self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
+                    self.x, a, xe, False, out=remainder_int)
+                range_int += remainder_int
+
+                _integrate(
+                    self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
+                    self.x, xs, xs + left + a - xe, False, out=remainder_int)
+                range_int += remainder_int
+        else:
+            _integrate(
+                self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
+                self.x, a, b, bool(extrapolate), out=range_int)
+
+        # Return
+        range_int *= sign
+        return range_int.reshape(self.c.shape[2:])
