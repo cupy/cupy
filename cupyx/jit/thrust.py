@@ -784,6 +784,10 @@ def set_union_by_key(
     )
 
 
+# TODO(asi1024): Add shuffle
+# TODO(asi1024): Add shuffle_copy
+
+
 @_wrap_thrust_func(['thrust/sort.h'])
 def sort(env, exec_policy, first, last, comp=None):
     """Sorts the elements in [first, last) into ascending order.
@@ -814,3 +818,39 @@ def sort_by_key(
     args = [exec_policy, keys_first, keys_last, values_first]
     params = ', '.join([a.code for a in args])
     return _Data(f'thrust::sort_by_key({params})', _cuda_types.void)
+
+
+# TODO(asi1024): Add stable_partition
+# TODO(asi1024): Add stable_partition_copy
+
+
+@_wrap_thrust_func(['thrust/sort.h'])
+def stable_sort(env, exec_policy, first, last, comp=None):
+    """Sorts the elements in [first, last) into ascending order.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    # TODO(asi1024): Typecheck for Comparable.
+    args = [exec_policy, first, last]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::stable_sort({params})', _cuda_types.void)
+
+
+@_wrap_thrust_func(['thrust/sort.h'])
+def stable_sort_by_key(
+        env, exec_policy, keys_first, keys_last, values_first, comp=None):
+    """Performs key-value sort.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(keys_first)
+    _assert_same_type(keys_first, keys_last)
+    _assert_pointer_type(values_first)
+    if comp is not None:
+        raise NotImplementedError('comp option is not supported')
+    # TODO(asi1024): Typecheck for Comparable.
+    args = [exec_policy, keys_first, keys_last, values_first]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::stable_sort_by_key({params})', _cuda_types.void)
