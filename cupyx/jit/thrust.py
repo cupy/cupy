@@ -868,3 +868,29 @@ def swap_ranges(env, exec_policy, first1, last1, first2):
     args = [exec_policy, first1, last1, first2]
     params = ', '.join([a.code for a in args])
     return _Data(f'thrust::swap_ranges({params})', first2.ctype)
+
+
+# TODO(asi1024): Add tabulate
+# TODO(asi1024): Add transform
+# TODO(asi1024): Add transform_exclusive_scan
+# TODO(asi1024): Add transform_if
+# TODO(asi1024): Add transform_inclusive_scan
+# TODO(asi1024): Add transform_reduce
+# TODO(asi1024): Add uninitialized_copy
+# TODO(asi1024): Add uninitialized_copy_n
+# TODO(asi1024): Add uninitialized_fill
+# TODO(asi1024): Add uninitialized_fill_n
+
+
+@_wrap_thrust_func(['thrust/swap.h'])
+def unique(env, exec_policy, first, last, binary_pred=None):
+    """Removes all but the first element of the group.
+    """
+    _assert_exec_policy_type(exec_policy)
+    _assert_pointer_type(first)
+    _assert_same_type(first, last)
+    if binary_pred is not None:
+        raise NotImplementedError('binary_pred option is not supported')
+    args = [exec_policy, first, last]
+    params = ', '.join([a.code for a in args])
+    return _Data(f'thrust::unique({params})', first.ctype)
