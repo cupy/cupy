@@ -262,7 +262,7 @@ __global__ void integrate(
                 a - breakpoint, coef, interval, idx, -1, c_dims,
                 stride_0, stride_1);
         } else {
-            vb = eval_poly_1<T>(
+            va = eval_poly_1<T>(
                 0, coef, interval, idx, -1, c_dims,
                 stride_0, stride_1);
         }
@@ -818,7 +818,7 @@ class PPoly(_PPolyBase):
             sign = -1
 
         range_int = cupy.empty(
-            (np.prod(self.c.shape[2:]),), dtype=self.c.dtype)
+            (int(np.prod(self.c.shape[2:])),), dtype=self.c.dtype)
         self._ensure_c_contiguous()
 
         # Compute the integral.
