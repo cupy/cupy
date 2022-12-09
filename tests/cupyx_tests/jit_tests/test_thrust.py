@@ -1040,3 +1040,22 @@ class TestThrust:
 
         testing.assert_array_equal(size, cupy.array([4], dtype=numpy.int32))
         testing.assert_array_equal(x[:4], cupy.array([1, 3, 2, 1]))
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_unique_by_key(self, order):
+
+        @jit.rawkernel()
+        def unique_by_key(keys, values, size):
+            it0, it1 = jit.thrust.unique_by_key(
+                jit.thrust.device, keys.begin(), keys.end(), values.begin())
+            size[0] = it0 - keys.begin()
+            size[1] = it1 - values.begin()
+
+        keys = cupy.array([1, 3, 3, 3, 2, 2, 1])
+        values = cupy.array([9, 8, 7, 6, 5, 4, 3])
+        size = cupy.zeros((2,), dtype=numpy.int32)
+        unique_by_key[1, 1](keys, values, size)
+
+        testing.assert_array_equal(size, cupy.array([4, 4], dtype=numpy.int32))
+        testing.assert_array_equal(keys[:4], cupy.array([1, 3, 2, 1]))
+        testing.assert_array_equal(values[:4], cupy.array([9, 8, 5, 3]))
