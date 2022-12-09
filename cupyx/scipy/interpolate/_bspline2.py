@@ -302,7 +302,7 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
 
         # find the intervals for x[0] and x[-1]
-        intervals_bc = cupy.empty(2, dtype=cupy.int_)
+        intervals_bc = cupy.empty(2, dtype=cupy.int64)
         interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
         interval_kernel((1,), (2,),
                         (t, cupy.r_[x[0], x[-1]], intervals_bc, k, nt,
@@ -427,7 +427,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
     # boundary conditions, if any.
 
     # 1. Compute intervals for each value
-    intervals = cupy.empty_like(x, dtype=cupy.int_)
+    intervals = cupy.empty_like(x, dtype=cupy.int64)
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
     interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                     (t, x, intervals, k, nt, False, x.shape[0]))
@@ -464,7 +464,7 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
     # of any order, `m`.
     # The left-side boundary conditions go to the first rows of the matrix
     # and the right-side boundary conditions go to the last rows.
-    intervals_bc = cupy.empty(1, dtype=cupy.int_)
+    intervals_bc = cupy.empty(1, dtype=cupy.int64)
     if nleft > 0:
         intervals_bc[0] = intervals[0]
         x0 = cupy.array([x[0]], dtype=x.dtype)

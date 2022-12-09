@@ -259,7 +259,7 @@ def _evaluate_spline(t, c, k, xp, nu, extrapolate, out):
         This argument is modified in-place.
     """
     n = t.shape[0] - k - 1
-    intervals = cupy.empty_like(xp, dtype=cupy.int_)
+    intervals = cupy.empty_like(xp, dtype=cupy.int64)
 
     # Compute intervals for each value
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
@@ -304,7 +304,7 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
         The indices array of a CSR array of the b-spline design matrix.
     """
     n = t.shape[0] - k - 1
-    intervals = cupy.empty_like(x, dtype=cupy.int_)
+    intervals = cupy.empty_like(x, dtype=cupy.int64)
 
     # Compute intervals for each value
     interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
