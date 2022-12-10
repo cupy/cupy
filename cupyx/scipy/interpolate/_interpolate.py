@@ -3,6 +3,7 @@ import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
 from cupyx.scipy import special as spec
+from ._bspline import BSpline
 
 import numpy as np
 
@@ -869,3 +870,33 @@ class PPoly(_PPolyBase):
         # Return
         range_int *= sign
         return range_int.reshape(self.c.shape[2:])
+
+    @classmethod
+    def from_spline(cls, tck, extrapolate=None):
+        """
+        Construct a piecewise polynomial from a spline
+
+        Parameters
+        ----------
+        tck
+            A spline, as a (knots, coefficients, degree) tuple or
+            a BSpline object.
+        extrapolate : bool or 'periodic', optional
+            If bool, determines whether to extrapolate to out-of-bounds points
+            based on first and last intervals, or to return NaNs.
+            If 'periodic', periodic extrapolation is used. Default is True.
+        """
+        if isinstance(tck, BSpline):
+            t, c, k = tck.tck
+            if extrapolate is None:
+                extrapolate = tck.extrapolate
+        else:
+            t, c, k = tck
+
+        spl = BSpline(t, c, k, extrapolate=extrapolate)
+        cvals = cupy.empty((k + 1, len(t) - 1), dtype=c.dtype)
+        for m in range(k, -1, -1):
+            y = spl(t[:-1], nu=m)
+            cvals[k - m, :] = y / spec.gamma(m + 1)
+
+        return cls.construct_fast(cvals, t, extrapolate)
