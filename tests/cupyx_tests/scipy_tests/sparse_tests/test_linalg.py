@@ -885,6 +885,32 @@ class TestCsrlsvqr:
                                      atol=test_tol)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
+@testing.with_requires('scipy')
+class TestSpSolve:
+    def _check_spsolve(self, xp, sp, dtyp):
+        n, nb = 5, 3
+
+        a = xp.diag(xp.arange(n) + 1)
+        sa = sp.csr_matrix(a.astype(dtyp))
+
+        # prepare b to be non-contiguous
+        b = xp.arange((2*n*nb), dtype=dtyp).reshape((2*n, nb))
+        b = b[::2, :]
+        result = sp.linalg.spsolve(sa, b)
+        return result
+
+    @pytest.mark.parametrize('dtyp', ['float32', 'complex64'])
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=5e-7)
+    def test_spsolve_single(self, xp, sp, dtyp):
+        return self._check_spsolve(xp, sp, dtyp)
+
+    @pytest.mark.parametrize('dtyp', ['float64', 'complex128'])
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-14)
+    def test_spsolve_double(self, xp, sp, dtyp):
+        return self._check_spsolve(xp, sp, dtyp)
+
+
 def _eigen_vec_transform(block_vec, xp):
     """Helper to swap sign of each eigen vector based on the first
     non-zero element. ie, to standardize the first non-zero element
