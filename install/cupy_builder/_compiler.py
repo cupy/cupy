@@ -74,7 +74,7 @@ def _nvcc_gencode_options(cuda_version: int) -> List[str]:
                          ('compute_75', 'sm_75'),
                          ('compute_80', 'sm_80'),
                          ('compute_86', 'sm_86'),
-                         ('compute_89', 'sm_89'), # Ada Lovelace
+                         ('compute_89', 'sm_89'),
                          ('compute_90', 'sm_90'),
                          'compute_90']
             if aarch64:
