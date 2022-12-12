@@ -51,6 +51,12 @@ ELSE:
             _libname = 'libnvrtc.so.11.2'
         else:
             _libname = 'nvrtc64_112_0.dll'
+    ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
+        if _sys.platform == 'linux':
+            _libname = 'libnvrtc.so.12'
+        else:
+            # TODO(anaruse): check if libname for windows is correct
+            _libname = 'nvrtc64_12.dll'
     ELSE:
         _libname = None
 

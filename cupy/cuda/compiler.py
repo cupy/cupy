@@ -292,6 +292,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 source, options, cu_path)
         else:
             headers = include_names = ()
+            major_version, minor_version = _get_nvrtc_version()
+            if major_version >= 12:
+                # Starting with CUDA 12.0, even without using jitify, some
+                # tests cause an error if the following option is not included.
+                options += ('--device-as-default-execution-space',)
 
         if not runtime.is_hip:
             arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
@@ -301,7 +306,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
-
         try:
             compiled_obj, mapping = prog.compile(options, log_stream)
         except CompileException as e:

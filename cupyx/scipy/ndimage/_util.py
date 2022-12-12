@@ -136,7 +136,7 @@ def _generate_boundary_condition_ops(mode, ix, xsize, int_t="int",
     elif mode == 'grid-wrap':
         ops = '''
         {ix} %= {xsize};
-        if ({ix} < 0) {{
+        while ({ix} < 0) {{
             {ix} += {xsize};
         }}'''.format(ix=ix, xsize=xsize)
     elif mode == 'wrap':

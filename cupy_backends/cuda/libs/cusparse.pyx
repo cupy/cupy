@@ -1348,6 +1348,7 @@ cdef extern from '../../cupy_sparse.h' nogil:
         Handle handle, Operation opA, Operation opB, const void* alpha,
         SpMatDescr matA, SpMatDescr matB, const void* beta, SpMatDescr matC,
         DataType computeType, SpGEMMAlg alg, SpGEMMDescr spgemmDescr)
+    Status cusparseGather(Handle handle, DnVecDescr vecY, SpVecDescr vecX)
 
     # CSR2CSC
     Status cusparseCsr2cscEx2_bufferSize(
@@ -1371,6 +1372,12 @@ IF 11010 <= CUPY_CUDA_VERSION < 12000:
         _libname = 'libcusparse.so.11'
     else:
         _libname = 'cusparse64_11.dll'
+ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
+    if _sys.platform == 'linux':
+        _libname = 'libcusparse.so.12'
+    else:
+        # TODO(anaruse): check if libname for windows is correct
+        _libname = 'cusparse64_12.dll'
 ELIF 0 < CUPY_HIP_VERSION:
     _libname = __file__
 ELSE:
@@ -4990,6 +4997,10 @@ cpdef spGEMM_copy(
         <Handle>handle, opA, opB, <const void*>alpha, <SpMatDescr>matA,
         <SpMatDescr>matB, <const void*>beta, <SpMatDescr>matC, computeType,
         <SpGEMMAlg>alg, <SpGEMMDescr>spgemmDescr)
+    check_status(status)
+
+cpdef gather(intptr_t handle, size_t vecY, size_t vecX):
+    status = cusparseGather(<Handle>handle, <DnVecDescr>vecY, <SpVecDescr>vecX)
     check_status(status)
 
 cpdef size_t sparseToDense_bufferSize(intptr_t handle, size_t matA,
