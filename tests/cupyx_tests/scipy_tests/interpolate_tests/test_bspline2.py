@@ -1,6 +1,7 @@
 import pytest
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
 
 import numpy as _np
 import cupyx.scipy.interpolate as csi  # NOQA
@@ -11,6 +12,7 @@ except ImportError:
     pass
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
 class TestInterp:
     #
     # Test basic ways of constructing interpolating splines.
