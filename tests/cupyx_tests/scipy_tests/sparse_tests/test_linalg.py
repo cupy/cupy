@@ -885,6 +885,7 @@ class TestCsrlsvqr:
                                      atol=test_tol)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
 @testing.with_requires('scipy')
 class TestSpSolve:
     def _check_spsolve(self, xp, sp, dtyp):
