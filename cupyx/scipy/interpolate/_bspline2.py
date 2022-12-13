@@ -364,16 +364,12 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         rhs[nt - nright:] = deriv_r_vals.reshape(-1, extradim)
 
     # 6. Finally, solve the linear system for the coefficients.
-    # `spsolve` only accepts a single r.h.s., so loop over extradim
-    coef = cupy.empty((nt, extradim), dtype=y.dtype)
-    for dim in range(extradim):
-        # spsolve only accepts a single r.h.s.
-        if cupy.issubdtype(rhs.dtype, cupy.complexfloating):
-            coef[:, dim] = (spsolve(matr, rhs[:, dim].real) +
-                            spsolve(matr, rhs[:, dim].imag) * 1.j)
-        else:
-            coef[:, dim] = spsolve(matr, rhs[:, dim])
-
+    if cupy.issubdtype(rhs.dtype, cupy.complexfloating):
+        # avoid upcasting the l.h.s. to complex (that doubles the memory)
+        coef = (spsolve(matr, rhs.real) +
+                spsolve(matr, rhs.imag) * 1.j)
+    else:
+        coef = spsolve(matr, rhs)
     coef = cupy.ascontiguousarray(coef.reshape((nt,) + y.shape[1:]))
     return BSpline(t, coef, k)
 
@@ -560,11 +556,8 @@ def _make_periodic_spline(x, y, t, k, axis):
     rhs[:(k - 1), :] = 0
     rhs[(k - 1):, :] = y.reshape((-1, extradim))
 
-    # solve: `spsolve` only accepts a single r.h.s., so loop over extradim
-    coef = cupy.empty((n + k - 1, extradim), dtype=y.dtype)
-    for dim in range(extradim):
-        coef[:, dim] = spsolve(matr_csr, rhs[:, dim])
-
+    # solve for the coefficients
+    coef = spsolve(matr_csr, rhs)
     coef = cupy.ascontiguousarray(coef.reshape((n + k - 1,) + y.shape[1:]))
     return BSpline.construct_fast(t, coef, k,
                                   extrapolate='periodic', axis=axis)
