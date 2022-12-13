@@ -606,7 +606,8 @@ class TestPPoly:
 
                     for i in range(2):
                         for j in range(3):
-                            rr = r[i, j]
+                            r1 = r[i]
+                            rr = r1[j]
                             if rr.size > 0:
                                 # Check that the reported roots
                                 # indeed are roots
@@ -667,7 +668,7 @@ class TestPPoly:
 
         xx = xp.asarray([-0.1, 1.1])
 
-        return pp(xx), pp_i(xx), pp_d(xx), pp.roots()
+        return pp(xx), pp_i(xx), pp_d(xx)
 
     def binom_matrix(self, power, xp):
         n = numpy.arange(power + 1).reshape(-1, 1)

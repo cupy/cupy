@@ -7,6 +7,14 @@ from ._bspline import BSpline
 
 import numpy as np
 
+scipy_found = False
+try:
+    from scipy.interpolate import PPoly as ScPPoly  # NOQA
+    scipy_found = True
+except ImportError:
+    pass
+
+
 TYPES = ['double', 'thrust::complex<double>']
 INT_TYPES = ['int', 'long long']
 
@@ -868,6 +876,84 @@ class PPoly(_PPolyBase):
         # Return
         range_int *= sign
         return range_int.reshape(self.c.shape[2:])
+
+    def solve(self, y=0., discontinuity=True, extrapolate=None):
+        """
+        Find real solutions of the equation ``pp(x) == y``.
+
+        Parameters
+        ----------
+        y : float, optional
+            Right-hand side. Default is zero.
+        discontinuity : bool, optional
+            Whether to report sign changes across discontinuities at
+            breakpoints as roots.
+        extrapolate : {bool, 'periodic', None}, optional
+            If bool, determines whether to return roots from the polynomial
+            extrapolated based on first and last intervals, 'periodic' works
+            the same as False. If None (default), use `self.extrapolate`.
+
+        Returns
+        -------
+        roots : ndarray
+            Roots of the polynomial(s).
+            If the PPoly object describes multiple polynomials, the
+            return value is an object array whose each element is an
+            ndarray containing the roots.
+
+        Notes
+        -----
+        This routine works only on real-valued polynomials.
+        If the piecewise polynomial contains sections that are
+        identically zero, the root list will contain the start point
+        of the corresponding interval, followed by a ``nan`` value.
+        If the polynomial is discontinuous across a breakpoint, and
+        there is a sign change across the breakpoint, this is reported
+        if the `discont` parameter is True.
+
+        At the moment, this routine will call the SciPy (CPU)
+        implementation.
+        """
+        if not scipy_found:
+            raise NotImplementedError(
+                'At the moment there is not a GPU implementation for '
+                'solve and SciPy was not found')
+
+        cpu_pp = ScPPoly(self.c.get(), self.x.get(),
+                         self.extrapolate, self.axis)
+        solution = cpu_pp.solve(y, discontinuity, extrapolate)
+        if solution.dtype is np.dtype(np.object_):
+            return solution.tolist()
+        else:
+            return cupy.asarray(solution)
+
+    def roots(self, discontinuity=True, extrapolate=None):
+        """
+        Find real roots of the piecewise polynomial.
+
+        Parameters
+        ----------
+        discontinuity : bool, optional
+            Whether to report sign changes across discontinuities at
+            breakpoints as roots.
+        extrapolate : {bool, 'periodic', None}, optional
+            If bool, determines whether to return roots from the polynomial
+            extrapolated based on first and last intervals, 'periodic' works
+            the same as False. If None (default), use `self.extrapolate`.
+
+        Returns
+        -------
+        roots : ndarray
+            Roots of the polynomial(s).
+            If the PPoly object describes multiple polynomials, the
+            return value is an object array whose each element is an
+            ndarray containing the roots.
+
+        See Also
+        --------
+        PPoly.solve
+        """
+        return self.solve(0, discontinuity, extrapolate)
 
     @classmethod
     def from_spline(cls, tck, extrapolate=None):
