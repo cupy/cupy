@@ -329,7 +329,7 @@ class TestPPoly:
         xi = cupy.linspace(0, 1, 200)
         for dx in range(0, 3):
             testing.assert_allclose(pp(xi, dx),
-                                    sc_interpolate.splev(xi, spl, dx))
+                                    sc_interpolate.splev(xi.get(), spl, dx))
 
     def test_derivative(self):
         numpy.random.seed(1234)

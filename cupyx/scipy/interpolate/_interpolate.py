@@ -181,35 +181,33 @@ __global__ void fix_continuity(
         const long long* c_dims, const long long* c_strides,
         int num_breakpoints) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x + 1;
-    if(idx >= num_breakpoints - 1) {
-        return;
-    }
-
-    const double breakpoint = *&breakpoints[idx];
-    const long long interval = idx - 1;
-    const double breakpoint_interval = *&breakpoints[interval];
     const long long c_size0 = *&c_dims[0];
     const long long c_size2 = *&c_dims[2];
     const long long stride_0 = *&c_strides[0];
     const long long stride_1 = *&c_strides[1];
     const long long stride_2 = *&c_strides[2];
 
-    for(int jp = 0; jp < c_size2; jp++) {
-        for(int dx = order; dx > -1; dx--) {
-            T res = eval_poly_1<T>(
-                breakpoint - breakpoint_interval, coef,
-                interval, jp, dx, c_dims, stride_0, stride_1);
+    for(int idx = 1; idx < num_breakpoints - 1; idx++) {
+        const double breakpoint = *&breakpoints[idx];
+        const long long interval = idx - 1;
+        const double breakpoint_interval = *&breakpoints[interval];
 
-            for(int kp = 0; kp < dx; kp++) {
-                res /= kp + 1;
+        for(int jp = 0; jp < c_size2; jp++) {
+            for(int dx = order; dx > -1; dx--) {
+                T res = eval_poly_1<T>(
+                    breakpoint - breakpoint_interval, coef,
+                    interval, jp, dx, c_dims, stride_0, stride_1);
+
+                for(int kp = 0; kp < dx; kp++) {
+                    res /= kp + 1;
+                }
+
+                const long long c_idx = (
+                    stride_0 * (c_size0 - dx - 1) + stride_1 * idx +
+                    stride_2 * jp);
+
+                coef[c_idx] = res;
             }
-
-            const long long c_idx = (
-                stride_0 * (c_size0 - dx - 1) + stride_1 * idx +
-                stride_2 * jp);
-
-            coef[c_idx] = res;
         }
     }
 }
@@ -366,7 +364,7 @@ def _fix_continuity(c, x, order):
     c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
     continuity_kernel = _get_module_func(PPOLY_MODULE, 'fix_continuity', c)
-    continuity_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
+    continuity_kernel((1,), (1,),
                       (c, x, order, c_shape, c_strides, x.shape[0]))
 
 
