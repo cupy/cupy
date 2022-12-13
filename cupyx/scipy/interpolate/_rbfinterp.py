@@ -1,10 +1,9 @@
 """Module for RBF interpolation."""
+import math
 import warnings
 from itertools import combinations_with_replacement
 
 import cupy as cp
-from scipy.spatial import KDTree        # FIXME
-from scipy.special import comb          # FIXME
 
 
 # Define the kernel functions.
@@ -395,6 +394,14 @@ _NAME_TO_MIN_DEGREE = {
 }
 
 
+try:
+    _comb = math.comb
+except AttributeError:
+    # Naive combination for Python 3.7
+    def _comb(n, k):
+        return math.factorial(n) // (math.factorial(n - k) * math.factorial(k))
+
+
 def _monomial_powers(ndim, degree):
     """Return the powers for each monomial in a polynomial.
 
@@ -412,7 +419,7 @@ def _monomial_powers(ndim, degree):
         monomial.
 
     """
-    nmonos = comb(degree + ndim, ndim, exact=True)
+    nmonos = _comb(degree + ndim, ndim)
     out = cp.zeros((nmonos, ndim), dtype=int)
     count = 0
     for deg in range(degree + 1):
@@ -673,7 +680,7 @@ class RBFInterpolator:
 
         else:
             raise NotImplementedError
-            self._tree = KDTree(y)
+            # self._tree = KDTree(y)
 
         self.y = y
         self.d = d

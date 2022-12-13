@@ -30,9 +30,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
     Status cusparseSetMatFillMode(MatDescr descrA, FillMode fillMode)
     Status cusparseSetMatDiagType(MatDescr descrA, DiagType diagType)
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
-    Status cusparseSpMatSetAttribute(
-        SpMatDescr spMatDescr, SpMatAttribute attribute, void* data,
-        size_t dataSize)
 
     # Stream
     Status cusparseSetStream(Handle handle, Stream streamId)
@@ -1317,26 +1314,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
                         SpMatDescr matA, DnVecDescr vecX, void* beta,
                         DnVecDescr vecY, DataType computeType, SpMVAlg alg,
                         void* externalBuffer)
-    Status cusparseSpSM_createDescr(SpSMDescr* descr)
-    Status cusparseSpSM_destroyDescr(SpSMDescr descr)
-    Status cusparseSpSM_bufferSize(Handle handle, Operation opA, Operation opB,
-                                   void* alpha, SpMatDescr matA,
-                                   DnMatDescr matB, DnMatDescr matC,
-                                   DataType computeType, SpSMAlg alg,
-                                   SpSMDescr spsmDescr, size_t* bufferSize)
-    Status cusparseSpSM_analysis(Handle handle, Operation opA, Operation opB,
-                                 void* alpha, SpMatDescr matA, DnMatDescr matB,
-                                 DnMatDescr matC, DataType computeType,
-                                 SpSMAlg alg, SpSMDescr spsmDescr,
-                                 void* externalBuffer)
-    # hipsparseSpSM_solve has the extra `externalBuffer` parameter that
-    # cusparseSpSM_solve does not require. So we make use of an additional
-    # wrapper _cusparseSpSM_solve for them.
-    Status _cusparseSpSM_solve(Handle handle, Operation opA, Operation opB,
-                               void* alpha, SpMatDescr matA, DnMatDescr matB,
-                               DnMatDescr matC, DataType computeType,
-                               SpSMAlg alg, SpSMDescr spsmDescr,
-                               void* externalBuffer)
     Status cusparseSpMM_bufferSize(Handle handle, Operation opA, Operation opB,
                                    void* alpha, SpMatDescr matA,
                                    DnMatDescr matB, void* beta,
@@ -1400,6 +1377,14 @@ ELSE:
     _libname = None
 
 cdef SoftLink _lib = SoftLink(_libname, 'cusparse')
+# cuSPARSE 11.6+ (CUDA 11.3.1+)
+cdef f_type cusparseSpSM_createDescr = <f_type>_lib.get('SpSM_createDescr')
+cdef f_type cusparseSpSM_destroyDescr = <f_type>_lib.get('SpSM_destroyDescr')
+cdef f_type cusparseSpSM_bufferSize = <f_type>_lib.get('SpSM_bufferSize')
+cdef f_type cusparseSpSM_analysis = <f_type>_lib.get('SpSM_analysis')
+cdef f_type cusparseSpSM_solve = <f_type>_lib.get('SpSM_solve')
+# cuSPARSE 11.5+ (CUDA 11.3.0+)
+cdef f_type cusparseSpMatSetAttribute = <f_type>_lib.get('SpMatSetAttribute')
 # cuSPARSE 11.3.1+ (CUDA 11.2.0+)
 cdef f_type cusparseCreateCsc = <f_type>_lib.get('CreateCsc')
 # cuSPARSE 11.3+ (CUDA 11.1.1+)
@@ -4898,10 +4883,19 @@ cpdef spSM_solve(intptr_t handle, Operation opA, Operation opB, intptr_t alpha,
                  size_t matA, size_t matB, size_t matC, DataType computeType,
                  SpSMAlg alg, size_t spsmDescr, intptr_t externalBuffer=0):
     _setStream(handle)
-    status = _cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
-                                 <SpMatDescr>matA, <DnMatDescr>matB,
-                                 <DnMatDescr>matC, computeType, alg,
-                                 <SpSMDescr>spsmDescr, <void*>externalBuffer)
+    IF CUPY_HIP_VERSION > 0:
+        # hipsparseSpSM_solve has the extra `externalBuffer` parameter that
+        # cusparseSpSM_solve does not require.
+        status = cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
+                                    <SpMatDescr>matA, <DnMatDescr>matB,
+                                    <DnMatDescr>matC, computeType, alg,
+                                    <SpSMDescr>spsmDescr,
+                                    <void*>externalBuffer)
+    ELSE:
+        status = cusparseSpSM_solve(<Handle> handle, opA, opB, <void*>alpha,
+                                    <SpMatDescr>matA, <DnMatDescr>matB,
+                                    <DnMatDescr>matC, computeType, alg,
+                                    <SpSMDescr>spsmDescr)
     check_status(status)
 
 cpdef size_t spMM_bufferSize(intptr_t handle, Operation opA, Operation opB,
