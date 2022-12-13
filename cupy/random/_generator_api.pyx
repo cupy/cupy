@@ -159,6 +159,63 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def uniform(self, low=0.0, high=1.0, size=None, dtype=numpy.float64):
+        """
+        Draw samples from a uniform distribution.
+        Samples are uniformly distributed over the half-open interval
+        ``[low, high)`` (includes low, but excludes high).  In other words,
+        any value within the given interval is equally likely to be drawn
+        by `uniform`.
+
+        Parameters
+        ----------
+        low : float or array_like of floats, optional
+            Lower boundary of the output interval.  All values generated will
+            be greater than or equal to low.  The default value is 0.
+        high : float or array_like of floats
+            Upper boundary of the output interval.  All values generated will
+            be less than high.  The high limit may be included in the returned
+            array of floats due to floating-point rounding in the equation
+            ``low + (high-low) * random()``.  high - low must be
+            non-negative.  The default value is 1.0.
+        size : int or tuple of ints, optional
+            Output shape.  If the given shape is, e.g., ``(m, n, k)``, then
+            ``m * n * k`` samples are drawn.  If size is ``None`` (default),
+            a single value is returned if ``low`` and ``high`` are both
+            scalars.  Otherwise, ``cupy.broadcast(low, high).size`` samples are
+            drawn.
+
+        Returns
+        -------
+        out : ndarray or scalar
+            Drawn samples from the parameterized uniform distribution.
+        See Also
+        --------
+        - :meth:`numpy.random.Generator.uniform`
+        - :meth:`integers`: Discrete uniform distribution, yielding integers.
+        - :meth:`random`: Floats uniformly distributed over ``[0, 1)``.
+        """
+
+        cdef _ndarray_base y
+
+        low = cupy.asarray(low)
+        high = cupy.asarray(high)
+
+        if size is None:
+            size = cupy.broadcast(low, high).shape
+
+        y = _core.ndarray(size, numpy.float64)
+        low = cupy.broadcast_to(low, y.shape)
+        high = cupy.broadcast_to(high, y.shape)
+
+        _launch_dist(self.bit_generator, random_uniform, y, ())
+        y = low + (high - low) * y
+
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
+        return (<object>y).astype(dtype, copy=False)
+
     def integers(
             self, low, high=None, size=None,
             dtype=numpy.int64, endpoint=False):

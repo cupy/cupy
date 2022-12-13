@@ -483,7 +483,7 @@ def spsolve(A, b):
         A (cupyx.scipy.sparse.spmatrix):
             Sparse matrix with dimension ``(M, M)``.
         b (cupy.ndarray):
-            Dense vector or matrix with dimension ``(M)`` or ``(M, 1)``.
+            Dense vector or matrix with dimension ``(M)`` or ``(M, N)``.
 
     Returns:
         cupy.ndarray:
@@ -498,7 +498,7 @@ def spsolve(A, b):
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'.
                          format(A.shape))
-    if not (b.ndim == 1 or (b.ndim == 2 and b.shape[1] == 1)):
+    if not (b.ndim == 1 or b.ndim == 2):
         raise ValueError('Invalid b.shape (b.shape: {})'.format(b.shape))
     if A.shape[0] != b.shape[0]:
         raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
@@ -509,9 +509,16 @@ def spsolve(A, b):
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
-    b = b.astype(A.dtype, copy=False).ravel()
+    b = b.astype(A.dtype, copy=False)
 
-    return cupyx.cusolver.csrlsvqr(A, b)
+    if b.ndim > 1:
+        res = cupy.empty_like(b)
+        for j in range(res.shape[1]):
+            res[:, j] = cupyx.cusolver.csrlsvqr(A, b[:, j])
+        res = cupy.asarray(res, order='F')
+        return res
+    else:
+        return cupyx.cusolver.csrlsvqr(A, b)
 
 
 class SuperLU():

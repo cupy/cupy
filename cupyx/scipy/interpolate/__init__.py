@@ -8,6 +8,7 @@ from cupyx.scipy.interpolate._interpolate import PPoly  # NOQA
 
 # 1-D Splines
 from cupyx.scipy.interpolate._bspline import BSpline, splantider, splder  # NOQA
+from cupyx.scipy.interpolate._bspline2 import make_interp_spline  # NOQA
 
 
 # Radial basis functions

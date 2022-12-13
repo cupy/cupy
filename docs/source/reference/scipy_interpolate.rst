@@ -25,6 +25,8 @@ Univariate interpolation
    :toctree: generated/
 
    BSpline
+   make_interp_spline
+
    splder
    splantider
 
