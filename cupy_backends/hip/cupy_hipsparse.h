@@ -3736,6 +3736,10 @@ cusparseStatus_t cusparseSpGEMM_copy(...) {
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
+cusparseStatus_t cusparseGather(...) {
+  return HIPSPARSE_STATUS_NOT_SUPPORTED;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Definitions are for compatibility
 ///////////////////////////////////////////////////////////////////////////////
