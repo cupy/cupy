@@ -335,8 +335,8 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
                      ascending))
 
     # Compute coefficient displacement stride (in elements)
-    c_shape = cupy.asarray(c.shape, dtype=cupy.int_)
-    c_strides = cupy.asarray(c.strides, dtype=cupy.int_) // c.itemsize
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
     ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly', c)
     ppoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
@@ -362,8 +362,8 @@ def _fix_continuity(c, x, order):
         Order up to which enforce piecewise differentiability.
     """
     # Compute coefficient displacement stride (in elements)
-    c_shape = cupy.asarray(c.shape, dtype=cupy.int_)
-    c_strides = cupy.asarray(c.strides, dtype=cupy.int_) // c.itemsize
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
     continuity_kernel = _get_module_func(PPOLY_MODULE, 'fix_continuity', c)
     continuity_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),

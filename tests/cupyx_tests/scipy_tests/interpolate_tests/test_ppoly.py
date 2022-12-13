@@ -385,7 +385,7 @@ class TestPPoly:
         iipp = pp.antiderivative(2)
         iipp2 = ipp.antiderivative()
 
-        return ipp.x, ipp.c, iipp, iipp2
+        return ipp.x, ipp.c, iipp.x, iipp.c, iipp2.x, iipp2.c
 
     def test_antiderivative_vs_derivative(self):
         numpy.random.seed(1234)
@@ -419,11 +419,12 @@ class TestPPoly:
 
         spl = sc_interpolate.splrep(x, y, s=0, k=5)
         spl_cupy = (cupy.asarray(spl[0]), cupy.asarray(spl[1]), spl[2])
-        pp = cupyx.scipy.interpolate.PPoly.from_spline(spl)
+        pp = cupyx.scipy.interpolate.PPoly.from_spline(spl_cupy)
 
         for dx in range(0, 10):
+            print(dx)
             pp2 = pp.antiderivative(dx)
-            spl2 = cupyx.scipy.interpolatesplantider(spl_cupy, dx)
+            spl2 = cupyx.scipy.interpolate.splantider(spl_cupy, dx)
             spl2_np = (spl2[0].get(), spl2[1].get(), spl2[2])
 
             xi = cupy.linspace(0, 1, 200)
