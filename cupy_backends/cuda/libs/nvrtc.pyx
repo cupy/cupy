@@ -55,8 +55,7 @@ ELSE:
         if _sys.platform == 'linux':
             _libname = 'libnvrtc.so.12'
         else:
-            # TODO(anaruse): check if libname for windows is correct
-            _libname = 'nvrtc64_12.dll'
+            _libname = 'nvrtc64_120_0.dll'
     ELSE:
         _libname = None
 

@@ -1376,7 +1376,6 @@ ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
     if _sys.platform == 'linux':
         _libname = 'libcusparse.so.12'
     else:
-        # TODO(anaruse): check if libname for windows is correct
         _libname = 'cusparse64_12.dll'
 ELIF 0 < CUPY_HIP_VERSION:
     _libname = __file__
