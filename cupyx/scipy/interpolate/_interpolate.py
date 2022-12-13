@@ -515,6 +515,7 @@ class _PPolyBase:
     def extend(self, c, x):
         """
         Add additional breakpoints and coefficients to the polynomial.
+
         Parameters
         ----------
         c : ndarray, size (k, m, ...)
@@ -594,6 +595,7 @@ class _PPolyBase:
     def __call__(self, x, nu=0, extrapolate=None):
         """
         Evaluate the piecewise polynomial or its derivative.
+
         Parameters
         ----------
         x : array_like
@@ -605,11 +607,13 @@ class _PPolyBase:
             based on first and last intervals, or to return NaNs.
             If 'periodic', periodic extrapolation is used.
             If None (default), use `self.extrapolate`.
+
         Returns
         -------
         y : array_like
             Interpolated values. Shape is determined by replacing
             the interpolation axis in the original array with the shape of x.
+
         Notes
         -----
         Derivatives are evaluated piecewise for each polynomial
