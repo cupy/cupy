@@ -4,7 +4,7 @@
 #include <cuda.h>
 #include <cuda_profiler_api.h>
 
-#if CUDA_VERSION >= 12
+#if CUDA_VERSION >= 12000
 // Functions removed in CUDA 12.0
 
 enum cudaOutputMode_t {};
