@@ -316,6 +316,10 @@ class TestTexture:
             texobj = TextureObject(res, tex)
             mod = cupy.RawModule(code=source_texobj)
         else:  # self.target == 'reference'
+            cuda_version = cupy.cuda.runtime.runtimeGetVersion()
+            if cuda_version >= 12000:
+                # Texture Reference API is removed in CUDA 12.0
+                pytest.skip()
             mod = cupy.RawModule(code=source_texref)
             texref_name = 'texref'
             texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
@@ -389,6 +393,10 @@ class TestTextureVectorType:
             texobj = TextureObject(res, tex)
             mod = cupy.RawModule(code=source_texobj)
         else:  # self.target == 'reference'
+            cuda_version = cupy.cuda.runtime.runtimeGetVersion()
+            if cuda_version >= 12000:
+                # Texture Reference API is removed in CUDA 12.0
+                pytest.skip()
             mod = cupy.RawModule(code=source_texref)
             texrefPtr = mod.get_texref('texref3Df4')
             # bind texture ref to resource

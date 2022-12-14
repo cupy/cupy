@@ -7,7 +7,7 @@
 
 #elif !defined(CUPY_NO_CUDA)
 
-#include <cuda_profiler_api.h>
+#include "cuda/cupy_cuda_profiler_api.h"
 
 #else // #ifndef CUPY_NO_CUDA
 
