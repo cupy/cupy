@@ -113,6 +113,12 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 a.sum_duplicates()
                 b.sum_duplicates()
                 return cusparse.csrgemm2(a, b)
+            elif cusparse.check_availability('spgemm'):
+                a = self.tocsr()
+                b = other.tocsr()
+                a.sum_duplicates()
+                b.sum_duplicates()
+                return cusparse.spgemm(a, b)
             else:
                 raise NotImplementedError
         elif cupyx.scipy.sparse.isspmatrix(other):
