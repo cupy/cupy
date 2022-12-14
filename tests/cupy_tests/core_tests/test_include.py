@@ -51,7 +51,7 @@ class TestIncludesCompileCUDA:
         else:
             # CUDA 11.2+
             archs = cupy.cuda.nvrtc.getSupportedArchs()
-            if cuda_ver == 11020:
+            if cuda_ver == 11020 or cuda_ver >= 12000:
                 to_exclude.add(69)
         archs = tuple(set(archs) - to_exclude)
 

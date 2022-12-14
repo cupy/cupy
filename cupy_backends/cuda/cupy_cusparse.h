@@ -596,6 +596,10 @@ cusparseStatus_t cusparseSpGEMM_copy(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseGather(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 #endif // #if CUSPARSE_VERSION < 11100
 
 #if CUSPARSE_VERSION < 11300
@@ -890,6 +894,14 @@ cusparseStatus_t cusparseConstrainedGeMM(...) {
 }
 
 cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCooAoS(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCooAoSGet(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
