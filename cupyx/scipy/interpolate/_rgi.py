@@ -32,7 +32,6 @@ def _ndim_coords_from_arrays(points, ndim=None):
 
 
 def _check_points(points):
-    print(points)
     descending_dimensions = []
     grid = []
     for i, p in enumerate(points):
