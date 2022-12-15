@@ -13,6 +13,7 @@ except ImportError:
 
 
 @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
+@testing.with_requires("scipy")
 class TestInterp:
     #
     # Test basic ways of constructing interpolating splines.
