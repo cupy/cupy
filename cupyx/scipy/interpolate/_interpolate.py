@@ -3,16 +3,9 @@ import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
 from cupyx.scipy import special as spec
-from ._bspline import BSpline
+from cupyx.scipy.interpolate._bspline import BSpline
 
 import numpy as np
-
-scipy_found = False
-try:
-    from scipy.interpolate import PPoly as ScPPoly  # NOQA
-    scipy_found = True
-except ImportError:
-    pass
 
 
 TYPES = ['double', 'thrust::complex<double>']
@@ -915,21 +908,10 @@ class PPoly(_PPolyBase):
         there is a sign change across the breakpoint, this is reported
         if the `discont` parameter is True.
 
-        At the moment, this routine will call the SciPy (CPU)
-        implementation.
+        At the moment, there is not an actual implementation.
         """
-        if not scipy_found:
-            raise NotImplementedError(
-                'At the moment there is not a GPU implementation for '
-                'solve and SciPy was not found')
-
-        cpu_pp = ScPPoly(self.c.get(), self.x.get(),
-                         self.extrapolate, self.axis)
-        solution = cpu_pp.solve(y, discontinuity, extrapolate)
-        if solution.dtype is np.dtype(np.object_):
-            return solution.tolist()
-        else:
-            return cupy.asarray(solution)
+        raise NotImplementedError(
+            'At the moment there is not a GPU implementation for solve')
 
     def roots(self, discontinuity=True, extrapolate=None):
         """
