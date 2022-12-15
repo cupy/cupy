@@ -215,23 +215,16 @@ class TestPPoly:
         c = xp.array([[1, 4], [2, 5], [3, 6]])
         x = xp.array([0, 0.5, 1])
         p = scp.interpolate.PPoly(c, x)
-        testing.assert_allclose(p(0.3), 1*0.3**2 + 2*0.3 + 3)
-        testing.assert_allclose(p(0.7), 4*(0.7-0.5)**2 + 5*(0.7-0.5) + 6)
-        return True
+        # testing.assert_allclose(p(0.3), 1*0.3**2 + 2*0.3 + 3)
+        # testing.assert_allclose(p(0.7), 4*(0.7-0.5)**2 + 5*(0.7-0.5) + 6)
+        return p(0.3), p(0.7)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_periodic(self, xp, scp):
         c = xp.array([[1, 4], [2, 5], [3, 6]])
         x = xp.array([0, 0.5, 1])
         p = scp.interpolate.PPoly(c, x, extrapolate='periodic')
-
-        testing.assert_allclose(p(1.3), 1 * 0.3 ** 2 + 2 * 0.3 + 3)
-        testing.assert_allclose(p(-0.3), 4 * (0.7 - 0.5)
-                                ** 2 + 5 * (0.7 - 0.5) + 6)
-
-        testing.assert_allclose(p(1.3, 1), 2 * 0.3 + 2)
-        testing.assert_allclose(p(-0.3, 1), 8 * (0.7 - 0.5) + 5)
-        return True
+        return p(1.3), p(-0.3), p(1.3, 1), p(-0.3, 1)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_read_only(self, xp, scp):
@@ -272,8 +265,8 @@ class TestPPoly:
         c = xp.array([[1, 4], [2, 5], [3, 6]], dtype=float)
         x = xp.array([0, 0.5, 1])
         p = scp.interpolate.PPoly.construct_fast(c, x)
-        testing.assert_allclose(p(0.3), 1*0.3**2 + 2*0.3 + 3)
-        testing.assert_allclose(p(0.7), 4*(0.7-0.5)**2 + 5*(0.7-0.5) + 6)
+        # testing.assert_allclose(p(0.3), 1*0.3**2 + 2*0.3 + 3)
+        # testing.assert_allclose(p(0.7), 4*(0.7-0.5)**2 + 5*(0.7-0.5) + 6)
         return p(0.3), p(0.7)
 
     def test_from_spline(self):
@@ -422,7 +415,6 @@ class TestPPoly:
         pp = cupyx.scipy.interpolate.PPoly.from_spline(spl_cupy)
 
         for dx in range(0, 10):
-            print(dx)
             pp2 = pp.antiderivative(dx)
             spl2 = cupyx.scipy.interpolate.splantider(spl_cupy, dx)
             spl2_np = (spl2[0].get(), spl2[1].get(), spl2[2])
@@ -732,13 +724,13 @@ class TestPPoly:
         # equal.
         pa_i = pa.antiderivative()
         pd_i = pd.antiderivative()
+        results = []
         for a, b in numpy.random.uniform(-10, 20, (5, 2)):
             int_a = pa.integrate(a, b)
             int_d = pd.integrate(a, b)
-            testing.assert_allclose(int_a, int_d, rtol=1e-13)
-            testing.assert_allclose(pa_i(b) - pa_i(a), pd_i(b) - pd_i(a),
-                                    rtol=1e-13)
-        return True
+            results += [int_a, int_d]
+            results += [pa_i(b) - pa_i(a), pd_i(b) - pd_i(a)]
+        return results
 
     # TODO: Add an actual solve implementation
     '''
