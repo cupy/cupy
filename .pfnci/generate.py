@@ -144,6 +144,14 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
+        # Update alternatives for cuTENSOR for the current CUDA version.
+        if matrix.cutensor is not None:
+            lines += [
+                'COPY setup/update-alternatives-cutensor.sh /',
+                'RUN /update-alternatives-cutensor.sh',
+                '',
+            ]
+
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
             lines += [
