@@ -398,7 +398,7 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
 
-@testing.gpu
+@pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
 class TestMsort(unittest.TestCase):
 
     # Test base cases
