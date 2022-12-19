@@ -73,7 +73,7 @@ public:
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ 
+__host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
 THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
@@ -347,9 +347,15 @@ struct _sort {
             dp_keys_first = thrust::device_pointer_cast(keys_start);
             dp_keys_last  = thrust::device_pointer_cast(keys_start + size);
             transform(cuda::par(alloc).on(stream_),
+                      #ifdef __HIP_PLATFORM_HCC__
+                      rocprim::make_counting_iterator<size_t>(0),
+                      rocprim::make_counting_iterator<size_t>(size),
+                      rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #endif
                       dp_keys_first,
                       thrust::divides<size_t>());
 
@@ -440,9 +446,15 @@ struct _argsort {
         dp_idx_first = thrust::device_pointer_cast(static_cast<size_t*>(idx_start));
         dp_idx_last  = thrust::device_pointer_cast(static_cast<size_t*>(idx_start) + size);
         transform(cuda::par(alloc).on(stream_),
+                  #ifdef __HIP_PLATFORM_HCC__
+                  rocprim::make_counting_iterator<size_t>(0),
+                  rocprim::make_counting_iterator<size_t>(size),
+                  rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  #else
                   thrust::make_counting_iterator<size_t>(0),
                   thrust::make_counting_iterator<size_t>(size),
                   thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  #endif
                   dp_idx_first,
                   thrust::modulus<size_t>());
 
@@ -457,9 +469,15 @@ struct _argsort {
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
             dp_keys_last  = thrust::device_pointer_cast(static_cast<size_t*>(keys_start) + size);
             transform(cuda::par(alloc).on(stream_),
+                      #ifdef __HIP_PLATFORM_HCC__
+                      rocprim::make_counting_iterator<size_t>(0),
+                      rocprim::make_counting_iterator<size_t>(size),
+                      rocprim::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      #endif
                       dp_keys_first,
                       thrust::divides<size_t>());
 
@@ -504,3 +522,4 @@ void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     return dtype_dispatcher(dtype_id, op, idx_start, data_start, keys_start, shape,
                             stream, memory);
 }
+
