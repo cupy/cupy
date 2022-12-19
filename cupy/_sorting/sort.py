@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 import numpy
 
@@ -130,7 +132,9 @@ def msort(a):
     .. seealso:: :func:`numpy.msort`
 
     """
-
+    warnings.warn(
+        'msort is deprecated, use cupy.sort(a, axis=0) instead',
+        DeprecationWarning)
     return sort(a, axis=0)
 
 
