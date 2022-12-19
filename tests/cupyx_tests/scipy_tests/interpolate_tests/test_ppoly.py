@@ -158,12 +158,9 @@ class TestPPolyCommon:
         assert p(0.5).shape == ()
         assert p(xp.array(0.5)).shape == ()
 
-        try:
+        with pytest.raises(ValueError):
             xxx = xp.array([[0.1, 0.2], [0.4]], dtype=object)
             p(xxx)   # raises ValueError
-            assert False
-        except ValueError:
-            pass
 
     @parametrize_cls
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -526,8 +523,7 @@ class TestPPoly:
         assert_allclose(
             P.integrate(0, -10), poly_int(2) - poly_int(3) - 3 * period_int)
 
-    # TODO: Add a solve implementation
-    '''
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_roots(self, xp, scp):
         x = xp.linspace(0, 1, 31)**2
@@ -544,6 +540,7 @@ class TestPPoly:
         r = pp.roots()
         return r
 
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_roots_idzero(self, xp, scp):
         # Roots for piecewise polynomials with identically zero
@@ -560,6 +557,7 @@ class TestPPoly:
 
         return pp.roots(), pp1.roots()
 
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_roots_all_zero(self, xp, scp):
         # test the code path for the polynomial being
@@ -569,6 +567,7 @@ class TestPPoly:
         p = scp.interpolate.PPoly(c, x)
         return p.roots(), p.solve(0), p.solve(1)
 
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_roots_all_zero_1(self, xp, scp):
         # test the code path for the polynomial being
@@ -578,6 +577,7 @@ class TestPPoly:
         p = scp.interpolate.PPoly(c, x)
         return p.roots(), p.solve(0), p.solve(1)
 
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_roots_repeated(self, xp, scp):
         # Check roots repeated in multiple sections are reported only
@@ -590,6 +590,7 @@ class TestPPoly:
         pp = scp.interpolate.PPoly(c, x)
         return pp.roots(), pp.roots(extrapolate=False)
 
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_roots_discont(self, xp, scp):
         # Check that a discontinuity across zero is reported as root
@@ -600,6 +601,7 @@ class TestPPoly:
                 pp.solve(0.5), pp.solve(0.5, discontinuity=False),
                 pp.solve(1.5), pp.solve(1.5, discontinuity=False))
 
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     def test_roots_random(self):
         # Check high-order polynomials with random coefficients
         numpy.random.seed(1234)
@@ -635,10 +637,8 @@ class TestPPoly:
 
         # Check that we checked a number of roots
         assert num > 100, repr(num)
-    '''
 
-    # XXX: expose _croot_poly1 or skip
-    '''
+    @pytest.mark.skip(reason='There is not a complex root solver available')
     def test_roots_croots(self):
         # Test the complex root finding algorithm
         np.random.seed(1234)
@@ -648,27 +648,26 @@ class TestPPoly:
 
             if k == 3:
                 # add a case with zero discriminant
-                c[:,0,0] = 1, 2, 1
+                c[:, 0, 0] = 1, 2, 1
 
             for y in [0, np.random.random()]:
                 w = np.empty(c.shape, dtype=complex)
-                _ppoly._croots_poly1(c, w)
+                # _ppoly._croots_poly1(c, w)
 
                 if k == 1:
-                    assert_(np.isnan(w).all())
+                    assert np.isnan(w).all()
                     continue
 
                 res = 0
                 cres = 0
                 for i in range(k):
-                    res += c[i,None] * w**(k-1-i)
-                    cres += abs(c[i,None] * w**(k-1-i))
+                    res += c[i, None] * w**(k-1-i)
+                    cres += abs(c[i, None] * w**(k-1-i))
                 with np.errstate(invalid='ignore'):
                     res /= cres
                 res = res.ravel()
                 res = res[~np.isnan(res)]
                 assert_allclose(res, 0, atol=1e-10)
-    '''
 
     @pytest.mark.parametrize('extrapolate', [True, False, None])
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -752,8 +751,7 @@ class TestPPoly:
             results += [pa_i(b) - pa_i(a), pd_i(b) - pd_i(a)]
         return results
 
-    # TODO: Add an actual solve implementation
-    '''
+    @pytest.mark.skip(reason='There is not an asymmetric eigenvalue solver')
     @pytest.mark.parametrize('m', [10, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-12)
     def test_descending_roots(self, m, xp, scp):
@@ -763,4 +761,3 @@ class TestPPoly:
         roots_d = pd.roots()
         roots_a = pa.roots()
         return roots_a, roots_d
-    '''
