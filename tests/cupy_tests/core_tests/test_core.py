@@ -71,13 +71,13 @@ class TestMinScalarType:
 
     @testing.for_all_dtypes()
     def test_numpy_scalar(self, dtype):
-        sc = dtype(-1)
+        sc = dtype(1)
         for v in (sc, [sc, sc]):
             assert cupy.min_scalar_type(v) is numpy.min_scalar_type(v)
 
     @testing.for_all_dtypes()
     def test_cupy_scalar(self, dtype):
-        sc = cupy.array(-1, dtype=dtype)
+        sc = cupy.array(-1).astype(dtype)
         for v in (sc, [sc, sc]):
             assert cupy.min_scalar_type(v) is sc.dtype
 
