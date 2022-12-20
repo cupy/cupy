@@ -61,7 +61,7 @@ def prepare_input(x, y, axis, dydx=None):
 class CubicHermiteSpline(PPoly):
     """Piecewise-cubic interpolator matching values and first derivatives.
 
-    The result is represented as a `PPoly` instance.
+    The result is represented as a `PPoly` instance. [1]_
 
     Parameters
     ----------
@@ -98,19 +98,8 @@ class CubicHermiteSpline(PPoly):
         Interpolation axis. The same axis which was passed to the
         constructor.
 
-    Methods
-    -------
-    __call__
-    derivative
-    antiderivative
-    integrate
-    roots
-
     See Also
     --------
-    Akima1DInterpolator : Akima 1D interpolator.
-    PchipInterpolator : PCHIP 1-D monotonic cubic interpolator.
-    CubicSpline : Cubic spline data interpolator.
     PPoly : Piecewise polynomial in terms of coefficients and breakpoints
 
     Notes
