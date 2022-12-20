@@ -87,7 +87,7 @@ if runtime.is_hip:
 """
 else:
     PPOLY_KERNEL = """#include <cuda_runtime.h>
-#include <hip/device_launch_parameters.h>
+#include <device_launch_parameters.h>
 """
 PPOLY_KERNEL = PPOLY_KERNEL + r"""
 #include <cupy/complex.cuh>
