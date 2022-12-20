@@ -207,6 +207,8 @@ class TestBSpline:
         k = 2
         t = xp.asarray([-1, -1, 0, 1, 1, 3, 4, 6, 6, 6, 7, 7])
         c = xp.r_[0, 0, testing.shaped_random((5,), xp), 0, 0]
+        # TODO(kmaehashi): For #7240 debugging. Remove this later.
+        print(xp.__name__, 'c = ', c)
         b = scp.interpolate.BSpline(t, c, k)
 
         comp = []
