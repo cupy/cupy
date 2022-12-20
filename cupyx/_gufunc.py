@@ -1,5 +1,5 @@
-import cupy
+from cupy._core import _gufuncs
 
 
-class GeneralizedUFunc(cupy._core._gufuncs._GUFunc):
-    __doc__ = cupy._core._gufuncs._GUFunc.__doc__
+class GeneralizedUFunc(_gufuncs._GUFunc):
+    __doc__ = _gufuncs._GUFunc.__doc__
