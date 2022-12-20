@@ -8,6 +8,8 @@ import numpy as np
 import cupy
 from cupy import testing
 from cupy.testing import assert_allclose
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 import cupyx.scipy
 import cupyx.scipy.interpolate  # NOQA
 
@@ -163,6 +165,9 @@ class TestPPolyCommon:
             p(xxx)   # raises ValueError
 
     @parametrize_cls
+    @pytest.mark.xfail(
+        runtime.is_hip and driver.get_build_version() < 5_00_00000,
+        reason='Fails on ROCm 4.3')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_complex_coef(self, xp, scp, cls):
         cls = getattr(scp.interpolate, cls)
