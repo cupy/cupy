@@ -2,6 +2,7 @@
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
+from cupy_backends.cuda.api import runtime
 from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline
 
@@ -81,10 +82,14 @@ __global__ void find_breakpoint_position(
 INTERVAL_MODULE = cupy.RawModule(
     code=INTERVAL_KERNEL, options=('-std=c++11',),)
 
-PPOLY_KERNEL = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-
+if runtime.is_hip:
+    PPOLY_KERNEL = """#include <hip/hip_runtime.h>
+"""
+else:
+    PPOLY_KERNEL = """#include <cuda_runtime.h>
+#include <hip/device_launch_parameters.h>
+"""
+PPOLY_KERNEL = PPOLY_KERNEL + r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
