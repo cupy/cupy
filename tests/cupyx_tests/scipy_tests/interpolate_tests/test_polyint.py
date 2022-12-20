@@ -4,6 +4,7 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
+from cupyx.scipy.interpolate import CubicHermiteSpline
 
 try:
     from scipy import interpolate  # NOQA
@@ -392,3 +393,27 @@ class TestZeroSizeArrays:
         sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
         assert obj(xval).size == 0
         assert obj(xval).shape == sh
+
+
+@testing.with_requires("scipy")
+class TestCubicHermiteSpline:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_correctness(self, xp, scp):
+        x = xp.asarray([0, 2, 7])
+        y = xp.asarray([-1, 2, 3])
+        dydx = xp.asarray([0, 3, 7])
+        s = scp.interpolate.CubicHermiteSpline(x, y, dydx)
+        return s(x), s(x, 1)
+
+    def test_ctor_error_handling(self):
+        x = cupy.asarray([1, 2, 3])
+        y = cupy.asarray([0, 3, 5])
+        dydx = cupy.asarray([1, -1, 2, 3])
+        dydx_with_nan = cupy.asarray([1, 0, cupy.nan])
+
+        with pytest.raises(ValueError):
+            CubicHermiteSpline(x, y, dydx)
+
+        with pytest.raises(ValueError):
+            CubicHermiteSpline(x, y, dydx_with_nan)
