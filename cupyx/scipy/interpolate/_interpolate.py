@@ -322,7 +322,7 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     dx : int
         Order of derivative to evaluate.  The derivative is evaluated
         piecewise and may have discontinuities.
-    extrapolate : bint
+    extrapolate : bool
         Whether to extrapolate to out-of-bounds points based on first
         and last intervals, or to return NaNs.
     out : ndarray, shape (r, n)
@@ -388,7 +388,7 @@ def _integrate(c, x, a, b, extrapolate, out):
         Start point of integration.
     b : double
         End point of integration.
-    extrapolate : bint, optional
+    extrapolate : bool, optional
         Whether to extrapolate to out-of-bounds points based on first
         and last intervals, or to return NaNs.
     out : ndarray, shape (n,)
