@@ -559,6 +559,13 @@ Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy 
 
 The above two kinds of styles to launch the kernel are supported, see the documentation of :class:`cupyx.jit._interface._JitRawKernel` for details.
 
+The two first entries mean grid and block. grid( Rawkernel style (128,) or Numba style [128] ) means the size of grid in blocks. block( (1024,) or [1024] ) means the dimensions of each thread block.
+This technique is used in CUDA Programming.
+
+For details, see `The CUDA Programming Model`_.
+
+.. _The CUDA Programming Model: https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/
+
 The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
 See :doc:`../reference/kernel` for a full list of API.
