@@ -416,8 +416,8 @@ def _integrate(c, x, a, b, extrapolate, out):
                      ascending))
 
     # Compute coefficient displacement stride (in elements)
-    c_shape = cupy.asarray(c.shape, dtype=cupy.int_)
-    c_strides = cupy.asarray(c.strides, dtype=cupy.int_) // c.itemsize
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
     int_kernel = _get_module_func(PPOLY_MODULE, 'integrate', c)
     int_kernel(((c.shape[2] + 128 - 1) // 128,), (128,),
