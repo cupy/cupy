@@ -578,7 +578,7 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
 )
-@testing.with_requires('numpy>=1.23')
+@testing.with_requires('numpy>=1.23,<1.24')
 class TestArrayAdvancedIndexingSetitemScalarValueIndexError2:
 
     @testing.for_all_dtypes()
@@ -586,6 +586,7 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError2:
         for xp in (numpy, cupy):
             a = xp.zeros(self.shape, dtype=dtype)
             with pytest.raises(IndexError):
+                # This is deprecated and fails in NumPy 1.24.
                 with testing.assert_warns(numpy.VisibleDeprecationWarning):
                     a[self.indexes] = self.value
 
