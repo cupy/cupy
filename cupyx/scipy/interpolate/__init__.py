@@ -15,3 +15,6 @@ from cupyx.scipy.interpolate._bspline2 import make_interp_spline  # NOQA
 from cupyx.scipy.interpolate._rbfinterp import RBFInterpolator  # NOQA
 from cupyx.scipy.interpolate._rgi import RegularGridInterpolator  # NOQA
 from cupyx.scipy.interpolate._rgi import interpn  # NOQA
+
+# Backward compatibility
+pchip = PchipInterpolator  # NOQA
