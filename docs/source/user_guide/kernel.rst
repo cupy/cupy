@@ -559,7 +559,7 @@ Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy 
 
 The above two kinds of styles to launch the kernel are supported, see the documentation of :class:`cupyx.jit._interface._JitRawKernel` for details.
 
-The two first entries mean grid and block. grid( Rawkernel style (128,) or Numba style [128] ) means the size of grid in blocks. block( (1024,) or [1024] ) means the dimensions of each thread block.
+The two first entries are the grid and block sizes. grid( Rawkernel style (128,) or Numba style [128] ) is the size of the grid in blocks. block( (1024,) or [1024] ) is the dimensions of each thread block.
 This technique is used in CUDA Programming.
 
 For details, see `The CUDA Programming Model`_.
