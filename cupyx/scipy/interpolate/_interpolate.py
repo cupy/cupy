@@ -404,8 +404,8 @@ def _integrate(c, x, a, b, extrapolate, out):
     if not ascending:
         a, b = b, a
 
-    start_interval = cupy.empty(a.shape, dtype=cupy.int_)
-    end_interval = cupy.empty(b.shape, dtype=cupy.int_)
+    start_interval = cupy.empty(a.shape, dtype=cupy.int64)
+    end_interval = cupy.empty(b.shape, dtype=cupy.int64)
 
     interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
     interval_kernel(((a.shape[0] + 128 - 1) // 128,), (128,),
