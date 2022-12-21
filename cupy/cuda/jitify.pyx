@@ -52,11 +52,16 @@ cdef inline void init_cupy_headers():
 init_cupy_headers()
 
 
+cpdef _add_sources(dict sources):
+    for hdr_name, hdr_source in sources.items():
+        cupy_headers[hdr_name] = hdr_source
+
+
 # Use Jitify's internal mechanism to search all included headers, and return
 # the modified options and the header mapping (as two lists). This roughly
 # follows the constructor of jitify::Program(). The found headers are cached
 # to accelerate Jitify's search loop.
-cpdef jitify(str code, tuple opt, dict cached_sources=None):
+cpdef jitify(str code, tuple opt):
 
     # input
     cdef cpp_str cuda_source
@@ -79,13 +84,6 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
 
     cuda_source = code.encode()
     _options = [s.encode() for s in opt]
-
-    # Populate the cpp map
-    if cached_sources is not None:
-        for k, v in cached_sources.items():
-            hdr_name = k
-            hdr_source = v
-            _sources[hdr_name] = hdr_source
 
     with nogil:
         # Where the real magic happens: a compile-fail-search loop
