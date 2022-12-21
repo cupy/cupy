@@ -15,7 +15,9 @@ Univariate interpolation
    KroghInterpolator
    barycentric_interpolate
    krogh_interpolate
+   pchip_interpolate
    CubicHermiteSpline
+   PchipInterpolator
    PPoly
 
 
