@@ -288,14 +288,23 @@ class TestArithmeticBinary(ArithmeticBinaryBase):
         self.check_binary()
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
+        'arg1': [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
+                 for d in unsigned_int_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'arg2': [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
+                 for d in unsigned_int_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'name': ['true_divide'],
+        'dtype': [numpy.float64],
+        'use_dtype': [True, False],
+    }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in int_types
+                 for d in signed_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in int_types
+                 for d in signed_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['true_divide'],
         'dtype': [numpy.float64],
