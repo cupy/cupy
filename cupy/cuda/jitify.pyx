@@ -64,7 +64,7 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
 
     # output
     cdef vector[cpp_str] include_paths
-    cdef cpp_map[cpp_str, cpp_str]* _sources = &cupy_headers
+    cdef cpp_map[cpp_str, cpp_str] _sources = cupy_headers  # copy
     cdef vector[cpp_str] _options  # the input gets modified
     cdef cpp_str _name
     cdef list new_opt = None
@@ -85,12 +85,12 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
         for k, v in cached_sources.items():
             hdr_name = k
             hdr_source = v
-            cupy_headers[hdr_name] = hdr_source
+            _sources[hdr_name] = hdr_source
 
     with nogil:
         # Where the real magic happens: a compile-fail-search loop
         load_program(cuda_source, headers, nullptr, &include_paths,
-                     _sources, &_options, &_name)
+                     &_sources, &_options, &_name)
 
         # Remove input code from header cache
         _sources.erase(_name)
@@ -102,7 +102,7 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
                 '--pre-include=jitify_preinclude.h']
 
     # Collect header names and contents (as bytes)
-    for itr in deref(_sources):  # itr is an iterator of std::map
+    for itr in _sources:  # itr is an iterator of std::map
         k = itr.first
         v = itr.second
         hdr_codes.append(v)
