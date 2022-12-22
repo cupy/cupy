@@ -85,6 +85,7 @@ _available_cusparse_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, 12000),
+    'gthr': (8000, 12000),
 
     # Generic APIs are not available on CUDA 10.2 on Windows.
     'spmv': ({'Linux': 10200, 'Windows': 11000}, None),
@@ -125,6 +126,7 @@ _available_hipsparse_version = {
     'csrgeam2': (305, None),
     'csrgemm': (305, None),
     'csrgemm2': (305, None),
+    'gthr': (305, None),
     'spmv': (402, None),
     'spmm': (402, None),
     'csr2dense': (305, None),
@@ -847,10 +849,16 @@ def csrsort(x):
     _cusparse.xcsrsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
-    _call_cusparse(
-        'gthr', x.dtype,
-        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-        P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+    if check_availability('gthr'):
+        _call_cusparse(
+            'gthr', x.dtype,
+            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    else:
+        desc_x = SpVecDescriptor.create(P, x.data)
+        desc_y = DnVecDescriptor.create(data_orig)
+        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
 
 def cscsort(x):
@@ -879,10 +887,16 @@ def cscsort(x):
     _cusparse.xcscsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
-    _call_cusparse(
-        'gthr', x.dtype,
-        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-        P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+    if check_availability('gthr'):
+        _call_cusparse(
+            'gthr', x.dtype,
+            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    else:
+        desc_x = SpVecDescriptor.create(P, x.data)
+        desc_y = DnVecDescriptor.create(data_orig)
+        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
 
 def coosort(x, sort_by='r'):
@@ -918,10 +932,17 @@ def coosort(x, sort_by='r'):
             P.data.ptr, buf.data.ptr)
     else:
         raise ValueError("sort_by must be either 'r' or 'c'")
-    _call_cusparse(
-        'gthr', x.dtype,
-        handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-        P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+    if check_availability('gthr'):
+        _call_cusparse(
+            'gthr', x.dtype,
+            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    else:
+        desc_x = SpVecDescriptor.create(P, x.data)
+        desc_y = DnVecDescriptor.create(data_orig)
+        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
+
     if sort_by == 'c':  # coo is sorted by row first
         x._has_canonical_format = False
 
@@ -1298,6 +1319,21 @@ class SpMatDescriptor(BaseDescriptor):
 
     def set_attribute(self, attribute, data):
         _cusparse.spMatSetAttribute(self.desc, attribute, data)
+
+
+class SpVecDescriptor(BaseDescriptor):
+
+    @classmethod
+    def create(cls, idx, x):
+        nnz = x.size
+        cuda_dtype = _dtype.to_cuda_dtype(x.dtype)
+        desc = _cusparse.createSpVec(nnz, nnz, idx.data.ptr, x.data.ptr,
+                                     _dtype_to_IndexType(idx.dtype),
+                                     _cusparse.CUSPARSE_INDEX_BASE_ZERO,
+                                     cuda_dtype)
+        get = _cusparse.spVecGet
+        destroy = _cusparse.destroySpVec
+        return SpVecDescriptor(desc, get, destroy)
 
 
 class DnVecDescriptor(BaseDescriptor):
