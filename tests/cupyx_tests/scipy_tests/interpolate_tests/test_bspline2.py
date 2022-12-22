@@ -355,3 +355,104 @@ class TestInterp:
         b = csi.make_interp_spline(x, y, k=3, bc_type='natural')
         bf = _make_interp_spline_full_matrix(x, y, k, b.t, bc_type='natural')
         cupy.testing.assert_allclose(b.c, bf.c, atol=1e-13)
+
+    # test periodic constructor #
+
+
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
+class TestInterpPeriodic:
+    #
+    # Test basic ways of constructing interpolating splines w/periodic BCs.
+    #
+    def get_xy(self, xp):
+        xx = xp.linspace(0., 2.*cupy.pi, 11)
+        yy = xp.sin(xx)
+        return xx, yy
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_periodic(self, xp, scp):
+        x, y = self.get_xy(xp)
+        # k = 5 here for more derivatives
+        b = scp.interpolate.make_interp_spline(x, y, k=5, bc_type='periodic')
+        for i in range(1, 5):
+            xp.testing.assert_allclose(b(x[0], nu=i),
+                                       b(x[-1], nu=i), atol=1e-11)
+        return b(x)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_periodic_axis1(self, xp, scp):
+        x, y = self.get_xy(xp)
+        b = scp.interpolate.make_interp_spline(x, y, k=5,
+                                               bc_type='periodic', axis=-1)
+        for i in range(1, 5):
+            xp.testing.assert_allclose(b(x[0], nu=i),
+                                       b(x[-1], nu=i), atol=1e-11)
+        return b(x)
+
+    @pytest.mark.parametrize('k', [2, 3, 4, 5, 6, 7])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_periodic_random(self, xp, scp, k):
+        # tests for both cases (k > n and k <= n)
+        n = 15
+        _np.random.seed(1234)
+        x = _np.sort(_np.random.random_sample(n) * 10)
+        y = _np.random.random_sample(n) * 100
+        if xp is cupy:
+            x = cupy.asarray(x)
+            y = cupy.asarray(y)
+
+        y[0] = y[-1]
+        b = scp.interpolate.make_interp_spline(x, y, k=k, bc_type='periodic')
+
+        return b(x)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_periodic_axis(self, xp, scp):
+        x, y = self.get_xy(xp)
+        n = x.shape[0]
+        _np.random.seed(1234)
+        x = _np.random.random_sample(n) * 2 * _np.pi
+        x = _np.sort(x)
+        if xp is cupy:
+            x = cupy.asarray(x)
+        x[0] = 0.
+        x[-1] = 2 * xp.pi
+        y = xp.zeros((2, n))
+        y[0] = xp.sin(x)
+        y[1] = xp.cos(x)
+        b = scp.interpolate.make_interp_spline(x, y, k=5,
+                                               bc_type='periodic', axis=1)
+        return b(x)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_periodic_points_exception(self, xp, scp):
+        # first and last points should match when periodic case expected
+        n, k = 8, 5
+        x = xp.linspace(0, n, n)
+        y = x
+        return scp.interpolate.make_interp_spline(x, y, k=k,
+                                                  bc_type='periodic')
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_periodic_knots_exception(self, xp, scp):
+        # `periodic` case does not work with passed vector of knots
+        n, k = 7, 3
+        x = xp.linspace(0, n, n)
+        y = x**2
+        t = xp.zeros(n + 2 * k)
+        return scp.interpolate.make_interp_spline(x, y, k, t, 'periodic')
+
+    @testing.with_requires("scipy")
+    def test_periodic_cubic(self):
+        # edge case: Cubic interpolation on 3 points
+        # TODO: refactor when PPoly / CubicHermiteSpline is available
+        n = 3
+        cupy.random.seed(1234)
+        x = cupy.sort(cupy.random.random_sample(n) * 10)
+        y = cupy.random.random_sample(n) * 100
+        y[0] = y[-1]
+        b = csi.make_interp_spline(x, y, k=3, bc_type='periodic')
+
+        cub = interpolate.CubicSpline(x.get(), y.get(), bc_type='periodic')
+        cupy.testing.assert_allclose(b(x),
+                                     cub(x.get()), atol=1e-14)
