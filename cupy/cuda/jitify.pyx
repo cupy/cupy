@@ -105,5 +105,6 @@ cpdef jitify(str code, tuple opt):
         v = itr.second
         hdr_codes.append(v)
         hdr_names.append(k)
+        cupy_headers[k] = v
 
     return _name.decode(), tuple(new_opt), hdr_codes, hdr_names
