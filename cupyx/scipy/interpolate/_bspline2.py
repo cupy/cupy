@@ -530,7 +530,7 @@ def _make_periodic_spline(x, y, t, k, axis):
 
     # find the intervals for x[0] and x[-1]
     x0 = cupy.r_[x[0], x[-1]]
-    intervals_bc = cupy.array([k, n + k - 1], dtype=int)   # match scipy
+    intervals_bc = cupy.array([k, n + k - 1], dtype=cupy.int64)   # match scipy
 
     # 3. B.C.s
     rows = cupy.zeros((k-1, n + k - 1), dtype=float)
