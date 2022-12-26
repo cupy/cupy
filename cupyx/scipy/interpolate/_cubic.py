@@ -356,7 +356,7 @@ class Akima1DInterpolator(CubicHermiteSpline):
 
     References
     ----------
-    [1] A new method of interpolation and smooth curve fitting based
+    .. [1] A new method of interpolation and smooth curve fitting based
         on local procedures. Hiroshi Akima, J. ACM, October 1970, 17(4),
         589-602.
     """
