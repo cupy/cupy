@@ -572,3 +572,15 @@ class TestPCHIP:
         r3 = scp.interpolate.pchip_interpolate(
             [1, 2, 3], [4, 5, 6], [0.5], der=[0, 1])
         return r1, r2, xp.asarray(r3)
+
+
+@testing.with_requires("scipy")
+class TestAkima1D:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_correctness(self, xp, scp):
+        x = xp.asarray([-1, 0, 1, 2, 3, 4])
+        # y = xp.asarray([-1, 2, 3])
+        y = testing.shaped_random((6, 1), xp)
+        s = scp.interpolate.Akima1DInterpolator(x, y)
+        return s(x), s(x, 1)
