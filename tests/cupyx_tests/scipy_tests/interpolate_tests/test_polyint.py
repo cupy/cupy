@@ -398,6 +398,29 @@ class TestZeroSizeArrays:
         assert obj(xval).size == 0
         assert obj(xval).shape == sh
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('y_shape', [(10, 0, 5), (10, 5, 0)])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    @pytest.mark.parametrize('klass',
+                             ['PchipInterpolator', 'Akima1DInterpolator'])
+    def test_zero_size_2(self, xp, scp, klass, y_shape, axis):
+        x = xp.arange(10)
+        y = xp.zeros(y_shape)
+        xval = xp.arange(3)
+
+        cls = getattr(scp.interpolate, klass)
+        obj = cls(x, y)
+        assert obj(xval).size == 0
+        assert obj(xval).shape == xval.shape + y.shape[1:]
+
+        # Also check with an explicit non-default axis
+        yt = np.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
+
+        obj = cls(x, yt, axis=axis)
+        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
+        assert obj(xval).size == 0
+        assert obj(xval).shape == sh
+
 
 @testing.with_requires("scipy")
 class TestCubicHermiteSpline:
