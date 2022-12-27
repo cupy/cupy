@@ -1342,3 +1342,11 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.pool.set_limit(fraction=1.1)
+
+
+class TestExternalAllocatorSymbols:
+    def test_exported_symbols(self):
+        cupy_allocator_so = cupy.cuda.memory.__file__
+        allocator = ctypes.CDLL(cupy_allocator_so)
+        getattr(allocator, 'cupy_malloc_ext')
+        getattr(allocator, 'cupy_free_ext')
