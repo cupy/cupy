@@ -418,7 +418,7 @@ class TestZeroSizeArrays:
         assert r1.shape == xval.shape + y.shape[1:]
 
         # Also check with an explicit non-default axis
-        yt = np.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
+        yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
 
         obj = cls(x, yt, axis=axis)
         sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
