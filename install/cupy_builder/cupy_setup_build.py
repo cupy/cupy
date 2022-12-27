@@ -337,6 +337,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
+            # Uncomment to diagnose Jitify issues.
+            # compile_args.append('-DJITIFY_PRINT_ALL')
+
             # if any change is made to the Jitify header, we force recompiling
             s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
 
