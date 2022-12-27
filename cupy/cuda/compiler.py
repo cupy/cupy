@@ -20,7 +20,7 @@ from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
 if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda.jitify import jitify
+    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -234,11 +234,8 @@ def _jitify_prep(source, options, cu_path):
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
         from cupy._core import core
-        _jitify_header_source_map = core._get_header_source_map()
+        jitify._add_sources(core._get_header_source_map())
         _jitify_header_source_map_populated = True
-    else:
-        # this is already cached at the C++ level, so don't pass in anything
-        _jitify_header_source_map = None
 
     # jitify requires the 1st line to be the program name
     old_source = source
@@ -253,8 +250,7 @@ def _jitify_prep(source, options, cu_path):
     # (NVIDIA/jitify#79).
 
     try:
-        name, options, headers, include_names = jitify(
-            source, options, _jitify_header_source_map)
+        name, options, headers, include_names = jitify.jitify(source, options)
     except Exception as e:  # C++ could throw all kinds of errors
         cex = CompileException(str(e), old_source, cu_path, options, 'jitify')
         dump = _get_bool_env_variable(
