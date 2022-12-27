@@ -557,7 +557,9 @@ Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy 
    >>> elementwise_copy[128, 1024](x, y, size)  #  Numba style
    >>> assert (x == y).all()
 
-The above two kinds of styles to launch the kernel are supported, see the documentation of :class:`cupyx.jit._interface._JitRawKernel` for details.
+Both styles to launch the kernel, as shown above, are supported. The first two entries are the grid and block sizes, respectively. ``grid`` ( RawKernel style ``(128,)`` or Numba style ``[128]``) is the sizes of the grid, i.e., the numbers of blocks in each dimension; ``block`` (``(1024,)`` or ``[1024]``) is the dimensions of each thread block, please refer to :class:`cupyx.jit._interface._JitRawKernel` for details. Launching a CUDA kernel on a GPU with pre-determined grid/block sizes requires basic understanding in the `CUDA Programming Model`_.
+
+.. _CUDA Programming Model: https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/
 
 The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
