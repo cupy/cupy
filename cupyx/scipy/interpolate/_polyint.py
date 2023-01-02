@@ -525,3 +525,74 @@ def krogh_interpolate(xi, yi, x, der=0, axis=0):
         return P.derivative(x, der=der)
     else:
         return P.derivatives(x, der=cupy.amax(der)+1)[der]
+
+
+def approximate_taylor_polynomial(f, x, degree, scale, order=None):
+    """
+    Estimate the Taylor polynomial of f at x by polynomial fitting.
+    Parameters
+    ----------
+    f : callable
+        The function whose Taylor polynomial is sought. Should accept
+        a vector of `x` values.
+    x : scalar
+        The point at which the polynomial is to be evaluated.
+    degree : int
+        The degree of the Taylor polynomial
+    scale : scalar
+        The width of the interval to use to evaluate the Taylor polynomial.
+        Function values spread over a range this wide are used to fit the
+        polynomial. Must be chosen carefully.
+    order : int or None, optional
+        The order of the polynomial to be used in the fitting; `f` will be
+        evaluated ``order+1`` times. If None, use `degree`.
+    Returns
+    -------
+    p : poly1d instance
+        The Taylor polynomial (translated to the origin, so that
+        for example p(0)=f(x)).
+    Notes
+    -----
+    The appropriate choice of "scale" is a trade-off; too large and the
+    function differs from its Taylor polynomial too much to get a good
+    answer, too small and round-off errors overwhelm the higher-order terms.
+    The algorithm used becomes numerically unstable around order 30 even
+    under ideal circumstances.
+    Choosing order somewhat larger than degree may improve the higher-order
+    terms.
+    Examples
+    --------
+    We can calculate Taylor approximation polynomials of sin function with
+    various degrees:
+    >>> import cupy as cp
+    >>> import matplotlib.pyplot as plt
+    >>> from cupyx.scipy.interpolate import approximate_taylor_polynomial
+    >>> x = cp.linspace(-10.0, 10.0, num=100)
+    >>> plt.plot(x.get(), cp.sin(x).get(), label="sin curve")
+    >>> for degree in range(1, 15, 2):
+    ...     sin_taylor = approximate_taylor_polynomial(cp.sin, 0, degree, 1,
+    ...                                                order=degree + 2)
+    ...     plt.plot(x.get(), sin_taylor(x).get(), label=f"degree={degree}")
+    >>> plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left',
+    ...            borderaxespad=0.0, shadow=True)
+    >>> plt.tight_layout()
+    >>> plt.axis([-10, 10, -10, 10])
+    >>> plt.show()
+    """
+    x = cupy.asarray(x)
+
+    if order is None:
+        order = degree
+
+    n = order + 1
+    # Choose n points that cluster near the endpoints of the interval in
+    # a way that avoids the Runge phenomenon. Ensure, by including the
+    # endpoint or not as appropriate, that one point always falls at x
+    # exactly.
+    xs = scale * cupy.cos(cupy.linspace(0, cupy.pi, n, endpoint=n % 1)) + x
+
+    P = KroghInterpolator(xs, f(xs))
+    d = P.derivatives(x, der=degree+1)
+
+    factorials = cupy.array([float_factorial(i) for i in range(degree+1)])
+    return cupy.poly1d((d/factorials)[::-1])
