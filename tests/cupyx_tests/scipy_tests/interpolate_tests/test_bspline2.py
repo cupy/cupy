@@ -359,6 +359,7 @@ class TestInterp:
     # test periodic constructor #
 
 
+@testing.with_requires("scipy>=1.7")
 @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
 class TestInterpPeriodic:
     #
@@ -442,7 +443,6 @@ class TestInterpPeriodic:
         t = xp.zeros(n + 2 * k)
         return scp.interpolate.make_interp_spline(x, y, k, t, 'periodic')
 
-    @testing.with_requires("scipy")
     def test_periodic_cubic(self):
         # edge case: Cubic interpolation on 3 points
         # TODO: refactor when PPoly / CubicHermiteSpline is available
