@@ -1979,16 +1979,22 @@ cdef dict _allocations = dict()
 
 
 cdef public void* cupy_malloc_ext(
-        ssize_t size, int device, void* stream) with gil:
+        ssize_t size, int device_id, void* stream) with gil:
     # TODO(ecastill) dynamically change stream & device?
-    cdef curr_stream = stream_module.get_current_stream().ptr
-    if <intptr_t>stream != <intptr_t>curr_stream:
-        raise RuntimeError(f'stream must be the current one')
-    mem = alloc(size)
-    _allocations[mem.ptr] = mem
-    return <void *>mem.ptr
+    try:
+        with device.Device(device_id):
+            with stream_module.ExternalStream(ptr=<intptr_t> stream):
+                mem = alloc(size)
+    except Exception:
+        return <void*>0  # return nullptr
+    cdef intptr_t ptr = <intptr_t> mem.ptr
+    _allocations[ptr] = mem
+    return <void*>mem.ptr
 
 
 cdef public void cupy_free_ext(
-        void* ptr, ssize_t size, void* stream) with gil:
-    del _allocations[<intptr_t> ptr]
+        void* ptr, ssize_t size, int device_id, void* stream) with gil:
+    try:
+        del _allocations[<intptr_t>ptr]
+    except Exception:
+        pass   # Silently ignore non-tracked values?

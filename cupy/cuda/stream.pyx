@@ -188,7 +188,7 @@ cdef int check_stream_device_match(int device_id) except? -1:
     return device_id
 
 
-class _BaseStream:
+cdef class _BaseStream:
 
     """CUDA stream.
 
@@ -486,7 +486,7 @@ class Stream(_BaseStream):
         # because the memory would still be used in kernels executed in GPU.
 
 
-class ExternalStream(_BaseStream):
+cdef class ExternalStream(_BaseStream):
 
     """CUDA stream not managed by CuPy.
 

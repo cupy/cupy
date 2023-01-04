@@ -1344,7 +1344,39 @@ class TestMemoryAsyncPool(unittest.TestCase):
             self.pool.set_limit(fraction=1.1)
 
 
-class TestExternalAllocatorSymbols:
+class TestExternalAllocator(unittest.TestCase):
+    def setUp(self):
+        self.pool = memory.MemoryPool(memory._malloc)
+        self.old_pool = cupy.get_default_memory_pool()
+        memory.set_allocator(self.pool.malloc)
+
+    def tearDown(self):
+        self.pool.free_all_blocks()
+        memory.set_allocator(self.old_pool.malloc)
+
+    def test_malloc(self):
+        cupy_allocator_so = cupy.cuda.memory.__file__
+        allocator = ctypes.CDLL(cupy_allocator_so)
+        allocator.cupy_malloc_ext.argtypes = [
+            ctypes.c_ssize_t, ctypes.c_int, ctypes.c_void_p
+        ]
+        allocator.cupy_malloc_ext.restype = ctypes.c_void_p
+        allocator.cupy_free_ext.argtypes = [
+            ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int, ctypes.c_void_p
+        ]
+
+        assert self.pool.total_bytes() == 0
+        ptr = allocator.cupy_malloc_ext(256, 0, 0)
+        print(ptr)
+        assert ptr != 0
+        assert self.pool.total_bytes() > 0
+        assert self.pool.used_bytes() > 0
+        allocator.cupy_free_ext(ptr, 256, 0, 0) != 0
+        gc.collect()
+        assert self.pool.used_bytes() == 0
+        self.pool.free_all_blocks()
+        assert self.pool.total_bytes() == 0
+
     def test_exported_symbols(self):
         cupy_allocator_so = cupy.cuda.memory.__file__
         allocator = ctypes.CDLL(cupy_allocator_so)
