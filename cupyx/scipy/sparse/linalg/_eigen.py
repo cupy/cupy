@@ -28,9 +28,9 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
         which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
-            eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues
-            'LM' or 'LA'. 'SM': finds ``k`` smallest (in magnitude)
-            eigenvalues. 'SA': finds ``k`` smallest (algebraic) eigenvalues.
+            eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues.
+            'SA': finds ``k`` largest (algebraic) eigenvalues.
+
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -62,8 +62,8 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA','SA','SM'):
-        raise ValueError('which must be \'LM\' , \'LA\', \'SM\',\'SA\' (actual: {})'
+    if which not in ('LM', 'LA', 'SA'):
+        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
                          ''.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
@@ -87,8 +87,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     if upadte_impl == 'fast':
         lanczos = _lanczos_fast(a, n, ncv)
     else:
-        lanczos = _lanczos_asis
-
+        lanczos = _lanczos_asis(a, V, u, alpha, beta, 0, ncv-1)
     # Lanczos iteration
     lanczos(a, V, u, alpha, beta, 0, ncv)
 
@@ -281,16 +280,21 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     # Pick-up k ritz-values and ritz-vectors
     if which == 'LA':
         idx = numpy.argsort(w)
+        wk = w[idx[-k:]]
+        sk = s[:, idx[-k:]]
     elif which == 'LM':
         idx = numpy.argsort(numpy.absolute(w))
         wk = w[idx[-k:]]
         sk = s[:, idx[-k:]]
+
     elif which == 'SA':
         idx = numpy.argsort(w)
-    elif which == 'SM':
-        idx = numpy.argsort(numpy.absolute(w))
-        wk = w[idx[0:k]]
-        sk = s[:, idx[0:k]]
+        wk = w[idx[:k]]
+        sk = s[:, idx[:k]]
+    # elif which == 'SM':  #dysfunctional
+    #   idx = cupy.argsort(abs(w))
+    #   wk = w[idx[:k]]
+    #   sk = s[:,idx[:k]]
     return cupy.array(wk), cupy.array(sk)
 
 

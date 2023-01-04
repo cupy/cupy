@@ -128,7 +128,7 @@ class TestVectorNorm:
 
 
 @testing.parameterize(*testing.product({
-    'which': ['LM', 'LA'],
+    'which': ['LM', 'LA', 'SA'],
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
     'use_linear_operator': [True, False],
@@ -145,7 +145,7 @@ class TestEigsh:
         a = testing.shaped_random(shape, xp, dtype=dtype)
         mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
         a[mask > self.density] = 0
-        a = a * a.conj().T
+        a = a*a.conj().T
         return a
 
     def _test_eigsh(self, a, xp, sp):
@@ -154,7 +154,7 @@ class TestEigsh:
         if self.return_eigenvectors:
             w, x = ret
             # Check the residuals to see if eigenvectors are correct.
-            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            ax_xw = a@x - xp.multiply(x, w.reshape(1, self.k))
             res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
             tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
             assert(res < tol)
@@ -218,8 +218,8 @@ class TestEigsh:
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SM')
-        with pytest.raises(ValueError):
-            sp.linalg.eigsh(a, k=self.k, which='SA')
+        # with pytest.raises(ValueError):
+        #    sp.linalg.eigsh(a, k=self.k, which='SA')
 
 
 @testing.parameterize(*testing.product({
