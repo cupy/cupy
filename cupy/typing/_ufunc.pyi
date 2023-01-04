@@ -22,14 +22,13 @@ from typing import (
 from numpy._typing import (
     _CastingKind,
     _OrderKACF,
-    NDArray,
     _ShapeLike,
     _ScalarLike_co,
-    ArrayLike,
     _ArrayLikeBool_co,
     _ArrayLikeInt_co,
-    DTypeLike,
 )
+
+from cupy.typing import ArrayLike, DTypeLike, NDArray
 
 from cupy._core import ufunc
 

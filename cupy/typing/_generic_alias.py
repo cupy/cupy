@@ -1,9 +1,12 @@
 import sys
-from typing import Any, TypeVar
+from typing import Any, TypeVar, TYPE_CHECKING
 
 import numpy
 
 import cupy
+
+if TYPE_CHECKING:
+    from typing import TypeAlias
 
 
 if numpy.lib.NumpyVersion(numpy.__version__) >= '1.20.0':
@@ -26,5 +29,5 @@ else:
 
 
 _ScalarType = TypeVar('_ScalarType', bound=numpy.generic, covariant=True)
-_DType = GenericAlias(numpy.dtype, (_ScalarType,))
-NDArray = GenericAlias(cupy.ndarray, (Any, _DType))
+_DType: 'TypeAlias' = GenericAlias(numpy.dtype, (_ScalarType,))
+NDArray: 'TypeAlias' = GenericAlias(cupy.ndarray, (Any, _DType))
