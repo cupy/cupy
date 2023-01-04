@@ -311,9 +311,9 @@ class RegularGridInterpolator:
         if not self.bounds_error and self.fill_value is not None:
             result[out_of_bounds] = self.fill_value
 
-        # f(nan) = nan, if any
-        if cp.any(nans):
-            result[nans] = cp.nan
+        if nans.ndim < result.ndim:
+            nans = nans[..., None]
+        result = cp.where(nans, cp.nan, result)
         return result.reshape(xi_shape[:-1] + self.values.shape[ndim:])
 
     def _prepare_xi(self, xi):
@@ -329,7 +329,10 @@ class RegularGridInterpolator:
         xi = cp.asarray(xi, dtype=float)
 
         # find nans in input
-        nans = cp.any(cp.isnan(xi), axis=-1)
+        is_nans = cp.isnan(xi).T
+        nans = is_nans[0].copy()
+        for is_nan in is_nans[1:]:
+            cp.logical_or(nans, is_nan, nans)
 
         if self.bounds_error:
             for i, p in enumerate(xi.T):
@@ -367,10 +370,9 @@ class RegularGridInterpolator:
         value = cp.array([0.])
         for h in hypercube:
             edge_indices, weights = zip(*h)
-            weight = cp.array([1.])
+            term = cp.asarray(self.values[edge_indices])
             for w in weights:
-                weight = weight * w
-            term = cp.asarray(self.values[edge_indices]) * weight[vslice]
+                term *= w[vslice]
             value = value + term   # cannot use += because broadcasting
         return value
 
@@ -387,8 +389,7 @@ class RegularGridInterpolator:
         # iterate through dimensions
         for x, grid in zip(xi, self.grid):
             i = cp.searchsorted(grid, x) - 1
-            i[i < 0] = 0
-            i[i > grid.size - 2] = grid.size - 2
+            cp.clip(i, 0, grid.size - 2, i)
             indices.append(i)
 
             # compute norm_distances, incl length-1 grids,
