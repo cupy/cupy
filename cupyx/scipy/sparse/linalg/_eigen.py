@@ -29,7 +29,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
             ``1 <= k < n``.
         which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
             eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues.
-            'SA': finds ``k`` largest (algebraic) eigenvalues.
+            'SA': finds ``k`` smallest (algebraic) eigenvalues.
 
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
@@ -87,7 +87,8 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     if upadte_impl == 'fast':
         lanczos = _lanczos_fast(a, n, ncv)
     else:
-        lanczos = _lanczos_asis(a, V, u, alpha, beta, 0, ncv-1)
+        lanczos = _lanczos_asis
+
     # Lanczos iteration
     lanczos(a, V, u, alpha, beta, 0, ncv)
 
