@@ -1,5 +1,6 @@
-from cupy import zeros, asarray, eye, poly1d, hstack, r_
-from cupy import linalg
+import cupy as cp
+from cupy import poly1d
+import scipy.interpolate
 
 __all__ = ["pade"]
 
@@ -10,7 +11,7 @@ def pade(an, m, n=None):
 
     Parameters
     ----------
-    an : (N,) array_like
+    an : (N,) cupy.ndarray
         Taylor series coefficients.
     m : int
         The order of the returned approximating polynomial `q`.
@@ -43,25 +44,5 @@ def pade(an, m, n=None):
     2.71794872
 
     """
-    an = asarray(an)
-    if n is None:
-        n = len(an) - 1 - m
-        if n < 0:
-            raise ValueError("Order of q <m> must be smaller than len(an)-1.")
-    if n < 0:
-        raise ValueError("Order of p <n> must be greater than 0.")
-    N = m + n
-    if N > len(an)-1:
-        raise ValueError("Order of q+p <m+n> must be smaller than len(an).")
-    an = an[:N+1]
-    Akj = eye(N+1, n+1, dtype=an.dtype)
-    Bkj = zeros((N+1, m), dtype=an.dtype)
-    for row in range(1, m+1):
-        Bkj[row, :row] = -(an[:row])[::-1]
-    for row in range(m+1, N+1):
-        Bkj[row, :] = -(an[row-m:row])[::-1]
-    C = hstack((Akj, Bkj))
-    pq = linalg.solve(C, an)
-    p = pq[:n+1]
-    q = r_[1.0, pq[n+1:]]
-    return poly1d(p[::-1]), poly1d(q[::-1])
+    p_cpu, q_cpu = scipy.interpolate.pade(an.get(), m, n)
+    return poly1d(cp.array(p_cpu.coeffs)), poly1d(cp.array(q_cpu.coeffs))

@@ -1,4 +1,7 @@
+import numpy as np
 import cupy
+from scipy.interpolate import KroghInterpolator as KroghInterpolator_cpu
+from scipy.special import factorial as factorial_cpu
 from cupyx.scipy._lib._util import _asarray_validated, float_factorial
 
 
@@ -526,6 +529,8 @@ def krogh_interpolate(xi, yi, x, der=0, axis=0):
     else:
         return P.derivatives(x, der=cupy.amax(der)+1)[der]
 
+# @profile
+
 
 def approximate_taylor_polynomial(f, x, degree, scale, order=None):
     """
@@ -579,7 +584,6 @@ def approximate_taylor_polynomial(f, x, degree, scale, order=None):
     >>> plt.axis([-10, 10, -10, 10])
     >>> plt.show()
     """
-    x = cupy.asarray(x)
 
     if order is None:
         order = degree
@@ -591,8 +595,8 @@ def approximate_taylor_polynomial(f, x, degree, scale, order=None):
     # exactly.
     xs = scale * cupy.cos(cupy.linspace(0, cupy.pi, n, endpoint=n % 1)) + x
 
-    P = KroghInterpolator(xs, f(xs))
+    P = KroghInterpolator_cpu(xs.get(), f(xs).get())
     d = P.derivatives(x, der=degree+1)
 
-    factorials = cupy.array([float_factorial(i) for i in range(degree+1)])
+    factorials = factorial_cpu(np.arange(degree+1))
     return cupy.poly1d((d/factorials)[::-1])

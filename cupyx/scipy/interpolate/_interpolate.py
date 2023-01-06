@@ -7,6 +7,7 @@ from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline
 
 import numpy as np
+import scipy.interpolate
 
 
 TYPES = ['double', 'thrust::complex<double>']
@@ -320,9 +321,9 @@ def lagrange(x, w):
 
     Parameters
     ----------
-    x : array-like
+    x : cupy.ndarray
         `x` represents the x-coordinates of a set of datapoints.
-    w : array-like
+    w : cupy.ndarray
         `w` represents the y-coordinates of a set of datapoints, i.e., f(`x`).
 
     Returns
@@ -362,18 +363,8 @@ def lagrange(x, w):
     >>> plt.show()
 
     """
-
-    M = len(x)
-    p = poly1d(0.0)
-    for j in range(M):
-        pt = poly1d(w[j])
-        for k in range(M):
-            if k == j:
-                continue
-            fac = float(x[j] - x[k])
-            pt *= poly1d([cupy.asarray(1.0), -x[k]]) / fac
-        p += pt
-    return p
+    poly = scipy.interpolate.lagrange(x.get(), w.get())
+    return poly1d(poly.coeffs)
 
 
 def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
