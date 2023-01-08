@@ -1,5 +1,7 @@
 import json
 import os
+import os.path
+import subprocess
 import sys
 from typing import Any, Dict, List, Tuple
 
@@ -68,6 +70,20 @@ def compile_device_code(
 def _get_timestamp(path: str) -> float:
     stat = os.lstat(path)
     return max(stat.st_atime, stat.st_mtime, stat.st_ctime)
+
+
+def dumpbin_dependents(dumpbin: str, path: str) -> List[str]:
+    args = [dumpbin, '/nologo', '/dependents', path]
+    p = subprocess.run(args, stdout=subprocess.PIPE)
+    if p.returncode != 0:
+        print(f'*** DUMPBIN failed ({p.returncode}): {args}')
+        return []
+    sections = p.stdout.decode().split('\r\n\r\n')
+    for num, section in enumerate(sections):
+        if 'Image has the following dependencies:' in section:
+            return [line.strip() for line in sections[num+1].splitlines()]
+    print(f'*** DUMPBIN output could not be parsed: {args}')
+    return []
 
 
 class custom_build_ext(setuptools.command.build_ext.build_ext):
@@ -154,6 +170,20 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         print('Building extensions...')
         super().build_extensions()
+
+        if sys.platform == 'win32':
+            print('Generating DLL dependency list...')
+
+            # Find "dumpbin.exe" next to "lib.exe".
+            dumpbin = os.path.join(
+                os.path.dirname(self.compiler.lib), 'dumpbin.exe')
+
+            # Save list of dependent DLLs for all extension modules.
+            depends = sorted(set(sum([
+                dumpbin_dependents(dumpbin, f) for f in self.get_outputs()
+            ], [])))
+            with open('cupy/.data/_depends.json', 'w') as f:
+                json.dump({'depends': depends}, f)
 
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()

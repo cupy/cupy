@@ -8,6 +8,7 @@ import os
 import os.path
 import shutil
 import sys
+from typing import Any, Dict, Optional
 import warnings
 
 
@@ -263,16 +264,20 @@ def get_cupy_cuda_lib_path():
     return os.path.abspath(cupy_cuda_lib_path)
 
 
-def get_preload_config():
+def get_preload_config() -> Optional[Dict[str, Any]]:
     global _preload_config
     if _preload_config is None:
-        config_path = os.path.join(
-            get_cupy_install_path(), 'cupy', '.data', '_wheel.json')
-        if not os.path.exists(config_path):
-            return None
-        with open(config_path) as f:
-            _preload_config = json.load(f)
+        _preload_config = _get_json_data('_wheel.json')
     return _preload_config
+
+
+def _get_json_data(name: str) -> Optional[Dict[str, Any]]:
+    config_path = os.path.join(
+        get_cupy_install_path(), 'cupy', '.data', name)
+    if not os.path.exists(config_path):
+        return None
+    with open(config_path) as f:
+        return json.load(f)
 
 
 def _can_attempt_preload(lib: str) -> bool:
@@ -467,7 +472,7 @@ def _detect_duplicate_installation():
 
 def _diagnose_import_error() -> str:
     # TODO(kmaehashi): provide better diagnostics.
-    return '''\
+    msg = '''\
 Failed to import CuPy.
 
 If you installed CuPy via wheels (cupy-cudaXXX or cupy-rocm-X-X), make sure that the package matches with the version of CUDA or ROCm installed.
@@ -477,3 +482,46 @@ On Windows, try setting CUDA_PATH environment variable.
 
 Check the Installation Guide for details:
   https://docs.cupy.dev/en/latest/install.html'''  # NOQA
+
+    if sys.platform == 'win32':
+        try:
+            msg += _diagnose_win32_dll_load()
+        except Exception as e:
+            msg += (
+                '\n\nThe cause could not be identified: '
+                f'{type(e).__name__}: {e}'
+            )
+
+    return msg
+
+
+def _diagnose_win32_dll_load() -> str:
+    depends = _get_json_data('_depends.json')
+    if depends is None:
+        return ''
+
+    from ctypes import wintypes
+    kernel32 = ctypes.CDLL('kernel32')
+    kernel32.GetModuleFileNameW.argtypes = [
+        wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD]
+    kernel32.GetModuleFileNameW.restype = wintypes.DWORD
+
+    # Show dependents in similar form of ldd on Linux.
+    lines = [
+        '',
+        '',
+        f'CUDA Path: {get_cuda_path()}',
+        'DLL dependencies:'
+    ]
+    filepath = ctypes.create_unicode_buffer(2**15)
+    for name in depends['depends']:
+        try:
+            dll = ctypes.CDLL(name)
+            kernel32.GetModuleFileNameW(dll._handle, filepath, len(filepath))
+            lines.append(f'  {name} -> {filepath.value}')
+        except FileNotFoundError:
+            lines.append(f'  {name} -> not found')
+        except Exception as e:
+            lines.append(f'  {name} -> error ({type(e).__name__}: {e})')
+
+    return '\n'.join(lines)

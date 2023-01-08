@@ -399,8 +399,9 @@ def prepare_wheel_libs(ctx: Context):
     """
     data_dir = os.path.abspath(os.path.join('cupy', '.data'))
     if os.path.exists(data_dir):
-        print('Removing directory: {}'.format(data_dir))
+        print('Clearing directory: {}'.format(data_dir))
         shutil.rmtree(data_dir)
+    os.mkdir(data_dir)
 
     # Generate list files to copy
     # tuple of (src_path, dst_path)
@@ -432,7 +433,10 @@ def prepare_wheel_libs(ctx: Context):
             os.makedirs(dirpath)
         shutil.copy2(srcpath, dstpath)
 
-    return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
+    package_files = [x[1] for x in files_to_copy] + [
+        'cupy/.data/_depends.json',
+    ]
+    return [os.path.relpath(f, 'cupy') for f in package_files]
 
 
 def get_ext_modules(use_cython: bool, ctx: Context):
