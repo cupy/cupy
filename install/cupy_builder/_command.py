@@ -74,7 +74,11 @@ def _get_timestamp(path: str) -> float:
 
 def dumpbin_dependents(dumpbin: str, path: str) -> List[str]:
     args = [dumpbin, '/nologo', '/dependents', path]
-    p = subprocess.run(args, stdout=subprocess.PIPE)
+    try:
+        p = subprocess.run(args, stdout=subprocess.PIPE)
+    except FileNotFoundError:
+        print(f'*** DUMPBIN not found: {args}')
+        return []
     if p.returncode != 0:
         print(f'*** DUMPBIN failed ({p.returncode}): {args}')
         return []
