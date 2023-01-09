@@ -177,6 +177,14 @@ class TestUfunc:
         return xp.sin(a, None)
 
     @testing.numpy_cupy_allclose()
+    def test_unary_out_where(self, xp):
+        dtype = xp.float64
+        a = testing.shaped_arange((20, 30), xp, dtype)
+        out = xp.zeros((20, 30), dtype)
+        where = testing.shaped_arange((20, 30), xp, xp.bool_)
+        return xp.sin(a, out=out, where=where)
+
+    @testing.numpy_cupy_allclose()
     def test_binary_out_tuple(self, xp):
         dtype = xp.float64
         a = testing.shaped_arange((2, 3), xp, dtype)
@@ -192,6 +200,15 @@ class TestUfunc:
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = xp.ones((2, 3), dtype)
         return xp.add(a, b, None)
+
+    @testing.numpy_cupy_allclose()
+    def test_binary_where(self, xp):
+        dtype = xp.float32
+        a = testing.shaped_arange((20, 30), xp, dtype)
+        b = testing.shaped_arange((20, 30), xp, dtype)
+        out = xp.zeros((20, 30), dtype)
+        where = testing.shaped_arange((20, 30), xp, xp.bool_)
+        return xp.add(a, b, out=out, where=where)
 
     @testing.numpy_cupy_allclose()
     def test_divmod_out_tuple(self, xp):

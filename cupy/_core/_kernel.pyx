@@ -1186,7 +1186,7 @@ cdef class ufunc:
         cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
-        where = kwargs.pop('_where', None)
+        where = kwargs.pop('where', None)
         cdef bint has_where = where is not None
         dtype = kwargs.pop('dtype', None)
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
