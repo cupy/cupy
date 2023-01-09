@@ -167,16 +167,15 @@ class TestArrayAdvancedIndexingGetitemParametrized2:
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
 )
-@testing.with_requires('numpy>=1.23')
-class TestArrayAdvancedIndexingGetitemParametrizedIndexError:
+@testing.with_requires('numpy>=1.24')
+class TestArrayAdvancedIndexingGetitemParametrizedValueError:
 
     @testing.for_all_dtypes()
     def test_adv_getitem(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp, dtype)
-            with pytest.raises(IndexError):
-                with testing.assert_warns(numpy.VisibleDeprecationWarning):
-                    a[self.indexes]
+            with pytest.raises(ValueError):
+                a[self.indexes]
 
 
 @testing.parameterize(
