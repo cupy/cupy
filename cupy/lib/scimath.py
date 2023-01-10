@@ -29,7 +29,7 @@ import cupy
 __all__ = [
     'sqrt', 'log', 'log2', 'logn', 'log10', 'power', 'arccos', 'arcsin',
     'arctanh'
-    ]
+]
 
 
 def _tocomplex(arr):
@@ -72,8 +72,10 @@ def _tocomplex(arr):
     >>> cc
     array([1.+0.j,  2.+0.j,  3.+0.j], dtype=complex64)
     """
-    if issubclass(arr.dtype.type, (cupy.single, cupy.byte, cupy.short, cupy.ubyte,
-                                   cupy.ushort, cupy.csingle)):
+    if issubclass(arr.dtype.type,
+                  (cupy.single, cupy.byte,
+                   cupy.short, cupy.ubyte,
+                   cupy.ushort, cupy.csingle)):
         return arr.astype(cupy.csingle)
     else:
         return arr.astype(cupy.cdouble)
@@ -81,7 +83,8 @@ def _tocomplex(arr):
 
 def _fix_real_lt_zero(x):
     """Convert `x` to complex if it has real, negative components.
-    Otherwise, output is just the array version of the input (via cupy.asarray).
+    Otherwise, output is just the array version of the input
+    (via cupy.asarray).
     Parameters
     ----------
     x : array_like
@@ -103,7 +106,8 @@ def _fix_real_lt_zero(x):
 
 def _fix_int_lt_zero(x):
     """Convert `x` to double if it has real, negative components.
-    Otherwise, output is just the array version of the input (via cupy.asarray).
+    Otherwise, output is just the array version of the input
+    (via cupy.asarray).
     Parameters
     ----------
     x : array_like
@@ -125,7 +129,8 @@ def _fix_int_lt_zero(x):
 
 def _fix_real_abs_gt_1(x):
     """Convert `x` to complex if it has real components x_i with abs(x_i)>1.
-    Otherwise, output is just the array version of the input (via cupy.asarray).
+    Otherwise, output is just the array version of the input
+    (via cupy.asarray).
     Parameters
     ----------
     x : array_like
@@ -157,7 +162,7 @@ def sqrt(x):
     Returns
     -------
     out : ndarray or scalar
-       The square root of `x`. 
+       The square root of `x`.
     See Also
     --------
     cupy.sqrt
@@ -323,6 +328,7 @@ def log2(x):
     x = _fix_real_lt_zero(x)
     return cupy.log2(x)
 
+
 def power(x, p):
     """
     Return x to the power p, (x**p).
@@ -340,7 +346,7 @@ def power(x, p):
     Returns
     -------
     out : ndarray or scalar
-        The result of ``x**p``. 
+        The result of ``x**p``.
     See Also
     --------
     cupy.power
