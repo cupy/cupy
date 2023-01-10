@@ -266,6 +266,9 @@ cpdef list _prepare_slice_list(slices):
                 # keep scalar int
                 continue
 
+        if cupy.min_scalar_type(s).char == 'O':
+            raise IndexError(
+                'arrays used as indices must be of integer (or boolean) type')
         try:
             s = core.array(s, dtype=None, copy=False)
         except ValueError:
