@@ -1,6 +1,3 @@
-
-from itertools import product, chain
-
 import pytest
 import numpy
 import numpy as np
@@ -22,44 +19,35 @@ except ImportError:
 
 # TODO: add BPoly, if/when implemented
 interpolate_cls = ['PPoly']
-numpy_params = [(numpy, scipy)]
-cupy_params = [(cupy, cupyx.scipy)]
-
-numpy_params = product(numpy_params, interpolate_cls)
-cupy_params = product(cupy_params, interpolate_cls)
-params = chain(numpy_params, cupy_params)
-params = [(x, y, z) for ((x, y), z) in params]
-
-parametrize_cls_xp = pytest.mark.parametrize('xp,scp,cls', params)
-parametrize_cls = pytest.mark.parametrize('cls', interpolate_cls)
 
 
 @testing.with_requires("scipy")
 class TestPPolyCommon:
     """Test basic functionality for PPoly and BPoly."""
 
-    @testing.with_requires('scipy')
-    @parametrize_cls_xp
-    def test_sort_check(self, xp, scp, cls):
-        c = xp.array([[1, 4], [2, 5], [3, 6]])
-        x = xp.array([0, 1, 0.5])
-        cls = getattr(scp.interpolate, cls)
-        try:
-            cls(c, x)
-        except ValueError:
-            pass
+    @pytest.mark.parametrize('cls', interpolate_cls)
+    def test_sort_check(self, cls):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            c = xp.array([[1, 4], [2, 5], [3, 6]])
+            x = xp.array([0, 1, 0.5])
+            cls1 = getattr(scp.interpolate, cls)
+            try:
+                cls1(c, x)
+            except ValueError:
+                pass
 
-    @parametrize_cls_xp
-    def test_ctor_c(self, xp, scp, cls):
-        # wrong shape: `c` must be at least 2D
-        cls = getattr(scp.interpolate, cls)
-        try:
-            cls(c=xp.asarray([1, 2]),
-                x=xp.asarray([0, 1]))
-        except ValueError:
-            pass
+    @pytest.mark.parametrize('cls', interpolate_cls)
+    def test_ctor_c(self, cls):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            # wrong shape: `c` must be at least 2D
+            cls1 = getattr(scp.interpolate, cls)
+            try:
+                cls1(c=xp.asarray([1, 2]),
+                     x=xp.asarray([0, 1]))
+            except ValueError:
+                pass
 
-    @parametrize_cls
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_extend(self, xp, scp, cls):
         # Test adding new points to the piecewise polynomial
@@ -82,7 +70,7 @@ class TestPPolyCommon:
 
         return pp.c, pp.x, pp2.c, pp2.x, pp3.c, pp3.x
 
-    @parametrize_cls
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_extend_diff_orders(self, xp, scp, cls):
         # Test extending polynomial with different order one
@@ -108,7 +96,7 @@ class TestPPolyCommon:
 
         return pp1(xi1), pp_comb(xi1), pp2(xi2), pp_comb(xi2)
 
-    @parametrize_cls
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_extend_descending(self, xp, scp, cls):
         cls = getattr(scp.interpolate, cls)
@@ -128,7 +116,7 @@ class TestPPolyCommon:
 
         return p1.c, p1.x, p2.c, p2.x
 
-    @parametrize_cls
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_shape(self, xp, scp, cls):
         cls = getattr(scp.interpolate, cls)
@@ -144,27 +132,28 @@ class TestPPolyCommon:
         p = cls(c, x)
         return p(xpts).shape
 
-    @parametrize_cls_xp
-    def test_shape_2(self, xp, scp, cls):
-        cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(1234)
+    @pytest.mark.parametrize('cls', interpolate_cls)
+    def test_shape_2(self, cls):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            cls1 = getattr(scp.interpolate, cls)
+            numpy.random.seed(1234)
 
-        c = numpy.random.rand(8, 12, 5, 6, 7)
-        c = xp.asarray(c)
-        x = numpy.sort(numpy.random.rand(13))
-        x = xp.asarray(x)
+            c = numpy.random.rand(8, 12, 5, 6, 7)
+            c = xp.asarray(c)
+            x = numpy.sort(numpy.random.rand(13))
+            x = xp.asarray(x)
 
-        # 'scalars'
-        p = cls(c[..., 0, 0, 0], x)
+            # 'scalars'
+            p = cls1(c[..., 0, 0, 0], x)
 
-        assert p(0.5).shape == ()
-        assert p(xp.array(0.5)).shape == ()
+            assert p(0.5).shape == ()
+            assert p(xp.array(0.5)).shape == ()
 
-        with pytest.raises(ValueError):
-            xxx = xp.array([[0.1, 0.2], [0.4]], dtype=object)
-            p(xxx)   # raises ValueError
+            with pytest.raises(ValueError):
+                xxx = xp.array([[0.1, 0.2], [0.4]], dtype=object)
+                p(xxx)   # raises ValueError
 
-    @parametrize_cls
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @pytest.mark.xfail(
         runtime.is_hip and driver.get_build_version() < 5_00_00000,
         reason='Fails on ROCm 4.3')
@@ -182,37 +171,38 @@ class TestPPolyCommon:
         p = cls(c, x)
         return [p(xpt, nu) for nu in [0, 1, 2]]
 
-    @parametrize_cls_xp
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
-    def test_axis(self, xp, scp, cls, axis):
-        cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(12345)
-        c = numpy.random.rand(3, 4, 5, 6, 7, 8)
-        c = xp.asarray(c)
-        c_s = c.shape
-        xpt = numpy.random.random((1, 2))
-        xpt = xp.asarray(xpt)
+    def test_axis(self, cls, axis):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            cls1 = getattr(scp.interpolate, cls)
+            numpy.random.seed(12345)
+            c = numpy.random.rand(3, 4, 5, 6, 7, 8)
+            c = xp.asarray(c)
+            c_s = c.shape
+            xpt = numpy.random.random((1, 2))
+            xpt = xp.asarray(xpt)
 
-        m = c.shape[axis+1]
-        x = numpy.sort(numpy.random.rand(m+1))
-        x = xp.asarray(x)
+            m = c.shape[axis+1]
+            x = numpy.sort(numpy.random.rand(m+1))
+            x = xp.asarray(x)
 
-        p = cls(c, x, axis=axis)
-        assert (p.c.shape ==
-                c_s[axis:axis+2] + c_s[:axis] + c_s[axis+2:])
+            p = cls1(c, x, axis=axis)
+            assert (p.c.shape ==
+                    c_s[axis:axis+2] + c_s[:axis] + c_s[axis+2:])
 
-        res = p(xpt)
-        targ_shape = c_s[:axis] + xpt.shape + c_s[2+axis:]
-        assert res.shape == targ_shape
+            res = p(xpt)
+            targ_shape = c_s[:axis] + xpt.shape + c_s[2+axis:]
+            assert res.shape == targ_shape
 
-        # deriv/antideriv does not drop the axis
-        for p1 in [cls(c, x, axis=axis).derivative(),
-                   cls(c, x, axis=axis).derivative(2),
-                   cls(c, x, axis=axis).antiderivative(),
-                   cls(c, x, axis=axis).antiderivative(2)]:
-            assert p1.axis == p.axis
+            # deriv/antideriv does not drop the axis
+            for p1 in [cls1(c, x, axis=axis).derivative(),
+                       cls1(c, x, axis=axis).derivative(2),
+                       cls1(c, x, axis=axis).antiderivative(),
+                       cls1(c, x, axis=axis).antiderivative(2)]:
+                assert p1.axis == p.axis
 
-    @parametrize_cls
+    @pytest.mark.parametrize('cls', interpolate_cls)
     @pytest.mark.parametrize('axis', [-1, 4, 5, 6])
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     def test_axis_2(self, xp, scp, cls, axis):
