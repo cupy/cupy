@@ -143,14 +143,17 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '11.x', '2.15.5', '2.15.5',  # CUDA 11.2+
-    'nccl_2.15.5-1+cuda11.8_x86_64.txz'))
+    '12.x', '2.16.2', '2.16.2',
+    'nccl_2.16.2-1+cuda12.0_x86_64.txz'))
+_nccl_records.append(_make_nccl_record(
+    '11.x', '2.16.2', '2.16.2',  # CUDA 11.2+
+    'nccl_2.16.2-1+cuda11.8_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.1', '2.8.4', '2.8',
     'nccl_2.8.4-1+cuda11.1_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.0', '2.15.5', '2.15.5',
-    'nccl_2.15.5-1+cuda11.0_x86_64.txz'))
+    '11.0', '2.16.2', '2.16.2',
+    'nccl_2.16.2-1+cuda11.0_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '10.2', '2.15.5', '2.15.5',
     'nccl_2.15.5-1+cuda10.2_x86_64.txz'))

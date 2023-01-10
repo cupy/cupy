@@ -41,7 +41,7 @@
   os: "ubuntu:20.04"
   cuda: "11.0"
   rocm: null
-  nccl: "2.13"
+  nccl: "2.15"
   cutensor: "1.4"
   cusparselt: null
   cudnn: "8.2"
@@ -244,7 +244,6 @@
   test: "unit-multi"
 
 # CUDA 11.7 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda117"
   target: "cuda117"
   tags: ["@push", "full", "cuda117"]
@@ -252,7 +251,7 @@
   os: "ubuntu:20.04"
   cuda: "11.7"
   rocm: null
-  nccl: "2.14"
+  nccl: "2.13"
   cutensor: "1.5"
   cusparselt: "0.2.0"
   cudnn: "8.5"
@@ -283,7 +282,7 @@
   os: "ubuntu:20.04"
   cuda: "11.8"
   rocm: null
-  nccl: "2.15"
+  nccl: "2.16"
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
@@ -398,7 +397,7 @@
   os: "ubuntu:20.04"
   cuda: "11.8"
   rocm: null
-  nccl: "2.15"
+  nccl: "2.16"
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
@@ -429,7 +428,7 @@
   os: "ubuntu:20.04"
   cuda: "11.8"
   rocm: null
-  nccl: "2.15"
+  nccl: "2.16"
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
@@ -456,7 +455,7 @@
   os: "ubuntu:20.04"
   cuda: "11.8"
   rocm: null
-  nccl: "2.15"
+  nccl: "2.16"
   cutensor: "1.6"
   cusparselt: "0.2.0"
   cudnn: "8.6"
