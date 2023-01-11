@@ -476,6 +476,7 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
         :meth:`numpy.broadcast_to`
 
     """
+    shape = tuple(shape) if numpy.iterable(shape) else (shape,)
     cdef int i, j, ndim = array._shape.size(), length = len(shape)
     cdef Py_ssize_t sh, a_sh
     if ndim > length:
