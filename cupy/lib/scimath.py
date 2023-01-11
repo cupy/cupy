@@ -161,7 +161,7 @@ def sqrt(x):
        The input value(s).
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The square root of `x`.
     See Also
     --------
@@ -203,7 +203,7 @@ def log(x):
        The value(s) whose log is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The log of the `x` value(s).
     See Also
     --------
@@ -240,7 +240,7 @@ def log10(x):
        The value(s) whose log base 10 is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The log base 10 of the `x` value(s).
     See Also
     --------
@@ -277,7 +277,7 @@ def logn(n, x):
        The value(s) whose log base `n` is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The log base `n` of the `x` value(s).
     Examples
     --------
@@ -305,7 +305,7 @@ def log2(x):
        The value(s) whose log base 2 is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The log base 2 of the `x` value(s).
     See Also
     --------
@@ -345,7 +345,7 @@ def power(x, p):
         ``x[0]**p[0], x[1]**p[1], ...``.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
         The result of ``x**p``.
     See Also
     --------
@@ -378,7 +378,7 @@ def arccos(x):
        The value(s) whose arccos is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The inverse cosine(s) of the `x` value(s).
     See Also
     --------
@@ -413,7 +413,7 @@ def arcsin(x):
        The value(s) whose arcsin is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The inverse sine(s) of the `x` value(s).
     See Also
     --------
@@ -448,7 +448,7 @@ def arctanh(x):
        The value(s) whose arctanh is (are) required.
     Returns
     -------
-    out : ndarray or scalar
+    out : cupy.ndarray
        The inverse hyperbolic tangent(s) of the `x` value(s).
     See Also
     --------
@@ -461,10 +461,7 @@ def arctanh(x):
     Examples
     --------
     >>> cupy.set_printoptions(precision=4)
-    >>> from cupy.testing import suppress_warnings
-    >>> with suppress_warnings() as sup:
-    ...     sup.filter(RuntimeWarning)
-    ...     cupy.emath.arctanh(cupy.eye(2))
+    >>> cupy.emath.arctanh(cupy.eye(2))
     array([[inf,  0.],
            [ 0., inf]])
     >>> cupy.emath.arctanh([1j])
