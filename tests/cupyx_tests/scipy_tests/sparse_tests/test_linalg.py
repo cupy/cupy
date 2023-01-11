@@ -218,8 +218,6 @@ class TestEigsh:
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SM')
-        # with pytest.raises(ValueError):
-        #    sp.linalg.eigsh(a, k=self.k, which='SA')
 
 
 @testing.parameterize(*testing.product({
