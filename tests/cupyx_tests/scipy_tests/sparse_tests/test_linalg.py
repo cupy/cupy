@@ -128,7 +128,7 @@ class TestVectorNorm:
 
 
 @testing.parameterize(*testing.product({
-    'which': ['LM', 'LA'],
+    'which': ['LM', 'LA', 'SA'],
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
     'use_linear_operator': [True, False],
@@ -218,8 +218,6 @@ class TestEigsh:
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SM')
-        with pytest.raises(ValueError):
-            sp.linalg.eigsh(a, k=self.k, which='SA')
 
 
 @testing.parameterize(*testing.product({

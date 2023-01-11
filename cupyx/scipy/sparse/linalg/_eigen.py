@@ -29,6 +29,8 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
             ``1 <= k < n``.
         which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
             eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues.
+            'SA': finds ``k`` smallest (algebraic) eigenvalues.
+
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -60,8 +62,8 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA'):
-        raise ValueError('which must be \'LM\' or \'LA\' (actual: {})'
+    if which not in ('LM', 'LA', 'SA'):
+        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
                          ''.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
@@ -279,10 +281,21 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     # Pick-up k ritz-values and ritz-vectors
     if which == 'LA':
         idx = numpy.argsort(w)
+        wk = w[idx[-k:]]
+        sk = s[:, idx[-k:]]
     elif which == 'LM':
         idx = numpy.argsort(numpy.absolute(w))
-    wk = w[idx[-k:]]
-    sk = s[:, idx[-k:]]
+        wk = w[idx[-k:]]
+        sk = s[:, idx[-k:]]
+
+    elif which == 'SA':
+        idx = numpy.argsort(w)
+        wk = w[idx[:k]]
+        sk = s[:, idx[:k]]
+    # elif which == 'SM':  #dysfunctional
+    #   idx = cupy.argsort(abs(w))
+    #   wk = w[idx[:k]]
+    #   sk = s[:,idx[:k]]
     return cupy.array(wk), cupy.array(sk)
 
 
