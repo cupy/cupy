@@ -100,7 +100,6 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
@@ -111,7 +110,6 @@ from numpy import intc  # NOQA
 from numpy import int_  # NOQA
 from numpy import longlong  # NOQA
 from numpy import intp  # NOQA
-from numpy import int0  # NOQA
 from numpy import int8  # NOQA
 from numpy import int16  # NOQA
 from numpy import int32  # NOQA
@@ -126,7 +124,6 @@ from numpy import uintc  # NOQA
 from numpy import uint  # NOQA
 from numpy import ulonglong  # NOQA
 from numpy import uintp  # NOQA
-from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
 from numpy import uint16  # NOQA
 from numpy import uint32  # NOQA
@@ -909,7 +906,12 @@ def show_config(*, _full=False):
 
 
 _deprecated_apis = [
-    'MachAr',  # NumPy 1.22
+    # NumPy 1.22
+    'MachAr'
+    # NumPy 1.24
+    'int0',
+    'uint0',
+    'bool8',
 ]
 
 _deprecated_scalar_aliases = {  # NumPy 1.20
