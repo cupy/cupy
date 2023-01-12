@@ -15,6 +15,7 @@ PACKAGES = [
     'cupy-cuda110',
     'cupy-cuda111',
     'cupy-cuda11x',
+    'cupy-cuda12x',
     'cupy-rocm-4-3',
     'cupy-rocm-5-0',
 ]
@@ -124,6 +125,7 @@ def _get_cuda_version() -> Optional[int]:
 
     if sys.platform == 'linux':
         libnames = [
+            'libnvrtc.so.12',
             'libnvrtc.so.11.2',
             'libnvrtc.so.11.1',
             'libnvrtc.so.11.0',
@@ -131,6 +133,7 @@ def _get_cuda_version() -> Optional[int]:
         ]
     elif sys.platform == 'win32':
         libnames = [
+            'nvrtc64_120_0.dll',
             'nvrtc64_112_0.dll',
             'nvrtc64_111_0.dll',
             'nvrtc64_110_0.dll',
@@ -185,6 +188,9 @@ def _cuda_version_to_package(ver: int) -> str:
     elif ver < 12000:
         # CUDA 11.2 ~ 11.x
         suffix = '11x'
+    elif ver < 13000:
+        # CUDA 12.x
+        suffix = '12x'
     else:
         raise AutoDetectionFailed(
             f'Your CUDA version ({ver}) is too new.')
