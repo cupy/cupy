@@ -247,6 +247,8 @@ The current platform ({}) is not supported.'''.format(target_platform))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
+            elif cuda.startswith('12.'):
+                cuda = '12'
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
