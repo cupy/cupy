@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy._core._reduction import create_reduction_func
-from cupy._core._kernel import create_ufunc
+from cupy._core._kernel import create_ufunc, _get_warpsize
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
@@ -460,7 +460,7 @@ cdef _ndarray_base scan(
         dtype = out.dtype
     dtype = numpy.dtype(dtype)
 
-    warp_size = 64 if runtime._is_hip_environment else 32
+    warp_size = _get_warpsize()
     if runtime._is_hip_environment:
         if dtype.char in 'iIfdlq':
             # On HIP, __shfl* supports int, unsigned int, float, double,
