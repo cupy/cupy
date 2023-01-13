@@ -124,6 +124,7 @@ def _get_cuda_version() -> Optional[int]:
 
     if sys.platform == 'linux':
         libnames = [
+            'libnvrtc.so.12',
             'libnvrtc.so.11.2',
             'libnvrtc.so.11.1',
             'libnvrtc.so.11.0',
@@ -131,6 +132,7 @@ def _get_cuda_version() -> Optional[int]:
         ]
     elif sys.platform == 'win32':
         libnames = [
+            'nvrtc64_120_0.dll',
             'nvrtc64_112_0.dll',
             'nvrtc64_111_0.dll',
             'nvrtc64_110_0.dll',
