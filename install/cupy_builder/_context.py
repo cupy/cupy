@@ -10,6 +10,13 @@ def _get_env_bool(name: str, default: bool, env: Mapping[str, str]) -> bool:
     return env[name] != '0' if name in env else default
 
 
+def _get_env_path(name: str, env: Mapping[str, str]) -> List[str]:
+    paths = env.get(name, None)
+    if paths is None:
+        return []
+    return [x for x in paths.split(os.pathsep) if len(x) != 0]
+
+
 class Context:
     def __init__(
             self, source_root: str, *,
@@ -21,6 +28,8 @@ class Context:
             'CUPY_USE_CUDA_PYTHON', False, _env)
         self.use_hip = _get_env_bool(
             'CUPY_INSTALL_USE_HIP', False, _env)
+        self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
+        self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
 
         cmdopts, _argv[:] = parse_args(_argv)
         self.package_name: str = cmdopts.cupy_package_name

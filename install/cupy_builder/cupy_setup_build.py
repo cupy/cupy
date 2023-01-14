@@ -261,7 +261,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     no_cuda = ctx.use_stub
     use_hip = not no_cuda and ctx.use_hip
-    settings = build.get_compiler_setting(use_hip)
+    settings = build.get_compiler_setting(ctx, use_hip)
 
     include_dirs = settings['include_dirs']
 
