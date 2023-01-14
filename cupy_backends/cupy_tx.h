@@ -8,7 +8,8 @@
 
 #elif !defined(CUPY_NO_CUDA)
 
-#include <nvToolsExt.h>
+#define NVTX_EXPORT_API
+#include <nvtx3/nvToolsExt.h>
 
 #else  // defined(CUPY_NO_CUDA)
 
