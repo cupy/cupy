@@ -1,4 +1,4 @@
-from cupy.lib import emath
+from cupy import emath  # NOQA
 import functools as _functools
 import sys as _sys
 
