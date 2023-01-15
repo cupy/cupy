@@ -1,3 +1,4 @@
+from cupy.lib import emath
 import functools as _functools
 import sys as _sys
 
@@ -663,7 +664,6 @@ from cupy._math.misc import sqrt  # NOQA
 from cupy._math.misc import square  # NOQA
 from cupy._math.misc import convolve  # NOQA
 
-from cupy.lib import emath
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
