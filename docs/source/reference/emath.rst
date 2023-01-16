@@ -1,5 +1,5 @@
 Mathematical functions with automatic domain
-======================
+============================================
 
 .. Hint:: `NumPy API Reference: Mathematical functions with automatic domain <https://numpy.org/doc/stable/reference/routines.emath.html>`_
 
