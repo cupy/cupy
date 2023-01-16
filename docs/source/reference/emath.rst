@@ -14,7 +14,7 @@ module provide the mathematically valid answers in the complex plane::
 Similarly, :func:`cupy.sqrt`, other base logarithms, :func:`cupy.power` and trig functions are
 correctly handled.  See their respective docstrings for specific examples.
 
-.. currentmodule:: cupy.emath
+.. currentmodule:: cupy.lib.scimath
 
 Functions
 -----------------------
