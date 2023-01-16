@@ -91,7 +91,6 @@ Texture and surface memory
    cupy.cuda.texture.TextureDescriptor
    cupy.cuda.texture.TextureObject
    cupy.cuda.texture.SurfaceObject
-   cupy.cuda.texture.TextureReference
 
 
 Profiler
