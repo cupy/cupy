@@ -8,6 +8,7 @@ whose output data-type is different than the input data-type in certain
 domains of the input.
 For example, for functions like :func:`cupy.log` with branch cuts, the versions in this
 module provide the mathematically valid answers in the complex plane::
+
 .. doctest::
 
    >>> import math

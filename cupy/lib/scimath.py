@@ -27,20 +27,25 @@ def _tocomplex(arr):
     Examples
     --------
     First, consider an input of type short:
+
     >>> a = cupy.array([1,2,3], cupy.short)
     >>> ac = cupy.emath._tocomplex(a); ac
     array([1.+0.j, 2.+0.j, 3.+0.j], dtype=complex64)
     >>> ac.dtype
     dtype('complex64')
+
     If the input is of type double, the output is correspondingly of the
     complex double type as well:
+
     >>> b = cupy.array([1,2,3], cupy.double)
     >>> bc = cupy.emath._tocomplex(b); bc
     array([1.+0.j, 2.+0.j, 3.+0.j])
     >>> bc.dtype
     dtype('complex128')
+
     Note that even if the input was complex to begin with, a copy is still
     made, since the astype() method always copies:
+
     >>> c = cupy.array([1,2,3], cupy.csingle)
     >>> cc = cupy.lib.scimath._tocomplex(c); cc
     array([1.+0.j, 2.+0.j, 3.+0.j], dtype=complex64)
@@ -177,18 +182,23 @@ def sqrt(x):
     Examples
     --------
     For real, non-negative inputs this works just like `cupy.sqrt`:
+
     >>> cupy.emath.sqrt(1)
     array(1.)
     >>> cupy.emath.sqrt([1, 4])
     array([1., 2.])
+    
     But it automatically handles negative inputs:
+
     >>> cupy.emath.sqrt(-1)
     array(0.+1.j)
     >>> cupy.emath.sqrt([-1, 4])
     array([0.+1.j, 2.+0.j])
+
     Different results are expected because:
     floating point 0.0 and -0.0 are distinct.
     For more control, explicitly use complex() as follows:
+
     >>> cupy.emath.sqrt(complex(-4.0, 0.0))
     array(0.+2.j)
     >>> cupy.emath.sqrt(complex(-4.0, -0.0))
@@ -233,8 +243,10 @@ def log(x):
     --------
     >>> cupy.emath.log(cupy.exp(1))
     array(1.)
+
     Negative arguments are handled "correctly" (recall that
     ``exp(log(x)) == x`` does *not* hold for real ``x < 0``):
+
     >>> cupy.emath.log(-cupy.exp(1)) == (1 + cupy.pi * 1j)
     array(True)
 
@@ -276,6 +288,7 @@ def log10(x):
     Examples
     --------
     (We set the printing precision so the example can be auto-tested)
+
     >>> cupy.set_printoptions(precision=4)
     >>> cupy.emath.log10(10**1)
     array(1.)
@@ -356,6 +369,7 @@ def log2(x):
     Examples
     --------
     We set the printing precision so the example can be auto-tested:
+
     >>> cupy.set_printoptions(precision=4)
     >>> cupy.emath.log2(8)
     array(3.)
@@ -534,7 +548,7 @@ def arctanh(x):
     See Also
     --------
     cupy.arctanh
-    numpy.emath.archtanh
+    numpy.emath.arctanh
 
     """
     x = _fix_real_abs_gt_1(x)
