@@ -69,6 +69,13 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
     $Env:PATH = "$base\bin;" + $Env:PATH
 }
 
+function ActivateNVTX1() {
+    $base = "C:\Development\cuDNN\NvToolsExt"
+    $Env:CL = "-I$base\include " + $Env:CL
+    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
+    $Env:PATH = "$base\bin;" + $Env:PATH
+}
+
 function IsPullRequestTest() {
     return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
 }

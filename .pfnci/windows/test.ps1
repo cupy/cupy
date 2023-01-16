@@ -57,6 +57,7 @@ function Main {
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
     ActivateCuDNN "8.6" $cuda
+    ActivateNVTX1
     ActivatePython $python
 
     # Setup build environment variables
