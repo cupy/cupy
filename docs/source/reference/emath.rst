@@ -8,9 +8,12 @@ whose output data-type is different than the input data-type in certain
 domains of the input.
 For example, for functions like :func:`cupy.log` with branch cuts, the versions in this
 module provide the mathematically valid answers in the complex plane::
-  >>> import math
-  >>> cupy.emath.log(-math.exp(1)) == (1+1j*math.pi)
-  array(True)
+.. doctest::
+
+   >>> import math
+   >>> cupy.emath.log(-math.exp(1)) == (1+1j*math.pi)
+   array(True)
+
 Similarly, :func:`cupy.sqrt`, other base logarithms, :func:`cupy.power` and trig functions are
 correctly handled.  See their respective docstrings for specific examples.
 
