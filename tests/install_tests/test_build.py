@@ -28,8 +28,8 @@ class TestCheckVersion(unittest.TestCase):
         assert isinstance(build.get_hip_version(), int)
         assert isinstance(build.get_hip_version(True), str)
 
-    @pytest.mark.xfail(test_hip,
-                       reason='ROCm/HIP DNN support is not ready')
+    @pytest.mark.skipif(test_hip,
+                        reason='ROCm/HIP DNN support is not ready')
     def test_check_cudnn_version(self):
         with self.assertRaises(RuntimeError):
             build.get_cudnn_version()
