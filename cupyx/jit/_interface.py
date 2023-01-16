@@ -184,7 +184,5 @@ gridDim = _internal_types.Data('gridDim', _cuda_types.dim3)
 warpsize = _internal_types.Data('warpSize', _cuda_types.uint32)
 warpsize.__doc__ = r"""Returns the number of threads in a warp.
 
-In CUDA this is always 32, and in ROCm/HIP always 64.
-
 .. seealso:: :obj:`numba.cuda.warpsize`
 """
