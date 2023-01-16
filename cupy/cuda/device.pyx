@@ -21,29 +21,6 @@ cdef dict _devices = {}
 cdef dict _compute_capabilities = {}
 
 
-cdef class _ThreadLocalStack:
-    cdef list _devices
-
-    def __init__(self):
-        self._devices = [0]
-
-    @staticmethod
-    cdef _ThreadLocalStack get():
-        try:
-            stack = _thread_local._device_stack
-        except AttributeError:
-            stack = _ThreadLocalStack()
-            _thread_local._device_stack = stack
-        return <_ThreadLocalStack>stack
-
-    cdef void enter_device(self, int device_id) except *:
-        self._devices.append(device_id)
-
-    cdef int exit_device(self) except -1:
-        self._devices.pop()
-        return <int>self._devices[-1]
-
-
 cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
@@ -178,17 +155,15 @@ cdef class Device:
         return self.id
 
     def __enter__(self):
-        # N.B. for maintainers: do not use this context manager in CuPy
-        # codebase. See #5943 and #5963.
-        if self.id != runtime.getDevice():
+        # CUDA's current device is already per-thread, so we don't need to
+        # use any thread-local stack. See #6965 for discussion.
+        self.previous_id = runtime.getDevice()
+        if self.previous_id != self.id:
             runtime.setDevice(self.id)
-        _ThreadLocalStack.get().enter_device(self.id)
         return self
 
     def __exit__(self, *args):
-        cdef int prev_device = _ThreadLocalStack.get().exit_device()
-        if prev_device != runtime.getDevice():
-            runtime.setDevice(prev_device)
+        runtime.setDevice(self.previous_id)
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id

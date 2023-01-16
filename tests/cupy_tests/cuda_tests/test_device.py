@@ -193,8 +193,8 @@ class TestDeviceSwitch(unittest.TestCase):
             dev1.use()
             with dev1:
                 assert 1 == cuda.Device().id
-            assert 0 == cuda.Device().id
-        assert 0 == cuda.Device().id
+            assert 1 == cuda.Device().id
+        assert 1 == cuda.Device().id
 
     def test_thread_safe(self):
         dev0 = cuda.Device(0)
@@ -227,7 +227,7 @@ class TestDeviceSwitch(unittest.TestCase):
         t1.start()
         t0_seq()
         t1.join()
-        assert t0_exit_device[0] == 0
+        assert t0_exit_device[0] == 1
         assert t1_exit_device[0] == 1
 
     def test_invalid(self):
