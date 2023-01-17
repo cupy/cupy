@@ -47,8 +47,6 @@ _init_dtype_dict()
 
 @cython.profile(False)
 cpdef get_dtype(t):
-    if type(t) is _dtype:  # Exact type check
-        return t
     ret = _dtype_dict.get(t, None)
     if ret is None:
         return _dtype(t)
@@ -57,8 +55,6 @@ cpdef get_dtype(t):
 
 @cython.profile(False)
 cpdef tuple get_dtype_with_itemsize(t):
-    if type(t) is _dtype:  # Exact type check
-        return t, t.itemsize
     ret = _dtype_dict.get(t, None)
     if ret is None:
         t = _dtype(t)
