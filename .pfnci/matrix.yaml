@@ -274,7 +274,6 @@
   test: "unit-multi"
 
 # CUDA 11.8 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda118"
   target: "cuda118"
   tags: ["@push", "full", "mini", "cuda118"]
@@ -301,6 +300,37 @@
   _inherits: "cupy.linux.cuda118"
   tags: ["@push", "full", "mini", "multi", "cuda118"]
   target: "cuda118.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 12.0 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda120"
+  target: "cuda120"
+  tags: ["@push", "full", "mini", "cuda120"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.0"
+  rocm: null
+  nccl: "2.16"
+  cutensor: "1.6"
+  cusparselt: "0.2.0"
+  cudnn: null  # TODO(kmaehashi): cuDNN for CUDA 12 not available yet
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.9"
+  optuna: "2"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.0 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda120.multi"
+  _inherits: "cupy.linux.cuda120"
+  tags: ["@push", "full", "mini", "multi", "cuda120"]
+  target: "cuda120.multi"
   mpi4py: "3"
   test: "unit-multi"
 

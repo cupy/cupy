@@ -71,7 +71,8 @@ def _make_cudnn_record(cuda_version):
 
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
-_cudnn_records.append(_make_cudnn_record('12.x'))
+# TODO(kmaehashi): cuDNN for CUDA 12 not yet available
+# _cudnn_records.append(_make_cudnn_record('12.x'))
 _cudnn_records.append(_make_cudnn_record('11.x'))  # CUDA 11.2+
 _cudnn_records.append(_make_cudnn_record('11.1'))
 _cudnn_records.append(_make_cudnn_record('11.0'))
