@@ -165,41 +165,29 @@ class TestDeviceSwitch(unittest.TestCase):
         self._prev_device.use()
 
     def test_use(self):
-        dev0 = cuda.Device(0)
-        dev1 = cuda.Device(1)
-
-        assert dev1.use() is dev1
+        assert cuda.Device(1).use() == cuda.Device(1)
         assert 1 == cuda.Device().id
-        assert dev0.use() is dev0
+        assert cuda.Device(0).use() == cuda.Device(0)
         assert 0 == cuda.Device().id
 
     def test_context(self):
-        dev0 = cuda.Device(0)
-        dev1 = cuda.Device(1)
-
-        with dev0:
+        with cuda.Device(0):
             assert 0 == cuda.Device().id
-            with dev1:
+            with cuda.Device(1):
                 assert 1 == cuda.Device().id
             assert 0 == cuda.Device().id
 
     def test_context_and_use(self):
-        dev0 = cuda.Device(0)
-        dev1 = cuda.Device(1)
-
-        dev1.use()
-        with dev0:
+        cuda.Device(1).use()
+        with cuda.Device(0):
             assert 0 == cuda.Device().id
-            dev1.use()
-            with dev1:
+            cuda.Device(1).use()
+            with cuda.Device(1):
                 assert 1 == cuda.Device().id
             assert 1 == cuda.Device().id
         assert 1 == cuda.Device().id
 
     def test_thread_safe(self):
-        dev0 = cuda.Device(0)
-        dev1 = cuda.Device(1)
-
         t0_setup = threading.Event()
         t1_setup = threading.Event()
         t0_first_exit = threading.Event()
@@ -208,8 +196,8 @@ class TestDeviceSwitch(unittest.TestCase):
         t1_exit_device = []
 
         def t0_seq():
-            with dev0:
-                with dev0:
+            with cuda.Device(0):
+                with cuda.Device(0):
                     t0_setup.set()
                     t1_setup.wait()
                 t0_exit_device.append(cuda.Device().id)
@@ -217,8 +205,8 @@ class TestDeviceSwitch(unittest.TestCase):
 
         def t1_seq():
             t0_setup.wait()
-            with dev1:
-                with dev0:
+            with cuda.Device(1):
+                with cuda.Device(0):
                     t1_setup.set()
                     t0_first_exit.wait()
                 t1_exit_device.append(cuda.Device().id)
@@ -227,7 +215,7 @@ class TestDeviceSwitch(unittest.TestCase):
         t1.start()
         t0_seq()
         t1.join()
-        assert t0_exit_device[0] == 1
+        assert t0_exit_device[0] == 0
         assert t1_exit_device[0] == 1
 
     def test_invalid(self):

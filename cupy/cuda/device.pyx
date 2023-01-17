@@ -114,8 +114,14 @@ cdef class Device:
        with Device(0):
            do_something_on_device_0()
 
-    After the *with* statement gets done, the current device is reset to the
-    original one.
+    After the ``with`` statement gets done, the current device is reset to the
+    original one (the device in use before entering the context).
+
+    .. note::
+        When used as a context manager, this object is not *reentrant*, meaning
+        the internal state of this object may deviate from expected behavior.
+        Therefore, always create a new instance with the ``with`` statement
+        instead of reusing an existing instance.
 
     Args:
         device (int or cupy.cuda.Device): Index of the device to manipulate. Be
@@ -171,27 +177,24 @@ cdef class Device:
     cpdef use(self):
         """Makes this device current.
 
-        In general, usage of this method is discouraged. Instead use the Device
-        object as a context manager (*with* statement) to switch the current
-        device for the specified scope.
+        In general, it is encouraged to use the :class:`Device` object as a
+        context manager (via the ``with`` statement) to switch the current
+        device for the specified scope. This method simply offers a convenient
+        way for calling ``cudaSetDevice()`` from Python.
 
-        Note that the mixed use of this method and *with* statement may cause
+        Note that mixing this method with the ``with`` statement may cause
         surprising results in some cases:
 
         .. testcode::
 
-            dev0 = cupy.cuda.Device(0)
-            dev1 = cupy.cuda.Device(1)
-
-            dev1.use()
-            with dev0:
-                dev1.use()
-                with dev0:
+            cupy.cuda.Device(1).use()
+            with cupy.cuda.Device(0):
+                cupy.cuda.Device(1).use()
+                with cupy.cuda.Device(0):
+                    # at this point the current device is 0
                     pass
-                # The current device remains 0.
-                # Notice that the current device at the time of entering the
-                # context is not recalled when exiting a context.
-            # The current device still remains 0.
+                # at this point the current device is 1, not 0
+            # at this point the current device is 1
 
         """
         runtime.setDevice(self.id)
