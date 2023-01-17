@@ -18,7 +18,6 @@ cdef class Device:
     cdef:
         public int id
         int previous_id
-        list _device_stack
 
     cpdef use(self)
     cpdef synchronize(self)
