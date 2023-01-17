@@ -277,7 +277,7 @@ class _OpsRegister:
         else:
             # Convert args to the op specified in_types
             n_args = []
-            argname = lambda: f'ufunc {self._name} input {i}'
+            def argname(): return f'ufunc {self._name} input {i}'
             for i, (arg, in_type) in enumerate(zip(args, op.in_types)):
                 _raise_if_invalid_cast(arg.dtype, in_type, casting, argname)
 

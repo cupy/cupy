@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 import numpy
+import warnings
 
 from cupy_backends.cuda.api cimport runtime
 
@@ -89,8 +90,11 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
 cdef _numpy_can_cast = numpy.can_cast
 
 
-cpdef _raise_if_invalid_cast(from_dt, to_dt, str casting, argname="array data"):
-    """Raise an error if a cast is not valid.
+cpdef _raise_if_invalid_cast(
+    from_dt, to_dt, str casting, argname="array data"
+):
+    """Raise an error if a cast is not valid.  Also checks whether the cast
+    goes from complex to real and warns if it does.
 
     The error raised can be customized by giving `obj`.  May pass a (lambda)
     function to avoid string construction on success.
@@ -100,7 +104,14 @@ cpdef _raise_if_invalid_cast(from_dt, to_dt, str casting, argname="array data"):
     if from_dt is to_dt:
         return
 
+    to_dt = get_dtype(to_dt)  # may still be a type not a dtype instance
     if _numpy_can_cast(from_dt, to_dt, casting):
+        if casting == "unsafe" and from_dt.kind == "c" and to_dt.kind in "iuf":
+            # Complex warning, we are dropping the imagine part:
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
+
         return
 
     # Casting is not possible, raise the error

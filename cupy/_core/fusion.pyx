@@ -605,7 +605,6 @@ class _FusionHistory(object):
             out_dtypes = [numpy.dtype(t) for t in op.out_types]
             if can_cast(var_list, in_dtypes):
                 ret = []
-                argname = lambda: 'output {i}'
                 for i in range(nout):
                     if i >= len(out_vars):
                         out_var = self._fresh_local(out_dtypes[i])
@@ -614,7 +613,8 @@ class _FusionHistory(object):
                         ret.append(out_var)
 
                     _raise_if_invalid_cast(
-                        out_dtypes[i], out_vars[i], 'same_kind', argname)
+                        out_dtypes[i], out_vars[i], 'same_kind',
+                        lambda: f'output {i}')
 
                     out_var._var.mutate()
                 in_params = [(in_dtypes[i], 'in{}'.format(i))

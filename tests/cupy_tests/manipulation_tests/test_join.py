@@ -240,7 +240,7 @@ class TestJoin:
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
-            accept_error=(TypeError, numpy.ComplexWarning))
+        accept_error=(TypeError, numpy.ComplexWarning))
     def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
