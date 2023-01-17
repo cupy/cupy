@@ -47,9 +47,11 @@ class TestInvh(unittest.TestCase):
     'size': [8],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
 class TestErrorInvh(unittest.TestCase):
 
+    @pytest.mark.xfail(
+        cupy.cuda.runtime.runtimeGetVersion() == 12000,
+        reason='See #7309. Possibly cuSOLVER bug in CUDA 12?')
     def test_invh(self):
         a = self._create_symmetric_matrix(self.size, self.dtype)
         with cupyx.errstate(linalg='raise'):
