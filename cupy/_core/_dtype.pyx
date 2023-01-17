@@ -88,3 +88,28 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
         return runtime.CUDA_C_16F
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
+
+
+cdef _numpy_can_cast = numpy.can_cast
+
+
+cpdef _raise_if_invalid_cast(from_dt, to_dt, str casting, argname="array data"):
+    """Raise an error if a cast is not valid.
+
+    The error raised can be customized by giving `obj`.  May pass a (lambda)
+    function to avoid string construction on success.
+    This function exists mainly to build a similar error everywhere.
+
+    """
+    if from_dt is to_dt:
+        return
+
+    if _numpy_can_cast(from_dt, to_dt, casting):
+        return
+
+    # Casting is not possible, raise the error
+    if not isinstance(argname, str):
+        argname = argname()
+    raise TypeError(
+        f'Cannot cast {argname} from {from_dt!r} to {to_dt!r} '
+        f'according to the rule \'{casting}\'')

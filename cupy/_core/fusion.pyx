@@ -8,7 +8,7 @@ import string
 import numpy
 
 import cupy
-from cupy._core._dtype import get_dtype
+from cupy._core._dtype import get_dtype, _raise_if_invalid_cast
 from cupy._core import _kernel
 from cupy._core import _fusion_thread_local
 from cupy._core import _reduction
@@ -605,23 +605,17 @@ class _FusionHistory(object):
             out_dtypes = [numpy.dtype(t) for t in op.out_types]
             if can_cast(var_list, in_dtypes):
                 ret = []
+                argname = lambda: 'output {i}'
                 for i in range(nout):
                     if i >= len(out_vars):
                         out_var = self._fresh_local(out_dtypes[i])
                         out_var = make_fusion_var(out_var, ndim)
                         out_vars.append(out_var)
                         ret.append(out_var)
-                    elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
-                                        'same_kind'):
-                        out_var = out_vars[i]
-                        ret.append(out_var)
-                    else:
-                        raise TypeError(
-                            'output (typecode \'{}\') could not be coerced '
-                            'to provided output parameter (typecode \'{}\') '
-                            'according to the casting rule '
-                            '"same_kind"'.format(
-                                out_dtypes[i].char, out_vars[i].dtype.char))
+
+                    _raise_if_invalid_cast(
+                        out_dtypes[i], out_vars[i], 'same_kind', argname)
+
                     out_var._var.mutate()
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, _ in enumerate(in_vars)]

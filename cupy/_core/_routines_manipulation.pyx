@@ -12,7 +12,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
-from cupy._core._dtype cimport get_dtype
+from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core cimport _routines_indexing as _indexing
 from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
@@ -651,10 +651,7 @@ cpdef _ndarray_base concatenate_method(
 
     # Check casting rule
     for o in arrays:
-        if not _can_cast(o.dtype, dtype, casting):
-            msg = (f"Cannot cast array data from dtype('{o.dtype}') to "
-                   f"dtype('{dtype}') according to the rule '{casting}'")
-            raise TypeError(msg)
+        _raise_if_invalid_cast(o.dtype, dtype, casting)
 
     # Prpare the output array
     shape_t = tuple(shape0)
@@ -736,15 +733,6 @@ cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
 
 
 # private
-
-
-cdef _numpy_can_cast = numpy.can_cast
-
-
-cdef bint _can_cast(d1, d2, casting):
-    if casting == 'same_kind' and d1.kind == d2.kind:  # most cases
-        return True
-    return _numpy_can_cast(d1, d2, casting=casting)
 
 
 cdef bint _has_element(const shape_t &source, Py_ssize_t n):
