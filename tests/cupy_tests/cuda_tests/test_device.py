@@ -177,6 +177,26 @@ class TestDeviceSwitch(unittest.TestCase):
                 assert 1 == cuda.Device().id
             assert 0 == cuda.Device().id
 
+    def test_context2(self):
+        assert cuda.runtime.getDevice() == 0
+        with cuda.Device(0):
+            assert cuda.runtime.getDevice() == 0
+            with cuda.Device(1):
+                assert cuda.runtime.getDevice() == 1
+                with cuda.Device(0):
+                    assert cuda.runtime.getDevice() == 0
+                assert cuda.runtime.getDevice() == 1
+            assert cuda.runtime.getDevice() == 0
+        assert cuda.runtime.getDevice() == 0
+
+        with cuda.Device(1):
+            assert cuda.runtime.getDevice() == 1
+            cuda.runtime.setDevice(0)
+            with cuda.Device(1):
+                assert cuda.runtime.getDevice() == 1
+            assert cuda.runtime.getDevice() == 0
+        assert cuda.runtime.getDevice() == 0
+
     def test_context_and_use(self):
         cuda.Device(1).use()
         with cuda.Device(0):
@@ -217,6 +237,49 @@ class TestDeviceSwitch(unittest.TestCase):
         t1.join()
         assert t0_exit_device[0] == 0
         assert t1_exit_device[0] == 1
+
+    def test_thread_safe2(self):
+        # recall that the CUDA context is maintained per-thread, so when each
+        # thread starts it is on the default device (=device 0).
+        t0_setup = threading.Event()
+        t1_setup = threading.Event()
+        t0_first_exit = threading.Event()
+
+        t0_exit_device = []
+        t1_exit_device = []
+
+        def t0_seq():
+            with cuda.Device(0):
+                with cuda.Device(1):
+                    t0_setup.set()
+                    t1_setup.wait()
+                    t0_exit_device.append(cupy.cuda.runtime.getDevice())
+                t0_exit_device.append(cupy.cuda.runtime.getDevice())
+                t0_first_exit.set()
+            assert cupy.cuda.runtime.getDevice() == 0
+
+        def t1_seq():
+            t0_setup.wait()
+            with cuda.Device(1):
+                with cuda.Device(0):
+                    t1_setup.set()
+                    t0_first_exit.wait()
+                    t1_exit_device.append(cupy.cuda.runtime.getDevice())
+                t1_exit_device.append(cupy.cuda.runtime.getDevice())
+            assert cupy.cuda.runtime.getDevice() == 0
+
+        try:
+            cupy.cuda.runtime.setDevice(1)
+            t0 = threading.Thread(target=t0_seq)
+            t1 = threading.Thread(target=t1_seq)
+            t1.start()
+            t0.start()
+            t0.join()
+            t1.join()
+            assert t0_exit_device == [1, 0]
+            assert t1_exit_device == [0, 1]
+        finally:
+            cupy.cuda.runtime.setDevice(0)
 
     def test_invalid(self):
         d = cuda.Device(100)
