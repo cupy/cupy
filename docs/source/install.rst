@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -54,11 +54,11 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.8 / v2.9 / v2.10 / v2.11 / v2.12 / v2.13 / v2.14 / v2.15
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.8 / v2.9 / v2.10 / v2.11 / v2.12 / v2.13 / v2.14 / v2.15 / v2.16
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2 / v8.3 / v8.4 / v8.5 / v8.6
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2 / v8.3 / v8.4 / v8.5 / v8.6 / v8.7
 
     * The library to accelerate deep neural network computations.
 
@@ -89,10 +89,14 @@ Package names are different depending on your CUDA Toolkit version.
      - ``pip install cupy-cuda110``
    * - **v11.1** (x86_64)
      - ``pip install cupy-cuda111``
-   * - **v11.2 or later** (x86_64)
+   * - **v11.2 ~ 11.8** (x86_64)
      - ``pip install cupy-cuda11x``
-   * - **v11.2 or later** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
+   * - **v11.2 ~ 11.8** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
      - ``pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64``
+   * - **v12.x** (x86_64)
+     - ``pip install cupy-cuda12x``
+   * - **v12.x** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
+     - ``pip install cupy-cuda12x -f https://pip.cupy.dev/aarch64``
 
 .. note::
 
