@@ -384,16 +384,23 @@ def _get_cutensor_from_wheel(
     """
     Returns the list of shared library path candidates.
     """
+    cuda_major_ver, cuda_minor_ver = cuda.split('.')
+    if (cuda_major_ver == '10'
+            or (cuda_major_ver == '11' and cuda_minor_ver == '0')):
+        _log(f'Skiping loading cuTENSOR wheel for CUDA {cuda} '
+             'due to CuPy requirement')
+        return []
     import pkg_resources  # defer import # NOQA
     try:
-        dist = pkg_resources.get_distribution(f'cutensor=={version}.*')
+        # load any compatible version (ex: version=1.6.2, load >=1.6.2,<1.7)
+        dist = pkg_resources.get_distribution(
+            f'cutensor-cu{cuda_major_ver}~={version}')
     except pkg_resources.ResolutionError as e:
         _log(f'cuTENSOR wheel could not be loaded: {type(e).__name__}: {e}')
         return []
     return [os.path.join(
-                dist.module_path, 'cutensor', 'lib', cuda_ver_path,
-                f'libcutensor.so.{version.split(".")[0]}')
-            for cuda_ver_path in (cuda, cuda.split('.')[0])]
+                dist.module_path, 'cutensor', 'lib',
+                f'libcutensor.so.{version.split(".")[0]}')]
 
 
 def _get_preload_logs():
