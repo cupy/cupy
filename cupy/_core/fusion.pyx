@@ -483,7 +483,7 @@ class _FusionHistory(object):
         for op in raw._ops.ops:
             input_type, = op.in_types
             output_type, = op.out_types
-            if numpy.can_cast(arg.dtype.type, input_type):
+            if numpy.can_cast(arg.dtype, input_type):
                 return_dtype = numpy.dtype(output_type)
                 self.premap_ret = self._get_fusion_var(arg)._var
                 self.reduce_op = op
