@@ -16,6 +16,7 @@ from cupy.cuda cimport stream
 
 import cupy
 import cupy._core as _core
+from cupy.cuda import memory as _memory
 import numpy
 
 
@@ -572,3 +573,15 @@ cpdef cub_scan(_ndarray_base arr, op):
         return device_scan(arr, op)
 
     return None
+
+
+cpdef cub_histogram(_ndarray_base x, _ndarray_base y, bins):
+    """Check if the required workspace size is too much, if not then proceed
+    to compute the histogram, otherwise return None. This is a workaround for
+    NVIDIA/cub#613.
+    """
+    try:
+        out = device_histogram(x, y, bins)
+    except _memory.OutOfMemoryError:
+        return None
+    return out
