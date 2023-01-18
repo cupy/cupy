@@ -73,7 +73,7 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install -U "numpy<1.24"
+    RunOrDie python -m pip install -U "numpy<1.24" "scipy<1.10.0"
     python -m pip install ".[all,test]" -vvv > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
