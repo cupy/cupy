@@ -49,7 +49,7 @@ function ActivateCUDA($version) {
     } else {
         throw "Unsupported CUDA version: $version"
     }
-    $Env:PATH = "$Env:CUDA_PATH\bin;$Env:ProgramFiles\NVIDIA Corporation\NvToolsExt\bin\x64;" + $Env:PATH
+    $Env:PATH = "$Env:CUDA_PATH\bin;" + $Env:PATH
 }
 
 function ActivateCuDNN($cudnn_version, $cuda_version) {
@@ -75,6 +75,14 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
     $Env:CL = "-I$base\include " + $Env:CL
     $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
     $Env:PATH = "$base\bin;" + $Env:PATH
+}
+
+function ActivateNVTX1() {
+    $base = "C:\Development\NvToolsExt"
+    $Env:NVTOOLSEXT_PATH = "C:\Development\NvToolsExt"
+    $Env:CL = "-I$base\include " + $Env:CL
+    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
+    $Env:PATH = "$base\bin\x64;" + $Env:PATH
 }
 
 function IsPullRequestTest() {
