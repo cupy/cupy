@@ -15,6 +15,7 @@ PACKAGES = [
     'cupy-cuda110',
     'cupy-cuda111',
     'cupy-cuda11x',
+    'cupy-cuda12x',
     'cupy-rocm-4-3',
     'cupy-rocm-5-0',
 ]
@@ -187,6 +188,9 @@ def _cuda_version_to_package(ver: int) -> str:
     elif ver < 12000:
         # CUDA 11.2 ~ 11.x
         suffix = '11x'
+    elif ver < 13000:
+        # CUDA 12.x
+        suffix = '12x'
     else:
         raise AutoDetectionFailed(
             f'Your CUDA version ({ver}) is too new.')
