@@ -266,8 +266,7 @@ class PchipInterpolator(CubicHermiteSpline):
         whmean = (w1 / mk[:-1] + w2 / mk[1:]) / (w1 + w2)
 
         dk = cupy.zeros_like(y)
-        dk[1:-1][condition] = 0.0
-        dk[1:-1][~condition] = 1.0 / whmean[~condition]
+        dk[1:-1] = cupy.where(condition, 0.0, 1.0 / whmean)
 
         # special case endpoints, as suggested in
         # Cleve Moler, Numerical Computing with MATLAB, Chap 3.6 (pchiptx.m)
