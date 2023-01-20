@@ -88,8 +88,9 @@ class RegularGridInterpolator:
         acceptable.
 
     method : str, optional
-        The method of interpolation to perform. Supported are "linear" and
-        "nearest". This parameter will become the default for the object's
+        The method of interpolation to perform. Supported are "linear",
+        "nearest", "slinear", "cubic", "quintic" and "pchip".
+        This parameter will become the default for the object's
         ``__call__`` method. Default is "linear".
 
     bounds_error : bool, optional
@@ -521,8 +522,8 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
         The coordinates to sample the gridded data at
 
     method : str, optional
-        The method of interpolation to perform. Supported are "linear" and
-        "nearest".
+        The method of interpolation to perform. Supported are "linear",
+        "nearest", "slinear", "cubic", "quintic" and "pchip".
 
     bounds_error : bool, optional
         If True, when interpolated values are requested outside of the
@@ -582,7 +583,8 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                           resampling)
     """
     # sanity check 'method' kwarg
-    if method not in ["linear", "nearest"]:
+    if method not in ["linear", "nearest", "slinear", "cubic",
+                      "quintic", "pchip"]:
         raise ValueError(
             "interpn only understands the methods 'linear' and 'nearest'. "
             "You provided {method}.")
@@ -612,7 +614,7 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                  "in dimension %d" % i)
 
     # perform interpolation
-    if method in ["linear", "nearest"]:
+    if method in ["linear", "nearest", "slinear", "cubic", "quintic", "pchip"]:
         interp = RegularGridInterpolator(points, values, method=method,
                                          bounds_error=bounds_error,
                                          fill_value=fill_value)

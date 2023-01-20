@@ -8,7 +8,7 @@ from pytest import raises as assert_raises
 from cupyx.scipy.interpolate import RegularGridInterpolator, interpn
 
 parametrize_rgi_interp_methods = pytest.mark.parametrize(
-    "method", ['linear', 'nearest']
+    "method", ['linear', 'nearest', "slinear", "cubic", "quintic", 'pchip']
 )
 
 
