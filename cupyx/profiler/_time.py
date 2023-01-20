@@ -37,7 +37,7 @@ class _PerfCaseResult:
     @property
     def cpu_times(self) -> _numpy.ndarray:
         """A :class:`numpy.ndarray` of shape ``(n_repeat,)``, holding times spent
-        on CPU in milliseconds.
+        on CPU in seconds.
 
         These values are delta of the host-side performance counter
         (:func:`time.perf_counter`) between each repeat step.
@@ -47,7 +47,7 @@ class _PerfCaseResult:
     @property
     def gpu_times(self) -> _numpy.ndarray:
         """A :class:`numpy.ndarray` of shape ``(len(devices), n_repeat)``,
-        holding times spent on GPU in milliseconds.
+        holding times spent on GPU in seconds.
 
         These values are measured using ``cudaEventElapsedTime`` with events
         recoreded before/after each repeat step.
