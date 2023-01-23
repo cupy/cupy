@@ -327,7 +327,7 @@ __device__ T eval_bpoly1(
         res = 0;
         for(int j = 0; j < k + 1; j++) {
             const long long idx = j * c_strides[0] + ci * c_strides[1] + cj;
-            res += comb * pow(s, j) * pow(s1, k - j) * coef[idx];
+            res += comb * pow(s, j) * pow(s1, ((int) k) - j) * coef[idx];
             comb *= 1.0 * (k - j) / (j + 1.0);
         }
     }
@@ -336,7 +336,7 @@ __device__ T eval_bpoly1(
 }
 
 template<typename T>
-__device__ T eval_bpoly1_deriv_1(
+__device__ T eval_bpoly1_deriv(
         const double s, const T* coef, const long long ci, const long long cj,
         int dx, T* wrk, const long long* c_dims, const long long* c_strides,
         const long long* wrk_dims, const long long* wrk_strides) {
@@ -360,8 +360,8 @@ __device__ T eval_bpoly1_deriv_1(
             for(int j = 0; j < dx + 1; j++) {
                 const long long idx = (c_strides[0] * (j + a) +
                                        c_strides[1] * ci + cj);
-                term += coef[idx] * pow(-1, j + nu) * comb;
-                comb *= 1.0 * (nu - j) / (j + 1);
+                term += coef[idx] * pow(-1.0, j + dx) * comb;
+                comb *= 1.0 * (dx - j) / (j + 1);
             }
             wrk[a] = term * poch;
         }
@@ -397,16 +397,16 @@ __global__ void eval_bpoly(
 
     const double ds = breakpoints[interval + 1] - breakpoints[interval];
     const double ds_dx = pow(ds, dx);
-    const long long off_wrk = wrk + idx * wrk_dims[0];
+    T* off_wrk = wrk + idx * wrk_dims[0];
 
     for(int j = 0; j < num_c; j++) {
         T res;
         const double s = (xp - breakpoints[interval]) / ds;
         if(dx == 0) {
-            res = eval_bpoly_1<T>(
+            res = eval_bpoly1<T>(
                 s, coef, interval, ((long long) (j)), c_dims, c_strides);
         } else {
-            res = eval_bpoly_deriv_1<T>(
+            res = eval_bpoly1_deriv<T>(
                 s, coef, interval, ((long long) (j)), dx,
                 off_wrk, c_dims, c_strides, wrk_dims, wrk_strides) / ds_dx;
         }
@@ -1229,6 +1229,11 @@ class BPoly(_PPolyBase):
     """
 
     def _evaluate(self, x, nu, extrapolate, out):
+        # check derivative order
+        if nu < 0:
+            raise NotImplementedError(
+                "Cannot do antiderivatives in the B-basis yet.")
+
         _bpoly_evaluate(
             self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
             self.x, x, nu, bool(extrapolate), out)
