@@ -4,7 +4,7 @@ from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
 from cupy_backends.cuda.api import runtime
 from cupyx.scipy import special as spec
-from cupyx.scipy.interpolate._bspline import BSpline
+from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
 
 import numpy as np
 
@@ -85,13 +85,14 @@ INTERVAL_MODULE = cupy.RawModule(
     code=INTERVAL_KERNEL, options=('-std=c++11',),)
 
 if runtime.is_hip:
-    PPOLY_KERNEL = """#include <hip/hip_runtime.h>
+    BASE_HEADERS = """#include <hip/hip_runtime.h>
 """
 else:
-    PPOLY_KERNEL = """#include <cuda_runtime.h>
+    BASE_HEADERS = """#include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 """
-PPOLY_KERNEL = PPOLY_KERNEL + r"""
+
+PPOLY_KERNEL = BASE_HEADERS + r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
@@ -294,6 +295,132 @@ PPOLY_MODULE = cupy.RawModule(
         [f'fix_continuity<{type_name}>' for type_name in TYPES] +
         [f'integrate<{type_name}>' for type_name in TYPES]))
 
+BPOLY_KERNEL = BASE_HEADERS + r"""
+#include <cupy/complex.cuh>
+#include <cupy/math_constants.h>
+
+template<typename T>
+__device__ T eval_bpoly1(
+        const double s, const T* coef, const long long ci, const long long cj,
+        const long long* c_dims, const long long* c_strides) {
+
+    const long long k = c_dims[0] - 1;
+    const double s1 = 1 - s;
+    T res;
+
+    const long long i0 = 0 * c_strides[0] + ci * c_strides[1] + cj;
+    const long long i1 = 1 * c_strides[0] + ci * c_strides[1] + cj;
+    const long long i2 = 2 * c_strides[0] + ci * c_strides[1] + cj;
+    const long long i3 = 3 * c_strides[0] + ci * c_strides[1] + cj;
+
+    if(k == 0) {
+        res = coef[i0];
+    } else if(k == 1) {
+        res = coef[i0] * s1 + coef[i1] * s;
+    } else if(k == 2) {
+        res = coef[i0] * s1 * s1 + coef[i1] * 2.0 * s1 * s + coef[i2] * s * s;
+    } else if(k == 3) {
+        res = (coef[i0] * s1 * s1 * s1 + coef[i1] * 3.0 * s1 * s1 * s +
+               coef[i2] * 3.0 * s1 * s * s + coef[i3] * s * s * s);
+    } else {
+        T comb = 1;
+        res = 0;
+        for(int j = 0; j < k + 1; j++) {
+            const long long idx = j * c_strides[0] + ci * c_strides[1] + cj;
+            res += comb * pow(s, j) * pow(s1, k - j) * coef[idx];
+            comb *= 1.0 * (k - j) / (j + 1.0);
+        }
+    }
+
+    return res;
+}
+
+template<typename T>
+__device__ T eval_bpoly1_deriv_1(
+        const double s, const T* coef, const long long ci, const long long cj,
+        int dx, T* wrk, const long long* c_dims, const long long* c_strides,
+        const long long* wrk_dims, const long long* wrk_strides) {
+
+    T res, term;
+    double comb, poch;
+
+    const long long k = c_dims[0] - 1;
+    if(dx == 0) {
+        res = eval_bpoly1<T>(s, coef, ci, cj, c_dims, c_strides);
+    } else {
+        poch = 1.0;
+        for(int a = 0; a < dx; a++) {
+            poch *= k - a;
+        }
+
+        term = 0;
+        for(int a = 0; a < k - dx + 1; a++) {
+            term = 0;
+            comb = 1;
+            for(int j = 0; j < dx + 1; j++) {
+                const long long idx = (c_strides[0] * (j + a) +
+                                       c_strides[1] * ci + cj);
+                term += coef[idx] * pow(-1, j + nu) * comb;
+                comb *= 1.0 * (nu - j) / (j + 1);
+            }
+            wrk[a] = term * poch;
+        }
+
+        res = eval_bpoly1<T>(s, wrk, 0, 0, wrk_dims, wrk_strides);
+    }
+    return res;
+}
+
+template<typename T>
+__global__ void eval_bpoly(
+        const T* coef, const double* breakpoints, const double* x,
+        const long long* intervals, int dx, T* wrk, const long long* c_dims,
+        const long long* c_strides, const long long* wrk_dims,
+        const long long* wrk_strides, int num_x, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if(idx >= num_x) {
+        return;
+    }
+
+    double xp = *&x[idx];
+    long long interval = *&intervals[idx];
+    const int num_c = *&c_dims[2];
+
+    if(interval < 0) {
+        for(int j = 0; j < num_c; j++) {
+            out[num_c * idx + j] = CUDART_NAN;
+        }
+        return;
+    }
+
+    const double ds = breakpoints[interval + 1] - breakpoints[interval];
+    const double ds_dx = pow(ds, dx);
+    const long long off_wrk = wrk + idx * wrk_dims[0];
+
+    for(int j = 0; j < num_c; j++) {
+        T res;
+        const double s = (xp - breakpoints[interval]) / ds;
+        if(dx == 0) {
+            res = eval_bpoly_1<T>(
+                s, coef, interval, ((long long) (j)), c_dims, c_strides);
+        } else {
+            res = eval_bpoly_deriv_1<T>(
+                s, coef, interval, ((long long) (j)), dx,
+                off_wrk, c_dims, c_strides, wrk_dims, wrk_strides) / ds_dx;
+        }
+        out[num_c * idx + j] = res;
+    }
+
+}
+"""
+
+BPOLY_MODULE = cupy.RawModule(
+    code=BPOLY_KERNEL, options=('-std=c++11',),
+    name_expressions=(
+        [f'eval_bpoly<{type_name}>' for type_name in TYPES]))
+
 
 def _get_module_func(module, func_name, *template_args):
     def _get_typename(dtype):
@@ -424,6 +551,54 @@ def _integrate(c, x, a, b, extrapolate, out):
     int_kernel(((c.shape[2] + 128 - 1) // 128,), (128,),
                (c, x, a, b, start_interval, end_interval, c_shape, c_strides,
                 ascending, out))
+
+
+def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
+    """
+    Evaluate a Bernstein polynomial.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k, m, n)
+        Coefficients local polynomials of order `k-1` in `m` intervals.
+        There are `n` polynomials in each interval.
+        Coefficient of highest order-term comes first.
+    x : ndarray, shape (m+1,)
+        Breakpoints of polynomials.
+    xp : ndarray, shape (r,)
+        Points to evaluate the piecewise polynomial at.
+    dx : int
+        Order of derivative to evaluate.  The derivative is evaluated
+        piecewise and may have discontinuities.
+    extrapolate : bool
+        Whether to extrapolate to out-of-bounds points based on first
+        and last intervals, or to return NaNs.
+    out : ndarray, shape (r, n)
+        Value of each polynomial at each of the input points.
+        This argument is modified in-place.
+    """
+    # Determine if the breakpoints are in ascending order or descending one
+    ascending = x[-1] >= x[0]
+
+    intervals = cupy.empty(xp.shape, dtype=cupy.int64)
+    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
+                    (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
+                     ascending))
+
+    # Compute coefficient displacement stride (in elements)
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
+
+    wrk = cupy.empty((c.shape[2] * c.shape[0] - dx, 1, 1),
+                     dtype=_get_dtype(c))
+    wrk_shape = cupy.asarray([c.shape[0] - dx, 1, 1], dtype=cupy.int64)
+    wrk_strides = cupy.asarray(wrk.strides, dtype=cupy.int64) // wrk.itemsize
+
+    bpoly_kernel = _get_module_func(BPOLY_MODULE, 'eval_bpoly', c)
+    bpoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
+                 (c, x, xp, intervals, dx, c_shape, c_strides, wrk_shape,
+                  wrk_strides, xp.shape[0], out))
 
 
 class _PPolyBase:
@@ -976,3 +1151,84 @@ class PPoly(_PPolyBase):
             cvals[k - m, :] = y / spec.gamma(m + 1)
 
         return cls.construct_fast(cvals, t, extrapolate)
+
+
+class BPoly(_PPolyBase):
+    """
+    Piecewise polynomial in terms of coefficients and breakpoints.
+
+    The polynomial between ``x[i]`` and ``x[i + 1]`` is written in the
+
+    Bernstein polynomial basis::
+
+        S = sum(c[a, i] * b(a, k; x) for a in range(k+1)),
+
+    where ``k`` is the degree of the polynomial, and::
+
+        b(a, k; x) = binom(k, a) * t**a * (1 - t)**(k - a),
+
+    with ``t = (x - x[i]) / (x[i+1] - x[i])`` and ``binom`` is the binomial
+    coefficient.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k, m, ...)
+        Polynomial coefficients, order `k` and `m` intervals
+    x : ndarray, shape (m+1,)
+        Polynomial breakpoints. Must be sorted in either increasing or
+        decreasing order.
+    extrapolate : bool, optional
+        If bool, determines whether to extrapolate to out-of-bounds points
+        based on first and last intervals, or to return NaNs. If 'periodic',
+        periodic extrapolation is used. Default is True.
+    axis : int, optional
+        Interpolation axis. Default is zero.
+
+    Attributes
+    ----------
+    x : ndarray
+        Breakpoints.
+    c : ndarray
+        Coefficients of the polynomials. They are reshaped
+        to a 3-D array with the last dimension representing
+        the trailing dimensions of the original coefficient array.
+    axis : int
+        Interpolation axis.
+
+    See also
+    --------
+    PPoly : piecewise polynomials in the power basis
+
+    Notes
+    -----
+    Properties of Bernstein polynomials are well documented in the literature,
+    see for example [1]_ [2]_ [3]_.
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Bernstein_polynomial
+    .. [2] Kenneth I. Joy, Bernstein polynomials,
+       http://www.idav.ucdavis.edu/education/CAGDNotes/Bernstein-Polynomials.pdf
+    .. [3] E. H. Doha, A. H. Bhrawy, and M. A. Saker, Boundary Value Problems,
+           vol 2011, article ID 829546, :doi:`10.1155/2011/829543`.
+
+    Examples
+    --------
+    >>> from cupyx.scipy.interpolate import BPoly
+    >>> x = [0, 1]
+    >>> c = [[1], [2], [3]]
+    >>> bp = BPoly(c, x)
+
+    This creates a 2nd order polynomial
+
+    .. math::
+
+        B(x) = 1 \\times b_{0, 2}(x) + 2 \\times b_{1, 2}(x) +
+               3 \\times b_{2, 2}(x) \\\\
+             = 1 \\times (1-x)^2 + 2 \\times 2 x (1 - x) + 3 \\times x^2
+    """
+
+    def _evaluate(self, x, nu, extrapolate, out):
+        _bpoly_evaluate(
+            self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
+            self.x, x, nu, bool(extrapolate), out)
