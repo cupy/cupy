@@ -4,7 +4,8 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
-from cupyx.scipy.interpolate import CubicHermiteSpline
+from cupyx.scipy.interpolate import CubicHermiteSpline, \
+    approximate_taylor_polynomial
 
 try:
     from scipy import interpolate  # NOQA
@@ -417,3 +418,12 @@ class TestCubicHermiteSpline:
 
         with pytest.raises(ValueError):
             CubicHermiteSpline(x, y, dydx_with_nan)
+
+
+class TestTaylor:
+    def test_exponential(self):
+        degree = 5
+        p = approximate_taylor_polynomial(cupy.exp, 0, degree, 1, 15)
+        for val in cupy.linspace(0, 0.3, 10):
+            print(val, p(val), cupy.exp(val))
+            assert cupy.isclose(p(val), cupy.exp(val))

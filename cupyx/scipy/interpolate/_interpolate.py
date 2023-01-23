@@ -1,5 +1,5 @@
-
 import cupy
+from cupy import poly1d
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
 from cupy_backends.cuda.api import runtime
@@ -7,6 +7,7 @@ from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline
 
 import numpy as np
+import scipy.interpolate
 
 
 TYPES = ['double', 'thrust::complex<double>']
@@ -306,6 +307,64 @@ def _get_module_func(module, func_name, *template_args):
     kernel_name = f'{func_name}<{template}>' if template_args else func_name
     kernel = module.get_function(kernel_name)
     return kernel
+
+
+def lagrange(x, w):
+    r"""
+    Return a Lagrange interpolating polynomial.
+
+    Given two 1-D arrays `x` and `w,` returns the Lagrange interpolating
+    polynomial through the points ``(x, w)``.
+
+    Warning: This implementation is numerically unstable. Do not expect to
+    be able to use more than about 20 points even if they are chosen optimally.
+
+    Parameters
+    ----------
+    x : cupy.ndarray
+        `x` represents the x-coordinates of a set of datapoints.
+    w : cupy.ndarray
+        `w` represents the y-coordinates of a set of datapoints, i.e., f(`x`).
+
+    Returns
+    -------
+    lagrange : `cupy.poly1d` instance
+        The Lagrange interpolating polynomial.
+
+    Examples
+    --------
+    Interpolate :math:`f(x) = x^3` by 3 points.
+
+    >>> import cupy as cp
+    >>> from cupyx.scipy.interpolate import lagrange
+    >>> x = cp.array([0, 1, 2])
+    >>> y = x**3
+    >>> poly = lagrange(x, y)
+
+    Since there are only 3 points, Lagrange polynomial has degree 2.
+    Explicitly, it is given by
+
+    .. math::
+
+        \begin{aligned}
+            L(x) &= 1\times \frac{x (x - 2)}{-1} + 8\times \frac{x (x-1)}{2} \\
+                 &= x (-2 + 3x)
+        \end{aligned}
+
+    >>> from cupy import poly1d
+    >>> import matplotlib.pyplot as plt
+    >>> x_new = cp.arange(0, 2.1, 0.1)
+    >>> plt.scatter(x.get(), y.get(), label='data')
+    >>> plt.plot(x_new.get(), poly1d(poly.coef)(x_new).get(),
+                 label='Polynomial')
+    >>> plt.plot(x_new.get(), (3*x_new**2 - 2*x_new + 0*x_new).get(),
+    ...          label=r"$3 x^2 - 2 x$", linestyle='-.')
+    >>> plt.legend()
+    >>> plt.show()
+
+    """
+    poly = scipy.interpolate.lagrange(x.get(), w.get())
+    return poly1d(poly.coeffs)
 
 
 def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
