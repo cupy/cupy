@@ -501,7 +501,6 @@ def _compile_with_cache_cuda(
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, cache_in_memory=False, jitify=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
-    global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
     if arch is None:
@@ -530,13 +529,7 @@ def _compile_with_cache_cuda(
 
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
-    base = _empty_file_preprocess_cache.get(env, None)
-    if base is None:
-        # This is for checking NVRTC/NVCC compiler internal version
-        base = _preprocess('', options, arch, backend)
-        _empty_file_preprocess_cache[env] = base
-
-    key_src = '%s %s %s %s' % (env, base, source, extra_source)
+    key_src = '%s %s %s' % (env, source, extra_source)
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.cubin'
 
