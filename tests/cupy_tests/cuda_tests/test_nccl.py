@@ -1,11 +1,12 @@
 import pickle
 import unittest
+import pytest
 
 import cupy
 from cupy import cuda
 from cupy.cuda import nccl
 from cupy import testing
-
+from cupy.cuda import runtime
 
 nccl_available = nccl.available
 
@@ -70,6 +71,8 @@ class TestNCCL(unittest.TestCase):
 
     @testing.multi_gpu(2)
     @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason="rccl doesn't support multi-GPU")
     def test_send_recv(self):
         devs = [0, 1]
         comms = nccl.NcclCommunicator.initAll(devs)
