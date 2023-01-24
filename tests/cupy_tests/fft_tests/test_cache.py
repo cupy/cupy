@@ -146,6 +146,8 @@ class TestPlanCache(unittest.TestCase):
             cache[next(iterator)[0]]
 
     @testing.multi_gpu(2)
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason="hipFFT doesn't support multi-GPU")
     def test_LRU_cache5(self):
         # test if the LRU cache is thread-local
 
@@ -198,6 +200,8 @@ class TestPlanCache(unittest.TestCase):
         assert stdout.count('uninitialized') == n_devices - 2
 
     @testing.multi_gpu(2)
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason="hipFFT doesn't support multi-GPU")
     def test_LRU_cache6(self):
         # test if each device has a separate cache
         cache0 = self.caches[0]
