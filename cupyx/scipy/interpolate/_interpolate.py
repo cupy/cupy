@@ -302,16 +302,17 @@ BPOLY_KERNEL = BASE_HEADERS + r"""
 template<typename T>
 __device__ T eval_bpoly1(
         const double s, const T* coef, const long long ci, const long long cj,
-        const long long* c_dims, const long long* c_strides) {
+        const long long c_dims_0, const long long c_strides_0,
+        const long long c_strides_1) {
 
-    const long long k = c_dims[0] - 1;
+    const long long k = c_dims_0 - 1;
     const double s1 = 1 - s;
     T res;
 
-    const long long i0 = 0 * c_strides[0] + ci * c_strides[1] + cj;
-    const long long i1 = 1 * c_strides[0] + ci * c_strides[1] + cj;
-    const long long i2 = 2 * c_strides[0] + ci * c_strides[1] + cj;
-    const long long i3 = 3 * c_strides[0] + ci * c_strides[1] + cj;
+    const long long i0 = 0 * c_strides_0 + ci * c_strides_1 + cj;
+    const long long i1 = 1 * c_strides_0 + ci * c_strides_1 + cj;
+    const long long i2 = 2 * c_strides_0 + ci * c_strides_1 + cj;
+    const long long i3 = 3 * c_strides_0 + ci * c_strides_1 + cj;
 
     if(k == 0) {
         res = coef[i0];
@@ -326,8 +327,9 @@ __device__ T eval_bpoly1(
         T comb = 1;
         res = 0;
         for(int j = 0; j < k + 1; j++) {
-            const long long idx = j * c_strides[0] + ci * c_strides[1] + cj;
-            res += comb * pow(s, j) * pow(s1, ((int) k) - j) * coef[idx];
+            const long long idx = j * c_strides_0 + ci * c_strides_1 + cj;
+            res += (comb * pow(s, ((double) j)) * pow(s1, ((double) k) - j) *
+                    coef[idx]);
             comb *= 1.0 * (k - j) / (j + 1.0);
         }
     }
@@ -338,15 +340,18 @@ __device__ T eval_bpoly1(
 template<typename T>
 __device__ T eval_bpoly1_deriv(
         const double s, const T* coef, const long long ci, const long long cj,
-        int dx, T* wrk, const long long* c_dims, const long long* c_strides,
-        const long long* wrk_dims, const long long* wrk_strides) {
+        int dx, T* wrk, const long long c_dims_0, const long long c_strides_0,
+        const long long c_strides_1, const long long wrk_dims_0,
+        const long long wrk_strides_0, const long long wrk_strides_1) {
 
     T res, term;
     double comb, poch;
 
-    const long long k = c_dims[0] - 1;
+    const long long k = c_dims_0 - 1;
+
     if(dx == 0) {
-        res = eval_bpoly1<T>(s, coef, ci, cj, c_dims, c_strides);
+        res = eval_bpoly1<T>(s, coef, ci, cj, c_dims_0, c_strides_0,
+                             c_strides_1);
     } else {
         poch = 1.0;
         for(int a = 0; a < dx; a++) {
@@ -358,15 +363,16 @@ __device__ T eval_bpoly1_deriv(
             term = 0;
             comb = 1;
             for(int j = 0; j < dx + 1; j++) {
-                const long long idx = (c_strides[0] * (j + a) +
-                                       c_strides[1] * ci + cj);
-                term += coef[idx] * pow(-1.0, j + dx) * comb;
+                const long long idx = (c_strides_0 * (j + a) +
+                                       c_strides_1 * ci + cj);
+                term += coef[idx] * pow(-1.0, ((double) (j + dx))) * comb;
                 comb *= 1.0 * (dx - j) / (j + 1);
             }
             wrk[a] = term * poch;
         }
 
-        res = eval_bpoly1<T>(s, wrk, 0, 0, wrk_dims, wrk_strides);
+        res = eval_bpoly1<T>(s, wrk, 0, 0, wrk_dims_0, wrk_strides_0,
+                             wrk_strides_1);
     }
     return res;
 }
@@ -388,6 +394,14 @@ __global__ void eval_bpoly(
     long long interval = *&intervals[idx];
     const int num_c = *&c_dims[2];
 
+    const long long c_dims_0 = *&c_dims[0];
+    const long long c_strides_0 = *&c_strides[0];
+    const long long c_strides_1 = *&c_strides[1];
+
+    const long long wrk_dims_0 = *&wrk_dims[0];
+    const long long wrk_strides_0 = *&wrk_strides[0];
+    const long long wrk_strides_1 = *&wrk_strides[1];
+
     if(interval < 0) {
         for(int j = 0; j < num_c; j++) {
             out[num_c * idx + j] = CUDART_NAN;
@@ -396,7 +410,7 @@ __global__ void eval_bpoly(
     }
 
     const double ds = breakpoints[interval + 1] - breakpoints[interval];
-    const double ds_dx = pow(ds, dx);
+    const double ds_dx = pow(ds, ((double) dx));
     T* off_wrk = wrk + idx * wrk_dims[0];
 
     for(int j = 0; j < num_c; j++) {
@@ -404,11 +418,13 @@ __global__ void eval_bpoly(
         const double s = (xp - breakpoints[interval]) / ds;
         if(dx == 0) {
             res = eval_bpoly1<T>(
-                s, coef, interval, ((long long) (j)), c_dims, c_strides);
+                s, coef, interval, ((long long) (j)), c_dims_0, c_strides_0,
+                c_strides_1);
         } else {
             res = eval_bpoly1_deriv<T>(
                 s, coef, interval, ((long long) (j)), dx,
-                off_wrk, c_dims, c_strides, wrk_dims, wrk_strides) / ds_dx;
+                off_wrk, c_dims_0, c_strides_0, c_strides_1,
+                wrk_dims_0, wrk_strides_0, wrk_strides_1) / ds_dx;
         }
         out[num_c * idx + j] = res;
     }
@@ -597,7 +613,7 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
 
     bpoly_kernel = _get_module_func(BPOLY_MODULE, 'eval_bpoly', c)
     bpoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
-                 (c, x, xp, intervals, dx, c_shape, c_strides, wrk_shape,
+                 (c, x, xp, intervals, dx, wrk, c_shape, c_strides, wrk_shape,
                   wrk_strides, xp.shape[0], out))
 
 
