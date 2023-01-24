@@ -1226,7 +1226,8 @@ class BPoly(_PPolyBase):
     .. [2] Kenneth I. Joy, Bernstein polynomials,
        http://www.idav.ucdavis.edu/education/CAGDNotes/Bernstein-Polynomials.pdf
     .. [3] E. H. Doha, A. H. Bhrawy, and M. A. Saker, Boundary Value Problems,
-           vol 2011, article ID 829546, :doi:`10.1155/2011/829543`.
+           vol 2011, article ID 829546,
+           `10.1155/2011/829543 <https://doi.org/10.1155/2011/829543>`_.
 
     Examples
     --------
