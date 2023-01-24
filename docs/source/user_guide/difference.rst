@@ -183,7 +183,7 @@ Note that this difference does not apply when CUB is enabled (which is the defau
 Contiguity / Strides
 --------------------
 
-To provide the best performance, the contiguity of a resulting ndarray is not guaranteed to match with the NumPy's output.
+To provide the best performance, the contiguity of a resulting ndarray is not guaranteed to match with that of NumPy's output.
 
   >>> a = np.array([[1, 2], [3, 4]], order='F')
   >>> print((a + a).flags.f_contiguous)
