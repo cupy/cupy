@@ -17,8 +17,7 @@ try:
 except ImportError:
     pass
 
-# TODO: add BPoly, if/when implemented
-interpolate_cls = ['PPoly']
+interpolate_cls = ['PPoly', 'BPoly']
 
 
 @testing.with_requires("scipy")
@@ -756,3 +755,145 @@ class TestPPoly:
         roots_d = pd.roots()
         roots_a = pa.roots()
         return roots_a, roots_d
+
+
+class TestBPoly:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[3]])
+        bp = scp.interpolate.BPoly(c, x)
+        return bp(0.1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple2(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[3], [1]])
+        bp = scp.interpolate.BPoly(c, x)   # 3*(1-x) + 1*x
+        return bp(0.1)
+        # assert_allclose(bp(0.1), 3*0.9 + 1.*0.1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple3(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[3], [1], [4]])
+        # 3 * (1-x)**2 + 2 * x (1-x) + 4 * x**2
+        bp = scp.interpolate.BPoly(c, x)
+        return bp(0.2)
+        # assert_allclose(bp(0.2),
+        #                 3 * 0.8*0.8 + 1 * 2*0.2*0.8 + 4 * 0.2*0.2)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple4(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[1], [1], [1], [2]])
+        bp = scp.interpolate.BPoly(c, x)
+        return bp(0.3)
+        # assert_allclose(bp(0.3), 0.7**3 +
+        #                 3 * 0.7**2 * 0.3 +
+        #                 3 * 0.7 * 0.3**2 +
+        #                 2 * 0.3**3)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple5(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[1], [1], [8], [2], [1]])
+        bp = scp.interpolate.BPoly(c, x)
+        # assert_allclose(bp(0.3), 0.7**4 +
+        #                 4 * 0.7**3 * 0.3 +
+        #                 8 * 6 * 0.7**2 * 0.3**2 +
+        #                 2 * 4 * 0.7 * 0.3**3 +
+        #                 0.3**4)
+        return bp(0.4)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_periodic(self, xp, scp):
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 0], [0, 0], [0, 2]])
+        # [3*(1-x)**2, 2*((x-1)/2)**2]
+        bp = scp.interpolate.BPoly(c, x, extrapolate='periodic')
+
+        return bp(3.4), bp(-1.3), bp(3.4, 1), bp(-1.3, 1)
+        # assert_allclose(bp(3.4), 3 * 0.6**2)
+        # assert_allclose(bp(-1.3), 2 * (0.7/2)**2)
+
+        # assert_allclose(bp(3.4, 1), -6 * 0.6)
+        # assert_allclose(bp(-1.3, 1), 2 * (0.7/2))
+
+    @pytest.mark.parametrize('m', [10, 20, 30])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_descending(self, xp, scp, m):
+        res = []
+        power = 3
+        x = xp.sort(testing.shaped_random((m + 1,), xp))
+        ca = testing.shaped_random((power + 1, m), xp)
+        ca = ca * 2 - 1
+        # We need only to flip coefficients to get it right!
+        cd = ca[::-1].copy()
+
+        pa = scp.interpolate.BPoly(ca, x, extrapolate=True)
+        pd = scp.interpolate.BPoly(cd[:, ::-1], x[::-1], extrapolate=True)
+
+        # x_test = np.random.uniform(-10, 20, 100)
+        x_test = testing.shaped_random((100,), xp)
+        x_test = x_test * 30 - 10
+        # assert_allclose(pa(x_test), pd(x_test), rtol=1e-13)
+        # assert_allclose(pa(x_test, 1), pd(x_test, 1), rtol=1e-13)
+        res += [pa(x_test), pd(x_test)]
+        res += [pa(x_test, 1), ]  # pd(x_test, 1)]
+
+        # pa_d = pa.derivative()
+        # pd_d = pd.derivative()
+
+        # # assert_allclose(pa_d(x_test), pd_d(x_test), rtol=1e-13)
+        # # res += [pa_d(x_test), pd_d(x_test)]
+
+        # # Antiderivatives won't be equal because fixing continuity is
+        # # done in the reverse order, but surely the differences should be
+        # # equal.
+        # pa_i = pa.antiderivative()
+        # pd_i = pd.antiderivative()
+        # points = testing.shaped_random((5, 2), xp)
+        # points = points * 30 - 10
+        # for a, b in points:
+        #     int_a = pa.integrate(a, b)
+        #     int_d = pd.integrate(a, b)
+        #     # res += [int_a, int_d]s
+        #     # res += [pa_i(b) - pa_i(a), pd_i(b) - pd_i(a)]
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_multi_shape(self, xp, scp):
+        c = testing.shaped_random((6, 2, 1, 2, 3), xp)
+        x = xp.array([0, 0.5, 1])
+        p = scp.interpolate.BPoly(c, x)
+        x1 = testing.shaped_random((5, 6), xp)
+        dp = p.derivative()
+        return p(x1), dp(x1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_interval_length(self, xp, scp):
+        x = xp.asarray([0, 2])
+        c = xp.asarray([[3], [1], [4]])
+        bp = scp.interpolate.BPoly(c, x)
+        xval = xp.asarray([0.1])
+        # s = xval / 2  # s = (x - xa) / (xb - xa)
+        return bp(xval)
+        # assert_allclose(bp(xval), 3 * (1-s)*(1-s) + 1 * 2*s*(1-s) + 4 * s*s)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_two_intervals(self, xp, scp):
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 0], [0, 0], [0, 2]])
+        bp = scp.interpolate.BPoly(c, x)  # [3*(1-x)**2, 2*((x-1)/2)**2]
+        return bp(xp.asarray([0.4, 1.7]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('extrapolate', [True, False, None])
+    def test_extrapolate_attr(self, xp, scp, extrapolate):
+        x = xp.asarray([0, 2])
+        c = xp.asarray([[3], [1], [4]])
+        x1 = xp.asarray([-0.1, 2.1])
+        bp = scp.interpolate.BPoly(c, x, extrapolate=extrapolate)
+        bp_d = bp.derivative()
+        return bp(x1), bp_d(x1)

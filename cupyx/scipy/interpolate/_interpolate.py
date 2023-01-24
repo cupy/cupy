@@ -8,6 +8,11 @@ from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
 
 import numpy as np
 
+try:
+    from scipy.special import comb
+except ImportError:
+    comb = None
+
 
 TYPES = ['double', 'thrust::complex<double>']
 INT_TYPES = ['int', 'long long']
@@ -411,7 +416,7 @@ __global__ void eval_bpoly(
 
     const double ds = breakpoints[interval + 1] - breakpoints[interval];
     const double ds_dx = pow(ds, ((double) dx));
-    T* off_wrk = wrk + idx * wrk_dims[0];
+    T* off_wrk = wrk + idx * wrk_dims_0;
 
     for(int j = 0; j < num_c; j++) {
         T res;
@@ -1254,3 +1259,225 @@ class BPoly(_PPolyBase):
         _bpoly_evaluate(
             self.c.reshape(self.c.shape[0], self.c.shape[1], -1),
             self.x, x, nu, bool(extrapolate), out)
+
+    def derivative(self, nu=1):
+        """
+        Construct a new piecewise polynomial representing the derivative.
+
+        Parameters
+        ----------
+        nu : int, optional
+            Order of derivative to evaluate. Default is 1, i.e., compute the
+            first derivative. If negative, the antiderivative is returned.
+
+        Returns
+        -------
+        bp : BPoly
+            Piecewise polynomial of order k - nu representing the derivative of
+            this polynomial.
+        """
+        if nu < 0:
+            return self.antiderivative(-nu)
+
+        if nu > 1:
+            bp = self
+            for k in range(nu):
+                bp = bp.derivative()
+            return bp
+
+        # reduce order
+        if nu == 0:
+            c2 = self.c.copy()
+        else:
+            # For a polynomial
+            #    B(x) = \sum_{a=0}^{k} c_a b_{a, k}(x),
+            # we use the fact that
+            #   b'_{a, k} = k ( b_{a-1, k-1} - b_{a, k-1} ),
+            # which leads to
+            #   B'(x) = \sum_{a=0}^{k-1} (c_{a+1} - c_a) b_{a, k-1}
+            #
+            # finally, for an interval [y, y + dy] with dy != 1,
+            # we need to correct for an extra power of dy
+
+            rest = (None,) * (self.c.ndim-2)
+
+            k = self.c.shape[0] - 1
+            dx = cupy.diff(self.x)[(None, slice(None))+rest]
+            c2 = k * cupy.diff(self.c, axis=0) / dx
+
+        if c2.shape[0] == 0:
+            # derivative of order 0 is zero
+            c2 = cupy.zeros((1,) + c2.shape[1:], dtype=c2.dtype)
+
+        # construct a compatible polynomial
+        return self.construct_fast(c2, self.x, self.extrapolate, self.axis)
+
+    def antiderivative(self, nu=1):
+        """
+        Construct a new piecewise polynomial representing the antiderivative.
+
+        Parameters
+        ----------
+        nu : int, optional
+            Order of antiderivative to evaluate. Default is 1, i.e., compute
+            the first integral. If negative, the derivative is returned.
+
+        Returns
+        -------
+        bp : BPoly
+            Piecewise polynomial of order k + nu representing the
+            antiderivative of this polynomial.
+
+        Notes
+        -----
+        If antiderivative is computed and ``self.extrapolate='periodic'``,
+        it will be set to False for the returned instance. This is done because
+        the antiderivative is no longer periodic and its correct evaluation
+        outside of the initially given x interval is difficult.
+        """
+        if nu <= 0:
+            return self.derivative(-nu)
+
+        if nu > 1:
+            bp = self
+            for k in range(nu):
+                bp = bp.antiderivative()
+            return bp
+
+        # Construct the indefinite integrals on individual intervals
+        c, x = self.c, self.x
+        k = c.shape[0]
+        c2 = cupy.zeros((k+1,) + c.shape[1:], dtype=c.dtype)
+
+        c2[1:, ...] = cupy.cumsum(c, axis=0) / k
+        delta = x[1:] - x[:-1]
+        c2 *= delta[(None, slice(None)) + (None,)*(c.ndim-2)]
+
+        # Now fix continuity: on the very first interval, take the integration
+        # constant to be zero; on an interval [x_j, x_{j+1}) with j>0,
+        # the integration constant is then equal to the jump of the `bp`
+        # at x_j.
+        # The latter is given by the coefficient of B_{n+1, n+1}
+        # *on the previous interval* (other B. polynomials are zero at the
+        # breakpoint). Finally, use the fact that BPs form a partition of
+        # unity.
+        c2[:, 1:] += cupy.cumsum(c2[k, :], axis=0)[:-1]
+
+        if self.extrapolate == 'periodic':
+            extrapolate = False
+        else:
+            extrapolate = self.extrapolate
+
+        return self.construct_fast(c2, x, extrapolate, axis=self.axis)
+
+    def integrate(self, a, b, extrapolate=None):
+        """
+        Compute a definite integral over a piecewise polynomial.
+
+        Parameters
+        ----------
+        a : float
+            Lower integration bound
+        b : float
+            Upper integration bound
+        extrapolate : {bool, 'periodic', None}, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs. If 'periodic', periodic
+            extrapolation is used. If None (default), use `self.extrapolate`.
+
+        Returns
+        -------
+        array_like
+            Definite integral of the piecewise polynomial over [a, b]
+        """
+        # XXX: can probably use instead the fact that
+        # \int_0^{1} B_{j, n}(x) \dx = 1/(n+1)
+        ib = self.antiderivative()
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+
+        # ib.extrapolate shouldn't be 'periodic', it is converted to
+        # False for 'periodic. in antiderivative() call.
+        if extrapolate != 'periodic':
+            ib.extrapolate = extrapolate
+
+        if extrapolate == 'periodic':
+            # Split the integral into the part over period (can be several
+            # of them) and the remaining part.
+
+            # For simplicity and clarity convert to a <= b case.
+            if a <= b:
+                sign = 1
+            else:
+                a, b = b, a
+                sign = -1
+
+            xs, xe = self.x[0], self.x[-1]
+            period = xe - xs
+            interval = b - a
+            n_periods, left = divmod(interval, period)
+            res = n_periods * (ib(xe) - ib(xs))
+
+            # Map a and b to [xs, xe].
+            a = xs + (a - xs) % period
+            b = a + left
+
+            # If b <= xe then we need to integrate over [a, b], otherwise
+            # over [a, xe] and from xs to what is remained.
+            if b <= xe:
+                res += ib(b) - ib(a)
+            else:
+                res += ib(xe) - ib(a) + ib(xs + left + a - xe) - ib(xs)
+
+            return sign * res
+        else:
+            return ib(b) - ib(a)
+
+    def extend(self, c, x):
+        k = max(self.c.shape[0], c.shape[0])
+        self.c = self._raise_degree(self.c, k - self.c.shape[0])
+        c = self._raise_degree(c, k - c.shape[0])
+        return _PPolyBase.extend(self, c, x)
+    extend.__doc__ = _PPolyBase.extend.__doc__
+
+    @staticmethod
+    def _raise_degree(c, d):
+        r"""Raise a degree of a polynomial in the Bernstein basis.
+        Given the coefficients of a polynomial degree `k`, return (the
+        coefficients of) the equivalent polynomial of degree `k+d`.
+
+        Parameters
+        ----------
+        c : array_like
+            coefficient array, 1-D
+        d : integer
+
+        Returns
+        -------
+        array
+            coefficient array, 1-D array of length `c.shape[0] + d`
+
+        Notes
+        -----
+        This uses the fact that a Bernstein polynomial `b_{a, k}` can be
+        identically represented as a linear combination of polynomials of
+        a higher degree `k+d`:
+
+            .. math:: b_{a, k} = comb(k, a) \sum_{j=0}^{d} b_{a+j, k+d} \
+                                 comb(d, j) / comb(k+d, a+j)
+        """
+        if comb is None:
+            raise NotImplementedError(
+                'raise_degree requires a SciPy installation')
+
+        if d == 0:
+            return c
+
+        k = c.shape[0] - 1
+        out = cupy.zeros((c.shape[0] + d,) + c.shape[1:], dtype=c.dtype)
+
+        for a in range(c.shape[0]):
+            f = c[a] * comb(k, a)
+            for j in range(d + 1):
+                out[a + j] += f * comb(d, j) / comb(k + d, a + j)
+        return out
