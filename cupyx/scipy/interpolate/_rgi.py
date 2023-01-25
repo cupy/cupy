@@ -586,7 +586,8 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
     if method not in ["linear", "nearest", "slinear", "cubic",
                       "quintic", "pchip"]:
         raise ValueError(
-            "interpn only understands the methods 'linear' and 'nearest'. "
+            "interpn only understands the methods 'linear', 'nearest', "
+            "'slinear', 'cubic', 'quintic' and 'pchip'. "
             "You provided {method}.")
 
     ndim = values.ndim
