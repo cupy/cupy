@@ -443,7 +443,10 @@ def _preprocess(source, options, arch, backend):
         raise ValueError('Invalid backend %s' % backend)
 
     assert isinstance(result, bytes)
-    return result
+
+    # Extract the part containing version information.
+    return '\n'.join(
+        x for x in result.decode().splitlines() if x.startswith('//'))
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
