@@ -1,4 +1,6 @@
 import pickle
+import random
+import time
 import unittest
 from unittest import mock
 
@@ -136,3 +138,49 @@ class TestCompileWithCache:
     def test_deprecated_compile_with_cache(self):
         with pytest.warns(UserWarning):
             compiler.compile_with_cache('__device__ void func() {}')
+
+    @pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+    def test_cache_hit(self, backend):
+        code = (
+            '__device__ void cupy_cache_hit_test() {'
+            f'/* {time.time()} {random.random()} */'
+            '}'
+        )
+        if backend == 'nvcc' and cupy.cuda.runtime.is_hip:
+            to_hook = 'compile_using_hipcc'
+        else:
+            to_hook = f'compile_using_{backend}'
+
+        to_hook_func = getattr(cupy.cuda.compiler, to_hook)
+
+        # Cache miss
+        with mock.patch(f'cupy.cuda.compiler.{to_hook}') as compile_func:
+            compile_func.side_effect = to_hook_func
+            compiler._compile_module_with_cache(code, backend=backend)
+        compile_func.assert_called()
+
+        # Cache hit
+        with mock.patch(f'cupy.cuda.compiler.{to_hook}') as compile_func:
+            compile_func.side_effect = to_hook_func
+            compiler._compile_module_with_cache(code, backend=backend)
+        compile_func.assert_not_called()
+
+
+class TestPreprocess:
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='for CUDA')
+    @pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+    def test_preprocess(self, backend):
+        x1 = compiler._preprocess('', (), arch='60', backend=backend)
+        x2 = compiler._preprocess('', (), arch='60', backend=backend)
+        assert x1 == x2
+        assert len(x1) != 0
+
+    @pytest.mark.skipif(not cupy.cuda.runtime.is_hip, reason='for HIP')
+    @pytest.mark.parametrize('backend', ['hiprtc', 'hipcc'])
+    def test_preprocess_hip(self, backend):
+        assert cupy.cuda.runtime.is_hip
+        f = getattr(compiler, f'_preprocess_{backend}')
+        x1 = f('', ())
+        x2 = f('', ())
+        assert x1 == x2
+        assert len(x1) != 0
