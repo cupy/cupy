@@ -416,7 +416,7 @@ __global__ void eval_bpoly(
 
     const double ds = breakpoints[interval + 1] - breakpoints[interval];
     const double ds_dx = pow(ds, ((double) dx));
-    T* off_wrk = wrk + idx * wrk_dims_0;
+    T* off_wrk = wrk + idx * (c_dims_0 - dx);
 
     for(int j = 0; j < num_c; j++) {
         T res;
@@ -611,7 +611,7 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
     c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
-    wrk = cupy.empty((c.shape[2] * c.shape[0] - dx, 1, 1),
+    wrk = cupy.empty((xp.shape[0] * (c.shape[0] - dx), 1, 1),
                      dtype=_get_dtype(c))
     wrk_shape = cupy.asarray([c.shape[0] - dx, 1, 1], dtype=cupy.int64)
     wrk_strides = cupy.asarray(wrk.strides, dtype=cupy.int64) // wrk.itemsize
