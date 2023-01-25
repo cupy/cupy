@@ -611,12 +611,14 @@ class _FusionHistory(object):
                         out_var = make_fusion_var(out_var, ndim)
                         out_vars.append(out_var)
                         ret.append(out_var)
-
-                    _raise_if_invalid_cast(
-                        out_dtypes[i], out_vars[i].dtype, 'same_kind',
-                        lambda: f'output {i}')
+                    else:
+                        _raise_if_invalid_cast(
+                            out_dtypes[i], out_vars[i].dtype, 'same_kind',
+                            lambda: f'output {i}')
+                        out_var = out_vars[i]
 
                     out_var._var.mutate()
+
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
