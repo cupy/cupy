@@ -613,7 +613,7 @@ class _FusionHistory(object):
                         ret.append(out_var)
 
                     _raise_if_invalid_cast(
-                        out_dtypes[i], out_vars[i], 'same_kind',
+                        out_dtypes[i], out_vars[i].dtype, 'same_kind',
                         lambda: f'output {i}')
 
                     out_var._var.mutate()
