@@ -18,6 +18,7 @@ Univariate interpolation
    pchip_interpolate
    CubicHermiteSpline
    PchipInterpolator
+   Akima1DInterpolator
    PPoly
 
 

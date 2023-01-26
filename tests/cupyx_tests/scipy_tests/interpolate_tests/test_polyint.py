@@ -387,16 +387,45 @@ class TestZeroSizeArrays:
 
         cls = getattr(scp.interpolate, klass)
         obj = cls(x, y, bc_type=bc_type)
-        assert obj(xval).size == 0
-        assert obj(xval).shape == xval.shape + y.shape[1:]
+        r1 = obj(xval)
+        assert r1.size == 0
+        assert r1.shape == xval.shape + y.shape[1:]
 
         # Also check with an explicit non-default axis
         yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
 
         obj = cls(x, yt, bc_type=bc_type, axis=axis)
         sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
-        assert obj(xval).size == 0
-        assert obj(xval).shape == sh
+        r2 = obj(xval)
+        assert r2.size == 0
+        assert r2.shape == sh
+        return r1, r2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('y_shape', [(10, 0, 5), (10, 5, 0)])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    @pytest.mark.parametrize('klass',
+                             ['PchipInterpolator', 'Akima1DInterpolator'])
+    def test_zero_size_2(self, xp, scp, klass, y_shape, axis):
+        x = xp.arange(10)
+        y = xp.zeros(y_shape)
+        xval = xp.arange(3)
+
+        cls = getattr(scp.interpolate, klass)
+        obj = cls(x, y)
+        r1 = obj(xval)
+        assert r1.size == 0
+        assert r1.shape == xval.shape + y.shape[1:]
+
+        # Also check with an explicit non-default axis
+        yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
+
+        obj = cls(x, yt, axis=axis)
+        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
+        r2 = obj(xval)
+        assert r2.size == 0
+        assert r2.shape == sh
+        return r1, r2
 
 
 @testing.with_requires("scipy")
@@ -549,3 +578,15 @@ class TestPCHIP:
         r3 = scp.interpolate.pchip_interpolate(
             [1, 2, 3], [4, 5, 6], [0.5], der=[0, 1])
         return r1, r2, xp.asarray(r3)
+
+
+@testing.with_requires("scipy")
+class TestAkima1D:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_correctness(self, xp, scp):
+        x = xp.asarray([-1, 0, 1, 2, 3, 4])
+        # y = xp.asarray([-1, 2, 3])
+        y = testing.shaped_random((6, 1), xp)
+        s = scp.interpolate.Akima1DInterpolator(x, y)
+        return s(x), s(x, 1)

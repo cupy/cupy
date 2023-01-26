@@ -554,7 +554,8 @@ def _make_periodic_spline(x, y, t, k, axis):
     extradim = prod(y.shape[1:])
     rhs = cupy.empty((n + k - 1, extradim), dtype=float)
     rhs[:(k - 1), :] = 0
-    rhs[(k - 1):, :] = y.reshape((-1, extradim))
+    rhs[(k - 1):, :] = (y.reshape(n, 0) if y.size == 0 else
+                        y.reshape((-1, extradim)))
 
     # solve for the coefficients
     coef = spsolve(matr_csr, rhs)
