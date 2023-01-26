@@ -1173,6 +1173,42 @@ class PPoly(_PPolyBase):
 
         return cls.construct_fast(cvals, t, extrapolate)
 
+    @classmethod
+    def from_bernstein_basis(cls, bp, extrapolate=None):
+        """
+        Construct a piecewise polynomial in the power basis
+        from a polynomial in Bernstein basis.
+
+        Parameters
+        ----------
+        bp : BPoly
+            A Bernstein basis polynomial, as created by BPoly
+        extrapolate : bool or 'periodic', optional
+            If bool, determines whether to extrapolate to out-of-bounds points
+            based on first and last intervals, or to return NaNs.
+            If 'periodic', periodic extrapolation is used. Default is True.
+        """
+        if not isinstance(bp, BPoly):
+            raise TypeError(".from_bernstein_basis only accepts BPoly "
+                            "instances. Got %s instead." % type(bp))
+
+        dx = cupy.diff(bp.x)
+        k = bp.c.shape[0] - 1  # polynomial order
+
+        rest = (None,)*(bp.c.ndim-2)
+
+        c = cupy.zeros_like(bp.c)
+        for a in range(k+1):
+            factor = (-1)**a * comb(k, a) * bp.c[a]
+            for s in range(a, k+1):
+                val = comb(k-a, s-a) * (-1)**s
+                c[k-s] += factor * val / dx[(slice(None),)+rest]**s
+
+        if extrapolate is None:
+            extrapolate = bp.extrapolate
+
+        return cls.construct_fast(c, bp.x, extrapolate, bp.axis)
+
 
 class BPoly(_PPolyBase):
     """
@@ -1442,7 +1478,9 @@ class BPoly(_PPolyBase):
 
     @staticmethod
     def _raise_degree(c, d):
-        r"""Raise a degree of a polynomial in the Bernstein basis.
+        r"""
+        Raise a degree of a polynomial in the Bernstein basis.
+
         Given the coefficients of a polynomial degree `k`, return (the
         coefficients of) the equivalent polynomial of degree `k+d`.
 
@@ -1481,3 +1519,245 @@ class BPoly(_PPolyBase):
             for j in range(d + 1):
                 out[a + j] += f * comb(d, j) / comb(k + d, a + j)
         return out
+
+    @classmethod
+    def from_power_basis(cls, pp, extrapolate=None):
+        """
+        Construct a piecewise polynomial in Bernstein basis
+        from a power basis polynomial.
+
+        Parameters
+        ----------
+        pp : PPoly
+            A piecewise polynomial in the power basis
+        extrapolate : bool or 'periodic', optional
+            If bool, determines whether to extrapolate to out-of-bounds points
+            based on first and last intervals, or to return NaNs.
+            If 'periodic', periodic extrapolation is used. Default is True.
+        """
+        if not isinstance(pp, PPoly):
+            raise TypeError(".from_power_basis only accepts PPoly instances. "
+                            "Got %s instead." % type(pp))
+
+        dx = cupy.diff(pp.x)
+        k = pp.c.shape[0] - 1   # polynomial order
+
+        rest = (None,)*(pp.c.ndim-2)
+
+        c = cupy.zeros_like(pp.c)
+        for a in range(k+1):
+            factor = pp.c[a] / comb(k, k-a) * dx[(slice(None),)+rest]**(k-a)
+            for j in range(k-a, k+1):
+                c[j] += factor * comb(j, k-a)
+
+        if extrapolate is None:
+            extrapolate = pp.extrapolate
+
+        return cls.construct_fast(c, pp.x, extrapolate, pp.axis)
+
+    @classmethod
+    def from_derivatives(cls, xi, yi, orders=None, extrapolate=None):
+        """
+        Construct a piecewise polynomial in the Bernstein basis,
+        compatible with the specified values and derivatives at breakpoints.
+
+        Parameters
+        ----------
+        xi : array_like
+            sorted 1-D array of x-coordinates
+        yi : array_like or list of array_likes
+            ``yi[i][j]`` is the ``j``th derivative known at ``xi[i]``
+        orders : None or int or array_like of ints. Default: None.
+            Specifies the degree of local polynomials. If not None, some
+            derivatives are ignored.
+        extrapolate : bool or 'periodic', optional
+            If bool, determines whether to extrapolate to out-of-bounds points
+            based on first and last intervals, or to return NaNs.
+            If 'periodic', periodic extrapolation is used. Default is True.
+
+        Notes
+        -----
+        If ``k`` derivatives are specified at a breakpoint ``x``, the
+        constructed polynomial is exactly ``k`` times continuously
+        differentiable at ``x``, unless the ``order`` is provided explicitly.
+        In the latter case, the smoothness of the polynomial at
+        the breakpoint is controlled by the ``order``.
+
+        Deduces the number of derivatives to match at each end
+        from ``order`` and the number of derivatives available. If
+        possible it uses the same number of derivatives from
+        each end; if the number is odd it tries to take the
+        extra one from y2. In any case if not enough derivatives
+        are available at one end or another it draws enough to
+        make up the total from the other end.
+
+        If the order is too high and not enough derivatives are available,
+        an exception is raised.
+
+        Examples
+        --------
+        >>> from cupyx.scipy.interpolate import BPoly
+        >>> BPoly.from_derivatives([0, 1], [[1, 2], [3, 4]])
+
+        Creates a polynomial `f(x)` of degree 3, defined on `[0, 1]`
+        such that `f(0) = 1, df/dx(0) = 2, f(1) = 3, df/dx(1) = 4`
+
+        >>> BPoly.from_derivatives([0, 1, 2], [[0, 1], [0], [2]])
+
+        Creates a piecewise polynomial `f(x)`, such that
+        `f(0) = f(1) = 0`, `f(2) = 2`, and `df/dx(0) = 1`.
+        Based on the number of derivatives provided, the order of the
+        local polynomials is 2 on `[0, 1]` and 1 on `[1, 2]`.
+        Notice that no restriction is imposed on the derivatives at
+        ``x = 1`` and ``x = 2``.
+
+        Indeed, the explicit form of the polynomial is::
+
+            f(x) = | x * (1 - x),  0 <= x < 1
+                   | 2 * (x - 1),  1 <= x <= 2
+
+        So that f'(1-0) = -1 and f'(1+0) = 2
+        """
+        xi = cupy.asarray(xi)
+        if len(xi) != len(yi):
+            raise ValueError("xi and yi need to have the same length")
+        if cupy.any(xi[1:] - xi[:1] <= 0):
+            raise ValueError("x coordinates are not in increasing order")
+
+        # number of intervals
+        m = len(xi) - 1
+
+        # global poly order is k-1, local orders are <=k and can vary
+        try:
+            k = max(len(yi[i]) + len(yi[i+1]) for i in range(m))
+        except TypeError as e:
+            raise ValueError(
+                "Using a 1-D array for y? Please .reshape(-1, 1)."
+            ) from e
+
+        if orders is None:
+            orders = [None] * m
+        else:
+            if isinstance(orders, (int, cupy.integer)):
+                orders = [orders] * m
+            k = max(k, max(orders))
+
+            if any(o <= 0 for o in orders):
+                raise ValueError("Orders must be positive.")
+
+        c = []
+        for i in range(m):
+            y1, y2 = yi[i], yi[i+1]
+            if orders[i] is None:
+                n1, n2 = len(y1), len(y2)
+            else:
+                n = orders[i]+1
+                n1 = min(n//2, len(y1))
+                n2 = min(n - n1, len(y2))
+                n1 = min(n - n2, len(y2))
+                if n1+n2 != n:
+                    mesg = ("Point %g has %d derivatives, point %g"
+                            " has %d derivatives, but order %d requested" % (
+                                xi[i], len(y1), xi[i+1], len(y2), orders[i]))
+                    raise ValueError(mesg)
+
+                if not (n1 <= len(y1) and n2 <= len(y2)):
+                    raise ValueError("`order` input incompatible with"
+                                     " length y1 or y2.")
+
+            b = BPoly._construct_from_derivatives(xi[i], xi[i+1],
+                                                  y1[:n1], y2[:n2])
+            if len(b) < k:
+                b = BPoly._raise_degree(b, k - len(b))
+            c.append(b)
+
+        c = cupy.asarray(c)
+        return cls(c.swapaxes(0, 1), xi, extrapolate)
+
+    @staticmethod
+    def _construct_from_derivatives(xa, xb, ya, yb):
+        r"""
+        Compute the coefficients of a polynomial in the Bernstein basis
+        given the values and derivatives at the edges.
+
+        Return the coefficients of a polynomial in the Bernstein basis
+        defined on ``[xa, xb]`` and having the values and derivatives at the
+        endpoints `xa` and `xb` as specified by `ya`` and `yb`.
+
+        The polynomial constructed is of the minimal possible degree, i.e.,
+        if the lengths of `ya` and `yb` are `na` and `nb`, the degree
+        of the polynomial is ``na + nb - 1``.
+
+        Parameters
+        ----------
+        xa : float
+            Left-hand end point of the interval
+        xb : float
+            Right-hand end point of the interval
+        ya : array_like
+            Derivatives at `xa`. `ya[0]` is the value of the function, and
+            `ya[i]` for ``i > 0`` is the value of the ``i``th derivative.
+        yb : array_like
+            Derivatives at `xb`.
+
+        Returns
+        -------
+        array
+            coefficient array of a polynomial having specified derivatives
+
+        Notes
+        -----
+        This uses several facts from life of Bernstein basis functions.
+        First of all,
+
+            .. math:: b'_{a, n} = n (b_{a-1, n-1} - b_{a, n-1})
+
+        If B(x) is a linear combination of the form
+
+            .. math:: B(x) = \sum_{a=0}^{n} c_a b_{a, n},
+
+        then :math: B'(x) = n \sum_{a=0}^{n-1} (c_{a+1} - c_{a}) b_{a, n-1}.
+        Iterating the latter one, one finds for the q-th derivative
+
+            .. math:: B^{q}(x) = n!/(n-q)! \sum_{a=0}^{n-q} Q_a b_{a, n-q},
+
+        with
+
+            .. math:: Q_a = \sum_{j=0}^{q} (-)^{j+q} comb(q, j) c_{j+a}
+
+        This way, only `a=0` contributes to :math: `B^{q}(x = xa)`, and
+        `c_q` are found one by one by iterating `q = 0, ..., na`.
+
+        At ``x = xb`` it's the same with ``a = n - q``.
+        """
+        ya, yb = cupy.asarray(ya), cupy.asarray(yb)
+        if ya.shape[1:] != yb.shape[1:]:
+            raise ValueError('Shapes of ya {} and yb {} are incompatible'
+                             .format(ya.shape, yb.shape))
+
+        dta, dtb = ya.dtype, yb.dtype
+        if (cupy.issubdtype(dta, cupy.complexfloating) or
+                cupy.issubdtype(dtb, cupy.complexfloating)):
+            dt = cupy.complex_
+        else:
+            dt = cupy.float_
+
+        na, nb = len(ya), len(yb)
+        n = na + nb
+
+        c = cupy.empty((na+nb,) + ya.shape[1:], dtype=dt)
+
+        # compute coefficients of a polynomial degree na+nb-1
+        # walk left-to-right
+        for q in range(0, na):
+            c[q] = ya[q] / spec.poch(n - q, q) * (xb - xa)**q
+            for j in range(0, q):
+                c[q] -= (-1)**(j+q) * comb(q, j) * c[j]
+
+        # now walk right-to-left
+        for q in range(0, nb):
+            c[-q-1] = yb[q] / spec.poch(n - q, q) * (-1)**q * (xb - xa)**q
+            for j in range(0, q):
+                c[-q-1] -= (-1)**(j+1) * comb(q, j+1) * c[-q+j]
+
+        return c
