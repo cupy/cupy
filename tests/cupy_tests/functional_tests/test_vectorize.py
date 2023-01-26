@@ -84,9 +84,8 @@ class TestVectorizeOps(unittest.TestCase):
         return f(x1, x2)
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    # TODO(asi1024): Fix return type.
-    @testing.numpy_cupy_allclose(rtol=1e-3, type_check=False)
-    @testing.with_requires('numpy>=1.23')
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.with_requires('numpy>=1.23', 'numpy!=1.24.0', 'numpy!=1.24.1')
     def test_vectorize_div(self, xp, dtype1, dtype2):
         def my_div(x, y):
             return x / y
