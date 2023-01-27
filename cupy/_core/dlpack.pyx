@@ -315,7 +315,7 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
         if bits == 8:
             cp_dtype = cupy.bool_
         else:
-            raise TypeError('sizeof(bool) != 8 is not supported')
+            raise TypeError(f'{bits}-bit bool is not supported')
     elif dtype.code == kDLBfloat:
         raise NotImplementedError('CuPy does not support bfloat16 yet')
     else:
