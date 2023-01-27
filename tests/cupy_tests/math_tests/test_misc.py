@@ -1,5 +1,3 @@
-import sys
-
 import numpy
 import pytest
 
@@ -85,8 +83,6 @@ class TestMisc:
                      dtype=dtype)
         return getattr(xp, name)(a, b)
 
-    @pytest.mark.skipIf(
-        sys.platform == 'win32', reason='dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_clip1(self, xp, dtype):
@@ -118,8 +114,6 @@ class TestMisc:
             with pytest.raises(ValueError):
                 a.clip(None, None)
 
-    @pytest.mark.skipIf(
-        sys.platform == 'win32', reason='dtype problem on Windows')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_external_clip1(self, xp, dtype):
