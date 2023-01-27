@@ -44,6 +44,12 @@ cdef inline bint _contains_zero(const shape_t& v) except? -1:
     return False
 
 
+@_util.memoize(for_each_device=True)
+def _get_warpsize():
+    device_id = runtime.getDevice()
+    return runtime.getDeviceProperties(device_id)['warpSize']
+
+
 cdef function.Function _get_simple_elementwise_kernel(
         tuple params, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',

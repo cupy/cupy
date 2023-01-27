@@ -7,7 +7,7 @@ import numpy
 
 import cupy
 import cupy._core.core as core
-from cupy._core._kernel import ElementwiseKernel
+from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
@@ -108,7 +108,7 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
 
     nonzero.shape = self.shape
     if incomplete_scan:
-        warp_size = 64 if runtime._is_hip_environment else 32
+        warp_size = _get_warpsize()
         size = scan_index.size * chunk_size
         _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
             nonzero, scan_index, dst,
