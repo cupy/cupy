@@ -1188,8 +1188,8 @@ cdef class ufunc:
 
         """
         for arg in args:
-            if hasattr(arg, '__cupy_prepare_elementwise_kernel__'):
-                return arg.__cupy_prepare_elementwise_kernel__(
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
                     self, *args, **kwargs)
 
         if _fusion_thread_local.is_fusing():
