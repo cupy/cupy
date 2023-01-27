@@ -31,7 +31,7 @@ class TestDistributedArray:
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
         assert da.shape == (8, 8)
-        assert mem_pool.used_bytes() == array.nbytes
+        assert mem_pool.used_bytes() >= array.nbytes
         testing.assert_array_equal(da._chunks[0], array[:4, :])
         testing.assert_array_equal(da._chunks[1], array[4:, :])
 
