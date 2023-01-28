@@ -13,7 +13,7 @@ def get_compiler_settings():
     sysconfig.get_config_vars()
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
-    settings = build.get_compiler_setting(False)
+    settings = build.get_compiler_setting(None, False)
     return compiler, settings
 
 
