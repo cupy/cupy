@@ -18,6 +18,7 @@ except ImportError:
         return math.factorial(n) // (math.factorial(n - k) * math.factorial(k))
 
 
+MAX_DIMS = 64
 TYPES = ['double', 'thrust::complex<double>']
 INT_TYPES = ['int', 'long long']
 
@@ -503,6 +504,36 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
                   xp.shape[0], out))
 
 
+def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
+    """
+    Evaluate a piecewise tensor-product polynomial.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k_1*...*k_d, m_1*...*m_d, n)
+        Coefficients local polynomials of order `k-1` in
+        `m_1`, ..., `m_d` intervals. There are `n` polynomials
+        in each interval.
+    ks : ndarray of int, shape (d,)
+        Orders of polynomials in each dimension
+    xs : d-tuple of ndarray of shape (m_d+1,) each
+        Breakpoints of polynomials
+    xp : ndarray, shape (r, d)
+        Points to evaluate the piecewise polynomial at.
+    dx : ndarray of int, shape (d,)
+        Orders of derivative to evaluate.  The derivative is evaluated
+        piecewise and may have discontinuities.
+    extrapolate : int, optional
+        Whether to extrapolate to out-of-bounds points based on first
+        and last intervals, or to return NaNs.
+    out : ndarray, shape (r, n)
+        Value of each polynomial at each of the input points.
+        For points outside the span ``x[0] ... x[-1]``,
+        ``nan`` is returned.
+        This argument is modified in-place.
+    """
+
+
 def _fix_continuity(c, x, order):
     """
     Make a piecewise polynomial continuously differentiable to given order.
@@ -624,6 +655,35 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     bpoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                  (c, x, xp, intervals, dx, wrk, c_shape, c_strides, wrk_shape,
                   wrk_strides, xp.shape[0], out))
+
+
+def _ndim_coords_from_arrays(points, ndim=None):
+    """
+    Convert a tuple of coordinate arrays to a (..., ndim)-shaped array.
+    """
+
+    if isinstance(points, tuple) and len(points) == 1:
+        # handle argument tuple
+        points = points[0]
+    if isinstance(points, tuple):
+        p = cupy.broadcast_arrays(*points)
+        points = cupy.c_[p].T
+        # n = len(p)
+        # for j in range(1, n):
+        #     if p[j].shape != p[0].shape:
+        #         raise ValueError(
+        #               "coordinate arrays do not have the same shape")
+        # points = np.empty(p[0].shape + (len(points),), dtype=float)
+        # for j, item in enumerate(p):
+        #     points[...,j] = item
+    else:
+        points = cupy.asarray(points)
+        if points.ndim == 1:
+            if ndim is None:
+                points = points.reshape(-1, 1)
+            else:
+                points = points.reshape(-1, ndim)
+    return points
 
 
 class _PPolyBase:
@@ -1869,3 +1929,63 @@ class NdPPoly:
             self.c = self.c.copy()
         if not isinstance(self.x, tuple):
             self.x = tuple(self.x)
+
+    def __call__(self, x, nu=None, extrapolate=None):
+        """
+        Evaluate the piecewise polynomial or its derivative
+
+        Parameters
+        ----------
+        x : array-like
+            Points to evaluate the interpolant at.
+        nu : tuple, optional
+            Orders of derivatives to evaluate. Each must be non-negative.
+        extrapolate : bool, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs.
+
+        Returns
+        -------
+        y : array-like
+            Interpolated values. Shape is determined by replacing
+            the interpolation axis in the original array with the shape of x.
+
+        Notes
+        -----
+        Derivatives are evaluated piecewise for each polynomial
+        segment, even if the polynomial is not differentiable at the
+        breakpoints. The polynomial intervals are considered half-open,
+        ``[a, b)``, except for the last interval which is closed
+        ``[a, b]``.
+        """
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+        else:
+            extrapolate = bool(extrapolate)
+
+        ndim = len(self.x)
+
+        x = _ndim_coords_from_arrays(x)
+        x_shape = x.shape
+        x = cupy.ascontiguousarray(x.reshape(-1, x.shape[-1]), dtype=np.float_)
+
+        if nu is None:
+            nu = cupy.zeros((ndim,), dtype=np.intc)
+        else:
+            nu = cupy.asarray(nu, dtype=np.intc)
+            if nu.ndim != 1 or nu.shape[0] != ndim:
+                raise ValueError("invalid number of derivative orders nu")
+
+        dim1 = int(np.prod(self.c.shape[:ndim]))
+        dim2 = int(np.prod(self.c.shape[ndim:2*ndim]))
+        dim3 = int(np.prod(self.c.shape[2*ndim:]))
+        ks = cupy.asarray(self.c.shape[:ndim], dtype=np.intc)
+
+        out = cupy.empty((x.shape[0], dim3), dtype=self.c.dtype)
+        self._ensure_c_contiguous()
+
+        _ndppoly_evaluate(
+            self.c.reshape(dim1, dim2, dim3), self.x, ks, x, nu,
+            bool(extrapolate), out)
+
+        return out.reshape(x_shape[:-1] + self.c.shape[2*ndim:])
