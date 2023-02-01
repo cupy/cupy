@@ -476,8 +476,6 @@ scipy:
 optuna:
   null:
     spec: null
-  "2":
-    spec: "==2.*"
   "3":
     spec: "==3.*"
   "pre":
