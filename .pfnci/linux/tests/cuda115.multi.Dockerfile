@@ -28,6 +28,6 @@ RUN pyenv install 3.10.0 && \
     pyenv global 3.10.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.23.*' 'scipy==1.8.*' 'optuna==2.*' 'mpi4py==3.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.23.*' 'scipy==1.8.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==0.29.*'
 RUN pip uninstall -y cuda-python && \
     pip check
