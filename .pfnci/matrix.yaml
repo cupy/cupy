@@ -257,7 +257,7 @@
   cudnn: "8.6"
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -287,7 +287,7 @@
   cudnn: "8.7"
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -318,7 +318,7 @@
   cudnn: null  # TODO(kmaehashi): cuDNN for CUDA 12 not available yet
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -383,7 +383,7 @@
   cudnn: null
   python: "3.10"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -407,7 +407,7 @@
   cudnn: null
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -433,7 +433,7 @@
   cudnn: "8.6"
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
