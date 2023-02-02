@@ -3,13 +3,16 @@ import cupy as cp
 
 from cupy.testing import (assert_allclose, assert_array_equal,
                           assert_array_almost_equal)
+from cupy_backends.cuda.api import runtime
 from pytest import raises as assert_raises
 
 from cupyx.scipy.interpolate import RegularGridInterpolator, interpn
 
-parametrize_rgi_interp_methods = pytest.mark.parametrize(
-    "method", ['linear', 'nearest']
-)
+methods = ['linear', 'nearest']
+if not runtime.is_hip:
+    methods += ["slinear", "cubic", "quintic", 'pchip']
+
+parametrize_rgi_interp_methods = pytest.mark.parametrize("method", methods)
 
 
 class TestRegularGridInterpolator:

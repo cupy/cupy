@@ -2,6 +2,8 @@ __all__ = ['RegularGridInterpolator', 'interpn']
 
 import itertools
 import cupy as cp
+from cupyx.scipy.interpolate._bspline2 import make_interp_spline
+from cupyx.scipy.interpolate._cubic import PchipInterpolator
 
 
 def _ndim_coords_from_arrays(points, ndim=None):
@@ -86,8 +88,9 @@ class RegularGridInterpolator:
         acceptable.
 
     method : str, optional
-        The method of interpolation to perform. Supported are "linear" and
-        "nearest". This parameter will become the default for the object's
+        The method of interpolation to perform. Supported are "linear",
+        "nearest", "slinear", "cubic", "quintic" and "pchip".
+        This parameter will become the default for the object's
         ``__call__`` method. Default is "linear".
 
     bounds_error : bool, optional
@@ -207,12 +210,16 @@ class RegularGridInterpolator:
     # this class is based on code originally programmed by Johannes Buchner,
     # see https://github.com/JohannesBuchner/regulargrid
 
-    _ALL_METHODS = ["linear", "nearest"]
+    _SPLINE_DEGREE_MAP = {"slinear": 1, "cubic": 3, "quintic": 5, 'pchip': 3}
+    _SPLINE_METHODS = list(_SPLINE_DEGREE_MAP.keys())
+    _ALL_METHODS = ["linear", "nearest"] + _SPLINE_METHODS
 
     def __init__(self, points, values, method="linear", bounds_error=True,
                  fill_value=cp.nan):
         if method not in self._ALL_METHODS:
             raise ValueError("Method '%s' is not defined" % method)
+        elif method in self._SPLINE_METHODS:
+            self._validate_grid_dimensions(points, method)
 
         self.method = method
         self.bounds_error = bounds_error
@@ -225,6 +232,15 @@ class RegularGridInterpolator:
 
     def _check_dimensionality(self, grid, values):
         _check_dimensionality(grid, values)
+
+    def _validate_grid_dimensions(self, points, method):
+        k = self._SPLINE_DEGREE_MAP[method]
+        for i, point in enumerate(points):
+            ndim = len(cp.atleast_1d(point))
+            if ndim <= k:
+                raise ValueError(f"There are {ndim} points in dimension {i},"
+                                 f" but method {method} requires at least "
+                                 f" {k+1} points per dimension.")
 
     def _check_points(self, points):
         return _check_points(points)
@@ -295,6 +311,7 @@ class RegularGridInterpolator:
         >>> interp([[1.5, 1.3], [0.3, 4.5]], method='linear')
         array([ 4.7, 24.3])
         """
+        is_method_changed = self.method != method
         method = self.method if method is None else method
         if method not in self._ALL_METHODS:
             raise ValueError("Method '%s' is not defined" % method)
@@ -307,6 +324,10 @@ class RegularGridInterpolator:
         elif method == "nearest":
             indices, norm_distances = self._find_indices(xi.T)
             result = self._evaluate_nearest(indices, norm_distances)
+        elif method in self._SPLINE_METHODS:
+            if is_method_changed:
+                self._validate_grid_dimensions(self.grid, method)
+            result = self._evaluate_spline(xi, method)
 
         if not self.bounds_error and self.fill_value is not None:
             result[out_of_bounds] = self.fill_value
@@ -381,6 +402,73 @@ class RegularGridInterpolator:
                    for i, yi in zip(indices, norm_distances)]
         return self.values[tuple(idx_res)]
 
+    def _evaluate_spline(self, xi, method):
+        # ensure xi is 2D list of points to evaluate (`m` is the number of
+        # points and `n` is the number of interpolation dimensions,
+        # ``n == len(self.grid)``.)
+        if xi.ndim == 1:
+            xi = xi.reshape((1, xi.size))
+        m, n = xi.shape
+
+        # Reorder the axes: n-dimensional process iterates over the
+        # interpolation axes from the last axis downwards: E.g. for a 4D grid
+        # the order of axes is 3, 2, 1, 0. Each 1D interpolation works along
+        # the 0th axis of its argument array (for 1D routine it's its ``y``
+        # array). Thus permute the interpolation axes of `values` *and keep
+        # trailing dimensions trailing*.
+        axes = tuple(range(self.values.ndim))
+        axx = axes[:n][::-1] + axes[n:]
+        values = self.values.transpose(axx)
+
+        if method == 'pchip':
+            _eval_func = self._do_pchip
+        else:
+            _eval_func = self._do_spline_fit
+        k = self._SPLINE_DEGREE_MAP[method]
+
+        # Non-stationary procedure: difficult to vectorize this part entirely
+        # into numpy-level operations. Unfortunately this requires explicit
+        # looping over each point in xi.
+
+        # can at least vectorize the first pass across all points in the
+        # last variable of xi.
+        last_dim = n - 1
+        first_values = _eval_func(self.grid[last_dim],
+                                  values,
+                                  xi[:, last_dim],
+                                  k)
+
+        # the rest of the dimensions have to be on a per point-in-xi basis
+        shape = (m, *self.values.shape[n:])
+        result = cp.empty(shape, dtype=self.values.dtype)
+        for j in range(m):
+            # Main process: Apply 1D interpolate in each dimension
+            # sequentially, starting with the last dimension.
+            # These are then "folded" into the next dimension in-place.
+            folded_values = first_values[j, ...]
+            for i in range(last_dim-1, -1, -1):
+                # Interpolate for each 1D from the last dimensions.
+                # This collapses each 1D sequence into a scalar.
+                folded_values = _eval_func(self.grid[i],
+                                           folded_values,
+                                           xi[j, i],
+                                           k)
+            result[j, ...] = folded_values
+
+        return result
+
+    @staticmethod
+    def _do_spline_fit(x, y, pt, k):
+        local_interp = make_interp_spline(x, y, k=k, axis=0)
+        values = local_interp(pt)
+        return values
+
+    @staticmethod
+    def _do_pchip(x, y, pt, k):
+        local_interp = PchipInterpolator(x, y, axis=0)
+        values = local_interp(pt)
+        return values
+
     def _find_indices(self, xi):
         # find relevant edges between which xi are situated
         indices = []
@@ -434,8 +522,8 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
         The coordinates to sample the gridded data at
 
     method : str, optional
-        The method of interpolation to perform. Supported are "linear" and
-        "nearest".
+        The method of interpolation to perform. Supported are "linear",
+        "nearest", "slinear", "cubic", "quintic" and "pchip".
 
     bounds_error : bool, optional
         If True, when interpolated values are requested outside of the
@@ -495,9 +583,11 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                           resampling)
     """
     # sanity check 'method' kwarg
-    if method not in ["linear", "nearest"]:
+    if method not in ["linear", "nearest", "slinear", "cubic",
+                      "quintic", "pchip"]:
         raise ValueError(
-            "interpn only understands the methods 'linear' and 'nearest'. "
+            "interpn only understands the methods 'linear', 'nearest', "
+            "'slinear', 'cubic', 'quintic' and 'pchip'. "
             "You provided {method}.")
 
     ndim = values.ndim
@@ -525,7 +615,7 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                  "in dimension %d" % i)
 
     # perform interpolation
-    if method in ["linear", "nearest"]:
+    if method in ["linear", "nearest", "slinear", "cubic", "quintic", "pchip"]:
         interp = RegularGridInterpolator(points, values, method=method,
                                          bounds_error=bounds_error,
                                          fill_value=fill_value)
