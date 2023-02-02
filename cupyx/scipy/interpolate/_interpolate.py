@@ -1,4 +1,6 @@
 
+import math
+
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
@@ -9,9 +11,11 @@ from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
 import numpy as np
 
 try:
-    from scipy.special import comb
+    from math import comb
+    _comb = comb
 except ImportError:
-    comb = None
+    def _comb(n, k):
+        return math.factorial(n) // (math.factorial(n - k) * math.factorial(k))
 
 
 TYPES = ['double', 'thrust::complex<double>']
@@ -1199,9 +1203,9 @@ class PPoly(_PPolyBase):
 
         c = cupy.zeros_like(bp.c)
         for a in range(k+1):
-            factor = (-1)**a * comb(k, a) * bp.c[a]
+            factor = (-1)**a * _comb(k, a) * bp.c[a]
             for s in range(a, k+1):
-                val = comb(k-a, s-a) * (-1)**s
+                val = _comb(k-a, s-a) * (-1)**s
                 c[k-s] += factor * val / dx[(slice(None),)+rest]**s
 
         if extrapolate is None:
@@ -1515,9 +1519,9 @@ class BPoly(_PPolyBase):
         out = cupy.zeros((c.shape[0] + d,) + c.shape[1:], dtype=c.dtype)
 
         for a in range(c.shape[0]):
-            f = c[a] * comb(k, a)
+            f = c[a] * _comb(k, a)
             for j in range(d + 1):
-                out[a + j] += f * comb(d, j) / comb(k + d, a + j)
+                out[a + j] += f * _comb(d, j) / _comb(k + d, a + j)
         return out
 
     @classmethod
@@ -1546,9 +1550,9 @@ class BPoly(_PPolyBase):
 
         c = cupy.zeros_like(pp.c)
         for a in range(k+1):
-            factor = pp.c[a] / comb(k, k-a) * dx[(slice(None),)+rest]**(k-a)
+            factor = pp.c[a] / _comb(k, k-a) * dx[(slice(None),)+rest]**(k-a)
             for j in range(k-a, k+1):
-                c[j] += factor * comb(j, k-a)
+                c[j] += factor * _comb(j, k-a)
 
         if extrapolate is None:
             extrapolate = pp.extrapolate
@@ -1566,7 +1570,7 @@ class BPoly(_PPolyBase):
         xi : array_like
             sorted 1-D array of x-coordinates
         yi : array_like or list of array_likes
-            ``yi[i][j]`` is the ``j``th derivative known at ``xi[i]``
+            ``yi[i][j]`` is the ``j`` th derivative known at ``xi[i]``
         orders : None or int or array_like of ints. Default: None.
             Specifies the degree of local polynomials. If not None, some
             derivatives are ignored.
@@ -1752,12 +1756,12 @@ class BPoly(_PPolyBase):
         for q in range(0, na):
             c[q] = ya[q] / spec.poch(n - q, q) * (xb - xa)**q
             for j in range(0, q):
-                c[q] -= (-1)**(j+q) * comb(q, j) * c[j]
+                c[q] -= (-1)**(j+q) * _comb(q, j) * c[j]
 
         # now walk right-to-left
         for q in range(0, nb):
             c[-q-1] = yb[q] / spec.poch(n - q, q) * (-1)**q * (xb - xa)**q
             for j in range(0, q):
-                c[-q-1] -= (-1)**(j+1) * comb(q, j+1) * c[-q+j]
+                c[-q-1] -= (-1)**(j+1) * _comb(q, j+1) * c[-q+j]
 
         return c
