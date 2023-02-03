@@ -29,39 +29,29 @@ INTERVAL_KERNEL = r'''
 #define ge_or_le(x, y, r) ((r) ? ((x) > (y)) : ((x) < (y)))
 #define geq_or_leq(x, y, r) ((r) ? ((x) >= (y)) : ((x) <= (y)))
 
-extern "C" {
-__global__ void find_breakpoint_position(
-        const double* breakpoints, const double* x, long long* out,
-        bool extrapolate, int total_x, int total_breakpoints,
-        const bool* pasc) {
+__device__ long long find_breakpoint_position(
+        const double* breakpoints, const double xp, bool extrapolate,
+        int total_breakpoints, const bool* pasc) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= total_x) {
-        return;
-    }
-
-    double xp = *&x[idx];
     double a = *&breakpoints[0];
     double b = *&breakpoints[total_breakpoints - 1];
     bool asc = pasc[0];
 
     if(isnan(xp)) {
-        out[idx] = -1;
-        return;
+        return -1;
     }
 
     if(le_or_ge(xp, a, asc) || ge_or_le(xp, b, asc)) {
         if(!extrapolate) {
-            out[idx] = -1;
+            return -1;
         } else if(le_or_ge(xp, a, asc)) {
-            out[idx] = 0;
+            return 0;
         } else if(ge_or_le(xp, b, asc)) {
-            out[idx] = total_breakpoints - 2;
+            return total_breakpoints - 2;
         }
         return;
     } else if (xp == b) {
-        out[idx] = total_breakpoints - 2;
-        return;
+        return total_breakpoints - 2;
     }
 
     int left = 0;
@@ -86,13 +76,52 @@ __global__ void find_breakpoint_position(
         }
     }
 
-    out[idx] = left;
+    return left;
+
 }
+
+__global__ void find_breakpoint_position_1d(
+        const double* breakpoints, const double* x, long long* out,
+        bool extrapolate, int total_x, int total_breakpoints,
+        const bool* pasc) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= total_x) {
+        return;
+    }
+
+    const double xp = *&x[idx];
+    out[idx] = find_breakpoint_position(
+        breakpoints, xp, extrapolate, total_breakpoints, pasc);
+}
+
+__global__ void find_breakpoint_position_nd(
+        const double* breakpoints, const double* x, long long* out,
+        bool extrapolate, int total_x, const long long* x_dims,
+        const long long* breakpoints_sizes,
+        const long long* breakpoints_strides) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= total_x) {
+        return;
+    }
+
+    const long long x_dim = *&x_dims[idx];
+    const double* dim_breakpoints = (
+        breakpoints + *&breakpoints_strides[x_dim]);
+    const int num_breakpoints = *&breakpoints_sizes[x_dim];
+
+    const double xp = *&x[idx];
+    const bool asc = true;
+    out[idx] = find_breakpoint_position(
+        dim_breakpoints, xp, extrapolate, num_breakpoints, &asc);
 }
 '''
 
 INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+    code=INTERVAL_KERNEL, options=('-std=c++11',),
+    name_expressions=[
+        'find_breakpoint_position_1d', 'find_breakpoint_position_nd'])
 
 if runtime.is_hip:
     BASE_HEADERS = """#include <hip/hip_runtime.h>
@@ -489,7 +518,8 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     ascending = x[-1] >= x[0]
 
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
-    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_1d')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
@@ -514,10 +544,10 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
         Coefficients local polynomials of order `k-1` in
         `m_1`, ..., `m_d` intervals. There are `n` polynomials
         in each interval.
-    ks : ndarray of int, shape (d,)
-        Orders of polynomials in each dimension
     xs : d-tuple of ndarray of shape (m_d+1,) each
         Breakpoints of polynomials
+    ks : ndarray of int, shape (d,)
+        Orders of polynomials in each dimension
     xp : ndarray, shape (r, d)
         Points to evaluate the piecewise polynomial at.
     dx : ndarray of int, shape (d,)
@@ -532,6 +562,25 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
         ``nan`` is returned.
         This argument is modified in-place.
     """
+    num_samples = xp.shape[0]
+    total_xp = xp.size
+    ndims = len(xs)
+
+    xs_sizes = cupy.asarray([x.size for x in xs], dtype=cupy.int64)
+    xs_strides = cupy.cumprod(xs_sizes)
+    xs_strides = cupy.r_[0, xs_strides[:-1]]
+    xs_complete = cupy.r_[xs]
+
+    intervals = cupy.empty(xp.shape, dtype=cupy.int64)
+    dim_seq = cupy.arange(ndims, dtype=cupy.int64)
+    xp_dims = cupy.broadcast_to(
+        cupy.expand_dims(dim_seq, 0), (num_samples, ndims))
+
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_nd')
+    interval_kernel(((total_xp + 128 - 1) // 128,), (128,),
+                    (xs_complete, xp, intervals, extrapolate, total_xp,
+                     xp_dims, xs_sizes, xs_strides))
 
 
 def _fix_continuity(c, x, order):
@@ -591,7 +640,8 @@ def _integrate(c, x, a, b, extrapolate, out):
     start_interval = cupy.empty(a.shape, dtype=cupy.int64)
     end_interval = cupy.empty(b.shape, dtype=cupy.int64)
 
-    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_1d')
     interval_kernel(((a.shape[0] + 128 - 1) // 128,), (128,),
                     (x, a, start_interval, extrapolate, a.shape[0], x.shape[0],
                      ascending))
@@ -637,7 +687,8 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     ascending = x[-1] >= x[0]
 
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
-    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_1d')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
