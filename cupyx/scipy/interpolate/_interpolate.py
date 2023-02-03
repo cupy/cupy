@@ -1508,10 +1508,6 @@ class BPoly(_PPolyBase):
             .. math:: b_{a, k} = comb(k, a) \sum_{j=0}^{d} b_{a+j, k+d} \
                                  comb(d, j) / comb(k+d, a+j)
         """
-        if comb is None:
-            raise NotImplementedError(
-                'raise_degree requires a SciPy installation')
-
         if d == 0:
             return c
 
