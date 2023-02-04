@@ -194,6 +194,13 @@
         "windows",
         "cuda118"
     ],
+    "cupy.win.cuda120": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda120"
+    ],
     "cupy.linux.cuda-rapids": [
         "@push",
         "full",
