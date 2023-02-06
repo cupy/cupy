@@ -941,6 +941,13 @@ class TestBPolyCalculus:
         # test both real and complex coefficients
         res = []
         for cc in [c.copy(), c*(1. + 2.j)]:
+            # Skip for complex on older ROCm
+            if (
+                runtime.is_hip and
+                driver.get_build_version() < 5_00_00000 and
+                cc.dtype.kind == 'c'
+            ):
+                continue
             bp = scp.interpolate.BPoly(cc, x)
             xi = xp.linspace(x[0], x[-1], 21)
             for i in range(k):
