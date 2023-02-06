@@ -275,7 +275,6 @@ from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
 
 from cupy._manipulation.add_remove import append  # NOQA
-from cupy._manipulation.add_remove import delete
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
 from cupy._manipulation.add_remove import trim_zeros  # NOQA

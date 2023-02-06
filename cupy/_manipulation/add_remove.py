@@ -13,15 +13,15 @@ def delete(arr, indices, axis=None):
         arr (cupy.ndarray):
             Values are deleted from a copy of this array.
         indices (array_like):
-            These indices correspond to the values that will be deleted from the 
+            These indices correspond to values that will be deleted from the
             copy of `arr`.
         axis (int or None):
-            The axis along which `indices` correspond to the values that will be 
+            The axis along which `indices` correspond to values that will be
             deleted. If `axis` is not given, `arr` will be flattened.
     
     Returns:
         cupy.ndarray:
-            A copy of `arr` with the values specified by `indices` deleted along 
+            A copy of `arr` with values specified by `indices` deleted along
             `axis`.
     
     Warning:
@@ -32,31 +32,24 @@ def delete(arr, indices, axis=None):
     """
         
     if axis is None:
-        
+
         arr = arr.ravel()
-        
+
         if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
             return arr[~indices]
-        
-        else:
-            mask = cupy.ones(arr.size, dtype=bool)
-            mask[indices] = False
-            return arr[mask]
-        
+
+        mask = cupy.ones(arr.size, dtype=bool)
+        mask[indices] = False
+        return arr[mask]
+
     else:
-        
+
         if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            result = cupy.compress(~indices, arr, axis=axis)
-        
-        else:
-            mask = cupy.ones(arr.shape[axis], dtype=bool)
-            mask[indices] = False
-            result = cupy.compress(mask, arr, axis=axis)
-            
-        if isinstance(arr, numpy.ndarray):
-            result = cupy.asnumpy(result)
-            
-        return result
+            return cupy.compress(~indices, arr, axis=axis)
+
+        mask = cupy.ones(arr.shape[axis], dtype=bool)
+        mask[indices] = False
+        return cupy.compress(mask, arr, axis=axis)
 
 
 # TODO(okuta): Implement insert
