@@ -45,12 +45,3 @@ cdef class SurfaceObject:
     cdef:
         readonly uintmax_t ptr
         readonly ResourceDescriptor ResDesc
-
-
-cdef class TextureReference:
-    cdef:
-        readonly intptr_t texref
-        readonly ResourceDescriptor ResDesc
-        readonly TextureDescriptor TexDesc
-
-        _get_format(self, dict ch_format)
