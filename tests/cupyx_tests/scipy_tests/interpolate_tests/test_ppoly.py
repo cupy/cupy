@@ -1,6 +1,7 @@
 import pytest
 import numpy
 import numpy as np
+from operator import attrgetter
 
 import cupy
 from cupy import testing
@@ -17,8 +18,7 @@ try:
 except ImportError:
     pass
 
-# TODO: add BPoly, if/when implemented
-interpolate_cls = ['PPoly']
+interpolate_cls = ['PPoly', 'BPoly']
 
 
 @testing.with_requires("scipy")
@@ -636,16 +636,16 @@ class TestPPoly:
     @pytest.mark.skip(reason='There is not a complex root solver available')
     def test_roots_croots(self):
         # Test the complex root finding algorithm
-        np.random.seed(1234)
+        testing.shaped_seed(1234)
 
         for k in range(1, 15):
-            c = np.random.rand(k, 1, 130)
+            c = testing.shaped_rand(k, 1, 130)
 
             if k == 3:
                 # add a case with zero discriminant
                 c[:, 0, 0] = 1, 2, 1
 
-            for y in [0, np.random.random()]:
+            for y in [0, testing.shaped_random()]:
                 w = np.empty(c.shape, dtype=complex)
                 # _ppoly._croots_poly1(c, w)
 
@@ -756,3 +756,560 @@ class TestPPoly:
         roots_d = pd.roots()
         roots_a = pa.roots()
         return roots_a, roots_d
+
+
+@testing.with_requires("scipy")
+class TestBPoly:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[3]])
+        bp = scp.interpolate.BPoly(c, x)
+        return bp(0.1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple2(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[3], [1]])
+        bp = scp.interpolate.BPoly(c, x)   # 3*(1-x) + 1*x
+        # bp(0.1) = 3*0.9 + 1.*0.1
+        return bp(0.1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple3(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[3], [1], [4]])
+        # 3 * (1-x)**2 + 2 * x (1-x) + 4 * x**2
+        bp = scp.interpolate.BPoly(c, x)
+        # bp(0.2) = 3 * 0.8*0.8 + 1 * 2*0.2*0.8 + 4 * 0.2*0.2)
+        return bp(0.2)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple4(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[1], [1], [1], [2]])
+        bp = scp.interpolate.BPoly(c, x)
+        # bp(0.3) = 0.7**3 + 3 * 0.7**2 * 0.3 + 3 * 0.7 * 0.3**2 + 2 * 0.3**3)
+        return bp(0.3)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple5(self, xp, scp):
+        x = xp.asarray([0, 1])
+        c = xp.asarray([[1], [1], [8], [2], [1]])
+        bp = scp.interpolate.BPoly(c, x)
+        # bp(0.3) = 0.7**4 + 4 * 0.7**3 * 0.3 + 8 * 6 * 0.7**2 * 0.3**2 +
+        #           2 * 4 * 0.7 * 0.3**3 + 0.3**4)
+        return bp(0.3)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_periodic(self, xp, scp):
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 0], [0, 0], [0, 2]])
+        # [3*(1-x)**2, 2*((x-1)/2)**2]
+        bp = scp.interpolate.BPoly(c, x, extrapolate='periodic')
+
+        # bp(3.4) = 3 * 0.6**2, bp(-1.3) = 2 * (0.7/2)**2
+        # bp(3.4, 1) = -6 * 0.6, bp(-1.3, 1) = 2 * (0.7/2)
+        return bp(3.4), bp(-1.3), bp(3.4, 1), bp(-1.3, 1)
+
+    @pytest.mark.parametrize('m', [10, 20, 30])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_descending(self, xp, scp, m):
+        res = []
+        power = 3
+        x = xp.sort(testing.shaped_random((m + 1,), xp))
+        ca = testing.shaped_random((power + 1, m), xp)
+        ca = ca * 2 - 1
+        # We need only to flip coefficients to get it right!
+        cd = ca[::-1].copy()
+
+        pa = scp.interpolate.BPoly(ca, x, extrapolate=True)
+        pd = scp.interpolate.BPoly(cd[:, ::-1], x[::-1], extrapolate=True)
+
+        x_test = testing.shaped_random((100,), xp)
+        x_test = x_test * 30 - 10
+
+        res += [pa(x_test), pd(x_test)]
+        res += [pa(x_test, 1), pd(x_test, 1)]
+
+        pa_d = pa.derivative()
+        pd_d = pd.derivative()
+
+        res += [pa_d(x_test), pd_d(x_test)]
+
+        # Antiderivatives won't be equal because fixing continuity is
+        # done in the reverse order, but surely the differences should be
+        # equal.
+        pa_i = pa.antiderivative()
+        pd_i = pd.antiderivative()
+        points = testing.shaped_random((5, 2), xp)
+        points = points * 30 - 10
+        for a, b in points:
+            int_a = pa.integrate(a, b)
+            int_d = pd.integrate(a, b)
+            res += [int_a, int_d]
+            res += [pa_i(b) - pa_i(a), pd_i(b) - pd_i(a)]
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_multi_shape(self, xp, scp):
+        c = testing.shaped_random((6, 2, 1, 2, 3), xp)
+        x = xp.array([0, 0.5, 1])
+        p = scp.interpolate.BPoly(c, x)
+        x1 = testing.shaped_random((5, 6), xp)
+        dp = p.derivative()
+        return p(x1), dp(x1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_interval_length(self, xp, scp):
+        x = xp.asarray([0, 2])
+        c = xp.asarray([[3], [1], [4]])
+        bp = scp.interpolate.BPoly(c, x)
+        xval = xp.asarray([0.1])
+        # s = xval / 2  # s = (x - xa) / (xb - xa)
+        # bp(sval) = 3 * (1-s)*(1-s) + 1 * 2*s*(1-s) + 4 * s*s
+        return bp(xval)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_two_intervals(self, xp, scp):
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 0], [0, 0], [0, 2]])
+        bp = scp.interpolate.BPoly(c, x)  # [3*(1-x)**2, 2*((x-1)/2)**2]
+        return bp(xp.asarray([0.4, 1.7]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('extrapolate', [True, False, None])
+    def test_extrapolate_attr(self, xp, scp, extrapolate):
+        x = xp.asarray([0, 2])
+        c = xp.asarray([[3], [1], [4]])
+        x1 = xp.asarray([-0.1, 2.1])
+        bp = scp.interpolate.BPoly(c, x, extrapolate=extrapolate)
+        bp_d = bp.derivative()
+        return bp(x1), bp_d(x1)
+
+
+@testing.with_requires("scipy")
+class TestBPolyCalculus:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_derivative(self, xp, scp):
+        res = []
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 0], [0, 0], [0, 2]])
+        # [3*(1-x)**2, 2*((x-1)/2)**2]
+        bp = scp.interpolate.BPoly(c, x)
+        bp_der = bp.derivative()
+
+        # bp_der(0.4) = -6 * 0.6
+        # bp_der(1.7) = 0.7
+        res += [bp_der(0.4), bp_der(1.7)]
+
+        # derivatives in-place
+        # bp(0.4, nu=1) = -6 * (1 - 0.4)
+        # bp(0.4, nu=2) = 6
+        # bp(0.4, nu=3) = 0
+        res += [bp(0.4, nu=1), bp(0.4, nu=2), bp(0.4, nu=3)]
+
+        # bp(1.7, nu=1) = 0.7
+        # bp(1.7, nu=2) = 1
+        # bp(1.7, nu=3) = 0
+        res += [bp(1.7, nu=1), bp(1.7, nu=2), bp(1.7, nu=3)]
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3)
+    def test_derivative_ppoly(self, xp, scp):
+        # make sure it's consistent w/ power basis
+        m, k = 5, 8   # number of intervals, order
+        x = xp.sort(testing.shaped_random((m,), xp))
+        c = testing.shaped_random((k, m-1), xp)
+        bp = scp.interpolate.BPoly(c, x)
+        pp = scp.interpolate.PPoly.from_bernstein_basis(bp)
+
+        res = []
+        for _ in range(k):
+            bp = bp.derivative()
+            pp = pp.derivative()
+            xi = xp.linspace(x[0], x[-1], 21)
+            res += [bp(xi), pp(xi)]
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3)
+    def test_deriv_inplace(self, xp, scp):
+        m, k = 5, 8   # number of intervals, order
+        x = xp.sort(testing.shaped_random((m,), xp))
+        c = testing.shaped_random((k, m - 1), xp)
+
+        # test both real and complex coefficients
+        res = []
+        for cc in [c.copy(), c*(1. + 2.j)]:
+            # Skip for complex on older ROCm
+            if (
+                runtime.is_hip and
+                driver.get_build_version() < 5_00_00000 and
+                cc.dtype.kind == 'c'
+            ):
+                continue
+            bp = scp.interpolate.BPoly(cc, x)
+            xi = xp.linspace(x[0], x[-1], 21)
+            for i in range(k):
+                res += [bp(xi, i), bp.derivative(i)(xi)]
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_antiderivative_simple(self, xp, scp):
+        # f(x) = x        for x \in [0, 1),
+        #        (x-1)/2  for x \in [1, 3]
+        #
+        # antiderivative is then
+        # F(x) = x**2 / 2            for x \in [0, 1),
+        #        0.5*x*(x/2 - 1) + A  for x \in [1, 3]
+        # where A = 3/4 for continuity at x = 1.
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[0, 0], [1, 1]])
+
+        bp = scp.interpolate.BPoly(c, x)
+        bi = bp.antiderivative()
+
+        xx = xp.linspace(0, 3, 11)
+        return bi(xx)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=4e-6)
+    def test_der_antider(self, xp, scp):
+        x = xp.sort(testing.shaped_random((11,), xp))
+        c = testing.shaped_random((4, 10, 2, 3), xp)
+        bp = scp.interpolate.BPoly(c, x)
+
+        xx = xp.linspace(x[0], x[-1], 100)
+        return bp.antiderivative().derivative()(xx), bp(xx)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3e-7)
+    def test_antider_ppoly(self, xp, scp):
+        x = xp.sort(testing.shaped_random((11,), xp))
+        c = testing.shaped_random((4, 10, 2, 3), xp)
+        bp = scp.interpolate.BPoly(c, x)
+        pp = scp.interpolate.PPoly.from_bernstein_basis(bp)
+
+        xx = xp.linspace(x[0], x[-1], 10)
+        return bp.antiderivative(2)(xx), pp.antiderivative(2)(xx)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_antider_continuous(self, xp, scp):
+        x = xp.sort(testing.shaped_random((11,), xp))
+        c = testing.shaped_random((4, 10), xp)
+        bp = scp.interpolate.BPoly(c, x).antiderivative()
+
+        xx = bp.x[1:-1]
+        return bp(xx - 1e-14), bp(xx + 1e-14)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate(self, xp, scp):
+        x = xp.sort(testing.shaped_random((11,), xp))
+        c = testing.shaped_random((4, 10), xp)
+        bp = scp.interpolate.BPoly(c, x)
+        pp = scp.interpolate.PPoly.from_bernstein_basis(bp)
+        return bp.integrate(0, 1), pp.integrate(0, 1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate_extrap(self, xp, scp):
+        c = xp.asarray([[1]])
+        x = xp.asarray([0, 1])
+
+        # default is extrapolate=True
+        b = scp.interpolate.BPoly(c, x)
+        # .integrate argument overrides self.extrapolate
+        b1 = scp.interpolate.BPoly(c, x, extrapolate=False)
+
+        return (b.integrate(0, 2), b1.integrate(0, 2),
+                b1.integrate(0, 2, extrapolate=True))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate_periodic(self, xp, scp):
+        res = []
+        x = xp.asarray([1, 2, 4])
+        c = xp.asarray([[0., 0.], [-1., -1.], [2., -0.], [1., 2.]])
+
+        P = scp.interpolate.BPoly.from_power_basis(
+            scp.interpolate.PPoly(c, x), extrapolate='periodic')
+
+        # I = P.antiderivative()
+        # period_int = I(4) - I(1)
+        res += [
+            # period_int
+            P.integrate(1, 4),
+            # period_int
+            P.integrate(-10, -7),
+            # 2 * period_int
+            P.integrate(-10, -4),
+            # I(2.5) - I(1.5)
+            P.integrate(1.5, 2.5),
+            # I(2) - I(1) + I(4) - I(3.5)
+            P.integrate(3.5, 5),
+            # I(2) - I(1) + I(4) - I(3.5)
+            P.integrate(3.5 + 12, 5 + 12),
+            # I(2) - I(1) + I(4) - I(3.5) + 4 * period_int
+            P.integrate(3.5, 5 + 12),
+            # I(2) - I(3)
+            P.integrate(0, -1),
+            # I(2) - I(3)
+            P.integrate(-9, -10),
+            # I(2) - I(3) - 3 * period_int
+            P.integrate(0, -10)
+        ]
+
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_antider_neg(self, xp, scp):
+        # .derivative(-nu) ==> .andiderivative(nu) and vice versa
+        c = xp.asarray([[1]])
+        x = xp.asarray([0, 1])
+        b = scp.interpolate.BPoly(c, x)
+
+        xx = xp.linspace(0, 1, 21)
+
+        return (b.derivative(-1)(xx), b.antiderivative()(xx),
+                b.derivative(1)(xx), b.antiderivative(-1)(xx))
+
+
+@testing.with_requires("scipy")
+class TestPolyConversions:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bp_from_pp(self, xp, scp):
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 2], [1, 8], [4, 3]])
+        pp = scp.interpolate.PPoly(c, x)
+        bp = scp.interpolate.BPoly.from_power_basis(pp)
+        pp1 = scp.interpolate.PPoly.from_bernstein_basis(bp)
+
+        x1 = xp.asarray([0.1, 1.4])
+        return pp(x1), bp(x1), pp(x1), pp1(x1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=6e-7)
+    def test_bp_from_pp_random(self, xp, scp):
+        m, k = 5, 8   # number of intervals, order
+        x = xp.sort(testing.shaped_random((m,), xp))
+        c = testing.shaped_random((k, m - 1), xp)
+        pp = scp.interpolate.PPoly(c, x)
+        bp = scp.interpolate.BPoly.from_power_basis(pp)
+        pp1 = scp.interpolate.PPoly.from_bernstein_basis(bp)
+
+        x1 = xp.linspace(x[0], x[-1], 21)
+        return pp(x1), bp(x1), pp(x1), pp1(x1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_pp_from_bp(self, xp, scp):
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 3], [1, 1], [4, 2]])
+        bp = scp.interpolate.BPoly(c, x)
+        pp = scp.interpolate.PPoly.from_bernstein_basis(bp)
+        bp1 = scp.interpolate.BPoly.from_power_basis(pp)
+
+        x1 = xp.asarray([0.1, 1.4])
+        return bp(x1), pp(x1), bp(x1), bp1(x1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=True)
+    @pytest.mark.parametrize('comb', [
+        (attrgetter('PPoly'), attrgetter('PPoly.from_bernstein_basis')),
+        (attrgetter('BPoly'), attrgetter('PPoly.from_power_basis'))])
+    def test_broken_conversions(self, xp, scp, comb):
+        # regression test for scipy/gh-10597: from_power_basis only
+        # accepts PPoly etc.
+        x = xp.asarray([0, 1, 3])
+        c = xp.asarray([[3, 3], [1, 1], [4, 2]])
+
+        get_interp_cls, get_conv_meth = comb
+        pp = get_interp_cls(scp.interpolate)(c, x)
+        get_conv_meth(scp.interpolate)(pp)
+
+
+@testing.with_requires("scipy")
+class TestBPolyFromDerivatives:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_make_poly_1(self, xp, scp):
+        c1 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [2], [3])
+        return c1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_make_poly_2(self, xp, scp):
+        c1 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [1, 0], [1])
+        # f'(0) = 3
+        c2 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [2, 3], [1])
+        # f'(1) = 3
+        c3 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [2], [1, 3])
+        return c1, c2, c3
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_make_poly_3(self, xp, scp):
+        # f'(0)=2, f''(0)=3
+        c1 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [1, 2, 3], [4])
+        # f'(1)=2, f''(1)=3
+        c2 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [1], [4, 2, 3])
+        # f'(0)=2, f'(1)=3
+        c3 = scp.interpolate.BPoly._construct_from_derivatives(
+            0, 1, [1, 2], [4, 3])
+        return c1, c2, c3
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_make_poly_12(self, xp, scp):
+        ya = xp.r_[0, testing.shaped_random((5,), xp)]
+        yb = xp.r_[0, testing.shaped_random((5,), xp)]
+
+        c = scp.interpolate.BPoly._construct_from_derivatives(0, 1, ya, yb)
+        pp = scp.interpolate.BPoly(c[:, None], xp.asarray([0, 1]))
+        res = []
+        for _ in range(6):
+            res += [pp(0.), pp(1.)]
+            pp = pp.derivative()
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_raise_degree(self, xp, scp):
+        x = xp.asarray([0, 1])
+        k, d = 8, 5
+        c = testing.shaped_random((k, 1, 2, 3, 4), xp)
+        bp = scp.interpolate.BPoly(c, x)
+
+        c1 = scp.interpolate.BPoly._raise_degree(c, d)
+        bp1 = scp.interpolate.BPoly(c1, x)
+
+        x1 = xp.linspace(0, 1, 11)
+        return bp(x1), bp1(x1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_xi_yi(self, xp, scp):
+        scp.interpolate.BPoly.from_derivatives(
+            xp.asarray([0, 1]), xp.asarray([0]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_coords_order(self, xp, scp):
+        xi = xp.asarray([0, 0, 1])
+        yi = xp.asarray([[0], [0], [0]])
+        scp.interpolate.BPoly.from_derivatives(xi, yi)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zeros(self, xp, scp):
+        xi = xp.asarray([0, 1, 2, 3])
+        # NB: will have to raise the degree
+        yi = [[0, 0], [0], [0, 0], [0, 0]]
+        pp = scp.interpolate.BPoly.from_derivatives(xi, yi)
+        assert pp.c.shape == (4, 3)
+
+        ppd = pp.derivative()
+        res = []
+        for x1 in [0., 0.1, 1., 1.1, 1.9, 2., 2.5]:
+            res += [pp(x1), ppd(x1)]
+        return res
+
+    def _make_random_mk(self, m, k, xp):
+        # k derivatives at each breakpoint
+        xi = xp.asarray([1. * j**2 for j in range(m+1)])
+        yi = [testing.shaped_random((k,), xp) for j in range(m+1)]
+        return xi, yi
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_random_12(self, xp, scp):
+        m, k = 5, 12
+        xi, yi = self._make_random_mk(m, k, xp)
+        pp = scp.interpolate.BPoly.from_derivatives(xi, yi)
+
+        res = []
+        for _ in range(k//2):
+            res.append(pp(xi))
+            pp = pp.derivative()
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_order_zero(self, xp, scp):
+        m, k = 5, 12
+        xi, yi = self._make_random_mk(m, k, xp)
+        scp.interpolate.BPoly.from_derivatives(xi, yi, 0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_orders_too_high(self, xp, scp):
+        m, k = 5, 12
+        xi, yi = self._make_random_mk(m, k, xp)
+
+        # this is still ok
+        scp.interpolate.BPoly.from_derivatives(xi, yi, orders=2*k-1)
+        with pytest.raises(ValueError):
+            # but this is not
+            scp.interpolate.BPoly.from_derivatives(xi, yi, orders=2*k)
+        return True
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_orders_global(self, xp, scp):
+        m, k = 5, 12
+        xi, yi = self._make_random_mk(m, k, xp)
+
+        # ok, this is confusing. Local polynomials will be of the order 5
+        # which means that up to the 2nd derivatives will be used at each point
+        order = 5
+        pp = scp.interpolate.BPoly.from_derivatives(xi, yi, orders=order)
+
+        res = []
+        for _ in range(order//2+1):
+            res += [pp(xi[1:-1] - 1e-12), pp(xi[1:-1] + 1e-12)]
+            pp = pp.derivative()
+        # assert_(not xp.allclose(pp(xi[1:-1] - 1e-12), pp(xi[1:-1] + 1e-12)))
+
+        # now repeat with `order` being even: on each interval, it uses
+        # order//2 'derivatives' @ the right-hand endpoint and
+        # order//2+1 @ 'derivatives' the left-hand endpoint
+        order = 6
+        pp = scp.interpolate.BPoly.from_derivatives(xi, yi, orders=order)
+        for _ in range(order//2):
+            res += [pp(xi[1:-1] - 1e-12), pp(xi[1:-1] + 1e-12)]
+            pp = pp.derivative()
+        # assert_(not xp.allclose(pp(xi[1:-1] - 1e-12), pp(xi[1:-1] + 1e-12)))
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_orders_local(self, xp, scp):
+        m, k = 7, 12
+        xi, yi = self._make_random_mk(m, k, xp)
+
+        orders = [o + 1 for o in range(m)]
+        res = []
+        for i, x in enumerate(xi[1:-1]):
+            pp = scp.interpolate.BPoly.from_derivatives(xi, yi, orders=orders)
+            for _ in range(orders[i] // 2 + 1):
+                res += [pp(x - 1e-12), pp(x + 1e-12)]
+                pp = pp.derivative()
+            # assert_(not xp.allclose(pp(x - 1e-12), pp(x + 1e-12)))
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_yi_trailing_dims(self, xp, scp):
+        m, k = 7, 5
+        xi = xp.sort(testing.shaped_random((m+1,), xp))
+        yi = testing.shaped_random((m+1, k, 6, 7, 8), xp)
+        pp = scp.interpolate.BPoly.from_derivatives(xi, yi)
+        return pp.c.shape
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_scipy_gh_5430(self, xp, scp):
+        # At least one of these raises an error unless gh-5430 is
+        # fixed. In py2k an int is implemented using a C long, so
+        # which one fails depends on your system. In py3k there is only
+        # one arbitrary precision integer type, so both should fail.
+        res = []
+        orders = xp.int32(1)
+        p = scp.interpolate.BPoly.from_derivatives(
+            xp.asarray([0, 1]), [[0], [0]], orders=orders)
+        res.append(p(0))
+        orders = xp.int64(1)
+        p = scp.interpolate.BPoly.from_derivatives(
+            xp.asarray([0, 1]), [[0], [0]], orders=orders)
+        res.append(p(0))
+        orders = 1
+        # This worked before; make sure it still works
+        p = scp.interpolate.BPoly.from_derivatives(
+            xp.asarray([0, 1]), [[0], [0]], orders=orders)
+        res.append(p(0))
+        orders = 1
+        return res
