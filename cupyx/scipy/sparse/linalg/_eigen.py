@@ -156,18 +156,22 @@ def _lanczos_fast(A, n, ncv):
         dotc = _cublas.sdot
         nrm2 = _cublas.snrm2
         gemv = _cublas.sgemv
+        axpy = _cublas.saxpy
     elif A.dtype.char == 'd':
         dotc = _cublas.ddot
         nrm2 = _cublas.dnrm2
         gemv = _cublas.dgemv
+        axpy = _cublas.daxpy
     elif A.dtype.char == 'F':
         dotc = _cublas.cdotc
         nrm2 = _cublas.scnrm2
         gemv = _cublas.cgemv
+        axpy = _cublas.caxpy
     elif A.dtype.char == 'D':
         dotc = _cublas.zdotc
         nrm2 = _cublas.dznrm2
         gemv = _cublas.zgemv
+        axpy = _cublas.zaxpy
     else:
         raise TypeError('invalid dtype ({})'.format(A.dtype))
 
@@ -182,6 +186,8 @@ def _lanczos_fast(A, n, ncv):
 
     v = cupy.empty((n,), dtype=A.dtype)
     uu = cupy.empty((ncv,), dtype=A.dtype)
+    vv = cupy.empty((n,), dtype=A.dtype)
+    b = cupy.empty((), dtype=A.dtype)
     one = numpy.array(1.0, dtype=A.dtype)
     zero = numpy.array(0.0, dtype=A.dtype)
     mone = numpy.array(-1.0, dtype=A.dtype)
@@ -217,7 +223,7 @@ def _lanczos_fast(A, n, ncv):
                     spmv_beta.ctypes.data, spmv_desc_u.desc,
                     spmv_cuda_dtype, spmv_alg, spmv_buff.data.ptr)
 
-            # Call dotc
+            # Call dotc: alpha[i] = v.conj().T @ u
             _cublas.setPointerMode(
                 cublas_handle, _cublas.CUBLAS_POINTER_MODE_DEVICE)
             try:
@@ -226,7 +232,25 @@ def _lanczos_fast(A, n, ncv):
             finally:
                 _cublas.setPointerMode(cublas_handle, cublas_pointer_mode)
 
-            # Orthogonalize
+            # Orthogonalize: u = u - alpha[i] * v - beta[i - 1] * V[i - 1]
+            vv.fill(0)
+            b[...] = beta[i - 1]    # cast from real to complex
+            _cublas.setPointerMode(
+                cublas_handle, _cublas.CUBLAS_POINTER_MODE_DEVICE)
+            try:
+                axpy(cublas_handle, n,
+                     alpha.data.ptr + i * alpha.itemsize,
+                     v.data.ptr, 1, vv.data.ptr, 1)
+                axpy(cublas_handle, n,
+                     b.data.ptr,
+                     V[i - 1].data.ptr, 1, vv.data.ptr, 1)
+            finally:
+                _cublas.setPointerMode(cublas_handle, cublas_pointer_mode)
+            axpy(cublas_handle, n,
+                 mone.ctypes.data,
+                 vv.data.ptr, 1, u.data.ptr, 1)
+
+            # Reorthogonalize: u -= V @ (V.conj().T @ u)
             gemv(cublas_handle, _cublas.CUBLAS_OP_C,
                  n, i + 1,
                  one.ctypes.data, V.data.ptr, n,
@@ -237,6 +261,7 @@ def _lanczos_fast(A, n, ncv):
                  mone.ctypes.data, V.data.ptr, n,
                  uu.data.ptr, 1,
                  one.ctypes.data, u.data.ptr, 1)
+            alpha[i] += uu[i]
 
             # Call nrm2
             _cublas.setPointerMode(
