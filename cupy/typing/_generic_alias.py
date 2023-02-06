@@ -18,13 +18,24 @@ else:
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
-elif numpy.lib.NumpyVersion(numpy.__version__) >= '1.23.0':
-    from numpy._typing import _GenericAlias as GenericAlias
-elif numpy.lib.NumpyVersion(numpy.__version__) >= '1.21.0':
-    from numpy.typing import _GenericAlias as GenericAlias  # type: ignore
 else:
-    def GenericAlias(*args):  # type: ignore
-        return Any
+    try:
+        # NumPy 1.23+
+        import numpy._typing as _numpy_typing
+    except Exception:
+        try:
+            # NumPy 1.21 & 1.22
+            import numpy.typing as _numpy_typing  # type: ignore
+        except Exception:
+            _numpy_typing = None  # type: ignore
+
+    _GenericAlias = getattr(_numpy_typing, '_GenericAlias', None)
+
+    if _GenericAlias is not None:
+        GenericAlias = _GenericAlias
+    else:
+        def GenericAlias(*args):
+            return Any
 
 
 _ScalarType = TypeVar('_ScalarType', bound=numpy.generic, covariant=True)
