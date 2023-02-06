@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import List, Optional, Set
+from typing import List, Set
 
 import cupy_builder
 import cupy_builder.install_utils as utils
@@ -126,7 +126,7 @@ def get_hipcc_path() -> List[str]:
         return None
 
 
-def get_compiler_setting(ctx: Optional[Context], use_hip):
+def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
 
@@ -134,12 +134,9 @@ def get_compiler_setting(ctx: Optional[Context], use_hip):
         rocm_path = get_rocm_path()
     else:
         cuda_path = get_cuda_path()
-    if ctx is not None:
-        include_dirs = ctx.include_dirs.copy()
-        library_dirs = ctx.library_dirs.copy()
-    else:
-        include_dirs = []
-        library_dirs = []
+
+    include_dirs = ctx.include_dirs.copy()
+    library_dirs = ctx.library_dirs.copy()
     define_macros = []
     extra_compile_args = []
 

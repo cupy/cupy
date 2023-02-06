@@ -16,7 +16,7 @@ class TestCheckVersion(unittest.TestCase):
     def setUp(self):
         self.compiler = ccompiler.new_compiler()
         sysconfig.customize_compiler(self.compiler)
-        self.settings = build.get_compiler_setting(None, False)
+        self.settings = build.get_compiler_setting(False)
 
     @pytest.mark.gpu
     @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
