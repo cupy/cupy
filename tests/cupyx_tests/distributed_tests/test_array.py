@@ -24,19 +24,19 @@ def mem_pool():
 @testing.multi_gpu(2)
 class TestDistributedArray:
     def test_array_creation_from_numpy(self, mem_pool):
-        array = numpy.arange(64).reshape(8, 8)
+        array = numpy.arange(64, dtype='q').reshape(8, 8)
         assert mem_pool.used_bytes() == 0
         da = cupyx.distributed._array.array(array, (0, 1), (4, 8))
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
         assert da.shape == (8, 8)
-        assert mem_pool.used_bytes() >= array.nbytes
+        assert mem_pool.used_bytes() == array.nbytes
         testing.assert_array_equal(da._chunks[0], array[:4, :])
         testing.assert_array_equal(da._chunks[1], array[4:, :])
 
     def test_array_creation_from_cupy(self, mem_pool):
-        array = cupy.arange(64).reshape(8, 8)
+        array = cupy.arange(64, dtype='q').reshape(8, 8)
         assert mem_pool.used_bytes() == array.nbytes
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', cupy._util.PerformanceWarning)
