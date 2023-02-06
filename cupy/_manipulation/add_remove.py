@@ -18,21 +18,45 @@ def delete(arr, indices, axis=None):
         axis (int or None):
             The axis along which `indices` correspond to the values that will be 
             deleted. If `axis` is not given, `arr` will be flattened.
+    
     Returns:
         cupy.ndarray:
             A copy of `arr` with the values specified by `indices` deleted along 
             `axis`.
+    
+    Warning:
+        This function may synchronize the device.
+    
+    See also:
+        numpy.delete : NumPy API documentation for the delete function.
     """
+        
     if axis is None:
-        arr = cupy.asarray(arr).ravel()
-        mask = cupy.ones(arr.size, dtype=bool)
-        mask[indices] = False
-        return arr[mask]
+        
+        arr = arr.ravel()
+        
+        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
+            return arr[~indices]
+        
+        else:
+            mask = cupy.ones(arr.size, dtype=bool)
+            mask[indices] = False
+            return arr[mask]
+        
     else:
-        arr = cupy.asarray(arr)
-        mask = cupy.ones(arr.shape[axis], dtype=bool)
-        mask[indices] = False
-        return cupy.compress(mask, arr, axis=axis)
+        
+        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
+            result = cupy.compress(~indices, arr, axis=axis)
+        
+        else:
+            mask = cupy.ones(arr.shape[axis], dtype=bool)
+            mask[indices] = False
+            result = cupy.compress(mask, arr, axis=axis)
+            
+        if isinstance(arr, numpy.ndarray):
+            result = cupy.asnumpy(result)
+            
+        return result
 
 
 # TODO(okuta): Implement insert
