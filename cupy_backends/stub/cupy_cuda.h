@@ -83,10 +83,6 @@ CUresult cuModuleGetGlobal(...) {
     return CUDA_SUCCESS;
 }
 
-CUresult cuModuleGetTexRef(...) {
-    return CUDA_SUCCESS;
-}
-
 CUresult cuLaunchKernel(...) {
     return CUDA_SUCCESS;
 }
@@ -101,43 +97,6 @@ CUresult cuFuncGetAttribute(...) {
 }
 
 CUresult cuFuncSetAttribute(...) {
-    return CUDA_SUCCESS;
-}
-
-// Texture reference
-CUresult cuTexRefSetAddress (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetAddress2D (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetAddressMode (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetArray (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetBorderColor (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetFilterMode (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetFlags (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetFormat (...) {
-    return CUDA_SUCCESS;
-}
-
-CUresult cuTexRefSetMaxAnisotropy (...) {
     return CUDA_SUCCESS;
 }
 

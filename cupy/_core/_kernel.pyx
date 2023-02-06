@@ -51,10 +51,9 @@ def _get_warpsize():
     return runtime.getDeviceProperties(device_id)['warpSize']
 
 
-cdef function.Function _get_simple_elementwise_kernel(
+cdef str _get_simple_elementwise_kernel_code(
         tuple params, tuple arginfos, str operation, str name,
-        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
-        tuple options=()):
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
     ${typedef_preamble}
@@ -76,8 +75,24 @@ cdef function.Function _get_simple_elementwise_kernel(
         preamble=preamble,
         loop_prep=loop_prep,
         after_loop=after_loop)
-    module = compile_with_cache(module_code, options)
+    return module_code
+
+
+cdef function.Function _get_simple_elementwise_kernel_from_code(
+        str name, str code, tuple options=()):
+    module = compile_with_cache(code, options)
     return module.get_function(name)
+
+
+cdef function.Function _get_simple_elementwise_kernel(
+        tuple params, tuple arginfos, str operation, str name,
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
+        tuple options=()):
+    code = _get_simple_elementwise_kernel_code(
+        params, arginfos, operation, name, type_map, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef inline int _get_kind_score(int kind):
@@ -703,8 +718,8 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@_util.memoize(for_each_device=True)
-def _get_elementwise_kernel(
+@_util.memoize()
+def _get_elementwise_kernel_code(
         tuple arginfos, _TypeMap type_map,
         tuple params, str operation, str name,
         str preamble, str loop_prep='', str after_loop='', tuple options=()):
@@ -720,9 +735,21 @@ def _get_elementwise_kernel(
             op.append(fmt.format(t=p.ctype, n=p.name))
     op.append(operation)
     operation = '\n'.join(op)
-    return _get_simple_elementwise_kernel(
+    return _get_simple_elementwise_kernel_code(
         params, arginfos, operation, name, type_map,
-        preamble, loop_prep, after_loop, options)
+        preamble, loop_prep, after_loop)
+
+
+@_util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
+        tuple arginfos, _TypeMap type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+    cdef str code = _get_elementwise_kernel_code(
+        arginfos, type_map, params, operation, name, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef class ElementwiseKernel:
@@ -782,6 +809,7 @@ cdef class ElementwiseKernel:
         readonly dict kwargs
         readonly dict _params_type_memo
         readonly dict _elementwise_kernel_memo
+        readonly dict _cached_codes
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -805,6 +833,7 @@ cdef class ElementwiseKernel:
         self.return_tuple = return_tuple
         self.kwargs = kwargs
         self._params_type_memo = {}
+        self._cached_codes = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
@@ -856,6 +885,10 @@ cdef class ElementwiseKernel:
                 'It must be either {} or {} (with outputs), '
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
         dev_id = device.get_device_id()
         arg_list = _preprocess_args(dev_id, args, True)
 
@@ -940,8 +973,45 @@ cdef class ElementwiseKernel:
         # Store the compiled kernel in the cache.
         # Potentially overwrite a duplicate cache entry because
         # _get_elementwise_kernel() may include IO wait.
+        in_types = []
+        for x in arginfos:
+            if x.type is cupy.ndarray:
+                in_types.append(cupy.dtype(x.dtype).char)
+        in_types = tuple(in_types)
+        if in_types not in self._cached_codes:
+            code = _get_elementwise_kernel_code(
+                arginfos, type_map, self.params, self.operation,
+                self.name, self.preamble, **self.kwargs)
+            self._cached_codes[in_types] = code
         self._elementwise_kernel_memo[key] = kern
         return kern
+
+    @property
+    def cached_codes(self):
+        """Returns a dict that has input types as keys and codes values.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        if len(self._cached_codes) == 0:
+            warnings.warn(
+                'No codes are cached because compilation is deferred until '
+                'the first function call.')
+        return dict([(k, v) for k, v in self._cached_codes.items()])
+
+    @property
+    def cached_code(self):
+        """Returns `next(iter(self.cached_codes.values()))`.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        codes = self._cached_codes
+        if len(codes) > 1:
+            warnings.warn(
+                'The input types of the kernel could not be inferred. '
+                'Please use `.cached_codes` instead.')
+        return next(iter(codes.values()))
 
 
 cdef str fix_cast_expr(src_type, dst_type, str expr):
@@ -1183,6 +1253,11 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
+
         if _fusion_thread_local.is_fusing():
             return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 

@@ -43,7 +43,6 @@ typedef void* cudaGraphNode_t;
 typedef void* cudaGraphExec_t;
 #endif
 typedef struct CUlinkState_st* CUlinkState;
-typedef struct CUtexref_st* CUtexref;
 typedef struct CUarray_st* CUarray;
 struct CUDA_ARRAY_DESCRIPTOR {
     CUarray_format Format;

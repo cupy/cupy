@@ -275,11 +275,6 @@ cdef class Module:
             name = name.decode()
         return Function(self, name)
 
-    cpdef get_texref(self, name):
-        if isinstance(name, bytes):
-            name = name.decode()
-        return driver.moduleGetTexRef(self.ptr, name)
-
     cpdef _set_mapping(self, dict mapping):
         self.mapping = mapping
 
