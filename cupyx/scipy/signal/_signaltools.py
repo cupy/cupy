@@ -411,6 +411,40 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
     return _st_core._direct_correlate(in1, in2, mode, in1.dtype, convolution,
                                       boundary, fillvalue, not convolution)
 
+def correlation_lags(in1_len, in2_len, mode='full'):
+    # calculate lag ranges in different modes of operation
+    if mode == "full":
+        # the output is the full discrete linear convolution
+        # of the inputs. (Default)
+        lags = cupy.arange(-in2_len + 1, in1_len)
+    elif mode == "same":
+        # the output is the same size as `in1`, centered
+        # with respect to the 'full' output.
+        # calculate the full output
+        lags = cupy.arange(-in2_len + 1, in1_len)
+        # determine the midpoint in the full output
+        mid = lags.size // 2
+        # determine lag_bound to be used with respect
+        # to the midpoint
+        lag_bound = in1_len // 2
+        # calculate lag ranges for even and odd scenarios
+        if in1_len % 2 == 0:
+            lags = lags[(mid-lag_bound):(mid+lag_bound)]
+        else:
+            lags = lags[(mid-lag_bound):(mid+lag_bound)+1]
+    elif mode == "valid":
+        # the output consists only of those elements that do not
+        # rely on the zero-padding. In 'valid' mode, either `in1` or `in2`
+        # must be at least as large as the other in every dimension.
+
+        # the lag_bound will be either negative or positive
+        # this let's us infer how to present the lag range
+        lag_bound = in1_len - in2_len
+        if lag_bound >= 0:
+            lags = cupy.arange(lag_bound + 1)
+        else:
+            lags = cupy.arange(lag_bound, 1)
+    return lags
 
 def wiener(im, mysize=None, noise=None):
     """Perform a Wiener filter on an N-dimensional array.

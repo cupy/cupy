@@ -17,6 +17,7 @@ Convolution
    oaconvolve
    convolve2d
    correlate2d
+   correlation_lags
    sepfir2d
    choose_conv_method
 
