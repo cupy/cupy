@@ -31,7 +31,7 @@ INTERVAL_KERNEL = r'''
 
 __device__ long long find_breakpoint_position(
         const double* breakpoints, const double xp, bool extrapolate,
-        int total_breakpoints, const bool* pasc) {
+        const int total_breakpoints, const bool* pasc) {
 
     double a = *&breakpoints[0];
     double b = *&breakpoints[total_breakpoints - 1];
@@ -107,12 +107,12 @@ __global__ void find_breakpoint_position_nd(
     }
 
     const long long x_dim = *&x_dims[idx];
-    const double* dim_breakpoints = (
-        breakpoints + *&breakpoints_strides[x_dim]);
+    const long long stride = breakpoints_strides[x_dim];
+    const double* dim_breakpoints = breakpoints + stride;
     const int num_breakpoints = *&breakpoints_sizes[x_dim];
 
-    const double xp = *&x[idx];
     const bool asc = true;
+    const double xp = *&x[idx];
     out[idx] = find_breakpoint_position(
         dim_breakpoints, xp, extrapolate, num_breakpoints, &asc);
 }
@@ -566,21 +566,39 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
     total_xp = xp.size
     ndims = len(xs)
 
+    # Compose all n-dimensional breakpoints into a single array
     xs_sizes = cupy.asarray([x.size for x in xs], dtype=cupy.int64)
-    xs_strides = cupy.cumprod(xs_sizes)
-    xs_strides = cupy.r_[0, xs_strides[:-1]]
+    xs_offsets = cupy.cumsum(xs_sizes)
+    xs_offsets = cupy.r_[0, xs_offsets[:-1]]
     xs_complete = cupy.r_[xs]
 
+    xs_sizes_m1 = xs_sizes - 1
+    xs_strides = cupy.cumprod(xs_sizes_m1[:0:-1])
+    xs_strides = cupy.r_[xs_strides[::-1], 1]
+
+    # Map each element on the input to their corresponding dimension
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
     dim_seq = cupy.arange(ndims, dtype=cupy.int64)
     xp_dims = cupy.broadcast_to(
         cupy.expand_dims(dim_seq, 0), (num_samples, ndims))
+    xp_dims = xp_dims.copy()
 
+    # Compute n-dimensional intervals
     interval_kernel = INTERVAL_MODULE.get_function(
         'find_breakpoint_position_nd')
     interval_kernel(((total_xp + 128 - 1) // 128,), (128,),
                     (xs_complete, xp, intervals, extrapolate, total_xp,
-                     xp_dims, xs_sizes, xs_strides))
+                     xp_dims, xs_sizes, xs_offsets))
+
+    # Compute coefficient displacement stride (in elements)
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
+    c2 = cupy.zeros((num_samples * c.shape[0], 1, 1), dtype=_get_dtype(c))
+
+    ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly_nd', c)
+    ppoly_kernel(((num_samples + 128 - 1) // 128,), (128,),
+                 (c, xs, xp, intervals, dx, c2, c_shape, c_strides,
+                  num_samples, ndims, out))
 
 
 def _fix_continuity(c, x, order):
