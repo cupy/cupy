@@ -478,8 +478,9 @@ class TestBSpline:
             if has_extrapolate:
                 x = xp.array([xmin - 10, xmin - 1, xmax + 1.5, xmax + 10])
                 if not self.extrapolate:
-                    scp.interpolate.BSpline.design_matrix(
-                        x, t, k, self.extrapolate)
+                    with pytest.raises(ValueError):
+                        scp.interpolate.BSpline.design_matrix(
+                            x, t, k, self.extrapolate)
                 else:
                     ret.append(bspline(x))
                     ret.append(scp.interpolate.BSpline.design_matrix(
