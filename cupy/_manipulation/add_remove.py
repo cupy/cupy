@@ -4,11 +4,10 @@ import cupy
 from cupy import _core
 
 
-
 def delete(arr, indices, axis=None):
     """
     Delete values from an array along the specified axis.
-    
+
     Args:
         arr (cupy.ndarray):
             Values are deleted from a copy of this array.
@@ -18,19 +17,19 @@ def delete(arr, indices, axis=None):
         axis (int or None):
             The axis along which `indices` correspond to values that will be
             deleted. If `axis` is not given, `arr` will be flattened.
-    
+
     Returns:
         cupy.ndarray:
             A copy of `arr` with values specified by `indices` deleted along
             `axis`.
-    
+
     Warning:
         This function may synchronize the device.
-    
+
     See also:
         numpy.delete : NumPy API documentation for the delete function.
     """
-        
+
     if axis is None:
 
         arr = arr.ravel()

@@ -9,33 +9,34 @@ from cupy import testing
 
 @testing.gpu
 class TestDelete(unittest.TestCase):
-    
+
     @testing.numpy_cupy_array_equal()
-    def test_delete_with_no_axis(self,xp):
+    def test_delete_with_no_axis(self, xp):
         arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
         indices = xp.array([0, 2, 4, 6, 8])
-        
+
         return xp.delete(arr, indices)
-    
+
     @testing.numpy_cupy_array_equal()
     def test_delete_with_axis_zero(self, xp):
         arr = xp.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
         indices = xp.array([0, 2])
-     
+
         return xp.delete(arr, indices, axis=0)
-        
+
     @testing.numpy_cupy_array_equal()
     def test_delete_with_axis_one(self, xp):
         arr = xp.array([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
         indices = xp.array([0, 2, 4])
-        
+
         return xp.delete(arr, indices, axis=1)
-    
+
     @testing.numpy_cupy_array_equal()
     def test_delete_with_indices_as_bool_array(self, xp):
         arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-        indices = xp.array([True, False, True, False, True, False, True, False, True, False])
-        
+        indices = xp.array([True, False, True, False, True,
+                            False, True, False, True, False])
+
         return xp.delete(arr, indices)
 
 
