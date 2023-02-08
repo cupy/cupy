@@ -246,12 +246,12 @@ __global__ void eval_ppoly_nd(
     const long long* xp_intervals = intervals + ndims * idx;
     T* c2 = c2_all + c_dim0 * idx;
 
-    bool valid = true;
-    for(int i = 0; i < ndims && valid; i++) {
-        valid = xp_intervals[i] > 0;
+    bool invalid = false;
+    for(int i = 0; i < ndims && !invalid; i++) {
+        invalid = xp_intervals[i] < 0;
     }
 
-    if(!valid) {
+    if(invalid) {
         for(int j = 0; j < num_c; j++) {
             out[num_c * idx + j] = CUDART_NAN;
         }
@@ -263,22 +263,35 @@ __global__ void eval_ppoly_nd(
         pos += xp_intervals[k] * xs_strides[k];
     }
 
-    for(int jp = 0: jp < num_c; jp++) {
+    for(int jp = 0; jp < num_c; jp++) {
         for(int i = 0; i < c_dim0; i++) {
-            c2[i] = c[c_stride0 * i + c_stride1 * pos + jp];
+            c2[i] = coef[c_stride0 * i + c_stride1 * pos + jp];
         }
 
         for(int k = ndims - 1; k >= 0; k--) {
             const long long interval = xp_intervals[k];
-            const long long xs_stride = xs_strides[k];
-            const double* dim_breakpoints = xs + xs_stride;
+            const long long xs_offset = xs_offsets[k];
+            const double* dim_breakpoints = xs + xs_offset;
             const double xval = xp_dims[k] - dim_breakpoints[interval];
+
+            const long long k_off = ks_strides[k];
+            const long long dim_ks = ks[k];
             int kpos = 0;
-            //for()
+
+            for(int ko = 0; ko < k_off; ko++) {
+                const long long c2_len = kpos + dim_ks;
+                const T* c2_off = c2 + kpos;
+                const int k_dx = dx[k];
+                T res = eval_poly_1<T>(
+                    xval, c2_off, ((long long) 0), 0, k_dx,
+                    &c2_len, ((long long) 1), ((long long) 1));
+                c2[ko] = res;
+                kpos += dim_ks;
+            }
         }
+
+        out[num_c * idx + jp] =  c2[0];
     }
-
-
 }
 
 template<typename T>
@@ -389,6 +402,7 @@ PPOLY_MODULE = cupy.RawModule(
     code=PPOLY_KERNEL, options=('-std=c++11',),
     name_expressions=(
         [f'eval_ppoly<{type_name}>' for type_name in TYPES] +
+        [f'eval_ppoly_nd<{type_name}>' for type_name in TYPES] +
         [f'fix_continuity<{type_name}>' for type_name in TYPES] +
         [f'integrate<{type_name}>' for type_name in TYPES]))
 
@@ -623,6 +637,7 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
     num_samples = xp.shape[0]
     total_xp = xp.size
     ndims = len(xs)
+    num_ks = ks.size
 
     # Compose all n-dimensional breakpoints into a single array
     xs_sizes = cupy.asarray([x.size for x in xs], dtype=cupy.int64)
@@ -660,8 +675,8 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
     ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly_nd', c)
     ppoly_kernel(((num_samples + 128 - 1) // 128,), (128,),
                  (c, xs_complete, xp, intervals, dx, ks, c2, c_shape,
-                  c_strides, xs_strides, xs_offsets,
-                  ks_strides, num_samples, ndims, out))
+                  c_strides, xs_strides, xs_offsets, ks_strides, num_samples,
+                  ndims, num_ks, out))
 
 
 def _fix_continuity(c, x, order):
