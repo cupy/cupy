@@ -224,6 +224,64 @@ __global__ void eval_ppoly(
 }
 
 template<typename T>
+__global__ void eval_ppoly_nd(
+        const T* coef, const double* xs, const double* xp,
+        const long long* intervals, const long long* dx,
+        const long long* ks, T* c2_all, const long long* c_dims,
+        const long long* c_strides, const long long* xs_strides,
+        const long long* xs_offsets, const long long* ks_strides,
+        const int num_x, const int ndims, const int num_ks, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= num_x) {
+        return;
+    }
+
+    const long long c_dim0 = c_dims[0];
+    const int num_c = *&c_dims[2];
+    const long long c_stride0 = c_strides[0];
+    const long long c_stride1 = c_strides[1];
+
+    const double* xp_dims = xp + ndims * idx;
+    const long long* xp_intervals = intervals + ndims * idx;
+    T* c2 = c2_all + c_dim0 * idx;
+
+    bool valid = true;
+    for(int i = 0; i < ndims && valid; i++) {
+        valid = xp_intervals[i] > 0;
+    }
+
+    if(!valid) {
+        for(int j = 0; j < num_c; j++) {
+            out[num_c * idx + j] = CUDART_NAN;
+        }
+        return;
+    }
+
+    long long pos = 0;
+    for(int k = 0; k < ndims; k++) {
+        pos += xp_intervals[k] * xs_strides[k];
+    }
+
+    for(int jp = 0: jp < num_c; jp++) {
+        for(int i = 0; i < c_dim0; i++) {
+            c2[i] = c[c_stride0 * i + c_stride1 * pos + jp];
+        }
+
+        for(int k = ndims - 1; k >= 0; k--) {
+            const long long interval = xp_intervals[k];
+            const long long xs_stride = xs_strides[k];
+            const double* dim_breakpoints = xs + xs_stride;
+            const double xval = xp_dims[k] - dim_breakpoints[interval];
+            int kpos = 0;
+            //for()
+        }
+    }
+
+
+}
+
+template<typename T>
 __global__ void fix_continuity(
         T* coef, const double* breakpoints, const int order,
         const long long* c_dims, const long long* c_strides,
@@ -595,10 +653,15 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
     c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
     c2 = cupy.zeros((num_samples * c.shape[0], 1, 1), dtype=_get_dtype(c))
 
+    # Compute order strides
+    ks_strides = cupy.cumprod(cupy.r_[1, ks])
+    ks_strides = ks_strides[:-1]
+
     ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly_nd', c)
     ppoly_kernel(((num_samples + 128 - 1) // 128,), (128,),
-                 (c, xs, xp, intervals, dx, c2, c_shape, c_strides,
-                  num_samples, ndims, out))
+                 (c, xs_complete, xp, intervals, dx, ks, c2, c_shape,
+                  c_strides, xs_strides, xs_offsets,
+                  ks_strides, num_samples, ndims, out))
 
 
 def _fix_continuity(c, x, order):
@@ -2036,19 +2099,20 @@ class NdPPoly:
 
         x = _ndim_coords_from_arrays(x)
         x_shape = x.shape
-        x = cupy.ascontiguousarray(x.reshape(-1, x.shape[-1]), dtype=np.float_)
+        x = cupy.ascontiguousarray(x.reshape(-1, x.shape[-1]),
+                                   dtype=cupy.float64)
 
         if nu is None:
-            nu = cupy.zeros((ndim,), dtype=np.intc)
+            nu = cupy.zeros((ndim,), dtype=cupy.int64)
         else:
-            nu = cupy.asarray(nu, dtype=np.intc)
+            nu = cupy.asarray(nu, dtype=cupy.int64)
             if nu.ndim != 1 or nu.shape[0] != ndim:
                 raise ValueError("invalid number of derivative orders nu")
 
         dim1 = int(np.prod(self.c.shape[:ndim]))
         dim2 = int(np.prod(self.c.shape[ndim:2*ndim]))
         dim3 = int(np.prod(self.c.shape[2*ndim:]))
-        ks = cupy.asarray(self.c.shape[:ndim], dtype=np.intc)
+        ks = cupy.asarray(self.c.shape[:ndim], dtype=cupy.int64)
 
         out = cupy.empty((x.shape[0], dim3), dtype=self.c.dtype)
         self._ensure_c_contiguous()
