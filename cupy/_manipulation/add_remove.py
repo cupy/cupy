@@ -11,9 +11,10 @@ def delete(arr, indices, axis=None):
     Args:
         arr (cupy.ndarray):
             Values are deleted from a copy of this array.
-        indices (array_like):
+        indices (slice, int or array of ints):
             These indices correspond to values that will be deleted from the
             copy of `arr`.
+            Boolean indices are treated as a mask of elements to remove.
         axis (int or None):
             The axis along which `indices` correspond to values that will be
             deleted. If `axis` is not given, `arr` will be flattened.
@@ -23,11 +24,9 @@ def delete(arr, indices, axis=None):
             A copy of `arr` with values specified by `indices` deleted along
             `axis`.
 
-    Warning:
-        This function may synchronize the device.
+    .. warning: This function may synchronize the device.
 
-    See also:
-        numpy.delete : NumPy API documentation for the delete function.
+    .. seealso:: :func:`numpy.delete`.
     """
 
     if axis is None:

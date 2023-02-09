@@ -39,6 +39,18 @@ class TestDelete(unittest.TestCase):
 
         return xp.delete(arr, indices)
 
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_indices_as_slice(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        indices = slice(None, None, 2)
+        return xp.delete(arr, indices)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_indices_as_int(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        indices = 5
+        return xp.delete(arr, indices)
+
 
 @testing.gpu
 class TestAppend(unittest.TestCase):
