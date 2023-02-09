@@ -279,12 +279,11 @@ __global__ void eval_ppoly_nd(
             int kpos = 0;
 
             for(int ko = 0; ko < k_off; ko++) {
-                const long long c2_len = kpos + dim_ks;
                 const T* c2_off = c2 + kpos;
                 const int k_dx = dx[k];
                 T res = eval_poly_1<T>(
                     xval, c2_off, ((long long) 0), 0, k_dx,
-                    &c2_len, ((long long) 1), ((long long) 1));
+                    &dim_ks, ((long long) 1), ((long long) 1));
                 c2[ko] = res;
                 kpos += dim_ks;
             }
