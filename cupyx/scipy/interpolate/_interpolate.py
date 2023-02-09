@@ -813,15 +813,8 @@ def _ndim_coords_from_arrays(points, ndim=None):
         points = points[0]
     if isinstance(points, tuple):
         p = cupy.broadcast_arrays(*points)
-        points = cupy.c_[p].T
-        # n = len(p)
-        # for j in range(1, n):
-        #     if p[j].shape != p[0].shape:
-        #         raise ValueError(
-        #               "coordinate arrays do not have the same shape")
-        # points = np.empty(p[0].shape + (len(points),), dtype=float)
-        # for j, item in enumerate(p):
-        #     points[...,j] = item
+        p = [cupy.expand_dims(x, -1) for x in p]
+        points = cupy.concatenate(p, axis=-1)
     else:
         points = cupy.asarray(points)
         if points.ndim == 1:
@@ -2136,3 +2129,246 @@ class NdPPoly:
             bool(extrapolate), out)
 
         return out.reshape(x_shape[:-1] + self.c.shape[2*ndim:])
+
+    def _derivative_inplace(self, nu, axis):
+        """
+        Compute 1-D derivative along a selected dimension in-place
+        May result to non-contiguous c array.
+        """
+        if nu < 0:
+            return self._antiderivative_inplace(-nu, axis)
+
+        ndim = len(self.x)
+        axis = axis % ndim
+
+        # reduce order
+        if nu == 0:
+            # noop
+            return
+        else:
+            sl = [slice(None)]*ndim
+            sl[axis] = slice(None, -nu, None)
+            c2 = self.c[tuple(sl)]
+
+        if c2.shape[axis] == 0:
+            # derivative of order 0 is zero
+            shp = list(c2.shape)
+            shp[axis] = 1
+            c2 = cupy.zeros(shp, dtype=c2.dtype)
+
+        # multiply by the correct rising factorials
+        factor = spec.poch(cupy.arange(c2.shape[axis], 0, -1), nu)
+        sl = [None] * c2.ndim
+        sl[axis] = slice(None)
+        c2 *= factor[tuple(sl)]
+
+        self.c = c2
+
+    def _antiderivative_inplace(self, nu, axis):
+        """
+        Compute 1-D antiderivative along a selected dimension
+        May result to non-contiguous c array.
+        """
+        if nu <= 0:
+            return self._derivative_inplace(-nu, axis)
+
+        ndim = len(self.x)
+        axis = axis % ndim
+
+        perm = list(range(ndim))
+        perm[0], perm[axis] = perm[axis], perm[0]
+        perm = perm + list(range(ndim, self.c.ndim))
+
+        c = self.c.transpose(perm)
+
+        c2 = cupy.zeros((c.shape[0] + nu,) + c.shape[1:],
+                        dtype=c.dtype)
+        c2[:-nu] = c
+
+        # divide by the correct rising factorials
+        factor = spec.poch(cupy.arange(c.shape[0], 0, -1), nu)
+        c2[:-nu] /= factor[(slice(None),) + (None,)*(c.ndim-1)]
+
+        # fix continuity of added degrees of freedom
+        perm2 = list(range(c2.ndim))
+        perm2[1], perm2[ndim+axis] = perm2[ndim+axis], perm2[1]
+
+        c2 = c2.transpose(perm2)
+        c2 = c2.copy()
+        _fix_continuity(
+            c2.reshape(c2.shape[0], c2.shape[1], -1), self.x[axis], nu - 1)
+
+        c2 = c2.transpose(perm2)
+        c2 = c2.transpose(perm)
+
+        # Done
+        self.c = c2
+
+    def derivative(self, nu):
+        """
+        Construct a new piecewise polynomial representing the derivative.
+
+        Parameters
+        ----------
+        nu : ndim-tuple of int
+            Order of derivatives to evaluate for each dimension.
+            If negative, the antiderivative is returned.
+
+        Returns
+        -------
+        pp : NdPPoly
+            Piecewise polynomial of orders (k[0] - nu[0], ..., k[n] - nu[n])
+            representing the derivative of this polynomial.
+
+        Notes
+        -----
+        Derivatives are evaluated piecewise for each polynomial
+        segment, even if the polynomial is not differentiable at the
+        breakpoints. The polynomial intervals in each dimension are
+        considered half-open, ``[a, b)``, except for the last interval
+        which is closed ``[a, b]``.
+        """
+        p = self.construct_fast(self.c.copy(), self.x, self.extrapolate)
+
+        for axis, n in enumerate(nu):
+            p._derivative_inplace(n, axis)
+
+        p._ensure_c_contiguous()
+        return p
+
+    def antiderivative(self, nu):
+        """
+        Construct a new piecewise polynomial representing the antiderivative.
+        Antiderivative is also the indefinite integral of the function,
+        and derivative is its inverse operation.
+
+        Parameters
+        ----------
+        nu : ndim-tuple of int
+            Order of derivatives to evaluate for each dimension.
+            If negative, the derivative is returned.
+
+        Returns
+        -------
+        pp : PPoly
+            Piecewise polynomial of order k2 = k + n representing
+            the antiderivative of this polynomial.
+
+        Notes
+        -----
+        The antiderivative returned by this function is continuous and
+        continuously differentiable to order n-1, up to floating point
+        rounding error.
+        """
+        p = self.construct_fast(self.c.copy(), self.x, self.extrapolate)
+
+        for axis, n in enumerate(nu):
+            p._antiderivative_inplace(n, axis)
+
+        p._ensure_c_contiguous()
+        return p
+
+    def integrate_1d(self, a, b, axis, extrapolate=None):
+        r"""
+        Compute NdPPoly representation for one dimensional definite integral
+        The result is a piecewise polynomial representing the integral:
+
+        .. math::
+           p(y, z, ...) = \int_a^b dx\, p(x, y, z, ...)
+
+        where the dimension integrated over is specified with the
+        `axis` parameter.
+
+        Parameters
+        ----------
+        a, b : float
+            Lower and upper bound for integration.
+        axis : int
+            Dimension over which to compute the 1-D integrals
+        extrapolate : bool, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs.
+
+        Returns
+        -------
+        ig : NdPPoly or array-like
+            Definite integral of the piecewise polynomial over [a, b].
+            If the polynomial was 1D, an array is returned,
+            otherwise, an NdPPoly object.
+        """
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+        else:
+            extrapolate = bool(extrapolate)
+
+        ndim = len(self.x)
+        axis = int(axis) % ndim
+
+        # reuse 1-D integration routines
+        c = self.c
+        swap = list(range(c.ndim))
+        swap.insert(0, swap[axis])
+        del swap[axis + 1]
+        swap.insert(1, swap[ndim + axis])
+        del swap[ndim + axis + 1]
+
+        c = c.transpose(swap)
+        p = PPoly.construct_fast(c.reshape(c.shape[0], c.shape[1], -1),
+                                 self.x[axis],
+                                 extrapolate=extrapolate)
+        out = p.integrate(a, b, extrapolate=extrapolate)
+
+        # Construct result
+        if ndim == 1:
+            return out.reshape(c.shape[2:])
+        else:
+            c = out.reshape(c.shape[2:])
+            x = self.x[:axis] + self.x[axis+1:]
+            return self.construct_fast(c, x, extrapolate=extrapolate)
+
+    def integrate(self, ranges, extrapolate=None):
+        """
+        Compute a definite integral over a piecewise polynomial.
+
+        Parameters
+        ----------
+        ranges : ndim-tuple of 2-tuples float
+            Sequence of lower and upper bounds for each dimension,
+            ``[(a[0], b[0]), ..., (a[ndim-1], b[ndim-1])]``
+        extrapolate : bool, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs.
+
+        Returns
+        -------
+        ig : array_like
+            Definite integral of the piecewise polynomial over
+            [a[0], b[0]] x ... x [a[ndim-1], b[ndim-1]]
+        """
+
+        ndim = len(self.x)
+
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+        else:
+            extrapolate = bool(extrapolate)
+
+        if not hasattr(ranges, '__len__') or len(ranges) != ndim:
+            raise ValueError("Range not a sequence of correct length")
+
+        self._ensure_c_contiguous()
+
+        # Reuse 1D integration routine
+        c = self.c
+        for n, (a, b) in enumerate(ranges):
+            swap = list(range(c.ndim))
+            swap.insert(1, swap[ndim - n])
+            del swap[ndim - n + 1]
+
+            c = c.transpose(swap)
+
+            p = PPoly.construct_fast(c, self.x[n], extrapolate=extrapolate)
+            out = p.integrate(a, b, extrapolate=extrapolate)
+            c = out.reshape(c.shape[2:])
+
+        return c
