@@ -412,6 +412,67 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
                                       boundary, fillvalue, not convolution)
 
 def correlation_lags(in1_len, in2_len, mode='full'):
+    """
+    Calculates the lag / displacement indices array for 1D cross-correlation.
+
+    Parameters
+    ----------
+    in1_len : int
+        First input size.
+    in2_len : int
+        Second input size.
+    mode : str {'full', 'valid', 'same'}, optional
+        A string indicating the size of the output.
+        See the documentation `correlate` for more information.
+
+    Returns
+    -------
+    lags : array
+        Returns an array containing cross-correlation lag/displacement indices.
+        Indices can be indexed with the np.argmax of the correlation to return
+        the lag/displacement.
+
+    See Also
+    --------
+    correlate : Compute the N-dimensional cross-correlation.
+
+    Notes
+    -----
+    Cross-correlation for continuous functions :math:`f` and :math:`g` is
+    defined as:
+
+    .. math::
+
+        \left ( f\star g \right )\left ( \tau \right )
+        \triangleq \int_{t_0}^{t_0 +T}
+        \overline{f\left ( t \right )}g\left ( t+\tau \right )dt
+
+    Where :math:`\tau` is defined as the displacement, also known as the lag.
+
+    Cross correlation for discrete functions :math:`f` and :math:`g` is
+    defined as:
+
+    .. math::
+        \left ( f\star g \right )\left [ n \right ]
+        \triangleq \sum_{-\infty}^{\infty}
+        \overline{f\left [ m \right ]}g\left [ m+n \right ]
+
+    Where :math:`n` is the lag.
+
+    Examples
+    --------
+    Cross-correlation of a signal with its time-delayed self.
+
+    >>> import cupy
+    >>> from scipy import signal
+    >>> rng = cupy.random.default_rng()
+    >>> x = rng.standard_normal(1000)
+    >>> y = cupy.concatenate([rng.standard_normal(100), x])
+    >>> correlation = signal.correlate(x, y, mode="full")
+    >>> lags = signal.correlation_lags(x.size, y.size, mode="full")
+    >>> lag = lags[cupy.argmax(correlation)]
+    """
+
     # calculate lag ranges in different modes of operation
     if mode == "full":
         # the output is the full discrete linear convolution

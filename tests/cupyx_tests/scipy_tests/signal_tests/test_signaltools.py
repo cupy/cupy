@@ -207,6 +207,30 @@ class TestConvolveCorrelate2D:
                                  accept_error=ValueError)
     def test_correlate2d(self, xp, scp, dtype):
         return self._filter('correlate2d', dtype, xp, scp)
+       
+    def test_correlation_lags(mode, behind, input_size):
+        # generate random data
+        rng = cupy.random.RandomState(0)
+        in1 = rng.standard_normal(input_size)
+        offset = int(input_size/10)
+        # generate offset version of array to correlate with
+        if behind:
+            # y is behind x
+            in2 = cupy.concatenate([rng.standard_normal(offset), in1])
+            expected = -offset
+        else:
+            # y is ahead of x
+            in2 = in1[offset:]
+            expected = offset
+        # cross correlate, returning lag information
+        correlation = correlate(in1, in2, mode=mode)
+        lags = correlation_lags(in1.size, in2.size, mode=mode)
+        # identify the peak
+        lag_index = cupy.argmax(correlation)
+        # Check as expected
+        assert_equal(lags[lag_index], expected)
+        # Correlation and lags shape should match
+        assert_equal(lags.shape, correlation.shape)
 
 
 @testing.with_requires('scipy')
