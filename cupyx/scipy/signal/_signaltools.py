@@ -7,7 +7,6 @@ from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 
-
 def convolve(in1, in2, mode='full', method='auto'):
     """Convolve two N-dimensional arrays.
 

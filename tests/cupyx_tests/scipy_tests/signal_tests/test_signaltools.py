@@ -208,6 +208,7 @@ class TestConvolveCorrelate2D:
     def test_correlate2d(self, xp, scp, dtype):
         return self._filter('correlate2d', dtype, xp, scp)
        
+    
     def test_correlation_lags(mode, behind, input_size):
         # generate random data
         rng = cupy.random.RandomState(0)
