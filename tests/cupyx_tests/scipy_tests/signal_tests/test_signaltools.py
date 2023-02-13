@@ -217,8 +217,10 @@ class TestConvolve2DEdgeCase:
     def test_convolve2d_1(self, xp, scp):
         # see cupy/cupy#5989
         from scipy import misc
-        with pytest.warns(DeprecationWarning):
-            ascent = misc.ascent()
+        if np.lib.NumpyVersion(scipy.__version__) >= '1.10.0':
+            ascent = scipy.datasets.ascent()
+        else:
+            ascent = scipy.misc.ascent()
         if xp is cupy:
             ascent = xp.asarray(ascent)
         scharr = xp.array(
