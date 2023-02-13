@@ -1089,7 +1089,7 @@ class TestEdiff1d:
         a = testing.shaped_arange((4, 1), xp, dtype)
         return xp.ediff1d(a, to_end=xp.array([1, 2], dtype=dtype))
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('bhilqefdFD')
     @testing.numpy_cupy_allclose()
     def test_ediff1d_ed1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
