@@ -24,7 +24,7 @@ def delete(arr, indices, axis=None):
             A copy of `arr` with values specified by `indices` deleted along
             `axis`.
 
-    .. warning: This function may synchronize the device.
+    .. warning:: This function may synchronize the device.
 
     .. seealso:: :func:`numpy.delete`.
     """
