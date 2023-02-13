@@ -463,7 +463,7 @@ def correlation_lags(in1_len, in2_len, mode='full'):
     Cross-correlation of a signal with its time-delayed self.
 
     >>> import cupy
-    >>> from scipy import signal
+    >>> from cupyx.scipy import signal
     >>> rng = cupy.random.default_rng()
     >>> x = rng.standard_normal(1000)
     >>> y = cupy.concatenate([rng.standard_normal(100), x])
