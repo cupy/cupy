@@ -213,6 +213,7 @@ class TestConvolveCorrelate2D:
 class TestConvolve2DEdgeCase:
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.10')
     def test_convolve2d_1(self, xp, scp):
         # see cupy/cupy#5989
         from scipy import misc
