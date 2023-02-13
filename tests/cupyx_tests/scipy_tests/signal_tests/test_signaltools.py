@@ -215,10 +215,11 @@ class TestConvolve2DEdgeCase:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_convolve2d_1(self, xp, scp):
         # see cupy/cupy#5989
-        from scipy import misc
-        ascent = misc.ascent()
-        if xp is cupy:
-            ascent = xp.asarray(ascent)
+        if np.lib.NumpyVersion(scipy.__version__) >= '1.10.0':
+            ascent = scipy.datasets.ascent()
+        else:
+            ascent = scipy.misc.ascent()
+        ascent = xp.asarray(ascent)
         scharr = xp.array(
             [[-3-3j, 0-10j, +3-3j],
              [-10+0j, 0+0j, +10+0j],
