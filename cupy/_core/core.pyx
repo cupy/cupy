@@ -728,10 +728,6 @@ cdef class _ndarray_base:
             if value.shape != ():
                 raise ValueError(
                     'non-scalar cupy.ndarray cannot be used for fill')
-            if not cupy.can_cast(value, self.dtype):
-                raise TypeError(
-                    f'Cannot cast scalar from dtype(\'{value.dtype}\') to '
-                    f'dtype(\'{self.dtype}\') according to the rule \'safe\'')
             value = value.astype(self.dtype, copy=False)
             fill_kernel(value, self)
             return
@@ -740,11 +736,7 @@ cdef class _ndarray_base:
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
-            if not numpy.can_cast(value, self.dtype):
-                raise TypeError(
-                    f'Cannot cast scalar from dtype(\'{value.dtype}\') to '
-                    f'dtype(\'{self.dtype}\') according to the rule \'safe\'')
-            value = value.item()
+            value = value.astype(self.dtype, copy=False).item()
 
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes)

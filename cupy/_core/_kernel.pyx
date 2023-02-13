@@ -639,7 +639,7 @@ cdef bint _can_cast(d1, d2, casting):
     return _numpy_can_cast(d1, d2, casting=casting)
 
 
-cdef void _complex_warning(dtype_from, dtype_to):
+cdef void _complex_warning(dtype_from, dtype_to) except *:
     if dtype_from.kind == 'c' and dtype_to.kind not in 'bc':
         warnings.warn(
             'Casting complex values to real discards the imaginary part',
