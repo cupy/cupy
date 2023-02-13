@@ -73,9 +73,10 @@ class TestRanges(unittest.TestCase):
     def test_arange8(self, xp, dtype):
         return xp.arange(10, 8, -1).astype(dtype)
 
+    @testing.with_requires('numpy>=1.24')
     def test_arange9(self):
         for xp in (numpy, cupy):
-            with pytest.raises(ValueError):
+            with pytest.raises(TypeError):
                 xp.arange(10, dtype=xp.bool_)
 
     @testing.numpy_cupy_array_equal()
