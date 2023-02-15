@@ -19,7 +19,7 @@ from cupy.cuda cimport texture
 from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
-from cupy._core._dtype cimport get_dtype
+from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core cimport core
@@ -632,20 +632,6 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 cdef _numpy_can_cast = numpy.can_cast
 
 
-cdef bint _can_cast(d1, d2, casting):
-    # most ufunc passes `same_kind`
-    if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
-        return True
-    return _numpy_can_cast(d1, d2, casting=casting)
-
-
-cdef void _complex_warning(dtype_from, dtype_to) except *:
-    if dtype_from.kind == 'c' and dtype_to.kind not in 'bc':
-        warnings.warn(
-            'Casting complex values to real discards the imaginary part',
-            numpy.ComplexWarning)
-
-
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
     obj
@@ -668,15 +654,8 @@ cdef list _get_out_args_from_optionals(
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
         out_type = get_dtype(out_types[i])
-        if not _can_cast(out_type, arr.dtype, casting):
-            msg = 'output (typecode \'{}\') could not be coerced to ' \
-                  'provided output parameter (typecode \'{}\') according to ' \
-                  'the casting rule "{}"'.format(
-                      out_type.char,
-                      arr.dtype.char,
-                      casting)
-            raise TypeError(msg)
-        _complex_warning(out_type, arr.dtype)
+
+        _raise_if_invalid_cast(out_type, arr.dtype, casting, "output operand")
     return out_args
 
 

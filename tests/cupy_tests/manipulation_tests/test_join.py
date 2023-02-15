@@ -230,6 +230,7 @@ class TestJoin:
                 xp.concatenate((a, b), out=out, dtype=xp.int64)
 
     @testing.with_requires('numpy>=1.20.0')
+    @pytest.mark.filterwarnings('error::numpy.ComplexWarning')
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',
@@ -238,12 +239,13 @@ class TestJoin:
         'unsafe',
     ])
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    @testing.numpy_cupy_array_equal(
+        accept_error=(TypeError, numpy.ComplexWarning))
     def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
-        # may raise TypeError
-        return xp.concatenate((a, b), dtype=dtype2)
+        # may raise TypeError or ComplexWarning
+        return xp.concatenate((a, b), dtype=dtype2, casting=casting)
 
     @testing.numpy_cupy_array_equal()
     def test_dstack(self, xp):
