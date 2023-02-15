@@ -3,6 +3,7 @@ import warnings
 
 import numpy
 
+from cupy_backends.cuda.api import runtime
 import cupy
 from cupy._core import core
 from cupyx.jit import _compile
