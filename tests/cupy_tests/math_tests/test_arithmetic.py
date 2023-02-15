@@ -392,6 +392,18 @@ class UfuncTestBase:
 class TestUfunc(UfuncTestBase):
 
     @pytest.mark.parametrize('casting', [
+        'no',
+        'equiv',
+        'safe',
+        'same_kind',
+        'unsafe',
+    ])
+    @testing.for_all_dtypes_combination(
+        names=['in_type', 'out_type'])
+    def test_casting_out_only(self, in_type, out_type, casting):
+        self.check_casting_out(in_type, in_type, out_type, casting)
+
+    @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.skip('flaky xfail')),
         pytest.param('equiv', marks=pytest.mark.skip('flaky xfail')),
         'safe',
@@ -400,7 +412,7 @@ class TestUfunc(UfuncTestBase):
     ])
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'out_type'], full=False)
-    def test_casting_out(self, in0_type, in1_type, out_type, casting):
+    def test_casting_in_out(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.xfail()
@@ -411,7 +423,7 @@ class TestUfunc(UfuncTestBase):
     @pytest.mark.parametrize(('in0_type', 'in1_type', 'out_type'), [
         (numpy.int16, numpy.int32, numpy.int32),
     ])
-    def test_casting_out_xfail1(self, in0_type, in1_type, out_type, casting):
+    def test_casting_in_xfail1(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.skip('flaky xfail')
@@ -452,14 +464,6 @@ class TestUfunc(UfuncTestBase):
     def test_casting_dtype_xfail2(self, in0_type, in1_type, dtype, casting):
         self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
-    @pytest.mark.xfail()
-    @pytest.mark.parametrize(('in0_type', 'in1_type', 'dtype'), [
-        (numpy.complex64, numpy.complex64, numpy.float32),
-    ])
-    def test_casting_dtype_xfail3(self, in0_type, in1_type, dtype):
-        casting = 'unsafe'
-        self.check_casting_dtype(in0_type, in1_type, dtype, casting)
-
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'], full=False)
     def test_casting_dtype_unsafe_ignore_warnings(
@@ -471,7 +475,6 @@ class TestUfunc(UfuncTestBase):
 
 @testing.slow
 class TestUfuncSlow(UfuncTestBase):
-
     @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.xfail()),
         pytest.param('equiv', marks=pytest.mark.xfail()),
