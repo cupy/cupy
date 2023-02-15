@@ -363,7 +363,6 @@ class TraceImpl:
                 out_pvar = self.vc.generate_new_array(
                     out_dtypes[i], out_rshape, out_ashape)
                 out_params.append(out_pvar)
-                ret.append(out_pvar)
             elif isinstance(out_params, _TraceScalar):
                 raise TypeError('return arrays must be of ArrayType')
             elif out_params[i].rshape != out_rshape:
