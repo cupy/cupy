@@ -90,9 +90,9 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
 cdef _numpy_can_cast = numpy.can_cast
 
 
-cpdef _raise_if_invalid_cast(
+cpdef void _raise_if_invalid_cast(
     from_dt, to_dt, str casting, argname="array data"
-):
+) except *:
     """Raise an error if a cast is not valid.  Also checks whether the cast
     goes from complex to real and warns if it does.
 
