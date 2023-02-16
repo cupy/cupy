@@ -471,11 +471,13 @@ class TestValueIndices:
         else:
             return testing.shaped_random(shape, xp, dtype=dtype, scale=scale)
 
-    def _compare_scipy_cupy(self, image, ignore_value):
+    def _compare_scipy_cupy(self, image, ignore_value,
+                            adaptive_index_dtype=False):
         # run on CPU and GPU
         func_gpu = cupyx.scipy.ndimage.value_indices
         func_cpu = scipy.ndimage.value_indices
-        val_idx = func_gpu(image, ignore_value=ignore_value)
+        val_idx = func_gpu(image, ignore_value=ignore_value,
+                           adaptive_index_dtype=adaptive_index_dtype)
         # Note: Currently SciPy with 'q' (numpy.longlong) or
         #       'Q' (numpy.ulonglong) does not raise an error, but instead
         #       just silently returns an empty dictionary. That seems like a
@@ -494,14 +496,24 @@ class TestValueIndices:
         for key, coords in val_idx.items():
             expected_coords = expected_idx[key]
             for c, expected_c in zip(coords, expected_coords):
+                if adaptive_index_dtype:
+                    # all array sizes used in the tests allow 8 or 16-bit
+                    # coordinates
+                    assert c.itemsize < expected_c.itemsize
+
+                    # cast to SciPy type before comparison
+                    c = c.astype(expected_c.dtype)
+
                 cupy.testing.assert_array_equal(c, expected_c)
 
     @pytest.mark.parametrize('ignore_value', [None, 0, 5])
     @pytest.mark.parametrize('num_values', [4, 32])
+    @pytest.mark.parametrize('adaptive_index_dtype', [False, True])
     @testing.for_int_dtypes(no_bool=True)
-    def test_value_indices(self, dtype, ignore_value, num_values):
+    def test_value_indices(self, dtype, ignore_value, num_values,
+                           adaptive_index_dtype):
         image = self._make_image(self.shape, cupy, dtype, scale=num_values)
-        self._compare_scipy_cupy(image, ignore_value)
+        self._compare_scipy_cupy(image, ignore_value, adaptive_index_dtype)
 
     @pytest.mark.parametrize('ignore_value', [None, 0, 5])
     @testing.for_int_dtypes(no_bool=True)
@@ -511,7 +523,7 @@ class TestValueIndices:
         # Make introduce gaps in the labels present in the image
         image[cupy.logical_and(image > 2, image < 7)] = 0
 
-        self._compare_scipy_cupy(image, ignore_value)
+        self._compare_scipy_cupy(image, ignore_value, False)
 
     @testing.for_dtypes('?efdFD')
     def test_value_indices_unsupported_dtypes(self, dtype):

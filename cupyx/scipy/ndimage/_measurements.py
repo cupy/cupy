@@ -1239,7 +1239,7 @@ def histogram(input, min, max, bins, labels=None, index=None):
     )
 
 
-def value_indices(arr, *, ignore_value=None):
+def value_indices(arr, *, ignore_value=None, adaptive_index_dtype=False):
     """
     Find indices of each distinct value in given array.
 
@@ -1251,6 +1251,12 @@ def value_indices(arr, *, ignore_value=None):
         This value will be ignored in searching the `arr` array. If not
         given, all values found will be included in output. Default
         is None.
+    adaptive_index_dtype : bool, optional
+        If ``True``, instead of returning the default CuPy signed integer
+        dtype, the smallest signed integer dtype capable of representing the
+        image coordinate range will be used. This can substantially reduce
+        memory usage and slightly reduce runtime. Note that this optional
+        parameter is not available in the SciPy API.
 
     Returns
     -------
@@ -1261,7 +1267,8 @@ def value_indices(arr, *, ignore_value=None):
         array.
 
         This dictionary can occupy significant memory, often several times
-        the size of the input array.
+        the size of the input array. To help reduce memory overhead, the
+        argument `adaptive_index_dtype` can be set to ``True``.
 
     Notes
     -----
@@ -1343,10 +1350,21 @@ def value_indices(arr, *, ignore_value=None):
     """
     if arr.dtype.kind not in 'iu':
         raise ValueError('Parameter \'arr\' must be an integer array')
+    if adaptive_index_dtype:
+        # determined the minimum signed integer type needed to store the
+        # index rangle
+        raveled_int_type = cupy.min_scalar_type(-(int(arr.size) + 1))
+        coord_int_type = cupy.min_scalar_type(-(max(arr.shape) + 1))
     arr1d = arr.reshape(-1)
     counts = cupy.bincount(arr1d)
+
     isort = cupy.argsort(arr1d, axis=None)
+    if adaptive_index_dtype:
+        isort = isort.astype(raveled_int_type, copy=False)
+
     coords = cupy.unravel_index(isort, arr.shape)
+    if adaptive_index_dtype:
+        coords = tuple(c.astype(coord_int_type, copy=False) for c in coords)
 
     offset = 0
     out = {}
