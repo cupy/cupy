@@ -255,6 +255,7 @@ class TestArrayFill:
         a.fill(1)
         return a
 
+    @testing.with_requires('numpy<1.24.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_fill_with_numpy_scalar_ndarray(self, xp, dtype1, dtype2):
@@ -262,6 +263,7 @@ class TestArrayFill:
         a.fill(numpy.ones((), dtype=dtype2))
         return a
 
+    @testing.with_requires('numpy<1.24.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_fill_with_cupy_scalar_ndarray(self, xp, dtype1, dtype2):
