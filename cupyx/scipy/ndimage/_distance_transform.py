@@ -6,7 +6,7 @@ from ._pba_3d import _pba_3d
 
 def distance_transform_edt(image, sampling=None, return_distances=True,
                            return_indices=False, distances=None, indices=None,
-                           *, block_params=None, float64_distances=False):
+                           *, block_params=None, float64_distances=True):
     r"""Exact Euclidean distance transform.
 
     This function calculates the distance transform of the `input`, by
