@@ -84,6 +84,7 @@ Measurements
    minimum_position
    standard_deviation
    sum_labels
+   value_indices
    variance
 
 
