@@ -28,9 +28,13 @@ cdef function.Function _create_cub_reduction_function(
         _kernel._TypeMap type_map, preamble, options):
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
-
-    # static_assert needs at least C++11 in NVRTC
-    options += ('--std=c++11',)
+    
+    # ROCm5.3 and above requires c++14
+    if runtime._is_hip_environment:
+        options += ('--std=c++14',)
+    else:
+        # static_assert needs at least C++11 in NVRTC
+        options += ('--std=c++11',)
 
     cdef str backend
     if runtime._is_hip_environment:
