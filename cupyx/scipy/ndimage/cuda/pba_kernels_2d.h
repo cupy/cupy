@@ -2,21 +2,18 @@
 // 
 // Kernels for the 2D version of the Parallel Banding Algorithm (PBA+). 
 // 
-// MIT license: see 3rdparty/LICENSE.pba+
+// MIT license: see LICENSE in this folder
 // Copyright: (c) 2019 School of Computing, National University of Singapore
 //
 // Modifications by Gregory Lee (2022) (NVIDIA)
 // - add user-defined pixel_int2_t to enable
 // - replace __mul24 operations with standard multiplication operator
-// - Add variant kernels with support for non-isotropic pixel dimensions (
-//   kernelProximatePointsWithSpacing, kernelMergeBandsWithSpacing
-//   and kernelColorWithSpacing. These kernels differ from the originals in that
-//   they also take sx and sy values indicating the pixel size along the
-//   x and y axes. The kernels are identical except that the `dominate` function
-//   is replaced by `dominate_sp` and the physical spacings are used when
-//   computing distances.
+// - Add variant kernels with support for non-isotropic pixel dimensions. These
+//   kernels differ from the originals in that they also take sx and sy values
+//   indicating the pixel size along the x and y axes. The kernels are identical
+//   except that the `dominate` function is replaced by `dominate_sp` and the
+//   physical spacings are used when computing distances.
 //
-
 
 
 // START OF DEFINITIONS OVERRIDDEN BY THE PYTHON SCRIPT
