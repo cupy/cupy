@@ -116,6 +116,8 @@ def minkowski(u, v, p):
     Returns:
         minkowski (double): The Minkowski distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -139,6 +141,8 @@ def canberra(u, v):
     Returns:
         canberra (double): The Canberra distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -162,6 +166,8 @@ def chebyshev(u, v):
     Returns:
         chebyshev (double): The Chebyshev distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -186,6 +192,8 @@ def cityblock(u, v):
         cityblock (double): The City Block distance between
         vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -214,6 +222,8 @@ def correlation(u, v):
         correlation (double): The correlation distance between
         vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -239,6 +249,8 @@ def cosine(u, v):
     Returns:
         cosine (double): The Cosine distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -266,6 +278,8 @@ def hamming(u, v):
     Returns:
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -289,6 +303,8 @@ def euclidean(u, v):
     Returns:
         euclidean (double): The Euclidean distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -316,6 +332,8 @@ def jensenshannon(u, v):
         jensenshannon (double): The Jensen-Shannon distance between
         vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -343,6 +361,8 @@ def russellrao(u, v):
     Returns:
         hamming (double): The Hamming distance between vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -367,6 +387,8 @@ def sqeuclidean(u, v):
         sqeuclidean (double): The squared Euclidean distance between
         vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed.')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -392,6 +414,8 @@ def hellinger(u, v):
         hellinger (double): The Hellinger distance between
         vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -416,6 +440,8 @@ def kl_divergence(u, v):
         kl_divergence (double): The Kullback-Leibler divergence between
         vectors `u` and `v`.
     """
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     u = cupy.asarray(u)
     v = cupy.asarray(v)
     output_arr = cupy.zeros((1,), dtype=u.dtype)
@@ -453,7 +479,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             ``dist(u=XA[i], v=XB[j])`` is computed and stored in the
             :math:`ij` th entry.
     """
-
+    if not pylibraft_available:
+        raise RuntimeError('pylibraft is not installed')
     XA = cupy.asarray(XA, dtype='float32')
     XB = cupy.asarray(XB, dtype='float32')
 
@@ -528,6 +555,7 @@ def pdist(X, metric='euclidean', *, out=None, **kwargs):
 
 def distance_matrix(x, y, p=2.0):
     """Compute the distance matrix.
+
     Returns the matrix of all pair-wise distances.
 
     Args:
@@ -539,7 +567,6 @@ def distance_matrix(x, y, p=2.0):
         result (cupy.ndarray): Matrix containing the distance from every
             vector in `x` to every vector in `y`, (size M, N).
     """
-
     x = cupy.asarray(x)
     m, k = x.shape
     y = cupy.asarray(y)
