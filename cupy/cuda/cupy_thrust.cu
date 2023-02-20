@@ -355,7 +355,6 @@ struct _sort {
                       #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
-		      #ifndef __HIP_PLATFORM_HCC__
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
