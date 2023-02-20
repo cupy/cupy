@@ -1,5 +1,6 @@
 cimport cython  # NOQA
 import numpy
+import warnings
 
 from cupy_backends.cuda.api cimport runtime
 
@@ -47,8 +48,6 @@ _init_dtype_dict()
 
 @cython.profile(False)
 cpdef get_dtype(t):
-    if type(t) is _dtype:  # Exact type check
-        return t
     ret = _dtype_dict.get(t, None)
     if ret is None:
         return _dtype(t)
@@ -57,8 +56,6 @@ cpdef get_dtype(t):
 
 @cython.profile(False)
 cpdef tuple get_dtype_with_itemsize(t):
-    if type(t) is _dtype:  # Exact type check
-        return t, t.itemsize
     ret = _dtype_dict.get(t, None)
     if ret is None:
         t = _dtype(t)
@@ -88,3 +85,42 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
         return runtime.CUDA_C_16F
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
+
+
+cdef _numpy_can_cast = numpy.can_cast
+
+
+cpdef void _raise_if_invalid_cast(
+    from_dt, to_dt, str casting, argname="array data"
+) except *:
+    """Raise an error if a cast is not valid.  Also checks whether the cast
+    goes from complex to real and warns if it does.
+
+    The error raised can be customized by giving `obj`.  May pass a (lambda)
+    function to avoid string construction on success.
+    This function exists mainly to build a similar error everywhere.
+
+    """
+    if from_dt is to_dt:
+        return
+
+    to_dt = get_dtype(to_dt)  # may still be a type not a dtype instance
+
+    if casting == "same_kind" and from_dt.kind == to_dt.kind:
+        # same-kind is the most common casting used and for NumPy dtypes.
+        return
+    if _numpy_can_cast(from_dt, to_dt, casting):
+        if casting == "unsafe" and from_dt.kind == "c" and to_dt.kind in "iuf":
+            # Complex warning, we are dropping the imagine part:
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
+
+        return
+
+    # Casting is not possible, raise the error
+    if not isinstance(argname, str):
+        argname = argname()
+    raise TypeError(
+        f'Cannot cast {argname} from {from_dt!r} to {to_dt!r} '
+        f'according to the rule \'{casting}\'')

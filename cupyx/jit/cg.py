@@ -4,6 +4,7 @@ from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc as _BuiltinFunc
 from cupyx.jit._internal_types import Constant as _Constant
 from cupyx.jit._internal_types import Data as _Data
+from cupyx.jit._internal_types import wraps_class_method as _wraps_class_method
 
 
 # public interface of this module
@@ -38,9 +39,9 @@ class _ThreadGroup(_cuda_types.TypeBase):
     def __str__(self):
         return f'{self.child_type}'
 
-    def sync(self, env):
+    def _sync(self, env, instance):
         _check_include(env, 'cg')
-        return _Data('sync()', _cuda_types.void)
+        return _Data(f'{instance.code}.sync()', _cuda_types.void)
 
 
 class _GridGroup(_ThreadGroup):
@@ -55,16 +56,18 @@ class _GridGroup(_ThreadGroup):
     def __init__(self):
         self.child_type = 'cg::grid_group'
 
-    def is_valid(self, env):
+    @_wraps_class_method
+    def is_valid(self, env, instance):
         """
         is_valid()
 
         Returns whether the grid_group can synchronize.
         """
         _check_include(env, 'cg')
-        return _Data('is_valid()', _cuda_types.bool_)
+        return _Data(f'{instance.code}.is_valid()', _cuda_types.bool_)
 
-    def sync(self, env):
+    @_wraps_class_method
+    def sync(self, env, instance):
         """
         sync()
 
@@ -75,18 +78,20 @@ class _GridGroup(_ThreadGroup):
         # when this methond is called, we need to use the cooperative
         # launch API
         env.generated.enable_cg = True
-        return super().sync(env)
+        return super()._sync(env, instance)
 
-    def thread_rank(self, env):
+    @_wraps_class_method
+    def thread_rank(self, env, instance):
         """
         thread_rank()
 
         Rank of the calling thread within ``[0, num_threads)``.
         """
         _check_include(env, 'cg')
-        return _Data('thread_rank()', _cuda_types.uint64)
+        return _Data(f'{instance.code}.thread_rank()', _cuda_types.uint64)
 
-    def block_rank(self, env):
+    @_wraps_class_method
+    def block_rank(self, env, instance):
         """
         block_rank()
 
@@ -95,9 +100,10 @@ class _GridGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("block_rank() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('block_rank()', _cuda_types.uint64)
+        return _Data(f'{instance.code}.block_rank()', _cuda_types.uint64)
 
-    def num_threads(self, env):
+    @_wraps_class_method
+    def num_threads(self, env, instance):
         """
         num_threads()
 
@@ -106,9 +112,10 @@ class _GridGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('num_threads()', _cuda_types.uint64)
+        return _Data(f'{instance.code}.num_threads()', _cuda_types.uint64)
 
-    def num_blocks(self, env):
+    @_wraps_class_method
+    def num_blocks(self, env, instance):
         """
         num_blocks()
 
@@ -117,9 +124,10 @@ class _GridGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("num_blocks() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('num_blocks()', _cuda_types.uint64)
+        return _Data(f'{instance.code}.num_blocks()', _cuda_types.uint64)
 
-    def dim_blocks(self, env):
+    @_wraps_class_method
+    def dim_blocks(self, env, instance):
         """
         dim_blocks()
 
@@ -128,9 +136,10 @@ class _GridGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("dim_blocks() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('dim_blocks()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.dim_blocks()', _cuda_types.dim3)
 
-    def block_index(self, env):
+    @_wraps_class_method
+    def block_index(self, env, instance):
         """
         block_index()
 
@@ -139,9 +148,10 @@ class _GridGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("block_index() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('block_index()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.block_index()', _cuda_types.dim3)
 
-    def size(self, env):
+    @_wraps_class_method
+    def size(self, env, instance):
         """
         size()
 
@@ -149,9 +159,10 @@ class _GridGroup(_ThreadGroup):
         """
         # despite it is an alias of num_threads, we need it for earlier 11.x
         _check_include(env, 'cg')
-        return _Data('size()', _cuda_types.uint64)
+        return _Data(f'{instance.code}.size()', _cuda_types.uint64)
 
-    def group_dim(self, env):
+    @_wraps_class_method
+    def group_dim(self, env, instance):
         """
         group_dim()
 
@@ -159,7 +170,7 @@ class _GridGroup(_ThreadGroup):
         """
         # despite it is an alias of dim_blocks, we need it for earlier 11.x
         _check_include(env, 'cg')
-        return _Data('group_dim()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.group_dim()', _cuda_types.dim3)
 
 
 class _ThreadBlockGroup(_ThreadGroup):
@@ -175,42 +186,47 @@ class _ThreadBlockGroup(_ThreadGroup):
     def __init__(self):
         self.child_type = 'cg::thread_block'
 
-    def sync(self, env):
+    @_wraps_class_method
+    def sync(self, env, instance):
         """
         sync()
 
         Synchronize the threads named in the group.
         """
-        return super().sync(env)
+        return super()._sync(env, instance)
 
-    def thread_rank(self, env):
+    @_wraps_class_method
+    def thread_rank(self, env, instance):
         """
         thread_rank()
 
         Rank of the calling thread within ``[0, num_threads)``.
         """
         _check_include(env, 'cg')
-        return _Data('thread_rank()', _cuda_types.uint32)
+        return _Data(f'{instance.code}.thread_rank()', _cuda_types.uint32)
 
-    def group_index(self, env):
+    @_wraps_class_method
+    def group_index(self, env, instance):
         """
         group_index()
 
         3-Dimensional index of the block within the launched grid.
         """
         _check_include(env, 'cg')
-        return _Data('group_index()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.group_index()', _cuda_types.dim3)
 
-    def thread_index(self, env):
+    @_wraps_class_method
+    def thread_index(self, env, instance):
         """
         thread_index()
 
         3-Dimensional index of the thread within the launched block.
         """
         _check_include(env, 'cg')
-        return _Data('thread_index()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.thread_index()', _cuda_types.dim3)
 
-    def dim_threads(self, env):
+    @_wraps_class_method
+    def dim_threads(self, env, instance):
         """
         dim_threads()
 
@@ -219,9 +235,10 @@ class _ThreadBlockGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('dim_threads()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.dim_threads()', _cuda_types.dim3)
 
-    def num_threads(self, env):
+    @_wraps_class_method
+    def num_threads(self, env, instance):
         """
         num_threads()
 
@@ -230,9 +247,10 @@ class _ThreadBlockGroup(_ThreadGroup):
         if _runtime.runtimeGetVersion() < 11060:
             raise RuntimeError("num_threads() is supported on CUDA 11.6+")
         _check_include(env, 'cg')
-        return _Data('num_threads()', _cuda_types.uint32)
+        return _Data(f'{instance.code}.num_threads()', _cuda_types.uint32)
 
-    def size(self, env):
+    @_wraps_class_method
+    def size(self, env, instance):
         """
         size()
 
@@ -240,9 +258,10 @@ class _ThreadBlockGroup(_ThreadGroup):
         """
         # despite it is an alias of num_threads, we need it for earlier 11.x
         _check_include(env, 'cg')
-        return _Data('size()', _cuda_types.uint32)
+        return _Data(f'{instance.code}.size()', _cuda_types.uint32)
 
-    def group_dim(self, env):
+    @_wraps_class_method
+    def group_dim(self, env, instance):
         """
         group_dim()
 
@@ -250,7 +269,7 @@ class _ThreadBlockGroup(_ThreadGroup):
         """
         # despite it is an alias of dim_threads, we need it for earlier 11.x
         _check_include(env, 'cg')
-        return _Data('group_dim()', _cuda_types.dim3)
+        return _Data(f'{instance.code}.group_dim()', _cuda_types.dim3)
 
 
 class _ThisCgGroup(_BuiltinFunc):

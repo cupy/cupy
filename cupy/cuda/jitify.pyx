@@ -52,11 +52,16 @@ cdef inline void init_cupy_headers():
 init_cupy_headers()
 
 
+cpdef _add_sources(dict sources):
+    for hdr_name, hdr_source in sources.items():
+        cupy_headers[hdr_name] = hdr_source
+
+
 # Use Jitify's internal mechanism to search all included headers, and return
 # the modified options and the header mapping (as two lists). This roughly
 # follows the constructor of jitify::Program(). The found headers are cached
 # to accelerate Jitify's search loop.
-cpdef jitify(str code, tuple opt, dict cached_sources=None):
+cpdef jitify(str code, tuple opt):
 
     # input
     cdef cpp_str cuda_source
@@ -64,7 +69,7 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
 
     # output
     cdef vector[cpp_str] include_paths
-    cdef cpp_map[cpp_str, cpp_str]* _sources = &cupy_headers
+    cdef cpp_map[cpp_str, cpp_str] _sources = cupy_headers  # copy
     cdef vector[cpp_str] _options  # the input gets modified
     cdef cpp_str _name
     cdef list new_opt = None
@@ -80,17 +85,10 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
     cuda_source = code.encode()
     _options = [s.encode() for s in opt]
 
-    # Populate the cpp map
-    if cached_sources is not None:
-        for k, v in cached_sources.items():
-            hdr_name = k
-            hdr_source = v
-            cupy_headers[hdr_name] = hdr_source
-
     with nogil:
         # Where the real magic happens: a compile-fail-search loop
         load_program(cuda_source, headers, nullptr, &include_paths,
-                     _sources, &_options, &_name)
+                     &_sources, &_options, &_name)
 
         # Remove input code from header cache
         _sources.erase(_name)
@@ -102,10 +100,11 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
                 '--pre-include=jitify_preinclude.h']
 
     # Collect header names and contents (as bytes)
-    for itr in deref(_sources):  # itr is an iterator of std::map
+    for itr in _sources:  # itr is an iterator of std::map
         k = itr.first
         v = itr.second
         hdr_codes.append(v)
         hdr_names.append(k)
+        cupy_headers[k] = v
 
     return _name.decode(), tuple(new_opt), hdr_codes, hdr_names

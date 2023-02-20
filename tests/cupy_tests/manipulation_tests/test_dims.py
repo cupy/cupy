@@ -55,6 +55,13 @@ class TestDims(unittest.TestCase):
         b = xp.broadcast_to(a, (2, 3, 3, 4))
         return b
 
+    @testing.numpy_cupy_array_equal()
+    def test_broadcast_to_int(self, xp):
+        # Broadcast 0-dim array to 1-dim.
+        a = xp.array(10, dtype=xp.float32)
+        b = xp.broadcast_to(a, 10)
+        return b
+
     @testing.for_all_dtypes()
     def test_broadcast_to_fail(self, dtype):
         for xp in (numpy, cupy):

@@ -7,16 +7,18 @@ import re
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 import warnings
+import types
 
 import numpy
 
+from cupy_backends.cuda.api import runtime
 from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
+from cupy._core._dtype import _raise_if_invalid_cast
 from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
-from cupyx.jit.cg import _ThreadGroup
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
@@ -36,7 +38,13 @@ else:
 
 Result = collections.namedtuple(
     'Result',
-    ['func_name', 'code', 'return_type', 'enable_cooperative_groups'])
+    [
+        'func_name',
+        'code',
+        'return_type',
+        'enable_cooperative_groups',
+        'backend'
+    ])
 
 
 class _JitCompileError(Exception):
@@ -160,6 +168,10 @@ class Generated:
         # whether to include cuda/barrier
         self.include_cuda_barrier = False
 
+        # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
+        # recognize "-D", so we have to compile using hipcc...
+        self.backend = 'nvcc' if runtime.is_hip else 'nvrtc'
+
     def add_code(self, code: str) -> None:
         if code not in self.codes:
             self.codes.append(code)
@@ -183,10 +195,15 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func, attributes, mode, in_types, ret_type, generated)
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
+    backend = generated.backend
     enable_cg = generated.enable_cg
+
+    if _is_debug_mode:
+        print(code)
+
     return Result(
         func_name=func_name, code=code, return_type=return_type,
-        enable_cooperative_groups=enable_cg)
+        enable_cooperative_groups=enable_cg, backend=backend)
 
 
 def _transpile_func_obj(func, attributes, mode, in_types, ret_type, generated):
@@ -369,6 +386,32 @@ def _eval_operand(
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
+    if isinstance(op, ast.Add):
+        x, y = args
+        x = Data.init(x, env)
+        y = Data.init(y, env)
+        if hasattr(x.ctype, '_add'):
+            out = x.ctype._add(env, x, y)
+            if out is not NotImplemented:
+                return out
+        if hasattr(y.ctype, '_radd'):
+            out = y.ctype._radd(env, x, y)
+            if out is not NotImplemented:
+                return out
+
+    if isinstance(op, ast.Sub):
+        x, y = args
+        x = Data.init(x, env)
+        y = Data.init(y, env)
+        if hasattr(x.ctype, '_sub'):
+            out = x.ctype._sub(env, x, y)
+            if out is not NotImplemented:
+                return out
+        if hasattr(y.ctype, '_rsub'):
+            out = y.ctype._rsub(env, x, y)
+            if out is not NotImplemented:
+                return out
+
     ufunc = _cuda_typerules.get_ufunc(env.mode, type(op))
     return _call_ufunc(ufunc, args, None, env)
 
@@ -418,12 +461,13 @@ def _call_ufunc(
             if f'in{i}_type' in op.routine:
                 can_use_inline_expansion = False
 
+        env.generated.add_code(ufunc._preamble)
+
         if can_use_inline_expansion:
             # Code pass for readable generated code
             for i, x in enumerate(in_params):
                 expr = expr.replace(f'in{i}', x.code)
             expr = '(' + expr.replace('out0_type', str(out_type)) + ')'
-            env.generated.add_code(ufunc._preamble)
         else:
             template_typenames = ', '.join([
                 f'typename in{i}_type' for i in range(ufunc.nin)])
@@ -431,6 +475,7 @@ def _call_ufunc(
             params = ', '.join([f'in{i}_type in{i}' for i in range(ufunc.nin)])
             ufunc_code = f"""template <{template_typenames}>
 __device__ {out_type} {ufunc_name}({params}) {{
+    typedef {out_type} out0_type;
     return {expr};
 }}
 """
@@ -516,11 +561,9 @@ def _transpile_stmt(
         assert isinstance(result, Data)
         assert isinstance(target.ctype, _cuda_types.Scalar)
         assert isinstance(result.ctype, _cuda_types.Scalar)
-        if not numpy.can_cast(
-                result.ctype.dtype, target.ctype.dtype, 'same_kind'):
-            raise TypeError(
-                f'dtype mismatch: {result.ctype.dtype}'
-                f' and {target.ctype.dtype}')
+        _raise_if_invalid_cast(
+            result.ctype.dtype, target.ctype.dtype, 'same_kind')
+
         return ['{ ' + target.ctype.declvar('&' + tmp.code, target) + '; ' +
                 target.ctype.assign(tmp, result) + '; }']
 
@@ -693,6 +736,9 @@ def _transpile_expr_internal(
 
         func = func.obj
 
+        if isinstance(func, _interface._cuda_types.TypeBase):
+            return func._instantiate(env, *args, **kwargs)
+
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
                 raise TypeError(
@@ -753,42 +799,32 @@ def _transpile_expr_internal(
         return value
     if isinstance(expr, ast.Attribute):
         value = _transpile_expr(expr.value, env)
-        if is_constants(value):
+        if isinstance(value, Constant):
             return Constant(getattr(value.obj, expr.attr))
-        if isinstance(value.ctype, _cuda_types.ArrayBase):
-            if 'ndim' == expr.attr:
-                return Constant(value.ctype.ndim)
-        if isinstance(value.ctype, _cuda_types.CArray):
-            if 'size' == expr.attr:
-                return Data(f'static_cast<long long>({value.code}.size())',
-                            _cuda_types.Scalar('q'))
-            if expr.attr in ('shape', 'strides'):
-                # this guard is needed to avoid NVRTC from throwing an
-                # obsecure error
-                if value.ctype.ndim > 10:
-                    raise NotImplementedError(
-                        'getting shape/strides for an array with ndim > 10 '
-                        'is not supported yet')
-                types = [_cuda_types.PtrDiff()]*value.ctype.ndim
-                return Data(f'{value.code}.get_{expr.attr}()',
-                            _cuda_types.Tuple(types))
-        if isinstance(value.ctype, _cuda_types.Dim3):
-            if expr.attr in ('x', 'y', 'z'):
-                return getattr(value.ctype, expr.attr)(value.code)
-        # TODO(leofang): support arbitrary Python class methods
-        if isinstance(value.ctype, _ThreadGroup):
-            return _internal_types.BuiltinFunc.from_class_method(
-                value.code, getattr(value.ctype, expr.attr))
-        raise NotImplementedError('Not implemented: __getattr__')
+        if isinstance(value, Data) and hasattr(value.ctype, expr.attr):
+            attr = getattr(value.ctype, expr.attr, None)
+            if isinstance(attr, types.MethodType):
+                return attr(value)
+            if isinstance(attr, Data):
+                return attr
+        raise AttributeError(f'Unknown attribute: {expr.attr}')
 
     if isinstance(expr, ast.Tuple):
         elts = [_transpile_expr(x, env) for x in expr.elts]
-        # TODO: Support compile time constants.
+
+        if all([isinstance(x, Constant) for x in elts]):
+            return Constant(tuple([x.obj for x in elts]))
+
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
-        return Data(
-            f'thrust::make_tuple({elts_code})',
-            _cuda_types.Tuple([x.ctype for x in elts]))
+        if len(elts) == 2:
+            return Data(
+                f'thrust::make_pair({elts_code})',
+                _cuda_types.Tuple([x.ctype for x in elts]))
+        else:
+            return Data(
+                f'thrust::make_tuple({elts_code})',
+                _cuda_types.Tuple([x.ctype for x in elts]))
 
     if isinstance(expr, ast.Index):
         # Deprecated in Python 3.9
@@ -835,9 +871,8 @@ def _transpile_assign_stmt(
         return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Subscript):
-        target = _transpile_expr(target, env)
-        assert isinstance(target, Data)
-        return _emit_assign_stmt(target, value, env)
+        lvalue = Data.init(_transpile_expr(target, env), env)
+        return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Tuple):
         if not isinstance(value.ctype, _cuda_types.Tuple):
@@ -881,24 +916,41 @@ def _indexing(
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
         index = Data.init(index, env)
-        ndim = array.ctype.ndim
+        ndim = array.ctype._ndim
         if isinstance(index.ctype, _cuda_types.Scalar):
             index_dtype = index.ctype.dtype
-            if ndim != 1:
+            if ndim == 0:
                 raise TypeError(
-                    'Scalar indexing is supported only for 1-dim array.')
+                    'Scalar indexing is not supported for 0-dim array.')
+            if ndim > 1:
+                new_carray = _cuda_types.CArray(
+                    array.ctype.dtype,
+                    array.ctype._ndim - 1,
+                    array.ctype._c_contiguous,
+                    array.ctype._index_32_bits)
+                return Data(
+                    f'{array.code}._slicing({index.code})', new_carray)
             if index_dtype.kind not in 'ui':
                 raise TypeError('Array indices must be integers.')
             return Data(
                 f'{array.code}[{index.code}]', array.ctype.child_type)
         if isinstance(index.ctype, _cuda_types.Tuple):
-            if ndim != len(index.ctype.types):
-                raise IndexError(f'The size of index must be {ndim}')
+            if ndim < len(index.ctype.types):
+                raise IndexError(
+                    f'The number of indices is beyond array dim: {ndim}')
             for t in index.ctype.types:
                 if not isinstance(t, _cuda_types.Scalar):
                     raise TypeError('Array indices must be scalar.')
                 if t.dtype.kind not in 'iu':
                     raise TypeError('Array indices must be integer.')
+            if ndim > len(index.ctype.types):
+                new_carray = _cuda_types.CArray(
+                    array.ctype.dtype,
+                    array.ctype._ndim - len(index.ctype.types),
+                    array.ctype._c_contiguous,
+                    array.ctype._index_32_bits)
+                params = f'{index.code}, Dim<{len(index.ctype.types)}>()'
+                return Data(f'{array.code}._slicing({params})', new_carray)
             if ndim == 0:
                 return Data(
                     f'{array.code}[0]', array.ctype.child_type)
@@ -938,7 +990,9 @@ def _astype_scalar(
     if from_t == to_t:
         return x
     # Uses casting rules for scalar values.
-    if not numpy.can_cast(from_t.type(0), to_t.type(0), casting):
+    # TODO(seberg): NEP 50/NumPy 2.0 hopefully makes `from_t.type(0)`
+    #               unnecessary allowing to use `_raise_if_invalid_cast()`.
+    if not numpy.can_cast(from_t.type(0), to_t, casting):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")

@@ -5,7 +5,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy import cusparse
+from cupyx import cusparse
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
@@ -85,7 +85,11 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+            if cusparse.check_availability('spgemm'):
+                a = self.tocsr()
+                a.sum_duplicates()
+                return cusparse.spgemm(a, other)
+            elif cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
                 return cusparse.csrgemm(a, other, transa=True)
@@ -109,6 +113,12 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 a.sum_duplicates()
                 b.sum_duplicates()
                 return cusparse.csrgemm2(a, b)
+            elif cusparse.check_availability('spgemm'):
+                a = self.tocsr()
+                b = other.tocsr()
+                a.sum_duplicates()
+                b.sum_duplicates()
+                return cusparse.spgemm(a, b)
             else:
                 raise NotImplementedError
         elif cupyx.scipy.sparse.isspmatrix(other):

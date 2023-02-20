@@ -316,6 +316,14 @@ cpdef gemmEx(intptr_t handle, int transa, int transb, int m, int n, int k,
              size_t alpha, size_t A, int Atype, int lda, size_t B,
              int Btype, int ldb, size_t beta, size_t C, int Ctype,
              int ldc, int computeType, int algo)
+cpdef gemmStridedBatchedEx(
+    intptr_t handle, int transa, int transb, int m, int n, int k,
+    size_t alpha,
+    size_t A, int Atype, int lda, long long strideA,
+    size_t B, int Btype, int ldb, long long strideB,
+    size_t beta,
+    size_t C, int Ctype, int ldc, long long strideC,
+    int batchCount, int computeType, int algo)
 
 cpdef stpttr(intptr_t handle, int uplo, int n, size_t AP, size_t A, int lda)
 cpdef dtpttr(intptr_t handle, int uplo, int n, size_t AP, size_t A, int lda)

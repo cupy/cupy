@@ -172,7 +172,7 @@ class TestTrim_zeros(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_trim_non_zeros(self, xp, dtype):
-        a = xp.array([-1, 2, -3, 7], dtype=dtype)
+        a = xp.array([-1, 2, -3, 7]).astype(dtype)
         return xp.trim_zeros(a, trim=self.trim)
 
     @testing.for_all_dtypes()

@@ -1,3 +1,4 @@
+import functools
 import itertools
 from typing import Any, NoReturn, Optional, Union, TYPE_CHECKING
 
@@ -21,10 +22,11 @@ class Data(Expr):
         assert isinstance(ctype, _cuda_types.TypeBase)
         self.code = code
         self.ctype = ctype
-        try:
-            self.__doc__ = f'{str(ctype)} {code}\n{ctype.__doc__}'
-        except NotImplementedError:
-            self.__doc__ = f'{code}'
+        if not isinstance(ctype, _cuda_types.Unknown):
+            try:
+                self.__doc__ = f'{str(ctype)} {code}\n{ctype.__doc__}'
+            except NotImplementedError:
+                self.__doc__ = f'{code}'
 
     @property
     def obj(self):
@@ -38,6 +40,16 @@ class Data(Expr):
         if isinstance(x, Data):
             return x
         if isinstance(x, Constant):
+            if isinstance(x.obj, tuple):
+                elts = [Data.init(Constant(e), env) for e in x.obj]
+                elts_code = ', '.join([e.code for e in elts])
+                if len(elts) == 2:
+                    return Data(
+                        f'thrust::make_pair({elts_code})',
+                        _cuda_types.Tuple([x.ctype for x in elts]))
+                return Data(
+                    f'thrust::make_tuple({elts_code})',
+                    _cuda_types.Tuple([x.ctype for x in elts]))
             ctype = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj)
             code = _cuda_types.get_cuda_code_from_constant(x.obj, ctype)
             return Data(code, ctype)
@@ -100,15 +112,19 @@ class BuiltinFunc(Expr):
         return '<cupyx.jit function>'
 
     @classmethod
-    def from_class_method(cls, instance_name, method):
-        # - this helper wraps every class method as a BuiltinFunc
-        # - method must return a valid Expr
-        # TODO(leofang): if performance is concerned, we could cache _Wrapper
-        # for each method.__func__, and overwrite with the provided instance
+    def from_class_method(cls, method, ctype_self, instance):
         class _Wrapper(BuiltinFunc):
 
             def call(self, env, *args, **kwargs):
-                data = method(env, *args, **kwargs)
-                return Data(f'{instance_name}.{data.code}', data.ctype)
+                return method(ctype_self, env, instance, *args)
 
         return _Wrapper()
+
+
+def wraps_class_method(method):
+
+    @functools.wraps(method)
+    def f(ctype_self: _cuda_types.TypeBase, instance: Data) -> BuiltinFunc:
+        return BuiltinFunc.from_class_method(method, ctype_self, instance)
+
+    return f

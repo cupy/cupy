@@ -14,7 +14,7 @@ from cupy.linalg._einsum_cutn import _try_use_cutensornet
 
 try:
     import cupy_backends.cuda.libs.cutensor  # NOQA
-    from cupy import cutensor
+    from cupyx import cutensor
 except ImportError:
     cutensor = None
 
@@ -509,7 +509,7 @@ def einsum(*operands, **kwargs):
         optimize = 'greedy'
     if kwargs:
         raise TypeError('Did not understand the following kwargs: %s'
-                        % list(kwargs.keys))
+                        % list(kwargs.keys()))
 
     result_dtype = cupy.result_type(*operands) if dtype is None else dtype
     operands = [

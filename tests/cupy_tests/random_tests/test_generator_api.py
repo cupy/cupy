@@ -58,6 +58,17 @@ class InvalidOutsMixin:
         self.invalid_shape()
 
 
+@testing.parameterize(*common_distributions.uniform_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestUniform(
+    common_distributions.Uniform,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.parameterize(*common_distributions.exponential_params)
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu

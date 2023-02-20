@@ -3,7 +3,6 @@ import numpy
 import pytest
 
 import cupy
-import cupyx
 from cupyx import jit
 from cupy import testing
 from cupy.cuda import device
@@ -280,7 +279,7 @@ class TestRaw:
             laneId = jit.threadIdx.x & 0x1f
             if laneId < m:
                 x[laneId] = 1
-                jit.syncwarp(mask=m)
+                jit.syncwarp(mask=(1 << m) - 1)
 
         for mask in (2, 4, 8, 16, 32):
             x = cupy.zeros((32,), dtype=numpy.int32)
@@ -348,7 +347,7 @@ class TestRaw:
         f((32,), (32,), (x, index, out))
 
         expected = cupy.zeros((2,), dtype=dtype)
-        cupyx.scatter_add(expected, index, x)
+        cupy.add.at(expected, index, x)
         self._check(out, expected)
 
     @testing.for_dtypes('iI')
@@ -581,7 +580,7 @@ class TestRaw:
     def test_shfl_down(self, dtype):
         N = 5
         # __shfl_down() on HIP does not seem to have the same behavior...
-        block = 64 if runtime.is_hip else 32
+        block = cupy._core._get_warpsize()
 
         @jit.rawkernel()
         def f(a):
@@ -628,7 +627,7 @@ class TestRaw:
             if x < arr.size:
                 arr[x] = jit.laneid()
 
-        N = 64 if runtime.is_hip else 32
+        N = cupy._core._get_warpsize()
         x = cupy.zeros((N*2,), dtype=cupy.uint32)
         f((1,), (N*2,), (x,))
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
@@ -641,7 +640,7 @@ class TestRaw:
             if x == 0:
                 arr[0] = jit.warpsize
 
-        N = 64 if runtime.is_hip else 32
+        N = cupy._core._get_warpsize()
         x = cupy.zeros((1,), dtype=cupy.uint32)
         f((1,), (1,), (x,))
         assert x == N

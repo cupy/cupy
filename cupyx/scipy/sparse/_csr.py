@@ -13,7 +13,7 @@ import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import runtime
-from cupy import cusparse
+from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
 from cupyx.scipy.sparse import _csc

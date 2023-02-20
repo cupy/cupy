@@ -19,17 +19,16 @@ from cupy.cuda cimport texture
 from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
-from cupy._core._dtype cimport get_dtype
+from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
+from cupy._core cimport core
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
-
-from cupy import _ufunc_method
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -46,10 +45,15 @@ cdef inline bint _contains_zero(const shape_t& v) except? -1:
     return False
 
 
-cdef function.Function _get_simple_elementwise_kernel(
+@_util.memoize(for_each_device=True)
+def _get_warpsize():
+    device_id = runtime.getDevice()
+    return runtime.getDeviceProperties(device_id)['warpSize']
+
+
+cdef str _get_simple_elementwise_kernel_code(
         tuple params, tuple arginfos, str operation, str name,
-        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
-        tuple options=()):
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
     ${typedef_preamble}
@@ -71,8 +75,24 @@ cdef function.Function _get_simple_elementwise_kernel(
         preamble=preamble,
         loop_prep=loop_prep,
         after_loop=after_loop)
-    module = compile_with_cache(module_code, options)
+    return module_code
+
+
+cdef function.Function _get_simple_elementwise_kernel_from_code(
+        str name, str code, tuple options=()):
+    module = compile_with_cache(code, options)
     return module.get_function(name)
+
+
+cdef function.Function _get_simple_elementwise_kernel(
+        tuple params, tuple arginfos, str operation, str name,
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
+        tuple options=()):
+    code = _get_simple_elementwise_kernel_code(
+        params, arginfos, operation, name, type_map, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef inline int _get_kind_score(int kind):
@@ -612,20 +632,6 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 cdef _numpy_can_cast = numpy.can_cast
 
 
-cdef bint _can_cast(d1, d2, casting):
-    # most ufunc passes `same_kind`
-    if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
-        return True
-    return _numpy_can_cast(d1, d2, casting=casting)
-
-
-cdef void _complex_warning(dtype_from, dtype_to):
-    if dtype_from.kind == 'c' and dtype_to.kind not in 'bc':
-        warnings.warn(
-            'Casting complex values to real discards the imaginary part',
-            numpy.ComplexWarning)
-
-
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
     obj
@@ -648,15 +654,8 @@ cdef list _get_out_args_from_optionals(
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
         out_type = get_dtype(out_types[i])
-        if not _can_cast(out_type, arr.dtype, casting):
-            msg = 'output (typecode \'{}\') could not be coerced to ' \
-                  'provided output parameter (typecode \'{}\') according to ' \
-                  'the casting rule "{}"'.format(
-                      out_type.char,
-                      arr.dtype.char,
-                      casting)
-            raise TypeError(msg)
-        _complex_warning(out_type, arr.dtype)
+
+        _raise_if_invalid_cast(out_type, arr.dtype, casting, "output operand")
     return out_args
 
 
@@ -698,8 +697,8 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@_util.memoize(for_each_device=True)
-def _get_elementwise_kernel(
+@_util.memoize()
+def _get_elementwise_kernel_code(
         tuple arginfos, _TypeMap type_map,
         tuple params, str operation, str name,
         str preamble, str loop_prep='', str after_loop='', tuple options=()):
@@ -715,9 +714,21 @@ def _get_elementwise_kernel(
             op.append(fmt.format(t=p.ctype, n=p.name))
     op.append(operation)
     operation = '\n'.join(op)
-    return _get_simple_elementwise_kernel(
+    return _get_simple_elementwise_kernel_code(
         params, arginfos, operation, name, type_map,
-        preamble, loop_prep, after_loop, options)
+        preamble, loop_prep, after_loop)
+
+
+@_util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
+        tuple arginfos, _TypeMap type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+    cdef str code = _get_elementwise_kernel_code(
+        arginfos, type_map, params, operation, name, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef class ElementwiseKernel:
@@ -777,6 +788,7 @@ cdef class ElementwiseKernel:
         readonly dict kwargs
         readonly dict _params_type_memo
         readonly dict _elementwise_kernel_memo
+        readonly dict _cached_codes
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -800,6 +812,7 @@ cdef class ElementwiseKernel:
         self.return_tuple = return_tuple
         self.kwargs = kwargs
         self._params_type_memo = {}
+        self._cached_codes = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
@@ -851,6 +864,10 @@ cdef class ElementwiseKernel:
                 'It must be either {} or {} (with outputs), '
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
         dev_id = device.get_device_id()
         arg_list = _preprocess_args(dev_id, args, True)
 
@@ -935,8 +952,45 @@ cdef class ElementwiseKernel:
         # Store the compiled kernel in the cache.
         # Potentially overwrite a duplicate cache entry because
         # _get_elementwise_kernel() may include IO wait.
+        in_types = []
+        for x in arginfos:
+            if x.type is cupy.ndarray:
+                in_types.append(cupy.dtype(x.dtype).char)
+        in_types = tuple(in_types)
+        if in_types not in self._cached_codes:
+            code = _get_elementwise_kernel_code(
+                arginfos, type_map, self.params, self.operation,
+                self.name, self.preamble, **self.kwargs)
+            self._cached_codes[in_types] = code
         self._elementwise_kernel_memo[key] = kern
         return kern
+
+    @property
+    def cached_codes(self):
+        """Returns a dict that has input types as keys and codes values.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        if len(self._cached_codes) == 0:
+            warnings.warn(
+                'No codes are cached because compilation is deferred until '
+                'the first function call.')
+        return dict([(k, v) for k, v in self._cached_codes.items()])
+
+    @property
+    def cached_code(self):
+        """Returns `next(iter(self.cached_codes.values()))`.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        codes = self._cached_codes
+        if len(codes) > 1:
+            warnings.warn(
+                'The input types of the kernel could not be inferred. '
+                'Please use `.cached_codes` instead.')
+        return next(iter(codes.values()))
 
 
 cdef str fix_cast_expr(src_type, dst_type, str expr):
@@ -1178,6 +1232,11 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
+
         if _fusion_thread_local.is_fusing():
             return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
@@ -1262,7 +1321,8 @@ cdef class ufunc:
             if (self.nin == 2 and self.nout == 1 and
                     isinstance(in_args[0], _ndarray_base) and
                     isinstance(in_args[1], _ndarray_base)):
-                ret = cupy.cutensor._try_elementwise_binary_routine(
+                import cupyx.cutensor
+                ret = cupyx.cutensor._try_elementwise_binary_routine(
                     in_args[0], in_args[1], dtype,
                     out_args[0] if len(out_args) == 1 else None,
                     self._cutensor_op,
@@ -1353,7 +1413,13 @@ cdef class ufunc:
            :meth:`numpy.ufunc.outer`
 
         """
-        return _ufunc_method.ufunc_outer(self, A, B, **kwargs)
+        A = core.array(A)
+        B = core.array(B)
+        ndim_a = A.ndim
+        ndim_b = B.ndim
+        A = A.reshape(A.shape + (1,) * ndim_b)
+        B = B.reshape((1,) * ndim_a + B.shape)
+        return self(A, B, **kwargs)
 
     def at(self, a, indices, b=None):
         """Apply in place operation on the operand ``a`` for elements
@@ -1391,6 +1457,17 @@ cdef class ufunc:
             return array.cumprod(axis, dtype, out)
         raise NotImplementedError(
             f'`{self.name}.accumulate` is not supported yet')
+
+    def reduceat(self, array, indices, axis=0, dtype=None, out=None):
+        """Reduce ``array`` applying ufunc with indices.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduceat`
+        """
+        if self.name == 'cupy_add':
+            return array._add_reduceat(indices, axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.reduceat` is not supported yet')
 
 
 cdef class _Op:

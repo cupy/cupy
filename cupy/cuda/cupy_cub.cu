@@ -484,6 +484,124 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 }
 #endif
 
+#if __CUDACC_VER_MAJOR__ >= 12
+//
+// Specialization for cub operators Max() and Min() in CUDA 12.x. Why is this
+// necessary? Because the signatures have changed in CUDA 12.0.
+//
+
+//
+// Max()
+//
+template<>
+__host__ __device__ __forceinline__ float Max::operator()(float &a, float &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+template<>
+__host__ __device__ __forceinline__ double Max::operator()(double &a, double &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+template<>
+__host__ __device__ __forceinline__ complex<float> Max::operator()(complex<float> &a, complex<float> &b) const
+{
+    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and max() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+template<>
+__host__ __device__ __forceinline__ complex<double> Max::operator()(complex<double> &a, complex<double> &b) const
+{
+    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and max() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+template<>
+__host__ __device__ __forceinline__ __half Max::operator()(__half &a, __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan((const __half)a)) {return a;}
+    else if (half_isnan((const __half)b)) {return b;}
+    else { return half_less((const __half)a, (const __half)b) ? b : a; }
+}
+#endif
+
+//
+// Min()
+//
+template<>
+__host__ __device__ __forceinline__ float Min::operator()(float &a, float &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+template<>
+__host__ __device__ __forceinline__ double Min::operator()(double &a, double &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+template<>
+__host__ __device__ __forceinline__ complex<float> Min::operator()(complex<float> &a, complex<float> &b) const
+{
+    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and min() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+template<>
+__host__ __device__ __forceinline__ complex<double> Min::operator()(complex<double> &a, complex<double> &b) const
+{
+    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and min() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+template<>
+__host__ __device__ __forceinline__ __half Min::operator()(__half &a, __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan((const __half)a)) {return a;}
+    else if (half_isnan((const __half)b)) {return b;}
+    else { return half_less((const __half)a, (const __half)b) ? a: b; }
+}
+#endif
+
+#endif // #if __CUDACC_VER_MAJOR__ == 12
+
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
 //

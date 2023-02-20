@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 import numpy
 
@@ -69,7 +71,7 @@ def lexsort(keys):
         raise TypeError('need sequence of keys with len > 0 in lexsort')
 
     if keys.ndim == 1:
-        return 0
+        return cupy.array(0, dtype=numpy.intp)
 
     # TODO(takagi): Support ranks of three or more.
     if keys.ndim > 2:
@@ -130,7 +132,9 @@ def msort(a):
     .. seealso:: :func:`numpy.msort`
 
     """
-
+    warnings.warn(
+        'msort is deprecated, use cupy.sort(a, axis=0) instead',
+        DeprecationWarning)
     return sort(a, axis=0)
 
 

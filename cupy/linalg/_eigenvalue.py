@@ -7,6 +7,7 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupy._core import _dtype
+import cupyx.cusolver
 
 
 _cuda_runtime_version = -1
@@ -140,7 +141,7 @@ def eigh(a, UPLO='L'):
         return w, v
 
     if a.ndim > 2 or runtime.is_hip:
-        w, v = cupy.cusolver.syevj(a, UPLO, True)
+        w, v = cupyx.cusolver.syevj(a, UPLO, True)
         return w, v
     else:
         return _syevd(a, UPLO, True)
@@ -184,6 +185,6 @@ def eigvalsh(a, UPLO='L'):
         return cupy.empty(a.shape[:-1], w_dtype)
 
     if a.ndim > 2 or runtime.is_hip:
-        return cupy.cusolver.syevj(a, UPLO, False)
+        return cupyx.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]

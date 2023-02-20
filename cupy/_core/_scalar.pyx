@@ -341,3 +341,46 @@ cdef object scalar_to_numpy_scalar(object x):
     elif typ in _numpy_scalar_type_set:
         return x
     return None
+
+
+cpdef str _get_cuda_scalar_repr(obj, dtype):
+    if dtype.kind == 'b':
+        return str(bool(obj)).lower()
+    elif dtype.kind == 'i':
+        if dtype.itemsize < 8:
+            return str(int(obj))
+        else:
+            return str(int(obj)) + 'll'
+    elif dtype.kind == 'u':
+        if dtype.itemsize < 8:
+            return str(int(obj)) + 'u'
+        else:
+            return str(int(obj)) + 'ull'
+    elif dtype.kind == 'f':
+        if dtype.itemsize < 8:
+            if numpy.isnan(obj):
+                return 'CUDART_NAN_F'
+            elif numpy.isinf(obj):
+                if obj > 0:
+                    return 'CUDART_INF_F'
+                else:
+                    return '-CUDART_INF_F'
+            else:
+                return str(float(obj)) + 'f'
+        else:
+            if numpy.isnan(obj):
+                return 'CUDART_NAN'
+            elif numpy.isinf(obj):
+                if obj > 0:
+                    return 'CUDART_INF'
+                else:
+                    return '-CUDART_INF'
+            else:
+                return str(float(obj))
+    elif dtype.kind == 'c':
+        if dtype.itemsize == 8:
+            return f'thrust::complex<float>({obj.real}, {obj.imag})'
+        elif dtype.itemsize == 16:
+            return f'thrust::complex<double>({obj.real}, {obj.imag})'
+
+    raise TypeError(f'Unsupported dtype: {dtype}')

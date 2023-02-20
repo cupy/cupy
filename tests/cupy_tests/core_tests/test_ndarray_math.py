@@ -69,7 +69,7 @@ class TestRoundHalfway(unittest.TestCase):
         a -= a.size + 1
         scale = 10**abs(self.decimals)
         if self.decimals < 0:
-            a *= xp.array(scale, dtype=dtype)
+            a *= xp.array(scale).astype(dtype)
         a >>= 1
 
         return a.round(self.decimals)
@@ -83,7 +83,7 @@ class TestRoundHalfway(unittest.TestCase):
         a -= 1
         scale = 10**abs(self.decimals)
         if self.decimals < 0:
-            a *= xp.array(scale, dtype=dtype)
+            a *= xp.array(scale).astype(dtype)
         a >>= 1
 
         return a.round(self.decimals)

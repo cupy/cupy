@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy._core._reduction import create_reduction_func
-from cupy._core._kernel import create_ufunc
+from cupy._core._kernel import create_ufunc, _get_warpsize
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
@@ -24,10 +24,8 @@ from cupy.cuda import cub
 
 try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
-    from cupy import cutensor
 except ImportError:
     cuda_cutensor = None
-    cutensor = None
 
 
 # _ndarray_base members
@@ -94,7 +92,8 @@ cdef _ndarray_base _ndarray_prod(
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
         if result is not None:
@@ -114,7 +113,8 @@ cdef _ndarray_base _ndarray_sum(
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
+                cuda_cutensor is not None):
+            from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
         if result is not None:
@@ -460,7 +460,7 @@ cdef _ndarray_base scan(
         dtype = out.dtype
     dtype = numpy.dtype(dtype)
 
-    warp_size = 64 if runtime._is_hip_environment else 32
+    warp_size = _get_warpsize()
     if runtime._is_hip_environment:
         if dtype.char in 'iIfdlq':
             # On HIP, __shfl* supports int, unsigned int, float, double,
