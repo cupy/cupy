@@ -11,7 +11,23 @@ except ImportError:
     _scipy_available = False
 
 
+import importlib as _importlib
+
 _cupyx_scipy = _sys.modules[__name__]
+
+submodules = [
+    'fft',
+    'fftpack',
+    'interpolate',
+    'linalg',
+    'ndimage',
+    'signal',
+    'sparse',
+    'spatial',
+    'special',
+    'stats'
+]
+__all__ = submodules
 
 
 def get_array_module(*args):
@@ -33,3 +49,12 @@ def get_array_module(*args):
         if isinstance(arg, (_ndarray, _spmatrix)):
             return _cupyx_scipy
     return _scipy
+
+
+def __dir__():
+    return __all__
+
+
+def __getattr__(name):
+    if name in submodules:
+        return _importlib.import_module(f'scipy.{name}')
