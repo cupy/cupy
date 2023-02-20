@@ -2,6 +2,7 @@ import sys
 
 import numpy as np
 import pytest
+from numpy.testing import assert_equal
 
 import cupy
 from cupy.cuda import runtime
@@ -183,7 +184,7 @@ class TestOAConvolve:
 })))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestConvolveCorrelate2D:
+class TestConvolveCorrelate2DCorrelation_lags:
     def _filter(self, func, dtype, xp, scp):
         if self.mode == 'full' and self.boundary != 'fill':
             # See https://github.com/scipy/scipy/issues/12685
@@ -207,8 +208,7 @@ class TestConvolveCorrelate2D:
                                  accept_error=ValueError)
     def test_correlate2d(self, xp, scp, dtype):
         return self._filter('correlate2d', dtype, xp, scp)
-       
-    
+
     def test_correlation_lags(mode, behind, input_size):
         # generate random data
         rng = cupy.random.RandomState(0)
@@ -232,6 +232,12 @@ class TestConvolveCorrelate2D:
         assert_equal(lags[lag_index], expected)
         # Correlation and lags shape should match
         assert_equal(lags.shape, correlation.shape)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlation_lags(self, xp, scp, dtype):
+        return self._filter('correlation_lags', dtype, xp, scp)
 
 
 @testing.with_requires('scipy')
