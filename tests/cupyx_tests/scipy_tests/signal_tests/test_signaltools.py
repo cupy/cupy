@@ -216,7 +216,8 @@ class TestConvolve2DEdgeCase:
     @testing.with_requires('scipy>=1.10')
     def test_convolve2d_1(self, xp, scp):
         # Meant a gray-scale image
-        data = xp.random.randint(256, size=(512, 512), dtype=xp.uint8)
+        data = testing.shaped_random(
+            (512, 512), xp=xp, dtype=xp.uint8, scale=256)
         scharr = xp.array(
             [[-3-3j, 0-10j, +3-3j],
              [-10+0j, 0+0j, +10+0j],
