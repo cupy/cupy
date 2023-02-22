@@ -29,7 +29,15 @@ cpdef initialize(str config_file,
         output_file (str): Name of the output file.
         output_mode (int): ``cupy.cuda.profiler.cudaKeyValuePair`` or
             ``cupy.cuda.profiler.cudaCSV``.
+
+    .. warning::
+       This API is marked as deprecated in CUDA 11, and has been removed
+       in CUDA 12.
+       This CuPy interface is subject to removal in future releases.
     """
+    if 12000 <= runtime.runtimeGetVersion():
+        raise RuntimeError(
+            'cudaProfilerInitialize no longer available in CUDA 12+')
     cdef bytes b_config_file = config_file.encode()
     cdef bytes b_output_file = output_file.encode()
     status = cudaProfilerInitialize(<const char*>b_config_file,

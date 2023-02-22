@@ -32,7 +32,7 @@ class TestLogSoftmax:
             # Unsigned integers make underflows in numpy (eventually seen as
             # overflows in `np.exp(tmp)`)
             pytest.skip()
-        a = xp.array([1000, 1], dtype=dtype)
+        a = xp.array([1000, 1]).astype(dtype)
         return scp.special.log_softmax(a)
 
     @testing.for_all_dtypes(no_bool=True)

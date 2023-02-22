@@ -13,6 +13,7 @@ from typing import List, Set
 import cupy_builder
 import cupy_builder.install_utils as utils
 from cupy_builder import _environment
+from cupy_builder._context import Context
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
@@ -125,7 +126,7 @@ def get_hipcc_path() -> List[str]:
         return None
 
 
-def get_compiler_setting(use_hip):
+def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
 
@@ -134,8 +135,8 @@ def get_compiler_setting(use_hip):
     else:
         cuda_path = get_cuda_path()
 
-    include_dirs = []
-    library_dirs = []
+    include_dirs = ctx.include_dirs.copy()
+    library_dirs = ctx.library_dirs.copy()
     define_macros = []
     extra_compile_args = []
 

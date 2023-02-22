@@ -14,6 +14,7 @@ import numpy
 from cupy_backends.cuda.api import runtime
 from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
+from cupy._core._dtype import _raise_if_invalid_cast
 from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
@@ -560,11 +561,9 @@ def _transpile_stmt(
         assert isinstance(result, Data)
         assert isinstance(target.ctype, _cuda_types.Scalar)
         assert isinstance(result.ctype, _cuda_types.Scalar)
-        if not numpy.can_cast(
-                result.ctype.dtype, target.ctype.dtype, 'same_kind'):
-            raise TypeError(
-                f'dtype mismatch: {result.ctype.dtype}'
-                f' and {target.ctype.dtype}')
+        _raise_if_invalid_cast(
+            result.ctype.dtype, target.ctype.dtype, 'same_kind')
+
         return ['{ ' + target.ctype.declvar('&' + tmp.code, target) + '; ' +
                 target.ctype.assign(tmp, result) + '; }']
 
@@ -991,7 +990,9 @@ def _astype_scalar(
     if from_t == to_t:
         return x
     # Uses casting rules for scalar values.
-    if not numpy.can_cast(from_t.type(0), to_t.type(0), casting):
+    # TODO(seberg): NEP 50/NumPy 2.0 hopefully makes `from_t.type(0)`
+    #               unnecessary allowing to use `_raise_if_invalid_cast()`.
+    if not numpy.can_cast(from_t.type(0), to_t, casting):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")
