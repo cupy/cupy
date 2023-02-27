@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.7.0-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
