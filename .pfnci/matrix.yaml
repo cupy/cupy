@@ -16,8 +16,8 @@
   cusparselt: null
   cudnn: "7.6"
   python: "3.8"
-  numpy: "1.21"
-  scipy: "1.7"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -46,7 +46,7 @@
   cusparselt: null
   cudnn: "8.2"
   python: "3.9"
-  numpy: "1.22"
+  numpy: "1.20"
   scipy: "1.7"
   optuna: "3"
   mpi4py: null
@@ -75,8 +75,8 @@
   cutensor: "1.5"
   cusparselt: null
   cudnn: "8.0"
-  python: "3.10"
-  numpy: "1.23"
+  python: "3.8"
+  numpy: "1.20"
   scipy: null
   optuna: null  # Avoid SciPy installation
   mpi4py: null
@@ -136,8 +136,8 @@
   cusparselt: null
   cudnn: "8.2"
   python: "3.8"
-  numpy: "1.21"
-  scipy: "1.8"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -286,7 +286,7 @@
   cusparselt: "0.2.0"
   cudnn: "8.7"
   python: "3.11"
-  numpy: "1.23"
+  numpy: "1.24"
   scipy: "1.9"
   optuna: "3"
   mpi4py: null
@@ -359,8 +359,8 @@
   cusparselt: null
   cudnn: null
   python: "3.8"
-  numpy: "1.21"
-  scipy: "1.7"
+  numpy: "1.20"
+  scipy: "1.6"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -406,7 +406,7 @@
   cusparselt: null
   cudnn: null
   python: "3.11"
-  numpy: "1.23"
+  numpy: "1.24"
   scipy: "1.9"
   optuna: "3"
   mpi4py: null
@@ -462,7 +462,7 @@
   cusparselt: "0.2.0"
   cudnn: "8.6"
   python: "3.8"
-  numpy: "1.21"
+  numpy: "1.20"
   scipy: "1.7"
   optuna: "3"
   mpi4py: null
