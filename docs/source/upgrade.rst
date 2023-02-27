@@ -524,15 +524,15 @@ Compatibility Matrix
      - NumPy 1.24 & SciPy 1.9
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
    * - v11
-     - 3.0~
-     - 10.2~
-     - 4.3~
-     - 1.4~
-     - 2.8~
-     - 7.6~
-     - 3.7~
-     - 1.20~
-     - 1.6~
+     - 3.0~9.0
+     - 10.2~12.0
+     - 4.3 & 5.0
+     - 1.4~1.6
+     - 2.8~2.16
+     - 7.6~8.7
+     - 3.7~3.11
+     - 1.20~1.24
+     - 1.6~1.9
      - NumPy 1.23 & SciPy 1.8
      - `v11.6.0 <https://docs.cupy.dev/en/v11.6.0/install.html>`__
    * - v10
