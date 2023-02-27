@@ -28,9 +28,10 @@ class TestIndices(unittest.TestCase):
     def test_indices_list2(self, xp, dtype):
         return xp.indices((1, 2, 3, 4), dtype)
 
+    @testing.with_requires('numpy>=1.24')
     def test_indices_list3(self):
         for xp in (numpy, cupy):
-            with pytest.raises(ValueError):
+            with pytest.raises(TypeError):
                 xp.indices((1, 2, 3, 4), dtype=xp.bool_)
 
 
