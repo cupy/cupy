@@ -19,6 +19,8 @@ def _gen_array(dtype):
             2, 3).astype(dtype)
     elif cupy.issubdtype(dtype, cupy.complexfloating):
         array = cupy.random.random((2, 3)).astype(dtype)
+    elif dtype == cupy.bool_:
+        array = cupy.random.randint(0, 2, size=(2, 3)).astype(cupy.bool_)
     else:
         assert False, f'unrecognized dtype: {dtype}'
     return array
@@ -27,7 +29,7 @@ def _gen_array(dtype):
 class TestDLPackConversion(unittest.TestCase):
 
     @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=False)
     def test_conversion(self, dtype):
         orig_array = _gen_array(dtype)
         tensor = orig_array.toDlpack()
@@ -64,7 +66,7 @@ class TestNewDLPackConversion(unittest.TestCase):
         else:
             return cuda.Stream()
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_all_dtypes(no_bool=False)
     def test_conversion(self, dtype):
         orig_array = _gen_array(dtype)
         out_array = cupy.from_dlpack(orig_array)

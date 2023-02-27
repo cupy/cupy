@@ -330,7 +330,6 @@ class TestHistogram(unittest.TestCase):
 
 
 # This class compares CUB results against NumPy's
-@testing.gpu
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubHistogram(unittest.TestCase):
 
@@ -398,8 +397,17 @@ class TestCubHistogram(unittest.TestCase):
         # ...then perform the actual computation
         return xp.histogram(x, bins)[1]
 
+    @testing.slow
+    @testing.numpy_cupy_array_equal()
+    def test_no_oom(self, xp):
+        # ensure the workaround for NVIDIA/cub#613 kicks in
+        amax = 28854312
+        A = xp.linspace(0, amax, num=amax,
+                        endpoint=True, retstep=False, dtype=xp.int32)
+        out = xp.histogram(A, bins=amax, range=[0, amax])
+        return out
 
-@testing.gpu
+
 @testing.parameterize(*testing.product(
     {'bins': [
         # Test monotonically increasing with in-bounds values

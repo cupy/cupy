@@ -94,10 +94,6 @@ CUresult cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod,
     return hipModuleGetGlobal(dptr, bytes, hmod, name);
 }
 
-CUresult cuModuleGetTexRef(...) {
-    return hipErrorUnknown;
-}
-
 CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                         uint32_t gridDimZ, uint32_t blockDimX,
                         uint32_t blockDimY, uint32_t blockDimZ,
@@ -112,51 +108,12 @@ CUresult cuLaunchCooperativeKernel(...) {
     return hipErrorUnknown;
 }
 
-
 // Function attribute
 CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
     return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
 CUresult cuFuncSetAttribute(...) {
-    return hipErrorUnknown;
-}
-
-
-// Texture reference
-CUresult cuTexRefSetAddress (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetAddress2D (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetAddressMode (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetArray (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetBorderColor (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetFilterMode (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetFlags (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetFormat (...) {
-    return hipErrorUnknown;
-}
-
-CUresult cuTexRefSetMaxAnisotropy (...) {
     return hipErrorUnknown;
 }
 

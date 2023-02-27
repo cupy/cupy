@@ -42,7 +42,6 @@ typedef struct CUstream_st* cudaStream_t;
 typedef struct CUgraph_st* cudaGraph_t;
 typedef struct CUgraphExec_st* cudaGraphExec_t;
 typedef struct CUlinkState_st* CUlinkState;
-typedef struct CUtexref_st* CUtexref;
 typedef struct CUarray_st* CUarray;
 struct CUDA_ARRAY_DESCRIPTOR {
     CUarray_format Format;

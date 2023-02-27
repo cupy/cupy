@@ -22,6 +22,7 @@ cdef class _AbstractReductionKernel:
         readonly tuple out_params
         readonly tuple _params
         readonly str __name__
+        readonly dict _cached_codes
 
     cpdef _ndarray_base _call(
         self,

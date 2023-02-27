@@ -3,6 +3,7 @@ cimport cpython  # NOQA
 from libc cimport stdlib
 from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
+from libc.stdint cimport int32_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport uint64_t
 from libc.stdint cimport intptr_t
@@ -27,17 +28,21 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         kDLCPU
         kDLCUDA
         kDLCUDAHost
-        kDLCUDAManaged
-        kDLROCM
-        kDLROCMHost
         kDLOpenCL
         kDLVulkan
         kDLMetal
         kDLVPI
+        kDLROCM
+        kDLROCMHost
+        kDLExtDev
+        kDLCUDAManaged
+        kDLOneAPI
+        kDLWebGPU
+        kDLHexagon
 
     ctypedef struct DLDevice:
         DLDeviceType device_type
-        int device_id
+        int32_t device_id
 
     cdef enum DLDataTypeCode:
         kDLInt
@@ -45,6 +50,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         kDLFloat
         kDLBfloat
         kDLComplex
+        kDLBool
 
     ctypedef struct DLDataType:
         uint8_t code
@@ -54,7 +60,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
     ctypedef struct DLTensor:
         void* data
         DLDevice device
-        int ndim
+        int32_t ndim
         DLDataType dtype
         int64_t* shape
         int64_t* strides
@@ -135,6 +141,8 @@ cpdef object toDlpack(_ndarray_base array) except +:
         dtype.code = <uint8_t>kDLFloat
     elif array.dtype.kind == 'c':
         dtype.code = <uint8_t>kDLComplex
+    elif array.dtype.kind == 'b':
+        dtype.code = <uint8_t>kDLBool
     else:
         raise ValueError('Unknown dtype')
     dtype.lanes = <uint16_t>1
@@ -303,6 +311,11 @@ cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
             cp_dtype = cupy.complex128
         else:
             raise TypeError('complex{} is not supported.'.format(bits))
+    elif dtype.code == kDLBool:
+        if bits == 8:
+            cp_dtype = cupy.bool_
+        else:
+            raise TypeError(f'{bits}-bit bool is not supported')
     elif dtype.code == kDLBfloat:
         raise NotImplementedError('CuPy does not support bfloat16 yet')
     else:

@@ -30,7 +30,7 @@ class TestLogsumexp:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_large_numbers(self, xp, scp, dtype):
-        a = xp.array([1000, 1000], dtype=dtype)
+        a = xp.array([1000, 1000]).astype(dtype)
         return scp.special.logsumexp(a)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -49,15 +49,15 @@ class TestLogsumexp:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_sign_argument(self, xp, scp, dtype):
-        a = xp.array([1, 1, 1], dtype=dtype)
-        b = xp.array([1, -1, -1], dtype=dtype)
+        a = xp.array([1, 1, 1]).astype(dtype)
+        b = xp.array([1, -1, -1]).astype(dtype)
         return scp.special.logsumexp(a, b=b, return_sign=True)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_sign_zero(self, xp, scp, dtype):
-        a = xp.array([1, 1], dtype=dtype)
-        b = xp.array([1, -1], dtype=dtype)
+        a = xp.array([1, 1]).astype(dtype)
+        b = xp.array([1, -1]).astype(dtype)
         return scp.special.logsumexp(a, b=b, return_sign=True)
 
     @testing.for_all_dtypes(no_bool=True)
