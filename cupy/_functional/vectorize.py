@@ -26,7 +26,7 @@ class vectorize(object):
             cache=False, signature=None):
         """
         Args:
-            pyfunc (callable): The target python funciton.
+            pyfunc (callable): The target python function.
             otypes (str or list of dtypes, optional): The output data type.
             doc (str or None): The docstring for the function.
             excluded: Currently not supported.
