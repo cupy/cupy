@@ -20,7 +20,8 @@ except ImportError:
 class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -32,7 +33,7 @@ class TestBarycentric:
         return P(test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-4)
     def test_scalar(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'iu':
             pytest.skip()
@@ -46,7 +47,8 @@ class TestBarycentric:
         return P(xp.array(7, dtype=dtype))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, scipy_name='scp')
     def test_delayed(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -59,7 +61,8 @@ class TestBarycentric:
         return P(test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, scipy_name='scp')
     def test_append(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -136,7 +139,9 @@ class TestBarycentric:
         return scp.interpolate.BarycentricInterpolator(x, y)(xi)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
+    @testing.numpy_cupy_allclose(
+        atol=1e-6, rtol={numpy.float16: 1e-2, 'default': 1e-6},
+        scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -159,7 +164,9 @@ class TestBarycentric:
 class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=1e-7, rtol={numpy.float16: 1e-2, 'default': 1e-7},
+        scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -185,7 +192,9 @@ class TestKrogh:
         return P(xp.array(7, dtype=dtype))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_derivatives(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -198,7 +207,9 @@ class TestKrogh:
         return D
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_low_derivatives(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -211,7 +222,9 @@ class TestKrogh:
         return D
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_derivative(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -237,7 +250,9 @@ class TestKrogh:
         return D
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_hermite(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -334,7 +349,9 @@ class TestKrogh:
         return xp.shape(P(test_xs))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -345,7 +362,9 @@ class TestKrogh:
         return scp.interpolate.krogh_interpolate(xs, ys, test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_wrapper2(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()

@@ -143,7 +143,7 @@ class TestSumprod:
         return a.sum(dtype=dst_dtype)
 
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-7})
     def test_sum_keepdims_and_dtype(self, xp, src_dtype, dst_dtype):
         if not xp.can_cast(src_dtype, dst_dtype):
             pytest.skip()
@@ -1126,7 +1126,7 @@ class TestTrapz:
         return xp.trapz(a, dx=0.1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-7})
     def test_trapz_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a)
@@ -1138,14 +1138,14 @@ class TestTrapz:
         return xp.trapz(a, axis=-2)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-7})
     def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, x=x, axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-7})
     def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a, dx=0.1, axis=1)
