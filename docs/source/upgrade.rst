@@ -12,7 +12,7 @@ Change in :class:`cupy.cuda.Device` Behavior
 --------------------------------------------
 
 The CUDA current device (set via :meth:`cupy.cuda.Device.use()` or ``cudaSetDevice()``) will be reactivated when exiting a device context manager.
-This is a revert of the :ref:`change introduced in CuPy v10 <change in CuPy Device behavior>`, making the behavior identical to the one in CuPy v9 or earlier.
+This reverts the :ref:`change introduced in CuPy v10 <change in CuPy Device behavior>`, making the behavior identical to the one in CuPy v9 or earlier.
 
 This decision was made for better interoperability with other libraries that might mutate the current CUDA device.
 Suppose the following code:
