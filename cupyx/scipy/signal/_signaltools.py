@@ -437,28 +437,6 @@ def correlation_lags(in1_len, in2_len, mode='full'):
     --------
     correlate : Compute the N-dimensional cross-correlation.
 
-    Notes
-    -----
-    Cross-correlation for continuous functions :math:`f` and :math:`g` is
-    defined as:
-
-    .. math::
-
-        \left ( f\star g \right )\left ( \tau \right )
-        \triangleq \int_{t_0}^{t_0 +T}
-        \overline{f\left ( t \right )}g\left ( t+\tau \right )dt
-
-    Where :math:`\tau` is defined as the displacement, also known as the lag.
-
-    Cross correlation for discrete functions :math:`f` and :math:`g` is
-    defined as:
-
-    .. math::
-        \left ( f\star g \right )\left [ n \right ]
-        \triangleq \sum_{-\infty}^{\infty}
-        \overline{f\left [ m \right ]}g\left [ m+n \right ]
-
-    Where :math:`n` is the lag.
 
     Examples
     --------
