@@ -6,6 +6,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
 from cupyx.scipy.interpolate import CubicHermiteSpline
@@ -381,6 +382,8 @@ class TestZeroSizeArrays:
     @pytest.mark.parametrize('axis', [0, 1, 2])
     @pytest.mark.parametrize('klass', ['make_interp_spline', ])
     def test_zero_size(self, xp, scp, klass, y_shape, bc_type, axis):
+        if runtime.is_hip and bc_type == 'periodic':
+            pytest.xfail('Not implemented on HIP/ROCm')
         x = xp.arange(10)
         y = xp.zeros(y_shape)
         xval = xp.arange(3)
