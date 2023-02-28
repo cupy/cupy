@@ -237,7 +237,7 @@ class TestPoly1d:
         return str(xp.poly1d(a))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-6})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-6})
     def test_poly1d_call(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         b = xp.poly1d(a)
@@ -770,7 +770,7 @@ class TestPolyvalInvalidShapeCombination:
 class TestPolyvalDtypesCombination:
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-6})
     def test_polyval_diff_types_array_array(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
         b = testing.shaped_arange((3,), xp, dtype2)

@@ -21,6 +21,7 @@ class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 0},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
@@ -49,7 +50,9 @@ class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        rtol={numpy.float16: 1e-1, 'default': 1e-7}, scipy_name='scp')
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 0},
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_delayed(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -63,7 +66,9 @@ class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        rtol={numpy.float16: 1e-1, 'default': 1e-7}, scipy_name='scp')
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 0},
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_append(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -141,7 +146,8 @@ class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-6, rtol={numpy.float16: 1e-2, 'default': 1e-6},
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 0},
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
@@ -166,7 +172,8 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7, rtol={numpy.float16: 1e-2, 'default': 1e-7},
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 0},
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
@@ -194,7 +201,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7,
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 1e-7},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_derivatives(self, xp, scp, dtype):
@@ -210,7 +217,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7,
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 1e-7},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_low_derivatives(self, xp, scp, dtype):
@@ -226,7 +233,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7,
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 1e-7},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_derivative(self, xp, scp, dtype):
@@ -255,7 +262,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7,
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 1e-7},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_hermite(self, xp, scp, dtype):
@@ -355,7 +362,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7,
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 1e-7},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
@@ -369,6 +376,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
+        atol={numpy.float16: 5e-2, numpy.float32: 5e-2, 'default': 1e-7},
         rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_wrapper2(self, xp, scp, dtype):

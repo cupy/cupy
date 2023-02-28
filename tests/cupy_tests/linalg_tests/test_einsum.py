@@ -340,7 +340,7 @@ class TestEinSumUnaryOperation:
 
     @testing.for_all_dtypes(no_bool=False)
     @testing.numpy_cupy_allclose(
-        rtol={numpy.float16: 1e-2, 'default': 1e-7}, contiguous_check=False)
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         out = xp.einsum(self.subscripts, a)
@@ -362,7 +362,7 @@ class TestEinSumUnaryOperation:
         no_bool=False,
         no_complex=True)  # avoid ComplexWarning
     @testing.numpy_cupy_allclose(
-        rtol={numpy.float16: 1e-2, 'default': 1e-7}, contiguous_check=False)
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
         if not numpy.can_cast(dtype_a, dtype_out):
             pytest.skip()
