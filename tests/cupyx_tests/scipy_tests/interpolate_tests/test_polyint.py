@@ -21,7 +21,8 @@ class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        rtol={numpy.float16: 1e-1, 'default': 1e-7}, scipy_name='scp')
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
+        scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -193,7 +194,8 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        atol=1e-7,
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_derivatives(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
@@ -208,7 +210,8 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        atol=1e-7,
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_low_derivatives(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
@@ -223,7 +226,8 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        atol=1e-7,
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_derivative(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
@@ -251,7 +255,8 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        atol=1e-7,
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_hermite(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
@@ -350,7 +355,8 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        atol=1e-7, rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        atol=1e-7,
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
@@ -363,7 +369,7 @@ class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(
-        rtol={numpy.float16: 1e-1, 'default': 1e-7},
+        rtol={numpy.float16: 1e-1, numpy.float32: 1e-1, 'default': 1e-7},
         scipy_name='scp')
     def test_wrapper2(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
