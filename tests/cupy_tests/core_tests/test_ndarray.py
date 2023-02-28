@@ -23,7 +23,7 @@ def wrap_take(array, *args, **kwargs):
 
 
 @testing.gpu
-class TestNdarrayInit(unittest.TestCase):
+class TestNdarrayInit:
 
     def test_shape_none(self):
         with testing.assert_warns(DeprecationWarning):
@@ -79,6 +79,26 @@ class TestNdarrayInit(unittest.TestCase):
         a = cupy.ndarray(
             (2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
         assert a.strides == (8, 4)
+
+    @pytest.mark.parametrize('copy', [False, True])
+    @pytest.mark.parametrize('order', ['A', 'K', 'C'])
+    def test_array_1d(self, copy, order):
+        # Test that C-contiguous strides are preserved on copy for 1D arrays
+        a = cupy.ones((1, 1, 3), dtype=numpy.float32)
+        original_strides = a.strides
+
+        b = cupy.array(a, copy=copy, order=order)
+        assert b.strides == original_strides
+
+    @pytest.mark.parametrize('copy', [False, True])
+    @pytest.mark.parametrize('order', ['A', 'K', 'C'])
+    def test_astype_1d(self, copy, order):
+        # Test that C-contiguous strides are preserved on copy for 1D arrays
+        a = cupy.ones((1, 1, 3), dtype=numpy.float32)
+        original_strides = a.strides
+
+        c = a.astype(numpy.float32, copy=copy, order=order)
+        assert c.strides == original_strides
 
     @testing.with_requires('numpy>=1.19')
     def test_strides_is_given_but_order_is_invalid(self):
