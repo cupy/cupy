@@ -7,6 +7,7 @@ from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 
+
 def convolve(in1, in2, mode='full', method='auto'):
     """Convolve two N-dimensional arrays.
 
@@ -410,6 +411,7 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
     return _st_core._direct_correlate(in1, in2, mode, in1.dtype, convolution,
                                       boundary, fillvalue, not convolution)
 
+
 def correlation_lags(in1_len, in2_len, mode='full'):
     """
     Calculates the lag / displacement indices array for 1D cross-correlation.
@@ -505,6 +507,7 @@ def correlation_lags(in1_len, in2_len, mode='full'):
         else:
             lags = cupy.arange(lag_bound, 1)
     return lags
+
 
 def wiener(im, mysize=None, noise=None):
     """Perform a Wiener filter on an N-dimensional array.
