@@ -15,7 +15,7 @@
   cutensor: null
   cusparselt: null
   cudnn: "7.6"
-  python: "3.7"
+  python: "3.8"
   numpy: "1.20"
   scipy: "1.6"
   optuna: "3"
@@ -75,7 +75,7 @@
   cutensor: "1.5"
   cusparselt: null
   cudnn: "8.0"
-  python: "3.7"
+  python: "3.8"
   numpy: "1.20"
   scipy: null
   optuna: null  # Avoid SciPy installation
@@ -105,7 +105,7 @@
   cutensor: "1.4"
   cusparselt: "0.2.0"
   cudnn: "8.1"
-  python: "3.7"
+  python: "3.8"
   numpy: "1.21"
   scipy: "1.7"
   optuna: "3"
@@ -358,7 +358,7 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.7"
+  python: "3.8"
   numpy: "1.20"
   scipy: "1.6"
   optuna: "3"
@@ -448,7 +448,6 @@
 # Example (with Doctest) | Linux
 # Notes:
 # - Examples and Doctests are tested against the minimum supported Python version.
-#   (Uses Python 3.8 instead of 3.7 to test Array API support.)
 # - Libraries versions for doctests will be overridden by docs/requirements.txt
 # - Accelerators are disabled as doctests expect it (#5891)
 - project: "cupy.linux.cuda-example"
