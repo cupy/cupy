@@ -28,7 +28,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 rtd_version = os.environ.get('READTHEDOCS_VERSION')
 if rtd_version == 'latest':
-    tag = 'master'
+    tag = 'main'
 else:
     tag = 'v{}'.format(__version__)
 extlinks = {

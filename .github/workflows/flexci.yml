@@ -2,7 +2,7 @@ name: "FlexCI"
 
 on:
   push:
-    branches: ["master", "v[0-9]+", "hotfix-*"]
+    branches: ["main", "v[0-9]+", "hotfix-*"]
   issue_comment:
     types: [created]
 
