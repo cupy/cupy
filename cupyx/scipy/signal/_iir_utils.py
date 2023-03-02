@@ -47,17 +47,13 @@ __global__ void first_pass_iir(
     int low_bound = pos;
     int rel_pos;
 
-    for(int level = 1; level < m; level *=2) {
-        int sz = min(pow(2.0, ((double) level)), ((double) m));
+    for(int level = 1, iter = 1; level < m; level *=2, iter++) {
+        int sz = min(pow(2.0, ((double) iter)), ((double) m));
 
         if(level > 1) {
             int factor = ceil(pos / ((double) sz));
             up_bound = sz * factor - 1;
             low_bound = up_bound - level + 1;
-        }
-
-        if(up_bound + m * group_num >= n) {
-            break;
         }
 
         if(level == 1) {
@@ -66,6 +62,10 @@ __global__ void first_pass_iir(
 
         if(pos < low_bound) {
             pos += level / 2;
+        }
+
+        if(pos + m * group_num >= n) {
+            break;
         }
 
         rel_pos = pos % level;
@@ -81,10 +81,9 @@ __global__ void first_pass_iir(
         __syncthreads();
     }
 
-    if(pos >= m - k - 1) {
+    if(pos >= m - k) {
         group_carries[pos - (m - k)] = group_start[pos];
     }
-
 
 }
 
@@ -165,7 +164,7 @@ def apply_iir(x, a, b):
     k = b.size
     n = x.size
     # blocks = (n + 1204 - 1) // 1024
-    block_sz = 8
+    block_sz = 32
     n_blocks = (n + block_sz - 1) // block_sz
     correction = cp.eye(k)
     correction = cp.c_[correction[::-1], cp.empty((k, block_sz))]
