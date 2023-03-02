@@ -381,7 +381,7 @@ It may be important to note that this dedicated memory bank is not shared with t
 
 For now, CuPy offers no helper routines to create user defined composite types. 
 Such composite types can however be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
-see `cupy/examples/custum_struct <https://github.com/cupy/cupy/tree/master/examples/custom_struct>`_ for examples of advanced usage.
+see `cupy/examples/custum_struct <https://github.com/cupy/cupy/tree/main/examples/custom_struct>`_ for examples of advanced usage.
 
 .. warning::
     You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.

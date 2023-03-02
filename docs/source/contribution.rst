@@ -81,24 +81,24 @@ The GitHub milestone is basically used for collecting the issues and PRs resolve
 Git Branches
 ~~~~~~~~~~~~
 
-The ``master`` branch is used to develop pre-release versions.
-It means that **alpha, beta, and RC updates are developed at the** ``master`` **branch**.
+The ``main`` branch is used to develop pre-release versions.
+It means that **alpha, beta, and RC updates are developed at the** ``main`` **branch**.
 This branch contains the most up-to-date source tree that includes features newly added after the latest major version.
 
 The stable version is developed at the individual branch named as ``vN`` where "N" reflects the version number (we call it a *versioned branch*).
 For example, v1.0.0, v1.0.1, and v1.0.2 will be developed at the ``v1`` branch.
 
 **Notes for contributors:**
-When you send a pull request, you basically have to send it to the ``master`` branch.
+When you send a pull request, you basically have to send it to the ``main`` branch.
 If the change can also be applied to the stable version, a core team member will apply the same change to the stable version so that the change is also included in the next revision update.
 
-If the change is only applicable to the stable version and not to the ``master`` branch, please send it to the versioned branch.
+If the change is only applicable to the stable version and not to the ``main`` branch, please send it to the versioned branch.
 We basically only accept changes to the latest versioned branch (where the stable version is developed) unless the fix is critical.
 
-If you want to make a new feature of the ``master`` branch available in the current stable version, please send a *backport PR* to the stable version (the latest ``vN`` branch).
+If you want to make a new feature of the ``main`` branch available in the current stable version, please send a *backport PR* to the stable version (the latest ``vN`` branch).
 See the next section for details.
 
-*Note: a change that can be applied to both branches should be sent to the* ``master`` *branch.*
+*Note: a change that can be applied to both branches should be sent to the* ``main`` *branch.*
 *Each release of the stable version is also merged to the development version so that the change is also reflected to the next major version.*
 
 Feature Backport PRs
@@ -134,7 +134,7 @@ First of all, before starting to write any code, do not forget to confirm the fo
 
 - Read through the :ref:`coding-guide` and :ref:`testing-guide`.
 - Check the appropriate branch that you should send the PR following :ref:`contrib-git-branches`.
-  If you do not have any idea about selecting a branch, please choose the ``master`` branch.
+  If you do not have any idea about selecting a branch, please choose the ``main`` branch.
 
 In particular, **check the branch before writing any code.**
 The current source tree of the chosen branch is the starting point of your change.
@@ -149,7 +149,7 @@ Note that this automatic PR test only includes CPU tests.
 
 .. note::
 
-   We are also running continuous integration with GPU tests for the ``master`` branch and the versioned branch of the latest major version.
+   We are also running continuous integration with GPU tests for the ``main`` branch and the versioned branch of the latest major version.
    Since this service is currently running on our internal server, we do not use it for automatic PR tests to keep the server secure.
 
 If you are planning to add a new feature or modify existing APIs, **it is recommended to open an issue and discuss the design first.**
@@ -389,7 +389,7 @@ When adding a new feature to the framework, you also need to document it in the 
    If you are unsure about how to fix the documentation, you can submit a pull request without doing so.
    Reviewers will help you fix the documentation appropriately.
 
-The documentation source is stored under `docs directory <https://github.com/cupy/cupy/tree/master/docs>`_ and written in `reStructuredText <http://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_ format.
+The documentation source is stored under `docs directory <https://github.com/cupy/cupy/tree/main/docs>`_ and written in `reStructuredText <http://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_ format.
 
 To build the documentation, you need to install `Sphinx <http://www.sphinx-doc.org/>`_::
 

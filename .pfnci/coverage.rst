@@ -3168,13 +3168,13 @@ CuPy CI Test Coverage
 .. _t21: https://ci.preferred.jp/cupy.linux.cuda120.multi/
 .. _d21: linux/tests/cuda120.multi.Dockerfile
 .. _s21: linux/tests/cuda120.multi.sh
-.. _t22: https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/
+.. _t22: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-4-3,label=mnj-mi50/
 .. _d22: linux/tests/rocm-4-3.Dockerfile
 .. _s22: linux/tests/rocm-4-3.sh
-.. _t23: https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-0,label=mnj-mi50/
+.. _t23: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-0,label=mnj-mi50/
 .. _d23: linux/tests/rocm-5-0.Dockerfile
 .. _s23: linux/tests/rocm-5-0.sh
-.. _t24: https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-3,label=mnj-mi50/
+.. _t24: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-3,label=mnj-mi50/
 .. _d24: linux/tests/rocm-5-3.Dockerfile
 .. _s24: linux/tests/rocm-5-3.sh
 .. _t25: https://ci.preferred.jp/cupy.linux.cuda-slow/

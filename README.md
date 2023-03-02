@@ -1,4 +1,4 @@
-<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/master/docs/image/cupy_logo_1000px.png" width="400"/></div>
+<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400"/></div>
 
 # CuPy : NumPy & SciPy for GPU
 
@@ -12,7 +12,7 @@
 [**Website**](https://cupy.dev/)
 | [**Install**](https://docs.cupy.dev/en/stable/install.html)
 | [**Tutorial**](https://docs.cupy.dev/en/stable/user_guide/basic.html)
-| [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
+| [**Examples**](https://github.com/cupy/cupy/tree/main/examples)
 | [**Documentation**](https://docs.cupy.dev/en/stable/)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
 | [**Forum**](https://groups.google.com/forum/#!forum/cupy)

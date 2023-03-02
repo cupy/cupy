@@ -347,7 +347,7 @@
 # ROCm 4.3 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-3"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-4-3,label=mnj-mi50/"
   tags: null  # Jenkins
   target: "rocm-4-3"
   system: "linux"
@@ -370,7 +370,7 @@
 
 # ROCm 5.0 | Linux
 - project: "cupy.linux.rocm-5-0"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-0,label=mnj-mi50/"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-0,label=mnj-mi50/"
   tags: null  # Jenkins
   target: "rocm-5-0"
   system: "linux"
@@ -394,7 +394,7 @@
 # ROCm 5.3 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-5-3"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-3,label=mnj-mi50/"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-3,label=mnj-mi50/"
   tags: null  # Jenkins
   target: "rocm-5-3"
   system: "linux"
