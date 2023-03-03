@@ -7,7 +7,7 @@ IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 
 __global__ void compute_correction_factors(
-        const int m, const int k, const long long* b, double* out) {
+        const int m, const int k, const double* b, double* out) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= k) {
         return;
@@ -159,13 +159,16 @@ IIR_MODULE = cp.RawModule(
                       'second_pass_iir'])
 
 
-def apply_iir(x, a, b):
+def apply_iir(x, b):
+    x = x.astype(cp.float64)
+    b = b.astype(cp.float64)
     out = x.copy()
+
     k = b.size
     n = x.size
-    # blocks = (n + 1204 - 1) // 1024
     block_sz = 32
     n_blocks = (n + block_sz - 1) // block_sz
+
     correction = cp.eye(k)
     correction = cp.c_[correction[::-1], cp.empty((k, block_sz))]
     carries = cp.empty((n_blocks - 1, k), dtype=cp.float64)
@@ -183,8 +186,7 @@ def apply_iir(x, a, b):
     streams += [cp.cuda.Stream(non_blocking=True) for _ in range(n_blocks - 1)]
     events = [cp.cuda.Event() for _ in streams]
 
-    exec_streams = [cp.cuda.Stream(non_blocking=True)
-                    for _ in range(n_blocks - 2)]
+    exec_streams = [cp.cuda.Stream() for _ in range(n_blocks - 2)]
 
     default_stream = cp.cuda.get_current_stream()
 
@@ -213,6 +215,6 @@ def apply_iir(x, a, b):
             exec_event.record(exec_stream)
 
     for evt in exec_events:
-        evt.synchronize()
+        default_stream.wait_event(evt)
 
     return out
