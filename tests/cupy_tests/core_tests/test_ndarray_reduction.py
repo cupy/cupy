@@ -12,7 +12,6 @@ from cupy import testing
 @testing.parameterize(*testing.product({
     'order': ('C', 'F'),
 }))
-@testing.gpu
 class TestArrayReduction(unittest.TestCase):
 
     @testing.for_all_dtypes()

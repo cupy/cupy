@@ -2,7 +2,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestByteBounds:
 
     @testing.for_all_dtypes()

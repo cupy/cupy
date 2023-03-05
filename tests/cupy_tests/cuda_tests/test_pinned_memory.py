@@ -25,7 +25,6 @@ def mock_alloc(size):
 # -----------------------------------------------------------------------------
 # Memory pointer
 
-@testing.gpu
 class TestMemoryPointer(unittest.TestCase):
 
     def test_int(self):
@@ -66,7 +65,6 @@ class TestMemoryPointer(unittest.TestCase):
 # Memory pool
 
 
-@testing.gpu
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):

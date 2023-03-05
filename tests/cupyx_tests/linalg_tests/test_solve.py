@@ -14,7 +14,6 @@ import cupyx
     'size': [5, 9, 17, 33],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
 @pytest.mark.xfail(runtime.is_hip,
                    reason='rocSOLVER does not implement potrs yet.')
 class TestInvh(unittest.TestCase):
@@ -69,7 +68,6 @@ class TestErrorInvh(unittest.TestCase):
     'shape': [(2, 3, 3)],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
 class TestXFailBatchedInvh(unittest.TestCase):
 
     def test_invh(self):

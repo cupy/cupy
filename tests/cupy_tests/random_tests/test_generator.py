@@ -90,7 +90,6 @@ def _xp_random(xp, method_name):
 
 
 @testing.fix_random()
-@testing.gpu
 class TestRandomState(unittest.TestCase):
 
     def setUp(self):
@@ -159,7 +158,6 @@ class TestRandomState(unittest.TestCase):
 
 @testing.parameterize(*common_distributions.beta_params)
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestBeta(
     common_distributions.Beta,
@@ -173,7 +171,6 @@ class TestBeta(
     {'n': 5, 'p': 0.0},
     {'n': 5, 'p': 1.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestBinomial(RandomGeneratorTestCase):
     # TODO(niboshi):
@@ -205,7 +202,6 @@ class TestDirichlet(
 
 
 @testing.parameterize(*common_distributions.exponential_params)
-@testing.gpu
 @testing.fix_random()
 class TestExponential(
     common_distributions.Exponential,
@@ -224,7 +220,6 @@ class TestF(
 
 
 @testing.parameterize(*common_distributions.gamma_params)
-@testing.gpu
 @testing.fix_random()
 class TestGamma(
     common_distributions.Gamma,
@@ -251,7 +246,6 @@ class TestHypergeometric(
     pass
 
 
-@testing.gpu
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
 
@@ -276,7 +270,6 @@ class TestLaplace(RandomGeneratorTestCase):
             2.3, 4.5, size=2000, dtype=dtype)
 
 
-@testing.gpu
 @testing.fix_random()
 class TestLogistic(RandomGeneratorTestCase):
 
@@ -307,7 +300,6 @@ class TestLogistic(RandomGeneratorTestCase):
             2.3, 4.5, size=2000, dtype=dtype)
 
 
-@testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
     {'args': (10.0, 20.0), 'size': None},
@@ -358,7 +350,6 @@ class TestLogseries(
     pass
 
 
-@testing.gpu
 @testing.parameterize(*[
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': None, 'tol': 1e-6},
     {'args': ([10., 10.], [[20., 10.], [10., 20.]]),
@@ -397,7 +388,6 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
 @testing.parameterize(
     {'n': 5, 'p': 0.5},
 )
-@testing.gpu
 @testing.fix_random()
 class TestNegativeBinomial(RandomGeneratorTestCase):
     target_method = 'negative_binomial'
@@ -412,7 +402,6 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
     {'df': 1.5, 'nonc': 2.0},
     {'df': 2.0, 'nonc': 0.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestNoncentralChisquare(RandomGeneratorTestCase):
 
@@ -432,7 +421,6 @@ class TestNoncentralChisquare(RandomGeneratorTestCase):
     {'dfnum': 2.0, 'dfden': 3.0, 'nonc': 4.0},
     {'dfnum': 2.5, 'dfden': 1.5, 'nonc': 0.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestNoncentralF(RandomGeneratorTestCase):
 
@@ -449,7 +437,6 @@ class TestNoncentralF(RandomGeneratorTestCase):
             self.dfnum, self.dfden, self.nonc, size=2000, dtype=dtype)
 
 
-@testing.gpu
 @testing.parameterize(*[
     {'args': (0.0, 1.0), 'size': None},
     {'args': (10.0, 20.0), 'size': None},
@@ -492,7 +479,6 @@ class TestNormal(RandomGeneratorTestCase):
     {'a': 3.0},
     {'a': 10.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestPareto(RandomGeneratorTestCase):
 
@@ -509,7 +495,6 @@ class TestPareto(RandomGeneratorTestCase):
 
 
 @testing.parameterize(*common_distributions.poisson_params)
-@testing.gpu
 @testing.fix_random()
 class TestPoisson(
     common_distributions.Poisson,
@@ -523,7 +508,6 @@ class TestPoisson(
     {'df': 3.0},
     {'df': 10.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestStandardT(RandomGeneratorTestCase):
 
@@ -539,7 +523,6 @@ class TestStandardT(RandomGeneratorTestCase):
             df=self.df, size=2000, dtype=dtype)
 
 
-@testing.gpu
 @testing.parameterize(*[
     {'size': None},
     {'size': 10},
@@ -582,7 +565,6 @@ class TestRandomSampleDistrib(unittest.TestCase):
 
 
 @testing.fix_random()
-@testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
@@ -610,7 +592,6 @@ class TestPower(
     {'scale': 1.0},
     {'scale': 3.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestRayleigh(RandomGeneratorTestCase):
 
@@ -626,7 +607,6 @@ class TestRayleigh(RandomGeneratorTestCase):
             scale=self.scale, size=2000, dtype=dtype)
 
 
-@testing.gpu
 @testing.fix_random()
 class TestStandardCauchy(RandomGeneratorTestCase):
 
@@ -649,7 +629,6 @@ class TestStandardCauchy(RandomGeneratorTestCase):
 
 
 @testing.parameterize(*common_distributions.standard_gamma_params)
-@testing.gpu
 @testing.fix_random()
 class TestStandardGamma(
     common_distributions.StandardGamma,
@@ -659,7 +638,6 @@ class TestStandardGamma(
 
 
 @testing.fix_random()
-@testing.gpu
 class TestInterval(RandomGeneratorTestCase):
 
     target_method = '_interval'
@@ -746,7 +724,6 @@ class TestInterval(RandomGeneratorTestCase):
 
 
 @testing.fix_random()
-@testing.gpu
 class TestTomaxint(RandomGeneratorTestCase):
 
     target_method = 'tomaxint'
@@ -781,7 +758,6 @@ class TestTomaxint(RandomGeneratorTestCase):
     {'a': numpy.array([]), 'size': 0, 'p': None},
 )
 @testing.fix_random()
-@testing.gpu
 class TestChoice1(RandomGeneratorTestCase):
 
     target_method = 'choice'
@@ -817,7 +793,6 @@ class TestChoice1(RandomGeneratorTestCase):
     {'a': [0, 1, 2], 'size': 2, 'p': [0.3, 0.3, 0.4]},
 )
 @testing.fix_random()
-@testing.gpu
 class TestChoice2(RandomGeneratorTestCase):
 
     target_method = 'choice'
@@ -848,7 +823,6 @@ class TestChoice2(RandomGeneratorTestCase):
 
 
 @testing.fix_random()
-@testing.gpu
 class TestChoiceChi(RandomGeneratorTestCase):
 
     target_method = 'choice'
@@ -872,7 +846,6 @@ class TestChoiceChi(RandomGeneratorTestCase):
 
 
 @testing.fix_random()
-@testing.gpu
 class TestChoiceMultinomial(unittest.TestCase):
 
     @_condition.repeat(3, 10)
@@ -899,7 +872,6 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},
 )
 @testing.fix_random()
-@testing.gpu
 class TestChoiceFailure(unittest.TestCase):
 
     def setUp(self):
@@ -917,7 +889,6 @@ class TestChoiceFailure(unittest.TestCase):
     {'a': numpy.array([0.0, 2.0, 4.0]), 'size': 2},
 )
 @testing.fix_random()
-@testing.gpu
 class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 
     target_method = 'choice'
@@ -946,7 +917,6 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         assert numpy.unique(val).size == val.size
 
 
-@testing.gpu
 @testing.fix_random()
 class TestGumbel(RandomGeneratorTestCase):
 
@@ -971,7 +941,6 @@ class TestGumbel(RandomGeneratorTestCase):
             2.3, 4.5, size=2000, dtype=dtype)
 
 
-@testing.gpu
 @testing.fix_random()
 class TestRandint(RandomGeneratorTestCase):
     # TODO(niboshi):
@@ -1008,7 +977,6 @@ class TestRandint(RandomGeneratorTestCase):
         self.generate([[[-1], [0]], [[-2], [1]], [[3], [4]]], [[10, 11, 12]])
 
 
-@testing.gpu
 @testing.fix_random()
 class TestUniform(RandomGeneratorTestCase):
 
@@ -1041,7 +1009,6 @@ class TestUniform(RandomGeneratorTestCase):
     {'mu': 3.0, 'kappa': 3.0},
     {'mu': 3.0, 'kappa': 1.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestVonmises(RandomGeneratorTestCase):
 
@@ -1062,7 +1029,6 @@ class TestVonmises(RandomGeneratorTestCase):
     {'mean': 3.0, 'scale': 3.0},
     {'mean': 3.0, 'scale': 1.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestWald(RandomGeneratorTestCase):
 
@@ -1084,7 +1050,6 @@ class TestWald(RandomGeneratorTestCase):
     {'a': 3.0},
     {'a': numpy.inf},
 )
-@testing.gpu
 @testing.fix_random()
 class TestWeibull(RandomGeneratorTestCase):
 
@@ -1106,7 +1071,6 @@ class TestWeibull(RandomGeneratorTestCase):
 @testing.parameterize(
     {'a': 2.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestZipf(RandomGeneratorTestCase):
 
@@ -1123,7 +1087,6 @@ class TestZipf(RandomGeneratorTestCase):
     {'a': [1, 2, 3], 'size': 5},
 )
 @testing.fix_random()
-@testing.gpu
 class TestChoiceReplaceFalseFailure(unittest.TestCase):
 
     def test_choice_invalid_value(self):
@@ -1141,7 +1104,6 @@ class TestResetStates(unittest.TestCase):
         assert {} == _generator._random_states
 
 
-@testing.gpu
 class TestGetRandomState(unittest.TestCase):
 
     def setUp(self):
@@ -1165,7 +1127,6 @@ class TestGetRandomState(unittest.TestCase):
         assert 'expected' == rs
 
 
-@testing.gpu
 class TestSetRandomState(unittest.TestCase):
 
     def setUp(self):
@@ -1186,7 +1147,6 @@ class TestSetRandomState(unittest.TestCase):
         assert _generator.get_random_state() is rs
 
 
-@testing.gpu
 @testing.fix_random()
 class TestStandardExponential(
     common_distributions.StandardExponential,
@@ -1198,7 +1158,6 @@ class TestStandardExponential(
 @testing.parameterize(
     {'left': -1.0, 'mode': 0.0, 'right': 2.0},
 )
-@testing.gpu
 @testing.fix_random()
 class TestTriangular(RandomGeneratorTestCase):
 
@@ -1209,7 +1168,6 @@ class TestTriangular(RandomGeneratorTestCase):
             left=self.left, mode=self.mode, right=self.right, size=(3, 2))
 
 
-@testing.gpu
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def setUp(self):
@@ -1269,7 +1227,6 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         assert cupy.random.get_random_state() is rs
 
 
-@testing.gpu
 class TestGetRandomState2(unittest.TestCase):
 
     def setUp(self):

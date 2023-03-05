@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestCorrcoef(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -45,7 +44,6 @@ class TestCorrcoef(unittest.TestCase):
         return xp.corrcoef(a, y=y, dtype=dtype)
 
 
-@testing.gpu
 class TestCov(unittest.TestCase):
 
     def generate_input(self, a_shape, y_shape, xp, dtype):
@@ -116,7 +114,6 @@ class TestCov(unittest.TestCase):
         self.check((0, 1))
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full'],
     'shape1': [(5,), (6,), (20,), (21,)],
@@ -157,7 +154,6 @@ class TestCorrelate:
         return xp.correlate(a, b, mode=mode)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))

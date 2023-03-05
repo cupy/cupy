@@ -16,7 +16,6 @@ requires_scipy_linalg_backend = unittest.skip(
 )
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
 }))
@@ -82,7 +81,6 @@ class TestLUFactor(unittest.TestCase):
             self.check_lu_factor_reconstruction(A)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
     'permute_l': [False, True],
@@ -122,7 +120,6 @@ class TestLU(unittest.TestCase):
         cupy.testing.assert_allclose(PLU, A, atol=1e-5)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'trans': [0, 1, 2],
     'shapes': [((4, 4), (4,)), ((5, 5), (5, 2))],

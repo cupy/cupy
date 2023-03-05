@@ -7,7 +7,6 @@ import numpy
 import warnings
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestPolygamma(unittest.TestCase):
 

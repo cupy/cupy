@@ -36,7 +36,6 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
         self.free_postprocess_history.append(kwargs)
 
 
-@testing.gpu
 class TestMemoryHook(unittest.TestCase):
 
     def setUp(self):

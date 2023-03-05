@@ -4,7 +4,6 @@ from cupy import _core
 from cupy import testing
 
 
-@testing.gpu
 class TestArrayOwndata(unittest.TestCase):
 
     def setUp(self):

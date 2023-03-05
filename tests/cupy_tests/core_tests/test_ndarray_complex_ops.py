@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestConj(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -39,7 +38,6 @@ class TestConj(unittest.TestCase):
         return y
 
 
-@testing.gpu
 class TestAngle(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -49,7 +47,6 @@ class TestAngle(unittest.TestCase):
         return xp.angle(x)
 
 
-@testing.gpu
 class TestRealImag(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -157,7 +154,6 @@ class TestRealImag(unittest.TestCase):
         assert cupy.all(x == expected)
 
 
-@testing.gpu
 class TestScalarConversion(unittest.TestCase):
 
     @testing.for_all_dtypes()

@@ -5,7 +5,6 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecial:
 
@@ -64,7 +63,6 @@ class TestSpecial:
         return scp.special.yn(n[:, xp.newaxis], a[xp.newaxis, :])
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFusionSpecial(unittest.TestCase):
 

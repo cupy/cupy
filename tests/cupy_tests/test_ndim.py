@@ -5,7 +5,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestNdim(unittest.TestCase):
 
     @testing.numpy_cupy_equal()

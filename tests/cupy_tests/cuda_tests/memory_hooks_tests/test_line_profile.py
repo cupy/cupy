@@ -7,7 +7,6 @@ from cupy.cuda import memory_hooks
 from cupy import testing
 
 
-@testing.gpu
 class TestLineProfileHook(unittest.TestCase):
 
     def setUp(self):

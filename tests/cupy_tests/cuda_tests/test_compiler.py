@@ -81,7 +81,6 @@ class TestNvrtcArch(unittest.TestCase):
             compiler.CompileException, self._compile, '83')
 
 
-@testing.gpu
 class TestNvrtcStderr(unittest.TestCase):
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
