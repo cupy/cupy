@@ -4,7 +4,7 @@ on:
   pull_request_target:
     types: [closed, labeled]
     branches:
-       - master
+       - main
 
 jobs:
   backport:
@@ -27,7 +27,7 @@ jobs:
     - name: setup python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7'
+        python-version: '3.10'
 
     - name: setup backport
       run: |

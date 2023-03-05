@@ -242,6 +242,10 @@ def generate():
         'Legacy Discrete Fourier Transform',
         'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy', exclude=['test'])
     buf += _section(
+        'Interpolation',
+        'scipy.interpolate', 'cupyx.scipy.interpolate', 'SciPy',
+        exclude=['test'])
+    buf += _section(
         'Advanced Linear Algebra',
         'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy',
         exclude_mod='numpy.linalg', exclude=['test'])
