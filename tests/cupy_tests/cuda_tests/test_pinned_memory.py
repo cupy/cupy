@@ -1,7 +1,6 @@
 import unittest
 
 from cupy.cuda import pinned_memory
-from cupy import testing
 
 
 class MockMemory(pinned_memory.PinnedMemory):

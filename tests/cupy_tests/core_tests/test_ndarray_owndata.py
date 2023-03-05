@@ -1,7 +1,6 @@
 import unittest
 
 from cupy import _core
-from cupy import testing
 
 
 class TestArrayOwndata(unittest.TestCase):

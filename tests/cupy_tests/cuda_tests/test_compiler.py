@@ -6,7 +6,6 @@ import pytest
 
 import cupy
 from cupy.cuda import compiler
-from cupy import testing
 
 
 def cuda_version():

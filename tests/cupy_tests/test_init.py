@@ -11,7 +11,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx
 
 

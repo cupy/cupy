@@ -5,7 +5,6 @@ import unittest
 
 import numpy
 
-from cupy import testing
 import cupy
 
 

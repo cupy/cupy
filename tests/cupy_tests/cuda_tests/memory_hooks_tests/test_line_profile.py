@@ -4,7 +4,6 @@ import re
 
 from cupy.cuda import memory
 from cupy.cuda import memory_hooks
-from cupy import testing
 
 
 class TestLineProfileHook(unittest.TestCase):
