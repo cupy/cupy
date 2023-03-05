@@ -11,7 +11,6 @@ from cupy import cuda
 from cupy.cuda import runtime
 from cupy.random import _generator
 from cupy import testing
-from cupy.testing import _attr
 from cupy.testing import _condition
 from cupy.testing import _hypothesis
 
@@ -281,7 +280,7 @@ class TestLogistic(RandomGeneratorTestCase):
     def test_logistic_2(self):
         self.generate(0.0, 1.0, size=(3, 2))
 
-    @_attr.slow
+    @testing.slow
     @_condition.repeat(10)
     def test_standard_logistic_isfinite(self):
         x = self.generate(size=10**7)
@@ -615,7 +614,7 @@ class TestStandardCauchy(RandomGeneratorTestCase):
     def test_standard_cauchy(self):
         self.generate(size=(3, 2))
 
-    @_attr.slow
+    @testing.slow
     @_condition.repeat(10)
     def test_standard_cauchy_isfinite(self):
         x = self.generate(size=10**7)
