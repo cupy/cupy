@@ -3,7 +3,6 @@ import unittest
 import cupy.cuda
 from cupy.cuda import memory
 from cupy.cuda import memory_hook
-from cupy import testing
 
 
 class SimpleMemoryHook(memory_hook.MemoryHook):
