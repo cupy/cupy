@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import warnings
+from typing import Optional, Sequence, Tuple
 
 from cupy.cuda import device
 from cupy.cuda import function
@@ -120,62 +121,96 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('32', '53', '62', '72', '87')
+_tegra_archs = (32, 53, 62, 72, 87)
 
 
 @_util.memoize()
-def _get_max_compute_capability():
+def _get_supported_archs() -> Sequence[int]:
+    """
+    Returns compute capabilities supported by this version of CUDA.
+
+    Note: this assumes that the set of supported compute capabilities are
+    identical between nvcc and NVRTC from the same CUDA release.
+    """
+    assert not runtime.is_hip
     major, minor = _get_nvrtc_version()
     if major < 11:
         # CUDA 10.2
-        nvrtc_max_compute_capability = '75'
+        return (30, 32, 35, 37, 50, 52, 53, 60, 61, 62, 70, 72, 75)
     elif major == 11 and minor == 0:
         # CUDA 11.0
-        nvrtc_max_compute_capability = '80'
-    elif major == 11 and minor < 8:
-        # CUDA 11.1 - 11.7
-        # Note: 87 is for Jetson Orin
-        nvrtc_max_compute_capability = '86'
-    else:
-        # CUDA 11.8+
-        nvrtc_max_compute_capability = '90'
-
-    return nvrtc_max_compute_capability
+        return (30, 32, 35, 37, 50, 52, 53, 60, 61, 62, 70, 72, 75, 80)
+    elif major == 11 and minor == 1:
+        # CUDA 11.1
+        return (30, 32, 35, 37, 50, 52, 53, 60, 61, 62, 70, 72, 75, 80, 86)
+    # CUDA 11.2+
+    return nvrtc.getSupportedArchs()
 
 
 @_util.memoize(for_each_device=True)
-def _get_arch():
-    # See Supported Compile Options section of NVRTC User Guide for
-    # the maximum value allowed for `--gpu-architecture`.
-    nvrtc_max_compute_capability = _get_max_compute_capability()
+def _get_cc() -> int:
+    """
+    Returns the compute capability of the current device.
+    """
+    assert not runtime.is_hip
+    return int(device.Device().compute_capability)
 
-    arch = device.Device().compute_capability
-    if arch in _tegra_archs:
-        return arch
-    else:
-        return min(arch, nvrtc_max_compute_capability)
+
+@_util.memoize()
+def _get_cc_for_compile(cc: int) -> int:
+    """
+    Returns the compute capability to be used to compile code for
+    devices of the specified compute capability.
+    """
+    assert not runtime.is_hip
+    if cc in _get_supported_archs():
+        return cc
+
+    # Try falling back to the previous generation architecture.
+    candidates = tuple(x for x in _get_supported_archs() if x < cc)
+    if len(candidates) == 0:
+        raise RuntimeError(
+            f'The compute capability of the current device ({cc}) is too old'
+            ' for this version of CUDA')
+    fallback_cc = max(candidates)
+    warnings.warn(
+        f'The compute capability of the current device ({cc}) is not'
+        ' supported by this version of CUDA; falling back to compute'
+        f' capability {fallback_cc}')
+    return fallback_cc
 
 
 @_util.memoize(for_each_device=True)
-def _get_arch_for_options_for_nvrtc(arch=None):
+def _get_arch_option(
+    cc: int,
+    backend: str,
+    *,
+    force_ptx: bool = False,
+) -> Tuple[str, str]:
     # NVRTC in CUDA 11.3+ generates PTX that cannot be run an earlier driver
     # version than the one included in the used CUDA version, as
     # documented in:
     # https://docs.nvidia.com/cuda/archive/11.3.0/nvrtc/index.html#versioning
     # Here we use `-arch=sm_*` instead of `-arch=compute_*` to directly
     # generate cubin (SASS) instead of PTX. See #5097 for details.
-    if arch is None:
-        arch = _get_arch()
-    if driver._is_cuda_python():
-        version = runtime.runtimeGetVersion()
-    else:
-        version = _cuda_hip_version
+    assert not runtime.is_hip
+    assert backend in ('nvrtc', 'nvcc')
+
+    cc_compile = _get_cc_for_compile(cc)
     if (
-        not _use_ptx and version >= 11010
-        and arch <= _get_max_compute_capability()
+        not _use_ptx and
+        not force_ptx and
+        # "sm_XX" in NVRTC is only supported in CUDA 11.1+
+        (backend == 'nvcc' or runtime.runtimeGetVersion() >= 11010) and
+        # CUBIN will not work for fallback case (see #7455)
+        cc == cc_compile
     ):
-        return f'-arch=sm_{arch}', 'cubin'
-    return f'-arch=compute_{arch}', 'ptx'
+        if backend == 'nvrtc':
+            return f'-arch=sm_{cc_compile}', 'cubin'
+        return f'-gencode=arch=compute_{cc_compile},code=sm_{cc_compile}', 'cubin'  # NOQA
+    if backend == 'nvrtc':
+        return f'-arch=compute_{cc_compile}', 'ptx'
+    return f'-gencode=arch=compute_{cc_compile},code=compute_{cc_compile}', 'ptx'  # NOQA
 
 
 def _is_cudadevrt_needed(options):
@@ -277,9 +312,13 @@ def _hash_hexdigest(value):
 _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
 
 
-def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
+def compile_using_nvrtc(source, options=(), arch: Optional[int] = None,
+                        filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
+    if arch is None:
+        arch = _get_cc()
+
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
 
@@ -295,7 +334,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 options += ('--device-as-default-execution-space',)
 
         if not runtime.is_hip:
-            arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
+            arch_opt, method = _get_arch_option(arch, 'nvrtc')
             options += (arch_opt,)
         else:
             method = 'ptx'
@@ -327,21 +366,19 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         log_stream, jitify)
 
 
-def compile_using_nvcc(source, options=(), arch=None,
-                       filename='kern.cu', code_type='cubin',
+def compile_using_nvcc(source, options=(), arch: Optional[int] = None,
+                       filename='kern.cu', force_ptx: bool = False,
                        separate_compilation=False, log_stream=None):
     # defer import to here to avoid circular dependency
     from cupy.cuda import get_nvcc_path
 
     if not arch:
-        arch = _get_arch()
+        arch = _get_cc()
 
-    if code_type not in ('cubin', 'ptx'):
-        raise ValueError('Invalid code_type %s. Should be cubin or ptx')
-    if code_type == 'ptx':
+    arch_str, code_type = _get_arch_option(arch, 'nvcc', force_ptx=force_ptx)
+    if force_ptx or code_type == 'ptx':
         assert not separate_compilation
 
-    arch_str = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(cc=arch)
     _nvcc = get_nvcc_path()
     # split() is needed because _nvcc could come from the env var NVCC
     cmd = _nvcc.split()
@@ -415,11 +452,11 @@ def compile_using_nvcc(source, options=(), arch=None,
             assert False, code_type
 
 
-def _preprocess(source, options, arch, backend):
+def _preprocess(source, options, arch: int, backend):
+    # For the preprocess it is enough to use PTX method
+    # we don't need to explicitly obtain a CUBIN file.
     if backend == 'nvrtc':
-        # For the preprocess it is enough to use PTX method
-        # we don't need to explicitly obtain a CUBIN file.
-        options += ('-arch=compute_{}'.format(arch),)
+        options += (_get_arch_option(arch, backend, force_ptx=True)[0],)
         prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
@@ -432,7 +469,7 @@ def _preprocess(source, options, arch, backend):
     elif backend == 'nvcc':
         try:
             result = compile_using_nvcc(source, options, arch, 'preprocess.cu',
-                                        code_type='ptx')
+                                        force_ptx=True)
         except CompileException as e:
             dump = _get_bool_env_variable(
                 'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
@@ -500,7 +537,8 @@ def _compile_module_with_cache(
 
 
 def _compile_with_cache_cuda(
-        source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
+        source, options, arch: Optional[int], cache_dir, extra_source=None,
+        backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, cache_in_memory=False, jitify=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
@@ -508,7 +546,7 @@ def _compile_with_cache_cuda(
     if cache_dir is None:
         cache_dir = get_cache_dir()
     if arch is None:
-        arch = _get_arch()
+        arch = _get_cc()
 
     options += ('-ftz=true',)
 
@@ -531,8 +569,8 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
-    env = ((arch, options, _get_nvrtc_version(), backend)
-           + _get_arch_for_options_for_nvrtc(arch))
+    env = ((str(arch), options, _get_nvrtc_version(), backend)
+           + _get_arch_option(arch, 'nvrtc'))
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
@@ -540,8 +578,7 @@ def _compile_with_cache_cuda(
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
-    key_src = key_src.encode('utf-8')
-    name = _hash_hexdigest(key_src) + '.cubin'
+    name = _hash_hexdigest(key_src.encode('utf-8')) + '.cubin'
 
     mod = function.Module()
 
@@ -587,7 +624,7 @@ def _compile_with_cache_cuda(
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)
         cubin = compile_using_nvcc(source, options, arch,
-                                   name + '.cu', code_type='cubin',
+                                   name + '.cu', force_ptx=False,
                                    separate_compilation=rdc,
                                    log_stream=log_stream)
     else:
