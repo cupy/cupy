@@ -102,36 +102,26 @@ __global__ void second_pass_iir(
     double* this_carries = carries + k * n_group;
     const double* prev_carries = carries + (n_group - 1) * k;
 
+    double carry = 0.0;
+    for(int i = 1; i <= k; i++) {
+        const double* k_factors = factors + (m + k) * (i - 1) + k;
+        double factor = k_factors[idx];
+        double k_value = prev_carries[k - i];
+        carry += factor * k_value;
+    }
+
+    this_group[idx] += carry;
+
     if(idx >= m - k) {
         int k_idx = idx - (m - k);
-        double carry = 0.0;
-        for(int i = 1; i <= k; i++) {
-            const double* k_factors = factors + (m + k) * (i - 1) + k;
-            double factor = k_factors[m - k + k_idx];
-            double k_value = prev_carries[k - i];
-            carry += factor * k_value;
-        }
-
         this_carries[k_idx] += carry;
-        this_group[idx] += carry;
         __syncthreads();
 
         if(k_idx == 0) {
             second_pass_iir<<<1, m>>>(m, k, n, n_group + 1, factors,
                                       carries, out);
         }
-    } else {
-        double carry = 0.0;
-        for(int i = 1; i <= k; i++) {
-            const double* k_factors = factors + (m + k) * (i - 1) + k;
-            double factor = k_factors[idx];
-            double k_value = prev_carries[k - i];
-            carry += factor * k_value;
-        }
-
-        this_group[idx] += carry;
     }
-
 }
 
 """
