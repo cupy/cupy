@@ -10,8 +10,10 @@ from cupy import testing
 @testing.parameterize(
     {'shape': (8, 2), 'index': 4, 'value': 7},
     {'shape': (25, 25), 'index': (15, 23), 'value': 19},
-    {'shape': (1920, 1080), 'index': (5600), 'value': 255},
-    {'shape': (3, 7), 'index': (0, 6), 'value': 5},
+    {'shape': (3, 256, 256), 'index': (500), 'value': 255},
+    {'shape': (3, 256, 256), 'index': (0, 100, 200), 'value': 5},
+    {'shape': (20, 3, 128, 128), 'index': (560), 'value': 255},
+    {'shape': (20, 3, 128, 128), 'index': (2, 0, 19, 34), 'value': 5},
 )
 @testing.gpu
 class TestItemset(unittest.TestCase):
