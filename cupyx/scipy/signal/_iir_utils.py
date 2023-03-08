@@ -1,5 +1,5 @@
 
-import cupy as cp
+import cupy
 
 IIR_KERNEL = r"""
 #include <cuda_runtime.h>
@@ -89,7 +89,8 @@ __global__ void first_pass_iir(
 
 __global__ void second_pass_iir(
         const int m, const int k, const int n, const int n_group,
-        const double* factors, double* carries, double* out) {
+        const int offset, const double* factors, double* carries,
+        double* out) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int group_start = n_group * m;
@@ -99,8 +100,8 @@ __global__ void second_pass_iir(
     }
 
     double* this_group = out + group_start;
-    double* this_carries = carries + k * n_group;
-    const double* prev_carries = carries + (n_group - 1) * k;
+    double* this_carries = carries + k * (n_group + offset);
+    const double* prev_carries = carries + (n_group + offset - 1) * k;
 
     double carry = 0.0;
     for(int i = 1; i <= k; i++) {
@@ -118,7 +119,7 @@ __global__ void second_pass_iir(
         __syncthreads();
 
         if(k_idx == 0) {
-            second_pass_iir<<<1, m>>>(m, k, n, n_group + 1, factors,
+            second_pass_iir<<<1, m>>>(m, k, n, n_group + 1, offset, factors,
                                       carries, out);
         }
     }
@@ -126,34 +127,49 @@ __global__ void second_pass_iir(
 
 """
 
-IIR_MODULE = cp.RawModule(
+IIR_MODULE = cupy.RawModule(
     code=IIR_KERNEL, options=('-std=c++11', '-dc'),
     name_expressions=['compute_correction_factors',
                       'first_pass_iir',
                       'second_pass_iir'])
 
 
-def apply_iir(x, b):
-    x = x.astype(cp.float64)
-    b = b.astype(cp.float64)
+def apply_iir(x, a, zi=None):
+    x = x.astype(cupy.float64)
+    a = a.astype(cupy.float64)
     out = x.copy()
 
-    k = b.size
+    if zi is not None:
+        zi = zi.astype(cupy.float64)
+
+    k = a.size
     n = x.size
     block_sz = 32
     n_blocks = (n + block_sz - 1) // block_sz
 
-    correction = cp.eye(k)
-    correction = cp.c_[correction[::-1], cp.empty((k, block_sz))]
-    carries = cp.empty((n_blocks - 1, k), dtype=cp.float64)
+    correction = cupy.eye(k)
+    correction = cupy.c_[correction[::-1], cupy.empty((k, block_sz))]
+    carries = cupy.empty((n_blocks - 1, k), dtype=cupy.float64)
 
     corr_kernel = IIR_MODULE.get_function('compute_correction_factors')
     first_pass_kernel = IIR_MODULE.get_function('first_pass_iir')
     second_pass_kernel = IIR_MODULE.get_function('second_pass_iir')
 
-    corr_kernel((k,), (1,), (block_sz, k, b, correction))
+    corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((n_blocks,), (block_sz // 2,),
                       (block_sz, k, n, correction, out, carries))
-    second_pass_kernel((1,), (block_sz,),
-                       (block_sz, k, n, 1, correction, carries, out))
+
+    if zi is not None:
+        if carries.size == 0:
+            carries = zi
+        else:
+            if zi.ndim == 1:
+                zi = cupy.expand_dims(zi, 0)
+            carries = cupy.r_[zi[-k:, :], carries]
+
+    if n_blocks > 1 or zi is not None:
+        starting_group = 1 if zi is None else 0
+        second_pass_kernel((1,), (block_sz,),
+                           (block_sz, k, n, starting_group,
+                            int(zi is not None), correction, carries, out))
     return out

@@ -6,6 +6,7 @@ from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
+from cupyx.scipy.signal._iir_utils import apply_iir
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -565,6 +566,117 @@ def medfilt2d(input, kernel_size=3):
     order = kernel_size[0] * kernel_size[1] // 2
     return _filters.rank_filter(
         input, order, size=kernel_size, mode='constant')
+
+
+def lfilter(b, a, x, axis=-1, zi=None):
+    """
+    Filter data along one-dimension with an IIR or FIR filter.
+
+    Filter a data sequence, `x`, using a digital filter.  This works for many
+    fundamental data types (including Object type).  The filter is a direct
+    form II transposed implementation of the standard difference equation
+    (see Notes).
+
+    The function `sosfilt` (and filter design using ``output='sos'``) should be
+    preferred over `lfilter` for most filtering tasks, as second-order sections
+    have fewer numerical problems.
+
+    Parameters
+    ----------
+    b : array_like
+        The numerator coefficient vector in a 1-D sequence.
+    a : array_like
+        The denominator coefficient vector in a 1-D sequence.  If ``a[0]``
+        is not 1, then both `a` and `b` are normalized by ``a[0]``.
+    x : array_like
+        An N-dimensional input array.
+    axis : int, optional
+        The axis of the input data array along which to apply the
+        linear filter. The filter is applied to each subarray along
+        this axis.  Default is -1.
+    zi : array_like, optional
+        Initial conditions for the filter delays.  It is a vector
+        (or array of vectors for an N-dimensional input) of length
+        ``max(len(a), len(b)) - 1``.  If `zi` is None or is not given then
+        initial rest is assumed.  See `lfiltic` for more information.
+
+    Returns
+    -------
+    y : array
+        The output of the digital filter.
+    zf : array, optional
+        If `zi` is None, this is not returned, otherwise, `zf` holds the
+        final filter delay values.
+
+    See Also
+    --------
+    lfiltic : Construct initial conditions for `lfilter`.
+    lfilter_zi : Compute initial state (steady state of step response) for
+                 `lfilter`.
+    filtfilt : A forward-backward filter, to obtain a filter with zero phase.
+    savgol_filter : A Savitzky-Golay filter.
+    sosfilt: Filter data using cascaded second-order sections.
+    sosfiltfilt: A forward-backward filter using second-order sections.
+
+    Notes
+    -----
+    The filter function is implemented as a direct II transposed structure.
+    This means that the filter implements::
+
+          a[0]*y[n] = b[0]*x[n] + b[1]*x[n-1] + ... + b[M]*x[n-M]
+                                - a[1]*y[n-1] - ... - a[N]*y[n-N]
+
+    where `M` is the degree of the numerator, `N` is the degree of the
+    denominator, `n` is the sample number and `L` denotes the length of the
+    input.  It is implemented by computing in parallel the FIR part and then
+    summing it with the IIR part::
+
+             a[0] * y = f(x, b) + r(x, a)
+             f(x, b)[n] = b[0]*x[n] + b[1]*x[n-1] + ... + b[M]*x[n-M]
+             r(y, a)[n] = - a[1]*y[n-1] - ... - a[N]*y[n-N]
+
+    The IIR result is computed in parallel by first dividing the input signal
+    into chunks (`g_i`) of size `m`. For each chunk, the IIR recurrence
+    equation is applied to each chunk (in parallel). Then the chunks are merged
+    based on the last N values of the last chunk::
+
+             nc = L/m
+             x = [g_0, g_1, ..., g_nc]
+
+             g_i = [x[i * m], ..., x[i * m + m - 1]]
+             p_i = r(g_i, a)
+
+             o_i = r(p_i, c(p_{i - 1}))   if i > 1,
+                   r(p_i, zi)             otherwise
+
+             y = [o_0, o_1, ..., o_nc]
+
+    where `c` denotes a function that takes a chunk, slices the last `N` values
+    and adjust them using a correction factor table computed using the
+    (0, 1, ... N)-fibonacci sequence. For more information see [1]_.
+
+    The rational transfer function describing this filter in the
+    z-transform domain is::
+
+                             -1              -M
+                 b[0] + b[1]z  + ... + b[M] z
+         Y(z) = -------------------------------- X(z)
+                             -1              -N
+                 a[0] + a[1]z  + ... + a[N] z
+
+    References
+    ----------
+    .. [1] Sepideh Maleki and Martin Burtscher.
+           2018. Automatic Hierarchical Parallelization of Linear Recurrences.
+           SIGPLAN Not. 53, 2 (February 2018), 128-138.
+           `10.1145/3173162.3173168 <https://doi.org/10.1145/3173162.3173168>`_
+    """
+    a0 = a[0]
+    a_r = a[1:] / a0
+    b = b / a0
+
+    iir = apply_iir(x, a_r, zi)  # NOQA
+    fir = convolve(x, b)  # NOQA
 
 
 def _get_kernel_size(kernel_size, ndim):
