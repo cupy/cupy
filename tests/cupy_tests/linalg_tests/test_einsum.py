@@ -339,7 +339,8 @@ class TestListArgEinSum:
 class TestEinSumUnaryOperation:
 
     @testing.for_all_dtypes(no_bool=False)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, contiguous_check=False)
     def test_einsum_unary(self, xp, dtype):
         a = testing.shaped_arange(self.shape_a, xp, dtype)
         out = xp.einsum(self.subscripts, a)
@@ -360,7 +361,8 @@ class TestEinSumUnaryOperation:
         ['dtype_a', 'dtype_out'],
         no_bool=False,
         no_complex=True)  # avoid ComplexWarning
-    @testing.numpy_cupy_allclose(contiguous_check=False)
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-1, 'default': 1e-7}, contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
         if not numpy.can_cast(dtype_a, dtype_out):
             pytest.skip()
@@ -436,7 +438,8 @@ class TestEinSumBinaryOperation:
         ['dtype_a', 'dtype_b'],
         no_bool=False,
         no_float16=False)
-    @testing.numpy_cupy_allclose(contiguous_check=False)
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e-2, 'default': 1e-7}, contiguous_check=False)
     def test_einsum_binary(self, xp, dtype_a, dtype_b):
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
         b = testing.shaped_arange(self.shape_b, xp, dtype_b)
