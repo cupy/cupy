@@ -597,8 +597,16 @@ def lfilter(b, a, x, axis=-1, zi=None):
     zi : array_like, optional
         Initial conditions for the filter delays.  It is a vector
         (or array of vectors for an N-dimensional input) of length
-        ``max(len(a), len(b)) - 1``.  If `zi` is None or is not given then
+        ``len(b) + len(a) - 1``. The first ``len(b)`` numbers correspond to the
+        last elements of the previous input and the last ``len(a)`` to the last
+        elements of the previous output. If `zi` is None or is not given then
         initial rest is assumed.  See `lfiltic` for more information.
+
+        **Note**: This argument differs from dimensions from the SciPy
+        implementation! However, as long as they are chained from the same
+        library, the output result will be the same. Please make sure to use
+        the `zi` from CuPy calls and not from SciPy. This due to the parallel
+        nature of this implementation as opposed to the serial one in SciPy.
 
     Returns
     -------
@@ -628,10 +636,10 @@ def lfilter(b, a, x, axis=-1, zi=None):
 
     where `M` is the degree of the numerator, `N` is the degree of the
     denominator, `n` is the sample number and `L` denotes the length of the
-    input.  It is implemented by computing in parallel the FIR part and then
-    summing it with the IIR part::
+    input.  It is implemented by computing first the FIR part and then
+    computing the IIR part from it::
 
-             a[0] * y = f(x, b) + r(x, a)
+             a[0] * y = r(f(x, b), a)
              f(x, b)[n] = b[0]*x[n] + b[1]*x[n-1] + ... + b[M]*x[n-M]
              r(y, a)[n] = - a[1]*y[n-1] - ... - a[N]*y[n-N]
 
@@ -653,7 +661,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
 
     where `c` denotes a function that takes a chunk, slices the last `N` values
     and adjust them using a correction factor table computed using the
-    (0, 1, ... N)-fibonacci sequence. For more information see [1]_.
+    (1, 2, ..., N)-fibonacci sequence. For more information see [1]_.
 
     The rational transfer function describing this filter in the
     z-transform domain is::
@@ -672,11 +680,24 @@ def lfilter(b, a, x, axis=-1, zi=None):
            `10.1145/3173162.3173168 <https://doi.org/10.1145/3173162.3173168>`_
     """
     a0 = a[0]
-    a_r = a[1:] / a0
+    a_r = - a[1:] / a0
     b = b / a0
 
-    iir = apply_iir(x, a_r, zi)  # NOQA
-    fir = convolve(x, b)  # NOQA
+    prev_out = None
+    in_off = 0
+    if zi is not None:
+        in_off = b.size
+        num_a = a_r.size
+        prev_in = zi[:in_off]
+        prev_out = zi[-num_a:]
+        x = cupy.r_[prev_in, x]
+
+    out = convolve(x, b, 'same')
+    out = out[in_off:]
+
+    if a_r.size > 0:
+        out = apply_iir(out, a_r, prev_out)
+    return out
 
 
 def _get_kernel_size(kernel_size, ndim):
