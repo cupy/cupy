@@ -13,7 +13,9 @@ from cupy._core._fusion_variable import _TraceArray
 from cupy._core._fusion_variable import _VariableSet
 from cupy._core import _fusion_op
 from cupy._core import _fusion_optimization
+
 from cupy._core cimport internal
+from cupy._core._dtype cimport _raise_if_invalid_cast
 
 
 _thread_local = _fusion_thread_local.thread_local
@@ -361,7 +363,6 @@ class TraceImpl:
                 out_pvar = self.vc.generate_new_array(
                     out_dtypes[i], out_rshape, out_ashape)
                 out_params.append(out_pvar)
-                ret.append(out_pvar)
             elif isinstance(out_params, _TraceScalar):
                 raise TypeError('return arrays must be of ArrayType')
             elif out_params[i].rshape != out_rshape:
@@ -369,17 +370,13 @@ class TraceImpl:
                     'non-broadcastable output operand with shape {} '
                     'doesn\'t match the broadcast shape {}'.format(
                         out_params[i].rshape, out_rshape))
-            elif numpy.can_cast(
-                    out_dtypes[i], out_params[i].dtype, 'same_kind'):
-                out_pvar = out_params[i]
-                ret.append(out_pvar)
-            else:
-                raise TypeError(
-                    'output (typecode \'{}\') could not be coerced '
-                    'to provided output parameter (typecode \'{}\') '
-                    'according to the casting rule '
-                    '"same_kind"'.format(
-                        out_dtypes[i].char, out_params[i].dtype.char))
+
+            _raise_if_invalid_cast(
+                out_dtypes[i], out_params[i].dtype, 'same_kind',
+                'output operand')
+
+            out_pvar = out_params[i]
+            ret.append(out_pvar)
 
         # Register Op.
         name = ufunc.name + '_' + str(len(self.op_list))

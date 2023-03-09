@@ -407,6 +407,13 @@ numpy:
       - "3.9"
       - "3.10"
       - "3.11"
+  "1.24":
+    spec: "==1.24.*"
+    python:
+      - "3.8"
+      - "3.9"
+      - "3.10"
+      - "3.11"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -456,6 +463,7 @@ scipy:
       - "1.21"
       - "1.22"
       - "1.23"
+      - "1.24"
   "1.9":
     spec: "==1.9.*"
     python:
@@ -471,6 +479,7 @@ scipy:
       - "1.21"
       - "1.22"
       - "1.23"
+      - "1.24"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:

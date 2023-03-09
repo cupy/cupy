@@ -20,7 +20,7 @@ Univariate interpolation
    PchipInterpolator
    Akima1DInterpolator
    PPoly
-
+   BPoly
 
 1-D Splines
 -----------

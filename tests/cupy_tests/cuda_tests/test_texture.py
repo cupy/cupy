@@ -6,15 +6,13 @@ from cupy import testing
 from cupy.cuda import runtime
 from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
                                ResourceDescriptor, TextureDescriptor,
-                               TextureObject, TextureReference,
-                               SurfaceObject)
+                               TextureObject, SurfaceObject)
 
 if cupy.cuda.runtime.is_hip:
     pytest.skip('HIP texture support is not yet ready',
                 allow_module_level=True)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'xp': ('numpy', 'cupy'),
     'stream': (True, False),
@@ -165,94 +163,10 @@ __global__ void copyKernel3D_4ch(float* output_x,
 '''
 
 
-source_texref = r'''
-extern "C"{
-texture<float, cudaTextureType1D, cudaReadModeElementType> texref1D;
-texture<float, cudaTextureType2D, cudaReadModeElementType> texref2D;
-texture<float, cudaTextureType3D, cudaReadModeElementType> texref3D;
-texture<float4, cudaTextureType3D, cudaReadModeElementType> texref3Df4;
-
-__global__ void copyKernel1Dfetch(float* output,
-                                  int width)
-{
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Read from texture and write to global memory
-    if (x < width)
-        output[x] = tex1Dfetch(texref1D, x);
-}
-
-__global__ void copyKernel1D(float* output,
-                             int width)
-{
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Read from texture and write to global memory
-    float u = x;
-    if (x < width)
-        output[x] = tex1D(texref1D, u);
-}
-
-__global__ void copyKernel2D(float* output,
-                             int width, int height)
-{
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    // Read from texture and write to global memory
-    float u = x;
-    float v = y;
-    if (x < width && y < height)
-        output[y * width + x] = tex2D(texref2D, u, v);
-}
-
-__global__ void copyKernel3D(float* output,
-                             int width, int height, int depth)
-{
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
-
-    // Read from texture and write to global memory
-    float u = x;
-    float v = y;
-    float w = z;
-    if (x < width && y < height && z < depth)
-        output[z*width*height+y*width+x] = tex3D(texref3D, u, v, w);
-}
-
-__global__ void copyKernel3D_4ch(float* output_x,
-                                 float* output_y,
-                                 float* output_z,
-                                 float* output_w,
-                                 int width, int height, int depth)
-{
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
-    float4 data;
-
-    // Read from texture, separate channels, and write to global memory
-    float u = x;
-    float v = y;
-    float w = z;
-    if (x < width && y < height && z < depth) {
-        data = tex3D(texref3Df4, u, v, w);
-        output_x[z*width*height+y*width+x] = data.x;
-        output_y[z*width*height+y*width+x] = data.y;
-        output_z[z*width*height+y*width+x] = data.z;
-        output_w[z*width*height+y*width+x] = data.w;
-    }
-}
-}
-'''
-
-
-@testing.gpu
 @testing.parameterize(*testing.product({
     'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 19)),
     'mem_type': ('CUDAarray', 'linear', 'pitch2D'),
-    'target': ('object', 'reference'),
+    'target': ('object',),
 }))
 class TestTexture:
     def test_fetch_float_texture(self):
@@ -315,17 +229,8 @@ class TestTexture:
             # create a texture object
             texobj = TextureObject(res, tex)
             mod = cupy.RawModule(code=source_texobj)
-        else:  # self.target == 'reference'
-            cuda_version = cupy.cuda.runtime.runtimeGetVersion()
-            if cuda_version >= 12000:
-                # Texture Reference API is removed in CUDA 12.0
-                pytest.skip()
-            mod = cupy.RawModule(code=source_texref)
-            texref_name = 'texref'
-            texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
-            texrefPtr = mod.get_texref(texref_name)
-            # bind texture ref to resource
-            texref = TextureReference(texrefPtr, res, tex)  # noqa
+        else:
+            assert False
 
         # get and launch the kernel
         ker_name = 'copyKernel'
@@ -355,9 +260,8 @@ class TestTexture:
         assert (real_output == expected_output).all()
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
-    'target': ('object', 'reference'),
+    'target': ('object',),
 }))
 class TestTextureVectorType:
     def test_fetch_float4_texture(self):
@@ -392,15 +296,8 @@ class TestTextureVectorType:
             # create a texture object
             texobj = TextureObject(res, tex)
             mod = cupy.RawModule(code=source_texobj)
-        else:  # self.target == 'reference'
-            cuda_version = cupy.cuda.runtime.runtimeGetVersion()
-            if cuda_version >= 12000:
-                # Texture Reference API is removed in CUDA 12.0
-                pytest.skip()
-            mod = cupy.RawModule(code=source_texref)
-            texrefPtr = mod.get_texref('texref3Df4')
-            # bind texture ref to resource
-            texref = TextureReference(texrefPtr, res, tex)  # noqa
+        else:
+            assert False
 
         # get and launch the kernel
         ker_name = 'copyKernel3D_4ch'
@@ -469,7 +366,6 @@ __global__ void writeKernel3D(cudaSurfaceObject_t surf,
 """
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 32)),
 }))

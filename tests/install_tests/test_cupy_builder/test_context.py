@@ -1,4 +1,7 @@
-from cupy_builder._context import _get_env_bool, Context, parse_args
+import os
+
+from cupy_builder._context import (
+    _get_env_bool, _get_env_path, Context, parse_args)
 
 
 class TestGetEnvBool:
@@ -13,6 +16,13 @@ class TestGetEnvBool:
         assert not _get_env_bool('V', True, {'V': '0'})
 
 
+class TestGetEnvPath:
+    def test(self):
+        assert _get_env_path('P', {}) == []
+        assert _get_env_path('P', {'P': f'1{os.pathsep}'}) == ['1']
+        assert _get_env_path('P', {'P': f'1{os.pathsep}2'}) == ['1', '2']
+
+
 class TestContext:
     def test_default(self):
         ctx = Context('.', _env={}, _argv=[])
@@ -21,6 +31,8 @@ class TestContext:
 
         assert not ctx.use_cuda_python
         assert not ctx.use_hip
+        assert ctx.include_dirs == []
+        assert ctx.library_dirs == []
 
         assert ctx.package_name == 'cupy'
         assert ctx.long_description_path is None
@@ -32,6 +44,19 @@ class TestContext:
         assert not ctx.linetrace
         assert not ctx.annotate
         assert not ctx.use_stub
+
+    def test_env(self):
+        ctx = Context('.', _env={
+            'CUPY_USE_CUDA_PYTHON': '1',
+            'CUPY_INSTALL_USE_HIP': '1',
+            'CUPY_INCLUDE_PATH': f'/tmp/include{os.pathsep}/tmp2/include',
+            'CUPY_LIBRARY_PATH': f'/tmp/lib{os.pathsep}/tmp2/lib',
+        }, _argv=[])
+
+        assert ctx.use_cuda_python
+        assert ctx.use_hip
+        assert ctx.include_dirs == ['/tmp/include', '/tmp2/include']
+        assert ctx.library_dirs == ['/tmp/lib', '/tmp2/lib']
 
 
 class TestParseArgs:

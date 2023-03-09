@@ -16,7 +16,6 @@ cdef class BaseMemory:
         public int device_id
 
 
-@cython.final
 cdef class MemoryPointer:
 
     cdef:

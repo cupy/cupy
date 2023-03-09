@@ -189,6 +189,8 @@ class TestConvolveCorrelate2DCorrelation_lags:
         if self.mode == 'full' and self.boundary != 'fill':
             # See https://github.com/scipy/scipy/issues/12685
             pytest.skip('broken in scipy')
+        if np.dtype(dtype).kind == 'u' and self.fillvalue < 0:
+            pytest.skip('fillvalue overflow')
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random(self.size2, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
