@@ -167,8 +167,6 @@ def apply_iir(x, a, zi=None):
                 zi = cupy.expand_dims(zi, 0)
             carries = cupy.r_[zi[-k:, :], carries]
 
-    print(carries)
-
     if n_blocks > 1 or zi is not None:
         starting_group = 1 if zi is None else 0
         second_pass_kernel((1,), (block_sz,),

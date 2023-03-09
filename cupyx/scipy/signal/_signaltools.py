@@ -683,7 +683,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
     a_r = - a[1:] / a0
     b = b / a0
 
-    num_b = b.size
+    num_b = b.size - 1
     num_a = a_r.size
     x_ndim = x.ndim
     x_shape = x.shape
