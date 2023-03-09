@@ -460,9 +460,3 @@ You can pass streams created in CuPy to other libraries.
 
 The CUDA stream will be destroyed when the :class:`~cupy.cuda.Stream` (``s``) gets destructed.
 You must keep the :class:`~cupy.cuda.Stream` instance alive while the pointer is in use by other libraries.
-
-
-CUDA Device
------------
-
-Under construction. Starting CuPy v10, the ``with Device`` context manager would no longer respect ``cudaSetDevice()``, see :ref:`change in CuPy Device behavior`.

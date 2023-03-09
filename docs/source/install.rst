@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.7.0+ / v3.8.0+ / v3.9.0+ / v3.10.0+ / v3.11.0+
+* `Python <https://python.org/>`_: v3.8 / v3.9 / v3.10 / v3.11
 
 .. note::
 
@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.23 and SciPy 1.9, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.9, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.20 / v1.21 / v1.22 / v1.23
+* `NumPy <https://numpy.org/>`_: v1.21 / v1.22 / v1.23 / v1.24
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.6 / v1.7 / v1.8 / v1.9
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9
 
     * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -463,6 +463,7 @@ The following features are not yet supported:
 * cuDNN (hipDNN)
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
+* Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
 
 The following features may not work in edge cases (e.g., some combinations of dtype):
 

@@ -8,8 +8,8 @@ repos:
     # Git
     -   id: check-added-large-files
     -   id: no-commit-to-branch
-        name: "ensure no direct commit to master/vXX branch"
-        args: [--branch, "master", --pattern, "v\\d+"]
+        name: "ensure no direct commit to main/vXX branch"
+        args: [--branch, "main", --pattern, "v\\d+"]
     -   id: check-case-conflict
     # Contents
     -   id: mixed-line-ending
