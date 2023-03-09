@@ -597,7 +597,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
     zi : array_like, optional
         Initial conditions for the filter delays.  It is a vector
         (or array of vectors for an N-dimensional input) of length
-        ``len(b) + len(a) - 1``. The first ``len(b)`` numbers correspond to the
+        ``len(b) + len(a) - 2``. The first ``len(b)`` numbers correspond to the
         last elements of the previous input and the last ``len(a)`` to the last
         elements of the previous output. If `zi` is None or is not given then
         initial rest is assumed.  See `lfiltic` for more information.
@@ -683,21 +683,38 @@ def lfilter(b, a, x, axis=-1, zi=None):
     a_r = - a[1:] / a0
     b = b / a0
 
+    num_b = b.size
+    num_a = a_r.size
+    x_ndim = x.ndim
+    x_shape = x.shape
+    axis = internal._normalize_axis_index(axis, x_ndim)
+
     prev_out = None
     in_off = 0
     if zi is not None:
-        in_off = b.size
-        num_a = a_r.size
+        in_off = num_b
         prev_in = zi[:in_off]
         prev_out = zi[-num_a:]
         x = cupy.r_[prev_in, x]
 
-    out = convolve(x, b, 'same')
-    out = out[in_off:]
+    if x_ndim > 1:
+        zeros_shape = list(x_shape)
+        zeros_shape[axis] = 1
+        xe = cupy.concatenate((x, cupy.zeros(zeros_shape)), axis=axis)
+        out = _filters.convolve1d(xe, b, axis=-1, mode='constant', origin=-1)
+    else:
+        out = convolve(x, b, 'same')
+        out = out[in_off:]
 
     if a_r.size > 0:
         out = apply_iir(out, a_r, prev_out)
-    return out
+    if zi is not None:
+        prev_in = x[-num_b:]
+        prev_out = out[-num_a:]
+        zi = cupy.r_[prev_in, prev_out]
+        return out, zi
+    else:
+        return out
 
 
 def _get_kernel_size(kernel_size, ndim):
