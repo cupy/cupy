@@ -351,7 +351,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
-    cdef str c_type, c_name
+    cdef str c_type, c_name, arg_preamble
     cdef int i
     assert len(params) == len(arginfos)
 

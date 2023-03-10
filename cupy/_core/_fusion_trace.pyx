@@ -15,6 +15,7 @@ from cupy._core import _fusion_op
 from cupy._core import _fusion_optimization
 
 from cupy._core cimport internal
+from cupy._core._kernel cimport _Op
 from cupy._core._dtype cimport _raise_if_invalid_cast
 
 
@@ -99,10 +100,13 @@ cdef class _ShapeConstraints:
 
 
 def _guess_routine(func, args, dtype):
+    cdef _Op op
+    cdef tuple in_out_dtypes
     assert isinstance(func, (_kernel.ufunc, _reduction._SimpleReductionKernel))
 
     # Feeds dummy arguments with appropriate dtypes passed to `guess_routine`.
     dummy_args = []
+    dtypes = []
     for x in args:
         if isinstance(x, _TraceScalar):
             obj = x.dtype.type(0)
@@ -110,10 +114,13 @@ def _guess_routine(func, args, dtype):
             assert isinstance(x, _TraceArray)
             obj = core.ndarray((0,), x.dtype)
         dummy_args.append(obj)
+        dtypes.append(obj.dtype)
 
     op = func._ops.guess_routine(
         func.name, func._routine_cache, dummy_args, dtype, None)
-    return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
+
+    in_out_dtypes = op.resolve_dtypes(dtypes[:func.nin], dtypes[func.nin:])
+    return  in_out_dtypes[0], in_out_dtypes[1], op.routine
 
 
 def _base(array):

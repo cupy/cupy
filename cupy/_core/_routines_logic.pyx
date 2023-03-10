@@ -1,4 +1,6 @@
-from cupy._core._kernel import create_ufunc
+import numpy as np
+
+from cupy._core._kernel import create_ufunc, _Op
 from cupy._core._reduction import create_reduction_func
 
 from cupy._core.core cimport _ndarray_base
@@ -52,6 +54,30 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
+def _fix_to_sctype(dtype, sctype):
+    if dtype.type == sctype:
+        return dtype
+    elif dtype.kind == "S":
+        length = dtype.itemsize
+    elif dtype.kind == "U":
+        length = dtype.itemsize // 4
+    else:
+        raise ValueError(
+            "Strings can currently only be compared with strings.")
+
+    return np.dtype((sctype, length))
+
+
+def _s_cmp_resolver(op, arginfo):
+    # Support only U->S and S->U casts right now
+
+    in1_dtype = _fix_to_sctype(arginfo[0].dtype, op.in_types[0])
+    in2_dtype = _fix_to_sctype(arginfo[1].dtype, op.in_types[1])
+    out_dtype = np.dtype("?")
+
+    return (in1_dtype, in2_dtype), (out_dtype,)
+
+
 cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
 
     if no_complex_dtype:
@@ -62,11 +88,23 @@ cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
                'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
                'FF->?', 'DD->?')
 
+    if op == "==":
+        # Define the more complicated string ops, for now only `==`
+        custom_ops=[
+            # Note, mixing right now would cast, but we the code can really do
+            # without (C++ might optimize that away.)
+            _Op((np.bytes_, np.bytes_), (np.bool_,), 'out0 = in0 %s in1' % op, None, _s_cmp_resolver),
+            _Op((np.str_, np.str_), (np.bool_,), 'out0 = in0 %s in1' % op, None, _s_cmp_resolver),
+            ]
+    else:
+        custom_ops = []
+
     return create_ufunc(
         'cupy_' + name,
         ops,
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc,
+        custom_ops=custom_ops)
 
 
 cdef _greater = create_comparison(

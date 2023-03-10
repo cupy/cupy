@@ -12,6 +12,7 @@ cdef class ParameterInfo:
     cdef:
         readonly str name
         readonly object dtype
+        readonly str preamble
         readonly str ctype
         readonly bint raw
         readonly bint is_const
@@ -70,9 +71,11 @@ cdef class _ArgInfo:
 
     cdef bint is_scalar(self)
 
-    cdef str get_c_type(self)
+    cdef tuple get_c_type(self)
 
     cdef str get_param_c_type(self, ParameterInfo p)
+
+    cdef tuple get_param_c_type_with_preamble(self, ParameterInfo p)
 
     cdef str get_c_var_name(self, ParameterInfo p)
 
@@ -102,6 +105,11 @@ concrete dtype mapping.
         # disallowed, error_func must be set instead of routine.
         # It's called by check_valid() method.
         readonly object error_func
+        readonly object _resolution_func
+        readonly tuple _in_dtypes
+        readonly tuple _out_dtypes
+        readonly tuple _in_DType_classes
+        readonly tuple _out_DType_classes
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
@@ -111,9 +119,7 @@ concrete dtype mapping.
     @staticmethod
     cdef _Op from_type_and_routine(str typ, routine)
 
-    cpdef tuple get_in_dtypes(self)
-
-    cpdef tuple get_out_dtypes(self)
+    cdef tuple resolve_dtypes(self, list in_dtypes, list out_dtypes)
 
     # Creates an op instance parsing a dtype mapping with given error function.
     @staticmethod
@@ -144,14 +150,15 @@ cdef class _Ops:
 
     cpdef _Op _guess_routine_from_dtype(self, object dtype)
 
+    cpdef extend(self, obj)
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*,
-                   cutensor_op=*, scatter_op=*)
+                   cutensor_op=*, scatter_op=*, custom_ops=*)
 
 cdef tuple _get_arginfos(list args)
 
-cdef str _get_kernel_params(tuple params, tuple arginfos)
+cdef tuple _get_kernel_params(tuple params, tuple arginfos)
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 

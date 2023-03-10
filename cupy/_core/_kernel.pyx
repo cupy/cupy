@@ -18,9 +18,12 @@ from cupy.cuda cimport texture
 from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
-from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
+from cupy._core._dtype cimport (
+        get_dtype, _raise_if_invalid_cast, _resolve_dtype_cast)
 from cupy._core._memory_range cimport may_share_bounds
-from cupy._core._scalar import get_typename as _get_typename
+from cupy._core._scalar import (
+        get_typename as _get_typename,
+        get_typename_with_preamble as _get_typename_with_preamble)
 from cupy._core cimport core
 from cupy._core.core cimport _convert_object_with_cuda_array_interface
 from cupy._core.core cimport _ndarray_init
@@ -53,9 +56,12 @@ def _get_warpsize():
 cdef str _get_simple_elementwise_kernel_code(
         tuple params, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
+    params_preamble, params_sig = _get_kernel_params(params, arginfos)
+
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
     ${typedef_preamble}
+    ${params_preamble}
     ${preamble}
     extern "C" __global__ void ${name}(${params}) {
       ${loop_prep};
@@ -68,7 +74,8 @@ cdef str _get_simple_elementwise_kernel_code(
     }
     ''').substitute(
         typedef_preamble=type_map.get_typedef_code(),
-        params=_get_kernel_params(params, arginfos),
+        params_preamble=params_preamble,
+        params=params_sig,
         operation=operation,
         name=name,
         preamble=preamble,
@@ -221,7 +228,7 @@ cdef class _ArgInfo:
         ret._init(
             ARG_KIND_NDARRAY,
             type(arg),
-            arg.dtype.type,
+            arg.dtype,
             arg._shape.size(),
             arg._c_contiguous,
             arg._index_32_bits)
@@ -299,27 +306,39 @@ cdef class _ArgInfo:
     cdef bint is_scalar(self):
         return self.arg_kind == ARG_KIND_SCALAR
 
-    cdef str get_c_type(self):
-        # Returns the C type representation.
+    cdef tuple get_c_type(self):
+        # Returns the C type representation.  Does not add preamble, this is
+        # the job of the caller to ensure it already is/was added.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            return 'CArray<%s, %d, %d, %d>' % (
-                _get_typename(self.dtype), self.ndim,
-                self.c_contiguous, self.index_32_bits)
+            name, preamble = _get_typename_with_preamble(self.dtype)
+            name = 'CArray<%s, %d, %d, %d>' % (
+                name, self.ndim, self.c_contiguous, self.index_32_bits)
+            return name, preamble
         if self.arg_kind == ARG_KIND_SCALAR:
-            return _get_typename(self.dtype)
+            return _get_typename_with_preamble(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
-            return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits)
+            return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits), ""
         if self.arg_kind == ARG_KIND_TEXTURE:
-            return 'cudaTextureObject_t'
+            return 'cudaTextureObject_t', ""
         assert False
 
     cdef str get_param_c_type(self, ParameterInfo p):
+        cdef str ctyp, preamble
+        ctyp, preamble = self.get_param_c_type_with_preamble(p)
+        if preamble:
+            # Some code paths will not use the preamble.  In most cases that is
+            # probably not relevant, but when it is they can be updated.
+            raise TypeError(f"Compiling for '{ctyp}' not possible here.")
+        return ctyp
+
+    cdef tuple get_param_c_type_with_preamble(self, ParameterInfo p):
         # Returns the C type representation in the global function's
         # parameter list.
-        cdef str ctyp = self.get_c_type()
+        cdef str ctyp, preamble
+        ctyp, preamble = self.get_c_type()
         if p.is_const:
-            return 'const ' + ctyp
-        return ctyp
+            return 'const ' + ctyp, preamble
+        return ctyp, preamble
 
     cdef str get_c_var_name(self, ParameterInfo p):
         if self.arg_kind in (ARG_KIND_NDARRAY, ARG_KIND_POINTER) and not p.raw:
@@ -331,18 +350,20 @@ cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cdef str _get_kernel_params(tuple params, tuple arginfos):
+cdef tuple _get_kernel_params(tuple params, tuple arginfos):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
     assert len(params) == len(arginfos)
     lst = []
+    preamble = []
     for i in range(len(params)):
         p = params[i]
         arginfo = arginfos[i]
-        lst.append('{} {}'.format(
-            arginfo.get_param_c_type(p),
-            arginfo.get_c_var_name(p)))
-    return ', '.join(lst)
+        name, arg_preamble = arginfo.get_param_c_type_with_preamble(p)
+        if arg_preamble:
+            preamble.append(arg_preamble)
+        lst.append('{} {}'.format(name, arginfo.get_c_var_name(p)))
+    return "\n".join(preamble), ', '.join(lst)
 
 
 cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
@@ -452,6 +473,7 @@ cdef class ParameterInfo:
     def __init__(self, str param, bint is_const):
         self.name = None
         self.dtype = None
+        self.preamble = ""
         self.ctype = None
         self.raw = False
         self.is_const = is_const
@@ -469,7 +491,7 @@ cdef class ParameterInfo:
             self.dtype = dtype.type
             if dtype.name != t:
                 raise ValueError('Wrong type %s' % t)
-            self.ctype = _get_typename(self.dtype)
+            self.ctype, self.preamble = _get_typename_with_preamble(self.dtype)
 
         for i in s[:-2]:
             if i == 'raw':
@@ -537,59 +559,86 @@ cdef class _TypeMap:
 
     cdef str get_typedef_code(self):
         # Returns a code fragment of typedef statements used as preamble.
-        return ''.join([
-            'typedef %s %s;\n' % (_get_typename(ctype2), ctype1)
-            for ctype1, ctype2 in self._pairs])
+        cdef str name, preamble
+        cdef list typedefs = []
+        for code_name, dtype in self._pairs:
+            name, preamble = _get_typename_with_preamble(dtype)
+            if preamble:
+                typedefs.append(f"{preamble}\ntypedef {name} {code_name};\n")
+            else:
+                typedefs.append(f"typedef {name} {code_name};\n")
+        return ''.join(typedefs)
 
 
 cdef tuple _decide_params_type_core(
         tuple in_params, tuple out_params, tuple in_args_dtype,
         tuple out_args_dtype):
+    # TODO: This function is pretty complex, and should probably be reorganized
+    #       a little (also to ensure correctness by making it clearer what it
+    #       does)
+
+    # typedef only once and allow output types to override input ones.
     type_dict = {}
+    out_types = []
+
     if out_args_dtype:
         assert len(out_params) == len(out_args_dtype)
         for p, a in zip(out_params, out_args_dtype):
             if a is None:
-                raise TypeError('Output arguments must be cupy.ndarray')
-            if p.dtype is not None:
-                if get_dtype(a) != get_dtype(p.dtype):
+                raise TypeError('Output arguments must be cupy arrays.')
+
+            a = numpy.dtype(a) if a != "cudaTextureObject_t" else a
+            out_types.append(a)
+
+            if p.dtype is None:
+                type_dict[p.ctype] = a
+            else:
+                p_dtype = get_dtype(p.dtype)
+                if a == p_dtype:
+                    ctype = p.ctype
+                elif type(a) == type(p_dtype):
+                    # a is the same type, but it is parametric (i.e. string length)
+                    ctype = _get_typename(a)
+                else:
                     raise TypeError(
                         'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
-            elif p.ctype in type_dict:
-                t = type_dict[p.ctype]
-                if get_dtype(t) != get_dtype(a):
-                    raise TypeError(
-                        'Type is mismatched. %s %s %s %s' % (
-                            p.name, a, t, p.ctype))
-            else:
-                type_dict[p.ctype] = a
 
     assert len(in_params) == len(in_args_dtype)
-    unknown_ctype = []  # TODO(leofang): remove this as it's unused?
+    in_types = []
     for p, a in zip(in_params, in_args_dtype):
         if a is None:
-            if p.dtype is None:
-                unknown_ctype.append(p.ctype)
-        else:
+            # The parameter is not passed as an array.
             if p.dtype is not None:
-                if numpy.dtype(a) != numpy.dtype(p.dtype):
-                    raise TypeError(
-                        'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
-            elif p.ctype in type_dict:
-                t = type_dict[p.ctype]
-                if numpy.dtype(t) != numpy.dtype(a):
-                    raise TypeError(
-                        'Type is mismatched. %s %s %s %s' % (
-                            p.name, a, t, p.ctype))
+                in_types.append(p.dtype)
             else:
-                type_dict[p.ctype] = a
+                # the same "ctype" name must have been defined by an input
+                in_types.append(type_dict[p.ctype])
+            continue
 
-    in_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
-                      for p in in_params])
-    out_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
-                       for p in out_params])
+        a = numpy.dtype(a) if a != "cudaTextureObject_t" else a
+        in_types.append(a)
+
+        if p.dtype is None:
+            type_dict[p.ctype] = a
+        else:
+            p_dtype = get_dtype(p.dtype)
+            if a == p_dtype:
+                pass
+            elif type(a) == type(p_dtype):
+                # a is the same type, but it is parametric (i.e. string length)
+                pass
+            else:
+                raise TypeError(
+                    'Type is mismatched. %s %s %s' % (p.name, a, p_dtype))
+
+    if not out_args_dtype:
+        # Out arguments types inferred from inputs (typically), the same
+        # way as inputs otherwise.
+        out_types = [type_dict[p.ctype] if p.dtype is None else p.dtype
+                     for p in out_params]
+
     type_map = _TypeMap(tuple(sorted(type_dict.items())))
-    return in_types, out_types, type_map
+    return tuple(in_types), tuple(out_types), type_map
 
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
@@ -637,9 +686,6 @@ cdef list _get_out_args_from_optionals(
 ):
     cdef _ndarray_base arr
 
-    while len(out_args) < len(out_types):
-        out_args.append(None)
-
     for i, a in enumerate(out_args):
         if a is None:
             out_args[i] = _ndarray_init(
@@ -652,7 +698,7 @@ cdef list _get_out_args_from_optionals(
         arr = a
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
-        out_type = get_dtype(out_types[i])
+        out_type = out_types[i]
 
         _raise_if_invalid_cast(out_type, arr.dtype, casting, "output operand")
     return out_args
@@ -685,6 +731,10 @@ cdef list _get_out_args_with_params(
 
     for i, p in enumerate(out_params):
         a = out_args[i]
+        if a is None:
+            out_args[i] = _ndarray_init(
+                    cupy.ndarray, out_shape, out_types[i], None)
+            continue
         if not isinstance(a, _ndarray_base):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
@@ -709,6 +759,8 @@ def _get_elementwise_kernel_code(
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))
+            if p.preamble:
+                preamble += p.preamble + "\n"
     op.append(operation)
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel_code(
@@ -876,14 +928,14 @@ cdef class ElementwiseKernel:
         in_ndarray_types = []
         for a in in_args:
             if isinstance(a, _ndarray_base):
-                t = a.dtype.type
+                t = a.dtype
             elif isinstance(a, texture.TextureObject):
                 t = 'cudaTextureObject_t'
             else:
                 t = None
             in_ndarray_types.append(t)
         in_ndarray_types = tuple(in_ndarray_types)
-        out_ndarray_types = tuple([a.dtype.type for a in out_args])
+        out_ndarray_types = tuple([a.dtype for a in out_args])
 
         in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
@@ -1282,6 +1334,10 @@ cdef class ufunc:
                     raise ValueError("'out' must be a tuple of arrays")
                 out_args = out,
 
+        # Normalize outputs to a tuple of Nones:
+        if len(out_args) < self.nout:
+            out_args += (None,) * (self.nout - len(out_args))
+
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, in_args, False)
         out_args = _preprocess_optional_args(dev_id, out_args, False)
@@ -1347,8 +1403,11 @@ cdef class ufunc:
                 template = in_arg
                 break
 
+        core_in_dtypes, core_out_dtypes = op.resolve_dtypes(
+                in_args, out_args)
+
         out_args = _get_out_args_from_optionals(
-            subtype, out_args, op.out_types, shape, casting, template)
+            subtype, out_args, core_out_dtypes, shape, casting, template)
         if self.nout == 1:
             ret = out_args[0]
         else:
@@ -1372,7 +1431,8 @@ cdef class ufunc:
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
+        kern = self._get_ufunc_kernel(
+            core_in_dtypes, core_out_dtypes, dev_id, op, arginfos, has_where)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
@@ -1384,7 +1444,9 @@ cdef class ufunc:
         cdef _ArgInfo arginfo
         inout_type_words = []
         for arginfo in arginfos:
-            dtype = str(numpy.dtype(arginfo.dtype))
+            # TODO(seberg): Using __name__ is a bit strange but avoids `<U0`
+            #               for unicode/str.
+            dtype = numpy.dtype(arginfo.dtype).type.__name__
             if arginfo.is_ndarray():
                 inout_type_words.append(dtype)
             elif arginfo.is_scalar():
@@ -1392,7 +1454,8 @@ cdef class ufunc:
         return '{}__{}'.format(name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, _Op op, tuple arginfos, bint has_where):
+            self, tuple in_dtypes, tuple out_dtypes,
+            int dev_id, _Op op, tuple arginfos, bint has_where):
         cdef function.Function kern
         key = (dev_id, op, arginfos, has_where)
         kern = self._kernel_memo.get(key, None)
@@ -1400,7 +1463,7 @@ cdef class ufunc:
             name = self._get_name_with_type(arginfos, has_where)
             params = self._params_with_where if has_where else self._params
             kern = _get_ufunc_kernel(
-                op.in_types, op.out_types, op.routine, arginfos, has_where,
+                in_dtypes, out_dtypes, op.routine, arginfos, has_where,
                 params, name, self._preamble, self._loop_prep)
             self._kernel_memo[key] = kern
         return kern
@@ -1509,7 +1572,7 @@ cdef class _Op:
 
     def __init__(
             self, tuple in_types, tuple out_types, object routine,
-            object error_func):
+            object error_func, object resolution_func=None):
         if error_func is None:
             assert routine is not None
         else:
@@ -1520,6 +1583,14 @@ cdef class _Op:
         self.nout = len(out_types)
         self.routine = routine
         self.error_func = error_func
+        # Resolution func is typically None (non parametric dtypes) but can
+        # implement more complex logic.
+        self._resolution_func = resolution_func
+        self._in_dtypes = tuple([get_dtype(t) for t in in_types])
+        self._out_dtypes = tuple([get_dtype(t) for t in out_types])
+        # For resolution, the DType class is actually imporant:
+        self._in_DType_classes = tuple([type(dt) for dt in self._in_dtypes])
+        self._out_DType_classes = tuple([type(dt) for dt in self._out_dtypes])
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
@@ -1546,11 +1617,29 @@ cdef class _Op:
         if self.error_func is not None:
             self.error_func()
 
-    cpdef tuple get_in_dtypes(self):
-        return tuple([get_dtype(t) for t in self.in_types])
+    cdef tuple resolve_dtypes(self, list in_args, list out_args):
+        # In most cases, this just returns the typical dtypes matching the
+        # the dtype kind (or DType class, as of now represented by the scalar).
+        # For parametric DTypes, more complex handling may be necessary and
+        # can be implemented by providing the resolver function.
+        if self._resolution_func is None:
+            return self._in_dtypes, self._out_dtypes
 
-    cpdef tuple get_out_dtypes(self):
-        return tuple([get_dtype(t) for t in self.out_types])
+        in_dtypes = []
+        for arg, dt in zip(in_args, self._in_DType_classes):
+            if arg is None:
+                in_dtypes.append(None)
+            else:
+                in_dtypes.append(_resolve_dtype_cast(arg.dtype, dt))
+
+        out_dtypes = []
+        for arg, dt in zip(out_args, self._out_DType_classes):
+            if arg is None:
+                out_dtypes.append(None)
+            else:
+                out_dtypes.append(_resolve_dtype_cast(arg.dtype, dt))
+
+        return self._resolution_func(self, tuple(in_dtypes), tuple(out_dtypes))
 
 
 cdef class _Ops:
@@ -1564,6 +1653,10 @@ cdef class _Ops:
         self.ops = ops
         self.nin = nin
         self.nout = nout
+
+    cpdef extend(self, obj):
+        # TODO: Should check that all new objects are _Op instances.
+        self.ops = self.ops + tuple(obj)
 
     @staticmethod
     cdef _Ops from_tuples(object ops, routine):
@@ -1590,11 +1683,11 @@ cdef class _Ops:
             use_raw_value = _check_should_use_min_scalar(in_args)
             if use_raw_value:
                 in_types = tuple([
-                    a.dtype.type if isinstance(a, _ndarray_base)
+                    a.dtype if isinstance(a, _ndarray_base)
                     else _min_scalar_type(a)
                     for a in in_args])
             else:
-                in_types = tuple([a.dtype.type for a in in_args])
+                in_types = tuple([a.dtype for a in in_args])
             op = cache.get(in_types, ())
             if op is ():
                 op = self._guess_routine_from_in_types(in_types)
@@ -1613,7 +1706,7 @@ cdef class _Ops:
             return op
 
         if dtype is None:
-            dtype = tuple([a.dtype.type for a in in_args])
+            dtype = tuple([a.dtype for a in in_args])
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
@@ -1652,8 +1745,10 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                    default_casting=None, loop_prep='', out_ops=None,
-                   cutensor_op=None, scatter_op=None):
+                   cutensor_op=None, scatter_op=None,
+                   object custom_ops=()):
     ops_ = _Ops.from_tuples(ops, routine)
+    ops_.extend(custom_ops)
     _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
