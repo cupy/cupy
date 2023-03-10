@@ -8,3 +8,5 @@ cpdef void _raise_if_invalid_cast(
     str casting,
     argname=*
 ) except *
+
+cpdef _resolve_dtype_cast(from_dt, to)

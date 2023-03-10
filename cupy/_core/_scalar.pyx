@@ -65,12 +65,37 @@ cdef object _numpy_float_ = numpy.float_
 cdef object _numpy_complex_ = numpy.complex_
 
 
-cpdef str get_typename(dtype):
+cpdef tuple get_typename_with_preamble(dtype):
     if dtype is None:
         raise ValueError('dtype is None')
-    if dtype not in _typenames:
-        dtype = _dtype.get_dtype(dtype).type
-    return _typenames[dtype]
+
+    if dtype in _typenames:
+        return _typenames[dtype], ""
+
+    dtype = _dtype.get_dtype(dtype)
+
+    if dtype.type in _typenames:
+        return _typenames[dtype.type], ""
+
+    # TODO: Are these the best names for char8_t and char32_t to use?
+    if dtype.char == "S":
+        name = f"NumPyString<unsigned char, {dtype.itemsize}>"
+        return name, '#include "cupy/numpystring.h"'
+    else:
+        name = f"NumPyString<unsigned int, {dtype.itemsize // 4}>"
+        return name, '#include "cupy/numpystring.h"'
+
+    raise TypeError(f"Cannot compile for dtype '{dtype}'")
+
+
+cpdef str get_typename(dtype):
+    name, preamble = get_typename_with_preamble(dtype)
+    if preamble:
+        # Some code paths will not use the preamble.  In most cases that is
+        # probably not relevant, but when it is they can be updated.
+        raise TypeError(f"Compiling for dtype '{dtype}' not possible here.")
+
+    return name
 
 
 cdef dict _typenames = {}
@@ -85,6 +110,8 @@ cdef _setup_type_dict():
         _typenames[t] = _typenames_base[d]
         k = ord(d.kind)
         _dtype_kind_size_dict[t] = (k, d.itemsize)
+        # TODO: Also include the dtype, should probably not need this:
+        _dtype_kind_size_dict[d] = (k, d.itemsize)
     # CUDA types
     for t in ('cudaTextureObject_t',):
         _typenames[t] = t
