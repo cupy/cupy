@@ -707,7 +707,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
         out = out[in_off:]
 
     if a_r.size > 0:
-        out = apply_iir(out, a_r, prev_out)
+        out = apply_iir(out, a_r, zi=prev_out)
     if zi is not None:
         prev_in = x[-num_b:]
         prev_out = out[-num_a:]

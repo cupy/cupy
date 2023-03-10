@@ -45,8 +45,8 @@ class TestIIRUtils:
         zi = cupy.zeros(order)
         x = cupy.arange(3, size + 3, dtype=cupy.float64) * signs[:size]
         b = testing.shaped_random((order,))
-        seq = self._sequential_impl(x, b, zi)
-        par = apply_iir(x, b, zi)
+        seq = self._sequential_impl(x, b, zi=zi)
+        par = apply_iir(x, b, zi=zi)
         par2 = apply_iir(x, b)
         testing.assert_allclose(par, par2)
         testing.assert_allclose(seq, par)
@@ -58,6 +58,6 @@ class TestIIRUtils:
         zi = testing.shaped_random((order,))
         x = cupy.arange(3, size + 3, dtype=cupy.float64) * signs[:size]
         b = testing.shaped_random((order,))
-        seq = self._sequential_impl(x, b, zi)
-        par = apply_iir(x, b, zi)
+        seq = self._sequential_impl(x, b, zi=zi)
+        par = apply_iir(x, b, zi=zi)
         testing.assert_allclose(seq, par)
