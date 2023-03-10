@@ -52,9 +52,12 @@ def get_array_module(*args):
 
 
 def __dir__():
-    return __all__
+
+    return __all__ + ['get_array_module']
 
 
 def __getattr__(name):
     if name in submodules:
-        return _importlib.import_module(f'scipy.{name}')
+        return _importlib.import_module(f'cupyx.scipy.{name}')
+    raise AttributeError(
+        "module 'cupyx.scipy' has no attribute {!r}".format(name))
