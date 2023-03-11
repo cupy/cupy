@@ -28,6 +28,20 @@ class TestIIRUtils:
                 y[i] += b[j - 1] * arr[i - j]
         return y
 
+    def _sequential_impl_nd(self, x, b, axis, zi=None):
+        n = x.shape[axis]
+        x = cupy.moveaxis(x, axis, -1)
+        x_shape = x.shape
+        x = x.reshape(-1, n)
+        y = cupy.empty_like(x, dtype=cupy.float64)
+
+        for i in range(x.shape[0]):
+            y[i] = self._sequential_impl(x[i], b)
+
+        y = y.reshape(x_shape)
+        y = cupy.moveaxis(y, -1, axis)
+        return y
+
     @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     def test_order(self, size, order):
@@ -37,6 +51,27 @@ class TestIIRUtils:
         seq = self._sequential_impl(x, b)
         par = apply_iir(x, b)
         testing.assert_allclose(seq, par)
+
+    @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
+    @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
+    def test_order_ndim(self, size, order):
+        signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
+
+        x = [cupy.arange(3 + i, size + 3 + i, dtype=cupy.float64) *
+             signs[:size] for i in range(3)]
+        x = [cupy.expand_dims(e, 0) for e in x]
+        x = cupy.concatenate(x, axis=0)
+
+        final_shape = [4, 5]
+        final_shape += list(x.shape)
+
+        x = cupy.broadcast_to(x, final_shape)
+        x = x.copy()
+        b = testing.shaped_random((order,))
+        for axis in range(0, len(final_shape)):
+            par = apply_iir(x, b, axis)
+            seq = self._sequential_impl_nd(x, b, axis)
+            testing.assert_allclose(seq, par)
 
     @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])

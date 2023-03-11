@@ -29,19 +29,19 @@ __global__ void compute_correction_factors(
 }
 
 __global__ void first_pass_iir(
-        const int m, const int k, const int n, const int total_elements,
+        const int m, const int k, const int n, const int n_blocks,
         const int carries_stride, const double* factors, double* out,
         double* carries) {
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    idx = 2 * idx + 1;
+    int orig_idx = blockDim.x * blockIdx.x + threadIdx.x;
+    orig_idx = orig_idx % (n_blocks * (m / 2));
 
-    if(idx >= total_elements) {
+    int num_row = blockIdx.x / n_blocks;
+    int idx = 2 * orig_idx + 1;
+
+    if(idx >= n) {
         return;
     }
 
-    int num_row = idx / n;
-
-    idx = idx % n;
     int group_num = idx / m;
     int group_pos = idx % m;
 
@@ -106,7 +106,7 @@ __global__ void second_pass_iir(
     int row_num = block_num < 0 ? blockIdx.x : block_num;
     int group_start = n_group * m;
 
-    idx = idx % n;
+    idx = idx % m;
 
     if(group_start + idx >= n) {
         return;
@@ -175,6 +175,8 @@ def apply_iir(x, a, axis=-1, zi=None):
 
     if x_ndim > 1:
         x, x_shape = collapse_2d(x, axis)
+        if zi is not None:
+            zi, _ = collapse_2d(zi, axis)
 
     out = x.copy()
 
@@ -182,7 +184,6 @@ def apply_iir(x, a, axis=-1, zi=None):
     block_sz = 32
     n_blocks = (n + block_sz - 1) // block_sz
     total_blocks = num_rows * n_blocks
-    total_elements = x.size
 
     correction = cupy.eye(k)
     correction = cupy.c_[correction[::-1], cupy.empty((k, block_sz))]
@@ -195,8 +196,8 @@ def apply_iir(x, a, axis=-1, zi=None):
 
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((total_blocks,), (block_sz // 2,),
-                      (block_sz, k, n, total_elements,
-                       (n_blocks - 1) * k, correction, out, carries))
+                      (block_sz, k, n, n_blocks, (n_blocks - 1) * k,
+                       correction, out, carries))
 
     if zi is not None:
         if zi.ndim == 1:
