@@ -83,6 +83,7 @@ from cupyx.scipy.special._lpmv import lpmv  # NOQA
 from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 
 # Other special functions
+from cupyx.scipy.special._binom import binom
 from cupyx.scipy.special._exp1 import exp1  # NOQA
 from cupyx.scipy.special._expi import expi  # NOQA
 from cupyx.scipy.special._expn import expn  # NOQA
