@@ -72,6 +72,7 @@ __device__ double binom(double n, double k) {
     }
 }
 """
+
 binom = _core.create_ufunc(
     "cupyx_scipy_binom",
     ("ff->f", "dd->d"),
