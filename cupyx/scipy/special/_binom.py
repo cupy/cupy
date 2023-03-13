@@ -6,7 +6,13 @@ https://github.com/scipy/scipy/blob/v1.10.1/scipy/special/orthogonal_eval.pxd
 """
 
 from cupy import _core
-from cupyx.scipy.special._beta import beta_preamble, lbeta_symp_definition, lgam_sgn_definition, beta_definition, lbeta_definition
+from cupyx.scipy.special._beta import (
+    beta_preamble, 
+    lbeta_symp_definition, 
+    lgam_sgn_definition, 
+    beta_definition, 
+    lbeta_definition
+)
 from cupyx.scipy.special._digamma import polevl_definition
 from cupyx.scipy.special._gamma import gamma_definition
 from cupyx.scipy.special._gammainc import p1evl_definition

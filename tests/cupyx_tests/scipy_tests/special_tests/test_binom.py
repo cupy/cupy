@@ -1,7 +1,6 @@
-import numpy as np
+import numpy
 import pytest
 
-import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 
@@ -54,4 +53,4 @@ class TestBinom:
         import scipy.special  # NOQA
         a = xp.array([-numpy.inf, numpy.nan, numpy.inf, 0, -1,
             1e8, 5e7], dtype=dtype)
-        return scp.special.binom(n, k)
+        return scp.special.binom(a[:, xp.newaxis], a[xp.newaxis, :])
