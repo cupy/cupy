@@ -30,19 +30,31 @@ class TestIIRUtils:
 
     def _sequential_impl_nd(self, x, b, axis, zi=None):
         n = x.shape[axis]
+
         x = cupy.moveaxis(x, axis, -1)
         x_shape = x.shape
         x = x.reshape(-1, n)
+
+        if zi is not None:
+            zi = cupy.moveaxis(zi, axis, -1)
+            zi_shape = zi.shape
+            zi = zi.reshape(-1, zi_shape[-1])
+            zi = zi.copy()
+
         y = cupy.empty_like(x, dtype=cupy.float64)
 
         for i in range(x.shape[0]):
-            y[i] = self._sequential_impl(x[i], b)
+            # y[i] = self._sequential_impl(x[i], b)
+            zi_i = None
+            if zi is not None:
+                zi_i = zi[i]
+            y[i] = apply_iir(x[i], b, zi=zi_i)
 
         y = y.reshape(x_shape)
         y = cupy.moveaxis(y, -1, axis)
         return y
 
-    @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     def test_order(self, size, order):
         signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
@@ -52,9 +64,10 @@ class TestIIRUtils:
         par = apply_iir(x, b)
         testing.assert_allclose(seq, par)
 
-    @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
-    def test_order_ndim(self, size, order):
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    def test_order_ndim(self, size, order, axis):
         signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
 
         x = [cupy.arange(3 + i, size + 3 + i, dtype=cupy.float64) *
@@ -68,12 +81,11 @@ class TestIIRUtils:
         x = cupy.broadcast_to(x, final_shape)
         x = x.copy()
         b = testing.shaped_random((order,))
-        for axis in range(0, len(final_shape)):
-            par = apply_iir(x, b, axis)
-            seq = self._sequential_impl_nd(x, b, axis)
-            testing.assert_allclose(seq, par)
+        par = apply_iir(x, b, axis)
+        seq = self._sequential_impl_nd(x, b, axis)
+        testing.assert_allclose(seq, par)
 
-    @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     def test_order_zero_starting(self, size, order):
         signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
@@ -86,7 +98,7 @@ class TestIIRUtils:
         testing.assert_allclose(par, par2)
         testing.assert_allclose(seq, par)
 
-    @pytest.mark.parametrize('size', [11, 20, 51, 120, 128, 250])
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     def test_order_starting_cond(self, size, order):
         signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))

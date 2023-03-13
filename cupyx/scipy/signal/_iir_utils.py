@@ -32,8 +32,7 @@ __global__ void first_pass_iir(
         const int m, const int k, const int n, const int n_blocks,
         const int carries_stride, const double* factors, double* out,
         double* carries) {
-    int orig_idx = blockDim.x * blockIdx.x + threadIdx.x;
-    orig_idx = orig_idx % (n_blocks * (m / 2));
+    int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
 
     int num_row = blockIdx.x / n_blocks;
     int idx = 2 * orig_idx + 1;
@@ -91,7 +90,9 @@ __global__ void first_pass_iir(
     }
 
     if(pos >= m - k) {
-        group_carries[pos - (m - k)] = group_start[pos];
+        if(carries != NULL) {
+            group_carries[pos - (m - k)] = group_start[pos];
+        }
     }
 
 }
@@ -101,12 +102,10 @@ __global__ void second_pass_iir(
         const int block_num, const int n_group, const int offset,
         const double* factors, double* carries, double* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    int idx = threadIdx.x;
 
-    int row_num = block_num < 0 ? blockIdx.x : block_num;
+    const int row_num = block_num < 0 ? blockIdx.x : block_num;
     int group_start = n_group * m;
-
-    idx = idx % m;
 
     if(group_start + idx >= n) {
         return;
@@ -188,7 +187,7 @@ def apply_iir(x, a, axis=-1, zi=None):
     correction = cupy.eye(k)
     correction = cupy.c_[correction[::-1], cupy.empty((k, block_sz))]
     carries = cupy.empty(
-        (num_rows, n_blocks - 1, k), dtype=cupy.float64)
+        (num_rows, n_blocks, k), dtype=cupy.float64)
 
     corr_kernel = IIR_MODULE.get_function('compute_correction_factors')
     first_pass_kernel = IIR_MODULE.get_function('first_pass_iir')
@@ -196,7 +195,7 @@ def apply_iir(x, a, axis=-1, zi=None):
 
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((total_blocks,), (block_sz // 2,),
-                      (block_sz, k, n, n_blocks, (n_blocks - 1) * k,
+                      (block_sz, k, n, n_blocks, (n_blocks) * k,
                        correction, out, carries))
 
     if zi is not None:
@@ -216,7 +215,7 @@ def apply_iir(x, a, axis=-1, zi=None):
     if n_blocks > 1 or zi is not None:
         starting_group = 1 if zi is None else 0
         second_pass_kernel((num_rows,), (block_sz,),
-                           (block_sz, k, n, (n_blocks - 1) * k, -1,
+                           (block_sz, k, n, (n_blocks) * k, -1,
                             starting_group, int(zi is not None), correction,
                             carries, out))
     if x_ndim > 1:
