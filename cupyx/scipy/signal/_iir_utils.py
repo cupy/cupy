@@ -215,9 +215,10 @@ def apply_iir(x, a, axis=-1, zi=None):
     if n_blocks > 1 or zi is not None:
         starting_group = 1 if zi is None else 0
         second_pass_kernel((num_rows,), (block_sz,),
-                           (block_sz, k, n, (n_blocks) * k, -1,
-                            starting_group, int(zi is not None), correction,
-                            carries, out))
+                           (block_sz, k, n,
+                            (n_blocks + (1 - starting_group)) * k,
+                            -1, starting_group, int(zi is not None),
+                            correction, carries, out))
     if x_ndim > 1:
         out = out.reshape(x_shape)
         out = cupy.moveaxis(out, -1, axis)

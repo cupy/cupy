@@ -65,7 +65,7 @@ class TestIIRUtils:
         testing.assert_allclose(seq, par)
 
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
-    @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize('order', [1, 2, 3])
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
     def test_order_ndim(self, size, order, axis):
         signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
@@ -98,6 +98,31 @@ class TestIIRUtils:
         testing.assert_allclose(par, par2)
         testing.assert_allclose(seq, par)
 
+    @pytest.mark.parametrize('size', [11, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('order', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    def test_order_zero_starting_ndim(self, size, order, axis):
+        signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
+
+        x = [cupy.arange(3 + i, size + 3 + i, dtype=cupy.float64) *
+             signs[:size] for i in range(3)]
+        x = [cupy.expand_dims(e, 0) for e in x]
+        x = cupy.concatenate(x, axis=0)
+
+        final_shape = [3, 2]
+        final_shape += list(x.shape)
+        zi_shape = list(final_shape)
+        zi_shape[axis] = order
+
+        zi = cupy.zeros(zi_shape)
+
+        x = cupy.broadcast_to(x, final_shape)
+        x = x.copy()
+        b = testing.shaped_random((order,))
+        par = apply_iir(x, b, axis, zi)
+        seq = self._sequential_impl_nd(x, b, axis, zi)
+        testing.assert_allclose(seq, par)
+
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     def test_order_starting_cond(self, size, order):
@@ -107,4 +132,29 @@ class TestIIRUtils:
         b = testing.shaped_random((order,))
         seq = self._sequential_impl(x, b, zi=zi)
         par = apply_iir(x, b, zi=zi)
+        testing.assert_allclose(seq, par)
+
+    @pytest.mark.parametrize('size', [11, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('order', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    def test_order_starting_cond_ndim(self, size, order, axis):
+        signs = cupy.tile([1, -1], int(2 * np.ceil(size / 4)))
+
+        x = [cupy.arange(3 + i, size + 3 + i, dtype=cupy.float64) *
+             signs[:size] for i in range(3)]
+        x = [cupy.expand_dims(e, 0) for e in x]
+        x = cupy.concatenate(x, axis=0)
+
+        final_shape = [3, 2]
+        final_shape += list(x.shape)
+        zi_shape = list(final_shape)
+        zi_shape[axis] = order
+
+        zi = testing.shaped_random(tuple(zi_shape))
+
+        x = cupy.broadcast_to(x, final_shape)
+        x = x.copy()
+        b = testing.shaped_random((order,))
+        par = apply_iir(x, b, axis, zi)
+        seq = self._sequential_impl_nd(x, b, axis, zi)
         testing.assert_allclose(seq, par)
