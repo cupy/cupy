@@ -9,17 +9,17 @@ IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 
 __global__ void compute_correction_factors(
-        const int m, const int k, const double* b, double* out) {
+        const int m, const int k, const float* b, float* out) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= k) {
         return;
     }
 
-    double* out_start = out + idx * (k + m);
-    double* out_off = out_start + k;
+    float* out_start = out + idx * (k + m);
+    float* out_off = out_start + k;
 
     for(int i = 0; i < m; i++) {
-        double acc = 0.0;
+        float acc = 0.0;
         for(int j = 0; j < k; j++) {
             acc += b[j] * out_off[i - j - 1];
 
@@ -30,8 +30,8 @@ __global__ void compute_correction_factors(
 
 __global__ void first_pass_iir(
         const int m, const int k, const int n, const int n_blocks,
-        const int carries_stride, const double* factors, double* out,
-        double* carries) {
+        const int carries_stride, const float* factors, float* out,
+        float* carries) {
     int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
 
     int num_row = blockIdx.x / n_blocks;
@@ -44,11 +44,11 @@ __global__ void first_pass_iir(
     int group_num = idx / m;
     int group_pos = idx % m;
 
-    double* out_off = out + num_row * n;
-    double* carries_off = carries + num_row * carries_stride;
+    float* out_off = out + num_row * n;
+    float* carries_off = carries + num_row * carries_stride;
 
-    double* group_start = out_off + m * group_num;
-    double* group_carries = carries_off + k * group_num;
+    float* group_start = out_off + m * group_num;
+    float* group_carries = carries_off + k * group_num;
 
     int pos = group_pos;
     int up_bound = pos;
@@ -56,10 +56,10 @@ __global__ void first_pass_iir(
     int rel_pos;
 
     for(int level = 1, iter = 1; level < m; level *=2, iter++) {
-        int sz = min(pow(2.0, ((double) iter)), ((double) m));
+        int sz = min(pow(2.0f, ((float) iter)), ((float) m));
 
         if(level > 1) {
-            int factor = ceil(pos / ((double) sz));
+            int factor = ceil(pos / ((float) sz));
             up_bound = sz * factor - 1;
             low_bound = up_bound - level + 1;
         }
@@ -77,11 +77,11 @@ __global__ void first_pass_iir(
         }
 
         rel_pos = pos % level;
-        double carry = 0.0;
+        float carry = 0.0;
         for(int i = 1; i <= min(k, level); i++) {
-            double k_value = group_start[low_bound - i];
-            const double* k_factors = factors + (m + k) * (i - 1) + k;
-            double factor = k_factors[rel_pos];
+            float k_value = group_start[low_bound - i];
+            const float* k_factors = factors + (m + k) * (i - 1) + k;
+            float factor = k_factors[rel_pos];
             carry += k_value * factor;
         }
 
@@ -97,55 +97,68 @@ __global__ void first_pass_iir(
 
 }
 
-__global__ void second_pass_iir(
-        const int m, const int k, const int n, const int carries_stride,
-        const int block_num, const int n_group, const int offset,
-        const double* factors, double* carries, double* out) {
+__global__ void correct_carries(
+    const int m, const int k, const int n_blocks, const int carries_stride,
+    const int offset, const float* factors, float* carries) {
 
     int idx = threadIdx.x;
+    int pos = idx + (m - k);
+    float* row_carries = carries + carries_stride * blockIdx.x;
 
-    const int row_num = block_num < 0 ? blockIdx.x : block_num;
-    int group_start = n_group * m;
+    for(int i = offset; i < n_blocks; i++) {
+        float* this_carries = row_carries + k * (i + (1 - offset));
+        float* prev_carries = row_carries + k * (i - offset);
 
-    if(group_start + idx >= n) {
+        float carry = 0.0;
+        for(int j = 1; j <= k; j++) {
+            const float* k_factors = factors + (m + k) * (j - 1) + k;
+            float factor = k_factors[pos];
+            float k_value = prev_carries[k - j];
+            carry += factor * k_value;
+        }
+
+        this_carries[idx] += carry;
+        __syncthreads();
+    }
+}
+
+__global__ void second_pass_iir(
+        const int m, const int k, const int n, const int carries_stride,
+        const int n_blocks, const int offset, const float* factors,
+        float* carries, float* out) {
+
+    int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    idx += offset * m;
+
+    int row_num = blockIdx.x / n_blocks;
+    int n_group = idx / m;
+    int pos = idx % m;
+
+    if(idx >= n) {
         return;
     }
 
-    double* out_off = out + row_num * n;
-    double* carries_off = carries + row_num * carries_stride;
+    float* out_off = out + row_num * n;
+    float* carries_off = carries + row_num * carries_stride;
+    const float* prev_carries = carries_off + (n_group - offset) * k;
 
-    double* this_group = out_off + group_start;
-    double* this_carries = carries_off + k * (n_group + offset);
-    const double* prev_carries = carries_off + (n_group + offset - 1) * k;
-
-    double carry = 0.0;
+    float carry = 0.0;
     for(int i = 1; i <= k; i++) {
-        const double* k_factors = factors + (m + k) * (i - 1) + k;
-        double factor = k_factors[idx];
-        double k_value = prev_carries[k - i];
+        const float* k_factors = factors + (m + k) * (i - 1) + k;
+        float factor = k_factors[pos];
+        float k_value = prev_carries[k - i];
         carry += factor * k_value;
     }
 
-    this_group[idx] += carry;
-
-    if(idx >= m - k) {
-        int k_idx = idx - (m - k);
-        this_carries[k_idx] += carry;
-        __syncthreads();
-
-        if(k_idx == 0) {
-            second_pass_iir<<<1, m>>>(m, k, n, carries_stride, row_num,
-                                      n_group + 1, offset, factors, carries,
-                                      out);
-        }
-    }
+    out_off[idx] += carry;
 }
 
 """
 
 IIR_MODULE = cupy.RawModule(
-    code=IIR_KERNEL, options=('-std=c++11', '-dc'),
+    code=IIR_KERNEL, options=('-std=c++11',),
     name_expressions=['compute_correction_factors',
+                      'correct_carries',
                       'first_pass_iir',
                       'second_pass_iir'])
 
@@ -160,11 +173,14 @@ def collapse_2d(x, axis):
 
 
 def apply_iir(x, a, axis=-1, zi=None):
-    x = x.astype(cupy.float64)
-    a = a.astype(cupy.float64)
+    # GPU throughput is faster when using single precision floating point
+    # numbers
+
+    x = x.astype(cupy.float32)
+    a = a.astype(cupy.float32)
 
     if zi is not None:
-        zi = zi.astype(cupy.float64)
+        zi = zi.astype(cupy.float32)
 
     x_shape = x.shape
     x_ndim = x.ndim
@@ -180,18 +196,20 @@ def apply_iir(x, a, axis=-1, zi=None):
     out = x.copy()
 
     num_rows = 1 if x.ndim == 1 else x.shape[0]
-    block_sz = 32
+    block_sz = 1024
     n_blocks = (n + block_sz - 1) // block_sz
     total_blocks = num_rows * n_blocks
 
-    correction = cupy.eye(k)
-    correction = cupy.c_[correction[::-1], cupy.empty((k, block_sz))]
+    correction = cupy.eye(k, dtype=cupy.float32)
+    correction = cupy.c_[
+        correction[::-1], cupy.empty((k, block_sz), dtype=cupy.float32)]
     carries = cupy.empty(
-        (num_rows, n_blocks, k), dtype=cupy.float64)
+        (num_rows, n_blocks, k), dtype=cupy.float32)
 
     corr_kernel = IIR_MODULE.get_function('compute_correction_factors')
     first_pass_kernel = IIR_MODULE.get_function('first_pass_iir')
     second_pass_kernel = IIR_MODULE.get_function('second_pass_iir')
+    carry_correction_kernel = IIR_MODULE.get_function('correct_carries')
 
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((total_blocks,), (block_sz // 2,),
@@ -213,12 +231,18 @@ def apply_iir(x, a, axis=-1, zi=None):
             carries = carries.copy()
 
     if n_blocks > 1 or zi is not None:
-        starting_group = 1 if zi is None else 0
-        second_pass_kernel((num_rows,), (block_sz,),
-                           (block_sz, k, n,
-                            (n_blocks + (1 - starting_group)) * k,
-                            -1, starting_group, int(zi is not None),
-                            correction, carries, out))
+        starting_group = int(zi is None)
+        blocks_to_merge = n_blocks - starting_group
+        carries_stride = (n_blocks + (1 - starting_group)) * k
+        carry_correction_kernel(
+            (num_rows,), (k,),
+            (block_sz, k, n_blocks, carries_stride, starting_group,
+             correction, carries))
+        second_pass_kernel(
+            (num_rows * blocks_to_merge,), (block_sz,),
+            (block_sz, k, n, carries_stride, blocks_to_merge,
+             starting_group, correction, carries, out))
+
     if x_ndim > 1:
         out = out.reshape(x_shape)
         out = cupy.moveaxis(out, -1, axis)
