@@ -2,11 +2,9 @@ import unittest
 from unittest import mock
 
 import numpy
-import pytest
 
 import cupy
 from cupy import cuda
-from cupy.cuda import runtime
 from cupy import random
 from cupy import testing
 from cupy.testing import _condition

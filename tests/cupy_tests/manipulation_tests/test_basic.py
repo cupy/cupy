@@ -143,6 +143,7 @@ class TestBasic:
 
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
+    @pytest.mark.xfail(cuda.runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_copyto_where_multigpu_raises(self, dtype):
         self._check_copyto_where_multigpu_raises(dtype, 2)
 
@@ -169,6 +170,7 @@ class TestBasic:
 
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
+    @pytest.mark.xfail(cuda.runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_copyto_multigpu_noncontinguous(self, dtype):
         with cuda.Device(0):
             src = testing.shaped_arange((2, 3, 4), cupy, dtype)
