@@ -2,6 +2,7 @@ import numpy
 import pytest
 
 from cupy import testing
+from cupy.cuda import runtime
 import cupyx.scipy.ndimage  # NOQA
 
 try:
