@@ -413,7 +413,7 @@ class TestCubReduction:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(
         contiguous_check=False, accept_error=ValueError)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_cub_min(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype, order=self.order)
 

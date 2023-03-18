@@ -325,7 +325,7 @@ class TestOrderFilter:
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_order_filter(self, xp, scp, dtype):
         a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
@@ -345,6 +345,7 @@ class TestMedFilt:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_medfilt(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
