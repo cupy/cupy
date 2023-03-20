@@ -51,6 +51,10 @@ cuda:
     full_version: "11.6.0"
   "11.7":
     full_version: "11.7.0"
+  "11.8":
+    full_version: "11.8.0"
+  "12.0":
+    full_version: "12.0.0"
 rocm:
   null:
     full_version: null
@@ -61,17 +65,12 @@ rocm:
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
   "5.0":
-    full_version: "5.0"  # TODO(kmaehashi): bump to 5.0.2
+    full_version: "5.0"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
-  "5.1":
-    full_version: "5.1.3"
-    packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
-               'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
-               'rocprim', 'rccl']
-  "5.2":
-    full_version: "5.2"
+  "5.3":
+    full_version: "5.3"
     packages: ['rocm-dev', 'hipblas', 'hipfft', 'hipsparse', 'hipcub',
                'rocsparse', 'rocrand', 'rocthrust', 'rocsolver', 'rocfft',
                'rocprim', 'rccl']
@@ -135,6 +134,18 @@ nccl:
       "10.2":
       "11.0":
       "11.7":
+  "2.15":
+    spec: "2.15.*"
+    cuda:
+      "10.2":
+      "11.0":
+      "11.8":
+  "2.16":
+    spec: "2.16.*"
+    cuda:
+      "11.0":
+      "11.8":
+      "12.0":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -163,6 +174,20 @@ cutensor:
       "11.5":
       "11.6":
       "11.7":
+  "1.6":
+    spec: "1.6.*"
+    cuda:
+      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
+      "11.0":
+      "11.1":
+      "11.2":
+      "11.3":
+      "11.4":
+      "11.5":
+      "11.6":
+      "11.7":
+      "11.8":
+      "12.0":  # v1.6.2+
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -177,6 +202,8 @@ cusparselt:
       "11.5":
       "11.6":
       "11.7":
+      "11.8":
+      "12.0":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -280,6 +307,50 @@ cudnn:
         alias: "11.7"
       "11.7":
         alias: "11.7"
+  "8.6":
+    spec: "8.6.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.8"
+      "11.1":
+        alias: "11.8"
+      "11.2":
+        alias: "11.8"
+      "11.3":
+        alias: "11.8"
+      "11.4":
+        alias: "11.8"
+      "11.5":
+        alias: "11.8"
+      "11.6":
+        alias: "11.8"
+      "11.7":
+        alias: "11.8"
+      "11.8":
+        alias: "11.8"
+  "8.7":
+    spec: "8.7.*"
+    cuda:
+      "10.2":
+      "11.0":
+        alias: "11.8"
+      "11.1":
+        alias: "11.8"
+      "11.2":
+        alias: "11.8"
+      "11.3":
+        alias: "11.8"
+      "11.4":
+        alias: "11.8"
+      "11.5":
+        alias: "11.8"
+      "11.6":
+        alias: "11.8"
+      "11.7":
+        alias: "11.8"
+      "11.8":
+        alias: "11.8"
 
 ###############################################################################
 # Python
@@ -297,8 +368,10 @@ python:
     spec: "3.9.6"
   "3.10":
     spec: "3.10.0"
+  "3.11":
+    spec: "3.11.0"
   "pre":
-    spec: "3.11.0a1"  # note that dependency python libraies may not work
+    spec: "3.12.0a1"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -333,6 +406,7 @@ numpy:
       - "3.8"
       - "3.9"
       - "3.10"
+      - "3.11"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -388,6 +462,7 @@ scipy:
       - "3.8"
       - "3.9"
       - "3.10"
+      - "3.11"
     numpy:
       # - "1.17"
       # - "1.18"
@@ -401,8 +476,8 @@ scipy:
 optuna:
   null:
     spec: null
-  "2":
-    spec: "==2.*"
+  "3":
+    spec: "==3.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 mpi4py:

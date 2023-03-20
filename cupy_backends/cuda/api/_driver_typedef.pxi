@@ -11,7 +11,6 @@ cdef extern from *:
     ctypedef void* Module 'CUmodule'
     ctypedef void* Stream 'cudaStream_t'
     ctypedef void* LinkState 'CUlinkState'
-    ctypedef void* TexRef 'CUtexref_st*'
 
     ctypedef int CUjit_option 'CUjit_option'
     ctypedef int CUjitInputType 'CUjitInputType'

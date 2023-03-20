@@ -6,9 +6,9 @@ from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy._core import internal
 from cupy.cuda import device
-from cupy.cusolver import check_availability
-from cupy.cusolver import _gesvdj_batched, _gesvd_batched
-from cupy.cusolver import _geqrf_orgqr_batched
+from cupyx.cusolver import check_availability
+from cupyx.cusolver import _gesvdj_batched, _gesvd_batched
+from cupyx.cusolver import _geqrf_orgqr_batched
 from cupy.linalg import _util
 
 

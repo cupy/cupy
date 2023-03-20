@@ -154,7 +154,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'file': _cuda_files + [
             'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
-            'cupy.cusolver',
+            'cupyx.cusolver',
         ],
         'include': [
             'hip/hip_runtime_api.h',
@@ -186,7 +186,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
-            'cupy.cusolver',
+            'cupyx.cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -199,7 +199,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'name': 'cudnn',
         'file': [
             'cupy_backends.cuda.libs.cudnn',
-            'cupy.cudnn',
+            'cupyx.cudnn',
         ],
         'include': [
             'cudnn.h',
@@ -230,10 +230,9 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy_backends.cuda.libs.nvtx',
         ],
         'include': [
-            'nvToolsExt.h',
+            'nvtx3/nvToolsExt.h',
         ],
         'libraries': [
-            'nvToolsExt' if not build.PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
     }
@@ -241,7 +240,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
-            'cupy.cutensor',
+            'cupyx.cutensor',
         ],
         'include': [
             'cutensor.h',

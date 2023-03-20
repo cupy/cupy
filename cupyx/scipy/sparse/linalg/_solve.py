@@ -1,12 +1,14 @@
 import numpy
 
 import cupy
+import cupyx.cusolver
 from cupy import cublas
-from cupy import cusparse
+from cupyx import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
 from cupyx.scipy.sparse.linalg._iterative import _make_system
@@ -389,6 +391,15 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     return x, istop, itn, normr, normar, normA, condA, normx
 
 
+def _should_use_spsm(b):
+    if not runtime.is_hip:
+        # Starting with CUDA 12.0, we use cusparseSpSM
+        return _cusparse.get_build_version() >= 12000
+    else:
+        # Keep using hipsparse<t>csrsm2 for ROCm before it is dropped
+        return False
+
+
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
                        unit_diagonal=False):
     """Solves a sparse triangular system ``A x = b``.
@@ -407,13 +418,14 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
             Allows overwriting data in ``b``.
         unit_diagonal (bool):
             If True, diagonal elements of ``A`` are assumed to be 1 and will
-            not be referencec.
+            not be referenced.
 
     Returns:
         cupy.ndarray:
             Solution to the system ``A x = b``. The shape is the same as ``b``.
     """
-    if not cusparse.check_availability('csrsm2'):
+    if not (cusparse.check_availability('spsm') or
+            cusparse.check_availability('csrsm2')):
         raise NotImplementedError
 
     if not sparse.isspmatrix(A):
@@ -421,31 +433,41 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
     if not isinstance(b, cupy.ndarray):
         raise TypeError('b must be cupy.ndarray')
     if A.shape[0] != A.shape[1]:
-        raise ValueError('A must be a square matrix (A.shape: {})'.
-                         format(A.shape))
+        raise ValueError(f'A must be a square matrix (A.shape: {A.shape})')
     if b.ndim not in [1, 2]:
-        raise ValueError('b must be 1D or 2D array (b.shape: {})'.
-                         format(b.shape))
+        raise ValueError(f'b must be 1D or 2D array (b.shape: {b.shape})')
     if A.shape[0] != b.shape[0]:
         raise ValueError('The size of dimensions of A must be equal to the '
                          'size of the first dimension of b '
-                         '(A.shape: {}, b.shape: {})'.format(A.shape, b.shape))
+                         f'(A.shape: {A.shape}, b.shape: {b.shape})')
     if A.dtype.char not in 'fdFD':
-        raise TypeError('unsupported dtype (actual: {})'.format(A.dtype))
+        raise TypeError(f'unsupported dtype (actual: {A.dtype})')
 
-    if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
-        warnings.warn('CSR or CSC format is required. Converting to CSR '
-                      'format.', sparse.SparseEfficiencyWarning)
-        A = A.tocsr()
-    A.sum_duplicates()
+    if cusparse.check_availability('spsm') and _should_use_spsm(b):
+        if not (sparse.isspmatrix_csr(A) or
+                sparse.isspmatrix_csc(A) or
+                sparse.isspmatrix_coo(A)):
+            warnings.warn('CSR, CSC or COO format is required. Converting to '
+                          'CSR format.', sparse.SparseEfficiencyWarning)
+            A = A.tocsr()
+        A.sum_duplicates()
+        x = cusparse.spsm(A, b, lower=lower, unit_diag=unit_diagonal)
+    elif cusparse.check_availability('csrsm2'):
+        if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
+            warnings.warn('CSR or CSC format is required. Converting to CSR '
+                          'format.', sparse.SparseEfficiencyWarning)
+            A = A.tocsr()
+        A.sum_duplicates()
 
-    if (overwrite_b and A.dtype == b.dtype and
-            (b._c_contiguous or b._f_contiguous)):
-        x = b
+        if (overwrite_b and A.dtype == b.dtype and
+                (b._c_contiguous or b._f_contiguous)):
+            x = b
+        else:
+            x = b.astype(A.dtype, copy=True)
+
+        cusparse.csrsm2(A, x, lower=lower, unit_diag=unit_diagonal)
     else:
-        x = b.astype(A.dtype, copy=True)
-
-    cusparse.csrsm2(A, x, lower=lower, unit_diag=unit_diagonal)
+        assert False
 
     if x.dtype.char in 'fF':
         # Note: This is for compatibility with SciPy.
@@ -461,13 +483,13 @@ def spsolve(A, b):
         A (cupyx.scipy.sparse.spmatrix):
             Sparse matrix with dimension ``(M, M)``.
         b (cupy.ndarray):
-            Dense vector or matrix with dimension ``(M)`` or ``(M, 1)``.
+            Dense vector or matrix with dimension ``(M)`` or ``(M, N)``.
 
     Returns:
         cupy.ndarray:
             Solution to the system ``A x = b``.
     """
-    if not cupy.cusolver.check_availability('csrlsvqr'):
+    if not cupyx.cusolver.check_availability('csrlsvqr'):
         raise NotImplementedError
     if not sparse.isspmatrix(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
@@ -476,7 +498,7 @@ def spsolve(A, b):
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'.
                          format(A.shape))
-    if not (b.ndim == 1 or (b.ndim == 2 and b.shape[1] == 1)):
+    if not (b.ndim == 1 or b.ndim == 2):
         raise ValueError('Invalid b.shape (b.shape: {})'.format(b.shape))
     if A.shape[0] != b.shape[0]:
         raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
@@ -487,9 +509,16 @@ def spsolve(A, b):
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
-    b = b.astype(A.dtype, copy=False).ravel()
+    b = b.astype(A.dtype, copy=False)
 
-    return cupy.cusolver.csrlsvqr(A, b)
+    if b.ndim > 1:
+        res = cupy.empty_like(b)
+        for j in range(res.shape[1]):
+            res[:, j] = cupyx.cusolver.csrlsvqr(A, b[:, j])
+        res = cupy.asarray(res, order='F')
+        return res
+    else:
+        return cupyx.cusolver.csrlsvqr(A, b)
 
 
 class SuperLU():
@@ -541,22 +570,38 @@ class SuperLU():
                              .format(self.shape, rhs.shape))
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
-        if not cusparse.check_availability('csrsm2'):
+
+        if cusparse.check_availability('spsm') and _should_use_spsm(rhs):
+            def spsm(A, B, lower, transa):
+                return cusparse.spsm(A, B, lower=lower, transa=transa)
+            sm = spsm
+        elif cusparse.check_availability('csrsm2'):
+            def csrsm2(A, B, lower, transa):
+                cusparse.csrsm2(A, B, lower=lower, transa=transa)
+                return B
+            sm = csrsm2
+        else:
             raise NotImplementedError
 
         x = rhs.astype(self.L.dtype)
         if trans == 'N':
             if self.perm_r is not None:
-                x = x[self._perm_r_rev]
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+                if x.ndim == 2 and x._f_contiguous:
+                    x = x.T[:, self._perm_r_rev].T  # want to keep f-order
+                else:
+                    x = x[self._perm_r_rev]
+            x = sm(self.L, x, lower=True, transa=trans)
+            x = sm(self.U, x, lower=False, transa=trans)
             if self.perm_c is not None:
                 x = x[self.perm_c]
         else:
             if self.perm_c is not None:
-                x = x[self._perm_c_rev]
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+                if x.ndim == 2 and x._f_contiguous:
+                    x = x.T[:, self._perm_c_rev].T  # want to keep f-order
+                else:
+                    x = x[self._perm_c_rev]
+            x = sm(self.U, x, lower=False, transa=trans)
+            x = sm(self.L, x, lower=True, transa=trans)
             if self.perm_r is not None:
                 x = x[self.perm_r]
 

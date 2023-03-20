@@ -19,7 +19,6 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef CUmodule Module
     ctypedef CUstream Stream
     ctypedef CUlinkState LinkState
-    ctypedef CUtexref TexRef
     ctypedef CUarray_st* Array
     ctypedef CUarray_format Array_format
     ctypedef CUDA_ARRAY_DESCRIPTOR Array_desc
@@ -66,7 +65,6 @@ cpdef intptr_t moduleLoadData(bytes image) except? 0
 cpdef moduleUnload(intptr_t module)
 cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
 cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
-cpdef intptr_t moduleGetTexRef(intptr_t module, str texrefname) except? 0
 cpdef launchKernel(
     intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
     unsigned int grid_dim_z, unsigned int block_dim_x,
@@ -85,21 +83,6 @@ cpdef launchCooperativeKernel(
 
 cpdef int funcGetAttribute(int attribute, intptr_t func) except? -2
 cpdef funcSetAttribute(intptr_t func, int attribute, int value)
-
-###############################################################################
-# Texture reference
-###############################################################################
-
-cpdef size_t texRefSetAddress(intptr_t texref, intptr_t dptr, size_t nbytes)
-cpdef texRefSetAddress2D(intptr_t texref, intptr_t desc, intptr_t dptr,
-                         size_t Pitch)
-cpdef texRefSetAddressMode(intptr_t texref, int dim, int am)
-cpdef texRefSetArray(intptr_t texref, intptr_t array)
-cpdef texRefSetBorderColor(intptr_t texref, pBorderColor)
-cpdef texRefSetFilterMode(intptr_t texref, int fm)
-cpdef texRefSetFlags(intptr_t texref, unsigned int Flags)
-cpdef texRefSetFormat(intptr_t texref, int fmt, int NumPackedComponents)
-cpdef texRefSetMaxAnisotropy(intptr_t texref, unsigned int maxAniso)
 
 ###############################################################################
 # Occupancy

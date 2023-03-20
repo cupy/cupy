@@ -4,20 +4,6 @@ Interoperability
 CuPy can be used in conjunction with other libraries.
 
 
-CUDA functionalities
---------------------
-
-Device management
-*****************
-
-Under construction. Starting CuPy v10, the ``with Device`` context manager would no longer respect ``cudaSetDevice()``, see :ref:`change in CuPy Device behavior`.
-
-Stream and event management
-***************************
-
-Under construction. For using CUDA streams created in foreign libraries in CuPy, see :ref:`cuda_stream_event`.
-
-
 NumPy
 -----
 
@@ -391,3 +377,92 @@ To obviate user-managed streams and DLPack tensor objects, the `DLPack data exch
 .. note::
 
     CuPy uses :envvar:`CUPY_DLPACK_EXPORT_VERSION` to control how to handle tensors backed by CUDA managed memory.
+
+
+Device Memory Pointers
+----------------------
+
+Import
+******
+
+CuPy provides :class:`~cupy.cuda.UnownedMemory` API that allows interoperating with GPU device memory allocated in other libraries.
+
+.. code:: python
+
+   # Create a memory chunk from raw pointer and its size.
+   mem = cupy.cuda.UnownedMemory(140359025819648, 1024, owner=None)
+
+   # Wrap it as a MemoryPointer.
+   memptr = cupy.cuda.MemoryPointer(mem, offset=0)
+
+   # Create an ndarray view backed by the memory pointer.
+   arr = cupy.ndarray((16, 16), dtype=cupy.float32, memptr=memptr)
+   assert arr.nbytes <= arr.data.mem.size
+
+Be aware that you are responsible for specifying a correct shape, dtype, strides, and order such that it fits in the chunk when creating an :class:`~cupy.ndarray` view.
+
+The :class:`~cupy.cuda.UnownedMemory` API does not manage the lifetime of the memory allocation.
+You must ensure that the pointer is alive while in use by CuPy.
+In case the pointer lifetime is managed by a Python object, you can pass it to the ``owner`` argument of the :class:`~cupy.cuda.UnownedMemory` to keep the reference to the object.
+
+Export
+******
+
+You can pass memory pointers allocated in CuPy to other libraries.
+
+.. code:: python
+
+   arr = cupy.arange(10)
+   print(arr.data.ptr, arr.nbytes)  # => (140359025819648, 80)
+
+The memory allocated by CuPy will be freed when the :class:`~cupy.ndarray` (``arr``) gets destructed.
+You must keep :class:`~cupy.ndarray` instance alive while the pointer is in use by other libraries.
+
+
+CUDA Stream Pointers
+--------------------
+
+Import
+******
+
+CuPy provides :class:`~cupy.cuda.ExternalStream` API that allows interoperating with CUDA streams created in other libraries.
+
+.. code:: python
+
+   import torch
+
+   # Create a stream on PyTorch.
+   s = torch.cuda.Stream()
+
+   # Switch the current stream in PyTorch.
+   with torch.cuda.stream(s):
+       # Switch the current stream in CuPy, using the pointer of the stream created in PyTorch.
+       with cupy.cuda.ExternalStream(s.cuda_stream):
+           # This block runs on the same CUDA stream.
+           torch.arange(10, device='cuda')
+           cupy.arange(10)
+
+The :class:`~cupy.cuda.ExternalStream` API does not manage the lifetime of the stream.
+You must ensure that the stream pointer is alive while in use by CuPy.
+
+You also need to make sure that the :class:`~cupy.cuda.ExternalStream` object is used on the device where the stream was created.
+CuPy can validate that for you if you pass ``device_id`` argument when creating :class:`~cupy.cuda.ExternalStream`.
+
+Export
+******
+
+You can pass streams created in CuPy to other libraries.
+
+.. code:: python
+
+   s = cupy.cuda.Stream()
+   print(s.ptr, s.device_id)  # => (93997451352336, 0)
+
+The CUDA stream will be destroyed when the :class:`~cupy.cuda.Stream` (``s``) gets destructed.
+You must keep the :class:`~cupy.cuda.Stream` instance alive while the pointer is in use by other libraries.
+
+
+CUDA Device
+-----------
+
+Under construction. Starting CuPy v10, the ``with Device`` context manager would no longer respect ``cudaSetDevice()``, see :ref:`change in CuPy Device behavior`.

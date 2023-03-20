@@ -7,6 +7,7 @@ from cupy import testing
 import cupyx.scipy.fft  # NOQA
 import cupyx.scipy.fftpack  # NOQA
 import cupyx.scipy.ndimage  # NOQA
+from cupy.cuda import runtime
 
 try:
     # scipy.fft only available since SciPy 1.4.0
@@ -54,6 +55,7 @@ except ImportError:
 )
 @testing.gpu
 @testing.with_requires("scipy")
+@pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierShift:
 
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -142,6 +144,7 @@ class TestFourierShift:
 )
 @testing.gpu
 @testing.with_requires("scipy")
+@pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierGaussian:
 
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -230,6 +233,7 @@ class TestFourierGaussian:
 )
 @testing.gpu
 @testing.with_requires("scipy")
+@pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierUniform:
 
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -312,6 +316,7 @@ class TestFourierUniform:
 )
 @testing.gpu
 @testing.with_requires('scipy')
+@pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierEllipsoid():
     def _test_real_nd(self, xp, scp, x, real_axis):
         if x.ndim == 1 and scipy_version < '1.5.3':
@@ -383,6 +388,7 @@ class TestFourierEllipsoid():
 
 @testing.gpu
 @testing.with_requires('scipy')
+@pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierEllipsoidInvalid():
 
     # SciPy < 1.5 raises ValueError instead of AxisError

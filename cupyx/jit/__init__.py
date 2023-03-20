@@ -30,5 +30,7 @@ from cupyx.jit._builtin_funcs import shfl_down_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_xor_sync  # NOQA
 
 from cupyx.jit import cg  # NOQA
+from cupyx.jit import cub  # NOQA
+from cupyx.jit import thrust  # NOQA
 
 _n_functions_upperlimit = 100

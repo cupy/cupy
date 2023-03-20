@@ -18,6 +18,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
+COPY setup/update-alternatives-cutensor.sh /
+RUN /update-alternatives-cutensor.sh
+
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
@@ -25,6 +28,6 @@ RUN pyenv install 3.10.0 && \
     pyenv global 3.10.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check

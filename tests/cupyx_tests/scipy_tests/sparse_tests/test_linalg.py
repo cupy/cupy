@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 import cupy
-from cupy import cusparse
+from cupyx import cusparse, cusolver
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
@@ -128,7 +128,7 @@ class TestVectorNorm:
 
 
 @testing.parameterize(*testing.product({
-    'which': ['LM', 'LA'],
+    'which': ['LM', 'LA', 'SA'],
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
     'use_linear_operator': [True, False],
@@ -218,8 +218,6 @@ class TestEigsh:
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SM')
-        with pytest.raises(ValueError):
-            sp.linalg.eigsh(a, k=self.k, which='SA')
 
 
 @testing.parameterize(*testing.product({
@@ -799,7 +797,8 @@ class TestSpsolveTriangular:
 
     @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(
+        rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False)
     def test_sparse(self, format, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
@@ -878,10 +877,36 @@ class TestCsrlsvqr:
         cp_a = cupy.array(a)
         sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
         cp_b = cupy.array(b)
-        x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
-                                   reorder=self.reorder)
+        x = cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
+                              reorder=self.reorder)
         cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
                                      atol=test_tol)
+
+
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
+@testing.with_requires('scipy')
+class TestSpSolve:
+    def _check_spsolve(self, xp, sp, dtyp):
+        n, nb = 5, 3
+
+        a = xp.diag(xp.arange(n) + 1)
+        sa = sp.csr_matrix(a.astype(dtyp))
+
+        # prepare b to be non-contiguous
+        b = xp.arange((2*n*nb), dtype=dtyp).reshape((2*n, nb))
+        b = b[::2, :]
+        result = sp.linalg.spsolve(sa, b)
+        return result
+
+    @pytest.mark.parametrize('dtyp', ['float32', 'complex64'])
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=5e-7)
+    def test_spsolve_single(self, xp, sp, dtyp):
+        return self._check_spsolve(xp, sp, dtyp)
+
+    @pytest.mark.parametrize('dtyp', ['float64', 'complex128'])
+    @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-14)
+    def test_spsolve_double(self, xp, sp, dtyp):
+        return self._check_spsolve(xp, sp, dtyp)
 
 
 def _eigen_vec_transform(block_vec, xp):

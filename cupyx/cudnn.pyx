@@ -157,7 +157,7 @@ cpdef _create_tensor_nd_descriptor(
 cpdef _create_tensor_descriptor(size_t desc, _ndarray_base arr,
                                 int format=cudnn.CUDNN_TENSOR_NCHW):
     if not arr._c_contiguous:
-        raise ValueError('cupy.cudnn supports c-contiguous arrays only')
+        raise ValueError('cupyx.cudnn supports c-contiguous arrays only')
     if arr._shape.size() == 4:
         data_type = get_data_type(arr.dtype)
         if format == cudnn.CUDNN_TENSOR_NCHW:
@@ -290,7 +290,7 @@ def create_tensor_nd_descriptor(_ndarray_base arr):
     if arr.size == 0:
         return Descriptor(0, None)
     if not arr.flags.c_contiguous:
-        raise ValueError('cupy.cudnn supports c-contiguous arrays only')
+        raise ValueError('cupyx.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
     key = (data_type, tuple(arr._shape))
     cache = _get_nd_tensor_cache()
@@ -363,7 +363,7 @@ cdef Descriptor _create_rnn_data_descriptor():
 cdef Descriptor _make_unpacked_rnn_data_descriptor(_ndarray_base xs, lengths):
     cdef Descriptor descriptor = _create_rnn_data_descriptor()
     cdef int data_type = get_data_type(xs.dtype)
-    cdef max_length, batch, n_dim
+    cdef Py_ssize_t max_length, batch, n_dim
     max_length, batch, n_dim = xs.shape
     cudnn.setRNNDataDescriptor(
         descriptor.value, data_type,

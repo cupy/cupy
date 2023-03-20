@@ -225,14 +225,155 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
 #ifdef CUPY_JIT_MODE
+#ifdef CUPY_JIT_NVCC
+#include <thrust/swap.h>
+#include <thrust/tuple.h>
+#include <thrust/pair.h>
+#else
 #include <cupy/swap.cuh>
 #include <cupy/tuple.cuh>
+#include <cupy/pair.cuh>
+#endif  // CUPY_JIT_NVCC
+#endif  // CUPY_JIT_MODE
+
+#ifdef CUPY_JIT_MODE
+namespace cupy {
+
+/*
+ * param ndim: the size of the returned tuple
+ * param T: the type of the tuple elements
+ */
+template<int ndim, typename T>
+struct as_tuple {
+
+    template <int _ndim, typename... Args>
+    struct as_tuple_impl {
+        using ChildClass = as_tuple_impl<_ndim - 1, T, Args...>;
+        using type = typename ChildClass::type;
+
+        template <typename Ints>
+        __device__ static type call(Ints ints, Args... args) {
+            return ChildClass::call(ints, ints[_ndim - 1], args...);
+        }
+    };
+
+    template <typename... Args>
+    struct as_tuple_impl<0, Args...> {
+        using type = thrust::tuple<Args...>;
+
+        template <typename Ints>
+        __device__ static type call(Ints ints, Args... args) {
+            return thrust::make_tuple(args...);
+        }
+    };
+
+    using type = typename as_tuple_impl<ndim>::type;
+
+    template <typename Ints, typename... Args>
+    __device__ static type call(Ints ints, Args... args) {
+        return as_tuple_impl<ndim>::call(ints, args...);
+    }
+
+};
+
+}  // namespace cupy
 
 template <int dim>
 struct Dim {
   __device__ Dim() {}
 };
-#endif
+#endif  // CUPY_JIT_MODE
+
+template <typename T, typename index_t>
+class CArrayIterator {
+public:
+  typedef ptrdiff_t difference_type;
+  typedef T value_type;
+  typedef T* pointer;
+  typedef T& reference;
+#ifdef CUPY_JIT_NVCC
+  typedef std::random_access_iterator_tag iterator_category;
+#endif  // CUPY_JIT_NVCC
+
+private:
+  T* head_;
+  index_t step_;
+public:
+  __host__ __device__ CArrayIterator(T* head, index_t step) {
+    this->head_ = head;
+    this->step_ = step;
+  }
+  __host__ __device__ CArrayIterator(const CArrayIterator& itr) {
+    this->head_ = itr.head_;
+    this->step_ = itr.step_;
+  }
+  __host__ __device__ bool operator==(const CArrayIterator& itr) const {
+    return (this->head_ == itr.head_) && (this->step_ == itr.step_);
+  }
+  __host__ __device__ bool operator!=(const CArrayIterator& itr) const {
+    return !(*this == itr);
+  }
+  __host__ __device__ T& operator*() const {
+    return *(this->head_);
+  }
+  __host__ __device__ const T* operator->() const {
+    return this->head_;
+  }
+  __host__ __device__ CArrayIterator& operator++() {
+    this->head_ += this->step_;
+    return *this;
+  }
+  __host__ __device__ CArrayIterator operator++(int) {
+    CArrayIterator tmp = *this;
+    this->head_ += this->step_;
+    return tmp;
+  }
+  __host__ __device__ CArrayIterator& operator--() {
+    this->head_ -= this->step_;
+    return *this;
+  }
+  __host__ __device__ CArrayIterator operator--(int) {
+    CArrayIterator tmp = *this;
+    this->head_ -= this->step_;
+    return tmp;
+  }
+  __host__ __device__ CArrayIterator operator+(ptrdiff_t n) const {
+    CArrayIterator out = *this;
+    out.head_ += out.step_ * n;
+    return out;
+  }
+  __host__ __device__ difference_type operator-(const CArrayIterator& itr) const {
+    return (this->head_ - itr.head_) / this->step_;
+  }
+  __host__ __device__ CArrayIterator operator-(ptrdiff_t n) const {
+    CArrayIterator out = *this;
+    out.head_ -= out.step_ * n;
+    return out;
+  }
+  __host__ __device__ CArrayIterator& operator+=(ptrdiff_t n) {
+    this->head_ += this->step_ * n;
+    return *this;
+  }
+  __host__ __device__ CArrayIterator& operator-=(ptrdiff_t n) {
+    this->head_ -= this->step_ * n;
+    return *this;
+  }
+  __host__ __device__ T& operator[](index_t n) const {
+    return *(this->head_ + this->step_ * n);
+  }
+  __host__ __device__ bool operator<(const CArrayIterator& itr) const {
+    return this->head_ < itr.head_;
+  }
+  __host__ __device__ bool operator>(const CArrayIterator& itr) const {
+    return this->head_ > itr.head_;
+  }
+  __host__ __device__ bool operator<=(const CArrayIterator& itr) const {
+    return !(*this > itr);
+  }
+  __host__ __device__ bool operator>=(const CArrayIterator& itr) const {
+    return !(*this < itr);
+  }
+};
 
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
 class CArray {
@@ -240,6 +381,8 @@ public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
+  typedef typename cupy::type_traits::conditional<_c_contiguous, T*, CArrayIterator<T, index_t> >::type iterator;
+
 private:
   T* data_;
   ptrdiff_t size_;
@@ -374,6 +517,22 @@ public:
   }
 
 #ifdef CUPY_JIT_MODE
+  __forceinline__ __device__ iterator begin_ptr() const {
+    return reinterpret_cast<T*>(data_);
+  }
+
+  __forceinline__ __device__ iterator end_ptr() const {
+    return reinterpret_cast<T*>(data_) + size_;
+  }
+
+  __forceinline__ __device__ iterator begin() const {
+    return iterator(data_, strides_[0] / sizeof(T));
+  }
+
+  __forceinline__ __device__ iterator end() const {
+    return iterator(data_ + size_ * strides_[0] / sizeof(T), strides_[0] / sizeof(T));
+  }
+
   template <typename Tuple, int dim>
   __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<dim>, const char* ptr) const {
     index_t i = static_cast<index_t>(thrust::get<dim>(idx));
@@ -396,7 +555,35 @@ public:
   __forceinline__ __device__ T& _indexing(const Tuple &idx) {
     return const_cast<T&>(const_cast<const CArray&>(*this)._indexing(idx));
   }
-#endif
+
+  template <typename Tuple, int dim, int dimreduce>
+  __forceinline__ __device__ char* _slicing(const Tuple &idx, char* new_head_ptr, Dim<dim>, Dim<dimreduce>) const {
+    index_t i = static_cast<index_t>(thrust::get<dim>(idx));
+    new_head_ptr += static_cast<index_t>(strides_[dim]) * i;
+    return _slicing(idx, new_head_ptr, Dim<dim+1>(), Dim<dimreduce>());
+  }
+
+  template <typename Tuple, int dimreduce>
+  __forceinline__ __device__ char* _slicing(const Tuple &idx, char* new_head_ptr, Dim<dimreduce>, Dim<dimreduce>) const {
+    return new_head_ptr;
+  }
+
+  template <typename Tuple, int dimreduce>
+  __forceinline__ __device__ CArray<T, _ndim - dimreduce, _c_contiguous, _use_32bit_indexing> _slicing(const Tuple &idx, Dim<dimreduce>) {
+    char* new_head_ptr = reinterpret_cast<char*>(data_);
+    new_head_ptr = _slicing(idx, new_head_ptr, Dim<0>(), Dim<dimreduce>());
+    T* new_head = reinterpret_cast<T*>(new_head_ptr);
+    return CArray<T, _ndim - dimreduce, _c_contiguous, _use_32bit_indexing>(new_head, shape_ + dimreduce, strides_ + dimreduce);
+  }
+
+  __forceinline__ __device__ CArray<T, _ndim - 1, _c_contiguous, _use_32bit_indexing> _slicing(const int idx) {
+    char* new_head_ptr = reinterpret_cast<char*>(data_);
+    index_t i = static_cast<index_t>(idx);
+    new_head_ptr += static_cast<index_t>(strides_[0]) * i;
+    T* new_head = reinterpret_cast<T*>(new_head_ptr);
+    return CArray<T, _ndim - 1, _c_contiguous, _use_32bit_indexing>(new_head, shape_ + 1, strides_ + 1);
+  }
+#endif  // CUPY_JIT_MODE
 
   __device__ const T& operator[](ptrdiff_t idx) const {
     if (c_contiguous) {

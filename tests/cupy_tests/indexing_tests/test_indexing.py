@@ -217,7 +217,7 @@ class TestChoose(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_choose_broadcast(self, xp, dtype):
         a = xp.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]])
-        c = xp.array([-10, 10], dtype=dtype)
+        c = xp.array([-10, 10]).astype(dtype)
         return a.choose(c)
 
     @testing.for_all_dtypes()

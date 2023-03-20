@@ -1,6 +1,5 @@
 import functools as _functools
 import sys as _sys
-import warnings as _warnings
 
 import numpy as _numpy
 
@@ -100,7 +99,6 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
@@ -111,7 +109,6 @@ from numpy import intc  # NOQA
 from numpy import int_  # NOQA
 from numpy import longlong  # NOQA
 from numpy import intp  # NOQA
-from numpy import int0  # NOQA
 from numpy import int8  # NOQA
 from numpy import int16  # NOQA
 from numpy import int32  # NOQA
@@ -126,7 +123,6 @@ from numpy import uintc  # NOQA
 from numpy import uint  # NOQA
 from numpy import ulonglong  # NOQA
 from numpy import uintp  # NOQA
-from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
 from numpy import uint16  # NOQA
 from numpy import uint32  # NOQA
@@ -317,7 +313,7 @@ def binary_repr(num, width=None):
 
 
 # -----------------------------------------------------------------------------
-# Data type routines (borrowed from NumPy)
+# Data type routines (mostly borrowed from NumPy)
 # -----------------------------------------------------------------------------
 def can_cast(from_, to, casting='safe'):
     """Returns True if cast between data types can occur according to the
@@ -362,7 +358,8 @@ def result_type(*arrays_and_dtypes):
     return _numpy.result_type(*dtypes)
 
 
-from numpy import min_scalar_type  # NOQA
+from cupy._core.core import min_scalar_type  # NOQA
+
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
@@ -911,29 +908,13 @@ def show_config(*, _full=False):
 
 
 _deprecated_apis = [
-    'MachAr',  # NumPy 1.22
+    'int0',
+    'uint0',
+    'bool8',
 ]
-
-_deprecated_scalar_aliases = {  # NumPy 1.20
-    'int': (int, 'cupy.int_'),
-    'bool': (bool, 'cupy.bool_'),
-    'float': (float, 'cupy.float_'),
-    'complex': (complex, 'cupy.complex_'),
-}
 
 
 def __getattr__(name):
-    value = _deprecated_scalar_aliases.get(name)
-    if value is not None:
-        attr, eq_attr = value
-        _warnings.warn(
-            f'`cupy.{name}` is a deprecated alias for the Python scalar type '
-            f'`{name}`. Please use the builtin `{name}` or its corresponding '
-            f'NumPy scalar type `{eq_attr}` instead.',
-            DeprecationWarning, stacklevel=2
-        )
-        return attr
-
     if name in _deprecated_apis:
         return getattr(_numpy, name)
 

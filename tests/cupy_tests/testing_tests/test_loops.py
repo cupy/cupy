@@ -394,9 +394,9 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
         # To avoid this difference, we need to ignore dimensions whose
         # values are negative.
         if xp == numpy:
-            return xp.array(-1, dtype=dtype1)
+            return xp.array(-1).astype(dtype1)
         else:
-            return xp.array(-2, dtype=dtype1)
+            return xp.array(-2).astype(dtype1)
 
 
 @testing.parameterize(*testing.product({

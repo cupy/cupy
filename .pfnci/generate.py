@@ -144,6 +144,14 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
+        # Update alternatives for cuTENSOR for the current CUDA version.
+        if matrix.cutensor is not None:
+            lines += [
+                'COPY setup/update-alternatives-cutensor.sh /',
+                'RUN /update-alternatives-cutensor.sh',
+                '',
+            ]
+
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
             lines += [
@@ -324,12 +332,12 @@ class CoverageGenerator:
     def generate_rst(self) -> Tuple[str, List[str]]:
         # Generate a matrix table.
         table = [
-            ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
-            ['', 'System'] + [m.system for m in self.matrixes] + [''],
-            ['', 'Target'] + [
+            ['Param', '', '#', 'Test'] + [''] * (len(self.matrixes) - 1),
+            ['', 'System', ''] + [m.system for m in self.matrixes],
+            ['', 'Target', ''] + [
                 f'`{m.target} <t{i}_>`_ `🐳 <d{i}_>`_ `📜 <s{i}_>`_'
                 for i, m in enumerate(self.matrixes)
-            ] + [''],
+            ],
             [''] * (len(self.matrixes) + 3)
         ]
         coverage_warns = []
@@ -340,10 +348,12 @@ class CoverageGenerator:
             for value in possible_values:
                 count = matrix_values.count(value)
                 table += [
-                    [key_header, value if value else 'null'] + [
-                        '✅' if mv == value else '' for mv in matrix_values
+                    [
+                        key_header,
+                        value if value else 'null',
+                        str(count) if count != 0 else '🚨',
                     ] + [
-                        str(count) if count != 0 else '0 🚨'
+                        '✅' if mv == value else '' for mv in matrix_values
                     ],
                 ]
                 key_header = ''
@@ -408,8 +418,8 @@ def validate_schema(schema: SchemaType) -> None:
                 system = value_schema.get('system', None)
                 if system is None:
                     raise ValueError(
-                            f'system is missing '
-                            f'while parsing schema os:{value}')
+                        f'system is missing '
+                        f'while parsing schema os:{value}')
                 if system not in schema['system'].keys():
                     raise ValueError(
                         f'unknown system: {system} '
@@ -507,7 +517,6 @@ def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
         if matrix._inherits is None:
             continue
         parent = prj2mat[matrix._inherits]
-        log(f'Project {matrix.project} inherits from {parent.project}')
         assert parent._inherits is None, 'no nested inheritance'
         # Fill values missing in the matrix with parent's values
         inherited = parent.copy()
@@ -515,8 +524,9 @@ def expand_inherited_matrixes(matrixes: List[Matrix]) -> None:
         matrix.update(inherited)
 
 
-def log(msg: str) -> None:
-    print(msg)
+def log(msg: str, visible: bool = True) -> None:
+    if visible:
+        print(msg)
 
 
 def parse_args(argv: List[str]) -> Any:
@@ -525,6 +535,7 @@ def parse_args(argv: List[str]) -> Any:
     parser.add_argument('-m', '--matrix', type=str, default=None)
     parser.add_argument('-d', '--directory', type=str)
     parser.add_argument('-D', '--dry-run', action='store_true', default=False)
+    parser.add_argument('-v', '--verbose', action='store_true', default=False)
     return parser.parse_args()
 
 
@@ -537,12 +548,12 @@ def main(argv: List[str]) -> int:
     if options.matrix is None:
         options.matrix = os.path.join(basedir, 'matrix.yaml')
 
-    log(f'Loading schema: {options.schema}')
+    log(f'Loading schema: {options.schema}', options.verbose)
     with open(options.schema) as f:
         schema = yaml.load(f, Loader=yaml.Loader)
     validate_schema(schema)
 
-    log(f'Loading project matrixes: {options.matrix}')
+    log(f'Loading project matrixes: {options.matrix}', options.verbose)
     matrixes = []
     with open(options.matrix) as f:
         for matrix_record in yaml.load(f, Loader=yaml.Loader):
@@ -557,11 +568,13 @@ def main(argv: List[str]) -> int:
         if matrix._extern:
             log(
                 f'Skipping unmanaged project matrix: {matrix.project} '
-                f'(system: {matrix.system}, target: {matrix.target})')
+                f'(system: {matrix.system}, target: {matrix.target})',
+                options.verbose)
             continue
         log(
             f'Processing project matrix: {matrix.project} '
-            f'(system: {matrix.system}, target: {matrix.target})')
+            f'(system: {matrix.system}, target: {matrix.target})',
+            options.verbose)
         if matrix.system == 'linux':
             gen = LinuxGenerator(schema, matrix)
             output[f'linux/tests/{matrix.target}.Dockerfile'] = \
@@ -596,10 +609,10 @@ def main(argv: List[str]) -> int:
         if options.dry_run:
             with open(filepath) as f:
                 if f.read() != content:
-                    log(f'{filepath} needs to be updated')
+                    log(f'{filepath} needs to be regenerated')
                     retval = 1
         else:
-            log(f'Writing {filepath}')
+            log(f'Writing {filepath}', options.verbose)
             with open(filepath, 'w') as f:
                 f.write(content)
     return retval

@@ -8,6 +8,7 @@ import cupy._core._accelerator as _acc
 import cupy.cuda.cutensor
 from cupy._core import _cub_reduction
 from cupy import testing
+from cupy.cuda import runtime
 
 
 @testing.gpu
@@ -237,6 +238,7 @@ class TestCubReduction:
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_cub_sum(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -287,6 +289,7 @@ class TestCubReduction:
     # prod supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_cub_prod(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -421,7 +424,7 @@ class TestCuTensorReduction:
 
         # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.cutensor._try_reduction_routine'
+        func = 'cupyx.cutensor._try_reduction_routine'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
@@ -494,9 +497,9 @@ class TestNansumNanprodExtra:
 
     def test_nansum_axis_float16(self):
         # Note that the above test example overflows in float16. We use a
-        # smaller array instead, return True if array is too large.
+        # smaller array instead, just return if array is too large.
         if (numpy.prod(self.shape) > 24):
-            return True
+            return
         a = testing.shaped_arange(self.shape, dtype='e')
         a[:, 1] = cupy.nan
         sa = cupy.nansum(a, axis=1)
@@ -1089,7 +1092,7 @@ class TestEdiff1d:
         a = testing.shaped_arange((4, 1), xp, dtype)
         return xp.ediff1d(a, to_end=xp.array([1, 2], dtype=dtype))
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('bhilqefdFD')
     @testing.numpy_cupy_allclose()
     def test_ediff1d_ed1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)

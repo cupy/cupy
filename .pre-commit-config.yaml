@@ -8,10 +8,10 @@ repos:
     # Git
     -   id: check-added-large-files
     -   id: no-commit-to-branch
+        name: "ensure no direct commit to master/vXX branch"
         args: [--branch, "master", --pattern, "v\\d+"]
     -   id: check-case-conflict
     # Contents
-    #-   id: end-of-file-fixer
     -   id: mixed-line-ending
     -   id: fix-byte-order-marker
     -   id: check-yaml
@@ -29,6 +29,7 @@ repos:
         # use config from setup.cfg
     -   id: flake8
         name: flake8 (cython)
+        types: ["cython"]
         args: [--config, ".flake8.cython"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
@@ -42,13 +43,13 @@ repos:
         name: "mypy (install)"
         files: "^install/"
         args: [--config-file, "install/mypy.ini"]
-        additional_dependencies: [numpy, types-setuptools==57.4.14]
+        additional_dependencies: [numpy, types-setuptools==57.4.14, types-PyYAML]
 
 -   repo: local
     hooks:
     -   id: ci-generate
-        name: ci-generate
-        files: .pfnci/*
+        name: "check CI files are up-to-date (.pfnci/generate.py)"
+        files: .pfnci/
         entry: .pfnci/generate.py --dry-run
         pass_filenames: false
         language: python

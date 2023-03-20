@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+import cupy._core._accelerator as _acc
 from cupy import _core
 from cupy import testing
 
@@ -187,6 +188,45 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
             cupy.ReductionKernel(
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
+
+
+@testing.gpu
+class TestReductionKernelCachedCode:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        self.old_routine_accelerators = _acc.get_routine_accelerators()
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        # Disable CUB
+        _acc.set_reduction_accelerators([])
+        _acc.set_routine_accelerators([])
+        yield
+        _acc.set_routine_accelerators(self.old_routine_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
+
+    def test_cached_code(self):
+        kernel = cupy.ReductionKernel(
+            'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='cached_code')
+        assert len(kernel._cached_codes) == 0
+        x = cupy.arange(10)
+        kernel(x)
+        assert len(kernel._cached_codes) == 1
+        kernel(x)
+        assert len(kernel._cached_codes) == 1
+        kernel(x.astype(cupy.float32))
+        assert len(kernel._cached_codes) == 2
+
+    def test_simple_cached_code(self):
+        kernel = _core.create_reduction_func(
+            'my_sum', ('q->q', 'f->f'), ('in0', 'a + b', 'out0 = a', None), 0)
+        assert len(kernel._cached_codes) == 0
+        x = cupy.arange(10)
+        kernel(x)
+        assert len(kernel._cached_codes) == 1
+        kernel(x)
+        assert len(kernel._cached_codes) == 1
+        kernel(x.astype(cupy.float32))
+        assert len(kernel._cached_codes) == 2
 
 
 @testing.gpu

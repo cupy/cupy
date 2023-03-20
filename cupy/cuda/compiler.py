@@ -20,7 +20,7 @@ from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
 if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda.jitify import jitify
+    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -132,13 +132,13 @@ def _get_max_compute_capability():
     elif major == 11 and minor == 0:
         # CUDA 11.0
         nvrtc_max_compute_capability = '80'
-    elif major == 11 and minor < 4:
-        # CUDA 11.1 / 11.2 / 11.3
-        nvrtc_max_compute_capability = '86'
-    else:
-        # CUDA 11.4+
+    elif major == 11 and minor < 8:
+        # CUDA 11.1 - 11.7
         # Note: 87 is for Jetson Orin
         nvrtc_max_compute_capability = '86'
+    else:
+        # CUDA 11.8+
+        nvrtc_max_compute_capability = '90'
 
     return nvrtc_max_compute_capability
 
@@ -234,11 +234,8 @@ def _jitify_prep(source, options, cu_path):
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
         from cupy._core import core
-        _jitify_header_source_map = core._get_header_source_map()
+        jitify._add_sources(core._get_header_source_map())
         _jitify_header_source_map_populated = True
-    else:
-        # this is already cached at the C++ level, so don't pass in anything
-        _jitify_header_source_map = None
 
     # jitify requires the 1st line to be the program name
     old_source = source
@@ -253,8 +250,7 @@ def _jitify_prep(source, options, cu_path):
     # (NVIDIA/jitify#79).
 
     try:
-        name, options, headers, include_names = jitify(
-            source, options, _jitify_header_source_map)
+        name, options, headers, include_names = jitify.jitify(source, options)
     except Exception as e:  # C++ could throw all kinds of errors
         cex = CompileException(str(e), old_source, cu_path, options, 'jitify')
         dump = _get_bool_env_variable(
@@ -292,6 +288,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 source, options, cu_path)
         else:
             headers = include_names = ()
+            major_version, minor_version = _get_nvrtc_version()
+            if major_version >= 12:
+                # Starting with CUDA 12.0, even without using jitify, some
+                # tests cause an error if the following option is not included.
+                options += ('--device-as-default-execution-space',)
 
         if not runtime.is_hip:
             arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
@@ -301,7 +302,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
-
         try:
             compiled_obj, mapping = prog.compile(options, log_stream)
         except CompileException as e:
@@ -443,7 +443,10 @@ def _preprocess(source, options, arch, backend):
         raise ValueError('Invalid backend %s' % backend)
 
     assert isinstance(result, bytes)
-    return result
+
+    # Extract the part containing version information.
+    return '\n'.join(
+        x for x in result.decode().splitlines() if x.startswith('//'))
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')

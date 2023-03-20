@@ -1,9 +1,14 @@
+
+import io
+import warnings
+
 import numpy
 import pytest
 
 import cupy
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
+from cupyx.scipy.interpolate import CubicHermiteSpline
 
 try:
     from scipy import interpolate  # NOQA
@@ -357,3 +362,231 @@ class TestKrogh:
         P = scp.interpolate.KroghInterpolator(x, y)
         D = P.derivatives(xp.array(0))
         return D
+
+
+@testing.with_requires("scipy>=1.10.0")
+class TestZeroSizeArrays:
+    # regression tests for gh-17241 : CubicSpline et al must not segfault
+    # when y.size == 0
+    # The two methods below are _almost_ the same, but not quite:
+    # one is for objects which have the `bc_type` argument (CubicSpline)
+    # and the other one is for those which do not (Pchip, Akima1D)
+
+    # XXX: add CubicSpline to the test loop, when implemented
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('y_shape', [(10, 0, 5), (10, 5, 0)])
+    @pytest.mark.parametrize('bc_type',
+                             ['not-a-knot', 'periodic', 'natural', 'clamped'])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    @pytest.mark.parametrize('klass', ['make_interp_spline', ])
+    def test_zero_size(self, xp, scp, klass, y_shape, bc_type, axis):
+        x = xp.arange(10)
+        y = xp.zeros(y_shape)
+        xval = xp.arange(3)
+
+        cls = getattr(scp.interpolate, klass)
+        obj = cls(x, y, bc_type=bc_type)
+        r1 = obj(xval)
+        assert r1.size == 0
+        assert r1.shape == xval.shape + y.shape[1:]
+
+        # Also check with an explicit non-default axis
+        yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
+
+        obj = cls(x, yt, bc_type=bc_type, axis=axis)
+        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
+        r2 = obj(xval)
+        assert r2.size == 0
+        assert r2.shape == sh
+        return r1, r2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('y_shape', [(10, 0, 5), (10, 5, 0)])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    @pytest.mark.parametrize('klass',
+                             ['PchipInterpolator', 'Akima1DInterpolator'])
+    def test_zero_size_2(self, xp, scp, klass, y_shape, axis):
+        x = xp.arange(10)
+        y = xp.zeros(y_shape)
+        xval = xp.arange(3)
+
+        cls = getattr(scp.interpolate, klass)
+        obj = cls(x, y)
+        r1 = obj(xval)
+        assert r1.size == 0
+        assert r1.shape == xval.shape + y.shape[1:]
+
+        # Also check with an explicit non-default axis
+        yt = xp.moveaxis(y, 0, axis)  # (10, 0, 5) --> (0, 10, 5) if axis=1 etc
+
+        obj = cls(x, yt, axis=axis)
+        sh = yt.shape[:axis] + (xval.size, ) + yt.shape[axis+1:]
+        r2 = obj(xval)
+        assert r2.size == 0
+        assert r2.shape == sh
+        return r1, r2
+
+
+@testing.with_requires("scipy")
+class TestCubicHermiteSpline:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_correctness(self, xp, scp):
+        x = xp.asarray([0, 2, 7])
+        y = xp.asarray([-1, 2, 3])
+        dydx = xp.asarray([0, 3, 7])
+        s = scp.interpolate.CubicHermiteSpline(x, y, dydx)
+        return s(x), s(x, 1)
+
+    def test_ctor_error_handling(self):
+        x = cupy.asarray([1, 2, 3])
+        y = cupy.asarray([0, 3, 5])
+        dydx = cupy.asarray([1, -1, 2, 3])
+        dydx_with_nan = cupy.asarray([1, 0, cupy.nan])
+
+        with pytest.raises(ValueError):
+            CubicHermiteSpline(x, y, dydx)
+
+        with pytest.raises(ValueError):
+            CubicHermiteSpline(x, y, dydx_with_nan)
+
+
+@testing.with_requires("scipy")
+class TestPCHIP:
+    def _make_random(self, xp, scp, npts=20):
+        xi = xp.sort(testing.shaped_random((npts,), xp))
+        yi = testing.shaped_random((npts,), xp)
+        return scp.interpolate.PchipInterpolator(xi, yi), xi, yi
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3)
+    def test_overshoot(self, xp, scp):
+        # PCHIP should not overshoot
+        p, xi, _ = self._make_random(xp, scp)
+        results = []
+        for i in range(len(xi) - 1):
+            x1, x2 = xi[i], xi[i+1]
+            x = xp.linspace(x1, x2, 10)
+            yp = p(x)
+            results.append(yp)
+        return results
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3)
+    def test_monotone(self, xp, scp):
+        # PCHIP should preserve monotonicty
+        p, xi, _ = self._make_random(xp, scp)
+        results = []
+        for i in range(len(xi) - 1):
+            x1, x2 = xi[i], xi[i+1]
+            x = xp.linspace(x1, x2, 10)
+            yp = p(x)
+            results.append(yp)
+        return results
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cast(self, xp, scp):
+        # regression test for integer input data, see gh-3453
+        data = xp.array([[0, 4, 12, 27, 47, 60, 79, 87, 99, 100],
+                         [-33, -33, -19, -2, 12, 26, 38, 45, 53, 55]])
+        xx = xp.arange(100)
+        curve = scp.interpolate.PchipInterpolator(data[0], data[1])(xx)
+
+        data1 = data * 1.0
+        curve1 = scp.interpolate.PchipInterpolator(data1[0], data1[1])(xx)
+        return curve, curve1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_nag(self, xp, scp):
+        # Example from NAG C implementation,
+        # http://nag.com/numeric/cl/nagdoc_cl25/html/e01/e01bec.html
+        # suggested in scipy/gh-5326 as a smoke test for the way the
+        # derivatives are computed (see also scipy/gh-3453)
+        dataStr = '''
+          7.99   0.00000E+0
+          8.09   0.27643E-4
+          8.19   0.43750E-1
+          8.70   0.16918E+0
+          9.20   0.46943E+0
+         10.00   0.94374E+0
+         12.00   0.99864E+0
+         15.00   0.99992E+0
+         20.00   0.99999E+0
+        '''
+        data = xp.loadtxt(io.StringIO(dataStr))
+        pch = scp.interpolate.PchipInterpolator(data[:, 0], data[:, 1])
+
+        resultStr = '''
+           7.9900       0.0000
+           9.1910       0.4640
+          10.3920       0.9645
+          11.5930       0.9965
+          12.7940       0.9992
+          13.9950       0.9998
+          15.1960       0.9999
+          16.3970       1.0000
+          17.5980       1.0000
+          18.7990       1.0000
+          20.0000       1.0000
+        '''
+        result = xp.loadtxt(io.StringIO(resultStr))
+        return pch(result[:, 0])
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_endslopes(self, xp, scp):
+        # this is a smoke test for scipy/gh-3453: PCHIP interpolator should not
+        # set edge slopes to zero if the data do not suggest zero
+        # edge derivatives
+        x = xp.array([0.0, 0.1, 0.25, 0.35])
+        y1 = xp.array([279.35, 0.5e3, 1.0e3, 2.5e3])
+        y2 = xp.array([279.35, 2.5e3, 1.50e3, 1.0e3])
+        pchip = scp.interpolate.PchipInterpolator
+        results = []
+        for pp in (pchip(x, y1), pchip(x, y2)):
+            for t in (x[0], x[-1]):
+                results.append(pp(t, 1))
+        return results
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_all_zeros(self, xp, scp):
+        x = xp.arange(10)
+        y = xp.zeros_like(x)
+
+        # this should work and not generate any warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            pch = scp.interpolate.PchipInterpolator(x, y)
+
+        xx = xp.linspace(0, 9, 101)
+        return pch(xx)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_two_points(self, xp, scp):
+        # regression test for gh-6222: pchip([0, 1], [0, 1]) fails because
+        # it tries to use a three-point scheme to estimate edge derivatives,
+        # while there are only two points available.
+        # Instead, it should construct a linear interpolator.
+        x = xp.linspace(0, 1, 11)
+        p = scp.interpolate.PchipInterpolator([0, 1], [0, 2])
+        return p(x)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_pchip_interpolate(self, xp, scp):
+        r1 = scp.interpolate.pchip_interpolate(
+            [1, 2, 3], [4, 5, 6], [0.5], der=1)
+        r2 = scp.interpolate.pchip_interpolate(
+            [1, 2, 3], [4, 5, 6], [0.5], der=0)
+        r3 = scp.interpolate.pchip_interpolate(
+            [1, 2, 3], [4, 5, 6], [0.5], der=[0, 1])
+        return r1, r2, xp.asarray(r3)
+
+
+@testing.with_requires("scipy")
+class TestAkima1D:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_correctness(self, xp, scp):
+        x = xp.asarray([-1, 0, 1, 2, 3, 4])
+        # y = xp.asarray([-1, 2, 3])
+        y = testing.shaped_random((6, 1), xp)
+        s = scp.interpolate.Akima1DInterpolator(x, y)
+        return s(x), s(x, 1)

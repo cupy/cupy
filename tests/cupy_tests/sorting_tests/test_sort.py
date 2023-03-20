@@ -214,12 +214,12 @@ class TestLexsort(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 return xp.lexsort(a)
 
-    @testing.numpy_cupy_array_equal
+    @testing.numpy_cupy_array_equal()
     def test_lexsort_one_dim(self, xp):
         a = testing.shaped_random((2,), xp)
         return xp.lexsort(a)
 
-    @testing.numpy_cupy_array_equal
+    @testing.numpy_cupy_array_equal()
     def test_lexsort_two_dim(self, xp):
         a = xp.array([[9, 4, 0, 4, 0, 2, 1],
                       [1, 5, 1, 4, 3, 4, 4]])  # from numpy.lexsort example
@@ -398,7 +398,7 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
 
-@testing.gpu
+@pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
 class TestMsort(unittest.TestCase):
 
     # Test base cases

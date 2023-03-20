@@ -1,11 +1,7 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:5.2"
+ARG BASE_IMAGE="nvidia/cuda:12.0.0-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ( apt-get -qqy update || true ) && \
-    apt-get -qqy install ca-certificates && \
-    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install \
@@ -18,22 +14,20 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
+            --allow-downgrades install 'libnccl2=2.16.*+cuda12.0' 'libnccl-dev=2.16.*+cuda12.0' 'libcutensor1=1.6.*' 'libcutensor-dev=1.6.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
-ENV ROCM_HOME "/opt/rocm"
-ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
-ENV CPATH "${ROCM_HOME}/include"
-ENV LDFLAGS "-L${ROCM_HOME}/lib"
+COPY setup/update-alternatives-cutensor.sh /
+RUN /update-alternatives-cutensor.sh
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.9.6 && \
-    pyenv global 3.9.6 && \
+RUN pyenv install 3.11.0 && \
+    pyenv global 3.11.0 && \
     pip install -U setuptools pip
 
-RUN pip install -U 'numpy==1.23.*' 'scipy==1.8.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.23.*' 'scipy==1.9.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check

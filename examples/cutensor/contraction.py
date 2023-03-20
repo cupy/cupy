@@ -3,7 +3,7 @@
 #
 import numpy
 import cupy
-from cupy import cutensor
+from cupyx import cutensor
 import cupyx.time
 
 
