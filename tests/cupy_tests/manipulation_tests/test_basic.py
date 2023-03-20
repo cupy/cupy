@@ -9,6 +9,7 @@ from cupy import cuda
 from cupy import testing
 from cupy.cuda import runtime
 
+
 @testing.gpu
 class TestBasic:
 
