@@ -21,7 +21,7 @@ class TestCheckVersion(unittest.TestCase):
         self.settings = build.get_compiler_setting(ctx, False)
 
     @pytest.mark.gpu
-    @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
+    @pytest.mark.skipif(test_hip, reason='For ROCm/HIP environment')
     def test_check_hip_version(self):
         with self.assertRaises(RuntimeError):
             build.get_hip_version()

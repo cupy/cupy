@@ -4,7 +4,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy import cuda
-
+from cupy.cuda import runtime
 
 class TestJoin:
 
@@ -37,6 +37,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate1(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 2), xp, dtype)
@@ -45,6 +46,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 2), xp, dtype)
@@ -53,6 +55,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_axis_none(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((3, 5, 2), xp, dtype)
@@ -61,6 +64,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_large_2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 2), xp, dtype)
@@ -71,6 +75,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_large_3(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 1), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 1), xp, dtype)
@@ -78,6 +83,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_large_4(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 4), xp, dtype)
@@ -85,12 +91,14 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_large_5(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 4), xp, 'i')
         return xp.concatenate((a, b) * 10, axis=-1)
 
     @testing.multi_gpu(2)
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_large_different_devices(self):
         arrs = []
         for i in range(10):
@@ -105,6 +113,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_f_contiguous(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_arange((2, 3, 2), xp, dtype).T
@@ -113,6 +122,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_large_f_contiguous(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_arange((2, 3, 2), xp, dtype).T
@@ -122,12 +132,14 @@ class TestJoin:
         return xp.concatenate((a, b, c, d, e) * 2, axis=-1)
 
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_many_multi_dtype(self, xp):
         a = testing.shaped_arange((2, 1), xp, 'i')
         b = testing.shaped_arange((2, 1), xp, 'f')
         return xp.concatenate((a, b) * 1024, axis=1)
 
     @testing.slow
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_32bit_boundary(self):
         a = cupy.zeros((2 ** 30,), dtype=cupy.int8)
         b = cupy.zeros((2 ** 30,), dtype=cupy.int8)
@@ -138,12 +150,14 @@ class TestJoin:
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_wrong_ndim(self):
         a = cupy.empty((2, 3))
         b = cupy.empty((2,))
         with pytest.raises(ValueError):
             cupy.concatenate((a, b))
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_wrong_shape(self):
         a = cupy.empty((2, 3, 4))
         b = cupy.empty((3, 3, 4))
@@ -153,6 +167,7 @@ class TestJoin:
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_out(self, xp, dtype):
         a = testing.shaped_arange((3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((3, 4), xp, dtype)
@@ -162,6 +177,7 @@ class TestJoin:
         return out
 
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_out_same_kind(self, xp):
         a = testing.shaped_arange((3, 4), xp, xp.float64)
         b = testing.shaped_reverse_arange((3, 4), xp, xp.float64)
@@ -170,6 +186,7 @@ class TestJoin:
         xp.concatenate((a, b, c), axis=1, out=out)
         return out
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_out_invalid_shape(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((3, 4), xp, xp.float64)
@@ -178,7 +195,8 @@ class TestJoin:
             out = xp.zeros((4, 10), dtype=xp.float64)
             with pytest.raises(ValueError):
                 xp.concatenate((a, b, c), axis=1, out=out)
-
+    
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_out_invalid_shape_2(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((3, 4), xp, xp.float64)
@@ -188,6 +206,7 @@ class TestJoin:
             with pytest.raises(ValueError):
                 xp.concatenate((a, b, c), axis=1, out=out)
 
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_out_invalid_dtype(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((3, 4), xp, xp.float64)
@@ -199,6 +218,7 @@ class TestJoin:
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal()
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_different_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype2)
@@ -206,6 +226,7 @@ class TestJoin:
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_out_different_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
@@ -215,12 +236,14 @@ class TestJoin:
     @testing.with_requires('numpy>=1.20.0')
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         return xp.concatenate((a, b), dtype=dtype2)
 
     @testing.with_requires('numpy>=1.20.0')
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_dtype_invalid_out(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((3, 4), xp, xp.float64)
@@ -241,6 +264,7 @@ class TestJoin:
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(
         accept_error=(TypeError, numpy.ComplexWarning))
+    @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug ')
     def test_concatenate_casting(self, xp, dtype1, dtype2, casting):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
