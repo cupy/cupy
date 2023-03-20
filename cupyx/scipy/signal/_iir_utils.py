@@ -1,37 +1,63 @@
 
+from itertools import product
+
 import cupy
 from cupy._core.internal import _normalize_axis_index
+from cupy._core._scalar import get_typename
+
+
+def _get_typename(dtype):
+    typename = get_typename(dtype)
+    if cupy.dtype(dtype).kind == 'c':
+        typename = 'thrust::' + typename
+    elif typename == 'float16':
+        typename = 'half'
+    return typename
+
+
+FLOAT_TYPES = [cupy.float16, cupy.float32, cupy.float64]
+INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
+UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
+TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES  # type: ignore
+TYPE_PAIRS = [(x, y) for x, y in product(TYPES, TYPES)
+              if cupy.promote_types(x, y) is cupy.dtype(x)]
+
+TYPE_NAMES = [_get_typename(t) for t in TYPES]
+TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 
 
 IIR_KERNEL = r"""
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
 
+template<typename U, typename T>
 __global__ void compute_correction_factors(
-        const int m, const int k, const float* b, float* out) {
+        const int m, const int k, const T* b, U* out) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= k) {
         return;
     }
 
-    float* out_start = out + idx * (k + m);
-    float* out_off = out_start + k;
+    U* out_start = out + idx * (k + m);
+    U* out_off = out_start + k;
 
     for(int i = 0; i < m; i++) {
-        float acc = 0.0;
+        U acc = 0.0;
         for(int j = 0; j < k; j++) {
-            acc += b[j] * out_off[i - j - 1];
+            acc += ((U) b[j]) * out_off[i - j - 1];
 
         }
         out_off[i] = acc;
     }
 }
 
+template<typename T>
 __global__ void first_pass_iir(
         const int m, const int k, const int n, const int n_blocks,
-        const int carries_stride, const float* factors, float* out,
-        float* carries) {
+        const int carries_stride, const T* factors, T* out,
+        T* carries) {
     int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
 
     int num_row = blockIdx.x / n_blocks;
@@ -44,11 +70,11 @@ __global__ void first_pass_iir(
     int group_num = idx / m;
     int group_pos = idx % m;
 
-    float* out_off = out + num_row * n;
-    float* carries_off = carries + num_row * carries_stride;
+    T* out_off = out + num_row * n;
+    T* carries_off = carries + num_row * carries_stride;
 
-    float* group_start = out_off + m * group_num;
-    float* group_carries = carries_off + k * group_num;
+    T* group_start = out_off + m * group_num;
+    T* group_carries = carries_off + k * group_num;
 
     int pos = group_pos;
     int up_bound = pos;
@@ -77,11 +103,11 @@ __global__ void first_pass_iir(
         }
 
         rel_pos = pos % level;
-        float carry = 0.0;
+        T carry = 0.0;
         for(int i = 1; i <= min(k, level); i++) {
-            float k_value = group_start[low_bound - i];
-            const float* k_factors = factors + (m + k) * (i - 1) + k;
-            float factor = k_factors[rel_pos];
+            T k_value = group_start[low_bound - i];
+            const T* k_factors = factors + (m + k) * (i - 1) + k;
+            T factor = k_factors[rel_pos];
             carry += k_value * factor;
         }
 
@@ -97,23 +123,24 @@ __global__ void first_pass_iir(
 
 }
 
+template<typename T>
 __global__ void correct_carries(
     const int m, const int k, const int n_blocks, const int carries_stride,
-    const int offset, const float* factors, float* carries) {
+    const int offset, const T* factors, T* carries) {
 
     int idx = threadIdx.x;
     int pos = idx + (m - k);
-    float* row_carries = carries + carries_stride * blockIdx.x;
+    T* row_carries = carries + carries_stride * blockIdx.x;
 
     for(int i = offset; i < n_blocks; i++) {
-        float* this_carries = row_carries + k * (i + (1 - offset));
-        float* prev_carries = row_carries + k * (i - offset);
+        T* this_carries = row_carries + k * (i + (1 - offset));
+        T* prev_carries = row_carries + k * (i - offset);
 
-        float carry = 0.0;
+        T carry = 0.0;
         for(int j = 1; j <= k; j++) {
-            const float* k_factors = factors + (m + k) * (j - 1) + k;
-            float factor = k_factors[pos];
-            float k_value = prev_carries[k - j];
+            const T* k_factors = factors + (m + k) * (j - 1) + k;
+            T factor = k_factors[pos];
+            T k_value = prev_carries[k - j];
             carry += factor * k_value;
         }
 
@@ -122,10 +149,11 @@ __global__ void correct_carries(
     }
 }
 
+template<typename T>
 __global__ void second_pass_iir(
         const int m, const int k, const int n, const int carries_stride,
-        const int n_blocks, const int offset, const float* factors,
-        float* carries, float* out) {
+        const int n_blocks, const int offset, const T* factors,
+        T* carries, T* out) {
 
     int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
     idx += offset * m;
@@ -138,15 +166,15 @@ __global__ void second_pass_iir(
         return;
     }
 
-    float* out_off = out + row_num * n;
-    float* carries_off = carries + row_num * carries_stride;
-    const float* prev_carries = carries_off + (n_group - offset) * k;
+    T* out_off = out + row_num * n;
+    T* carries_off = carries + row_num * carries_stride;
+    const T* prev_carries = carries_off + (n_group - offset) * k;
 
-    float carry = 0.0;
+    T carry = 0.0;
     for(int i = 1; i <= k; i++) {
-        const float* k_factors = factors + (m + k) * (i - 1) + k;
-        float factor = k_factors[pos];
-        float k_value = prev_carries[k - i];
+        const T* k_factors = factors + (m + k) * (i - 1) + k;
+        T factor = k_factors[pos];
+        T k_value = prev_carries[k - i];
         carry += factor * k_value;
     }
 
@@ -157,10 +185,19 @@ __global__ void second_pass_iir(
 
 IIR_MODULE = cupy.RawModule(
     code=IIR_KERNEL, options=('-std=c++11',),
-    name_expressions=['compute_correction_factors',
-                      'correct_carries',
-                      'first_pass_iir',
-                      'second_pass_iir'])
+    name_expressions=[f'compute_correction_factors<{x}, {y}>'
+                      for x, y in TYPE_PAIR_NAMES] +
+                     [f'correct_carries<{x}>' for x in TYPE_NAMES] +
+                     [f'first_pass_iir<{x}>' for x in TYPE_NAMES] +
+                     [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
+
+
+def _get_module_func(module, func_name, *template_args):
+    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
 
 
 def collapse_2d(x, axis):
@@ -172,15 +209,17 @@ def collapse_2d(x, axis):
     return x, x_shape
 
 
-def apply_iir(x, a, axis=-1, zi=None):
+def apply_iir(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
     # GPU throughput is faster when using single precision floating point
     # numbers
+    # x = x.astype(cupy.float32)
+    if dtype is None:
+        dtype = cupy.result_type(x.dtype, a.dtype)
 
-    x = x.astype(cupy.float32)
-    a = a.astype(cupy.float32)
+    a = a.astype(dtype)
 
     if zi is not None:
-        zi = zi.astype(cupy.float32)
+        zi = zi.astype(dtype)
 
     x_shape = x.shape
     x_ndim = x.ndim
@@ -193,23 +232,24 @@ def apply_iir(x, a, axis=-1, zi=None):
         if zi is not None:
             zi, _ = collapse_2d(zi, axis)
 
-    out = x.copy()
+    out = x.copy().astype(dtype)
 
     num_rows = 1 if x.ndim == 1 else x.shape[0]
-    block_sz = 1024
     n_blocks = (n + block_sz - 1) // block_sz
     total_blocks = num_rows * n_blocks
 
-    correction = cupy.eye(k, dtype=cupy.float32)
+    correction = cupy.eye(k, dtype=dtype)
     correction = cupy.c_[
-        correction[::-1], cupy.empty((k, block_sz), dtype=cupy.float32)]
+        correction[::-1], cupy.empty((k, block_sz), dtype=dtype)]
     carries = cupy.empty(
-        (num_rows, n_blocks, k), dtype=cupy.float32)
+        (num_rows, n_blocks, k), dtype=dtype)
 
-    corr_kernel = IIR_MODULE.get_function('compute_correction_factors')
-    first_pass_kernel = IIR_MODULE.get_function('first_pass_iir')
-    second_pass_kernel = IIR_MODULE.get_function('second_pass_iir')
-    carry_correction_kernel = IIR_MODULE.get_function('correct_carries')
+    corr_kernel = _get_module_func(
+        IIR_MODULE, 'compute_correction_factors', correction, a)
+    first_pass_kernel = _get_module_func(IIR_MODULE, 'first_pass_iir', out)
+    second_pass_kernel = _get_module_func(IIR_MODULE, 'second_pass_iir', out)
+    carry_correction_kernel = _get_module_func(
+        IIR_MODULE, 'correct_carries', out)
 
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((total_blocks,), (block_sz // 2,),
