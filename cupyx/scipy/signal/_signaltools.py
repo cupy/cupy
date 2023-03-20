@@ -686,25 +686,22 @@ def lfilter(b, a, x, axis=-1, zi=None):
     num_b = b.size - 1
     num_a = a_r.size
     x_ndim = x.ndim
-    x_shape = x.shape
     axis = internal._normalize_axis_index(axis, x_ndim)
 
     prev_out = None
     in_off = 0
     if zi is not None:
         in_off = num_b
-        prev_in = zi[:in_off]
-        prev_out = zi[-num_a:]
-        x = cupy.r_[prev_in, x]
+        prev_in = cupy.take(zi, list(range(0, in_off)), axis=axis)
+        prev_out = cupy.take(zi, list(range(-num_a, 0)), axis=axis)
+        x = cupy.concatenate((prev_in, x), axis=axis)
 
     if x_ndim > 1:
-        zeros_shape = list(x_shape)
-        zeros_shape[axis] = 1
-        xe = cupy.concatenate((x, cupy.zeros(zeros_shape)), axis=axis)
-        out = _filters.convolve1d(xe, b, axis=-1, mode='constant', origin=-1)
+        out = _filters.convolve1d(x, b, axis=axis, mode='constant', origin=-1)
     else:
         out = convolve(x, b, 'same')
-        out = out[in_off:]
+
+    out = out[in_off:]
 
     if a_r.size > 0:
         out = apply_iir(out, a_r, zi=prev_out)
