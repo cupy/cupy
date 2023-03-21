@@ -138,6 +138,7 @@ Other special functions
    softmax
    log_softmax
    zeta
+   zetac
 
 
 Convenience functions
