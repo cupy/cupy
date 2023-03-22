@@ -689,24 +689,32 @@ def lfilter(b, a, x, axis=-1, zi=None):
     axis = internal._normalize_axis_index(axis, x_ndim)
     n = x.shape[axis]
 
+    fir_dtype = cupy.result_type(x, b)
+
     prev_out = None
     if zi is not None:
         prev_in = cupy.take(zi, list(range(0, num_b)), axis=axis)
         prev_out = cupy.take(zi, list(range(-num_a, 0)), axis=axis)
         x = cupy.concatenate((prev_in, x), axis=axis)
 
-    if x_ndim > 1:
-        origin = -1 if num_b > 0 else 0
-        out = _filters.convolve1d(
-            x, b, axis=axis, mode='constant', origin=origin)
-    else:
-        out = convolve(x, b, 'same')
+    # breakpoint()
+    origin = -num_b // 2
+    out = cupy.empty_like(x, dtype=fir_dtype)
+    out = _filters.convolve1d(
+        x, b, axis=axis, mode='constant', origin=origin, output=out)
 
     if zi is not None:
         out = cupy.take(out, list(range(-n, 0)), axis=axis)
 
     if a_r.size > 0:
-        out = apply_iir(out, a_r, axis=axis, zi=prev_out)
+        iir_dtype = cupy.result_type(fir_dtype, a)
+        const_dtype = cupy.dtype(a.dtype)
+        if const_dtype.kind == 'u':
+            const_dtype = cupy.dtype(const_dtype.char.lower())
+            a = a.astype(const_dtype)
+            print(fir_dtype, iir_dtype)
+
+        out = apply_iir(out, a_r, axis=axis, zi=prev_out, dtype=iir_dtype)
 
     if zi is not None:
         prev_in = cupy.take(x, list(range(-num_b, 0)), axis=axis)
