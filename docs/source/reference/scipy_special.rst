@@ -135,6 +135,7 @@ Other special functions
    exp1
    expi
    expn
+   exprel
    softmax
    log_softmax
    zeta
