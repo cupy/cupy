@@ -379,10 +379,8 @@ class TestLFilter:
     @pytest.mark.parametrize('fir_order', [1, 2, 3, 4, 5])
     @pytest.mark.parametrize('iir_order', [0, 1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False)
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3, type_check=False)
     def test_fir_iir_order(self, size, fir_order, iir_order,
                            in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
@@ -406,8 +404,7 @@ class TestLFilter:
     @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
     @testing.numpy_cupy_array_almost_equal(
         scipy_name='scp', decimal=5, type_check=False)
     def test_fir_iir_order_ndim(
@@ -436,10 +433,8 @@ class TestLFilter:
     @pytest.mark.parametrize('fir_order', [1, 2, 3, 4, 5])
     @pytest.mark.parametrize('iir_order', [0, 1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_array_almost_equal(
-        scipy_name='scp', decimal=5, type_check=False)
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3, type_check=False)
     def test_fir_iir_zi(self, size, fir_order, iir_order,
                         in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
@@ -469,8 +464,7 @@ class TestLFilter:
     @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
     @testing.numpy_cupy_array_almost_equal(
         scipy_name='scp', decimal=5, type_check=False)
     def test_fir_iir_zi_ndim(

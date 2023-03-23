@@ -17,8 +17,9 @@ def _get_typename(dtype):
 
 FLOAT_TYPES = [cupy.float16, cupy.float32, cupy.float64]
 INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
+COMPLEX_TYPES = [cupy.complex64, cupy.complex128]
 UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
-TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES  # type: ignore
+TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore  # NOQA
 TYPE_PAIRS = [(x, y) for x, y in product(TYPES, TYPES)
               if cupy.promote_types(x, y) is cupy.dtype(x)]
 
@@ -29,8 +30,10 @@ TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 IIR_KERNEL = r"""
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
 
 template<typename U, typename T>
 __global__ void compute_correction_factors(

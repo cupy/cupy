@@ -11,9 +11,8 @@ class TestIIRUtils:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
     def test_order(self, size, order, in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
         if xp.dtype(out_dtype).kind in {'i', 'u'}:
@@ -42,8 +41,7 @@ class TestIIRUtils:
     @pytest.mark.parametrize('order', [1, 2, 3])
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=0.5)
     def test_order_ndim(self, size, order, axis, in_dtype, const_dtype,
                         xp, scp):
@@ -75,8 +73,7 @@ class TestIIRUtils:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-3)
     def test_order_zero_starting(self, size, order, in_dtype, const_dtype,
                                  xp, scp):
@@ -113,8 +110,7 @@ class TestIIRUtils:
     @pytest.mark.parametrize('order', [1, 2, 3])
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-2)
     def test_order_zero_starting_ndim(
             self, size, order, axis, in_dtype, const_dtype, xp, scp):
@@ -154,8 +150,7 @@ class TestIIRUtils:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
     @pytest.mark.parametrize('order', [1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_order_starting_cond(
             self, size, order, in_dtype, const_dtype, xp, scp):
@@ -191,17 +186,20 @@ class TestIIRUtils:
     @pytest.mark.parametrize('order', [1, 2, 3])
     @pytest.mark.parametrize('axis', [0, 1, 2, 3])
     @testing.for_all_dtypes_combination(
-        no_complex=True, no_float16=True, no_bool=True,
-        names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-2)
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_order_starting_cond_ndim(
             self, size, order, axis, in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
         if xp.dtype(out_dtype).kind in {'i', 'u'}:
             pytest.skip()
 
-        x = testing.shaped_random((3, 2, 3, size), xp, in_dtype, scale=1)
-        a = testing.shaped_random((order,), xp, dtype=const_dtype, scale=2)
+        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((3, 2, 3, size), xp, in_dtype, scale=x_scale)
+        a = testing.shaped_random(
+            (order,), xp, dtype=const_dtype, scale=c_scale)
         a = xp.r_[1, a]
         a = a.astype(const_dtype)
 
