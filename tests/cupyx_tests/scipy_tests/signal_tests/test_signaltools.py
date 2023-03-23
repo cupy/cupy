@@ -463,3 +463,51 @@ class TestLFilter:
         res, _ = scp.signal.lfilter(b, a, x, zi=zi)
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @testing.for_all_dtypes_combination(
+        no_complex=True, no_float16=True, no_bool=True,
+        names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False)
+    def test_fir_iir_zi_ndim(
+            self, size, fir_order, iir_order, axis, in_dtype,
+            const_dtype, xp, scp):
+        out_dtype = xp.result_type(in_dtype, const_dtype)
+        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
+        b = testing.shaped_random(
+            (fir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = testing.shaped_random(
+            (iir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = xp.r_[1, a]
+        a = a.astype(const_dtype)
+
+        zi_shape = list(x.shape)
+        zi_shape[axis] = fir_order + iir_order - 1
+        zi = testing.shaped_random(zi_shape, xp, dtype=in_dtype)
+
+        if xp is not cupy:
+            zi = xp.moveaxis(zi, axis, -1)
+            zi_m_shape = zi.shape
+            zi = zi.reshape(
+                int(np.prod(zi_m_shape[:-1])),
+                fir_order + iir_order - 1).copy()
+            zi = xp.concatenate([
+                scp.signal.lfiltic(
+                    b, a, z[-iir_order:][::-1], z[:fir_order - 1][::-1])
+                for z in zi])
+            zi = zi.reshape(zi_m_shape[:-1] + (-1,))
+            zi = xp.moveaxis(zi, -1, axis)
+
+        res, _ = scp.signal.lfilter(b, a, x, zi=zi, axis=axis)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
