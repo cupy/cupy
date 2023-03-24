@@ -723,6 +723,66 @@ def lfilter(b, a, x, axis=-1, zi=None):
         return out
 
 
+def lfiltic(b, a, y, x=None, axis=-1):
+    """
+    Construct initial conditions for lfilter given input and output vectors.
+
+    Given a linear filter (b, a) and initial conditions on the output `y`
+    and the input `x`, return the initial conditions on the state vector zi
+    which is used by `lfilter` to generate the output given the input.
+
+    Parameters
+    ----------
+    b : array_like
+        Linear filter term.
+    a : array_like
+        Linear filter term.
+    y : array_like
+        Initial conditions.
+        If ``N = len(a) - 1``, then ``y = {y[-1], y[-2], ..., y[-N]}``.
+        If `y` is too short, it is padded with zeros.
+    x : array_like, optional
+        Initial conditions.
+        If ``M = len(b) - 1``, then ``x = {x[-1], x[-2], ..., x[-M]}``.
+        If `x` is not given, its initial conditions are assumed zero.
+        If `x` is too short, it is padded with zeros.
+    axis:
+
+    Returns
+    -------
+    zi : ndarray
+        The state vector ``zi = {z_0[-1], z_1[-1], ..., z_K-1[-1]}``,
+        where ``K = max(M, N)``.
+
+    See Also
+    --------
+    lfilter, lfilter_zi
+    """
+    fir_len = b.size - 1
+    iir_len = a.size - 1
+
+    if y is None and x is None:
+        return None
+
+    ref_ndim = y.ndim if y is not None else x.ndim
+    axis = internal._normalize_axis_index(axis, ref_ndim)
+
+    zi = cupy.empty(0)
+    if y is not None and iir_len > 0:
+        pad_y = cupy.concatenate(
+            (y, cupy.zeros(max(iir_len - y.shape[axis], 0))), axis=axis)
+        zi = cupy.take(pad_y, list(range(iir_len)), axis=axis)
+        zi = cupy.flip(zi, axis)
+
+    if x is not None and fir_len > 0:
+        pad_x = cupy.concatenate(
+            (x, cupy.zeros(max(fir_len - x.shape[axis], 0))), axis=axis)
+        fir_zi = cupy.take(pad_x, list(range(fir_len)), axis=axis)
+        fir_zi = cupy.flip(fir_zi, axis)
+        zi = cupy.concatenate((fir_zi, zi), axis=axis)
+    return zi
+
+
 def deconvolve(signal, divisor):
     """Deconvolves ``divisor`` out of ``signal`` using inverse filtering.
 

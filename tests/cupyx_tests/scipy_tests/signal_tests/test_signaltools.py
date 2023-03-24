@@ -534,6 +534,20 @@ class TestLFilter:
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [0, 1, 2, 3])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_lfiltic(self, fir_order, iir_order, xp, scp):
+        x = testing.shaped_random((20,), xp)
+        b = testing.shaped_random((fir_order,), xp, scale=0.3)
+        a = testing.shaped_random((iir_order,), xp, scale=0.3)
+        a = xp.r_[1, a]
+
+        zi = testing.shaped_random((fir_order + iir_order - 1,), xp)
+        zi = scp.signal.lfiltic(b, a, zi[-iir_order:], zi[:fir_order - 1])
+
+        out, _ = scp.signal.lfilter(b, a, x, zi=zi)
+        return out
 
 @testing.with_requires('scipy')
 class TestDeconvolve:
