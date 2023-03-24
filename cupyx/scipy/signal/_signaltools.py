@@ -697,7 +697,6 @@ def lfilter(b, a, x, axis=-1, zi=None):
         prev_out = cupy.take(zi, list(range(-num_a, 0)), axis=axis)
         x = cupy.concatenate((prev_in, x), axis=axis)
 
-    # breakpoint()
     origin = -num_b // 2
     out = cupy.empty_like(x, dtype=fir_dtype)
     out = _filters.convolve1d(
@@ -712,7 +711,6 @@ def lfilter(b, a, x, axis=-1, zi=None):
         if const_dtype.kind == 'u':
             const_dtype = cupy.dtype(const_dtype.char.lower())
             a = a.astype(const_dtype)
-            print(fir_dtype, iir_dtype)
 
         out = apply_iir(out, a_r, axis=axis, zi=prev_out, dtype=iir_dtype)
 
