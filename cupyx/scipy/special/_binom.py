@@ -24,6 +24,10 @@ __device__ double binom(double n, double k) {
     if (n < 0 && n == trunc(n)) {
         return CUDART_NAN;
     }
+    // Check if k is infinite
+    if (k == CUDART_INF) {
+        return CUDART_NAN;
+    }
 
     // k is integer and n is not very small
     if (k == floor(k) && (fabs(n) > 1.0e-8 || n == 0)) {
