@@ -74,7 +74,8 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
         cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
 
 
-def assert_array_equal(x, y, err_msg='', verbose=True, strides_check=False):
+def assert_array_equal(x, y, err_msg='', verbose=True, strict=False,
+                       strides_check=False):
     """Raises an AssertionError if two array_like objects are not equal.
 
     Args:
@@ -85,12 +86,16 @@ def assert_array_equal(x, y, err_msg='', verbose=True, strides_check=False):
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
+         strict(bool): If ``True``, raise an AssertionError when either
+             the shape or the data type of the array_like objects does not
+             match. The special handling for scalars mentioned in the Notes
+             section is disabled.
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
     numpy.testing.assert_array_equal(
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-        verbose=verbose)
+        verbose=verbose, strict=strict)
 
     if strides_check:
         if x.strides != y.strides:
@@ -103,7 +108,8 @@ def assert_array_equal(x, y, err_msg='', verbose=True, strides_check=False):
             raise AssertionError('\n'.join(msg))
 
 
-def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
+def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True,
+                            strict=False):
     """Compares lists of arrays pairwise with ``assert_array_equal``.
 
     Args:
@@ -112,6 +118,10 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
+         strict(bool): If ``True``, raise an AssertionError when either
+             the shape or the data type of the array_like objects does not
+             match. The special handling for scalars mentioned in the Notes
+             section is disabled.
 
     Each element of ``x`` and ``y`` must be either :class:`numpy.ndarray`
     or :class:`cupy.ndarray`. ``x`` and ``y`` must have same length.
@@ -137,7 +147,7 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
     for x, y in zip(xlist, ylist):
         numpy.testing.assert_array_equal(
             cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
-            verbose=verbose)
+            verbose=verbose, strict=strict)
 
 
 def assert_array_less(x, y, err_msg='', verbose=True):
