@@ -88,8 +88,7 @@ def assert_array_equal(x, y, err_msg='', verbose=True, strict=False,
              are appended to the error message.
          strict(bool): If ``True``, raise an AssertionError when either
              the shape or the data type of the array_like objects does not
-             match. The special handling for scalars mentioned in the Notes
-             section is disabled.
+             match.
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
@@ -120,8 +119,7 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True,
              are appended to the error message.
          strict(bool): If ``True``, raise an AssertionError when either
              the shape or the data type of the array_like objects does not
-             match. The special handling for scalars mentioned in the Notes
-             section is disabled.
+             match.
 
     Each element of ``x`` and ``y`` must be either :class:`numpy.ndarray`
     or :class:`cupy.ndarray`. ``x`` and ``y`` must have same length.
