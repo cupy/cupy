@@ -235,7 +235,7 @@ def apply_iir(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
         if zi is not None:
             zi, _ = collapse_2d(zi, axis)
 
-    out = x.copy().astype(dtype)
+    out = cupy.array(x, dtype=dtype, copy=True)
 
     num_rows = 1 if x.ndim == 1 else x.shape[0]
     n_blocks = (n + block_sz - 1) // block_sz

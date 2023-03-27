@@ -434,7 +434,8 @@ class TestLFilter:
     @pytest.mark.parametrize('iir_order', [0, 1, 2, 3, 4, 5])
     @testing.for_all_dtypes_combination(
         no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3, type_check=False)
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False)
     def test_fir_iir_zi(self, size, fir_order, iir_order,
                         in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
@@ -442,10 +443,13 @@ class TestLFilter:
             pytest.skip()
 
         x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
 
         x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
-        b = testing.shaped_random((fir_order,), xp, dtype=const_dtype, scale=1)
-        a = testing.shaped_random((iir_order,), xp, dtype=const_dtype, scale=1)
+        b = testing.shaped_random(
+            (fir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = testing.shaped_random(
+            (iir_order,), xp, dtype=const_dtype, scale=c_scale)
         a = xp.r_[1, a]
         a = a.astype(const_dtype)
 
