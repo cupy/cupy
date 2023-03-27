@@ -733,6 +733,7 @@ class TestCumprod:
         return a.cumprod(axis=1)
 
     @testing.slow
+    @pytest.mark.xfail(runtime.is_hip, reason='Workload size is bigger than what ROCm/CUDA supports') 
     def test_cumprod_huge_array(self):
         size = 2 ** 32
         # Free huge memory for slow test
