@@ -746,13 +746,15 @@ def lfiltic(b, a, y, x=None, axis=-1):
         If ``M = len(b) - 1``, then ``x = {x[-1], x[-2], ..., x[-M]}``.
         If `x` is not given, its initial conditions are assumed zero.
         If `x` is too short, it is padded with zeros.
-    axis:
+    axis: int, optional
+        The axis to take the initial conditions from, if `x` and `y` are
+        n-dimensional
 
     Returns
     -------
     zi : ndarray
         The state vector ``zi = {z_0[-1], z_1[-1], ..., z_K-1[-1]}``,
-        where ``K = max(M, N)``.
+        where ``K = M + N``.
 
     See Also
     --------
