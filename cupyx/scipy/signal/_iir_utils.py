@@ -12,7 +12,13 @@ def _get_typename(dtype):
     if cupy.dtype(dtype).kind == 'c':
         typename = 'thrust::' + typename
     elif typename == 'float16':
-        typename = 'half'
+        if runtime.is_hip:
+            # 'half' in name_expressions weirdly raises
+            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
+            # ROCm
+            typename = '__half'
+        else:
+            typename = 'half'
     return typename
 
 
