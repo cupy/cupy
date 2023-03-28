@@ -49,9 +49,9 @@ class TestInvh(unittest.TestCase):
 }))
 class TestErrorInvh(unittest.TestCase):
 
-    @pytest.mark.xfail(
+    @pytest.mark.skipif(
         cupy.cuda.runtime.runtimeGetVersion() == 12000,
-        reason='See #7309. Possibly cuSOLVER bug in CUDA 12?')
+        reason='This fails with CUDA 12.0.0 but pass in CUDA 12.0.1. (#7309)')
     def test_invh(self):
         a = self._create_symmetric_matrix(self.size, self.dtype)
         with cupyx.errstate(linalg='raise'):
