@@ -4,6 +4,7 @@ from itertools import product
 import cupy
 from cupy._core.internal import _normalize_axis_index
 from cupy._core._scalar import get_typename
+from cupy_backends.cuda.api import runtime
 
 
 def _get_typename(dtype):
@@ -27,10 +28,16 @@ TYPE_NAMES = [_get_typename(t) for t in TYPES]
 TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 
 
-IIR_KERNEL = r"""
+if runtime.is_hip:
+    IIR_KERNEL = r"""#include <hip/hip_runtime.h>
+"""
+else:
+    IIR_KERNEL = r"""
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+"""
 
+IIR_KERNEL = IIR_KERNEL + r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
