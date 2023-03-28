@@ -55,6 +55,8 @@ cuda:
     full_version: "11.8.0"
   "12.0":
     full_version: "12.0.0"
+  "12.1":
+    full_version: "12.1.0"
 rocm:
   null:
     full_version: null
@@ -146,6 +148,12 @@ nccl:
       "11.0":
       "11.8":
       "12.0":
+  "2.17":
+    spec: "2.17.*"
+    cuda:
+      "11.0":
+      "12.0":
+      "12.1":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -188,6 +196,14 @@ cutensor:
       "11.7":
       "11.8":
       "12.0":  # v1.6.2+
+  "1.7":
+    spec: "1.7.*"
+    cuda:
+      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
+      "11.0":
+      "11.8":
+      "12.0":
+      "12.1":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -204,6 +220,7 @@ cusparselt:
       "11.7":
       "11.8":
       "12.0":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
+      "12.1":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -373,6 +390,8 @@ cudnn:
       "11.8":
         alias: "11.8"
       "12.0":
+        alias: "12.0"
+      "12.1":
         alias: "12.0"
 
 
