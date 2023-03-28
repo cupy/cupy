@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 import cupy
+from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.signal
@@ -386,7 +387,12 @@ class TestLFilter:
         out_dtype = xp.result_type(in_dtype, const_dtype)
         if xp.dtype(out_dtype).kind in {'i', 'u'}:
             pytest.skip()
-
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
+            pytest.skip()
         x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
 
         x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
@@ -412,6 +418,12 @@ class TestLFilter:
             const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
         if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
         x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
@@ -440,6 +452,12 @@ class TestLFilter:
                         in_dtype, const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
         if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
         x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
@@ -476,6 +494,12 @@ class TestLFilter:
             const_dtype, xp, scp):
         out_dtype = xp.result_type(in_dtype, const_dtype)
         if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
         x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
