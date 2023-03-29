@@ -219,6 +219,28 @@ class TestEigsh:
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SM')
 
+    def test_starting_vector(self):
+        eigsh = cupyx.scipy.sparse.linalg.eigsh
+        n = 100
+
+        # Make symmetric matrix
+        aux = cupy.random.randn(n, n)
+        matrix = (aux + aux.T) / 2.0
+
+        # Find reference eigenvector
+        ew, ev = eigsh(matrix, k=1)
+        v = ev[:, 0]
+
+        # Obtain non-converged eigenvector from random initial guess.
+        ew_aux, ev_aux = eigsh(matrix, k=1, ncv=1, maxiter=0)
+        v_aux = cupy.copysign(ev_aux[:, 0], v)
+
+        # Obtain eigenvector using known eigenvector as initial guess.
+        ew_v0, ev_v0 = eigsh(matrix, k=1, v0=v.copy(), ncv=1, maxiter=0)
+        v_v0 = cupy.copysign(ev_v0[:, 0], v)
+
+        assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],
