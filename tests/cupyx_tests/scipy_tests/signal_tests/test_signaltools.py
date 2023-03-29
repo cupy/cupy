@@ -549,6 +549,20 @@ class TestLFilter:
         out, _ = scp.signal.lfilter(b, a, x, zi=zi)
         return out
 
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [1, 2, 3])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_lfilter_zi(self, fir_order, iir_order, xp, scp):
+        x = xp.ones(20)
+        b = testing.shaped_random((fir_order,), xp, scale=0.3)
+        a = testing.shaped_random((iir_order,), xp, scale=0.3)
+        a = xp.r_[1, a]
+
+        zi = scp.signal.lfilter_zi(b, a)
+        out, _ = scp.signal.lfilter(b, a, x, zi=zi)
+        return out
+
+
 @testing.with_requires('scipy')
 class TestDeconvolve:
     @pytest.mark.parametrize('order', [1, 2, 3])
