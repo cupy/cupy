@@ -85,7 +85,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         u = cupy.random.random((n,)).astype(a.dtype)
         V[0] = u / cublas.nrm2(u)
     else:
-        V[0] = cupy.asarray(v0)
+        u = v0
+        V[0] = v0 / cublas.nrm2(v0)
 
     # Choose Lanczos implementation, unconditionally use 'fast' for now
     upadte_impl = 'fast'
