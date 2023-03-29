@@ -225,6 +225,17 @@ def collapse_2d(x, axis):
     return x, x_shape
 
 
+def compute_correction_factors(a, block_sz, dtype):
+    k = a.size
+    correction = cupy.eye(k, dtype=dtype)
+    correction = cupy.c_[
+        correction[::-1], cupy.empty((k, block_sz), dtype=dtype)]
+    corr_kernel = _get_module_func(
+        IIR_MODULE, 'compute_correction_factors', correction, a)
+    corr_kernel((k,), (1,), (block_sz, k, a, correction))
+    return correction
+
+
 def apply_iir(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
     # GPU throughput is faster when using single precision floating point
     # numbers

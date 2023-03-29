@@ -6,7 +6,7 @@ from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
-from cupyx.scipy.signal._iir_utils import apply_iir
+from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -782,6 +782,58 @@ def lfiltic(b, a, y, x=None, axis=-1):
         fir_zi = cupy.take(pad_x, list(range(fir_len)), axis=axis)
         fir_zi = cupy.flip(fir_zi, axis)
         zi = cupy.concatenate((fir_zi, zi), axis=axis)
+    return zi
+
+
+def lfilter_zi(b, a):
+    """
+    Construct initial conditions for lfilter for step response steady-state.
+
+    Compute an initial state `zi` for the `lfilter` function that corresponds
+    to the steady state of the step response.
+
+    A typical use of this function is to set the initial state so that the
+    output of the filter starts at the same value as the first element of
+    the signal to be filtered.
+
+    Parameters
+    ----------
+    b, a : array_like (1-D)
+        The IIR filter coefficients. See `lfilter` for more
+        information.
+
+    Returns
+    -------
+    zi : 1-D ndarray
+        The initial state for the filter.
+
+    See Also
+    --------
+    lfilter, lfiltic, filtfilt
+    """
+    a0 = a[0]
+    a_r = - a[1:] / a0
+    b = b / a0
+    num_b = b.size - 1
+    num_a = a_r.size
+
+    # The initial state for a FIR filter will be always one for a step input
+    zi = cupy.ones(num_b)
+    if num_a > 0:
+        zi_t = cupy.r_[zi, cupy.zeros(num_a)]
+        y, _ = lfilter(b, a, cupy.ones(num_a + 1), zi=zi_t)
+        y1 = y[:num_a]
+        y2 = y[-num_a:]
+
+        C = compute_correction_factors(a_r, a_r.size + 1, a.dtype)
+        C = C[:, a_r.size:]
+        C1 = C[:, :a_r.size].T
+        C2 = C[:, -a_r.size:].T
+
+        # Take the difference between the non-adjusted output values and
+        # compute which initial output state would cause them to be constant.
+        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        zi = cupy.r_[zi, y_zi]
     return zi
 
 
