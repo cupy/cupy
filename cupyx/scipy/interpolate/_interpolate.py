@@ -46,10 +46,9 @@ __device__ long long find_breakpoint_position(
             return -1;
         } else if(le_or_ge(xp, a, asc)) {
             return 0;
-        } else if(ge_or_le(xp, b, asc)) {
+        } else {  // ge_or_le(xp, b, asc)
             return total_breakpoints - 2;
         }
-        return;
     } else if (xp == b) {
         return total_breakpoints - 2;
     }
