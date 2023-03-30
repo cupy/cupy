@@ -19,14 +19,14 @@ jobs:
 
     steps:
       - name: Find comment
-        uses: peter-evans/find-comment@v1
+        uses: peter-evans/find-comment@v2
         id: fc
         with:
             issue-number: ${{ env.ISSUE_NUMBER }}
             body-includes: ${{ env.ISSUE_BODY_TAG }}
 
       - name: Create comment
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
             issue-number: ${{ env.ISSUE_NUMBER }}
             comment-id: ${{steps.fc.outputs.comment-id}}
