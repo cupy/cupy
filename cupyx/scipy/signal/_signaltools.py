@@ -821,7 +821,7 @@ def lfilter_zi(b, a):
     zi = cupy.ones(num_b)
     if num_a > 0:
         zi_t = cupy.r_[zi, cupy.zeros(num_a)]
-        y, _ = lfilter(b, a, cupy.ones(num_a + 1), zi=zi_t)
+        y, _ = lfilter(b, cupy.r_[1, a_r], cupy.ones(num_a + 1), zi=zi_t)
         y1 = y[:num_a]
         y2 = y[-num_a:]
 
