@@ -40,7 +40,6 @@ cdef int _fail_unsupported() nogil except -1:
 *** This is likely a bug in CuPy. Please report this issue to:
 ***   https://github.com/cupy/cupy/issues
 ''')
-    return -1
 
 cdef int _fail_not_found() nogil except -1:
     with gil:
@@ -50,4 +49,3 @@ cdef int _fail_not_found() nogil except -1:
 *** This is likely a bug in CuPy. Please report this issue to:
 ***   https://github.com/cupy/cupy/issues
 ''')
-    return -1
