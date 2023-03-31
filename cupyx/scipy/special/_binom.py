@@ -7,10 +7,10 @@ https://github.com/scipy/scipy/blob/v1.10.1/scipy/special/orthogonal_eval.pxd
 
 from cupy import _core
 from cupyx.scipy.special._beta import (
-    beta_preamble, 
-    lbeta_symp_definition, 
-    lgam_sgn_definition, 
-    beta_definition, 
+    beta_preamble,
+    lbeta_symp_definition,
+    lgam_sgn_definition,
+    beta_definition,
     lbeta_definition
 )
 from cupyx.scipy.special._digamma import polevl_definition
@@ -96,7 +96,7 @@ binom = _core.create_ufunc(
         lbeta_symp_definition +
         lbeta_definition +
         beta_definition +
-        binom_definition 
+        binom_definition
     ),
     doc="""Binomial coefficient
 
