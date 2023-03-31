@@ -81,22 +81,16 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v10.2** (x86_64)
+   * - **v10.2** (x86_64 / aarch64)
      - ``pip install cupy-cuda102``
-   * - **v10.2** (aarch64 - `JetPack 4 <https://developer.nvidia.com/embedded/jetpack>`_)
-     - ``pip install cupy-cuda102 -f https://pip.cupy.dev/aarch64``
    * - **v11.0** (x86_64)
      - ``pip install cupy-cuda110``
    * - **v11.1** (x86_64)
      - ``pip install cupy-cuda111``
-   * - **v11.2 ~ 11.8** (x86_64)
+   * - **v11.2 ~ 11.8** (x86_64 / aarch64)
      - ``pip install cupy-cuda11x``
-   * - **v11.2 ~ 11.8** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
-     - ``pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64``
-   * - **v12.x** (x86_64)
+   * - **v12.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda12x``
-   * - **v12.x** (aarch64 - `JetPack 5 <https://developer.nvidia.com/embedded/jetpack>`_ / Arm SBSA)
-     - ``pip install cupy-cuda12x -f https://pip.cupy.dev/aarch64``
 
 .. note::
 
