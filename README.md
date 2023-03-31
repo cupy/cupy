@@ -40,14 +40,11 @@ Choose the right package for your platform.
 
 | Platform              | Architecture      | Command                                                       |
 | --------------------- | ----------------- | ------------------------------------------------------------- |
-| CUDA 10.2             | x86_64            | `pip install cupy-cuda102`                                    |
-|                       | aarch64           | `pip install cupy-cuda102 -f https://pip.cupy.dev/aarch64`    |
+| CUDA 10.2             | x86_64 / aarch64  | `pip install cupy-cuda102`                                    |
 | CUDA 11.0             | x86_64            | `pip install cupy-cuda110`                                    |
 | CUDA 11.1             | x86_64            | `pip install cupy-cuda111`                                    |
-| CUDA 11.2 ~ 11.8      | x86_64            | `pip install cupy-cuda11x`                                    |
-|                       | aarch64           | `pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64`    |
-| CUDA 12.x             | x86_64            | `pip install cupy-cuda12x`                                    |
-|                       | aarch64           | `pip install cupy-cuda12x -f https://pip.cupy.dev/aarch64`    |
+| CUDA 11.2 ~ 11.8      | x86_64 / aarch64  | `pip install cupy-cuda11x`                                    |
+| CUDA 12.x             | x86_64 / aarch64  | `pip install cupy-cuda12x`                                    |
 | ROCm 4.3 (*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
 | ROCm 5.0 (*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
 
