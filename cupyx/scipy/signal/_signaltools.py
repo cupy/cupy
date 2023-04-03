@@ -6,7 +6,8 @@ from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
-from cupyx.scipy.signal._arraytools import const_ext, even_ext, odd_ext
+from cupyx.scipy.signal._arraytools import (
+    const_ext, even_ext, odd_ext, axis_reverse, axis_slice)
 from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
 from cupyx.scipy.signal._arraytools import axis_slice, axis_assign
 
@@ -1170,7 +1171,32 @@ def filtfilt(b, a, x, axis=-1, padtype='odd', padlen=None, method='pad',
                               ntaps=max(len(a), len(b)))
 
     # Get the steady state of the filter's step response.
-    zi = lfilter_zi(b, a)  # NOQA
+    zi = lfilter_zi(b, a)
+
+    # Reshape zi and create x0 so that zi*x0 broadcasts
+    # to the correct value for the 'zi' keyword argument
+    # to lfilter.
+    zi_shape = [1] * x.ndim
+    zi_shape[axis] = zi.size
+    zi = cupy.reshape(zi, zi_shape)
+    x0 = axis_slice(ext, stop=1, axis=axis)
+
+    # Forward filter.
+    (y, zf) = lfilter(b, a, ext, axis=axis, zi=zi * x0)
+
+    # Backward filter.
+    # Create y0 so zi*y0 broadcasts appropriately.
+    y0 = axis_slice(y, start=-1, axis=axis)
+    (y, zf) = lfilter(b, a, axis_reverse(y, axis=axis), axis=axis, zi=zi * y0)
+
+    # Reverse y.
+    y = axis_reverse(y, axis=axis)
+
+    if edge > 0:
+        # Slice the actual signal from the extended signal.
+        y = axis_slice(y, start=edge, stop=-edge, axis=axis)
+
+    return y
 
 
 def deconvolve(signal, divisor):
