@@ -607,10 +607,14 @@ def main(argv: List[str]) -> int:
     for filename, content in output.items():
         filepath = f'{out_basedir}/{filename}'
         if options.dry_run:
-            with open(filepath) as f:
-                if f.read() != content:
-                    log(f'{filepath} needs to be regenerated')
-                    retval = 1
+            if os.path.exists(filepath):
+                with open(filepath) as f:
+                    if f.read() != content:
+                        log(f'{filepath} needs to be regenerated')
+                        retval = 1
+            else:
+                log(f'{filepath} needs to be generated')
+                retval = 1
         else:
             log(f'Writing {filepath}', options.verbose)
             with open(filepath, 'w') as f:
