@@ -215,7 +215,7 @@ class DeviceCompilerUnix(DeviceCompilerBase):
 
         cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
-            '-O2', '--compiler-options="-fPIC"']
+            '-Xfatbin=-compress-all', '-O2', '--compiler-options="-fPIC"']
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
             num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
@@ -255,7 +255,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         compiler_so = build.get_nvcc_path()
         cc_args = self._get_preprocess_options(ext) + ['-c']
         cuda_version = self._context.features['cuda'].get_version()
-        postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
+        postargs = _nvcc_gencode_options(cuda_version) + [
+            '-Xfatbin=-compress-all', '-O2']
         if cuda_version >= 11020:
             # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
             # to build CuPy because some Python versions were built using it.
