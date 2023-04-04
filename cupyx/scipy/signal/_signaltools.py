@@ -723,6 +723,66 @@ def lfilter(b, a, x, axis=-1, zi=None):
         return out
 
 
+def deconvolve(signal, divisor):
+    """Deconvolves ``divisor`` out of ``signal`` using inverse filtering.
+
+    Returns the quotient and remainder such that
+    ``signal = convolve(divisor, quotient) + remainder``
+
+    Parameters
+    ----------
+    signal : (N,) array_like
+        Signal data, typically a recorded signal
+    divisor : (N,) array_like
+        Divisor data, typically an impulse response or filter that was
+        applied to the original signal
+
+    Returns
+    -------
+    quotient : ndarray
+        Quotient, typically the recovered original signal
+    remainder : ndarray
+        Remainder
+
+    See Also
+    --------
+    cupy.polydiv : performs polynomial division (same operation, but
+                   also accepts poly1d objects)
+
+    Examples
+    --------
+    Deconvolve a signal that's been filtered:
+
+    >>> from cupyx.scipy import signal
+    >>> original = [0, 1, 0, 0, 1, 1, 0, 0]
+    >>> impulse_response = [2, 1]
+    >>> recorded = signal.convolve(impulse_response, original)
+    >>> recorded
+    array([0, 2, 1, 0, 2, 3, 1, 0, 0])
+    >>> recovered, remainder = signal.deconvolve(recorded, impulse_response)
+    >>> recovered
+    array([ 0.,  1.,  0.,  0.,  1.,  1.,  0.,  0.])
+
+    """
+    num = cupy.atleast_1d(signal)
+    den = cupy.atleast_1d(divisor)
+    if num.ndim > 1:
+        raise ValueError("signal must be 1-D.")
+    if den.ndim > 1:
+        raise ValueError("divisor must be 1-D.")
+    N = len(num)
+    D = len(den)
+    if D > N:
+        quot = []
+        rem = num
+    else:
+        input = cupy.zeros(N - D + 1, float)
+        input[0] = 1
+        quot = lfilter(num, den, input)
+        rem = num - convolve(den, quot, mode='full')
+    return quot, rem
+
+
 def _get_kernel_size(kernel_size, ndim):
     if kernel_size is None:
         kernel_size = (3,) * ndim
