@@ -151,7 +151,6 @@ cdef class ResourceDescriptor:
         cdef dict desc = {}
         cdef intptr_t ptr
         cdef ResourceDesc* resPtr = <ResourceDesc*>(self.ptr)
-        cdef size_t size, pitch, w, h
 
         # For texture memory, print the underlying pointer address so that
         # it can be used for verification by the caller. Note that resPtr.res

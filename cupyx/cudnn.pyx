@@ -14,7 +14,6 @@ from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device
-from cupy.cuda cimport memory
 from cupy_backends.cuda.libs cimport cudnn
 
 from cupy._core._ufuncs import elementwise_copy as _elementwise_copy
@@ -2482,7 +2481,6 @@ def fused_ops_execute(plan, var_pack):
 
 cpdef set_fused_ops_const_param_pack_attribute(
         Descriptor const_pack, int param_label, desc_or_scalar):
-    cdef int scaler
     cdef Descriptor desc
     if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
                        cudnn.CUDNN_PARAM_BN_MODE,

@@ -1,4 +1,4 @@
-import sys as _sys
+import sys as _sys  # no-cython-lint
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport runtime
@@ -4746,7 +4746,7 @@ cpdef destroyDnVec(size_t desc):
 
 cpdef DnVecAttributes dnVecGet(size_t desc):
     cdef int64_t size
-    cdef intptr_t indices, values
+    cdef intptr_t values
     cdef DataType valueType
     status = cusparseDnVecGet(<DnVecDescr>desc, &size, <void**>&values,
                               &valueType)

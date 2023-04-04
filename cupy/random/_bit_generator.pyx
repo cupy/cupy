@@ -3,10 +3,9 @@ import threading
 
 import numpy
 
-from libc.stdint cimport intptr_t, uint64_t, uint32_t
+from libc.stdint cimport uint64_t
 
 import cupy
-from cupy.cuda cimport stream
 from cupy.random._generator_api import init_curand, random_raw
 from cupy_backends.cuda.api import runtime
 

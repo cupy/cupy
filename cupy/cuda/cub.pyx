@@ -7,8 +7,7 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.core cimport _internal_asfortranarray
-from cupy._core.internal cimport _contig_axes, is_in, prod
+from cupy._core.internal cimport _contig_axes, is_in
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
@@ -119,7 +118,7 @@ cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
     This function more or less follows the logic of _get_permuted_args() in
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
     '''
-    cdef tuple axis_permutes, out_shape
+    cdef tuple axis_permutes
     cdef Py_ssize_t contiguous_size = 1
 
     # one more sanity check?
@@ -205,13 +204,12 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
 def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
                             tuple out_axis, out=None, bint keepdims=False,
                             Py_ssize_t contiguous_size=0):
-    cdef _ndarray_base y, offset
+    cdef _ndarray_base y
     cdef str order
     cdef memory.MemoryPointer ws
     cdef void* x_ptr
     cdef void* y_ptr
     cdef void* ws_ptr
-    cdef void* offset_start_ptr
     cdef int dtype_id, n_segments, op_code
     cdef size_t ws_size
     cdef tuple out_shape

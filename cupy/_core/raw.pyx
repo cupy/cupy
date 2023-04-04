@@ -462,7 +462,6 @@ cdef class RawModule:
 
         """
         cdef RawKernel ker
-        cdef Function func
         cdef str mangled_name
 
         # check if the name is a valid C++ name expression
@@ -482,7 +481,6 @@ cdef class RawModule:
         # for lookup in case we specialize a template
         ker.name_expressions = self.name_expressions
         # register the kernel in the cache
-        func = ker.kernel  # noqa
         return ker
 
     def get_global(self, name):
