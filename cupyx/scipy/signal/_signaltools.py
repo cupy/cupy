@@ -700,12 +700,23 @@ def lfilter(b, a, x, axis=-1, zi=None):
 
     x_full = cupy.zeros(pad_shape, dtype=x.dtype)
     if zi is not None:
+<<<<<<< HEAD
         zi = cupy.atleast_1d(zi)
         if num_b > 0:
             prev_in = axis_slice(zi, 0, num_b, axis=axis)
         if num_a > 0:
             prev_out = axis_slice(
                 zi, zi.shape[axis] - num_a, zi.shape[axis], axis=axis)
+=======
+        prev_in = cupy.take(zi, list(range(0, num_b)), axis=axis)
+        prev_out = cupy.take(zi, list(range(-num_a, 0)), axis=axis)
+        x = cupy.concatenate((prev_in, x), axis=axis)
+    else:
+        zeros_shape = list(x.shape)
+        zeros_shape[axis] = num_b
+        leading_zeros = cupy.zeros(zeros_shape, dtype=x.dtype)
+        x = cupy.concatenate((leading_zeros, x), axis=axis)
+>>>>>>> 7cb5308ff... Add tests
 
     if prev_in is not None:
         x_full = axis_assign(x_full, prev_in, 0, num_b, axis=axis)
@@ -716,8 +727,12 @@ def lfilter(b, a, x, axis=-1, zi=None):
     out = _filters.convolve1d(
         x_full, b, axis=axis, mode='constant', origin=origin, output=out)
 
+<<<<<<< HEAD
     if num_b > 0:
         out = axis_slice(out, out.shape[axis] - n, out.shape[axis], axis=axis)
+=======
+    out = cupy.take(out, list(range(-n, 0)), axis=axis)
+>>>>>>> 7cb5308ff... Add tests
 
     if a_r.size > 0:
         iir_dtype = cupy.result_type(fir_dtype, a)
@@ -851,7 +866,7 @@ def lfilter_zi(b, a):
         y1 = y[:num_a]
         y2 = y[-num_a:]
 
-        C = compute_correction_factors(a_r, a_r.size + 1, a.dtype)
+        C = compute_correction_factors(a_r, a_r.size + 1, a_r.dtype)
         C = C[:, a_r.size:]
         C1 = C[:, :a_r.size].T
         C2 = C[:, -a_r.size:].T
@@ -859,6 +874,7 @@ def lfilter_zi(b, a):
         # Take the difference between the non-adjusted output values and
         # compute which initial output state would cause them to be constant.
         y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
         zi = cupy.r_[zi, y_zi]
     return zi
 
@@ -917,7 +933,7 @@ def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
     order = max(len(b), len(a)) - 1
     if order == 0:
         # The filter is just scalar multiplication, with no state.
-        scale = (b[0] / a[0])**2
+        scale = (b[0] / a[0]) ** 2
         y = scale * x
         return y, cupy.array([]), cupy.array([])
 
@@ -928,7 +944,7 @@ def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
     # n is the number of samples in the data to be filtered.
     n = x.shape[-1]
 
-    if irlen is None or n <= 2*irlen:
+    if irlen is None or n <= 2 * irlen:
         m = n
     else:
         m = irlen
@@ -944,7 +960,7 @@ def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
     Obs = cupy.zeros((m, order))
     x_in = cupy.zeros(m)
     x_in[0] = 1
-    Obs[:, 0] = lfilter(cupy.ones(1), a, x_in)[0]
+    Obs[:, 0] = lfilter(cupy.ones(1), a, x_in)
     for k in range(1, order):
         Obs[k:, k] = Obs[:-k, 0]
 
@@ -994,12 +1010,12 @@ def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
     # The following code computes the result shown in the formula
     # of the paper between equations (6) and (7).
     if delta.ndim == 1:
-        ic_opt = cupy.linalg.lstsq(M, delta)[0]
+        ic_opt = cupy.linalg.lstsq(M, delta, rcond=None)[0]
     else:
         # Reshape delta so it can be used as an array of multiple
         # right-hand-sides in linalg.lstsq.
         delta2d = delta.reshape(-1, delta.shape[-1]).T
-        ic_opt0 = cupy.linalg.lstsq(M, delta2d)[0].T
+        ic_opt0 = cupy.linalg.lstsq(M, delta2d, rcond=None)[0].T
         ic_opt = ic_opt0.reshape(delta.shape[:-1] + (M.shape[-1],))
 
     # Now compute the filtered signal using equation (7) of [1].
@@ -1162,11 +1178,16 @@ def filtfilt(b, a, x, axis=-1, padtype='odd', padlen=None, method='pad',
     if method not in {"pad", "gust"}:
         raise ValueError("method must be 'pad' or 'gust'.")
 
+    const_dtype = cupy.dtype(a.dtype)
+    if const_dtype.kind == 'u':
+        const_dtype = cupy.dtype(const_dtype.char.lower())
+        a = a.astype(const_dtype)
+
     if method == "gust":
         y, z1, z2 = _filtfilt_gust(b, a, x, axis=axis, irlen=irlen)
         return y
 
-        # method == "pad"
+    # method == "pad"
     edge, ext = _validate_pad(padtype, padlen, x, axis,
                               ntaps=max(len(a), len(b)))
 
