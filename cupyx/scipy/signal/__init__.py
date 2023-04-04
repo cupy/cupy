@@ -1,5 +1,6 @@
 from cupyx.scipy.signal._signaltools import convolve  # NOQA
 from cupyx.scipy.signal._signaltools import correlate  # NOQA
+from cupyx.scipy.signal._signaltools import deconvolve  # NOQA
 from cupyx.scipy.signal._signaltools import fftconvolve  # NOQA
 from cupyx.scipy.signal._signaltools import choose_conv_method  # NOQA
 from cupyx.scipy.signal._signaltools import oaconvolve  # NOQA

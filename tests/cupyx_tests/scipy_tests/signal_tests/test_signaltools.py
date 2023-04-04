@@ -533,3 +533,14 @@ class TestLFilter:
         res, _ = scp.signal.lfilter(b, a, x, zi=zi, axis=axis)
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
+
+
+@testing.with_requires('scipy')
+class TestDeconvolve:
+    @pytest.mark.parametrize('order', [1, 2, 3])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=3)
+    def test_deconvolve(self, order, xp, scp):
+        x = testing.shaped_random((20,), xp)
+        b = testing.shaped_random((order,), xp, scale=0.3)
+        o = scp.signal.convolve(x, b)
+        return scp.signal.deconvolve(o, b)
