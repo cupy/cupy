@@ -20,9 +20,9 @@ class TestBadwidth:
             R = np.zeros([n, n], dtype=dtype)
             # form a banded matrix inplace
             R[[x for x in range(n)], [x for x in range(n)]] = 1
-            R[[x for x in range(n-k)], [x for x in range(k, n)]] = 1
-            R[[x for x in range(1, n)], [x for x in range(n-1)]] = 1
-            R[[x for x in range(k, n)], [x for x in range(n-k)]] = 1
+            R[[x for x in range(n - k)], [x for x in range(k, n)]] = 1
+            R[[x for x in range(1, n)], [x for x in range(n - 1)]] = 1
+            R[[x for x in range(k, n)], [x for x in range(n - k)]] = 1
             testing.assert_array_equal(bandwidth(R), (k, k))
 
     @testing.for_all_dtypes(no_complex=True)
@@ -32,9 +32,9 @@ class TestBadwidth:
             R = np.zeros([n, n], dtype=dtype, order='F')
             # form a banded matrix inplace
             R[[x for x in range(n)], [x for x in range(n)]] = 1
-            R[[x for x in range(n-k)], [x for x in range(k, n)]] = 1
-            R[[x for x in range(1, n)], [x for x in range(n-1)]] = 1
-            R[[x for x in range(k, n)], [x for x in range(n-k)]] = 1
+            R[[x for x in range(n - k)], [x for x in range(k, n)]] = 1
+            R[[x for x in range(1, n)], [x for x in range(n - 1)]] = 1
+            R[[x for x in range(k, n)], [x for x in range(n - k)]] = 1
             testing.assert_array_equal(bandwidth(R), (k, k))
 
     @testing.for_all_dtypes(no_complex=True)
@@ -44,7 +44,7 @@ class TestBadwidth:
         R = np.zeros([n, m], dtype=dtype)
         # form a banded matrix inplace
         R[[x for x in range(n)], [x for x in range(n)]] = 1
-        R[[x for x in range(n-k)], [x for x in range(k, n)]] = 1
-        R[[x for x in range(1, n)], [x for x in range(n-1)]] = 1
-        R[[x for x in range(k, n)], [x for x in range(n-k)]] = 1
+        R[[x for x in range(n - k)], [x for x in range(k, n)]] = 1
+        R[[x for x in range(1, n)], [x for x in range(n - 1)]] = 1
+        R[[x for x in range(k, n)], [x for x in range(n - k)]] = 1
         testing.assert_array_equal(bandwidth(R), (k, k))

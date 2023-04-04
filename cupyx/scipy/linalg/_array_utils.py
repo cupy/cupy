@@ -11,7 +11,6 @@ _kernel_cupy_band_pos_c = cupy.ElementwiseKernel(
 
 
 def bandwidth(a):
-
     """Return the lower and upper bandwidth of a 2D numeric array.
     Parameters
     ----------
