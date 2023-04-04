@@ -54,3 +54,8 @@ repos:
         pass_filenames: false
         language: python
         additional_dependencies: [PyYAML]
+
+-   repo: https://github.com/MarcoGorelli/cython-lint
+    rev: v0.14.0
+    hooks:
+    -   id: cython-lint
