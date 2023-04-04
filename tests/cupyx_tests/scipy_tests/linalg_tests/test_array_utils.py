@@ -1,9 +1,9 @@
 import numpy as np
 from numpy import linalg
 from cupyx.scipy.linalg import bandwidth
-import pytest
 from pytest import raises
 from cupy import testing
+
 
 class TestBadwidth:
     @testing.for_all_dtypes(no_complex=True)
@@ -25,7 +25,6 @@ class TestBadwidth:
             R[[x for x in range(k, n)], [x for x in range(n-k)]] = 1
             testing.assert_array_equal(bandwidth(R), (k, k))
 
-
     @testing.for_all_dtypes(no_complex=True)
     def test_bandwidth_square_inputs_f(self, dtype):
         n = 10
@@ -38,7 +37,6 @@ class TestBadwidth:
             R[[x for x in range(k, n)], [x for x in range(n-k)]] = 1
             testing.assert_array_equal(bandwidth(R), (k, k))
 
-    
     @testing.for_all_dtypes(no_complex=True)
     def test_bandwidth_rect_inputs(self, dtype):
         n, m = 10, 20
