@@ -50,4 +50,3 @@ class TestBadwidth:
         R[[x for x in range(1, n)], [x for x in range(n-1)]] = 1
         R[[x for x in range(k, n)], [x for x in range(n-k)]] = 1
         testing.assert_array_equal(bandwidth(R), (k, k))
-    
