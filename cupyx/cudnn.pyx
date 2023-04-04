@@ -14,6 +14,7 @@ from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device
+from cupy.cuda cimport memory  # no-cython-lint
 from cupy_backends.cuda.libs cimport cudnn
 
 from cupy._core._ufuncs import elementwise_copy as _elementwise_copy

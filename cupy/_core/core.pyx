@@ -1979,7 +1979,7 @@ cdef class _ndarray_base:
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
         if shape.size() > _carray.MAX_NDIM:
-            msg = f'maximum supported dimension for an ndarray is '
+            msg = 'maximum supported dimension for an ndarray is '
             msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
             raise ValueError(msg)
         self._shape = shape
