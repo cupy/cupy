@@ -34,7 +34,7 @@ def bandwidth(a):
         return (0, 0)
     _util._assert_2d(a)
 
-    # If a is F contigious then transpose to C contigious
+    # If a is F contiguous then transpose to C contiguous
     if a.flags['F_CONTIGUOUS']:
         a = a.T
 
@@ -48,7 +48,7 @@ def bandwidth(a):
         upper_band = int(cupy.amax(bandpts))
         lower_band = -int(cupy.amin(bandpts))
     else:
-        bandpts = _kernel_cupy_band_pos_c(a.T, row_num, col_num)
+        bandpts = _kernel_cupy_band_pos_c(a, row_num, col_num)
         lower_band = int(cupy.amax(bandpts))
         upper_band = -int(cupy.amin(bandpts))
 
