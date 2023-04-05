@@ -31,3 +31,13 @@ Filtering
    medfilt
    medfilt2d
    wiener
+   savgol_filter
+
+
+Filter design
+-------------
+
+.. autosummary::
+   :toctree: generated/
+
+   savgol_coeffs
