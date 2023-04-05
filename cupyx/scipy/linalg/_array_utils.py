@@ -33,21 +33,22 @@ def bandwidth(a):
         return (0, 0)
     _util._assert_2d(a)
 
-    # If a is F contiguous then transpose to C contiguous
+    # Create new matrix A which is C contiguous
     if a.flags['F_CONTIGUOUS']:
-        a = a.T
+        A = a.T
+    else:
+        A = a
 
     # row_num and col_num contain info on the row and column number of A
-    m, n = a.shape
+    m, n = A.shape
     row_num, col_num = cupy.mgrid[0:m, 0:n]
+    bandpts = _kernel_cupy_band_pos_c(A, row_num, col_num)
 
     # If F contigious, transpose
     if a.flags['F_CONTIGUOUS']:
-        bandpts = _kernel_cupy_band_pos_c(a.T, col_num, row_num)
         upper_band = int(cupy.amax(bandpts))
         lower_band = -int(cupy.amin(bandpts))
     else:
-        bandpts = _kernel_cupy_band_pos_c(a, row_num, col_num)
         lower_band = int(cupy.amax(bandpts))
         upper_band = -int(cupy.amin(bandpts))
 
