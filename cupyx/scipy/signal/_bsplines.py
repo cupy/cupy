@@ -37,3 +37,45 @@ def sepfir2d(input, hrow, hcol):
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
         input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+
+
+def symiirorder1(input, c0, z1, precision=1.0):
+    """
+    Implement a smoothing IIR filter with mirror-symmetric boundary conditions
+    using a cascade of first-order sections.  The second section uses a
+    reversed sequence.  This implements a system with the following
+    transfer function and mirror-symmetric boundary conditions::
+
+                           c0
+           H(z) = ---------------------
+                   (1-z1/z) (1 - z1 z)
+
+    The resulting signal will have mirror symmetric boundary conditions
+    as well.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input signal.
+    c0, z1 : scalar
+        Parameters in the transfer function.
+    precision :
+        Specifies the precision for calculating initial conditions
+        of the recursive filter based on mirror-symmetric input.
+
+    Returns
+    -------
+    output : ndarray
+        The filtered signal.
+    """
+
+    if cupy.abs(z1) >= 1:
+        raise ValueError('|z1| must be less than 1.0')
+
+    pos = cupy.arange(1, input.size + 1)
+    pow_z1 = z1 ** pos
+
+    diff = cupy.abs(pow_z1)
+    cum_poly = cupy.cumsum(pow_z1 * input) + input[0]
+    valid_starting = cupy.where(diff < precision, cum_poly, cupy.nan)  # NOQA
+    # cupy.nan
