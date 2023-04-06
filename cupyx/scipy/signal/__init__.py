@@ -13,5 +13,6 @@ from cupyx.scipy.signal._signaltools import medfilt2d  # NOQA
 from cupyx.scipy.signal._signaltools import lfilter  # NOQA
 
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
+from cupyx.scipy.signal._bsplines import symiirorder1  # NOQA
 
 from cupyx.scipy.signal._savitzky_golay import savgol_coeffs, savgol_filter   # NOQA

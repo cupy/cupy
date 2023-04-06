@@ -1,6 +1,8 @@
 import cupy
 import cupyx.scipy.ndimage
 
+from cupyx.scipy.signal._signaltools import lfilter
+
 
 def sepfir2d(input, hrow, hcol):
     """Convolve with a 2-D separable FIR filter.
@@ -72,10 +74,25 @@ def symiirorder1(input, c0, z1, precision=1.0):
     if cupy.abs(z1) >= 1:
         raise ValueError('|z1| must be less than 1.0')
 
+    precision *= precision
     pos = cupy.arange(1, input.size + 1)
     pow_z1 = z1 ** pos
 
-    diff = cupy.abs(pow_z1)
+    diff = pow_z1 * cupy.conjugate(pow_z1)
     cum_poly = cupy.cumsum(pow_z1 * input) + input[0]
-    valid_starting = cupy.where(diff < precision, cum_poly, cupy.nan)  # NOQA
-    # cupy.nan
+    valid_starting = cupy.where(diff < precision, cupy.nan, cum_poly)
+    zi = cupy.nanmax(valid_starting, keepdims=True)
+
+    if cupy.isnan(zi):
+        raise RuntimeError(
+            'Sum to find symmetric boundary conditions did not converge.')
+
+    # Apply first the system 1 / (1 - z1 * z^-1)
+    y1, _ = lfilter(cupy.ones(1), cupy.r_[1, -z1], input[1:], zi=zi)
+    y1 = cupy.r_[zi, y1]
+
+    # Compute backward symmetric condition and apply the system
+    # c0 / (1 - z1 * z)
+    zi = -c0 / (z1 - 1.0) * y1[-1]
+    out, _ = lfilter(c0, cupy.r_[1, -z1], y1[:-1][::-1], zi=zi)
+    return cupy.r_[out[::-1], zi]
