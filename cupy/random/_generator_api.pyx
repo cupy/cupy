@@ -10,9 +10,10 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy_backends.cuda.api import runtime
 
-
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
+
+
 
 cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass rk_binomial_state:
@@ -21,6 +22,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state_ptr, uint64_t seed,
         ssize_t size, intptr_t stream)
     void random_uniform(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
+    void random_uniform_float(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
     void raw(
@@ -149,8 +153,11 @@ class Generator:
         if out is not None:
             self._check_output_array(dtype, size, out)
 
-        y = _core.ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, random_uniform, y, ())
+        y = _core.ndarray(size if size is not None else (), dtype)
+        if y.dtype.char == 'd':
+            _launch_dist(self.bit_generator, random_uniform, y, ())
+        else:
+            _launch_dist(self.bit_generator, random_uniform_float, y, ())
         if out is not None:
             _core.elementwise_copy(y, out)
             y = out
@@ -204,11 +211,15 @@ class Generator:
         if size is None:
             size = cupy.broadcast(low, high).shape
 
-        y = _core.ndarray(size, numpy.float64)
+        y = _core.ndarray(size, dtype)
         low = cupy.broadcast_to(low, y.shape)
         high = cupy.broadcast_to(high, y.shape)
 
-        _launch_dist(self.bit_generator, random_uniform, y, ())
+        if y.dtype.char == 'd':
+            _launch_dist(self.bit_generator, random_uniform, y, ())
+        else:
+            _launch_dist(self.bit_generator, random_uniform_float, y, ())
+
         y = low + (high - low) * y
 
         # we cast the array to a python object because

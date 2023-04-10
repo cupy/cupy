@@ -12,49 +12,45 @@
 // avoid explicit compilation for hip<4.3
 #if !defined(CUPY_USE_HIP) || defined(COMPILE_FOR_HIP)
 
-struct rk_state {
-
-    __device__ virtual uint32_t rk_int() {
-        return  0;
-    }
-    __device__ virtual double rk_double() {
-        return  0.0;
-    }
-    __device__ virtual double rk_normal() {
-        return  0.0;
-    }
-    __device__ virtual float rk_normal_float() {
-        return  0.0;
-    }
-};
 
 template<typename CURAND_TYPE>
-struct curand_pseudo_state: rk_state {
+struct curand_pseudo_state {
     // Valid for  XORWOW and MRG32k3a
     CURAND_TYPE* _state;
-    int _id;
 
     __device__ curand_pseudo_state(int id, intptr_t state) {
         _state = reinterpret_cast<CURAND_TYPE*>(state) + id;
-        _id = id;
     }
-    __device__ virtual uint32_t rk_int() {
+
+    __device__ uint32_t rk_int() {
         return curand(_state);
     }
-    __device__ virtual double rk_double() {
+
+    __device__ double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-        double r = curand_uniform(_state);
+        double r = curand_uniform_double(_state);
         if (r >= 1.0) { 
            r = 0.0;
         }
         return r;
     }
-    __device__ virtual double rk_normal() {
+
+    __device__ float rk_float() {
+        // Curand returns (0, 1] while the functions
+        // below rely on [0, 1)
+        float r = curand_uniform(_state);
+        if (r >= 1.0) { 
+           r = 0.0;
+        }
+        return r;
+    }
+
+    __device__ double rk_normal() {
         return curand_normal_double(_state);
     }
 
-    __device__ virtual float rk_normal_float() {
+    __device__ float rk_normal_float() {
         return curand_normal(_state);
     }
 };
@@ -433,6 +429,11 @@ __device__ double rk_random_uniform(T state) {
 }
 
 template<typename T>
+__device__ float rk_random_uniform_float(T state) {
+    return state.rk_float();
+}
+
+template<typename T>
 __device__ uint32_t rk_interval_32(T state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state.rk_int() & mask;
     while(sampled > mx)  {
@@ -645,6 +646,13 @@ struct random_uniform_functor {
     }
 };
 
+struct random_uniform_float_functor {
+    template<typename... Args>
+    __device__ float operator () (Args&&... args) {
+        return rk_random_uniform_float(args...);
+    }
+};
+
 
 struct interval_32_functor {
     template<typename... Args>
@@ -762,14 +770,18 @@ __device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
     return value + id;
 }
 
+
+#define ELEM_PER_THREAD 128
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
     R* out_ptr = reinterpret_cast<R*>(out);
-    if (id < size) {
-        T random(id, state);
-        F func;
-        // need to pass it by copy due to hip issues with templating
+    F func;
+    T random(blockIdx.x * blockDim.x + threadIdx.x, state);
+    for (int id = blockIdx.x * blockDim.x + threadIdx.x; 
+             id < size; 
+             id += blockDim.x * gridDim.x) {
+            // need to pass it by copy due to hip issues with templating
         out_ptr[id] = func(random, (get_index(args, id))...);
     }
     return;
@@ -782,8 +794,10 @@ struct kernel_launcher {
     template<typename T, typename... Args>
     void operator()(Args&&... args) { 
         int tpb = 256;
-        int bpg =  (_size + tpb - 1) / tpb;
-        execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+        int sms;
+        cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, 0);
+        // Each thread process 8 elements 
+        execute_dist<F, T, R><<<sms, tpb, 0, _stream>>>(std::forward<Args>(args)...);
     }
     ssize_t _size;
     cudaStream_t _stream;
@@ -797,6 +811,11 @@ void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t str
 
 void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     kernel_launcher<random_uniform_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void random_uniform_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
@@ -866,6 +885,7 @@ void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_
 // No cuda will not compile the .cu file, so the definition needs to be done here explicitly
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {}
 void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void random_uniform_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
 void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
