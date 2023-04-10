@@ -22,9 +22,14 @@ def float_factorial(n: int) -> float:
 def _polyval(p, x):
     p = cupy.asarray(p)
     x = cupy.asanyarray(x)
-    y = cupy.zeros_like(x)
-    for pv in p:
-        y = y * x + pv
+
+    # for pv in p:
+    #     y = y * x + pv
+    n = p.shape[0]
+    x = cupy.broadcast_to(x, (n - 1,) + x.shape)
+    x = cupy.cumprod(x, axis=0)[::-1]
+    p = cupy.expand_dims(p, axis=1)
+    y = cupy.sum(p[:-1] * x, axis=0) + p[-1]
     return y
 
 
