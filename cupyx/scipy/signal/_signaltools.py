@@ -723,7 +723,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
         return out
 
 
-def lfiltic(b, a, y, x=None, axis=-1):
+def lfiltic(b, a, y, x=None):
     """
     Construct initial conditions for lfilter given input and output vectors.
 
@@ -760,6 +760,10 @@ def lfiltic(b, a, y, x=None, axis=-1):
     --------
     lfilter, lfilter_zi
     """
+    # SciPy implementation only supports 1D initial conditions, however,
+    # lfilter accepts n-dimensional initial conditions. If SciPy implementation
+    # accepts n-dimensional arrays, then axis can be moved to the signature.
+    axis = -1
     fir_len = b.size - 1
     iir_len = a.size - 1
 
