@@ -3,7 +3,6 @@ import unittest
 
 from cupy import testing
 
-
 import cupyx.scipy.signal  # NOQA
 
 try:
