@@ -31,6 +31,7 @@ Filtering
    medfilt
    medfilt2d
    wiener
+   deconvolve
    savgol_filter
 
 
