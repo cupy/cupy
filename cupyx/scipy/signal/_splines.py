@@ -104,7 +104,7 @@ def _compute_symiirorder2_bwd_hs(k, cs, rsq, omega):
     c0 = (cssq * (1.0 + rsq) / (1.0 - rsq) /
           (1 - 2 * rsq * cupy.cos(2 * omega) + rsq * rsq))
     gamma = (1.0 - rsq) / (1.0 + rsq) / cupy.tan(omega)
-    return c0 * rsupk * (cupy.cos(omega*k) + gamma * cupy.sin(omega * k))
+    return c0 * rsupk * (cupy.cos(omega * k) + gamma * cupy.sin(omega * k))
 
 
 def symiirorder2(input, r, omega, precision=-1.0):
@@ -154,35 +154,26 @@ def symiirorder2(input, r, omega, precision=-1.0):
     diff = _compute_symiirorder2_fwd_hc(pos, cs, r, omega)
     err = diff * diff
     cum_poly_y0 = cupy.cumsum(diff[1:-1] * input) + diff[0] * input[0]
+    all_valid = err <= precision
 
-    overflow = False
-    y0 = cum_poly_y0[0]
-    if precision != 1.0:
-        all_valid = err <= precision
-        valid_before = all_valid[1:-1]
-        valid_after = all_valid[:-2]
-        valid = cupy.logical_xor(valid_before, valid_after)
-        valid_starting = cupy.where(valid, cum_poly_y0, cupy.nan)
-        y0 = cupy.nanmax(valid_starting, keepdims=True)
-        zi_pos = pos[1:-1][valid]
-        overflow = cupy.where(zi_pos >= input.size, True, False)
+    y0 = cupy.where(
+        all_valid[0], cum_poly_y0[0],
+        _find_initial_cond(all_valid[:-1], cum_poly_y0, pos[1:-1], input.size))
 
-    if cupy.isnan(y0) or overflow:
+    if cupy.isnan(y0):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
     cum_poly_y1 = (cupy.cumsum(diff[2:] * input) +
                    diff[0] * input[1] + diff[1] * input[0])
-    y1 = cum_poly_y1[0]
-    if precision != 1.0:
-        all_valid = err <= precision
-        valid_before = all_valid[2:]
-        valid_after = all_valid[:-1]
-        valid = cupy.logical_xor(valid_before, valid_after)
-        valid_starting = cupy.where(valid, cum_poly_y1, cupy.nan)
-        y1 = cupy.nanmax(valid_starting, keepdims=True)
-        zi_pos = pos[1:-1][valid]
-        overflow = cupy.where(zi_pos >= input.size, True, False)
+
+    y1 = cupy.where(
+        all_valid[1], cum_poly_y1[0],
+        _find_initial_cond(all_valid[1:], cum_poly_y1, pos[1:-1], input.size))
+
+    if cupy.isnan(y1):
+        raise ValueError(
+            'Sum to find symmetric boundary conditions did not converge.')
 
     # Apply first the system cs / (1 - a2 * z^-1 - a3 * z^-2)
     zi = cupy.r_[y0, y1]
@@ -198,12 +189,13 @@ def symiirorder2(input, r, omega, precision=-1.0):
     diff = cupy.sum(diff_exp, -1)
     err = diff * diff
 
-    cum_poly_y2 = cupy.cumsum(diff[:-1] * input[::-1])
+    cum_poly_y1 = cupy.cumsum(diff[:-1] * input[::-1])
     all_valid = err <= precision
-    valid_before = all_valid[2:]
-    valid_after = all_valid[:-1]
-    valid = cupy.logical_xor(valid_before, valid_after)
-    valid_starting = cupy.where(valid, cum_poly_y2, cupy.nan)
-    y0 = cupy.nanmax(valid_starting, keepdims=True)
-    zi_pos = pos[1:-1][valid]
-    overflow = cupy.where(zi_pos >= input.size, True, False)
+
+    y0 = cupy.where(
+        all_valid[0], cum_poly_y1[0],
+        _find_initial_cond(all_valid, cum_poly_y1, pos[1:-1], input.size))
+
+    if cupy.isnan(y0):
+        raise ValueError(
+            'Sum to find symmetric boundary conditions did not converge.')
