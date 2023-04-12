@@ -448,7 +448,7 @@ def check_nccl_version(compiler, settings):
                             #ifndef CUPY_USE_HIP
                             #include <nccl.h>
                             #else
-                            #include <rccl.h>
+                            #include <rccl/rccl.h>
                             #endif
                             #include <stdio.h>
                             #ifdef NCCL_MAJOR

@@ -159,12 +159,12 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
-            'hipblas.h',
+            'hipblas/hipblas.h',
             'hiprand/hiprand.h',
-            'hipsparse.h',
-            'hipfft.h',
+            'hipsparse/hipsparse.h',
+            'hipfft/hipfft.h',
             'roctx.h',
-            'rocsolver.h',
+            'rocsolver/rocsolver.h',
         ],
         'libraries': [
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
@@ -358,7 +358,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
-            'rccl.h',
+            'rccl/rccl.h',
         ],
         'libraries': [
             'rccl',

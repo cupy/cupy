@@ -35,7 +35,7 @@ struct rk_binomial_state {
 // gcc will be used, but the hiprand_kernel can only be compiled with llvm
 // so we need to explicitly declare stubs for the functions
 #if HIP_VERSION > 400
-#include <hiprand_kernel.h>
+#include <hiprand/hiprand_kernel.h>
 #else
 #include <hiprand.h>
 typedef struct {} hiprandState;

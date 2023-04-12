@@ -2,8 +2,8 @@
 #define INCLUDE_GUARD_HIP_CUPY_COMMON_H
 
 #include <hip/hip_runtime_api.h>
-#include <hipblas.h>
-#include <rocsolver.h>
+#include <hipblas/hipblas.h>
+#include <rocsolver/rocsolver.h>
 
 #define CUDA_VERSION 0
 
