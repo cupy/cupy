@@ -75,13 +75,36 @@ def symiirorder1(input, c0, z1, precision=-1.0):
 
 
 def _compute_symiirorder2_fwd_hc(k, cs, r, omega):
-    if k < 0:
-        return 0.0
+    base = None
     if omega == 0.0:
-        return cs * cupy.pow(r, k) * (k+1)
+        base = cs * cupy.power(r, k) * (k+1)
     elif omega == cupy.pi:
-        return cs * cupy.pow(r, k) * (k + 1) * (1 - 2 * (k % 2))
-    return cs * cupy.pow(r, k) * cupy.sin(omega * (k+1)) / cupy.sin(omega)
+        base = cs * cupy.power(r, k) * (k + 1) * (1 - 2 * (k % 2))
+    else:
+        base = (cs * cupy.power(r, k) * cupy.sin(omega * (k + 1)) /
+                cupy.sin(omega))
+    return cupy.where(k < 0, 0.0, base)
+
+
+def _compute_symiirorder2_bwd_hs(k, cs, rsq, omega):
+    cssq = cs * cs
+    k = cupy.abs(k)
+    rsupk = cupy.power(rsq, k / 2.0)
+
+    if omega == 0.0:
+        c0 = (1 + rsq) / ((1 - rsq) * (1 - rsq) * (1 - rsq)) * cssq
+        gamma = (1 - rsq) / (1 + rsq)
+        return c0 * rsupk * (1 + gamma * k)
+
+    if omega == cupy.pi:
+        c0 = (1 + rsq) / ((1 - rsq) * (1 - rsq) * (1 - rsq)) * cssq
+        gamma = (1 - rsq) / (1 + rsq) * (1 - 2 * (k % 2))
+        return c0 * rsupk * (1 + gamma * k)
+
+    c0 = (cssq * (1.0 + rsq) / (1.0 - rsq) /
+          (1 - 2 * rsq * cupy.cos(2 * omega) + rsq * rsq))
+    gamma = (1.0 - rsq) / (1.0 + rsq) / cupy.tan(omega)
+    return c0 * rsupk * (cupy.cos(omega*k) + gamma * cupy.sin(omega * k))
 
 
 def symiirorder2(input, r, omega, precision=-1.0):
@@ -124,7 +147,7 @@ def symiirorder2(input, r, omega, precision=-1.0):
     rsq = r * r
     a2 = 2 * r * cupy.cos(omega)
     a3 = -rsq
-    cs = 1 - 2 * r * cupy.cos(omega) + rsq
+    cs = cupy.atleast_1d(1 - 2 * r * cupy.cos(omega) + rsq)
 
     precision *= precision
     pos = cupy.arange(0, input.size + 2, dtype=input.dtype)
@@ -161,6 +184,26 @@ def symiirorder2(input, r, omega, precision=-1.0):
         zi_pos = pos[1:-1][valid]
         overflow = cupy.where(zi_pos >= input.size, True, False)
 
-    zi = cupy.r_[y0, y1]
     # Apply first the system cs / (1 - a2 * z^-1 - a3 * z^-2)
-    y1, _ = lfilter(cs, cupy.r_[1, -a2, -a3], input[2:], zi=zi)
+    zi = cupy.r_[y0, y1]
+    y_fwd, _ = lfilter(cs, cupy.r_[1, -a2, -a3], input[2:], zi=zi)
+    y_fwd = cupy.r_[zi, y_fwd]
+
+    diff = _compute_symiirorder2_bwd_hs(pos, cs, rsq, omega)
+    diff_mid = cupy.expand_dims(diff[1:-1], -1)
+    diff_exp = cupy.broadcast_to(diff_mid, (diff_mid.shape[0], 2)).ravel()
+    diff_exp = cupy.r_[diff[0], diff_exp, diff[-1]]
+    diff_exp = cupy.reshape(diff_exp, (diff.size - 1, 2))
+
+    diff = cupy.sum(diff_exp, -1)
+    err = diff * diff
+
+    cum_poly_y2 = cupy.cumsum(diff[:-1] * input[::-1])
+    all_valid = err <= precision
+    valid_before = all_valid[2:]
+    valid_after = all_valid[:-1]
+    valid = cupy.logical_xor(valid_before, valid_after)
+    valid_starting = cupy.where(valid, cum_poly_y2, cupy.nan)
+    y0 = cupy.nanmax(valid_starting, keepdims=True)
+    zi_pos = pos[1:-1][valid]
+    overflow = cupy.where(zi_pos >= input.size, True, False)

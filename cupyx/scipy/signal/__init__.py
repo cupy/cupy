@@ -17,5 +17,6 @@ from cupyx.scipy.signal._signaltools import lfilter_zi  # NOQA
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 
 from cupyx.scipy.signal._splines import symiirorder1  # NOQA
+from cupyx.scipy.signal._splines import symiirorder2  # NOQA
 
 from cupyx.scipy.signal._savitzky_golay import savgol_coeffs, savgol_filter   # NOQA
