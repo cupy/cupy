@@ -364,7 +364,6 @@ class TestMedFilt2d:
         return scp.signal.medfilt2d(input, kernel_size)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestLFilter:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
