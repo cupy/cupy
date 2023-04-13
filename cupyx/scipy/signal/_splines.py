@@ -149,6 +149,7 @@ def symiirorder2(input, r, omega, precision=-1.0):
     a3 = -rsq
     cs = cupy.atleast_1d(1 - 2 * r * cupy.cos(omega) + rsq)
 
+    # First compute the symmetric forward starting conditions
     precision *= precision
     pos = cupy.arange(0, input.size + 2, dtype=input.dtype)
     diff = _compute_symiirorder2_fwd_hc(pos, cs, r, omega)
@@ -156,9 +157,7 @@ def symiirorder2(input, r, omega, precision=-1.0):
     cum_poly_y0 = cupy.cumsum(diff[1:-1] * input) + diff[0] * input[0]
     all_valid = err <= precision
 
-    y0 = cupy.where(
-        all_valid[0], cum_poly_y0[0],
-        _find_initial_cond(all_valid[:-1], cum_poly_y0, pos[1:-1], input.size))
+    y0 = _find_initial_cond(all_valid[1:-1], cum_poly_y0, input.size)
 
     if cupy.isnan(y0):
         raise ValueError(
@@ -167,19 +166,18 @@ def symiirorder2(input, r, omega, precision=-1.0):
     cum_poly_y1 = (cupy.cumsum(diff[2:] * input) +
                    diff[0] * input[1] + diff[1] * input[0])
 
-    y1 = cupy.where(
-        all_valid[1], cum_poly_y1[0],
-        _find_initial_cond(all_valid[1:], cum_poly_y1, pos[1:-1], input.size))
+    y1 = _find_initial_cond(all_valid[2:], cum_poly_y1, input.size)
 
     if cupy.isnan(y1):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
-    # Apply first the system cs / (1 - a2 * z^-1 - a3 * z^-2)
+    # Apply the system cs / (1 - a2 * z^-1 - a3 * z^-2)
     zi = cupy.r_[y0, y1]
     y_fwd, _ = lfilter(cs, cupy.r_[1, -a2, -a3], input[2:], zi=zi)
     y_fwd = cupy.r_[zi, y_fwd]
 
+    # Then compute the symmetric backward starting conditions
     diff = _compute_symiirorder2_bwd_hs(pos, cs, rsq, omega)
     diff_mid = cupy.expand_dims(diff[1:-1], -1)
     diff_exp = cupy.broadcast_to(diff_mid, (diff_mid.shape[0], 2)).ravel()
