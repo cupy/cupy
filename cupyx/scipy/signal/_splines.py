@@ -142,7 +142,12 @@ def symiirorder2(input, r, omega, precision=-1.0):
         raise ValueError('r must be less than 1.0')
 
     if precision <= 0.0 or precision > 1.0:
-        precision = cupy.finfo(input.dtype).resolution
+        if input.dtype is cupy.dtype(cupy.float64):
+            precision = 1e-11
+        elif input.dtype is cupy.dtype(cupy.float32):
+            precision = 1e-6
+        else:
+            precision = 10 ** -cupy.finfo(input.dtype).iexp
 
     rsq = r * r
     a2 = 2 * r * cupy.cos(omega)
