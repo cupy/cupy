@@ -31,8 +31,9 @@ Filtering
    medfilt
    medfilt2d
    wiener
-   deconvolve
+   symiirorder1
    savgol_filter
+   deconvolve
 
 
 Filter design
