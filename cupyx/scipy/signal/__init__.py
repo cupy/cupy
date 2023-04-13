@@ -11,6 +11,8 @@ from cupyx.scipy.signal._signaltools import order_filter  # NOQA
 from cupyx.scipy.signal._signaltools import medfilt  # NOQA
 from cupyx.scipy.signal._signaltools import medfilt2d  # NOQA
 from cupyx.scipy.signal._signaltools import lfilter  # NOQA
+from cupyx.scipy.signal._signaltools import lfiltic  # NOQA
+from cupyx.scipy.signal._signaltools import lfilter_zi  # NOQA
 
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 

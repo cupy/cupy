@@ -6,7 +6,7 @@ from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
-from cupyx.scipy.signal._iir_utils import apply_iir
+from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -721,6 +721,124 @@ def lfilter(b, a, x, axis=-1, zi=None):
         return out, zi
     else:
         return out
+
+
+def lfiltic(b, a, y, x=None):
+    """
+    Construct initial conditions for lfilter given input and output vectors.
+
+    Given a linear filter (b, a) and initial conditions on the output `y`
+    and the input `x`, return the initial conditions on the state vector zi
+    which is used by `lfilter` to generate the output given the input.
+
+    Parameters
+    ----------
+    b : array_like
+        Linear filter term.
+    a : array_like
+        Linear filter term.
+    y : array_like
+        Initial conditions.
+        If ``N = len(a) - 1``, then ``y = {y[-1], y[-2], ..., y[-N]}``.
+        If `y` is too short, it is padded with zeros.
+    x : array_like, optional
+        Initial conditions.
+        If ``M = len(b) - 1``, then ``x = {x[-1], x[-2], ..., x[-M]}``.
+        If `x` is not given, its initial conditions are assumed zero.
+        If `x` is too short, it is padded with zeros.
+    axis: int, optional
+        The axis to take the initial conditions from, if `x` and `y` are
+        n-dimensional
+
+    Returns
+    -------
+    zi : ndarray
+        The state vector ``zi = {z_0[-1], z_1[-1], ..., z_K-1[-1]}``,
+        where ``K = M + N``.
+
+    See Also
+    --------
+    lfilter, lfilter_zi
+    """
+    # SciPy implementation only supports 1D initial conditions, however,
+    # lfilter accepts n-dimensional initial conditions. If SciPy implementation
+    # accepts n-dimensional arrays, then axis can be moved to the signature.
+    axis = -1
+    fir_len = b.size - 1
+    iir_len = a.size - 1
+
+    if y is None and x is None:
+        return None
+
+    ref_ndim = y.ndim if y is not None else x.ndim
+    axis = internal._normalize_axis_index(axis, ref_ndim)
+
+    zi = cupy.empty(0)
+    if y is not None and iir_len > 0:
+        pad_y = cupy.concatenate(
+            (y, cupy.zeros(max(iir_len - y.shape[axis], 0))), axis=axis)
+        zi = cupy.take(pad_y, list(range(iir_len)), axis=axis)
+        zi = cupy.flip(zi, axis)
+
+    if x is not None and fir_len > 0:
+        pad_x = cupy.concatenate(
+            (x, cupy.zeros(max(fir_len - x.shape[axis], 0))), axis=axis)
+        fir_zi = cupy.take(pad_x, list(range(fir_len)), axis=axis)
+        fir_zi = cupy.flip(fir_zi, axis)
+        zi = cupy.concatenate((fir_zi, zi), axis=axis)
+    return zi
+
+
+def lfilter_zi(b, a):
+    """
+    Construct initial conditions for lfilter for step response steady-state.
+
+    Compute an initial state `zi` for the `lfilter` function that corresponds
+    to the steady state of the step response.
+
+    A typical use of this function is to set the initial state so that the
+    output of the filter starts at the same value as the first element of
+    the signal to be filtered.
+
+    Parameters
+    ----------
+    b, a : array_like (1-D)
+        The IIR filter coefficients. See `lfilter` for more
+        information.
+
+    Returns
+    -------
+    zi : 1-D ndarray
+        The initial state for the filter.
+
+    See Also
+    --------
+    lfilter, lfiltic, filtfilt
+    """
+    a0 = a[0]
+    a_r = - a[1:] / a0
+    # b = b / a0
+    num_b = b.size - 1
+    num_a = a_r.size
+
+    # The initial state for a FIR filter will be always one for a step input
+    zi = cupy.ones(num_b)
+    if num_a > 0:
+        zi_t = cupy.r_[zi, cupy.zeros(num_a)]
+        y, _ = lfilter(b, a, cupy.ones(num_a + 1), zi=zi_t)
+        y1 = y[:num_a]
+        y2 = y[-num_a:]
+
+        C = compute_correction_factors(a_r, a_r.size + 1, a.dtype)
+        C = C[:, a_r.size:]
+        C1 = C[:, :a_r.size].T
+        C2 = C[:, -a_r.size:].T
+
+        # Take the difference between the non-adjusted output values and
+        # compute which initial output state would cause them to be constant.
+        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        zi = cupy.r_[zi, y_zi]
+    return zi
 
 
 def deconvolve(signal, divisor):
