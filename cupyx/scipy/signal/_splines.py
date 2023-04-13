@@ -1,24 +1,14 @@
 
-import warnings
-
 import cupy
 from cupyx.scipy.signal._signaltools import lfilter
 
 
-def _find_initial_cond(all_valid, cum_poly, pos, n):
-    valid_before = all_valid[1:]
-    valid_after = all_valid[:-1]
-    valid = cupy.logical_xor(valid_before, valid_after)
-    valid_starting = cupy.where(valid, cum_poly, cupy.nan)
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        zi = cupy.nanmax(valid_starting, keepdims=True)
-
-    zi_pos = pos[valid]
-    overflow = cupy.where(zi_pos >= n, True, False)
-    if cupy.all(overflow):
-        zi = cupy.nan
+def _find_initial_cond(all_valid, cum_poly, n):
+    indices = cupy.where(all_valid)[0] + 1
+    zi = cupy.nan
+    if indices.size > 0:
+        zi = cupy.where(
+            indices[0] >= n, cupy.nan, cum_poly[indices[0] - 1])
     return zi
 
 
@@ -59,16 +49,14 @@ def symiirorder1(input, c0, z1, precision=-1.0):
         precision = cupy.finfo(input.dtype).resolution
 
     precision *= precision
-    pos = cupy.arange(0, input.size + 1, dtype=input.dtype)
+    pos = cupy.arange(1, input.size + 1, dtype=input.dtype)
     pow_z1 = z1 ** pos
 
     diff = pow_z1 * cupy.conjugate(pow_z1)
-    cum_poly = cupy.cumsum(pow_z1[1:] * input) + input[0]
+    cum_poly = cupy.cumsum(pow_z1 * input) + input[0]
     all_valid = diff <= precision
 
-    zi = cupy.where(
-        all_valid[0], cum_poly[0],
-        _find_initial_cond(all_valid, cum_poly, pos[1:], input.size))
+    zi = _find_initial_cond(all_valid, cum_poly, input.size)
 
     if cupy.isnan(zi):
         raise ValueError(
