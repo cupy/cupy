@@ -73,6 +73,7 @@ TEST_SUITES = [
     'install_tests',
 ]
 
+
 def parse_test_log_and_get_summary(test_name):
     fs = open("/root/.cache/cupy-tests/cupy_test.log", 'r')
     lines = fs.readlines()
@@ -90,6 +91,7 @@ def parse_test_log_and_get_summary(test_name):
     test_data = test_name + "|" + count + "|" + summary
     return test_data
 
+
 def run_all_tests():
     initial_cmd = 'CUPY_TEST_GPU_LIMIT=4 CUPY_INSTALL_USE_HIP=1 pytest -vvv -k "not compile_cuda and not fft_allocate" -m "not slow" '
     os.system("mkdir -p ~/.cache/cupy-tests")
@@ -97,38 +99,44 @@ def run_all_tests():
     for test_suite in TEST_SUITES:
         if test_suite == "cupy_tests":
             for cupy_test in CUPY_TESTS:
-                cmd = initial_cmd + TEST_ROOT + "/cupy_tests/" + cupy_test + " | tee ~/.cache/cupy-tests/cupy_test.log"
-                print ("Running : " + cmd)
+                cmd = initial_cmd + TEST_ROOT + "/cupy_tests/" + \
+                    cupy_test + " | tee ~/.cache/cupy-tests/cupy_test.log"
+                print("Running : " + cmd)
                 os.system(cmd)
                 test_name = "tests/cupy_tests/" + cupy_test
                 test_summary.append(parse_test_log_and_get_summary(test_name))
         elif test_suite == "cupyx_tests":
             for cupyx_test in CUPYX_TESTS:
-                cmd = initial_cmd + TEST_ROOT + "/cupyx_tests/" + cupyx_test + " | tee ~/.cache/cupy-tests/cupy_test.log"
-                print ("Running : " + cmd)
+                cmd = initial_cmd + TEST_ROOT + "/cupyx_tests/" + \
+                    cupyx_test + " | tee ~/.cache/cupy-tests/cupy_test.log"
+                print("Running : " + cmd)
                 os.system(cmd)
                 test_name = "tests/cupyx_tests/" + cupyx_test
                 test_summary.append(parse_test_log_and_get_summary(test_name))
         else:
-            cmd = initial_cmd + TEST_ROOT + "/" + test_suite + " | tee ~/.cache/cupy-tests/cupy_test.log"
-            print (cmd)
+            cmd = initial_cmd + TEST_ROOT + "/" + test_suite + \
+                " | tee ~/.cache/cupy-tests/cupy_test.log"
+            print(cmd)
             os.system(cmd)
             test_name = "tests/" + test_suite
             test_summary.append(parse_test_log_and_get_summary(test_name))
 
     return test_summary
 
+
 def main():
     all_tests = args.all_tests
     if all_tests:
         test_summary = run_all_tests()
-        print ("---------------------- TEST SUMMARY ------------------")
+        print("---------------------- TEST SUMMARY ------------------")
         for j in range(len(test_summary)):
-            print (test_summary[j])
+            print(test_summary[j])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all-tests", action="store_true", default=True, required=False, help="Run all tests");
+    parser.add_argument("--all-tests", action="store_true",
+                        default=True, required=False, help="Run all tests")
     args = parser.parse_args()
 
     main()
