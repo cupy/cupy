@@ -2,7 +2,7 @@
 
 #ifndef INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
 #define INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
-#if HIP_VERSION >= 505
+#if HIP_VERSION >= 50530600
 #include <hipsparse/hipsparse.h>
 #else
 #include <hipsparse.h>

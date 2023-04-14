@@ -2,7 +2,7 @@
 #define INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H
 
 #include "cupy_hip_common.h"
-#if HIP_VERSION >= 505 
+#if HIP_VERSION >= 50530600 
 #include <hipblas/hipblas.h>
 #else
 #include <hipblas.h>
