@@ -13,7 +13,7 @@ class TestSphericalBessel:
     @testing.for_dtypes('i', name='order_dtype')
     @testing.for_dtypes('fd')
     @testing.numpy_cupy_allclose(atol=1e-12, rtol=1e-12, scipy_name='scp')
-    def test_inf_and_nan(self, xp, scp, dtype, order_dtype):
+    def test_spherical_yn_inf_and_nan(self, xp, scp, dtype, order_dtype):
         import scipy.special
 
         n = xp.arange(0, 100, dtype=order_dtype)
