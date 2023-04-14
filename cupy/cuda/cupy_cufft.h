@@ -12,7 +12,12 @@
 #include <cufftXt.h>
 
 #elif defined(CUPY_USE_HIP)
+#include <hip/hip_version.h> //for HIP_VERSION
+#if HIP_VERSION >= 505
 #include <hipfft/hipfft.h>
+#else
+#include <hipfft.h>
+#endif
 
 extern "C" {
 

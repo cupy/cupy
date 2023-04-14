@@ -2,8 +2,13 @@
 #define INCLUDE_GUARD_HIP_CUPY_COMMON_H
 
 #include <hip/hip_runtime_api.h>
+#if HIP_VERSION >= 50530600
 #include <hipblas/hipblas.h>
 #include <rocsolver/rocsolver.h>
+#else
+#include <hipblas.h>
+#include <rocsolver.h>
+#endif
 
 #define CUDA_VERSION 0
 
