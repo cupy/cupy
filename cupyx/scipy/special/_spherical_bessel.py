@@ -97,7 +97,8 @@ def spherical_yn(n, z, derivative=False):
         Argument of the Bessel function.
         Real-valued input.
     derivative : bool, optional
-        If True, the value of the derivative (rather than the function itself) is returned.
+        If True, the value of the derivative (rather than the function
+        itself) is returned.
 
     Returns
     -------
