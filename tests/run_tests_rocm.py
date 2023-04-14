@@ -1,5 +1,4 @@
 import os
-import sys
 import argparse
 import re
 
@@ -93,7 +92,8 @@ def parse_test_log_and_get_summary(test_name):
 
 
 def run_all_tests():
-    initial_cmd = 'CUPY_TEST_GPU_LIMIT=4 CUPY_INSTALL_USE_HIP=1 pytest -vvv -k "not compile_cuda and not fft_allocate" -m "not slow" '
+    initial_cmd = 'CUPY_TEST_GPU_LIMIT=4 CUPY_INSTALL_USE_HIP=1 ' + \
+        'pytest -vvv -k "not compile_cuda and not fft_allocate" -m "not slow" '
     os.system("mkdir -p ~/.cache/cupy-tests")
     test_summary = []
     for test_suite in TEST_SUITES:
@@ -116,7 +116,7 @@ def run_all_tests():
         else:
             cmd = initial_cmd + TEST_ROOT + "/" + test_suite + \
                 " | tee ~/.cache/cupy-tests/cupy_test.log"
-            print(cmd)
+            print("Running : " + cmd)
             os.system(cmd)
             test_name = "tests/" + test_suite
             test_summary.append(parse_test_log_and_get_summary(test_name))
