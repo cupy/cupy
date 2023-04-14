@@ -10,14 +10,6 @@ import cupyx.scipy.special  # NOQA
 @testing.with_requires('scipy')
 class TestSphericalBessel:
 
-    # @testing.for_dtypes(['f', 'd'])
-    # @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
-    # def check_unary(self, name, xp, scp, dtype):
-    #     import scipy.special  # NOQA
-
-    #     a = testing.shaped_arange((2, 3), xp, dtype)
-    #     return getattr(scp.special, name)(a)
-
     @testing.for_dtypes('i', name='order_dtype')
     @testing.for_dtypes('fd')
     @testing.numpy_cupy_allclose(atol=1e-12, rtol=1e-12, scipy_name='scp')
