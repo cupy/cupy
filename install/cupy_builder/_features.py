@@ -3,7 +3,6 @@ from typing import Any, Dict, List
 import cupy_builder.install_build as build
 import cupy_builder.install_utils as utils
 from cupy_builder import Context
-from cupy.cuda.runtime import runtimeGetVersion
 
 
 class Feature:
@@ -148,7 +147,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
-    runtime_hip_version = runtimeGetVersion()
+    rocm_version = utils.get_rocm_version()
     HIP_cuda_nvtx_cusolver = {
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
@@ -161,12 +160,12 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
-            'hipblas/hipblas.h' if runtime_hip_version >= 50530600 else 'hipblas.h',
+            'hipblas/hipblas.h' if rocm_version >= 560 else 'hipblas.h',
             'hiprand/hiprand.h',
-            'hipsparse/hipsparse.h' if runtime_hip_version >= 50530600 else 'hipsparse.h',
-            'hipfft/hipfft.h' if runtime_hip_version >= 50530600 else 'hipfft.h',
+            'hipsparse/hipsparse.h' if rocm_version >= 560 else 'hipsparse.h',
+            'hipfft/hipfft.h' if rocm_version >= 560 else 'hipfft.h',
             'roctx.h',
-            'rocsolver/rocsolver.h' if runtime_hip_version >= 50530600 else 'rocsolver.h',
+            'rocsolver/rocsolver.h' if rocm_version >= 560 else 'rocsolver.h',
         ],
         'libraries': [
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
@@ -360,7 +359,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
-            'rccl/rccl.h' if runtime_hip_version >= 50530600 else 'rccl.h',
+            'rccl/rccl.h' if rocm_version >= 560 else 'rccl.h',
         ],
         'libraries': [
             'rccl',
