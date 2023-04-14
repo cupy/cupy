@@ -24,6 +24,7 @@ Bessel functions
    i0e
    i1
    i1e
+   spherical_yn
 
 
 Raw statistical functions

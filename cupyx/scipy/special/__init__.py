@@ -12,6 +12,7 @@ from cupyx.scipy.special._bessel import k1e  # NOQA
 from cupyx.scipy.special._bessel import y0  # NOQA
 from cupyx.scipy.special._bessel import y1  # NOQA
 from cupyx.scipy.special._bessel import yn  # NOQA
+from cupyx.scipy.special._spherical_bessel import spherical_yn  # NOQA
 
 # Raw statistical functions
 from cupyx.scipy.special._stats_distributions import bdtr  # NOQA
