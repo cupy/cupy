@@ -14,7 +14,7 @@ class TestSphericalBessel:
     @testing.for_dtypes('fd')
     @testing.numpy_cupy_allclose(atol=1e-12, rtol=1e-12, scipy_name='scp')
     def test_spherical_yn_inf_and_nan(self, xp, scp, dtype, order_dtype):
-        import scipy.special
+        import scipy.special  # NOQA
 
         n = xp.arange(0, 100, dtype=order_dtype)
         a = xp.array([numpy.nan, numpy.inf, -numpy.inf], dtype=dtype)
