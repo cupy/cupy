@@ -1198,7 +1198,9 @@ class TestLOBPCG:
         return eigvals, _eigen_vec_transform(vecs, xp)
 
     @pytest.mark.xfail(
-        runtime.is_hip and driver.get_build_version() >= 5_00_00000,
+        runtime.is_hip and
+        (driver.get_build_version() >= 5_00_00000 and
+         driver.get_build_version() < 50530600),
         reason='ROCm 5.0+ may have a bug')
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
