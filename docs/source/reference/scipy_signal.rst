@@ -32,6 +32,7 @@ Filtering
    medfilt2d
    wiener
    symiirorder1
+   symiirorder2
    savgol_filter
    deconvolve
 
