@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.9')
 class TestSymIIROrder:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
     @pytest.mark.parametrize(
