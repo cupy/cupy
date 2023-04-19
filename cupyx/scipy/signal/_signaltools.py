@@ -7,9 +7,8 @@ from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 from cupyx.scipy.signal._arraytools import (
-    const_ext, even_ext, odd_ext, axis_reverse, axis_slice)
+    const_ext, even_ext, odd_ext, axis_reverse, axis_slice, axis_assign)
 from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
-from cupyx.scipy.signal._arraytools import axis_slice, axis_assign
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -700,23 +699,12 @@ def lfilter(b, a, x, axis=-1, zi=None):
 
     x_full = cupy.zeros(pad_shape, dtype=x.dtype)
     if zi is not None:
-<<<<<<< HEAD
         zi = cupy.atleast_1d(zi)
         if num_b > 0:
             prev_in = axis_slice(zi, 0, num_b, axis=axis)
         if num_a > 0:
             prev_out = axis_slice(
                 zi, zi.shape[axis] - num_a, zi.shape[axis], axis=axis)
-=======
-        prev_in = cupy.take(zi, list(range(0, num_b)), axis=axis)
-        prev_out = cupy.take(zi, list(range(-num_a, 0)), axis=axis)
-        x = cupy.concatenate((prev_in, x), axis=axis)
-    else:
-        zeros_shape = list(x.shape)
-        zeros_shape[axis] = num_b
-        leading_zeros = cupy.zeros(zeros_shape, dtype=x.dtype)
-        x = cupy.concatenate((leading_zeros, x), axis=axis)
->>>>>>> 7cb5308ff... Add tests
 
     if prev_in is not None:
         x_full = axis_assign(x_full, prev_in, 0, num_b, axis=axis)
@@ -727,12 +715,8 @@ def lfilter(b, a, x, axis=-1, zi=None):
     out = _filters.convolve1d(
         x_full, b, axis=axis, mode='constant', origin=origin, output=out)
 
-<<<<<<< HEAD
     if num_b > 0:
         out = axis_slice(out, out.shape[axis] - n, out.shape[axis], axis=axis)
-=======
-    out = cupy.take(out, list(range(-n, 0)), axis=axis)
->>>>>>> 7cb5308ff... Add tests
 
     if a_r.size > 0:
         iir_dtype = cupy.result_type(fir_dtype, a)
