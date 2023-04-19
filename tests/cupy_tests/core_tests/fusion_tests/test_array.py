@@ -28,7 +28,6 @@ class FusionArrayTestBase(unittest.TestCase):
         return (x, y), {}
 
 
-@testing.gpu
 @testing.parameterize(*testing._parameterized.product_dict(
     [
         {'name': 'neg', 'func': lambda x, y: -x},
@@ -61,7 +60,6 @@ class TestFusionArrayOperator(FusionArrayTestBase):
         return self.func
 
 
-@testing.gpu
 @testing.parameterize(*testing._parameterized.product_dict(
     [
         {'name': 'lshift', 'func': lambda x, y: x << y},
@@ -101,7 +99,6 @@ class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
         return func
 
 
-@testing.gpu
 @testing.parameterize(
     {'left_value': 'array', 'right_value': 'array'},
     {'left_value': 'array', 'right_value': 'scalar'},
@@ -119,7 +116,6 @@ class TestFusionArrayFloorDivide(FusionArrayTestBase):
 
 
 # TODO(imanishi): Fix TypeError in use of dtypes_combination test.
-@testing.gpu
 @testing.parameterize(*testing._parameterized.product_dict(
     [
         {'left_value': 'array', 'right_value': 'array'},
@@ -231,7 +227,6 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
         return func
 
 
-@testing.gpu
 class TestFusionArraySetItem(unittest.TestCase):
 
     def generate_inputs(self, xp):
@@ -258,7 +253,6 @@ class TestFusionArraySetItem(unittest.TestCase):
         return func
 
 
-@testing.gpu
 class TestFusionArrayMethods(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype):
@@ -301,7 +295,6 @@ class TestFusionArrayMethods(unittest.TestCase):
         return lambda x: x.any()
 
 
-@testing.gpu
 class TestFusionArrayAsType(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):

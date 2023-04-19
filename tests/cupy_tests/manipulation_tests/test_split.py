@@ -3,7 +3,6 @@ import unittest
 from cupy import testing
 
 
-@testing.gpu
 class TestSplit(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()

@@ -78,7 +78,6 @@ class TestLsqr(unittest.TestCase):
     'axis': [None, (0, 1), (1, -2)],
 }))
 @testing.with_requires('scipy')
-@testing.gpu
 class TestMatrixNorm:
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
@@ -106,7 +105,6 @@ class TestMatrixNorm:
 })
 )
 @testing.with_requires('scipy')
-@testing.gpu
 class TestVectorNorm:
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
@@ -312,7 +310,6 @@ class TestSvds:
     'use_linear_operator': [False, True],
 }))
 @testing.with_requires('scipy')
-@testing.gpu
 class TestCg:
     n = 30
     density = 0.33
@@ -461,7 +458,6 @@ class TestCg:
     'use_linear_operator': [False, True],
 }))
 @testing.with_requires('scipy>=1.4')
-@testing.gpu
 class TestGmres:
     n = 30
     density = 0.2
@@ -643,7 +639,6 @@ def skip_HIP_spMM_error(outer=()):
     'M': [1, 6],
     'N': [1, 7],
 }))
-@testing.gpu
 @testing.with_requires('scipy>=1.4')
 class TestLinearOperator:
 
@@ -768,7 +763,6 @@ class TestLinearOperator:
     'order': ['C', 'F']
 }))
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 @pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
                     reason='no working implementation')
 class TestSpsolveTriangular:
@@ -924,7 +918,6 @@ def _eigen_vec_transform(block_vec, xp):
 
 
 @testing.with_requires('scipy>=1.4')
-@testing.gpu
 @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
                     reason='syevj not available')
 # tests adapted from scipy's tests of lobpcg
@@ -1228,7 +1221,6 @@ class TestLOBPCG:
 
 
 @testing.with_requires('scipy>=1.4')
-@testing.gpu
 @testing.parameterize(*testing.product({
     'A_sparsity': [True, False],
     'B_sparsity': [True, False],
@@ -1309,7 +1301,6 @@ class TestLOBPCGForDiagInput:
 @testing.with_requires('scipy')
 @pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
                     reason='no working implementation')
-@testing.gpu
 class TestSplu:
 
     n = 10

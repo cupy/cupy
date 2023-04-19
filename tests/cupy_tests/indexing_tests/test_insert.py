@@ -11,7 +11,6 @@ from cupy import testing
     'shape': [(7,), (2, 3), (4, 3, 2)],
     'n_vals': [0, 1, 3, 15],
 }))
-@testing.gpu
 class TestPlace(unittest.TestCase):
 
     # NumPy 1.9 don't wraps values.
@@ -32,7 +31,6 @@ class TestPlace(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(7,), (2, 3), (4, 3, 2)],
 }))
-@testing.gpu
 class TestPlaceRaises(unittest.TestCase):
 
     # NumPy 1.9 performs illegal memory access.
@@ -64,7 +62,6 @@ class TestPlaceRaises(unittest.TestCase):
     'mode': ['raise', 'wrap', 'clip'],
     'n_vals': [0, 1, 3, 4, 5],
 }))
-@testing.gpu
 class TestPut(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -84,7 +81,6 @@ class TestPut(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(7,), (2, 3), (4, 3, 2)],
 }))
-@testing.gpu
 class TestPutScalars(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -110,7 +106,6 @@ class TestPutScalars(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(7,), (2, 3)],
 }))
-@testing.gpu
 class TestPutRaises(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -145,7 +140,6 @@ class TestPutRaises(unittest.TestCase):
 @testing.parameterize(
     *testing.product(
         {'shape': [(0,), (1,), (2, 3), (2, 3, 4)]}))
-@testing.gpu
 class TestPutmaskSameShape(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -163,7 +157,6 @@ class TestPutmaskSameShape(unittest.TestCase):
     *testing.product(
         {'shape': [(0,), (1,), (2, 3), (2, 3, 4)],
          'values_shape': [(2,), (3, 1), (5,)]}))
-@testing.gpu
 class TestPutmaskDifferentShapes(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -178,7 +171,6 @@ class TestPutmaskDifferentShapes(unittest.TestCase):
         return a
 
 
-@testing.gpu
 class TestPutmask(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -232,7 +224,6 @@ class TestPutmaskDifferentDtypes(unittest.TestCase):
     'val': [1, 0, (2,), (2, 2)],
     'wrap': [True, False],
 }))
-@testing.gpu
 class TestFillDiagonal(unittest.TestCase):
 
     def _compute_val(self, xp):
@@ -273,7 +264,6 @@ class TestFillDiagonal(unittest.TestCase):
     'n': [2, 4, -3, 0],
     'ndim': [2, 3, 1, 0, -2],
 }))
-@testing.gpu
 class TestDiagIndices(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -285,7 +275,6 @@ class TestDiagIndices(unittest.TestCase):
     'n': [-3, 0],
     'ndim': [1, 0, -2],
 }))
-@testing.gpu
 class TestDiagIndicesInvalidValues(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -296,7 +285,6 @@ class TestDiagIndicesInvalidValues(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(3, 3), (0, 0), (2, 2, 2)],
 }))
-@testing.gpu
 class TestDiagIndicesFrom(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -308,7 +296,6 @@ class TestDiagIndicesFrom(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(3, 5), (3, 3, 4), (5,), (0,), (-1,)],
 }))
-@testing.gpu
 class TestDiagIndicesFromRaises(unittest.TestCase):
 
     def test_non_equal_dims(self):

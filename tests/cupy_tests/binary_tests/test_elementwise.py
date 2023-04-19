@@ -3,7 +3,6 @@ import unittest
 from cupy import testing
 
 
-@testing.gpu
 class TestElementwise(unittest.TestCase):
 
     @testing.for_int_dtypes()

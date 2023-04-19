@@ -17,7 +17,6 @@ if cupyx.scipy._scipy_available:
     'shape': [(9,), (10,), (10, 9), (10, 10)],
     'axis': [-1, 0],
 }))
-@testing.gpu
 @testing.with_requires('scipy>=0.19.0')
 class TestFft(unittest.TestCase):
 
@@ -201,7 +200,6 @@ class TestFft(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
 )
-@testing.gpu
 @testing.with_requires('scipy>=0.19.0')
 class TestFft2(unittest.TestCase):
 
@@ -369,7 +367,6 @@ class TestFft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
     {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
 )
-@testing.gpu
 @testing.with_requires('scipy>=0.19.0')
 class TestFftn(unittest.TestCase):
 
@@ -542,7 +539,6 @@ class TestFftn(unittest.TestCase):
     'shape': [(9,), (10,), (10, 9), (10, 10)],
     'axis': [-1, 0],
 }))
-@testing.gpu
 @testing.with_requires('scipy>=0.19.0')
 class TestRfft(unittest.TestCase):
 

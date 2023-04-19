@@ -5,7 +5,6 @@ import numpy
 
 import cupy
 from cupy import testing
-from cupy.testing import _attr
 from cupy.testing import _condition
 
 
@@ -191,7 +190,7 @@ class StandardExponential:
     def test_standard_exponential(self):
         self.generate(size=(3, 2))
 
-    @_attr.slow
+    @testing.slow
     @_condition.repeat(10)
     def test_standard_exponential_isfinite(self):
         x = self.generate(size=10**7)
