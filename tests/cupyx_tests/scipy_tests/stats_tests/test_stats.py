@@ -242,3 +242,72 @@ class TestZscore:
             x = xp.array([1, 2, 3, xp.nan], dtype=dtype)
             with pytest.raises(ValueError):
                 scp.stats.zscore(x, nan_policy='raise')
+
+
+
+@testing.with_requires('scipy')
+class TestTmin:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_tmin_1dim(self, xp, scp, dtype):
+        x = testing.shaped_random((10,), xp, dtype=dtype)
+        print(x)
+        return scp.stats.tmin(x,3.2)
+
+   
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_tmin_2dim(self, xp, scp, dtype):
+        x = testing.shaped_random((5, 3), xp, dtype=dtype)
+        return scp.stats.tmin(x,3)
+
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    def test_tmin_multi_dim(self, xp, scp, dtype):
+        x = testing.shaped_random((3, 4, 5, 7), xp, dtype=dtype)
+        return scp.stats.tmin(x,12)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
+    def test_tmin_with_axis(self, xp, scp, dtype):
+        x = testing.shaped_random((5, 6), xp, dtype=dtype)
+        return scp.stats.tmin(x,2, axis=1)
+    
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
+    def test_tmin_with_axis_none(self, xp, scp, dtype):
+        x = testing.shaped_random((5, 6), xp, dtype=dtype)
+        return scp.stats.tmin(x,3,axis=None)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
+    def test_tmin_with_lowerlimit_none(self, xp, scp, dtype):
+        x = testing.shaped_random((5, 6), xp, dtype=dtype)
+        return scp.stats.tmin(x,lowerlimit=None)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_tmin_empty(self, xp, scp, dtype):
+        x = xp.array([], dtype=dtype)
+        with pytest.raises(ValueError):
+            return scp.stats.tmin(x,2)
+    
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_tmin_without_inclusive(self, xp, scp, dtype):
+        x = xp.array([[5,4.8,3,2],[10,8,7,22]], dtype=dtype)
+        return scp.stats.tmin(x,5,inclusive=False)
+
+    def test_tmin_nan_policy_raise(self, dtype):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            x = xp.array([1, 2, 3, xp.nan], dtype=dtype)
+            with pytest.raises(ValueError):
+                scp.stats.tmin(x, nan_policy='raise')
+
+    def test_tmin_nan_policy_raise(self, dtype):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            x = xp.array([1, 2, 3, 1.2], dtype=dtype)
+            with pytest.raises(ValueError):
+                scp.stats.tmin(x, nan_policy='raise')
