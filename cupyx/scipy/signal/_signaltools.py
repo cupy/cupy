@@ -697,7 +697,7 @@ def lfilter(b, a, x, axis=-1, zi=None):
     pad_shape = list(x.shape)
     pad_shape[axis] += num_b
 
-    x_full = cupy.zeros(pad_shape, dtype=x.dtype)
+    x_full = cupy.zeros(pad_shape, dtype=fir_dtype)
     if zi is not None:
         zi = cupy.atleast_1d(zi)
         if num_b > 0:
