@@ -52,7 +52,6 @@ except ImportError:
         )
     )
 )
-@testing.gpu
 @testing.with_requires("scipy")
 class TestFourierShift:
 
@@ -140,7 +139,6 @@ class TestFourierShift:
         )
     )
 )
-@testing.gpu
 @testing.with_requires("scipy")
 class TestFourierGaussian:
 
@@ -228,7 +226,6 @@ class TestFourierGaussian:
         )
     )
 )
-@testing.gpu
 @testing.with_requires("scipy")
 class TestFourierUniform:
 
@@ -310,7 +307,6 @@ class TestFourierUniform:
         )
     )
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFourierEllipsoid():
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -381,7 +377,6 @@ class TestFourierEllipsoid():
         return xp.ascontiguousarray(a)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFourierEllipsoidInvalid():
 

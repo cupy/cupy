@@ -5,7 +5,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestMayShareMemory(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
@@ -101,7 +100,6 @@ class TestMayShareMemory(unittest.TestCase):
                     'Failed in case of {} and {}'.format(sl1, sl2)
 
 
-@testing.gpu
 class TestSharesMemory(unittest.TestCase):
 
     def test_different_arrays(self):

@@ -7,7 +7,6 @@ from cupy._core import _cub_reduction
 from cupy import testing
 
 
-@testing.gpu
 class TestSearch:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -173,7 +172,6 @@ def _skip_cuda90(dtype):
     'order_and_axis': (('C', -1), ('C', None), ('F', 0), ('F', None)),
     'backend': ('device', 'block'),
 }))
-@testing.gpu
 @pytest.mark.skipif(
     not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
 class TestCubReduction:
@@ -266,7 +264,6 @@ class TestCubReduction:
         return a.argmax(axis=self.axis)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['argmin', 'argmax'],
     'is_module': [True, False],
@@ -296,7 +293,6 @@ class TestArgMinMaxDtype:
     {'cond_shape': (2, 3, 4), 'x_shape': (2, 3, 4), 'y_shape': (3, 4)},
     {'cond_shape': (3, 4),    'x_shape': (2, 3, 4), 'y_shape': (4,)},
 )
-@testing.gpu
 class TestWhereTwoArrays:
 
     @testing.for_all_dtypes_combination(
@@ -318,7 +314,6 @@ class TestWhereTwoArrays:
     {'cond_shape': (2, 3, 4)},
     {'cond_shape': (3, 4)},
 )
-@testing.gpu
 class TestWhereCond:
 
     @testing.for_all_dtypes()
@@ -329,7 +324,6 @@ class TestWhereCond:
         return xp.where(cond)
 
 
-@testing.gpu
 class TestWhereError:
 
     def test_one_argument(self):
@@ -348,7 +342,6 @@ class TestWhereError:
     {'array': numpy.empty((0, 2, 0))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestNonzero:
 
     @testing.for_all_dtypes()
@@ -362,7 +355,6 @@ class TestNonzero:
     {'array': numpy.array(0)},
     {'array': numpy.array(1)},
 )
-@testing.gpu
 @testing.with_requires('numpy>=1.17.0')
 class TestNonzeroZeroDimension:
 
@@ -384,7 +376,6 @@ class TestNonzeroZeroDimension:
     {'array': numpy.empty((0, 2, 0))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestFlatNonzero:
 
     @testing.for_all_dtypes()
@@ -402,7 +393,6 @@ class TestFlatNonzero:
     {'array': numpy.empty((0, 2, 0))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArgwhere:
 
     @testing.for_all_dtypes()
@@ -416,7 +406,6 @@ class TestArgwhere:
     {'value': 0},
     {'value': 3},
 )
-@testing.gpu
 @testing.with_requires('numpy>=1.18')
 class TestArgwhereZeroDimension:
 
@@ -427,7 +416,6 @@ class TestArgwhereZeroDimension:
         return xp.argwhere(array)
 
 
-@testing.gpu
 class TestNanArgMin:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -519,7 +507,6 @@ class TestNanArgMin:
         return xp.nanargmin(a, axis=1)
 
 
-@testing.gpu
 class TestNanArgMax:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -611,7 +598,6 @@ class TestNanArgMax:
         return xp.nanargmax(a, axis=1)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product(
     {'bins': [
         [],
@@ -648,7 +634,6 @@ class TestSearchSorted:
         return y,
 
 
-@testing.gpu
 @testing.parameterize(
     {'side': 'left'},
     {'side': 'right'})
@@ -711,7 +696,6 @@ class TestSearchSortedNanInf:
         return y,
 
 
-@testing.gpu
 class TestSearchSortedInvalid:
 
     # Cant test unordered bins due to numpy undefined
@@ -732,7 +716,6 @@ class TestSearchSortedInvalid:
                 bins.searchsorted(x)
 
 
-@testing.gpu
 class TestSearchSortedWithSorter:
 
     @testing.numpy_cupy_array_equal()

@@ -31,7 +31,6 @@ def _calc_out_shape(shape, axis, keepdims):
                numpy.ones((0, 3, 4))],
          'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
          'keepdims': [False, True]}))
-@testing.gpu
 class TestAllAny:
 
     @testing.for_all_dtypes()
@@ -59,7 +58,6 @@ class TestAllAny:
                numpy.array([[[numpy.nan, 0, 1]]])],
          'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
          'keepdims': [False, True]}))
-@testing.gpu
 class TestAllAnyWithNaN:
 
     @testing.for_dtypes(
@@ -111,7 +109,6 @@ class TestAllAnyAlias:
         ],
             'assume_unique': [False, True],
             'invert': [False, True]}))
-@testing.gpu
 class TestIn1DIsIn:
 
     @testing.for_all_dtypes()

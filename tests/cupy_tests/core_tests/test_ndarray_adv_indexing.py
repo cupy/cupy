@@ -33,7 +33,6 @@ def perm(iterable):
         )
     })
 )
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemPerm:
 
     @testing.for_all_dtypes()
@@ -129,7 +128,6 @@ class TestArrayAdvancedIndexingGetitemPerm:
      'indexes': (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized:
 
     @testing.for_all_dtypes()
@@ -184,7 +182,6 @@ class TestArrayAdvancedIndexingGetitemParametrizedValueError:
     {'shape': (2, 3, 4), 'transpose': (1, 0, 2),
      'indexes': (None, [1, 2], [0, -1])},
 )
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrizedTransp:
 
     @testing.for_all_dtypes()
@@ -196,7 +193,6 @@ class TestArrayAdvancedIndexingGetitemParametrizedTransp:
         return a[self.indexes]
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemCupyIndices:
 
     shape = (2, 3, 4)
@@ -272,7 +268,6 @@ class TestArrayAdvancedIndexingGetitemCupyIndices:
         slice(None),
         numpy.array([1], dtype=numpy.int8))},
 )
-@testing.gpu
 class TestArrayAdvancedIndexingOverflow:
 
     def test_getitem(self):
@@ -331,7 +326,6 @@ class TestArrayAdvancedIndexingOverflow:
     {'shape': (2, 3, 4),
      'indexes': (numpy.empty(0, bool), numpy.empty((0, 2), bool))},
 )
-@testing.gpu
 class TestArrayInvalidIndexAdvGetitem:
 
     def test_invalid_adv_getitem(self):
@@ -349,7 +343,6 @@ class TestArrayInvalidIndexAdvGetitem:
      'indexes': numpy.random.choice([False, True], (1, 3))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayInvalidIndexAdvGetitem2:
 
     def test_invalid_adv_getitem(self):
@@ -559,7 +552,6 @@ class TestArrayAdvancedIndexingSetitemScalarValue2:
     {'shape': (0,), 'indexes': numpy.array([True]), 'value': 1},
     {'shape': (0,), 'indexes': numpy.array([False, True, True]), 'value': 1},
 )
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
 
     def test_adv_setitem(self):
@@ -632,7 +624,6 @@ class TestArrayAdvancedIndexingSetitemScalarValueValueError2:
      'value': numpy.arange(3 * 4).reshape(3, 4)},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayAdvancedIndexingVectorValue:
 
     @testing.for_all_dtypes()
@@ -643,7 +634,6 @@ class TestArrayAdvancedIndexingVectorValue:
         return a
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemCupyIndices:
 
     shape = (2, 3)
@@ -685,7 +675,6 @@ class TestArrayAdvancedIndexingSetitemCupyIndices:
         testing.assert_array_almost_equal(original_index, index)
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemDifferentDtypes:
 
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
@@ -709,7 +698,6 @@ class TestArrayAdvancedIndexingSetitemDifferentDtypes:
         return a
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemTranspose:
 
     @testing.numpy_cupy_array_equal()

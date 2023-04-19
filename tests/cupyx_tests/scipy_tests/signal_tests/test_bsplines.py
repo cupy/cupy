@@ -16,7 +16,6 @@ except ImportError:
     'hrow': [1, 3],
     'hcol': [1, 3],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSepFIR2d(unittest.TestCase):
 

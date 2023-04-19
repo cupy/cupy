@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestTranspose(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()

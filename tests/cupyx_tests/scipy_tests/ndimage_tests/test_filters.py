@@ -190,7 +190,6 @@ COMMON_FLOAT_PARAMS['dtype'] = [numpy.float32, numpy.float64]
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFilter(FilterTestCaseBase):
 
@@ -303,7 +302,6 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFilterFast(FilterTestCaseBase):
 
@@ -368,7 +366,6 @@ class TestFilterFast(FilterTestCaseBase):
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFilterComplexFast(FilterTestCaseBase):
 
@@ -449,7 +446,6 @@ def lt_pyfunc(x):
         'dtype': [numpy.float64],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGenericFilter(FilterTestCaseBase):
 
@@ -515,7 +511,6 @@ void shift(const double* in, ptrdiff_t in_length,
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGeneric1DFilter(FilterTestCaseBase):
     _func_or_kernels = {
@@ -556,7 +551,6 @@ class TestGeneric1DFilter(FilterTestCaseBase):
         })
     )
 ))
-@testing.gpu
 # SciPy behavior fixed in 1.5.0: https://github.com/scipy/scipy/issues/11661
 @testing.with_requires('scipy>=1.5.0')
 class TestMirrorWithDim1(FilterTestCaseBase):
@@ -584,7 +578,6 @@ class TestMirrorWithDim1(FilterTestCaseBase):
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestShellSort(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
@@ -610,7 +603,6 @@ class TestShellSort(FilterTestCaseBase):
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFortranOrder(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
@@ -637,7 +629,6 @@ class TestFortranOrder(FilterTestCaseBase):
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestWeightDtype(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
@@ -668,7 +659,6 @@ class TestWeightDtype(FilterTestCaseBase):
         })
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.5.9')
 class TestWeightComplexDtype(FilterTestCaseBase):
 
@@ -716,7 +706,6 @@ class TestWeightComplexDtype(FilterTestCaseBase):
     'shape': [(3, 3), (3, 3, 3)],
     'dtype': [numpy.uint8, numpy.float64],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecialWeightCases(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
@@ -754,7 +743,6 @@ class TestSpecialWeightCases(FilterTestCaseBase):
     'shape': [(3, 3), (3, 3, 3)],
     'dtype': [numpy.uint8, numpy.float64],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecialCases1D(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
@@ -770,7 +758,6 @@ class TestSpecialCases1D(FilterTestCaseBase):
                'minimum_filter1d', 'maximum_filter1d'],
     'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestInvalidAxis(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
@@ -804,7 +791,6 @@ class TestInvalidAxis(FilterTestCaseBase):
     'mode': ['unknown'],
     'shape': [(4, 5)],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestInvalidMode(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
@@ -822,7 +808,6 @@ class TestInvalidMode(FilterTestCaseBase):
     'ksize': [3, 4],
     'shape': [(4, 5)], 'dtype': [numpy.float64],
 }))
-@testing.gpu
 # SciPy behavior fixed in 1.2.0: https://github.com/scipy/scipy/issues/822
 @testing.with_requires('scipy>=1.2.0')
 class TestInvalidOrigin(FilterTestCaseBase):

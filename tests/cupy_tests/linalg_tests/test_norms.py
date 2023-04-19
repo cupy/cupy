@@ -8,7 +8,6 @@ from cupy import testing
 import cupyx
 
 
-@testing.gpu
 class TestTrace(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -46,7 +45,6 @@ class TestTrace(unittest.TestCase):
     'keepdims': [True, False],
 })
 )
-@testing.gpu
 class TestNorm(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
@@ -73,7 +71,6 @@ class TestNorm(unittest.TestCase):
     ],
     'tol': [None, 1]
 }))
-@testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
@@ -90,7 +87,6 @@ class TestMatrixRank(unittest.TestCase):
         return y
 
 
-@testing.gpu
 class TestDet(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
@@ -164,7 +160,6 @@ class TestDet(unittest.TestCase):
         return xp.linalg.det(a)
 
 
-@testing.gpu
 class TestSlogdet(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')

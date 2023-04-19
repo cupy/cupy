@@ -19,7 +19,6 @@ except ImportError:
     'size2': [3, 4, 5, 10],
     'mode': ['full', 'same', 'valid'],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestConvolveCorrelate:
     def _filter(self, func, dtype, xp, scp):
@@ -48,7 +47,6 @@ class TestConvolveCorrelate:
     'size2': [3, 4, 5, 10],
     'mode': ['full', 'same', 'valid'],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFFTConvolve:
     def _filter(self, func, dtype, xp, scp, **kwargs):
@@ -150,7 +148,6 @@ class TestFFTConvolveFastShape:
     'size2': [3, 4, 5, 10, None],
     'mode': ['full', 'same', 'valid'],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestOAConvolve:
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
@@ -181,7 +178,6 @@ class TestOAConvolve:
     'boundary': ['wrap', 'symm'],
     'fillvalue': [0],
 })))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestConvolveCorrelate2D:
     def _filter(self, func, dtype, xp, scp):
@@ -243,7 +239,6 @@ class TestConvolve2DEdgeCase:
         return scp.signal.convolve2d(b, a, mode="same")
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'mode': ['valid', 'same', 'full']
 }))
@@ -290,7 +285,6 @@ class TestChooseConvMethod:
     'mysize': [3, 4, (3, 4, 5)],
     'noise': [False, True],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestWiener:
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
@@ -319,7 +313,6 @@ class TestWiener:
     'domain': [3, 4, (3, 3, 5)],
     'rank': [0, 1, 2],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestOrderFilter:
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
@@ -338,7 +331,6 @@ class TestOrderFilter:
     'volume': [(10,), (5, 10), (10, 5), (5, 6, 10)],
     'kernel_size': [3, 4, (3, 3, 5)],
 }))
-@testing.gpu
 @testing.with_requires('scipy>=1.7.0')
 class TestMedFilt:
     @testing.for_all_dtypes()
@@ -358,7 +350,6 @@ class TestMedFilt:
     'input': [(5, 10), (10, 5)],
     'kernel_size': [3, 4, (3, 5)],
 }))
-@testing.gpu
 @testing.with_requires('scipy>=1.7.0')
 class TestMedFilt2d:
     @testing.for_all_dtypes()
