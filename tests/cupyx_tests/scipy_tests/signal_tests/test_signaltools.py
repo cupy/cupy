@@ -564,7 +564,6 @@ class TestDeconvolve:
         return scp.signal.deconvolve(o, b)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFiltFilt:
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
