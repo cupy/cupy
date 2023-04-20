@@ -1,14 +1,141 @@
 
 import cupy
+from cupy._core._scalar import get_typename
+from cupy_backends.cuda.api import runtime
+
 from cupyx.scipy.signal._signaltools import lfilter
 
 
-def _find_initial_cond(all_valid, cum_poly, n):
-    indices = cupy.where(all_valid)[0] + 1
+if runtime.is_hip:
+    SYMIIR2_KERNEL = r"""#include <hip/hip_runtime.h>
+"""
+else:
+    SYMIIR2_KERNEL = r"""
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+"""
+
+SYMIIR2_KERNEL = SYMIIR2_KERNEL + r"""
+#include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
+
+template<typename T>
+__device__ T _compute_symiirorder2_fwd_hc(
+        const int k, const T cs, const T r, const T omega) {
+    T base;
+
+    if(k < 0) {
+        return 0;
+    }
+
+    if(omega == 0.0) {
+        base = cs * pow(r, ((T) k)) * (k + 1);
+    } else if(omega == M_PI) {
+        base = cs * pow(r, ((T) k)) * (k + 1) * (1 - 2 * (k % 2))
+    } else {
+        base = (cs * pow(r, ((T) k)) * sin(omega * (k + 1)) /
+                sin(omega))
+    }
+    return base;
+}
+
+template<typename T>
+__global__ void compute_symiirorder2_fwd_sc(
+        const int n, const int off, const T* cs_ptr, const T* r_ptr,
+        const T* omega_ptr, const T precision, bool* valid, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx + off >= n) {
+        return;
+    }
+
+    const T cs = cs_ptr[0];
+    const T r = r_ptr[0];
+    const T omega = omega_ptr[0];
+
+    T val = _compute_symiirorder2_fwd_hc<T>(idx + off + 1, cs, r, omega);
+    T err = val * val;
+
+    out[idx] = val;
+    valid[idx] = err <= precision;
+}
+
+template<typename T>
+__device__ T _compute_symiirorder2_bwd_hs(
+        const int ki, const T cs, const T rsq, const T omega) {
+    T c0;
+    T gamma;
+
+    T cssq = cs * cs;
+    int k = abs(ki);
+    T rsupk = pow(rsq, ((T) k) / ((T) 2.0));
+
+
+    if(omega == 0.0) {
+        c0 = (1 + rsq) / ((1 - rsq) * (1 - rsq) * (1 - rsq)) * cssq;
+        gamma = (1 - rsq) / (1 + rsq);
+        return c0 * rsupk * (1 + gamma * k);
+    }
+
+    if(omega == M_PI) {
+        c0 = (1 + rsq) / ((1 - rsq) * (1 - rsq) * (1 - rsq)) * cssq;
+        gamma = (1 - rsq) / (1 + rsq) * (1 - 2 * (k % 2));
+        return c0 * rsupk * (1 + gamma * k);
+    }
+
+    c0 = (cssq * (1.0 + rsq) / (1.0 - rsq) /
+                (1 - 2 * rsq * cos(2 * omega) + rsq * rsq));
+    gamma = (1.0 - rsq) / (1.0 + rsq) / tan(omega);
+    return c0 * rsupk * (cos(omega * k) + gamma * sin(omega * k));
+}
+
+template<typename T>
+__global__ void compute_symiirorder2_bwd_sc(
+        const int n, const int off, const int l_off, const int r_off,
+        const T* cs_ptr, const T* rsq_ptr, const T* omega_ptr,
+        const T precision, bool* valid, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx + off >= n) {
+        return;
+    }
+
+    const T cs = cs_ptr[0];
+    const T rsq = rsq_ptr[0];
+    const T omega = omega_ptr[0];
+
+    T v1 = _compute_symiirorder2_bwd_hs<T>(idx + l_off + off, cs, rsq, omega);
+    T v2 = _compute_symiirorder2_bwd_hs<T>(idx + r_off + off, cs, rsq, omega);
+
+    T diff = v1 + v2;
+    T err = diff * diff;
+    out[idx] = diff;
+    valid[idx] = err <= precision;
+}
+"""
+
+SYMIIR2_MODULE = cupy.RawModule(
+    code=SYMIIR2_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
+                      for t in ['float', 'double']] +
+    [f'compute_symiirorder2_fwd_sc<{t}>'
+     for t in ['float', 'double']])
+
+
+def _get_module_func(module, func_name, *template_args):
+    args_dtypes = [get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
+
+
+def _find_initial_cond(all_valid, cum_poly, n, off=0):
+    indices = cupy.where(all_valid)[0] + 1 + off
     zi = cupy.nan
     if indices.size > 0:
         zi = cupy.where(
-            indices[0] >= n, cupy.nan, cum_poly[indices[0] - 1])
+            indices[0] >= n, cupy.nan, cum_poly[indices[0] - 1 - off])
     return zi
 
 
@@ -149,13 +276,32 @@ def symiirorder2(input, r, omega, precision=-1.0):
         else:
             precision = 10 ** -cupy.finfo(input.dtype).iexp
 
+    block_sz = 128
     rsq = r * r
     a2 = 2 * r * cupy.cos(omega)
     a3 = -rsq
     cs = cupy.atleast_1d(1 - 2 * r * cupy.cos(omega) + rsq)
+    omega = cupy.asarray(omega, cs.dtype)
+    precision *= precision
 
     # First compute the symmetric forward starting conditions
-    precision *= precision
+    compute_symiirorder2_fwd_sc = _get_module_func(
+        SYMIIR2_MODULE, 'compute_symiirorder2_fwd_sc', cs)
+
+    diff = cupy.empty((block_sz + 1,), dtype=cs.dtype)
+    all_valid = cupy.empty((block_sz + 1,), dtype=cupy.bool_)
+
+    starting_diff = cupy.arange(2, dtype=input.dtype)
+    starting_diff = _compute_symiirorder2_fwd_hc(starting_diff, cs, r, omega)
+
+    y0 = cupy.nan
+    y1 = cupy.nan
+
+    for i in range(2, input.size + 2, block_sz):
+        compute_symiirorder2_fwd_sc(
+            (1,), (block_sz + 1,), (
+                input.size + 2, i, cs, r, omega, precision, all_valid, diff))
+
     pos = cupy.arange(0, input.size + 2, dtype=input.dtype)
     diff = _compute_symiirorder2_fwd_hc(pos, cs, r, omega)
     err = diff * diff
@@ -183,33 +329,42 @@ def symiirorder2(input, r, omega, precision=-1.0):
     y_fwd = cupy.r_[zi, y_fwd]
 
     # Then compute the symmetric backward starting conditions
-    diff = _compute_symiirorder2_bwd_hs(pos, cs, rsq, omega)
-    diff_mid = cupy.expand_dims(diff[1:-1], -1)
-    diff_exp = cupy.broadcast_to(diff_mid, (diff_mid.shape[0], 2)).ravel()
-    diff_exp = cupy.r_[diff[0], diff_exp, diff[-1]]
-    diff_exp = cupy.reshape(diff_exp, (diff.size - 1, 2))
+    compute_symiirorder2_bwd_sc = _get_module_func(
+        SYMIIR2_MODULE, 'compute_symiirorder2_bwd_sc', cs)
 
-    diff = cupy.sum(diff_exp, -1)
-    err = diff * diff
+    diff = cupy.empty((block_sz,), dtype=cs.dtype)
+    all_valid = cupy.empty((block_sz,), dtype=cupy.bool_)
+    rev_input = input[::-1]
+    y0 = cupy.nan
 
-    cum_poly_y0 = cupy.cumsum(diff[:-1] * input[::-1])
-    all_valid = err <= precision
+    for i in range(0, input.size + 1, block_sz):
+        compute_symiirorder2_bwd_sc(
+            (1,), (block_sz,), (
+                input.size + 1, i, 0, 1, cs, cupy.asarray(rsq, cs.dtype),
+                cupy.asarray(omega, cs.dtype), precision, all_valid, diff))
 
-    y0 = _find_initial_cond(all_valid, cum_poly_y0, input.size)
+        input_slice = rev_input[i:i + block_sz]
+        cum_poly_y0 = cupy.cumsum(diff[:input_slice.size] * input_slice)
+        y0 = _find_initial_cond(all_valid, cum_poly_y0, input.size, i)
+        if not cupy.isnan(y0):
+            break
 
     if cupy.isnan(y0):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
-    diff_pos = cupy.c_[pos - 1, pos + 2][:-1]
-    diff = _compute_symiirorder2_bwd_hs(diff_pos, cs, rsq, omega)
-    diff = diff.sum(axis=-1)
-    err = diff * diff
+    y1 = cupy.nan
+    for i in range(0, input.size + 1, block_sz):
+        compute_symiirorder2_bwd_sc(
+            (1,), (block_sz,), (
+                input.size + 1, i, -1, 2, cs, cupy.asarray(rsq, cs.dtype),
+                cupy.asarray(omega, cs.dtype), precision, all_valid, diff))
 
-    cum_poly_y1 = cupy.cumsum(diff[:-1] * input[::-1])
-    all_valid = err <= precision
-
-    y1 = _find_initial_cond(all_valid, cum_poly_y1, input.size)
+        input_slice = rev_input[i:i + block_sz]
+        cum_poly_y1 = cupy.cumsum(diff[:input_slice.size] * input_slice)
+        y1 = _find_initial_cond(all_valid, cum_poly_y1, input.size, i)
+        if not cupy.isnan(y1):
+            break
 
     if cupy.isnan(y1):
         raise ValueError(
