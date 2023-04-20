@@ -20,47 +20,6 @@ SYMIIR2_KERNEL = SYMIIR2_KERNEL + r"""
 #include <cupy/carray.cuh>
 
 template<typename T>
-__device__ T _compute_symiirorder2_fwd_hc(
-        const int k, const T cs, const T r, const T omega) {
-    T base;
-
-    if(k < 0) {
-        return 0;
-    }
-
-    if(omega == 0.0) {
-        base = cs * pow(r, ((T) k)) * (k + 1);
-    } else if(omega == M_PI) {
-        base = cs * pow(r, ((T) k)) * (k + 1) * (1 - 2 * (k % 2))
-    } else {
-        base = (cs * pow(r, ((T) k)) * sin(omega * (k + 1)) /
-                sin(omega))
-    }
-    return base;
-}
-
-template<typename T>
-__global__ void compute_symiirorder2_fwd_sc(
-        const int n, const int off, const T* cs_ptr, const T* r_ptr,
-        const T* omega_ptr, const T precision, bool* valid, T* out) {
-
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx + off >= n) {
-        return;
-    }
-
-    const T cs = cs_ptr[0];
-    const T r = r_ptr[0];
-    const T omega = omega_ptr[0];
-
-    T val = _compute_symiirorder2_fwd_hc<T>(idx + off + 1, cs, r, omega);
-    T err = val * val;
-
-    out[idx] = val;
-    valid[idx] = err <= precision;
-}
-
-template<typename T>
 __device__ T _compute_symiirorder2_bwd_hs(
         const int ki, const T cs, const T rsq, const T omega) {
     T c0;
@@ -93,7 +52,7 @@ template<typename T>
 __global__ void compute_symiirorder2_bwd_sc(
         const int n, const int off, const int l_off, const int r_off,
         const T* cs_ptr, const T* rsq_ptr, const T* omega_ptr,
-        const T precision, bool* valid, T* out) {
+        const double precision, bool* valid, T* out) {
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx + off >= n) {
@@ -117,9 +76,7 @@ __global__ void compute_symiirorder2_bwd_sc(
 SYMIIR2_MODULE = cupy.RawModule(
     code=SYMIIR2_KERNEL, options=('-std=c++11',),
     name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
-                      for t in ['float', 'double']] +
-    [f'compute_symiirorder2_fwd_sc<{t}>'
-     for t in ['float', 'double']])
+                      for t in ['float', 'double']])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -285,23 +242,6 @@ def symiirorder2(input, r, omega, precision=-1.0):
     precision *= precision
 
     # First compute the symmetric forward starting conditions
-    compute_symiirorder2_fwd_sc = _get_module_func(
-        SYMIIR2_MODULE, 'compute_symiirorder2_fwd_sc', cs)
-
-    diff = cupy.empty((block_sz + 1,), dtype=cs.dtype)
-    all_valid = cupy.empty((block_sz + 1,), dtype=cupy.bool_)
-
-    starting_diff = cupy.arange(2, dtype=input.dtype)
-    starting_diff = _compute_symiirorder2_fwd_hc(starting_diff, cs, r, omega)
-
-    y0 = cupy.nan
-    y1 = cupy.nan
-
-    for i in range(2, input.size + 2, block_sz):
-        compute_symiirorder2_fwd_sc(
-            (1,), (block_sz + 1,), (
-                input.size + 2, i, cs, r, omega, precision, all_valid, diff))
-
     pos = cupy.arange(0, input.size + 2, dtype=input.dtype)
     diff = _compute_symiirorder2_fwd_hc(pos, cs, r, omega)
     err = diff * diff
@@ -345,7 +285,8 @@ def symiirorder2(input, r, omega, precision=-1.0):
 
         input_slice = rev_input[i:i + block_sz]
         cum_poly_y0 = cupy.cumsum(diff[:input_slice.size] * input_slice)
-        y0 = _find_initial_cond(all_valid, cum_poly_y0, input.size, i)
+        y0 = _find_initial_cond(
+            all_valid[:input_slice.size], cum_poly_y0, input.size, i)
         if not cupy.isnan(y0):
             break
 
@@ -362,7 +303,8 @@ def symiirorder2(input, r, omega, precision=-1.0):
 
         input_slice = rev_input[i:i + block_sz]
         cum_poly_y1 = cupy.cumsum(diff[:input_slice.size] * input_slice)
-        y1 = _find_initial_cond(all_valid, cum_poly_y1, input.size, i)
+        y1 = _find_initial_cond(
+            all_valid[:input_slice.size], cum_poly_y1, input.size, i)
         if not cupy.isnan(y1):
             break
 
