@@ -9,7 +9,6 @@ except ImportError:
     pass
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSphericalBessel:
 
