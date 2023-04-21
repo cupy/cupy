@@ -38,7 +38,6 @@ def _check_shares_memory(xp, sp, x, y):
     'n_cols': [25, 150]
 }))
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 class TestSetitemIndexing:
 
     def _run(self, maj, min=None, data=5):
@@ -380,7 +379,6 @@ _int_array_index = [
     ),
 }))
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 class TestSliceIndexing(IndexingTestBase):
 
     @testing.for_dtypes('fdFD')
@@ -449,7 +447,6 @@ def _check_bounds(indices, n_rows, n_cols, **kwargs):
     )
 }) if _check_bounds(**params)])
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 class TestArrayIndexing(IndexingTestBase):
 
     @skip_HIP_0_size_matrix()
@@ -505,7 +502,6 @@ class TestArrayIndexing(IndexingTestBase):
     ],
 }))
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 class TestBoolMaskIndexing(IndexingTestBase):
 
     n_rows = 3
@@ -554,7 +550,6 @@ class TestBoolMaskIndexing(IndexingTestBase):
     ],
 }))
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 class TestIndexingIndexError(IndexingTestBase):
 
     def test_indexing_index_error(self):
@@ -575,7 +570,6 @@ class TestIndexingIndexError(IndexingTestBase):
     ],
 }))
 @testing.with_requires('scipy>=1.4.0')
-@testing.gpu
 class TestIndexingValueError(IndexingTestBase):
 
     def test_indexing_value_error(self):

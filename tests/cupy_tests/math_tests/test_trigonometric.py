@@ -3,7 +3,6 @@ import unittest
 from cupy import testing
 
 
-@testing.gpu
 class TestTrigonometric(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -57,7 +56,6 @@ class TestTrigonometric(unittest.TestCase):
 
 
 @testing.with_requires('numpy>=1.21.0')
-@testing.gpu
 class TestUnwrap(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)

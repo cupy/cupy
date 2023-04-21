@@ -28,7 +28,6 @@ class TestPackageRequirements:
     'xp': [numpy, cupy],
     'shape': [(3, 2), (), (3, 0, 2)],
 }))
-@testing.gpu
 class TestShapedRandom(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -58,7 +57,6 @@ class TestShapedRandom(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'xp': [numpy, cupy],
 }))
-@testing.gpu
 class TestShapedRandomBool(unittest.TestCase):
 
     def test_bool(self):

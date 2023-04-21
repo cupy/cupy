@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 @testing.parameterize(
     {'shape': (10,), 'shift': 2, 'axis': None},
     {'shape': (5, 2), 'shift': 1, 'axis': None},
@@ -84,7 +83,6 @@ class TestRollValueError(unittest.TestCase):
                 xp.roll(x, shift, axis=self.axis)
 
 
-@testing.gpu
 class TestFliplr(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -107,7 +105,6 @@ class TestFliplr(unittest.TestCase):
                 xp.fliplr(x)
 
 
-@testing.gpu
 class TestFlipud(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -130,7 +127,6 @@ class TestFlipud(unittest.TestCase):
                 xp.flipud(x)
 
 
-@testing.gpu
 class TestFlip(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -215,7 +211,6 @@ class TestFlip(unittest.TestCase):
                 xp.flip(x, -3)
 
 
-@testing.gpu
 class TestRot90(unittest.TestCase):
 
     @testing.for_all_dtypes()

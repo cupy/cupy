@@ -7,6 +7,7 @@ from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
+from cupyx.scipy.signal._arraytools import axis_slice, axis_assign
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -688,22 +689,33 @@ def lfilter(b, a, x, axis=-1, zi=None):
     x_ndim = x.ndim
     axis = internal._normalize_axis_index(axis, x_ndim)
     n = x.shape[axis]
-
     fir_dtype = cupy.result_type(x, b)
 
+    prev_in = None
     prev_out = None
-    if zi is not None:
-        prev_in = cupy.take(zi, list(range(0, num_b)), axis=axis)
-        prev_out = cupy.take(zi, list(range(-num_a, 0)), axis=axis)
-        x = cupy.concatenate((prev_in, x), axis=axis)
+    pad_shape = list(x.shape)
+    pad_shape[axis] += num_b
 
+    x_full = cupy.zeros(pad_shape, dtype=x.dtype)
+    if zi is not None:
+        zi = cupy.atleast_1d(zi)
+        if num_b > 0:
+            prev_in = axis_slice(zi, 0, num_b, axis=axis)
+        if num_a > 0:
+            prev_out = axis_slice(
+                zi, zi.shape[axis] - num_a, zi.shape[axis], axis=axis)
+
+    if prev_in is not None:
+        x_full = axis_assign(x_full, prev_in, 0, num_b, axis=axis)
+
+    x_full = axis_assign(x_full, x, num_b, axis=axis)
     origin = -num_b // 2
-    out = cupy.empty_like(x, dtype=fir_dtype)
+    out = cupy.empty_like(x_full, dtype=fir_dtype)
     out = _filters.convolve1d(
-        x, b, axis=axis, mode='constant', origin=origin, output=out)
+        x_full, b, axis=axis, mode='constant', origin=origin, output=out)
 
-    if zi is not None:
-        out = cupy.take(out, list(range(-n, 0)), axis=axis)
+    if num_b > 0:
+        out = axis_slice(out, out.shape[axis] - n, out.shape[axis], axis=axis)
 
     if a_r.size > 0:
         iir_dtype = cupy.result_type(fir_dtype, a)
@@ -715,9 +727,17 @@ def lfilter(b, a, x, axis=-1, zi=None):
         out = apply_iir(out, a_r, axis=axis, zi=prev_out, dtype=iir_dtype)
 
     if zi is not None:
-        prev_in = cupy.take(x, list(range(-num_b, 0)), axis=axis)
-        prev_out = cupy.take(out, list(range(-num_a, 0)), axis=axis)
-        zi = cupy.concatenate((prev_in, prev_out), axis=axis)
+        zi = cupy.empty(zi.shape, dtype=out.dtype)
+        if num_b > 0:
+            prev_in = axis_slice(
+                x, x.shape[axis] - num_b, x.shape[axis], axis=axis)
+            zi = axis_assign(zi, prev_in, 0, num_b, axis=axis)
+        if num_a > 0:
+            prev_out = axis_slice(
+                out, out.shape[axis] - num_a, out.shape[axis], axis=axis)
+            zi = axis_assign(
+                zi, prev_out, zi.shape[axis] - num_a, zi.shape[axis],
+                axis=axis)
         return out, zi
     else:
         return out

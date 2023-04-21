@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestSort(unittest.TestCase):
 
     # Test ranks
@@ -201,7 +200,6 @@ class TestSort(unittest.TestCase):
         return xp.sort(a, axis=-1)
 
 
-@testing.gpu
 class TestLexsort(unittest.TestCase):
 
     # Test ranks
@@ -282,7 +280,6 @@ class TestLexsort(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'external': [False, True],
 }))
-@testing.gpu
 class TestArgsort(unittest.TestCase):
 
     def argsort(self, a, axis=-1):
@@ -422,7 +419,6 @@ class TestMsort(unittest.TestCase):
         return xp.msort(a)
 
 
-@testing.gpu
 class TestSort_complex(unittest.TestCase):
 
     def test_sort_complex_zero_dim(self):
@@ -455,7 +451,6 @@ class TestSort_complex(unittest.TestCase):
     'external': [False, True],
     'length': [10, 20000],
 }))
-@testing.gpu
 class TestPartition(unittest.TestCase):
 
     def partition(self, a, kth, axis=-1):
@@ -605,7 +600,6 @@ class TestPartition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'external': [False, True],
 }))
-@testing.gpu
 class TestArgpartition(unittest.TestCase):
 
     def argpartition(self, a, kth, axis=-1):

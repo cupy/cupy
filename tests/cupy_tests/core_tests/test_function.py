@@ -18,7 +18,6 @@ def _compile_func(kernel_name, code):
     return mod.get_function(kernel_name)
 
 
-@testing.gpu
 class TestFunction(unittest.TestCase):
 
     def test_python_scalar(self):

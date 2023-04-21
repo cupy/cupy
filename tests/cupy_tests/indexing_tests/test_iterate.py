@@ -8,7 +8,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestFlatiter(unittest.TestCase):
 
     def test_base(self):
@@ -62,7 +61,6 @@ class TestFlatiter(unittest.TestCase):
     {'shape': (), 'index': slice(None)},
     {'shape': (10,), 'index': slice(None)},
 )
-@testing.gpu
 class TestFlatiterSubscript(unittest.TestCase):
 
     @testing.for_CF_orders()
@@ -124,7 +122,6 @@ class TestFlatiterSubscript(unittest.TestCase):
     {'shape': (2, 3, 4), 'index': cupy.array([0])},
     {'shape': (2, 3, 4), 'index': [0]},
 )
-@testing.gpu
 class TestFlatiterSubscriptIndexError(unittest.TestCase):
 
     @testing.for_all_dtypes()

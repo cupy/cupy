@@ -6,7 +6,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestFormatting(unittest.TestCase):
 
     def test_array_repr(self):
