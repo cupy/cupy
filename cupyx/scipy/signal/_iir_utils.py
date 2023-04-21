@@ -197,6 +197,75 @@ __global__ void second_pass_iir(
     out_off[idx] += carry;
 }
 
+template<typename T>
+__global__ void first_pass_iir_sos(
+        const int m, const int k, const int n, const int n_blocks,
+        const int carries_stride, const T* factors, T* out,
+        T* carries) {
+    int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+
+    int num_row = blockIdx.x / n_blocks;
+    int idx = 2 * orig_idx + 1;
+
+    if(idx >= n) {
+        return;
+    }
+
+    int group_num = idx / m;
+    int group_pos = idx % m;
+
+    T* out_off = out + num_row * n;
+    T* carries_off = carries + num_row * carries_stride;
+
+    T* group_start = out_off + m * group_num;
+    T* group_carries = carries_off + k * group_num;
+
+    int pos = group_pos;
+    int up_bound = pos;
+    int low_bound = pos;
+    int rel_pos;
+
+    for(int level = 1, iter = 1; level < m; level *=2, iter++) {
+        int sz = min(pow(2.0f, ((float) iter)), ((float) m));
+
+        if(level > 1) {
+            int factor = ceil(pos / ((float) sz));
+            up_bound = sz * factor - 1;
+            low_bound = up_bound - level + 1;
+        }
+
+        if(level == 1) {
+            pos = low_bound;
+        }
+
+        if(pos < low_bound) {
+            pos += level / 2;
+        }
+
+        if(pos + m * group_num >= n) {
+            break;
+        }
+
+        rel_pos = pos % level;
+        T carry = 0.0;
+        for(int i = 1; i <= min(k, level); i++) {
+            T k_value = group_start[low_bound - i];
+            const T* k_factors = factors + (m + k) * (i - 1) + k;
+            T factor = k_factors[rel_pos];
+            carry += k_value * factor;
+        }
+
+        group_start[pos] += carry;
+        __syncthreads();
+    }
+
+    if(pos >= m - k) {
+        if(carries != NULL) {
+            group_carries[pos - (m - k)] = group_start[pos];
+        }
+    }
+
+}
 """
 
 IIR_MODULE = cupy.RawModule(
@@ -317,3 +386,36 @@ def apply_iir(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
             out = out.copy()
 
     return out
+
+
+def apply_iir_sos(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
+    if dtype is None:
+        dtype = cupy.result_type(x.dtype, a.dtype)
+
+    a = a.astype(dtype)
+
+    if zi is not None:
+        zi = zi.astype(dtype)
+
+    x_shape = x.shape
+    x_ndim = x.ndim
+    axis = _normalize_axis_index(axis, x_ndim)
+    k = a.size
+    n = x_shape[axis]
+
+    if x_ndim > 1:
+        x, x_shape = collapse_2d(x, axis)
+        if zi is not None:
+            zi, _ = collapse_2d(zi, axis)
+
+    out = cupy.array(x, dtype=dtype, copy=True)  # NOQA
+
+    num_rows = 1 if x.ndim == 1 else x.shape[0]
+    n_blocks = (n + block_sz - 1) // block_sz
+    total_blocks = num_rows * n_blocks  # NOQA
+
+    correction = cupy.eye(k, dtype=dtype)
+    correction = cupy.c_[
+        correction[::-1], cupy.empty((k, block_sz), dtype=dtype)]
+    carries = cupy.empty(  # NOQA
+        (num_rows, n_blocks, k), dtype=dtype)  # NOQA
