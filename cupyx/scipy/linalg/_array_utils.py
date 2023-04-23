@@ -3,8 +3,8 @@ from cupy.linalg import _util
 
 # Find the "bandwise position" of a nonzero cell
 _kernel_cupy_band_pos_c = cupy.ElementwiseKernel(
-    'T A, int64 r, int64 c',
-    'int64 out',
+    'T A, int32 r, int32 c',
+    'int32 out',
     'out = A != 0 ? r - c : 0',
     'cupyx_scipy_linalg_band_pos'
 )
