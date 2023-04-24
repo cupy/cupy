@@ -50,8 +50,7 @@ class TestZetac(unittest.TestCase):
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype):
-
-        if xp.dtype(dtype).kind == 'u' or 'i8':
+        if xp.dtype(dtype).kind in 'iu':
             pytest.skip()
         x = xp.array([-xp.inf, xp.nan, xp.inf]).astype(dtype)
         a = xp.tile(x, (3, 3))
