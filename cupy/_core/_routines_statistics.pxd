@@ -25,6 +25,8 @@ cpdef _ndarray_base _nanmean(_ndarray_base a, axis, dtype, out, keepdims)
 cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims)
 cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims)
 
-cpdef _ndarray_base _tmin(_ndarray_base a, limit , inclusive, propagate_nan,infinity,axis)
+
 cpdef _ndarray_base _nanargmin(_ndarray_base a, axis, out, dtype, keepdims)
 cpdef _ndarray_base _nanargmax(_ndarray_base a, axis, out, dtype, keepdims)
+cpdef _ndarray_base _tmin(
+    _ndarray_base a, limit, inclusive, propagate_nan, infinity, axis)

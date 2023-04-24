@@ -246,83 +246,75 @@ class TestZscore:
 
 @testing.with_requires('scipy')
 class TestTmin:
-    
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100]) 
-    def test_tmin_1dim(self, xp, scp, dtype,limit):
-        x = testing.shaped_random((10,), xp, dtype=dtype)
-        x=xp.where(x<limit,limit,x).astype(dtype)
-        return scp.stats.tmin(x, limit)
-    
-    @testing.for_all_dtypes( no_complex=True, no_bool=True)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100]) 
-    def test_tmin_1dim_ValueError(self, dtype,limit):
-        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
-            x = testing.shaped_random((10,), xp, dtype=dtype)
-            x=xp.where(x>=limit,limit-0.01,x).astype(dtype)
-            with pytest.raises(ValueError):
-                return scp.stats.tmin(x,limit)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100]) 
-    def test_tmin_2dim(self, xp, scp, dtype,limit):
-        
-        x = testing.shaped_random((5, 3), xp, dtype=dtype)
-        x=xp.where(x<limit,limit,x).astype(dtype)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])
+    def test_tmin_1dim(self, xp, scp, dtype, limit):
+        x = testing.shaped_random((10,), xp, dtype=dtype)
+        x = xp.where(x < limit, limit, x).astype(dtype)
         return scp.stats.tmin(x, limit)
-       
-            
+
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])  
-    def test_tmin_2dim_ValueError(self, dtype,limit):
-        
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])
+    def test_tmin_1dim_ValueError(self, dtype, limit):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
-            x = testing.shaped_random((5, 3), xp, dtype=dtype)
-            x=xp.where(x>=limit,limit-0.1,x).astype(dtype)
+            x = testing.shaped_random((10,), xp, dtype=dtype)
+            x = xp.where(x >= limit, limit-0.01, x).astype(dtype)
             with pytest.raises(ValueError):
                 return scp.stats.tmin(x, limit)
 
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])
+    def test_tmin_2dim(self, xp, scp, dtype, limit):
+
+        x = testing.shaped_random((5, 3), xp, dtype=dtype)
+        x = xp.where(x < limit, limit, x).astype(dtype)
+        return scp.stats.tmin(x, limit)
+
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])
+    def test_tmin_2dim_ValueError(self, dtype, limit):
+
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            x = testing.shaped_random((5, 3), xp, dtype=dtype)
+            x = xp.where(x >= limit, limit-0.1, x).astype(dtype)
+            with pytest.raises(ValueError):
+                return scp.stats.tmin(x, limit)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])    
-    def test_tmin_multi_dim(self, xp, scp, dtype,limit):
-        x = testing.shaped_random((3, 4,5, 2), xp, dtype=dtype)
-        x=xp.where(x<limit,limit,x).astype(dtype)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])
+    def test_tmin_multi_dim(self, xp, scp, dtype, limit):
+        x = testing.shaped_random((3, 4, 5, 2), xp, dtype=dtype)
+        x = xp.where(x < limit, limit, x).astype(dtype)
         return scp.stats.tmin(x, limit)
-            
-       
-    
-    @testing.for_all_dtypes(no_complex=True, no_bool=True) 
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])       
-    def test_tmin_multi_dim_ValueError_exclusive(self, dtype,limit):
-        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
-            x = testing.shaped_random((3, 4,5, 2), xp, dtype=dtype)
-            x=xp.where(x>=limit,limit,x).astype(dtype)
-            with pytest.raises(ValueError):
-                return scp.stats.tmin(x, 124,inclusive=False)
 
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100])
+    def test_tmin_multi_dim_ValueError_exclusive(self, dtype, limit):
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            x = testing.shaped_random((3, 4, 5, 2), xp, dtype=dtype)
+            x = xp.where(x >= limit, limit, x).astype(dtype)
+            with pytest.raises(ValueError):
+                return scp.stats.tmin(x, 124, inclusive=False)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
     @pytest.mark.parametrize('axis', [0, 1, 2, 3, -1, None])
-    def test_tmin_with_axis(self, xp, scp, dtype,axis):
+    def test_tmin_with_axis(self, xp, scp, dtype, axis):
         if xp.dtype(dtype).kind == 'u':
-                pytest.skip()
-        x = testing.shaped_random((5, 6,12,2), xp, dtype=dtype)
-        x=xp.where(x<54,54,x).astype(dtype)
-        return scp.stats.tmin(x, 54,axis=axis)
-    
- 
+            pytest.skip()
+        x = testing.shaped_random((5, 6, 12, 2), xp, dtype=dtype)
+        x = xp.where(x < 54, 54, x).astype(dtype)
+        return scp.stats.tmin(x, 54, axis=axis)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
     def test_tmin_with_lowerlimit_none(self, xp, scp, dtype):
         x = testing.shaped_random((5, 6), xp, dtype=dtype)
         return scp.stats.tmin(x)
-       
 
     @testing.for_all_dtypes()
     def test_tmin_empty(self, dtype):
@@ -332,112 +324,106 @@ class TestTmin:
                 return scp.stats.tmin(x, 2)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @pytest.mark.parametrize('limit', [22,25.5])
-    def test_tmin_without_inclusive(self, dtype,limit):
+    @pytest.mark.parametrize('limit', [22, 25.5])
+    def test_tmin_without_inclusive(self, dtype, limit):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             x = xp.array([[5, 4.8, 3, 2], [10, 8, 7, 22]], dtype=dtype)
             with pytest.raises(ValueError):
-                    return scp.stats.tmin(x,limit, inclusive=False)
-        
-            
+                return scp.stats.tmin(x, limit, inclusive=False)
+
     @testing.for_float_dtypes()
     def test_tmin_nan_policy_raise(self, dtype):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             x = xp.array([1, 2, 3, xp.nan], dtype=dtype)
             with pytest.raises(ValueError):
                 scp.stats.tmin(x, nan_policy='raise')
-                
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     def test_tmin_nan_policy_raise_2(self, dtype):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             x = xp.array([1, 2, 3, 1.2], dtype=dtype)
             with pytest.raises(ValueError):
-                return scp.stats.tmin(x, 3.2,nan_policy='raise')
+                return scp.stats.tmin(x, 3.2, nan_policy='raise')
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
-    def test_tmin_nan_policy_raise_3(self,xp, scp, dtype):
-            x = xp.array([1, 2, 3, 1.2], dtype=dtype)
-            return scp.stats.tmin(x, 2,nan_policy='raise')
-    
+    def test_tmin_nan_policy_raise_3(self, xp, scp, dtype):
+        x = xp.array([1, 2, 3, 1.2], dtype=dtype)
+        return scp.stats.tmin(x, 2, nan_policy='raise')
+
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=atol)
-    def test_tmin_nan_policy_omit_1(self,xp,scp,dtype):
-            x = xp.array([1.4, 2.1, 3, xp.nan], dtype=dtype)
-            return scp.stats.tmin(x, 1.4,nan_policy='omit')
+    def test_tmin_nan_policy_omit_1(self, xp, scp, dtype):
+        x = xp.array([1.4, 2.1, 3, xp.nan], dtype=dtype)
+        return scp.stats.tmin(x, 1.4, nan_policy='omit')
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     def test_tmin_nan_policy_omit_2(self, dtype):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             x = xp.array([1, 2, 3, 1.2], dtype=dtype)
             with pytest.raises(ValueError):
-                return scp.stats.tmin(x, 3.2,nan_policy='omit')
-    
+                return scp.stats.tmin(x, 3.2, nan_policy='omit')
+
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
     @pytest.mark.parametrize('limit', [102.778, 17, True, 100])
-    def test_tmin_nan_policy_omit_3(self, xp, scp, dtype,limit):
-            x = testing.shaped_random((5, 3), xp, dtype=dtype)
-            x=xp.where(x<limit,limit,x).astype(dtype)
-            return scp.stats.tmin(x, dtype(limit),nan_policy='omit')
-    
-    @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    def test_tmin_nan_inf_1(self,xp,scp, dtype):
-                x = xp.array([-xp.inf, xp.nan, xp.inf])
-                x = xp.tile(x, (3, 3))
-                return scp.stats.tmin(x,xp.inf)
+    def test_tmin_nan_policy_omit_3(self, xp, scp, dtype, limit):
+        x = testing.shaped_random((5, 3), xp, dtype=dtype)
+        x = xp.where(x < limit, limit, x).astype(dtype)
+        return scp.stats.tmin(x, dtype(limit), nan_policy='omit')
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100,None])
-    def test_tmin_nan_inf_2(self, xp, scp, dtype,limit):
-
-            x = xp.array([-xp.inf, xp.nan, xp.inf])
-            x = xp.tile(x, (3, 3))
-            return scp.stats.tmin(x,limit)
+    def test_tmin_nan_inf_1(self, xp, scp, dtype):
+        x = xp.array([-xp.inf, xp.nan, xp.inf])
+        x = xp.tile(x, (3, 3))
+        return scp.stats.tmin(x, xp.inf)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100,None])
-    def test_tmin_nan_inf_omit(self,xp,scp, dtype,limit):
-                x = xp.array([-xp.inf, xp.nan, xp.inf])
-                x = xp.tile(x, (3, 3))
-                return scp.stats.tmin(x,limit,nan_policy='omit')
-        
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100, None])
+    def test_tmin_nan_inf_2(self, xp, scp, dtype, limit):
+
+        x = xp.array([-xp.inf, xp.nan, xp.inf])
+        x = xp.tile(x, (3, 3))
+        return scp.stats.tmin(x, limit)
+
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
-    @pytest.mark.parametrize('limit', [3.2, 17, True, 100,None])
-    def test_tmin_nan_inf_raise(self, dtype,limit):
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100, None])
+    def test_tmin_nan_inf_omit(self, xp, scp, dtype, limit):
+        x = xp.array([-xp.inf, xp.nan, xp.inf])
+        x = xp.tile(x, (3, 3))
+        return scp.stats.tmin(x, limit, nan_policy='omit')
+
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @pytest.mark.parametrize('limit', [3.2, 17, True, 100, None])
+    def test_tmin_nan_inf_raise(self, dtype, limit):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             x = xp.array([-xp.inf, xp.nan, xp.inf])
             x = xp.tile(x, (3, 3))
             with pytest.raises(ValueError):
-                return scp.stats.tmin(x,limit,nan_policy='raise')
+                return scp.stats.tmin(x, limit, nan_policy='raise')
 
     @testing.for_dtypes('b')
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)     
-    @pytest.mark.parametrize('limit', [0, 1, True, False,None])
-    def test_tmin_bool(self,xp,scp,dtype,limit):
-        x=xp.array([True,False,True]).astype(dtype)
-        return scp.stats.tmin(x,limit)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=atol, rtol=rtol)
+    @pytest.mark.parametrize('limit', [0, 1, True, False, None])
+    def test_tmin_bool(self, xp, scp, dtype, limit):
+        x = xp.array([True, False, True]).astype(dtype)
+        return scp.stats.tmin(x, limit)
 
     @testing.for_dtypes('b')
-    @pytest.mark.parametrize('limit', [2,100,172.20])
-    def test_tmin_bool_2(self,dtype,limit):
+    @pytest.mark.parametrize('limit', [2, 100, 172.20])
+    def test_tmin_bool_2(self, dtype, limit):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
-            x=xp.array([True,False,True]).astype(dtype)
+            x = xp.array([True, False, True]).astype(dtype)
             with pytest.raises(ValueError):
-                return scp.stats.tmin(x,limit)
-            
+                return scp.stats.tmin(x, limit)
 
     @testing.for_dtypes('b')
     @pytest.mark.parametrize('limit', [1, True])
-    def test_tmin_bool_exclusive(self,dtype,limit):
+    def test_tmin_bool_exclusive(self, dtype, limit):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
-            x=xp.array([True,False,True]).astype(dtype)
+            x = xp.array([True, False, True]).astype(dtype)
             with pytest.raises(ValueError):
-                return scp.stats.tmin(x,limit,inclusive=False)
-
-    
-   
+                return scp.stats.tmin(x, limit, inclusive=False)
