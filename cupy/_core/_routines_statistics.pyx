@@ -608,12 +608,6 @@ __device__ double my_norm(const complex<double>& x) { return norm(x); }
 
 cdef _tmin_preamble = '''
 template <typename S>
-__device__ S my_tmin_omit(S a, S  b){
-if (b<0) return a;
-return min(a,b);
-}
-
-template <typename S>
 __device__ S my_tmin_propagate(S a, S b){
 if (a!=a) return a;
 if (b!=b) return b;
