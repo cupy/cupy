@@ -621,6 +621,7 @@ if (b!=b) return b;
 return min(a,b); 
 }
 '''
+
 cdef _var_core_float16 = ReductionKernel(
     'S x, T mean, float32 alpha', 'float16 out',
     'my_norm(x - mean)',
@@ -652,9 +653,9 @@ cdef _var_core_out = ReductionKernel(
 
 
 cdef _tmin_kernel_omit_inclusive =  ReductionKernel(
-        'S x1 , T limit',
+        'S x1 , T limit , S infinity ',
         'float64 out',
-        '(x1-limit)>=0 ? x1 : CUDART_INF',
+        '(limit-x1) <= 1e-4  ? x1 : infinity',
         'min(a,b)',
         'out=a',
         'CUDART_INF',
@@ -665,9 +666,9 @@ cdef _tmin_kernel_omit_inclusive =  ReductionKernel(
     )
 
 cdef _tmin_kernel_propagate_inclusive =  ReductionKernel(
-        'S x1 , T limit',
+        'S x1 , T limit , S infinity',
         'float64 out',
-        '(x1-limit)>=0 || x1!=x1 ? x1 : CUDART_INF',
+        '(limit-x1) <= 1e-4 || (limit-x1)!=(limit-x1) ? x1 : infinity',
         'my_tmin_propagate(a,b)',
         'out=a',
         'CUDART_INF',
@@ -677,9 +678,9 @@ cdef _tmin_kernel_propagate_inclusive =  ReductionKernel(
 
     )
 cdef _tmin_kernel_omit_exclusive =  ReductionKernel(
-        'S x1 , T limit',
+        'S x1 , T limit , S infinity',
         'float64 out',
-        '(x1-limit)>0 ? x1 : CUDART_INF',
+        '(limit-x1)<0 ? x1 : infinity',
         'min(a,b)',
         'out=a',
         'CUDART_INF',
@@ -690,9 +691,9 @@ cdef _tmin_kernel_omit_exclusive =  ReductionKernel(
     )
 
 cdef _tmin_kernel_propagate_exclusive =  ReductionKernel(
-        'S x1 , T limit',
+        'S x1 , T limit , S infinity ',
         'float64 out',
-        '(x1-limit)>0 || x1!=x1 ? x1 : CUDART_INF',
+        '(limit-x1)<0 || x1!=x1 ? x1 :infinity',
         'my_tmin_propagate(a,b)',
         'out=a',
         'CUDART_INF',
@@ -703,18 +704,21 @@ cdef _tmin_kernel_propagate_exclusive =  ReductionKernel(
     )
 
 
-cpdef _ndarray_base _tmin(_ndarray_base a, limit , inclusive, propagate_nan,axis):
+cpdef _ndarray_base _tmin(_ndarray_base a, limit , inclusive, propagate_nan,infinity,axis):
+    
+  
     if inclusive:
         if propagate_nan:
-            out=_tmin_kernel_propagate_inclusive(a,limit,axis=axis)
+            out=_tmin_kernel_propagate_inclusive(a,limit,infinity,axis=axis)
         else:
-            out=_tmin_kernel_omit_inclusive(a,limit,axis=axis)
+            out=_tmin_kernel_omit_inclusive(a,limit,infinity,axis=axis)
     else:
         if propagate_nan:
-            out=_tmin_kernel_propagate_exclusive(a,limit,axis=axis)
+            out=_tmin_kernel_propagate_exclusive(a,limit,infinity,axis=axis)
         else:
-            out=_tmin_kernel_omit_exclusive(a,limit,axis=axis)
-    return out.astype(a.dtype, copy=False)
+            out=_tmin_kernel_omit_exclusive(a,limit,infinity,axis=axis)
+    
+    return out
 
 
 # TODO(okuta) needs cast
