@@ -5,6 +5,12 @@ import cupy
 from cupy import testing
 from cupy.testing import numpy_cupy_allclose
 
+try:
+    import scipy.special  # NOQA
+except ImportError:
+    pass
+
+
 atol = {
     'default': 1e-6,
     cupy.float16: 1e-2,
