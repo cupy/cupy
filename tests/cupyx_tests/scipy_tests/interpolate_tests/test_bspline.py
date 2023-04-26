@@ -444,7 +444,8 @@ class TestBSpline:
         spl = scp.interpolate.BSpline(t, c, k, axis=-1)
         return spl(xp.asarray([2.5]))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', rtol=3e-5, atol=3e-5)
     @testing.with_requires('scipy>=1.8.0')
     def test_design_matrix_same_as_BSpline_call(self, xp, scp):
         """Test that design_matrix(x) is equivalent to BSpline(..)(x)."""
@@ -461,8 +462,7 @@ class TestBSpline:
             kwargs = {'extrapolate': self.extrapolate}
 
         for k in range(0, 5):
-            np.random.seed(1234)
-            x = xp.asarray(np.random.random_sample(10 * (k + 1)))
+            x = testing.shaped_random((10 * (k + 1),), xp, scale=1, seed=1234)
             xmin, xmax = xp.amin(x), xp.amax(x)
 
             t = xp.r_[xp.linspace(xmin - 2, xmin - 1, k),

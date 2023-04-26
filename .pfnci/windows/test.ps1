@@ -56,7 +56,11 @@ function Main {
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
-    ActivateCuDNN "8.6" $cuda
+    if ($cuda -eq "10.2") {
+        ActivateCuDNN "8.6" $cuda
+    } else {
+        ActivateCuDNN "8.8" $cuda
+    }
     ActivateNVTX1
     ActivatePython $python
 

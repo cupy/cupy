@@ -19,7 +19,6 @@ class NotificationTestBase:
         _ufunc_config.seterr(**old_config)
 
 
-@testing.gpu
 class TestNotifications(NotificationTestBase):
 
     def test_seterr_geterr(self):
@@ -50,7 +49,6 @@ class TestNotifications(NotificationTestBase):
 @testing.parameterize(
     {'func_name': 'get_include'},
 )
-@testing.gpu
 class TestNotificationModes(NotificationTestBase):
 
     @property
@@ -103,7 +101,6 @@ class TestNotificationModes(NotificationTestBase):
         _ufunc_config.seterr(**old)
 
 
-@testing.gpu
 class TestNotificationVectorize(NotificationTestBase):
 
     @test_utils.enable_slice_copy

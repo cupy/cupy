@@ -69,7 +69,6 @@ class TestSpecialMatricesBase(unittest.TestCase):
                  ((1,), (4, 5), (3, 6), (7, 2), (8, 9))],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecialMatrices(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
@@ -86,7 +85,6 @@ class TestSpecialMatrices(TestSpecialMatricesBase):
         'args': [((0,),), ((1,),), ((2,),), ((4,),), ((10,),), ((25,),)],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.3.0')
 class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
@@ -112,7 +110,6 @@ class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
                  ((4,), 6, 'full'), ((10,), 8, 'same'), ((25,), 25, 'valid')],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.5.0')
 class TestSpecialMatrices_1_5_0(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',

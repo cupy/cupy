@@ -5,7 +5,6 @@ from cupy.testing._array import assert_array_equal  # NOQA
 from cupy.testing._array import assert_array_less  # NOQA
 from cupy.testing._array import assert_array_list_equal  # NOQA
 from cupy.testing._array import assert_array_max_ulp  # NOQA
-from cupy.testing._attr import gpu  # NOQA
 from cupy.testing._attr import multi_gpu  # NOQA
 from cupy.testing._attr import slow  # NOQA
 from cupy.testing._helper import assert_warns  # NOQA

@@ -15,7 +15,6 @@ from cupy.testing import numpy_cupy_allclose
 rtol = {'default': 1e-5, cupy.float64: 1e-12, cupy.complex128: 1e-12}
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 class TestLegendreFunctions:
 
@@ -45,7 +44,6 @@ class TestLegendreFunctions:
         return scp.special.lpmv(order, degree, vals)
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 class TestBasic:
 

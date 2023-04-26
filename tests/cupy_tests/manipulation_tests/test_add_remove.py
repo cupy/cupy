@@ -7,7 +7,52 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
+class TestDelete(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_no_axis(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        indices = xp.array([0, 2, 4, 6, 8])
+
+        return xp.delete(arr, indices)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_axis_zero(self, xp):
+        arr = xp.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+        indices = xp.array([0, 2])
+
+        return xp.delete(arr, indices, axis=0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_axis_one(self, xp):
+        arr = xp.array([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        indices = xp.array([0, 2, 4])
+
+        return xp.delete(arr, indices, axis=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_indices_as_bool_array(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        indices = xp.array([True, False, True, False, True,
+                            False, True, False, True, False])
+
+        return xp.delete(arr, indices)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_indices_as_slice(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        indices = slice(None, None, 2)
+        return xp.delete(arr, indices)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_indices_as_int(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        indices = 5
+        if cupy.cuda.runtime.is_hip:
+            pytest.xfail('HIP may have a bug')
+        return xp.delete(arr, indices)
+
+
 class TestAppend(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
@@ -65,7 +110,6 @@ class TestAppend(unittest.TestCase):
         return xp.append(xp.array([]), xp.arange(10))
 
 
-@testing.gpu
 class TestResize(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -166,7 +210,6 @@ class TestUnique:
 @testing.parameterize(*testing.product({
     'trim': ['fb', 'f', 'b']
 }))
-@testing.gpu
 class TestTrim_zeros(unittest.TestCase):
 
     @testing.for_all_dtypes()

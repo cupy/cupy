@@ -7,7 +7,6 @@ from cupy import testing
 import cupyx
 
 
-@testing.gpu
 class TestRsqrt(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)

@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.13.*+cuda11.7' 'libnccl-dev=2.13.*+cuda11.7' 'libcutensor1=1.5.*' 'libcutensor-dev=1.5.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.6.*+cuda11.8' 'libcudnn8-dev=8.6.*+cuda11.8'
+            --allow-downgrades install 'libnccl2=2.13.*+cuda11.7' 'libnccl-dev=2.13.*+cuda11.7' 'libcutensor1=1.5.*' 'libcutensor-dev=1.5.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.7.*+cuda11.8' 'libcudnn8-dev=8.7.*+cuda11.8'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 

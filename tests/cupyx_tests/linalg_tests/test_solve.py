@@ -14,7 +14,6 @@ import cupyx
     'size': [5, 9, 17, 33],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
 @pytest.mark.xfail(runtime.is_hip,
                    reason='rocSOLVER does not implement potrs yet.')
 class TestInvh(unittest.TestCase):
@@ -49,9 +48,9 @@ class TestInvh(unittest.TestCase):
 }))
 class TestErrorInvh(unittest.TestCase):
 
-    @pytest.mark.xfail(
+    @pytest.mark.skipif(
         cupy.cuda.runtime.runtimeGetVersion() == 12000,
-        reason='See #7309. Possibly cuSOLVER bug in CUDA 12?')
+        reason='This fails with CUDA 12.0.0 but pass in CUDA 12.0.1. (#7309)')
     def test_invh(self):
         a = self._create_symmetric_matrix(self.size, self.dtype)
         with cupyx.errstate(linalg='raise'):
@@ -69,7 +68,6 @@ class TestErrorInvh(unittest.TestCase):
     'shape': [(2, 3, 3)],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
 class TestXFailBatchedInvh(unittest.TestCase):
 
     def test_invh(self):

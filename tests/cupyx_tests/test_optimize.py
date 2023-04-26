@@ -21,7 +21,6 @@ except ImportError:
     pass
 
 
-@testing.gpu
 @testing.with_requires('optuna')
 class TestOptimize(unittest.TestCase):
 
@@ -161,7 +160,6 @@ class TestOptimize(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'backend': ([], ['cub'])
 }))
-@testing.gpu
 @testing.with_requires('optuna')
 class TestOptimizeBackends(unittest.TestCase):
     """This class tests if optuna is in effect for create_reduction_func()"""

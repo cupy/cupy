@@ -18,21 +18,18 @@ else:
 @unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestNCCL(unittest.TestCase):
 
-    @testing.gpu
     def test_single_proc_ring(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
         assert 0 == comm.rank_id()
         comm.destroy()
 
-    @testing.gpu
     @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
     def test_abort(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)
         comm.abort()
 
-    @testing.gpu
     @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
     def test_check_async_error(self):
         id = nccl.get_unique_id()
@@ -40,7 +37,6 @@ class TestNCCL(unittest.TestCase):
         comm.check_async_error()
         comm.destroy()
 
-    @testing.gpu
     def test_init_all(self):
         comms = nccl.NcclCommunicator.initAll(1)
         for i, comm in enumerate(comms):
@@ -48,7 +44,6 @@ class TestNCCL(unittest.TestCase):
         for i, comm in enumerate(comms):
             comms[i].destroy()
 
-    @testing.gpu
     def test_single_proc_single_dev(self):
         comms = nccl.NcclCommunicator.initAll(1)
         nccl.groupStart()
@@ -62,7 +57,6 @@ class TestNCCL(unittest.TestCase):
         nccl.groupEnd()
         assert cupy.allclose(sendbuf, recvbuf)
 
-    @testing.gpu
     def test_comm_size(self):
         id = nccl.get_unique_id()
         comm = nccl.NcclCommunicator(1, id, 0)

@@ -99,7 +99,6 @@ def multi_gpu_config(gpu_configs=None):
     'shape': [(0,), (10, 0), (10,), (10, 10)],
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
-@testing.gpu
 class TestFft:
 
     @testing.for_all_dtypes()
@@ -136,7 +135,6 @@ class TestFft:
     'data_order': ['F', 'C'],
     'axis': [0, 1, -1],
 }))
-@testing.gpu
 class TestFftOrder:
 
     @testing.for_all_dtypes()
@@ -279,7 +277,6 @@ class TestMultiGpuFftOrder:
         return out
 
 
-@testing.gpu
 class TestDefaultPlanType:
 
     @nd_planning_states()
@@ -349,7 +346,6 @@ class TestDefaultPlanType:
 
 @pytest.mark.skipif(10010 <= cupy.cuda.runtime.runtimeGetVersion() <= 11010,
                     reason='avoid a cuFFT bug (cupy/cupy#3777)')
-@testing.gpu
 @testing.slow
 class TestFftAllocate:
 
@@ -400,7 +396,6 @@ class TestFftAllocate:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestFft2:
 
     @nd_planning_states()
@@ -477,7 +472,6 @@ class TestFft2:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestFftn:
 
     @nd_planning_states()
@@ -547,7 +541,6 @@ class TestFftn:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.gpu
 class TestPlanCtxManagerFftn:
 
     @pytest.fixture(autouse=True)
@@ -639,7 +632,6 @@ class TestPlanCtxManagerFftn:
     'shape': [(10,), ],
     'norm': [None, 'backward', 'ortho', 'forward'],
 }))
-@testing.gpu
 class TestPlanCtxManagerFft:
 
     @testing.for_complex_dtypes()
@@ -806,7 +798,6 @@ class TestMultiGpuPlanCtxManagerFft:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestFftnContiguity:
 
     @nd_planning_states([True])
@@ -853,7 +844,6 @@ class TestFftnContiguity:
     'shape': [(10,), (10, 10)],
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
-@testing.gpu
 class TestRfft:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -887,7 +877,6 @@ class TestRfft:
     'shape': [(10,)],
     'norm': [None, 'backward', 'ortho', 'forward'],
 }))
-@testing.gpu
 class TestPlanCtxManagerRfft:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -974,7 +963,6 @@ class TestPlanCtxManagerRfft:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestRfft2:
 
     @nd_planning_states()
@@ -1020,7 +1008,6 @@ class TestRfft2:
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
 )
-@testing.gpu
 class TestRfft2EmptyAxes:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -1061,7 +1048,6 @@ class TestRfft2EmptyAxes:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestRfftn:
 
     @nd_planning_states()
@@ -1126,7 +1112,6 @@ class TestRfftn:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestPlanCtxManagerRfftn:
 
     @pytest.fixture(autouse=True)
@@ -1204,7 +1189,6 @@ class TestPlanCtxManagerRfftn:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestRfftnContiguity:
 
     @nd_planning_states([True])
@@ -1251,7 +1235,6 @@ class TestRfftnContiguity:
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
 )
-@testing.gpu
 class TestRfftnEmptyAxes:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -1275,7 +1258,6 @@ class TestRfftnEmptyAxes:
     'shape': [(10,), (10, 10)],
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
-@testing.gpu
 class TestHfft:
 
     @testing.for_all_dtypes()
@@ -1308,7 +1290,6 @@ class TestHfft:
     {'n': 10, 'd': 0.5},
     {'n': 100, 'd': 2},
 )
-@testing.gpu
 class TestFftfreq:
 
     @testing.for_all_dtypes()
@@ -1335,7 +1316,6 @@ class TestFftfreq:
     {'shape': (10, 10), 'axes': 0},
     {'shape': (10, 10), 'axes': (0, 1)},
 )
-@testing.gpu
 class TestFftshift:
 
     @testing.for_all_dtypes()

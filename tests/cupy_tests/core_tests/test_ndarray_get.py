@@ -7,7 +7,6 @@ import numpy
 from numpy import testing as np_testing
 
 
-@testing.gpu
 class TestArrayGet(unittest.TestCase):
 
     def setUp(self):
@@ -66,7 +65,6 @@ class TestArrayGet(unittest.TestCase):
         np_testing.assert_array_equal(dst, expected)
 
 
-@testing.gpu
 class TestArrayGetWithOut(unittest.TestCase):
 
     def setUp(self):

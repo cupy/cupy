@@ -9,7 +9,6 @@ from cupy import cuda
 from cupy import testing
 
 
-@testing.gpu
 class TestBasic:
 
     @testing.for_all_dtypes()
@@ -188,7 +187,6 @@ class TestBasic:
     *testing.product(
         {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j],
          'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)]}))
-@testing.gpu
 class TestCopytoFromScalar:
 
     @testing.for_all_dtypes()
