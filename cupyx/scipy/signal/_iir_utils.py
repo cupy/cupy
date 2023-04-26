@@ -35,12 +35,15 @@ TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 
 
 if runtime.is_hip:
-    IIR_KERNEL = r"""#include <hip/hip_runtime.h>
+    IIR_KERNEL = r"""
+    #include <hip/hip_runtime.h>
+    #include <hip/hip_cooperative_groups.h>
 """
 else:
     IIR_KERNEL = r"""
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+#include <cooperative_groups.h>
 """
 
 IIR_KERNEL = IIR_KERNEL + r"""
@@ -201,10 +204,10 @@ template<typename U, typename T>
 __global__ void compute_correction_factors_sos(
         const int m, const T* f_const, U* all_out) {
 
-    extern __shared__ __align__(sizeof(T)) unsigned char bc_d[2];
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> bc_d[2];
     T* b_c = reinterpret_cast<T*>(bc_d);
 
-    extern __shared__ __align__(sizeof(U)) unsigned char off_d[4];
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> off_d[4];
     U* off_cache = reinterpret_cast<U*>(off_d);
 
     int idx = threadIdx.x;
@@ -238,12 +241,13 @@ __global__ void compute_correction_factors_sos(
     }
 }
 
+
 template<typename T>
 __global__ void first_pass_iir_sos(
         const int n_sections, const int m, const int n, const int n_blocks,
         const T* factors, T* out, T* carries) {
 
-    extern __shared__ __align__(sizeof(T)) unsigned char fc_d[2 * 8];
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fc_d);
 
     int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
@@ -259,19 +263,19 @@ __global__ void first_pass_iir_sos(
     int group_num = idx / m;
     int group_pos = idx % m;
     T* out_off = out + num_row * n;
-    T* carries_off = carries + num_row * n_blocks * n_sections * k;
+    T* carries_off = carries + num_row * n_blocks * k;
 
     T* group_start = out_off + m * group_num;
-    T* group_carries = carries_off + group_num * n_sections * k;
+    T* group_carries = carries_off + group_num * k;
 
     for(int s = 0; s < n_sections; s++) {
         const T* section_factors = factors + s * m * k;
-        T* section_carries = group_carries + s * k;
+        T* section_carries = group_carries;
 
-        factor_cache[idx] = section_factors[idx];
-        factor_cache[idx - 1] = section_factors[idx - 1];
-        factor_cache[m + idx] = section_factors[m + idx];
-        factor_cache[m + idx - 1] = section_factors[m + idx - 1];
+        factor_cache[group_pos] = section_factors[group_pos];
+        factor_cache[group_pos - 1] = section_factors[group_pos - 1];
+        factor_cache[m + group_pos] = section_factors[m + group_pos];
+        factor_cache[m + group_pos - 1] = section_factors[m + group_pos - 1];
         __syncthreads();
 
         int pos = group_pos;
@@ -296,20 +300,22 @@ __global__ void first_pass_iir_sos(
                 pos += level / 2;
             }
 
-            if(pos + m * group_num >= n) {
+            if(pos + m * group_num >= n && n_sections == 1) {
                 break;
             }
 
-            rel_pos = pos % level;
-            T carry = 0.0;
-            for(int i = 1; i <= min(k, level); i++) {
-                T k_value = group_start[low_bound - i];
-                const T* k_factors = factor_cache + m  * (i - 1);
-                T factor = k_factors[rel_pos];
-                carry += k_value * factor;
-            }
+            if(pos + m * group_num < n || n_sections > 1) {
+                rel_pos = pos % level;
+                T carry = 0.0;
+                for(int i = 1; i <= min(k, level); i++) {
+                    T k_value = group_start[low_bound - i];
+                    const T* k_factors = factor_cache + m  * (i - 1);
+                    T factor = k_factors[rel_pos];
+                    carry += k_value * factor;
+                }
 
-            group_start[pos] += carry;
+                group_start[pos] += carry;
+            }
             __syncthreads();
         }
 
@@ -321,7 +327,89 @@ __global__ void first_pass_iir_sos(
     }
 
 }
-"""
+
+template<typename T>
+__global__ void correct_carries_sos(
+    const int m, const int n_blocks, const int carries_stride,
+    const int offset, const T* factors, T* carries) {
+
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fcd3[4];
+    T* factor_cache = reinterpret_cast<T*>(fcd3);
+
+    int idx = threadIdx.x;
+    const int k = 2;
+    int pos = idx + (m - k);
+    T* row_carries = carries + carries_stride * blockIdx.x;
+
+    factor_cache[2 * idx] = factors[pos];
+    factor_cache[2 * idx + 1] = factors[m + pos];
+    __syncthreads();
+
+    for(int i = offset; i < n_blocks; i++) {
+        T* this_carries = row_carries + k * (i + (1 - offset));
+        T* prev_carries = row_carries + k * (i - offset);
+
+        T carry = 0.0;
+        for(int j = 1; j <= k; j++) {
+            // const T* k_factors = factors + m * (j - 1);
+            // T factor = k_factors[pos];
+            T factor = factor_cache[2 * idx + (j - 1)];
+            T k_value = prev_carries[k - j];
+            carry += factor * k_value;
+        }
+
+        this_carries[idx] += carry;
+        __syncthreads();
+    }
+}
+
+template<typename T>
+__global__ void second_pass_iir_sos(
+        const int m, const int n, const int carries_stride,
+        const int n_blocks, const int offset, const T* factors,
+        T* carries, T* out) {
+
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fcd2[2 * 1024];
+    T* factor_cache = reinterpret_cast<T*>(fcd2);
+
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> c_d[2];
+    T* carries_cache = reinterpret_cast<T*>(c_d);
+
+    int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    idx += offset * m;
+
+    int row_num = blockIdx.x / n_blocks;
+    int n_group = idx / m;
+    int pos = idx % m;
+    const int k = 2;
+
+    T* out_off = out + row_num * n;
+    T* carries_off = carries + row_num * carries_stride;
+    const T* prev_carries = carries_off + (n_group - offset) * k;
+
+    if(pos < k) {
+        carries_cache[pos] = prev_carries[pos];
+    }
+
+    if(idx >= n) {
+        return;
+    }
+
+    factor_cache[pos] = factors[pos];
+    factor_cache[pos + m] = factors[pos + m];
+    __syncthreads();
+
+    T carry = 0.0;
+    for(int i = 1; i <= k; i++) {
+        const T* k_factors = factor_cache + m * (i - 1);
+        T factor = k_factors[pos];
+        T k_value = carries_cache[k - i];
+        carry += factor * k_value;
+    }
+
+    out_off[idx] += carry;
+}
+"""  # NOQA
 
 IIR_MODULE = cupy.RawModule(
     code=IIR_KERNEL, options=('-std=c++11',),
@@ -332,7 +420,9 @@ IIR_MODULE = cupy.RawModule(
                      [f'second_pass_iir<{x}>' for x in TYPE_NAMES] +
                      [f'compute_correction_factors_sos<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
-                     [f'first_pass_iir_sos<{x}>' for x in TYPE_NAMES])
+                     [f'first_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
+                     [f'correct_carries_sos<{x}>' for x in TYPE_NAMES] +
+                     [f'second_pass_iir_sos<{x}>' for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -347,6 +437,15 @@ def collapse_2d(x, axis):
     x = cupy.moveaxis(x, axis, -1)
     x_shape = x.shape
     x = x.reshape(-1, x.shape[-1])
+    if not x.flags.c_contiguous:
+        x = x.copy()
+    return x, x_shape
+
+
+def collapse_2d_rest(x, axis):
+    x = cupy.moveaxis(x, axis + 1, -1)
+    x_shape = x.shape
+    x = x.reshape(x.shape[0], -1, x.shape[-1])
     if not x.flags.c_contiguous:
         x = x.copy()
     return x, x_shape
@@ -474,7 +573,7 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
     if x_ndim > 1:
         x, x_shape = collapse_2d(x, axis)
         if zi is not None:
-            zi, _ = collapse_2d(zi, axis)
+            zi, _ = collapse_2d_rest(zi, axis)
 
     out = cupy.array(x, dtype=dtype, copy=True)
 
@@ -483,10 +582,44 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
     total_blocks = num_rows * n_blocks
 
     correction = compute_correction_factors_sos(sos, block_sz, dtype)
-    print(correction)
     carries = cupy.empty(
-        (num_rows, n_blocks, n_sections, k), dtype=dtype)
+        (num_rows, n_blocks, k), dtype=dtype)
+    all_carries = carries
+    if zi is not None:
+        all_carries = cupy.empty(
+            (num_rows, n_blocks + 1, k), dtype=dtype)
+
     first_pass_kernel = _get_module_func(IIR_MODULE, 'first_pass_iir_sos', out)
-    first_pass_kernel((total_blocks,), (block_sz // 2,),
-                      (n_sections, block_sz, n, n_blocks,
-                       correction, out, carries))
+    second_pass_kernel = _get_module_func(
+        IIR_MODULE, 'second_pass_iir_sos', out)
+    carry_correction_kernel = _get_module_func(
+        IIR_MODULE, 'correct_carries_sos', out)
+
+    if n_blocks == 1 and zi is None:
+        first_pass_kernel((total_blocks,), (block_sz // 2,),
+                          (n_sections, block_sz, n, n_blocks,
+                           correction, out, carries))
+    else:
+        starting_group = int(zi is None)
+        blocks_to_merge = n_blocks - starting_group
+        carries_stride = (n_blocks + (1 - starting_group)) * k
+        for s in range(n_sections):
+            first_pass_kernel(
+                (total_blocks,), (block_sz // 2,),
+                (1, block_sz, n, n_blocks, correction[s], out, carries))
+
+            if zi is not None:
+                section_zi = zi[s]
+                all_carries[:, 0, :] = section_zi
+                all_carries[:, 1:, :] = carries
+
+            carry_correction_kernel(
+                (num_rows,), (k,),
+                (block_sz, n_blocks, carries_stride, starting_group,
+                    correction[s], all_carries))
+            second_pass_kernel(
+                (num_rows * blocks_to_merge,), (block_sz,),
+                (block_sz, n, carries_stride, blocks_to_merge,
+                    starting_group, correction[s], all_carries, out))
+
+    return out
