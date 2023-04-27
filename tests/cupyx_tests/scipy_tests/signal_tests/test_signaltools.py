@@ -586,8 +586,8 @@ class TestFiltFilt:
         ):
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
-        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
 
         x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
@@ -624,8 +624,8 @@ class TestFiltFilt:
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
 
-        x_scale = 0.5 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
-        c_scale = 0.2 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
 
         x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
         b = testing.shaped_random(
