@@ -232,7 +232,7 @@ __global__ void compute_correction_factors_sos(
     for(int i = 0; i < m; i++) {
         U acc = 0.0;
         for(int j = 0; j < k; j++) {
-            acc += ((U) b_c[j]) * this_cache[off_idx - j];
+            acc += -((U) b_c[j]) * this_cache[off_idx - j];
 
         }
         this_cache[0] = this_cache[1];
