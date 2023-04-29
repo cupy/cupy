@@ -562,3 +562,47 @@ class TestDeconvolve:
         b = testing.shaped_random((order,), xp, scale=0.3)
         o = scp.signal.convolve(x, b)
         return scp.signal.deconvolve(o, b)
+
+
+class TestDetrend:
+
+    def test_basic(self):
+        detrend = cupyx.scipy.signal.detrend
+
+        detrended = detrend(cupy.array([1, 2, 3]))
+        detrended_exact = cupy.array([0, 0, 0])
+        testing.assert_array_almost_equal(detrended, detrended_exact)
+
+    def test_copy(self):
+        x = cupy.array([1, 1.2, 1.5, 1.6, 2.4])
+        detrend = cupyx.scipy.signal.detrend
+
+        copy_array = detrend(x, overwrite_data=False)
+        inplace = detrend(x, overwrite_data=True)
+        testing.assert_array_almost_equal(copy_array, inplace)
+
+    @pytest.mark.parametrize('kind', ['linear', 'constant'])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    def test_axis(self, axis, kind):
+        detrend = cupyx.scipy.signal.detrend
+
+        data = cupy.arange(5*6*7).reshape(5, 6, 7)
+        detrended = detrend(data, type=kind, axis=axis)
+        assert detrended.shape == data.shape
+
+    def test_bp(self):
+        data = [0, 1, 2] + [5, 0, -5, -10]
+        detrend = cupyx.scipy.signal.detrend
+
+        detrended = detrend(data, type='linear', bp=3)
+        testing.assert_allclose(detrended, 0, atol=1e-14)
+
+        # repeat with ndim > 1 and axis
+        data = cupy.asarray(data)[None, :, None]
+
+        detrended = detrend(data, type="linear", bp=3, axis=1)
+        testing.assert_allclose(detrended, 0, atol=1e-14)
+
+        # breakpoint index > shape[axis]: raises
+        with pytest.raises(ValueError):
+            detrend(data, type="linear", bp=3)
