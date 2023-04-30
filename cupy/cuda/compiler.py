@@ -359,85 +359,6 @@ class CachedCudaModule:
         return mod
 
 
-class RestrictedUnpickler(pickle.Unpickler):
-    """An unpickler that only allow some safe classes."""
-
-    def find_class(self, module, name):
-        """Only allow a restricted set of classes."""
-        if module == __name__ and name == 'CachedModule':
-            return CachedModule
-        msg = "unpickling '{}.{}' is forbidden"
-        raise pickle.UnpicklingError(msg.format(module, name))
-
-    @classmethod
-    def loads(cls, s):
-        """Helper function analogous to pickle.loads()."""
-        return cls(io.BytesIO(s)).load()
-
-
-class CachedModule:
-    __slots__ = ['backend', 'binary', 'mapping']
-
-    def __init__(self, backend, binary, mapping):
-        self.backend = backend
-        self.binary = binary
-        self.mapping = mapping
-
-    @classmethod
-    def dump_module(cls, path, backend, binary, mapping):
-        """Build and dumps a CachedModule object to path."""
-        cached_module = cls(backend, binary, mapping)
-
-        data = pickle.dumps(cached_module, protocol=_pickle_protocol)
-
-        directory = os.path.dirname(path)
-        if not os.path.isdir(directory):
-            os.makedirs(directory, exist_ok=True)
-
-        # We use a temp file to handle concurrent processes caching
-        # to the same path at the same time.
-        with tempfile.NamedTemporaryFile(
-                dir=directory, delete=False, mode='wb') as tf:
-            tf.write(data)
-            temp_path = tf.name
-
-        # os.replace is an atomic operation
-        os.replace(src=temp_path, dst=path)
-
-    @classmethod
-    def load_module(cls, path, backend, name_expressions):
-        """Try to load a cached module, return None on failure."""
-        if not os.path.exists(path):
-            return None
-
-        with open(path, 'rb') as file:
-            data = file.read()
-
-        try:
-            cached_module = RestrictedUnpickler.loads(data)
-        except pickle.UnpicklingError:
-            return None
-
-        if not isinstance(cached_module, cls):
-            return None
-
-        if cached_module.backend != backend:
-            return None
-
-        mod = function.Module()
-
-        if (name_expressions is not None) and len(name_expressions) > 0:
-            mapping = cached_module.mapping
-            if (mapping is None):
-                return None
-            if set(name_expressions).difference(mapping.keys()):
-                return None
-            mod._set_mapping(mapping)
-
-        mod.load(cached_module.binary)
-        return mod
-
-
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
@@ -709,7 +630,7 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         path = os.path.join(cache_dir, name)
-        mod = CachedModule.load_module(path, backend, name_expressions)
+        mod = CachedCudaModule.load_module(path, backend, name_expressions)
         if (mod is not None):
             return mod
     else:
@@ -745,7 +666,7 @@ def _compile_with_cache_cuda(
         raise ValueError('Invalid backend %s' % backend)
 
     if not cache_in_memory:
-        CachedModule.dump_module(path, backend, cubin, mapping)
+        CachedCudaModule.dump_module(path, backend, cubin, mapping)
 
         # Save .cu source file along with .cubin
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
@@ -1027,7 +948,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         path = os.path.join(cache_dir, name)
-        mod = CachedModule.load_module(path, backend, name_expressions)
+        mod = CachedCudaModule.load_module(path, backend, name_expressions)
         if (mod is not None):
             return mod
     else:
