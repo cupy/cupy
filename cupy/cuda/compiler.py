@@ -285,8 +285,8 @@ class RestrictedUnpickler(pickle.Unpickler):
 
     def find_class(self, module, name):
         """Only allow a restricted set of classes."""
-        if module == __name__ and name == 'CachedModule':
-            return CachedModule
+        if module == __name__ and name == 'CachedCudaModule':
+            return CachedCudaModule
         msg = "unpickling '{}.{}' is forbidden"
         raise pickle.UnpicklingError(msg.format(module, name))
 
@@ -296,7 +296,7 @@ class RestrictedUnpickler(pickle.Unpickler):
         return cls(io.BytesIO(s)).load()
 
 
-class CachedModule:
+class CachedCudaModule:
     __slots__ = ['backend', 'binary', 'mapping']
 
     def __init__(self, backend, binary, mapping):
@@ -306,7 +306,7 @@ class CachedModule:
 
     @classmethod
     def dump_module(cls, path, backend, binary, mapping):
-        """Build and dumps a CachedModule object to path."""
+        """Build and dumps a CachedCudaModule object to path."""
         cached_module = cls(backend, binary, mapping)
 
         data = pickle.dumps(cached_module, protocol=_pickle_protocol)
@@ -357,6 +357,22 @@ class CachedModule:
 
         mod.load(cached_module.binary)
         return mod
+
+
+class RestrictedUnpickler(pickle.Unpickler):
+    """An unpickler that only allow some safe classes."""
+
+    def find_class(self, module, name):
+        """Only allow a restricted set of classes."""
+        if module == __name__ and name == 'CachedCudaModule':
+            return CachedCudaModule
+        msg = "'{}.{}' is forbidden and cannot be unpickled."
+        raise pickle.UnpicklingError(msg.format(module, name))
+
+    @classmethod
+    def loads(cls, s):
+        """Helper function analogous to pickle.loads()."""
+        return cls(io.BytesIO(s)).load()
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
@@ -629,8 +645,10 @@ def _compile_with_cache_cuda(
     name = _hash_hexdigest(key_str) + '.cubin'
 
     if not cache_in_memory:
+        # To handle conflicts in concurrent situation, we adopt lock-free
+        # method using a checksum to avoid performance degradation.
         path = os.path.join(cache_dir, name)
-        mod = CachedModule.load_module(path, backend, name_expressions)
+        mod = CachedCudaModule.load_module(path, backend, name_expressions)
         if (mod is not None):
             return mod
     else:
@@ -666,7 +684,7 @@ def _compile_with_cache_cuda(
         raise ValueError('Invalid backend %s' % backend)
 
     if not cache_in_memory:
-        CachedModule.dump_module(path, backend, cubin, mapping)
+        CachedCudaModule.dump_module(path, backend, cubin, mapping)
 
         # Save .cu source file along with .cubin
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
@@ -948,7 +966,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if not cache_in_memory:
         path = os.path.join(cache_dir, name)
-        mod = CachedModule.load_module(path, backend, name_expressions)
+        mod = CachedCudaModule.load_module(path, backend, name_expressions)
         if (mod is not None):
             return mod
     else:
@@ -969,7 +987,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         mapping = None
 
     if not cache_in_memory:
-        CachedModule.dump_module(path, backend, binary, mapping)
+        CachedCudaModule.dump_module(path, backend, binary, mapping)
 
         # Save .cu source file along with .hsaco
         if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
