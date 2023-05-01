@@ -45,7 +45,7 @@ class TestFirls:
 
         # design a halfband symmetric low-pass filter and check the frequency response
         h = scp.signal.firls(11, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
-        w, H = freqz(h, 1)
+        w, H = scp.signal.freqz(h, 1)
         return w, H
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -79,7 +79,8 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_3(self, xp, scp):
         # With linear changes:
-        taps = scp.signal.firls(7, (0, 1, 2, 3, 4, 5), [1, 0, 0, 1, 1, 0], fs=20)
+        taps = scp.signal.firls(7, (0, 1, 2, 3, 4, 5), [
+                                1, 0, 0, 1, 1, 0], fs=20)
         return taps
 
         # >> taps = firls(6, [0, 0.1, 0.2, 0.3, 0.4, 0.5], [1, 0, 0, 1, 1, 0])
