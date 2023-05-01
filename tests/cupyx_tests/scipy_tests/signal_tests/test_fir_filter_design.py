@@ -1,5 +1,5 @@
 import cupy
-from cupyx.scipy.signal import firls
+import cupyx.scipy.signal as signal
 from cupy import testing
 
 import pytest
@@ -10,6 +10,8 @@ from pytest import raises as assert_raises
 class TestFirls:
 
     def test_bad_args(self):
+        firls = signal.firls
+
         # even numtaps
         assert_raises(ValueError, firls, 10, [0.1, 0.2], [0, 0])
         # odd bands
@@ -28,23 +30,13 @@ class TestFirls:
         # negative weight
         assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
     def test_firls(self, xp, scp):
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
-
         # design a halfband symmetric low-pass filter
         h = scp.signal.firls(11, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
-
         return h
-
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_firls(self, xp, scp):
-        N = 11  # number of taps in the filter
-        a = 0.1  # width of the transition band
-
-        # design a halfband symmetric low-pass filter
-        h = scp.signal.firls(11, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_firls_freqz(self, xp, scp):
@@ -59,7 +51,7 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare(self, xp, scp):
         # compare to OCTAVE output
-        taps = firls(9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], [1, 2])
+        taps = scp.signal.firls(9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], [1, 2])
         return taps
 
   #      # >> taps = firls(8, [0 0.5 0.55 1], [1 1 0 0], [1, 2]);
@@ -73,7 +65,7 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_2(self, xp, scp):
         # compare to MATLAB output
-        taps = firls(11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], [1, 2])
+        taps = scp.signal.firls(11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], [1, 2])
         return taps
 
         # >> taps = firls(10, [0 0.5 0.5 1], [1 1 0 0], [1, 2]);
@@ -87,7 +79,7 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_3(self, xp, scp):
         # With linear changes:
-        taps = firls(7, (0, 1, 2, 3, 4, 5), [1, 0, 0, 1, 1, 0], fs=20)
+        taps = scp.signal.firls(7, (0, 1, 2, 3, 4, 5), [1, 0, 0, 1, 1, 0], fs=20)
         return taps
 
         # >> taps = firls(6, [0, 0.1, 0.2, 0.3, 0.4, 0.5], [1, 0, 0, 1, 1, 0])
@@ -100,8 +92,8 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rank_deficient(self, xp, scp):
         # solve() runs but warns (only sometimes, so here we don't use match)
-        x = firls(21, [0, 0.1, 0.9, 1], [1, 1, 0, 0])
-        w, h = freqz(x, fs=2.)
+        x = scp.signal.firls(21, [0, 0.1, 0.9, 1], [1, 1, 0, 0])
+        w, h = scp.signal.freqz(x, fs=2.)
         return x, w, h
 
 #        assert_allclose(np.abs(h[:2]), 1., atol=1e-5)
@@ -112,8 +104,8 @@ class TestFirls:
         # switch to pinvh (tolerances could be higher with longer
         # filters, but using shorter ones is faster computationally and
         # the idea is the same)
-        x = firls(101, [0, 0.01, 0.99, 1], [1, 1, 0, 0])
-        w, h = freqz(x, fs=2.)
+        x = scp.signal.firls(101, [0, 0.01, 0.99, 1], [1, 1, 0, 0])
+        w, h = scp.signal.freqz(x, fs=2.)
         return x, w, h
 
 #        mask = w < 0.01

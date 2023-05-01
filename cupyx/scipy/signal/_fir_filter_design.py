@@ -1,9 +1,9 @@
 """Functions for FIR filter design."""
 
 import warnings
-from cupy.linalg import solve, lstsq, LinAlgError, LinAlgWarning
+from cupy.linalg import solve, lstsq, LinAlgError
 from cupyx.scipy.linalg import toeplitz, hankel
-
+import cupyx
 
 import cupy
 
@@ -12,7 +12,7 @@ __all__ = ["firls"]
 
 # Scipy <= 1.12 has a deprecated `nyq` argument (nyq = fs/2).
 # Remove it here, to be forward-looking.
-def firls(numtaps, bands, desired, weight=None, fs=None):
+def firls(numtaps, bands, desired, weight=None, fs=2):
     """
     FIR filter design using least-squares error minimization.
 
@@ -144,16 +144,24 @@ def firls(numtaps, bands, desired, weight=None, fs=None):
     b = cupy.diff(b, axis=2)[:, :, 0] @ weight
 
     # Now we can solve the equation : XXX CuPy failure modes (?)
-    try:  # try the fast way
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
+    with cupyx.errstate(linalg="raise"):
+        try:
             a = solve(Q, b)
-        for ww in w:
-            if (ww.category == LinAlgWarning and
-                    str(ww.message).startswith('Ill-conditioned matrix')):
-                raise LinAlgError(str(ww.message))
-    except LinAlgError:  # in case Q is rank deficient
-        a = lstsq(Q, b)[0]
+        except LinAlgError:
+            # in case Q is rank deficient
+            a = lstsq(Q, b, rcond=None)[0]
+
+    # XXX: scipy.signal does this:
+    # try:  # try the fast way
+    #     with warnings.catch_warnings(record=True) as w:
+    #         warnings.simplefilter('always')
+    #         a = solve(Q, b)
+    #     for ww in w:
+    #         if (ww.category == LinAlgWarning and
+    #                 str(ww.message).startswith('Ill-conditioned matrix')):
+    #             raise LinAlgError(str(ww.message))
+    # except LinAlgError:  # in case Q is rank deficient
+    #     a = lstsq(Q, b)[0]
 
     # make coefficients symmetric (linear phase)
     coeffs = cupy.hstack((a[:0:-1], 2 * a[0], a[1:]))
