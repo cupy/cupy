@@ -913,14 +913,15 @@ def detrend(data, axis=-1, type='linear', bp=0, overwrite_data=False):
         if cupy.any(bp > N):
             raise ValueError("Breakpoints must be less than length "
                              "of data along given axis.")
-        Nreg = len(bp) - 1
+        bp = bp.tolist()
         # Restructure data so that axis is along first dimension and
         #  all other dimensions are collapsed into second dimension
         rnk = len(dshape)
         if axis < 0:
             axis = axis + rnk
-        newdims = tuple(cupy.r_[axis, 0:axis, axis + 1:rnk])
-        newdata = data.transpose(newdims).reshape(N, -1)
+        newdata = cupy.moveaxis(data, axis, 0)
+        newdata_shape = newdata.shape
+        newdata = newdata.reshape(N, -1)
 
         if not overwrite_data:
             newdata = newdata.copy()  # make sure we have a copy
@@ -928,20 +929,17 @@ def detrend(data, axis=-1, type='linear', bp=0, overwrite_data=False):
             newdata = newdata.astype(dtype)
 
         # Find leastsq fit and remove it for each piece
-        for m in range(Nreg):
+        for m in range(len(bp) - 1):
             Npts = bp[m + 1] - bp[m]
             A = cupy.ones((Npts, 2), dtype)
             A[:, 0] = cupy.arange(1, Npts + 1, dtype=dtype) / Npts
             sl = slice(bp[m], bp[m + 1])
-            coef, resids, rank, s = lstsq(A, newdata[sl])
+            coef, resids, rank, s = lstsq(A, newdata[sl], rcond=None)
             newdata[sl] = newdata[sl] - A @ coef
 
         # Put data back in original shape.
-        tdshape = cupy.take(dshape, newdims, 0)
-        ret = cupy.reshape(newdata, tuple(tdshape))
-        vals = list(range(1, rnk))
-        olddims = vals[:axis] + [0] + vals[axis:]
-        ret = cupy.transpose(ret, tuple(olddims))
+        newdata = newdata.reshape(newdata_shape)
+        ret = cupy.moveaxis(newdata, 0, axis)
         return ret
 
 

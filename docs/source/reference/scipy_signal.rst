@@ -35,7 +35,7 @@ Filtering
    symiirorder2
    savgol_filter
    deconvolve
-
+   detrend
 
 Filter design
 -------------

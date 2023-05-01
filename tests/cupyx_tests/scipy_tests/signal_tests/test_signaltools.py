@@ -568,7 +568,6 @@ class TestDetrend:
 
     def test_basic(self):
         detrend = cupyx.scipy.signal.detrend
-
         detrended = detrend(cupy.array([1, 2, 3]))
         detrended_exact = cupy.array([0, 0, 0])
         testing.assert_array_almost_equal(detrended, detrended_exact)
@@ -583,12 +582,13 @@ class TestDetrend:
 
     @pytest.mark.parametrize('kind', ['linear', 'constant'])
     @pytest.mark.parametrize('axis', [0, 1, 2])
-    def test_axis(self, axis, kind):
-        detrend = cupyx.scipy.signal.detrend
-
-        data = cupy.arange(5*6*7).reshape(5, 6, 7)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=4e-13)
+    def test_axis(self, axis, kind, xp, scp):
+        detrend = scp.signal.detrend
+        data = xp.arange(5*6*7).reshape(5, 6, 7)
         detrended = detrend(data, type=kind, axis=axis)
         assert detrended.shape == data.shape
+        return detrended
 
     def test_bp(self):
         data = [0, 1, 2] + [5, 0, -5, -10]
