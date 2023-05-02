@@ -955,9 +955,9 @@ def sosfilt(sos, x, axis=-1, zi=None):
         this axis.  Default is -1.
     zi : array_like, optional
         Initial conditions for the cascaded filter delays.  It is a (at
-        least 2D) vector of shape ``(n_sections, ..., 2, ...)``, where
-        ``..., 2, ...`` denotes the shape of `x`, but with ``x.shape[axis]``
-        replaced by 2.  If `zi` is None or is not given then initial rest
+        least 2D) vector of shape ``(n_sections, ..., 4, ...)``, where
+        ``..., 4, ...`` denotes the shape of `x`, but with ``x.shape[axis]``
+        replaced by 4.  If `zi` is None or is not given then initial rest
         (i.e. all zeros) is assumed.
         Note that these initial conditions are *not* the same as the initial
         conditions given by `lfiltic` or `lfilter_zi`.
@@ -976,32 +976,7 @@ def sosfilt(sos, x, axis=-1, zi=None):
     """
     x_ndim = x.ndim
     axis = internal._normalize_axis_index(axis, x_ndim)
-    n = x.shape[axis]
-    n_sections = sos.shape[0]
-    fir_dtype = cupy.result_type(x, sos)
+    out = x
 
-    prev_in = None
-    prev_out = None
-    pad_shape = list(x.shape)
-    pad_shape[axis] += 2
-
-    x_full = cupy.zeros(pad_shape, dtype=fir_dtype)
-    out = cupy.empty_like(x_full, dtype=fir_dtype)
-    if zi is not None:
-        zi = cupy.atleast_2d(zi)
-        prev_in = axis_slice(zi, 0, 2, axis=axis + 1)
-        prev_out = axis_slice(zi, 2, 4, axis=axis + 1)
-
-    x_full = axis_assign(x_full, x, 2, axis=axis)
-    origin = -1
-    for s in range(n_sections):
-        b = sos[s, :3]
-        if zi is not None:
-            x_full = axis_assign(x_full, prev_in[s], 0, 2, axis=axis)
-        out = _filters.convolve1d(
-            x_full, b, axis=axis, mode='constant', origin=origin, output=out)
-        x_full = out.copy()
-
-    out = axis_slice(out, out.shape[axis] - n, out.shape[axis], axis=axis)
-    out = apply_iir_sos(out, sos, axis, prev_out)
+    out = apply_iir_sos(out, sos, axis, zi)
     return out

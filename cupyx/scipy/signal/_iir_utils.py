@@ -35,18 +35,18 @@ TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 
 
 if runtime.is_hip:
-    IIR_KERNEL = r"""
+    IIR_KERNEL_BASE = r"""
     #include <hip/hip_runtime.h>
     #include <hip/hip_cooperative_groups.h>
 """
 else:
-    IIR_KERNEL = r"""
+    IIR_KERNEL_BASE = r"""
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cooperative_groups.h>
 """
 
-IIR_KERNEL = IIR_KERNEL + r"""
+IIR_KERNEL = IIR_KERNEL_BASE + r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
@@ -198,6 +198,33 @@ __global__ void second_pass_iir(
     }
 
     out_off[idx] += carry;
+}
+"""
+
+IIR_SOS_KERNEL = IIR_KERNEL_BASE + r"""
+#include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+
+template<typename T>
+__global__ void pick_carries(
+        const int m, const int n, const int carries_stride, const int n_blocks,
+        const int offset, T* x, T* carries) {
+
+    int idx = m * (blockIdx.x % n_blocks) + threadIdx.x + m - 2;
+    int pos = threadIdx.x;
+    int row_num = blockIdx.x / n_blocks;
+    int n_group = idx / m;
+
+    T* x_off = x + row_num * n;
+    T* carries_off = carries + row_num * carries_stride;
+    T* group_carries = carries_off + (n_group + (1 - offset)) * 2;
+
+    if(idx >= n) {
+        return;
+    }
+
+    group_carries[pos] = x_off[idx];
 }
 
 template<typename U, typename T>
@@ -409,6 +436,59 @@ __global__ void second_pass_iir_sos(
 
     out_off[idx] += carry;
 }
+
+template<typename T>
+__global__ void fir_sos(
+        const int m, const int n, const int carries_stride, const int n_blocks,
+        const int offset, const T* sos, T* carries, T* out) {
+
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fir_cc[1024 + 2];
+    T* fir_cache = reinterpret_cast<T*>(fir_cc);
+
+    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fir_b[3];
+    T* b = reinterpret_cast<T*>(fir_b);
+
+    int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    int row_num = blockIdx.x / n_blocks;
+    int n_group = idx / m;
+    int pos = idx % m;
+    const int k = 2;
+
+    T* out_off = out + row_num * n;
+    T* carries_off = carries + row_num * carries_stride;
+    T* this_carries = carries_off + k * (n_group + (1 - offset));
+    T* group_carries = carries_off + (n_group - offset) * k;
+
+    if(pos <= k) {
+        b[pos] = sos[pos];
+    }
+
+    if(idx >= n) {
+        return;
+    }
+
+    if(pos < k) {
+        if(offset && n_group == 0) {
+            fir_cache[pos] = 0;
+        } else {
+            fir_cache[pos] = group_carries[pos];
+        }
+    }
+
+    fir_cache[pos + k] = out[idx];
+    __syncthreads();
+
+    T acc = 0.0;
+    for(int i = k; i >= 0; i--) {
+        acc += fir_cache[pos + i] * b[k - i];
+    }
+
+    if(pos >= m - k) {
+        this_carries[pos - (m - k)] = acc;
+    }
+
+    out[idx] = acc;
+}
 """  # NOQA
 
 IIR_MODULE = cupy.RawModule(
@@ -417,12 +497,17 @@ IIR_MODULE = cupy.RawModule(
                       for x, y in TYPE_PAIR_NAMES] +
                      [f'correct_carries<{x}>' for x in TYPE_NAMES] +
                      [f'first_pass_iir<{x}>' for x in TYPE_NAMES] +
-                     [f'second_pass_iir<{x}>' for x in TYPE_NAMES] +
-                     [f'compute_correction_factors_sos<{x}, {y}>'
+                     [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
+
+IIR_SOS_MODULE = cupy.RawModule(
+    code=IIR_SOS_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'compute_correction_factors_sos<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
-                     [f'first_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
-                     [f'correct_carries_sos<{x}>' for x in TYPE_NAMES] +
-                     [f'second_pass_iir_sos<{x}>' for x in TYPE_NAMES])
+    [f'pick_carries<{x}>' for x in TYPE_NAMES] +
+    [f'correct_carries_sos<{x}>' for x in TYPE_NAMES] +
+    [f'first_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
+    [f'second_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
+    [f'fir_sos<{x}>' for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -549,7 +634,7 @@ def compute_correction_factors_sos(sos, block_sz, dtype):
     n_sections = sos.shape[0]
     correction = cupy.empty((n_sections, 2, block_sz), dtype=dtype)
     corr_kernel = _get_module_func(
-        IIR_MODULE, 'compute_correction_factors_sos', correction, sos)
+        IIR_SOS_MODULE, 'compute_correction_factors_sos', correction, sos)
     corr_kernel((n_sections,), (2,), (block_sz, sos, correction))
     return correction
 
@@ -589,27 +674,45 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
         all_carries = cupy.empty(
             (num_rows, n_blocks + 1, k), dtype=dtype)
 
-    first_pass_kernel = _get_module_func(IIR_MODULE, 'first_pass_iir_sos', out)
+    first_pass_kernel = _get_module_func(
+        IIR_SOS_MODULE, 'first_pass_iir_sos', out)
     second_pass_kernel = _get_module_func(
-        IIR_MODULE, 'second_pass_iir_sos', out)
+        IIR_SOS_MODULE, 'second_pass_iir_sos', out)
     carry_correction_kernel = _get_module_func(
-        IIR_MODULE, 'correct_carries_sos', out)
+        IIR_SOS_MODULE, 'correct_carries_sos', out)
+    fir_kernel = _get_module_func(IIR_SOS_MODULE, 'fir_sos', out)
+    carries_kernel = _get_module_func(IIR_SOS_MODULE, 'pick_carries', out)
+
+    starting_group = int(zi is None)
+    blocks_to_merge = n_blocks - starting_group
+    carries_stride = (n_blocks + (1 - starting_group)) * k
+
+    carries_kernel((num_rows * n_blocks,), (k,),
+                   (block_sz, n, carries_stride, n_blocks, starting_group,
+                    out, all_carries))
+
+    for s in range(n_sections):
+        b = sos[s]
+        if zi is not None:
+            section_zi = zi[s, :, :2]
+            all_carries[:, 0, :] = section_zi
+
+        fir_kernel((num_rows * n_blocks,), (block_sz,),
+                   (block_sz, n, carries_stride, n_blocks, starting_group,
+                    b, all_carries, out))
 
     if n_blocks == 1 and zi is None:
         first_pass_kernel((total_blocks,), (block_sz // 2,),
                           (n_sections, block_sz, n, n_blocks,
                            correction, out, carries))
     else:
-        starting_group = int(zi is None)
-        blocks_to_merge = n_blocks - starting_group
-        carries_stride = (n_blocks + (1 - starting_group)) * k
         for s in range(n_sections):
             first_pass_kernel(
                 (total_blocks,), (block_sz // 2,),
                 (1, block_sz, n, n_blocks, correction[s], out, carries))
 
             if zi is not None:
-                section_zi = zi[s]
+                section_zi = zi[s, :, 2:]
                 all_carries[:, 0, :] = section_zi
                 all_carries[:, 1:, :] = carries
 
