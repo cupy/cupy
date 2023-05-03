@@ -3,7 +3,7 @@ from math import sqrt, pi
 import cupy
 import cupyx.scipy.signal as signal
 from cupy import testing
-from cupy.testing import assert_array_almost_equal
+from cupy.testing import assert_array_almost_equal, assert_allclose
 
 import numpy as np
 
@@ -71,8 +71,8 @@ class TestFreqz:
     def test_plot(self):
 
         def plot(w, h):
-            assert_array_almost_equal(w, np.pi * np.arange(8.0) / 8)
-            assert_array_almost_equal(h, np.ones(8))
+            assert_array_almost_equal(w, pi * cupy.arange(8.0) / 8)
+            assert_array_almost_equal(h, cupy.ones(8))
 
         assert_raises(ZeroDivisionError, signal.freqz, [1.0], worN=8,
                       plot=lambda w, h: 1 / 0)
@@ -335,3 +335,103 @@ class TestFreqz:
         assert w.shape == (0,)
         assert h.shape == (0,)
         assert h.dtype == cupy.dtype('complex128')
+
+
+@testing.with_requires("scipy")
+class TestFreqz_zpk:
+
+    def test_ticket1441(self):
+        """Regression test for ticket 1441."""
+        # Because freqz previously used arange instead of linspace,
+        # when N was large, it would return one more point than
+        # requested.
+        N = 100000
+        w, h = signal.freqz_zpk([0.5], [0.5], 1.0, worN=N)
+        assert w.shape == (N,)
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        w, h = scp.signal.freqz_zpk([0.5], [0.5], 1.0, worN=8)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic_whole(self, xp, scp):
+        w, h = scp.signal.freqz_zpk([0.5], [0.5], 1.0, worN=8, whole=True)
+        return w, h
+
+    @pytest.mark.xfail(reason="implement cheby1")
+    def test_vs_freqz(self):
+        b, a = cheby1(4, 5, 0.5, analog=False, output='ba')
+        z, p, k = cheby1(4, 5, 0.5, analog=False, output='zpk')
+
+        w1, h1 = freqz(b, a)
+        w2, h2 = signal.freqz_zpk(z, p, k)
+        assert_allclose(w1, w2)
+        assert_allclose(h1, h2, rtol=1e-6)
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_backward_compat(self, xp, scp):
+        # For backward compatibility, test if None act as a wrapper for default
+        w1, h1 = scp.signal.freqz_zpk([0.5], [0.5], 1.0)
+        w2, h2 = scp.signal.freqz_zpk([0.5], [0.5], 1.0, None)
+        return w1, h1, w2, h2
+
+    def test_fs_param(self):
+        fs = 900
+        z = [-1, -1, -1]
+        p = [0.4747869998473389+0.4752230717749344j, 0.37256600288916636,
+             0.4747869998473389-0.4752230717749344j]
+        k = 0.03934683014103762
+
+        # N = None, whole=False
+        w1, h1 = signal.freqz_zpk(z, p, k, whole=False, fs=fs)
+        w2, h2 = signal.freqz_zpk(z, p, k, whole=False)
+        assert_allclose(h1, h2)
+        assert_allclose(w1, cupy.linspace(0, fs/2, 512, endpoint=False))
+
+        # N = None, whole=True
+        w1, h1 = signal.freqz_zpk(z, p, k, whole=True, fs=fs)
+        w2, h2 = signal.freqz_zpk(z, p, k, whole=True)
+        assert_allclose(h1, h2)
+        assert_allclose(w1, cupy.linspace(0, fs, 512, endpoint=False))
+
+        # N = 5, whole=False
+        w1, h1 = signal.freqz_zpk(z, p, k, 5, fs=fs)
+        w2, h2 = signal.freqz_zpk(z, p, k, 5)
+        assert_allclose(h1, h2)
+        assert_allclose(w1, cupy.linspace(0, fs/2, 5, endpoint=False))
+
+        # N = 5, whole=True
+        w1, h1 = signal.freqz_zpk(z, p, k, 5, whole=True, fs=fs)
+        w2, h2 = signal.freqz_zpk(z, p, k, 5, whole=True)
+        assert_allclose(h1, h2)
+        assert_allclose(w1, cupy.linspace(0, fs, 5, endpoint=False))
+
+        # w is an array_like
+        for w in ([123], (123,), cupy.array([123]), (50, 123, 230),
+                  cupy.array([50, 123, 230])):
+            w1, h1 = signal.freqz_zpk(z, p, k, w, fs=fs)
+            w2, h2 = signal.freqz_zpk(z, p, k, 2*pi*cupy.array(w)/fs)
+            assert_allclose(h1, h2)
+            assert_allclose(w, w1)
+
+    def test_w_or_N_types(self):
+        # Measure at 8 equally-spaced points
+        for N in (8, cupy.int8(8), cupy.int16(8), cupy.int32(8), cupy.int64(8),
+                  cupy.array(8)):
+
+            w, h = signal.freqz_zpk([], [], 1, worN=N)
+            assert_array_almost_equal(w, pi * cupy.arange(8) / 8.)
+            assert_array_almost_equal(h, cupy.ones(8))
+
+            w, h = signal.freqz_zpk([], [], 1, worN=N, fs=100)
+            assert_array_almost_equal(
+                w, cupy.linspace(0, 50, 8, endpoint=False))
+            assert_array_almost_equal(h, cupy.ones(8))
+
+        # Measure at frequency 8 Hz
+        for w in (8.0, 8.0+0j):
+            # Only makes sense when fs is specified
+            w_out, h = signal.freqz_zpk([], [], 1, worN=w, fs=100)
+            assert_array_almost_equal(w_out, [8])
+            assert_array_almost_equal(h, [1])
