@@ -274,6 +274,7 @@ __global__ void first_pass_iir_sos(
         const int n_sections, const int m, const int n, const int n_blocks,
         const T* factors, T* out, T* carries) {
 
+    extern __shared__ unsigned int thread_status[2];
     extern __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fc_d);
 
@@ -475,7 +476,7 @@ __global__ void fir_sos(
         }
     }
 
-    fir_cache[pos + k] = out[idx];
+    fir_cache[pos + k] = out_off[idx];
     __syncthreads();
 
     T acc = 0.0;
@@ -487,7 +488,7 @@ __global__ void fir_sos(
         this_carries[pos - (m - k)] = acc;
     }
 
-    out[idx] = acc;
+    out_off[idx] = acc;
 }
 """  # NOQA
 
@@ -701,16 +702,12 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
                    (block_sz, n, carries_stride, n_blocks, starting_group,
                     b, all_carries, out))
 
-    if n_blocks == 1 and zi is None:
-        first_pass_kernel((total_blocks,), (block_sz // 2,),
-                          (n_sections, block_sz, n, n_blocks,
-                           correction, out, carries))
-    else:
-        for s in range(n_sections):
-            first_pass_kernel(
-                (total_blocks,), (block_sz // 2,),
-                (1, block_sz, n, n_blocks, correction[s], out, carries))
+    for s in range(n_sections):
+        first_pass_kernel(
+            (total_blocks,), (block_sz // 2,),
+            (1, block_sz, n, n_blocks, correction[s], out, carries))
 
+        if n_blocks > 1 or zi is not None:
             if zi is not None:
                 section_zi = zi[s, :, 2:]
                 all_carries[:, 0, :] = section_zi
@@ -724,5 +721,11 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
                 (num_rows * blocks_to_merge,), (block_sz,),
                 (block_sz, n, carries_stride, blocks_to_merge,
                     starting_group, correction[s], all_carries, out))
+
+    if x_ndim > 1:
+        out = out.reshape(x_shape)
+        out = cupy.moveaxis(out, -1, axis)
+        if not out.flags.c_contiguous:
+            out = out.copy()
 
     return out
