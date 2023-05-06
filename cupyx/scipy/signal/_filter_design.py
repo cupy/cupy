@@ -2,9 +2,8 @@ import operator
 from math import pi
 
 import cupy
+from cupy.polynomial.polynomial import polyval as npp_polyval, polyvalfromroots as npp_polyvalfromroots
 import cupyx.scipy.fft as sp_fft
-
-from ._nppoly import polyval as npp_polyval, polyvalfromroots as npp_polyvalfromroots
 
 
 def _try_convert_to_int(x):
