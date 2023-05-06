@@ -58,5 +58,6 @@ from cupyx.scipy.signal._iir_filter_design import ellip  # NOQA
 from cupyx.scipy.signal._fir_filter_design import firls  # NOQA
 from cupyx.scipy.signal._filter_design import freqz  # NOQA
 from cupyx.scipy.signal._filter_design import freqz_zpk  # NOQA
+from cupyx.scipy.signal._filter_design import sosfreqz  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
