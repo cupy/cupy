@@ -43,4 +43,6 @@ Filter design
 .. autosummary::
    :toctree: generated/
 
+   bilinear
+   bilinear_zpk
    savgol_coeffs
