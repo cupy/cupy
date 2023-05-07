@@ -276,3 +276,269 @@ def bilinear(b, a, fs=1.0):
         aprime[j] = cupy.real(val)
 
     return normalize(bprime, aprime)
+
+
+def lp2lp(b, a, wo=1.0):
+    r"""
+    Transform a lowpass filter prototype to a different frequency.
+
+    Return an analog low-pass filter with cutoff frequency `wo`
+    from an analog low-pass filter prototype with unity cutoff frequency, in
+    transfer function ('ba') representation.
+
+    Parameters
+    ----------
+    b : array_like
+        Numerator polynomial coefficients.
+    a : array_like
+        Denominator polynomial coefficients.
+    wo : float
+        Desired cutoff, as angular frequency (e.g. rad/s).
+        Defaults to no change.
+
+    Returns
+    -------
+    b : array_like
+        Numerator polynomial coefficients of the transformed low-pass filter.
+    a : array_like
+        Denominator polynomial coefficients of the transformed low-pass filter.
+
+    See Also
+    --------
+    lp2hp, lp2bp, lp2bs, bilinear
+    lp2lp_zpk
+    scipy.signal.lp2lp
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{s}{\omega_0}
+
+    """
+    a, b = map(cupy.atleast_1d, (a, b))
+    try:
+        wo = float(wo)
+    except TypeError:
+        wo = float(wo[0])
+    d = len(a)
+    n = len(b)
+    M = max(d, n)
+    pwo = wo ** cupy.arange(M - 1, -1, -1)
+    start1 = max((n - d, 0))
+    start2 = max((d - n, 0))
+    b = b * pwo[start1] / pwo[start2:]
+    a = a * pwo[start1] / pwo[start1:]
+    return normalize(b, a)
+
+
+def lp2hp(b, a, wo=1.0):
+    r"""
+    Transform a lowpass filter prototype to a highpass filter.
+
+    Return an analog high-pass filter with cutoff frequency `wo`
+    from an analog low-pass filter prototype with unity cutoff frequency, in
+    transfer function ('ba') representation.
+
+    Parameters
+    ----------
+    b : array_like
+        Numerator polynomial coefficients.
+    a : array_like
+        Denominator polynomial coefficients.
+    wo : float
+        Desired cutoff, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+
+    Returns
+    -------
+    b : array_like
+        Numerator polynomial coefficients of the transformed high-pass filter.
+    a : array_like
+        Denominator polynomial coefficients of the transformed high-pass filter.
+
+    See Also
+    --------
+    lp2lp, lp2bp, lp2bs, bilinear
+    lp2hp_zpk
+    scipy.signal.lp2hp
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{\omega_0}{s}
+
+    This maintains symmetry of the lowpass and highpass responses on a
+    logarithmic scale.
+    """
+    a, b = map(cupy.atleast_1d, (a, b))
+    try:
+        wo = float(wo)
+    except TypeError:
+        wo = float(wo[0])
+    d = len(a)
+    n = len(b)
+    if wo != 1:
+        pwo = wo ** cupy.arange(max(d, n))
+    else:
+        pwo = numpy.ones(max(d, n), b.dtype)
+    if d >= n:
+        outa = a[::-1] * pwo
+        outb = cupy.resize(b, (d,))
+        outb[n:] = 0.0
+        outb[:n] = b[::-1] * pwo[:n]
+    else:
+        outb = b[::-1] * pwo
+        outa = cupy.resize(a, (n,))
+        outa[d:] = 0.0
+        outa[:d] = a[::-1] * pwo[:d]
+
+    return normalize(outb, outa)
+
+
+def lp2bp(b, a, wo=1.0, bw=1.0):
+    r"""
+    Transform a lowpass filter prototype to a bandpass filter.
+
+    Return an analog band-pass filter with center frequency `wo` and
+    bandwidth `bw` from an analog low-pass filter prototype with unity
+    cutoff frequency, in transfer function ('ba') representation.
+
+    Parameters
+    ----------
+    b : array_like
+        Numerator polynomial coefficients.
+    a : array_like
+        Denominator polynomial coefficients.
+    wo : float
+        Desired passband center, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+    bw : float
+        Desired passband width, as angular frequency (e.g., rad/s).
+        Defaults to 1.
+
+    Returns
+    -------
+    b : array_like
+        Numerator polynomial coefficients of the transformed band-pass filter.
+    a : array_like
+        Denominator polynomial coefficients of the transformed band-pass filter.
+
+    See Also
+    --------
+    lp2lp, lp2hp, lp2bs, bilinear
+    lp2bp_zpk
+    scipy.signal.lp2bp
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{s^2 + {\omega_0}^2}{s \cdot \mathrm{BW}}
+
+    This is the "wideband" transformation, producing a passband with
+    geometric (log frequency) symmetry about `wo`.
+
+    """
+    a, b = map(cupy.atleast_1d, (a, b))
+    D = len(a) - 1
+    N = len(b) - 1
+    artype = cupy.mintypecode((a.dtype, b.dtype))
+    ma = max(N, D)
+    Np = N + ma
+    Dp = D + ma
+    bprime = cupy.empty(Np + 1, artype)
+    aprime = cupy.empty(Dp + 1, artype)
+    wosq = wo * wo
+    for j in range(Np + 1):
+        val = 0.0
+        for i in range(0, N + 1):
+            for k in range(0, i + 1):
+                if ma - i + 2 * k == j:
+                    val += comb(i, k) * b[N - i] * (wosq) ** (i - k) / bw ** i
+        bprime[Np - j] = val
+
+    for j in range(Dp + 1):
+        val = 0.0
+        for i in range(0, D + 1):
+            for k in range(0, i + 1):
+                if ma - i + 2 * k == j:
+                    val += comb(i, k) * a[D - i] * (wosq) ** (i - k) / bw ** i
+        aprime[Dp - j] = val
+
+    return normalize(bprime, aprime)
+
+
+def lp2bs(b, a, wo=1.0, bw=1.0):
+    r"""
+    Transform a lowpass filter prototype to a bandstop filter.
+
+    Return an analog band-stop filter with center frequency `wo` and
+    bandwidth `bw` from an analog low-pass filter prototype with unity
+    cutoff frequency, in transfer function ('ba') representation.
+
+    Parameters
+    ----------
+    b : array_like
+        Numerator polynomial coefficients.
+    a : array_like
+        Denominator polynomial coefficients.
+    wo : float
+        Desired stopband center, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+    bw : float
+        Desired stopband width, as angular frequency (e.g., rad/s).
+        Defaults to 1.
+
+    Returns
+    -------
+    b : array_like
+        Numerator polynomial coefficients of the transformed band-stop filter.
+    a : array_like
+        Denominator polynomial coefficients of the transformed band-stop filter.
+
+    See Also
+    --------
+    lp2lp, lp2hp, lp2bp, bilinear
+    lp2bs_zpk
+    scipy.signal.lp2bs
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{s \cdot \mathrm{BW}}{s^2 + {\omega_0}^2}
+
+    This is the "wideband" transformation, producing a stopband with
+    geometric (log frequency) symmetry about `wo`.
+    """
+    a, b = map(cupy.atleast_1d, (a, b))
+    D = len(a) - 1
+    N = len(b) - 1
+    artype = cupy.mintypecode((a.dtype, b.dtype))
+    M = max(N, D)
+    Np = M + M
+    Dp = M + M
+    bprime = cupy.empty(Np + 1, artype)
+    aprime = cupy.empty(Dp + 1, artype)
+    wosq = wo * wo
+    for j in range(Np + 1):
+        val = 0.0
+        for i in range(0, N + 1):
+            for k in range(0, M - i + 1):
+                if i + 2 * k == j:
+                    val += (comb(M - i, k) * b[N - i] *
+                            (wosq) ** (M - i - k) * bw ** i)
+        bprime[Np - j] = val
+
+    for j in range(Dp + 1):
+        val = 0.0
+        for i in range(0, D + 1):
+            for k in range(0, M - i + 1):
+                if i + 2 * k == j:
+                    val += (comb(M - i, k) * a[D - i] *
+                            (wosq) ** (M - i - k) * bw ** i)
+        aprime[Dp - j] = val
+
+    return normalize(bprime, aprime)
