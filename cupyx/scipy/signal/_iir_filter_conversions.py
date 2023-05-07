@@ -3,6 +3,7 @@
 Split off _filter_design.py
 """
 import warnings
+from math import pi
 
 import cupy
 from cupyx.scipy.special import binom as comb
@@ -829,3 +830,108 @@ def lp2bs(b, a, wo=1.0, bw=1.0):
         aprime[Dp - j] = val
 
     return normalize(bprime, aprime)
+
+
+# ### Low-level analog filter prototypes ###
+
+# TODO (ev-br): move to a better place (_filter_design.py (?))
+
+def buttap(N):
+    """Return (z,p,k) for analog prototype of Nth-order Butterworth filter.
+
+    The filter will have an angular (e.g., rad/s) cutoff frequency of 1.
+
+    See Also
+    --------
+    butter : Filter design function using this prototype
+    scipy.signal.buttap
+
+    """
+    if abs(int(N)) != N:
+        raise ValueError("Filter order must be a nonnegative integer")
+    z = cupy.array([])
+    m = cupy.arange(-N+1, N, 2)
+    # Middle value is 0 to ensure an exactly real pole
+    p = -cupy.exp(1j * pi * m / (2 * N))
+    k = 1
+    return z, p, k
+
+
+def cheb1ap(N, rp):
+    """
+    Return (z,p,k) for Nth-order Chebyshev type I analog lowpass filter.
+
+    The returned filter prototype has `rp` decibels of ripple in the passband.
+
+    The filter's angular (e.g. rad/s) cutoff frequency is normalized to 1,
+    defined as the point at which the gain first drops below ``-rp``.
+
+    See Also
+    --------
+    cheby1 : Filter design function using this prototype
+
+    """
+    if abs(int(N)) != N:
+        raise ValueError("Filter order must be a nonnegative integer")
+    elif N == 0:
+        # Avoid divide-by-zero error
+        # Even order filters have DC gain of -rp dB
+        return cupy.array([]), cupy.array([]), 10**(-rp/20)
+    z = cupy.array([])
+
+    # Ripple factor (epsilon)
+    eps = cupy.sqrt(10 ** (0.1 * rp) - 1.0)
+    mu = 1.0 / N * cupy.arcsinh(1 / eps)
+
+    # Arrange poles in an ellipse on the left half of the S-plane
+    m = cupy.arange(-N+1, N, 2)
+    theta = pi * m / (2*N)
+    p = -cupy.sinh(mu + 1j*theta)
+
+    k = cupy.prod(-p, axis=0).real
+    if N % 2 == 0:
+        k = k / sqrt(1 + eps * eps)
+
+    return z, p, k
+
+
+def cheb2ap(N, rs):
+    """
+    Return (z,p,k) for Nth-order Chebyshev type I analog lowpass filter.
+
+    The returned filter prototype has `rs` decibels of ripple in the stopband.
+
+    The filter's angular (e.g. rad/s) cutoff frequency is normalized to 1,
+    defined as the point at which the gain first reaches ``-rs``.
+
+    See Also
+    --------
+    cheby2 : Filter design function using this prototype
+
+    """
+    if abs(int(N)) != N:
+        raise ValueError("Filter order must be a nonnegative integer")
+    elif N == 0:
+        # Avoid divide-by-zero warning
+        return cupy.array([]), cupy.array([]), 1
+
+    # Ripple factor (epsilon)
+    de = 1.0 / cupy.sqrt(10 ** (0.1 * rs) - 1)
+    mu = cupy.arcsinh(1.0 / de) / N
+
+    if N % 2:
+        m = cupy.concatenate((cupy.arange(-N+1, 0, 2),
+                              cupy.arange(2, N, 2)))
+    else:
+        m = cupy.arange(-N+1, N, 2)
+
+    z = -cupy.conjugate(1j / cupy.sin(m * pi / (2.0 * N)))
+
+    # Poles around the unit circle like Butterworth
+    p = -cupy.exp(1j * pi * cupy.arange(-N+1, N, 2) / (2 * N))
+    # Warp into Chebyshev II
+    p = cupy.sinh(mu) * p.real + 1j * cupy.cosh(mu) * p.imag
+    p = 1.0 / p
+
+    k = (cupy.prod(-p, axis=0) / cupy.prod(-z, axis=0)).real
+    return z, p, k

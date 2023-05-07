@@ -237,3 +237,20 @@ class TestLp2bs_zpk:
         z_bs_s = z_bs[xp.argsort(z_bs.imag)]
         p_bs_s = p_bs[xp.argsort(p_bs.imag)]
         return z_bs_s, p_bs_s, k_bs
+
+
+@testing.with_requires("scipy")
+class TestLowLevelAP:
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_buttap(self, xp, scp):
+        return scp.signal.buttap(3)
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_cheb1ap(self, xp, scp):
+        return scp.signal.cheb1ap(3, 1)
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_cheb2ap(self, xp, scp):
+        return scp.signal.cheb2ap(3, 1)
+
+
