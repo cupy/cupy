@@ -544,9 +544,9 @@ def bilinear(b, a, fs=1.0):
         for i in range(N + 1):
             bNi = b[N - i] * (2 * fs)**i
             for k in range(i + 1):
-                for l in range(M - i + 1):
-                    if k + l == j:
-                        val += comb(i, k) * comb(M - i, l) * bNi * (-1)**k
+                for s in range(M - i + 1):
+                    if k + s == j:
+                        val += comb(i, k) * comb(M - i, s) * bNi * (-1)**k
         bprime[j] = cupy.real(val)
 
     for j in range(Dp + 1):
@@ -554,9 +554,9 @@ def bilinear(b, a, fs=1.0):
         for i in range(D + 1):
             aDi = a[D - i] * (2 * fs)**i
             for k in range(i + 1):
-                for l in range(M - i + 1):
-                    if k + l == j:
-                        val += comb(i, k) * comb(M - i, l) * aDi * (-1)**k
+                for s in range(M - i + 1):
+                    if k + s == j:
+                        val += comb(i, k) * comb(M - i, s) * aDi * (-1)**k
         aprime[j] = cupy.real(val)
 
     return normalize(bprime, aprime)
@@ -639,7 +639,8 @@ def lp2hp(b, a, wo=1.0):
     b : array_like
         Numerator polynomial coefficients of the transformed high-pass filter.
     a : array_like
-        Denominator polynomial coefficients of the transformed high-pass filter.
+        Denominator polynomial coefficients of the transformed high-pass
+        filter.
 
     See Also
     --------
@@ -666,7 +667,7 @@ def lp2hp(b, a, wo=1.0):
     if wo != 1:
         pwo = wo ** cupy.arange(max(d, n))
     else:
-        pwo = numpy.ones(max(d, n), b.dtype)
+        pwo = cupy.ones(max(d, n), b.dtype)
     if d >= n:
         outa = a[::-1] * pwo
         outb = cupy.resize(b, (d,))
@@ -707,7 +708,8 @@ def lp2bp(b, a, wo=1.0, bw=1.0):
     b : array_like
         Numerator polynomial coefficients of the transformed band-pass filter.
     a : array_like
-        Denominator polynomial coefficients of the transformed band-pass filter.
+        Denominator polynomial coefficients of the transformed band-pass
+        filter.
 
     See Also
     --------
@@ -780,7 +782,8 @@ def lp2bs(b, a, wo=1.0, bw=1.0):
     b : array_like
         Numerator polynomial coefficients of the transformed band-stop filter.
     a : array_like
-        Denominator polynomial coefficients of the transformed band-stop filter.
+        Denominator polynomial coefficients of the transformed band-stop
+        filter.
 
     See Also
     --------
