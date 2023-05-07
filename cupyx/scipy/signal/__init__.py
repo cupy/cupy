@@ -30,3 +30,7 @@ from cupyx.scipy.signal._iir_filter_conversions import lp2bp  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import lp2bs  # NOQA
 
 from cupyx.scipy.signal._iir_filter_conversions import bilinear_zpk  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import lp2lp_zpk  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import lp2hp_zpk  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import lp2bp_zpk  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import lp2bs_zpk  # NOQA

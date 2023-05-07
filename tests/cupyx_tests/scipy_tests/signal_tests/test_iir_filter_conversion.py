@@ -4,11 +4,10 @@ from math import sqrt, pi
 import cupy
 import cupyx.scipy.signal as signal
 from cupy import testing
-from cupy.testing import assert_array_almost_equal, assert_allclose
+from cupy.testing import assert_array_almost_equal
 
 import numpy as np
 
-import pytest
 from pytest import raises as assert_raises
 
 
@@ -90,16 +89,18 @@ class TestNormalize:
 
         # This is the input to signal.normalize after passing through the
         # equivalent steps in signal.iirfilter as was done for MATLAB
-        b_norm_in = cupy.array([1.5543135865293012e-06, 1.2434508692234413e-05,
-                                4.3520780422820447e-05, 8.7041560845640893e-05,
-                                1.0880195105705122e-04, 8.7041560845640975e-05,
-                                4.3520780422820447e-05, 1.2434508692234413e-05,
-                                1.5543135865293012e-06])
-        a_norm_in = cupy.array([7.2269025909127173e+04, -5.6242661430467968e+05,
-                                1.9182761917308895e+06, -3.7451128364682454e+06,
-                                4.5776121393762771e+06, -3.5869706138592605e+06,
-                                1.7596511818472347e+06, -4.9409793515707983e+05,
-                                6.0799461347219651e+04])
+        b_norm_in = cupy.array(
+            [1.5543135865293012e-06, 1.2434508692234413e-05,
+             4.3520780422820447e-05, 8.7041560845640893e-05,
+             1.0880195105705122e-04, 8.7041560845640975e-05,
+             4.3520780422820447e-05, 1.2434508692234413e-05,
+             1.5543135865293012e-06])
+        a_norm_in = cupy.array(
+            [7.2269025909127173e+04, -5.6242661430467968e+05,
+             1.9182761917308895e+06, -3.7451128364682454e+06,
+             4.5776121393762771e+06, -3.5869706138592605e+06,
+             1.7596511818472347e+06, -4.9409793515707983e+05,
+             6.0799461347219651e+04])
 
         b_output, a_output = signal.normalize(b_norm_in, a_norm_in)
 
@@ -164,5 +165,75 @@ class TestLp2bs:
         b_bs, a_bs = scp.signal.lp2bs(
             b, a, 0.41722257286366754, 0.18460575326152251)
         return b_bs, a_bs
-#        assert_array_almost_equal(b_bs, [1, 0, 0.17407], decimal=5)
-#        assert_array_almost_equal(a_bs, [1, 0.18461, 0.17407], decimal=5)
+
+
+@testing.with_requires("scipy")
+class TestLp2lp_zpk:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        z = []
+        p = [(-1+1j) / sqrt(2), (-1-1j) / sqrt(2)]
+        k = 1
+        z_lp, p_lp, k_lp = scp.signal.lp2lp_zpk(z, p, k, 5)
+        return z_lp, p_lp, k_lp
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic_2(self, xp, scp):
+
+        # Pseudo-Chebyshev with both poles and zeros
+        z = [-2j, +2j]
+        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        k = 3
+        z_lp, p_lp, k_lp = scp.signal.lp2lp_zpk(z, p, k, 20)
+        return z_lp, p_lp, k_lp
+
+
+@testing.with_requires("scipy")
+class TestLp2hp_zpk:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        z = []
+        p = [(-1+1j)/np.sqrt(2), (-1-1j)/np.sqrt(2)]
+        k = 1
+
+        z_hp, p_hp, k_hp = scp.signal.lp2hp_zpk(z, p, k, 5)
+        return z_hp, p_hp, k_hp
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic_2(self, xp, scp):
+        z = [-2j, +2j]
+        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        k = 3
+        z_hp, p_hp, k_hp = scp.signal.lp2hp_zpk(z, p, k, 6)
+        return z_hp, p_hp, k_hp
+
+
+@testing.with_requires("scipy")
+class TestLp2bp_zpk:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        z = [-2j, +2j]
+        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        k = 3
+        z_bp, p_bp, k_bp = scp.signal.lp2bp_zpk(z, p, k, 15, 8)
+        return z_bp, p_bp, k_bp
+
+
+@testing.with_requires("scipy")
+class TestLp2bs_zpk:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        z = [-2j, +2j]
+        p = [-0.75, -0.5-0.5j, -0.5+0.5j]
+        k = 3
+
+        z_bs, p_bs, k_bs = scp.signal.lp2bs_zpk(z, p, k, 35, 12)
+
+        # complex sort gets confused by real parts of order +/- epsilon
+        z_bs_s = z_bs[xp.argsort(z_bs.imag)]
+        p_bs_s = p_bs[xp.argsort(p_bs.imag)]
+        return z_bs_s, p_bs_s, k_bs

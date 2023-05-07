@@ -152,6 +152,18 @@ def normalize(b, a):
     return num, den
 
 
+def _relative_degree(z, p):
+    """
+    Return relative degree of transfer function from zeros and poles
+    """
+    degree = len(p) - len(z)
+    if degree < 0:
+        raise ValueError("Improper transfer function. "
+                         "Must have at least as many poles as zeros.")
+    else:
+        return degree
+
+
 def bilinear_zpk(z, p, k, fs):
     r"""
     Return a digital IIR filter from an analog one using a bilinear transform.
@@ -191,10 +203,7 @@ def bilinear_zpk(z, p, k, fs):
     z = cupy.atleast_1d(z)
     p = cupy.atleast_1d(p)
 
-    degree = len(p) - len(z)
-    if degree < 0:
-        raise ValueError("Improper transfer function. "
-                         "Must have at least as many poles as zeros.")
+    degree = _relative_degree(z, p)
 
     fs2 = 2.0 * fs
 
@@ -209,6 +218,281 @@ def bilinear_zpk(z, p, k, fs):
     k_z = k * (cupy.prod(fs2 - z) / cupy.prod(fs2 - p)).real
 
     return z_z, p_z, k_z
+
+
+def lp2lp_zpk(z, p, k, wo=1.0):
+    r"""
+    Transform a lowpass filter prototype to a different frequency.
+
+    Return an analog low-pass filter with cutoff frequency `wo`
+    from an analog low-pass filter prototype with unity cutoff frequency,
+    using zeros, poles, and gain ('zpk') representation.
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the analog filter transfer function.
+    p : array_like
+        Poles of the analog filter transfer function.
+    k : float
+        System gain of the analog filter transfer function.
+    wo : float
+        Desired cutoff, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+
+    Returns
+    -------
+    z : ndarray
+        Zeros of the transformed low-pass filter transfer function.
+    p : ndarray
+        Poles of the transformed low-pass filter transfer function.
+    k : float
+        System gain of the transformed low-pass filter.
+
+    See Also
+    --------
+    lp2hp_zpk, lp2bp_zpk, lp2bs_zpk, bilinear
+    lp2lp
+    scipy.signal.lp2lp_zpk
+
+    """
+    z = cupy.atleast_1d(z)
+    p = cupy.atleast_1d(p)
+    wo = float(wo)  # Avoid int wraparound
+
+    degree = _relative_degree(z, p)
+
+    # Scale all points radially from origin to shift cutoff frequency
+    z_lp = wo * z
+    p_lp = wo * p
+
+    # Each shifted pole decreases gain by wo, each shifted zero increases it.
+    # Cancel out the net change to keep overall gain the same
+    k_lp = k * wo**degree
+
+    return z_lp, p_lp, k_lp
+
+
+def lp2hp_zpk(z, p, k, wo=1.0):
+    r"""
+    Transform a lowpass filter prototype to a highpass filter.
+
+    Return an analog high-pass filter with cutoff frequency `wo`
+    from an analog low-pass filter prototype with unity cutoff frequency,
+    using zeros, poles, and gain ('zpk') representation.
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the analog filter transfer function.
+    p : array_like
+        Poles of the analog filter transfer function.
+    k : float
+        System gain of the analog filter transfer function.
+    wo : float
+        Desired cutoff, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+
+    Returns
+    -------
+    z : ndarray
+        Zeros of the transformed high-pass filter transfer function.
+    p : ndarray
+        Poles of the transformed high-pass filter transfer function.
+    k : float
+        System gain of the transformed high-pass filter.
+
+    See Also
+    --------
+    lp2lp_zpk, lp2bp_zpk, lp2bs_zpk, bilinear
+    lp2hp
+    scipy.signal.lp2hp_zpk
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{\omega_0}{s}
+
+    This maintains symmetry of the lowpass and highpass responses on a
+    logarithmic scale.
+
+    """
+    z = cupy.atleast_1d(z)
+    p = cupy.atleast_1d(p)
+    wo = float(wo)
+
+    degree = _relative_degree(z, p)
+
+    # Invert positions radially about unit circle to convert LPF to HPF
+    # Scale all points radially from origin to shift cutoff frequency
+    z_hp = wo / z
+    p_hp = wo / p
+
+    # If lowpass had zeros at infinity, inverting moves them to origin.
+    z_hp = cupy.append(z_hp, cupy.zeros(degree))
+
+    # Cancel out gain change caused by inversion
+    k_hp = k * cupy.real(cupy.prod(-z) / cupy.prod(-p))
+
+    return z_hp, p_hp, k_hp
+
+
+def lp2bp_zpk(z, p, k, wo=1.0, bw=1.0):
+    r"""
+    Transform a lowpass filter prototype to a bandpass filter.
+
+    Return an analog band-pass filter with center frequency `wo` and
+    bandwidth `bw` from an analog low-pass filter prototype with unity
+    cutoff frequency, using zeros, poles, and gain ('zpk') representation.
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the analog filter transfer function.
+    p : array_like
+        Poles of the analog filter transfer function.
+    k : float
+        System gain of the analog filter transfer function.
+    wo : float
+        Desired passband center, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+    bw : float
+        Desired passband width, as angular frequency (e.g., rad/s).
+        Defaults to 1.
+
+    Returns
+    -------
+    z : ndarray
+        Zeros of the transformed band-pass filter transfer function.
+    p : ndarray
+        Poles of the transformed band-pass filter transfer function.
+    k : float
+        System gain of the transformed band-pass filter.
+
+    See Also
+    --------
+    lp2lp_zpk, lp2hp_zpk, lp2bs_zpk, bilinear
+    lp2bp
+    scipy.signal.lp2bp_zpk
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{s^2 + {\omega_0}^2}{s \cdot \mathrm{BW}}
+
+    This is the "wideband" transformation, producing a passband with
+    geometric (log frequency) symmetry about `wo`.
+
+    """
+    z = cupy.atleast_1d(z)
+    p = cupy.atleast_1d(p)
+    wo = float(wo)
+    bw = float(bw)
+
+    degree = _relative_degree(z, p)
+
+    # Scale poles and zeros to desired bandwidth
+    z_lp = z * bw/2
+    p_lp = p * bw/2
+
+    # Square root needs to produce complex result, not NaN
+    z_lp = z_lp.astype(complex)
+    p_lp = p_lp.astype(complex)
+
+    # Duplicate poles and zeros and shift from baseband to +wo and -wo
+    z_bp = cupy.concatenate((z_lp + cupy.sqrt(z_lp**2 - wo**2),
+                             z_lp - cupy.sqrt(z_lp**2 - wo**2)))
+    p_bp = cupy.concatenate((p_lp + cupy.sqrt(p_lp**2 - wo**2),
+                             p_lp - cupy.sqrt(p_lp**2 - wo**2)))
+
+    # Move degree zeros to origin, leaving degree zeros at infinity for BPF
+    z_bp = cupy.append(z_bp, cupy.zeros(degree))
+
+    # Cancel out gain change from frequency scaling
+    k_bp = k * bw**degree
+
+    return z_bp, p_bp, k_bp
+
+
+def lp2bs_zpk(z, p, k, wo=1.0, bw=1.0):
+    r"""
+    Transform a lowpass filter prototype to a bandstop filter.
+
+    Return an analog band-stop filter with center frequency `wo` and
+    stopband width `bw` from an analog low-pass filter prototype with unity
+    cutoff frequency, using zeros, poles, and gain ('zpk') representation.
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the analog filter transfer function.
+    p : array_like
+        Poles of the analog filter transfer function.
+    k : float
+        System gain of the analog filter transfer function.
+    wo : float
+        Desired stopband center, as angular frequency (e.g., rad/s).
+        Defaults to no change.
+    bw : float
+        Desired stopband width, as angular frequency (e.g., rad/s).
+        Defaults to 1.
+
+    Returns
+    -------
+    z : ndarray
+        Zeros of the transformed band-stop filter transfer function.
+    p : ndarray
+        Poles of the transformed band-stop filter transfer function.
+    k : float
+        System gain of the transformed band-stop filter.
+
+    See Also
+    --------
+    lp2lp_zpk, lp2hp_zpk, lp2bp_zpk, bilinear
+    lp2bs
+    scipy.signal.lp2bs_zpk
+
+    Notes
+    -----
+    This is derived from the s-plane substitution
+
+    .. math:: s \rightarrow \frac{s \cdot \mathrm{BW}}{s^2 + {\omega_0}^2}
+
+    This is the "wideband" transformation, producing a stopband with
+    geometric (log frequency) symmetry about `wo`.
+
+    """
+    z = cupy.atleast_1d(z)
+    p = cupy.atleast_1d(p)
+    wo = float(wo)
+    bw = float(bw)
+
+    degree = _relative_degree(z, p)
+
+    # Invert to a highpass filter with desired bandwidth
+    z_hp = (bw/2) / z
+    p_hp = (bw/2) / p
+
+    # Square root needs to produce complex result, not NaN
+    z_hp = z_hp.astype(complex)
+    p_hp = p_hp.astype(complex)
+
+    # Duplicate poles and zeros and shift from baseband to +wo and -wo
+    z_bs = cupy.concatenate((z_hp + cupy.sqrt(z_hp**2 - wo**2),
+                             z_hp - cupy.sqrt(z_hp**2 - wo**2)))
+    p_bs = cupy.concatenate((p_hp + cupy.sqrt(p_hp**2 - wo**2),
+                             p_hp - cupy.sqrt(p_hp**2 - wo**2)))
+
+    # Move any zeros that were at infinity to the center of the stopband
+    z_bs = cupy.append(z_bs, cupy.full(degree, +1j*wo))
+    z_bs = cupy.append(z_bs, cupy.full(degree, -1j*wo))
+
+    # Cancel out gain change caused by inversion
+    k_bs = k * cupy.real(cupy.prod(-z) / cupy.prod(-p))
+
+    return z_bs, p_bs, k_bs
 
 
 def bilinear(b, a, fs=1.0):
