@@ -564,6 +564,7 @@ class TestDeconvolve:
         return scp.signal.deconvolve(o, b)
 
 
+@testing.with_requires('scipy')
 class TestDetrend:
 
     def test_basic(self):
