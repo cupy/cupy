@@ -216,8 +216,8 @@ class CZT:
             raise ValueError(f"CZT defined for length {self.n}, not "
                              f"{x.shape[axis]}")
         # Calculate transpose coordinates, to allow operation on any given axis
-        trnsp = cupy.arange(x.ndim)
-        trnsp[[axis, -1]] = [-1, axis]
+        trnsp = list(range(x.ndim))
+        trnsp[axis], trnsp[-1] = trnsp[-1], trnsp[axis]
         x = x.transpose(*trnsp)
         y = ifft(self._Fwk2 * fft(x*self._Awk2, self._nfft))
         y = y[..., self._yidx] * self._wk2
@@ -304,6 +304,7 @@ class ZoomFFT(CZT):
 
         k = cupy.arange(max(m, n), dtype=cupy.min_scalar_type(-max(m, n)**2))
 
+        fn = cupy.asarray(fn)
         if cupy.size(fn) == 2:
             f1, f2 = fn
         elif cupy.size(fn) == 1:
@@ -438,7 +439,8 @@ def zoom_fft(x, fn, m=None, *, fs=2, endpoint=False, axis=-1):
 
     To graph the magnitude of the resulting transform, use::
 
-        plot(linspace(f1, f2, m, endpoint=False), abs(zoom_fft(x, [f1, f2], m)))
+        plot(linspace(f1, f2, m, endpoint=False),
+             abs(zoom_fft(x, [f1, f2], m)))
 
     If the transform needs to be repeated, use `ZoomFFT` to construct
     a specialized transform function which can be reused without
