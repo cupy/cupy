@@ -42,3 +42,5 @@ from cupyx.scipy.signal._iir_filter_conversions import buttap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import cheb1ap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import cheb2ap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import ellipap  # NOQA
+
+from cupyx.scipy.signal._czt import *   # NOQA
