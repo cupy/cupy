@@ -271,7 +271,7 @@ __global__ void compute_correction_factors_sos(
 
 template<typename T>
 __global__ void first_pass_iir_sos(
-        const int n_sections, const int m, const int n, const int n_blocks,
+        const int m, const int n, const int n_blocks,
         const T* factors, T* out, T* carries) {
 
     extern __shared__ unsigned int thread_status[2];
@@ -296,64 +296,59 @@ __global__ void first_pass_iir_sos(
     T* group_start = out_off + m * group_num;
     T* group_carries = carries_off + group_num * k;
 
-    for(int s = 0; s < n_sections; s++) {
-        const T* section_factors = factors + s * m * k;
-        T* section_carries = group_carries;
+    const T* section_factors = factors;
+    T* section_carries = group_carries;
 
-        factor_cache[group_pos] = section_factors[group_pos];
-        factor_cache[group_pos - 1] = section_factors[group_pos - 1];
-        factor_cache[m + group_pos] = section_factors[m + group_pos];
-        factor_cache[m + group_pos - 1] = section_factors[m + group_pos - 1];
+    factor_cache[group_pos] = section_factors[group_pos];
+    factor_cache[group_pos - 1] = section_factors[group_pos - 1];
+    factor_cache[m + group_pos] = section_factors[m + group_pos];
+    factor_cache[m + group_pos - 1] = section_factors[m + group_pos - 1];
+    __syncthreads();
+
+    int pos = group_pos;
+    int up_bound = pos;
+    int low_bound = pos;
+    int rel_pos;
+
+    for(int level = 1, iter = 1; level < m; level *= 2, iter++) {
+        int sz = min(pow(2.0f, ((float) iter)), ((float) m));
+
+        if(level > 1) {
+            int factor = ceil(pos / ((float) sz));
+            up_bound = sz * factor - 1;
+            low_bound = up_bound - level + 1;
+        }
+
+        if(level == 1) {
+            pos = low_bound;
+        }
+
+        if(pos < low_bound) {
+            pos += level / 2;
+        }
+
+        if(pos + m * group_num >= n) {
+            break;
+        }
+
+        rel_pos = pos % level;
+        T carry = 0.0;
+        for(int i = 1; i <= min(k, level); i++) {
+            T k_value = group_start[low_bound - i];
+            const T* k_factors = factor_cache + m  * (i - 1);
+            T factor = k_factors[rel_pos];
+            carry += k_value * factor;
+        }
+
+        group_start[pos] += carry;
         __syncthreads();
-
-        int pos = group_pos;
-        int up_bound = pos;
-        int low_bound = pos;
-        int rel_pos;
-
-        for(int level = 1, iter = 1; level < m; level *= 2, iter++) {
-            int sz = min(pow(2.0f, ((float) iter)), ((float) m));
-
-            if(level > 1) {
-                int factor = ceil(pos / ((float) sz));
-                up_bound = sz * factor - 1;
-                low_bound = up_bound - level + 1;
-            }
-
-            if(level == 1) {
-                pos = low_bound;
-            }
-
-            if(pos < low_bound) {
-                pos += level / 2;
-            }
-
-            if(pos + m * group_num >= n && n_sections == 1) {
-                break;
-            }
-
-            if(pos + m * group_num < n || n_sections > 1) {
-                rel_pos = pos % level;
-                T carry = 0.0;
-                for(int i = 1; i <= min(k, level); i++) {
-                    T k_value = group_start[low_bound - i];
-                    const T* k_factors = factor_cache + m  * (i - 1);
-                    T factor = k_factors[rel_pos];
-                    carry += k_value * factor;
-                }
-
-                group_start[pos] += carry;
-            }
-            __syncthreads();
-        }
-
-        if(pos >= m - k) {
-            if(carries != NULL) {
-                section_carries[pos - (m - k)] = group_start[pos];
-            }
-        }
     }
 
+    if(pos >= m - k) {
+        if(carries != NULL) {
+            section_carries[pos - (m - k)] = group_start[pos];
+        }
+    }
 }
 
 template<typename T>
@@ -455,17 +450,14 @@ __global__ void fir_sos(
     int pos = idx % m;
     const int k = 2;
 
-    T* out_off = out + row_num * n;
+    T* out_row = out + row_num * n;
+    T* out_off = out_row + n_group * m;
     T* carries_off = carries + row_num * carries_stride;
     T* this_carries = carries_off + k * (n_group + (1 - offset));
     T* group_carries = carries_off + (n_group - offset) * k;
 
     if(pos <= k) {
         b[pos] = sos[pos];
-    }
-
-    if(idx >= n) {
-        return;
     }
 
     if(pos < k) {
@@ -476,7 +468,11 @@ __global__ void fir_sos(
         }
     }
 
-    fir_cache[pos + k] = out_off[idx];
+    if(idx >= n) {
+        return;
+    }
+
+    fir_cache[pos + k] = out_off[pos];
     __syncthreads();
 
     T acc = 0.0;
@@ -484,11 +480,7 @@ __global__ void fir_sos(
         acc += fir_cache[pos + i] * b[k - i];
     }
 
-    if(pos >= m - k) {
-        this_carries[pos - (m - k)] = acc;
-    }
-
-    out_off[idx] = acc;
+    out_off[pos] = acc;
 }
 """  # NOQA
 
@@ -701,11 +693,14 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
         fir_kernel((num_rows * n_blocks,), (block_sz,),
                    (block_sz, n, carries_stride, n_blocks, starting_group,
                     b, all_carries, out))
+        carries_kernel((num_rows * n_blocks,), (k,),
+                       (block_sz, n, carries_stride, n_blocks, starting_group,
+                        out, all_carries))
 
     for s in range(n_sections):
         first_pass_kernel(
             (total_blocks,), (block_sz // 2,),
-            (1, block_sz, n, n_blocks, correction[s], out, carries))
+            (block_sz, n, n_blocks, correction[s], out, carries))
 
         if n_blocks > 1 or zi is not None:
             if zi is not None:
