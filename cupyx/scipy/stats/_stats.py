@@ -133,7 +133,7 @@ def tmin(a, lowerlimit=None, axis=0, inclusive=True, nan_policy='propagate'):
         a = a.ravel()
         axis = 0
     if a.ndim == 0:
-        a = cp.atleast_1d(a).astype(a.dtype)
+        a = cp.atleast_1d(a).astype(a.dtype, copy=False)
 
     policies = ['propagate', 'raise', 'omit']
 
@@ -143,29 +143,20 @@ def tmin(a, lowerlimit=None, axis=0, inclusive=True, nan_policy='propagate'):
 
     lowerlimit = cp.atleast_1d(-cp.inf if lowerlimit is None else lowerlimit)
     lowerlimit = lowerlimit.astype(
-        cp.float16) if a.dtype == cp.float16 else lowerlimit
+        cp.float16, copy=False) if a.dtype == cp.float16 else lowerlimit
 
     inf = cp.iinfo(a.dtype).max if cp.dtype(a.dtype).kind in 'iu' else cp.inf
-    contains_nan = cp.isnan(cp.sum(a))
 
-    if contains_nan:
-        if nan_policy != 'propagate':
-            if nan_policy == 'raise':
-                raise ValueError("The input contains nan values")
-            return _statistics._tmin(a.astype(cp.float64), lowerlimit,
-                                     inclusive, False, inf, axis=axis)\
-                .astype(a.dtype, copy=False)
-        return _statistics._tmin(a.astype(cp.float64), lowerlimit,
-                                 inclusive, True, inf, axis=axis)\
-            .astype(a.dtype, copy=False)
-    else:
+    if nan_policy == 'raise':
+        if cp.isnan(cp.sum(a)):
+            raise ValueError("The input contains nan values")
 
-        if lowerlimit == -cp.inf:
-            return cp.amin(a, axis=axis)
-        max_element = cp.max(a, keepdims=True)
-        if max_element > lowerlimit or (cp.allclose(max_element, lowerlimit)
-                                        and inclusive):
-            return _statistics._tmin(a.astype(cp.float64), lowerlimit,
-                                     inclusive, False, inf, axis=axis)\
-                .astype(a.dtype, copy=False)
-        raise ValueError("No array values within given limits")
+    if lowerlimit == -cp.inf and nan_policy == 'propagate':
+        return cp.amin(a, axis=axis)
+    max_element = cp.max(a, keepdims=True)
+    if (max_element > lowerlimit or (cp.allclose(max_element, lowerlimit)
+                                     and inclusive) or cp.isnan(cp.sum(a))):
+        return _statistics._tmin(a.astype(cp.float64, copy=False), lowerlimit,
+                                 inclusive, nan_policy == 'propagate',
+                                 inf, axis=axis).astype(a.dtype, copy=False)
+    raise ValueError("No array values within given limits")
