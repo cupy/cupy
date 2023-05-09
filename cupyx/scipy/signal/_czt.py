@@ -149,13 +149,13 @@ class CZT:
     However, the chirp z-transform is considerably less precise than the
     equivalent zero-padded FFT.
 
-    As this CZT is implemented using the Bluestein algorithm, it can compute
-    large prime-length Fourier transforms in O(N log N) time, rather than the
-    O(N**2) time required by the direct DFT calculation.  (`scipy.fft` also
-    uses Bluestein's algorithm'.)
+    As this CZT is implemented using the Bluestein algorithm [1]_, it can
+    compute large prime-length Fourier transforms in O(N log N) time, rather
+    than the O(N**2) time required by the direct DFT calculation.
+    (`scipy.fft` also uses Bluestein's algorithm'.)
 
     (The name "chirp z-transform" comes from the use of a chirp in the
-    Bluestein algorithm.  It does not decompose signals into chirps, like
+    Bluestein algorithm [2]_.  It does not decompose signals into chirps, like
     other transforms with "chirp" in the name.)
 
     References
@@ -237,7 +237,7 @@ class ZoomFFT(CZT):
     This is a specialization of the chirp z-transform (`CZT`) for a set of
     equally-spaced frequencies around the unit circle, used to calculate a
     section of the FFT more efficiently than calculating the entire FFT and
-    truncating.
+    truncating. [1]_
 
     Parameters
     ----------
