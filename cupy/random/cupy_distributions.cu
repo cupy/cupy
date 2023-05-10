@@ -777,15 +777,18 @@ __device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
 }
 
 template<typename F, typename T, typename R, typename... Args>
-__global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
+__global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, Args... args) {
     R* out_ptr = reinterpret_cast<R*>(out);
     F func;
     T random(blockIdx.x * blockDim.x + threadIdx.x, state);
     for (int id = blockIdx.x * blockDim.x + threadIdx.x; 
              id < size; 
-             id += blockDim.x * gridDim.x) {
-            // need to pass it by copy due to hip issues with templating
-        out_ptr[id] = func(random, (get_index(args, id))...);
+             id += state_size) {
+    //          // id += blockDim.x * gridDim.x) {
+    //         // need to pass it by copy due to hip issues with templating
+    // if(id < state_size) 
+        // out_ptr[id] = func(random, (get_index(args, id))...);
+        func(random, (get_index(args, id))...);
     }
     return;
 }
@@ -797,110 +800,109 @@ struct kernel_launcher {
     template<typename T, typename... Args>
     void operator()(Args&&... args) { 
         int tpb = 256;
-        int sms;
-        cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, 0);
-        // Each thread process 8 elements 
-        execute_dist<F, T, R><<<sms, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+        // Launch one thread per state size
+        int bpg = (_size + tpb - 1) / tpb; 
+        execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
     }
     ssize_t _size;
     cudaStream_t _stream;
 };
 
 //These functions will take the generator_id as a parameter
-void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<raw_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<raw_functor, int32_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<random_uniform_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void random_uniform_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<random_uniform_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_float_functor, float> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
 //These functions will take the generator_id as a parameter
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
-    kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, static_cast<uint32_t>(mx), static_cast<uint32_t>(mask));
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
+    kernel_launcher<interval_32_functor, int32_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, static_cast<uint32_t>(mx), static_cast<uint32_t>(mask));
 }
 
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {
-    kernel_launcher<interval_64_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {
+    kernel_launcher<interval_64_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
 }
 
-void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
-    kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(a), reinterpret_cast<array_data<double>*>(b));
+void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
+    kernel_launcher<beta_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(a), reinterpret_cast<array_data<double>*>(b));
 }
 
-void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<exponential_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<exponential_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
-    kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
+void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<geometric_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
-void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
-    kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int64_t>*>(ngood), reinterpret_cast<array_data<int64_t>*>(nbad), reinterpret_cast<array_data<int64_t>*>(nsample));
+void hypergeometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
+    kernel_launcher<hypergeometric_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<int64_t>*>(ngood), reinterpret_cast<array_data<int64_t>*>(nbad), reinterpret_cast<array_data<int64_t>*>(nsample));
 }
 
-void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
-    kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
+void logseries(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<logseries_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
-void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
-    kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(lam));
+void poisson(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
+    kernel_launcher<poisson_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(lam));
 }
 
-void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<standard_normal_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void standard_normal(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<standard_normal_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void standard_normal_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_float_functor, float> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
-    kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(shape));
+void standard_gamma(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
+    kernel_launcher<standard_gamma_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(shape));
 }
 
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
-    kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
+void binomial(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
+    kernel_launcher<binomial_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
 }
 
 #else
 // the stubs need to be redeclared here for HIP versions less than 4.3 to avoid redeclarations in cython when importing the headers
 // No cuda will not compile the .cu file, so the definition needs to be done here explicitly
-void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {}
-void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void random_uniform_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
-void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
-void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
-void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {}
-void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
-void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
-void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {}
+void init_curand_generator(int generator, intptr_t state_ptr, ssize_t state_size, uint64_t seed, ssize_t size, intptr_t stream) {}
+void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
+void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
+void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
+void hypergeometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {}
+void logseries(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
+void poisson(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
+void standard_normal(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void standard_normal_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void standard_gamma(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
+void binomial(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {}
 
 #endif

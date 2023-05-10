@@ -20,54 +20,54 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state_ptr, uint64_t seed,
         ssize_t size, intptr_t stream)
     void random_uniform(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream)
     void random_uniform_float(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream)
     void raw(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream)
     void interval_32(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, int32_t mx, int32_t mask)
     void interval_64(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, int64_t mx, int64_t mask)
     void beta(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t a, intptr_t b)
     void exponential(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream)
     void geometric(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
     void hypergeometric(
-        int generator, intptr_t state, intptr_t out, ssize_t size,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size,
         intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
     void logseries(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
     void standard_normal(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream)
     void standard_normal_float(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream)
     # if the types are the same, but the names are different
     # cython will fail when trying to create a PyObj wrapper
     # to use these functions from python
     # arg1 is shape
     void standard_gamma(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
     # arg1 is lam
     void poisson(
-        int generator, intptr_t state, intptr_t out,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
     void binomial(
-        int generator, intptr_t state, intptr_t out, ssize_t size,
+        int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size,
         intptr_t stream, intptr_t arg1, intptr_t arg2, intptr_t arg3)
 
 
@@ -1039,30 +1039,37 @@ cdef void _launch_dist_split(
     if size == 0:
         # Avoid issues launching empty grids in CUDA 10.2
         return
-    if size <= bsize:
-        nargs = [
-            _array_data(a)
-            if isinstance(a, cupy.ndarray) else a for a in args]
-        args_ptr = [
-            <intptr_t>a.data.ptr
-            if isinstance(a, cupy.ndarray) else a for a in nargs]
-        func(generator, state, <intptr_t>out.data.ptr, size, strm, *args_ptr)
-    elif size // shape[0] <= bsize:
-        step = bsize // (size // shape[0])
-        for start in range(0, shape[0], step):
-            end = min(start + step, shape[0])
-            nargs = [
-                a[start:end]
-                if isinstance(a, cupy.ndarray) else a for a in args]
-            _launch_dist_split(
-                func, generator, state, strm, bsize, out[start:end], nargs)
-    else:
-        for index in range(shape[0]):
-            nargs = [
-                a[index]
-                if isinstance(a, cupy.ndarray) else a for a in args]
-            _launch_dist_split(
-                func, generator, state, strm, bsize, out[index], nargs)
+    nargs = [
+        _array_data(cupy.ascontiguousarray(a))
+        if isinstance(a, cupy.ndarray) else a for a in args]
+    args_ptr = [
+        <intptr_t>a.data.ptr
+        if isinstance(a, cupy.ndarray) else a for a in nargs]
+    func(generator, state, bsize, <intptr_t>out.data.ptr, size, strm, *args_ptr)
+    # if size <= bsize:
+    #     nargs = [
+    #         _array_data(a)
+    #         if isinstance(a, cupy.ndarray) else a for a in args]
+    #     args_ptr = [
+    #         <intptr_t>a.data.ptr
+    #         if isinstance(a, cupy.ndarray) else a for a in nargs]
+    #     func(generator, state, bsize, <intptr_t>out.data.ptr, size, strm, *args_ptr)
+    # elif size // shape[0] <= bsize:
+    #     step = bsize // (size // shape[0])
+    #     for start in range(0, shape[0], step):
+    #         end = min(start + step, shape[0])
+    #         nargs = [
+    #             a[start:end]
+    #             if isinstance(a, cupy.ndarray) else a for a in args]
+    #         _launch_dist_split(
+    #             func, generator, state, strm, bsize, out[start:end], nargs)
+    # else:
+    #     for index in range(shape[0]):
+    #         nargs = [
+    #             a[index]
+    #             if isinstance(a, cupy.ndarray) else a for a in args]
+    #         _launch_dist_split(
+    #             func, generator, state, strm, bsize, out[index], nargs)
 
 
 cdef void _launch_dist(bit_generator, func, out, args) except*:
