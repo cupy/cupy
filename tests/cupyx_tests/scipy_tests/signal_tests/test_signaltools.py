@@ -721,6 +721,17 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi, axis=axis)
         return out
 
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_sosfilt_zi(self, sections, xp, scp):
+        x = xp.ones(20)
+        sos = testing.shaped_random((sections, 6), xp, xp.float64, scale=0.2)
+        sos[:, 3] = 1
+
+        zi = scp.signal.sosfilt_zi(sos)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
 
 @testing.with_requires('scipy')
 class TestDetrend:
