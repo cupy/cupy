@@ -13,8 +13,6 @@ from cupy_backends.cuda.api import runtime
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
-
-
 cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass rk_binomial_state:
         pass

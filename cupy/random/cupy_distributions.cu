@@ -16,20 +16,26 @@
 template<typename CURAND_TYPE>
 struct curand_pseudo_state {
     // Valid for  XORWOW and MRG32k3a
-    CURAND_TYPE* _state;
+    CURAND_TYPE _state;
+    CURAND_TYPE* _state_ptr;
 
     __device__ curand_pseudo_state(int id, intptr_t state) {
-        _state = reinterpret_cast<CURAND_TYPE*>(state) + id;
+        _state_ptr = reinterpret_cast<CURAND_TYPE*>(state) + id;
+        _state = *_state_ptr;
+    }
+
+    __device__ ~curand_pseudo_state() {
+        *_state_ptr = _state;
     }
 
     __device__ uint32_t rk_int() {
-        return curand(_state);
+        return curand(_state_ptr);
     }
 
     __device__ double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-        double r = curand_uniform_double(_state);
+        double r = curand_uniform_double(&_state);
         if (r >= 1.0) { 
            r = 0.0;
         }
@@ -39,7 +45,7 @@ struct curand_pseudo_state {
     __device__ float rk_float() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-        float r = curand_uniform(_state);
+        float r = curand_uniform(&_state);
         if (r >= 1.0) { 
            r = 0.0;
         }
@@ -47,11 +53,11 @@ struct curand_pseudo_state {
     }
 
     __device__ double rk_normal() {
-        return curand_normal_double(_state);
+        return curand_normal_double(&_state);
     }
 
     __device__ float rk_normal_float() {
-        return curand_normal(_state);
+        return curand_normal(&_state);
     }
 };
 
@@ -75,7 +81,7 @@ __global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
        number, no offset */
     T curand_state(id, state);
     if (id < size) {
-        curand_init(seed, id, 0, curand_state._state);    
+        curand_init(seed, id, 0, &curand_state._state);    
     }
 }
 
@@ -99,23 +105,23 @@ void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssi
 }
 
 template<typename T>
-__device__ double rk_standard_exponential(T state) {
+__device__ double rk_standard_exponential(T& state) {
     /* We use -log(1-U) since U is [0, 1) */
     return -log(1.0 - state.rk_double());
 }
 
 template<typename T>
-__device__ double rk_standard_normal(T state) {
+__device__ double rk_standard_normal(T& state) {
     return state.rk_normal();
 }
 
 template<typename T>
-__device__ float rk_standard_normal_float(T state) {
+__device__ float rk_standard_normal_float(T& state) {
     return state.rk_normal_float();
 }
 
 template<typename T>
-__device__ double rk_standard_gamma(T state, double shape) {
+__device__ double rk_standard_gamma(T& state, double shape) {
     double b, c;
     double U, V, X, Y;
     if (shape == 1.0) {
@@ -156,7 +162,7 @@ __device__ double rk_standard_gamma(T state, double shape) {
 }
 
 template<typename T>
-__device__ double rk_beta(T state, double a, double b) {
+__device__ double rk_beta(T& state, double a, double b) {
     double Ga, Gb;
     if ((a <= 1.0) && (b <= 1.0)) {
         double U, V, X, Y;
@@ -187,7 +193,7 @@ __device__ double rk_beta(T state, double a, double b) {
 }
 
 template<typename T>
-__device__ int64_t rk_geometric_search(T state, double p) {
+__device__ int64_t rk_geometric_search(T& state, double p) {
     double U, sum, prod, q;
     int64_t X;
     X = 1;
@@ -203,12 +209,12 @@ __device__ int64_t rk_geometric_search(T state, double p) {
 }
 
 template<typename T>
-__device__ int64_t rk_geometric_inversion(T state, double p) {
+__device__ int64_t rk_geometric_inversion(T& state, double p) {
     return ceil(log(1.0-state.rk_double())/log(1.0-p));
 }
 
 template<typename T>
-__device__ int64_t rk_geometric(T state, double p) {
+__device__ int64_t rk_geometric(T& state, double p) {
     if (p >= 0.333333333333333333333333) {
         return rk_geometric_search(state, p);
     } else {
@@ -250,7 +256,7 @@ __device__ double loggam(double x) {
 }
 
 template<typename T>
-__device__ int64_t rk_hypergeometric_hyp(T state, int64_t good, int64_t bad, int64_t sample) {
+__device__ int64_t rk_hypergeometric_hyp(T& state, int64_t good, int64_t bad, int64_t sample) {
     int64_t d1, K, Z;
     double d2, U, Y;
 
@@ -273,7 +279,7 @@ __device__ int64_t rk_hypergeometric_hyp(T state, int64_t good, int64_t bad, int
 
 
 template<typename T>
-__device__ int64_t rk_hypergeometric_hrua(T state, int64_t good, int64_t bad, int64_t sample) {
+__device__ int64_t rk_hypergeometric_hrua(T& state, int64_t good, int64_t bad, int64_t sample) {
 
     int64_t mingoodbad, maxgoodbad, popsize, m, d9;
     int64_t Z;
@@ -320,7 +326,7 @@ __device__ int64_t rk_hypergeometric_hrua(T state, int64_t good, int64_t bad, in
 }
 
 template<typename T>
-__device__ int64_t rk_hypergeometric(T state, int64_t good, int64_t bad, int64_t sample) {
+__device__ int64_t rk_hypergeometric(T& state, int64_t good, int64_t bad, int64_t sample) {
     if (sample > 10) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
@@ -330,7 +336,7 @@ __device__ int64_t rk_hypergeometric(T state, int64_t good, int64_t bad, int64_t
 }
 
 template<typename T>
-__device__ int64_t rk_logseries(T state, double p)
+__device__ int64_t rk_logseries(T& state, double p)
 {
     double q, r, U, V;
     int64_t result;
@@ -361,7 +367,7 @@ __device__ int64_t rk_logseries(T state, double p)
 }
 
 template<typename T>
-__device__ int64_t rk_poisson_mult(T state, double lam) {
+__device__ int64_t rk_poisson_mult(T& state, double lam) {
     int64_t X;
     double prod, U, enlam;
     enlam = exp(-lam);
@@ -379,7 +385,7 @@ __device__ int64_t rk_poisson_mult(T state, double lam) {
 }
 
 template<typename T>
-__device__ int64_t rk_poisson_ptrs(T state, double lam) {
+__device__ int64_t rk_poisson_ptrs(T& state, double lam) {
     int64_t k;
     double U, V, slam, loglam, a, b, invalpha, vr, us;
     slam = sqrt(lam);
@@ -408,7 +414,7 @@ __device__ int64_t rk_poisson_ptrs(T state, double lam) {
 }
 
 template<typename T>
-__device__ int64_t rk_poisson(T state, double lam) {
+__device__ int64_t rk_poisson(T& state, double lam) {
     if (lam >= 10) {
         return rk_poisson_ptrs(state, lam);
     } else if (lam == 0) {
@@ -419,22 +425,22 @@ __device__ int64_t rk_poisson(T state, double lam) {
 }
 
 template<typename T>
-__device__ uint32_t rk_raw(T state) {
+__device__ uint32_t rk_raw(T& state) {
     return state.rk_int();
 }
 
 template<typename T>
-__device__ double rk_random_uniform(T state) {
+__device__ double rk_random_uniform(T& state) {
     return state.rk_double();
 }
 
 template<typename T>
-__device__ float rk_random_uniform_float(T state) {
+__device__ float rk_random_uniform_float(T& state) {
     return state.rk_float();
 }
 
 template<typename T>
-__device__ uint32_t rk_interval_32(T state, uint32_t mx, uint32_t mask) {
+__device__ uint32_t rk_interval_32(T& state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state.rk_int() & mask;
     while(sampled > mx)  {
         sampled = state.rk_int() & mask;
@@ -443,7 +449,7 @@ __device__ uint32_t rk_interval_32(T state, uint32_t mx, uint32_t mask) {
 }
 
 template<typename T>
-__device__ uint64_t rk_interval_64(T state, uint64_t  mx, uint64_t mask) {
+__device__ uint64_t rk_interval_64(T& state, uint64_t  mx, uint64_t mask) {
     uint32_t hi= state.rk_int();
     uint32_t lo= state.rk_int();
     uint64_t sampled = (static_cast<uint64_t>(hi) << 32 | lo)  & mask;
@@ -456,7 +462,7 @@ __device__ uint64_t rk_interval_64(T state, uint64_t  mx, uint64_t mask) {
 }
 
 template<typename T>
-__device__ int64_t rk_binomial_btpe(T state, long n, double p, rk_binomial_state *binomial_state) {
+__device__ int64_t rk_binomial_btpe(T& state, long n, double p, rk_binomial_state *binomial_state) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
     int m,y,k,i;
@@ -573,7 +579,7 @@ __device__ int64_t rk_binomial_btpe(T state, long n, double p, rk_binomial_state
 }
 
 template<typename T>
-__device__ int64_t rk_binomial_inversion(T state, int n, double p, rk_binomial_state *binomial_state) {
+__device__ int64_t rk_binomial_inversion(T& state, int n, double p, rk_binomial_state *binomial_state) {
     double q, qn, np, px, U;
     int X, bound;
 
@@ -611,7 +617,7 @@ __device__ int64_t rk_binomial_inversion(T state, int n, double p, rk_binomial_s
 }
 
 template<typename T>
-__device__ int64_t rk_binomial(T state, int n, double p, rk_binomial_state *binomial_state) {
+__device__ int64_t rk_binomial(T& state, int n, double p, rk_binomial_state *binomial_state) {
     double q;
 
     if (p <= 0.5) {
@@ -769,9 +775,6 @@ __device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_in
 __device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
     return value + id;
 }
-
-
-#define ELEM_PER_THREAD 128
 
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
