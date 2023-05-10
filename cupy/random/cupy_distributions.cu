@@ -35,7 +35,11 @@ struct curand_pseudo_state {
     __device__ double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
+#ifdef CUPY_USE_HIP
+        double r = curand_uniform(&_state);
+#else
         double r = curand_uniform_double(&_state);
+#endif
         if (r >= 1.0) { 
            r = 0.0;
         }
@@ -755,7 +759,7 @@ template<typename T>
 struct array_data {};  // opaque type always used as a pointer type
 
 template<typename T>
-__device__ T get_index(array_data<T> *value, int id) {
+__device__ T get_index(array_data<T> *value, int id, ssize_t state_size) {
     int64_t* data = reinterpret_cast<int64_t*>(value);
     intptr_t ptr = reinterpret_cast<intptr_t>(data[0]);
     int ndim = data[1];
@@ -768,12 +772,12 @@ __device__ T get_index(array_data<T> *value, int id) {
 }
 
 template<typename T>
-__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id, ssize_t state_size) {
     return value;
 }
 
-__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
-    return value + id;
+__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id, ssize_t state_size) {
+    return (value + id % state_size);
 }
 
 template<typename F, typename T, typename R, typename... Args>
@@ -784,11 +788,7 @@ __global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, 
     for (int id = blockIdx.x * blockDim.x + threadIdx.x; 
              id < size; 
              id += state_size) {
-    //          // id += blockDim.x * gridDim.x) {
-    //         // need to pass it by copy due to hip issues with templating
-    // if(id < state_size) 
-        // out_ptr[id] = func(random, (get_index(args, id))...);
-        func(random, (get_index(args, id))...);
+        out_ptr[id] = func(random, (get_index(args, id, state_size))...);
     }
     return;
 }
