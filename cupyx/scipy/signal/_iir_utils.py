@@ -5,6 +5,7 @@ import cupy
 from cupy._core.internal import _normalize_axis_index
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
+from cupyx.scipy.signal._arraytools import axis_slice
 
 
 def _get_typename(dtype):
@@ -37,13 +38,11 @@ TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
 if runtime.is_hip:
     IIR_KERNEL_BASE = r"""
     #include <hip/hip_runtime.h>
-    #include <hip/hip_cooperative_groups.h>
 """
 else:
     IIR_KERNEL_BASE = r"""
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <cooperative_groups.h>
 """
 
 IIR_KERNEL = IIR_KERNEL_BASE + r"""
@@ -647,11 +646,13 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
     axis = _normalize_axis_index(axis, x_ndim)
     k = 2
     n = x_shape[axis]
+    zi_shape = None
 
     if x_ndim > 1:
         x, x_shape = collapse_2d(x, axis)
-        if zi is not None:
-            zi, _ = collapse_2d_rest(zi, axis)
+
+    if zi is not None:
+        zi, zi_shape = collapse_2d_rest(zi, axis)
 
     out = cupy.array(x, dtype=dtype, copy=True)
 
@@ -663,7 +664,9 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
     carries = cupy.empty(
         (num_rows, n_blocks, k), dtype=dtype)
     all_carries = carries
+    zi_out = None
     if zi is not None:
+        zi_out = cupy.empty_like(zi)
         all_carries = cupy.empty(
             (num_rows, n_blocks + 1, k), dtype=dtype)
 
@@ -689,15 +692,11 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
         if zi is not None:
             section_zi = zi[s, :, :2]
             all_carries[:, 0, :] = section_zi
+            zi_out[s, :, :2] = axis_slice(out, n - 2, n)
 
         fir_kernel((num_rows * n_blocks,), (block_sz,),
                    (block_sz, n, carries_stride, n_blocks, starting_group,
                     b, all_carries, out))
-        carries_kernel((num_rows * n_blocks,), (k,),
-                       (block_sz, n, carries_stride, n_blocks, starting_group,
-                        out, all_carries))
-
-    for s in range(n_sections):
         first_pass_kernel(
             (total_blocks,), (block_sz // 2,),
             (block_sz, n, n_blocks, correction[s], out, carries))
@@ -717,10 +716,25 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
                 (block_sz, n, carries_stride, blocks_to_merge,
                     starting_group, correction[s], all_carries, out))
 
+        carries_kernel((num_rows * n_blocks,), (k,),
+                       (block_sz, n, carries_stride, n_blocks, starting_group,
+                        out, all_carries))
+
+        if zi is not None:
+            zi_out[s, :, 2:] = axis_slice(out, n - 2, n)
+
     if x_ndim > 1:
         out = out.reshape(x_shape)
         out = cupy.moveaxis(out, -1, axis)
         if not out.flags.c_contiguous:
             out = out.copy()
 
+    if zi is not None:
+        zi_out = zi_out.reshape(zi_shape)
+        zi_out = cupy.moveaxis(zi_out, -1, axis)
+        if not zi_out.flags.c_contiguous:
+            zi_out = zi_out.copy()
+
+    if zi is not None:
+        return out, zi_out
     return out
