@@ -55,7 +55,6 @@ from cupy import testing
             ((1, 3, 3), (10, 1, 3, 1)),
         ],
     }))
-@testing.gpu
 class TestMatmul(unittest.TestCase):
 
     @testing.for_all_dtypes(name='dtype1')
@@ -86,7 +85,6 @@ class TestMatmul(unittest.TestCase):
             ((0, 3, 2), (0, 2, 4), (0, 3, 4)),
         ],
     }))
-@testing.gpu
 class TestMatmulOut(unittest.TestCase):
 
     @testing.for_all_dtypes(name='dtype1')
@@ -157,7 +155,6 @@ class TestMatmulStrides:
             ((6, 5, 3, 2), (2,)),
         ],
     }))
-@testing.gpu
 class TestMatmulLarge(unittest.TestCase):
 
     # Avoid overflow
@@ -256,7 +253,6 @@ class _TestMatmulComputeTypes(unittest.TestCase):
             ((96, 32), (32, 64)),
         ],
     }))
-@testing.gpu
 class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
     dtype = numpy.float16
 
@@ -291,7 +287,6 @@ class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
             (numpy.complex64, numpy.complex64),
         ],
     }))
-@testing.gpu
 class TestMatmulFp32ComputeTypes(_TestMatmulComputeTypes):
     dtype = numpy.float32
 
@@ -326,7 +321,6 @@ class TestMatmulFp32ComputeTypes(_TestMatmulComputeTypes):
             (numpy.complex128, numpy.complex128),
         ],
     }))
-@testing.gpu
 class TestMatmulFp64ComputeTypes(_TestMatmulComputeTypes):
     dtype = numpy.float64
 
@@ -354,7 +348,6 @@ class TestMatmulFp64ComputeTypes(_TestMatmulComputeTypes):
             ((0, 1, 1), (2, 1, 1)),
         ],
     }))
-@testing.gpu
 class TestMatmulInvalidShape(unittest.TestCase):
 
     def test_invalid_shape(self):
@@ -379,7 +372,6 @@ class TestMatmulInvalidShape(unittest.TestCase):
              [(0, 1), (0, 1), (1, 2)]),
         ],
     }))
-@testing.gpu
 class TestMatmulAxes(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -397,7 +389,6 @@ class TestMatmulAxes(unittest.TestCase):
         return out
 
 
-@testing.gpu
 class TestMatmulDispatch(unittest.TestCase):
 
     def test_matmul_dispatch(self):

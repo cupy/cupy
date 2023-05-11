@@ -1,4 +1,4 @@
-<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/master/docs/image/cupy_logo_1000px.png" width="400"/></div>
+<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400"/></div>
 
 # CuPy : NumPy & SciPy for GPU
 
@@ -12,7 +12,7 @@
 [**Website**](https://cupy.dev/)
 | [**Install**](https://docs.cupy.dev/en/stable/install.html)
 | [**Tutorial**](https://docs.cupy.dev/en/stable/user_guide/basic.html)
-| [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
+| [**Examples**](https://github.com/cupy/cupy/tree/main/examples)
 | [**Documentation**](https://docs.cupy.dev/en/stable/)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
 | [**Forum**](https://groups.google.com/forum/#!forum/cupy)
@@ -40,14 +40,11 @@ Choose the right package for your platform.
 
 | Platform              | Architecture      | Command                                                       |
 | --------------------- | ----------------- | ------------------------------------------------------------- |
-| CUDA 10.2             | x86_64            | `pip install cupy-cuda102`                                    |
-|                       | aarch64           | `pip install cupy-cuda102 -f https://pip.cupy.dev/aarch64`    |
+| CUDA 10.2             | x86_64 / aarch64  | `pip install cupy-cuda102`                                    |
 | CUDA 11.0             | x86_64            | `pip install cupy-cuda110`                                    |
 | CUDA 11.1             | x86_64            | `pip install cupy-cuda111`                                    |
-| CUDA 11.2 ~ 11.8      | x86_64            | `pip install cupy-cuda11x`                                    |
-|                       | aarch64           | `pip install cupy-cuda11x -f https://pip.cupy.dev/aarch64`    |
-| CUDA 12.x             | x86_64            | `pip install cupy-cuda12x`                                    |
-|                       | aarch64           | `pip install cupy-cuda12x -f https://pip.cupy.dev/aarch64`    |
+| CUDA 11.2 ~ 11.8      | x86_64 / aarch64  | `pip install cupy-cuda11x`                                    |
+| CUDA 12.x             | x86_64 / aarch64  | `pip install cupy-cuda12x`                                    |
 | ROCm 4.3 (*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
 | ROCm 5.0 (*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
 

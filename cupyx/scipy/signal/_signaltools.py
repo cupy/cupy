@@ -6,6 +6,8 @@ from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
+from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
+from cupyx.scipy.signal._arraytools import axis_slice, axis_assign
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -565,6 +567,358 @@ def medfilt2d(input, kernel_size=3):
     order = kernel_size[0] * kernel_size[1] // 2
     return _filters.rank_filter(
         input, order, size=kernel_size, mode='constant')
+
+
+def lfilter(b, a, x, axis=-1, zi=None):
+    """
+    Filter data along one-dimension with an IIR or FIR filter.
+
+    Filter a data sequence, `x`, using a digital filter.  This works for many
+    fundamental data types (including Object type).  The filter is a direct
+    form II transposed implementation of the standard difference equation
+    (see Notes).
+
+    The function `sosfilt` (and filter design using ``output='sos'``) should be
+    preferred over `lfilter` for most filtering tasks, as second-order sections
+    have fewer numerical problems.
+
+    Parameters
+    ----------
+    b : array_like
+        The numerator coefficient vector in a 1-D sequence.
+    a : array_like
+        The denominator coefficient vector in a 1-D sequence.  If ``a[0]``
+        is not 1, then both `a` and `b` are normalized by ``a[0]``.
+    x : array_like
+        An N-dimensional input array.
+    axis : int, optional
+        The axis of the input data array along which to apply the
+        linear filter. The filter is applied to each subarray along
+        this axis.  Default is -1.
+    zi : array_like, optional
+        Initial conditions for the filter delays.  It is a vector
+        (or array of vectors for an N-dimensional input) of length
+        ``len(b) + len(a) - 2``. The first ``len(b)`` numbers correspond to the
+        last elements of the previous input and the last ``len(a)`` to the last
+        elements of the previous output. If `zi` is None or is not given then
+        initial rest is assumed.  See `lfiltic` for more information.
+
+        **Note**: This argument differs from dimensions from the SciPy
+        implementation! However, as long as they are chained from the same
+        library, the output result will be the same. Please make sure to use
+        the `zi` from CuPy calls and not from SciPy. This due to the parallel
+        nature of this implementation as opposed to the serial one in SciPy.
+
+    Returns
+    -------
+    y : array
+        The output of the digital filter.
+    zf : array, optional
+        If `zi` is None, this is not returned, otherwise, `zf` holds the
+        final filter delay values.
+
+    See Also
+    --------
+    lfiltic : Construct initial conditions for `lfilter`.
+    lfilter_zi : Compute initial state (steady state of step response) for
+                 `lfilter`.
+    filtfilt : A forward-backward filter, to obtain a filter with zero phase.
+    savgol_filter : A Savitzky-Golay filter.
+    sosfilt: Filter data using cascaded second-order sections.
+    sosfiltfilt: A forward-backward filter using second-order sections.
+
+    Notes
+    -----
+    The filter function is implemented as a direct II transposed structure.
+    This means that the filter implements::
+
+          a[0]*y[n] = b[0]*x[n] + b[1]*x[n-1] + ... + b[M]*x[n-M]
+                                - a[1]*y[n-1] - ... - a[N]*y[n-N]
+
+    where `M` is the degree of the numerator, `N` is the degree of the
+    denominator, `n` is the sample number and `L` denotes the length of the
+    input.  It is implemented by computing first the FIR part and then
+    computing the IIR part from it::
+
+             a[0] * y = r(f(x, b), a)
+             f(x, b)[n] = b[0]*x[n] + b[1]*x[n-1] + ... + b[M]*x[n-M]
+             r(y, a)[n] = - a[1]*y[n-1] - ... - a[N]*y[n-N]
+
+    The IIR result is computed in parallel by first dividing the input signal
+    into chunks (`g_i`) of size `m`. For each chunk, the IIR recurrence
+    equation is applied to each chunk (in parallel). Then the chunks are merged
+    based on the last N values of the last chunk::
+
+             nc = L/m
+             x = [g_0, g_1, ..., g_nc]
+
+             g_i = [x[i * m], ..., x[i * m + m - 1]]
+             p_i = r(g_i, a)
+
+             o_i = r(p_i, c(p_{i - 1}))   if i > 1,
+                   r(p_i, zi)             otherwise
+
+             y = [o_0, o_1, ..., o_nc]
+
+    where `c` denotes a function that takes a chunk, slices the last `N` values
+    and adjust them using a correction factor table computed using the
+    (1, 2, ..., N)-fibonacci sequence. For more information see [1]_.
+
+    The rational transfer function describing this filter in the
+    z-transform domain is::
+
+                             -1              -M
+                 b[0] + b[1]z  + ... + b[M] z
+         Y(z) = -------------------------------- X(z)
+                             -1              -N
+                 a[0] + a[1]z  + ... + a[N] z
+
+    References
+    ----------
+    .. [1] Sepideh Maleki and Martin Burtscher.
+           2018. Automatic Hierarchical Parallelization of Linear Recurrences.
+           SIGPLAN Not. 53, 2 (February 2018), 128-138.
+           `10.1145/3173162.3173168 <https://doi.org/10.1145/3173162.3173168>`_
+    """
+    a0 = a[0]
+    a_r = - a[1:] / a0
+    b = b / a0
+
+    num_b = b.size - 1
+    num_a = a_r.size
+    x_ndim = x.ndim
+    axis = internal._normalize_axis_index(axis, x_ndim)
+    n = x.shape[axis]
+    fir_dtype = cupy.result_type(x, b)
+
+    prev_in = None
+    prev_out = None
+    pad_shape = list(x.shape)
+    pad_shape[axis] += num_b
+
+    x_full = cupy.zeros(pad_shape, dtype=x.dtype)
+    if zi is not None:
+        zi = cupy.atleast_1d(zi)
+        if num_b > 0:
+            prev_in = axis_slice(zi, 0, num_b, axis=axis)
+        if num_a > 0:
+            prev_out = axis_slice(
+                zi, zi.shape[axis] - num_a, zi.shape[axis], axis=axis)
+
+    if prev_in is not None:
+        x_full = axis_assign(x_full, prev_in, 0, num_b, axis=axis)
+
+    x_full = axis_assign(x_full, x, num_b, axis=axis)
+    origin = -num_b // 2
+    out = cupy.empty_like(x_full, dtype=fir_dtype)
+    out = _filters.convolve1d(
+        x_full, b, axis=axis, mode='constant', origin=origin, output=out)
+
+    if num_b > 0:
+        out = axis_slice(out, out.shape[axis] - n, out.shape[axis], axis=axis)
+
+    if a_r.size > 0:
+        iir_dtype = cupy.result_type(fir_dtype, a)
+        const_dtype = cupy.dtype(a.dtype)
+        if const_dtype.kind == 'u':
+            const_dtype = cupy.dtype(const_dtype.char.lower())
+            a = a.astype(const_dtype)
+
+        out = apply_iir(out, a_r, axis=axis, zi=prev_out, dtype=iir_dtype)
+
+    if zi is not None:
+        zi = cupy.empty(zi.shape, dtype=out.dtype)
+        if num_b > 0:
+            prev_in = axis_slice(
+                x, x.shape[axis] - num_b, x.shape[axis], axis=axis)
+            zi = axis_assign(zi, prev_in, 0, num_b, axis=axis)
+        if num_a > 0:
+            prev_out = axis_slice(
+                out, out.shape[axis] - num_a, out.shape[axis], axis=axis)
+            zi = axis_assign(
+                zi, prev_out, zi.shape[axis] - num_a, zi.shape[axis],
+                axis=axis)
+        return out, zi
+    else:
+        return out
+
+
+def lfiltic(b, a, y, x=None):
+    """
+    Construct initial conditions for lfilter given input and output vectors.
+
+    Given a linear filter (b, a) and initial conditions on the output `y`
+    and the input `x`, return the initial conditions on the state vector zi
+    which is used by `lfilter` to generate the output given the input.
+
+    Parameters
+    ----------
+    b : array_like
+        Linear filter term.
+    a : array_like
+        Linear filter term.
+    y : array_like
+        Initial conditions.
+        If ``N = len(a) - 1``, then ``y = {y[-1], y[-2], ..., y[-N]}``.
+        If `y` is too short, it is padded with zeros.
+    x : array_like, optional
+        Initial conditions.
+        If ``M = len(b) - 1``, then ``x = {x[-1], x[-2], ..., x[-M]}``.
+        If `x` is not given, its initial conditions are assumed zero.
+        If `x` is too short, it is padded with zeros.
+    axis: int, optional
+        The axis to take the initial conditions from, if `x` and `y` are
+        n-dimensional
+
+    Returns
+    -------
+    zi : ndarray
+        The state vector ``zi = {z_0[-1], z_1[-1], ..., z_K-1[-1]}``,
+        where ``K = M + N``.
+
+    See Also
+    --------
+    lfilter, lfilter_zi
+    """
+    # SciPy implementation only supports 1D initial conditions, however,
+    # lfilter accepts n-dimensional initial conditions. If SciPy implementation
+    # accepts n-dimensional arrays, then axis can be moved to the signature.
+    axis = -1
+    fir_len = b.size - 1
+    iir_len = a.size - 1
+
+    if y is None and x is None:
+        return None
+
+    ref_ndim = y.ndim if y is not None else x.ndim
+    axis = internal._normalize_axis_index(axis, ref_ndim)
+
+    zi = cupy.empty(0)
+    if y is not None and iir_len > 0:
+        pad_y = cupy.concatenate(
+            (y, cupy.zeros(max(iir_len - y.shape[axis], 0))), axis=axis)
+        zi = cupy.take(pad_y, list(range(iir_len)), axis=axis)
+        zi = cupy.flip(zi, axis)
+
+    if x is not None and fir_len > 0:
+        pad_x = cupy.concatenate(
+            (x, cupy.zeros(max(fir_len - x.shape[axis], 0))), axis=axis)
+        fir_zi = cupy.take(pad_x, list(range(fir_len)), axis=axis)
+        fir_zi = cupy.flip(fir_zi, axis)
+        zi = cupy.concatenate((fir_zi, zi), axis=axis)
+    return zi
+
+
+def lfilter_zi(b, a):
+    """
+    Construct initial conditions for lfilter for step response steady-state.
+
+    Compute an initial state `zi` for the `lfilter` function that corresponds
+    to the steady state of the step response.
+
+    A typical use of this function is to set the initial state so that the
+    output of the filter starts at the same value as the first element of
+    the signal to be filtered.
+
+    Parameters
+    ----------
+    b, a : array_like (1-D)
+        The IIR filter coefficients. See `lfilter` for more
+        information.
+
+    Returns
+    -------
+    zi : 1-D ndarray
+        The initial state for the filter.
+
+    See Also
+    --------
+    lfilter, lfiltic, filtfilt
+    """
+    a0 = a[0]
+    a_r = - a[1:] / a0
+    # b = b / a0
+    num_b = b.size - 1
+    num_a = a_r.size
+
+    # The initial state for a FIR filter will be always one for a step input
+    zi = cupy.ones(num_b)
+    if num_a > 0:
+        zi_t = cupy.r_[zi, cupy.zeros(num_a)]
+        y, _ = lfilter(b, a, cupy.ones(num_a + 1), zi=zi_t)
+        y1 = y[:num_a]
+        y2 = y[-num_a:]
+
+        C = compute_correction_factors(a_r, a_r.size + 1, a.dtype)
+        C = C[:, a_r.size:]
+        C1 = C[:, :a_r.size].T
+        C2 = C[:, -a_r.size:].T
+
+        # Take the difference between the non-adjusted output values and
+        # compute which initial output state would cause them to be constant.
+        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        zi = cupy.r_[zi, y_zi]
+    return zi
+
+
+def deconvolve(signal, divisor):
+    """Deconvolves ``divisor`` out of ``signal`` using inverse filtering.
+
+    Returns the quotient and remainder such that
+    ``signal = convolve(divisor, quotient) + remainder``
+
+    Parameters
+    ----------
+    signal : (N,) array_like
+        Signal data, typically a recorded signal
+    divisor : (N,) array_like
+        Divisor data, typically an impulse response or filter that was
+        applied to the original signal
+
+    Returns
+    -------
+    quotient : ndarray
+        Quotient, typically the recovered original signal
+    remainder : ndarray
+        Remainder
+
+    See Also
+    --------
+    cupy.polydiv : performs polynomial division (same operation, but
+                   also accepts poly1d objects)
+
+    Examples
+    --------
+    Deconvolve a signal that's been filtered:
+
+    >>> from cupyx.scipy import signal
+    >>> original = [0, 1, 0, 0, 1, 1, 0, 0]
+    >>> impulse_response = [2, 1]
+    >>> recorded = signal.convolve(impulse_response, original)
+    >>> recorded
+    array([0, 2, 1, 0, 2, 3, 1, 0, 0])
+    >>> recovered, remainder = signal.deconvolve(recorded, impulse_response)
+    >>> recovered
+    array([ 0.,  1.,  0.,  0.,  1.,  1.,  0.,  0.])
+
+    """
+    num = cupy.atleast_1d(signal)
+    den = cupy.atleast_1d(divisor)
+    if num.ndim > 1:
+        raise ValueError("signal must be 1-D.")
+    if den.ndim > 1:
+        raise ValueError("divisor must be 1-D.")
+    N = len(num)
+    D = len(den)
+    if D > N:
+        quot = []
+        rem = num
+    else:
+        input = cupy.zeros(N - D + 1, float)
+        input[0] = 1
+        quot = lfilter(num, den, input)
+        rem = num - convolve(den, quot, mode='full')
+    return quot, rem
 
 
 def _get_kernel_size(kernel_size, ndim):

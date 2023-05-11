@@ -44,8 +44,10 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
     } elseif ($version -eq "12.0") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_0
+    } elseif ($version -eq "12.1") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
     } elseif ($version -eq "12.x") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_0
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
     } else {
         throw "Unsupported CUDA version: $version"
     }
@@ -55,6 +57,8 @@ function ActivateCUDA($version) {
 function ActivateCuDNN($cudnn_version, $cuda_version) {
     if ($cudnn_version -eq "8.6") {
         $cudnn = "v8.6.0"
+    } elseif ($cudnn_version -eq "8.8") {
+        $cudnn = "v8.8.1"
     } else {
         throw "Unsupported cuDNN version: $cudnn_version"
     }
@@ -65,8 +69,6 @@ function ActivateCuDNN($cudnn_version, $cuda_version) {
         $cuda = "11"
     } elseif ($cuda_version.startswith("12.")) {
         $cuda = "12"
-        echo "cuDNN for CUDA 12 is not available yet, not activating cuDNN"
-        return
     } else {
         throw "Unsupported CUDA version: $cuda_version"
     }

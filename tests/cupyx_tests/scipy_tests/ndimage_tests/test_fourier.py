@@ -53,7 +53,6 @@ except ImportError:
         )
     )
 )
-@testing.gpu
 @testing.with_requires("scipy")
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierShift:
@@ -142,7 +141,6 @@ class TestFourierShift:
         )
     )
 )
-@testing.gpu
 @testing.with_requires("scipy")
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierGaussian:
@@ -231,7 +229,6 @@ class TestFourierGaussian:
         )
     )
 )
-@testing.gpu
 @testing.with_requires("scipy")
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierUniform:
@@ -314,7 +311,6 @@ class TestFourierUniform:
         )
     )
 )
-@testing.gpu
 @testing.with_requires('scipy')
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierEllipsoid():
@@ -386,7 +382,6 @@ class TestFourierEllipsoid():
         return xp.ascontiguousarray(a)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestFourierEllipsoidInvalid():

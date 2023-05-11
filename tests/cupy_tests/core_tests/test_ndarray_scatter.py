@@ -109,7 +109,6 @@ from cupy import testing
     {'shape': (2, 3, 4), 'slices': ([[1]], slice(1, 2)), 'value': 1},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestScatterParametrized:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
@@ -140,7 +139,6 @@ class TestScatterParametrized:
         return a
 
 
-@testing.gpu
 class TestScatterAdd:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,

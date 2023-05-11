@@ -6,7 +6,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestNpz(unittest.TestCase):
 
     @testing.for_all_dtypes()

@@ -485,8 +485,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     >>> import unittest
     >>> from cupy import testing
-    >>> @testing.gpu
-    ... class TestFoo(unittest.TestCase):
+    >>> class TestFoo(unittest.TestCase):
     ...
     ...     @testing.numpy_cupy_allclose()
     ...     def test_foo(self, xp):
@@ -908,8 +907,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
     >>> import unittest
     >>> from cupy import testing
-    >>> @testing.gpu
-    ... class TestNpz(unittest.TestCase):
+    >>> class TestNpz(unittest.TestCase):
     ...
     ...     @testing.for_all_dtypes()
     ...     def test_pickle(self, dtype):
@@ -925,8 +923,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
 
     >>> import unittest
     >>> from cupy import testing
-    >>> @testing.gpu
-    ... class TestMean(unittest.TestCase):
+    >>> class TestMean(unittest.TestCase):
     ...
     ...     @testing.for_all_dtypes()
     ...     @testing.numpy_cupy_allclose()

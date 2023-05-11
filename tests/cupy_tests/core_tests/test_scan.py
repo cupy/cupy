@@ -8,7 +8,6 @@ from cupy._core._routines_math import _scan_for_test as scan
 from cupy import testing
 
 
-@testing.gpu
 class TestScan(unittest.TestCase):
 
     @testing.for_all_dtypes()

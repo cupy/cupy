@@ -18,7 +18,6 @@ class C(cupy.ndarray):
         self.info = getattr(obj, 'info', None)
 
 
-@testing.gpu
 class TestArrayUfunc:
 
     @testing.for_all_dtypes()

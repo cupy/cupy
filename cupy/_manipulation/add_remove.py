@@ -4,7 +4,50 @@ import cupy
 from cupy import _core
 
 
-# TODO(okuta): Implement delete
+def delete(arr, indices, axis=None):
+    """
+    Delete values from an array along the specified axis.
+
+    Args:
+        arr (cupy.ndarray):
+            Values are deleted from a copy of this array.
+        indices (slice, int or array of ints):
+            These indices correspond to values that will be deleted from the
+            copy of `arr`.
+            Boolean indices are treated as a mask of elements to remove.
+        axis (int or None):
+            The axis along which `indices` correspond to values that will be
+            deleted. If `axis` is not given, `arr` will be flattened.
+
+    Returns:
+        cupy.ndarray:
+            A copy of `arr` with values specified by `indices` deleted along
+            `axis`.
+
+    .. warning:: This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.delete`.
+    """
+
+    if axis is None:
+
+        arr = arr.ravel()
+
+        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
+            return arr[~indices]
+
+        mask = cupy.ones(arr.size, dtype=bool)
+        mask[indices] = False
+        return arr[mask]
+
+    else:
+
+        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
+            return cupy.compress(~indices, arr, axis=axis)
+
+        mask = cupy.ones(arr.shape[axis], dtype=bool)
+        mask[indices] = False
+        return cupy.compress(mask, arr, axis=axis)
 
 
 # TODO(okuta): Implement insert

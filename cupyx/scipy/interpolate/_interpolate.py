@@ -18,6 +18,7 @@ except ImportError:
         return math.factorial(n) // (math.factorial(n - k) * math.factorial(k))
 
 
+MAX_DIMS = 64
 TYPES = ['double', 'thrust::complex<double>']
 INT_TYPES = ['int', 'long long']
 
@@ -28,39 +29,28 @@ INTERVAL_KERNEL = r'''
 #define ge_or_le(x, y, r) ((r) ? ((x) > (y)) : ((x) < (y)))
 #define geq_or_leq(x, y, r) ((r) ? ((x) >= (y)) : ((x) <= (y)))
 
-extern "C" {
-__global__ void find_breakpoint_position(
-        const double* breakpoints, const double* x, long long* out,
-        bool extrapolate, int total_x, int total_breakpoints,
-        const bool* pasc) {
+__device__ long long find_breakpoint_position(
+        const double* breakpoints, const double xp, bool extrapolate,
+        const int total_breakpoints, const bool* pasc) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= total_x) {
-        return;
-    }
-
-    double xp = *&x[idx];
     double a = *&breakpoints[0];
     double b = *&breakpoints[total_breakpoints - 1];
     bool asc = pasc[0];
 
     if(isnan(xp)) {
-        out[idx] = -1;
-        return;
+        return -1;
     }
 
     if(le_or_ge(xp, a, asc) || ge_or_le(xp, b, asc)) {
         if(!extrapolate) {
-            out[idx] = -1;
+            return -1;
         } else if(le_or_ge(xp, a, asc)) {
-            out[idx] = 0;
-        } else if(ge_or_le(xp, b, asc)) {
-            out[idx] = total_breakpoints - 2;
+            return 0;
+        } else {  // ge_or_le(xp, b, asc)
+            return total_breakpoints - 2;
         }
-        return;
     } else if (xp == b) {
-        out[idx] = total_breakpoints - 2;
-        return;
+        return total_breakpoints - 2;
     }
 
     int left = 0;
@@ -85,13 +75,52 @@ __global__ void find_breakpoint_position(
         }
     }
 
-    out[idx] = left;
+    return left;
+
 }
+
+__global__ void find_breakpoint_position_1d(
+        const double* breakpoints, const double* x, long long* out,
+        bool extrapolate, int total_x, int total_breakpoints,
+        const bool* pasc) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= total_x) {
+        return;
+    }
+
+    const double xp = *&x[idx];
+    out[idx] = find_breakpoint_position(
+        breakpoints, xp, extrapolate, total_breakpoints, pasc);
+}
+
+__global__ void find_breakpoint_position_nd(
+        const double* breakpoints, const double* x, long long* out,
+        bool extrapolate, int total_x, const long long* x_dims,
+        const long long* breakpoints_sizes,
+        const long long* breakpoints_strides) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= total_x) {
+        return;
+    }
+
+    const long long x_dim = *&x_dims[idx];
+    const long long stride = breakpoints_strides[x_dim];
+    const double* dim_breakpoints = breakpoints + stride;
+    const int num_breakpoints = *&breakpoints_sizes[x_dim];
+
+    const bool asc = true;
+    const double xp = *&x[idx];
+    out[idx] = find_breakpoint_position(
+        dim_breakpoints, xp, extrapolate, num_breakpoints, &asc);
 }
 '''
 
 INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+    code=INTERVAL_KERNEL, options=('-std=c++11',),
+    name_expressions=[
+        'find_breakpoint_position_1d', 'find_breakpoint_position_nd'])
 
 if runtime.is_hip:
     BASE_HEADERS = """#include <hip/hip_runtime.h>
@@ -190,6 +219,76 @@ __global__ void eval_ppoly(
             xp - breakpoint, coef, interval, ((long long) (j)), dx,
             c_dims, stride_0, stride_1);
         out[num_c * idx + j] = res;
+    }
+}
+
+template<typename T>
+__global__ void eval_ppoly_nd(
+        const T* coef, const double* xs, const double* xp,
+        const long long* intervals, const long long* dx,
+        const long long* ks, T* c2_all, const long long* c_dims,
+        const long long* c_strides, const long long* xs_strides,
+        const long long* xs_offsets, const long long* ks_strides,
+        const int num_x, const int ndims, const int num_ks, T* out) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= num_x) {
+        return;
+    }
+
+    const long long c_dim0 = c_dims[0];
+    const int num_c = *&c_dims[2];
+    const long long c_stride0 = c_strides[0];
+    const long long c_stride1 = c_strides[1];
+
+    const double* xp_dims = xp + ndims * idx;
+    const long long* xp_intervals = intervals + ndims * idx;
+    T* c2 = c2_all + c_dim0 * idx;
+
+    bool invalid = false;
+    for(int i = 0; i < ndims && !invalid; i++) {
+        invalid = xp_intervals[i] < 0;
+    }
+
+    if(invalid) {
+        for(int j = 0; j < num_c; j++) {
+            out[num_c * idx + j] = CUDART_NAN;
+        }
+        return;
+    }
+
+    long long pos = 0;
+    for(int k = 0; k < ndims; k++) {
+        pos += xp_intervals[k] * xs_strides[k];
+    }
+
+    for(int jp = 0; jp < num_c; jp++) {
+        for(int i = 0; i < c_dim0; i++) {
+            c2[i] = coef[c_stride0 * i + c_stride1 * pos + jp];
+        }
+
+        for(int k = ndims - 1; k >= 0; k--) {
+            const long long interval = xp_intervals[k];
+            const long long xs_offset = xs_offsets[k];
+            const double* dim_breakpoints = xs + xs_offset;
+            const double xval = xp_dims[k] - dim_breakpoints[interval];
+
+            const long long k_off = ks_strides[k];
+            const long long dim_ks = ks[k];
+            int kpos = 0;
+
+            for(int ko = 0; ko < k_off; ko++) {
+                const T* c2_off = c2 + kpos;
+                const int k_dx = dx[k];
+                T res = eval_poly_1<T>(
+                    xval, c2_off, ((long long) 0), 0, k_dx,
+                    &dim_ks, ((long long) 1), ((long long) 1));
+                c2[ko] = res;
+                kpos += dim_ks;
+            }
+        }
+
+        out[num_c * idx + jp] =  c2[0];
     }
 }
 
@@ -301,6 +400,7 @@ PPOLY_MODULE = cupy.RawModule(
     code=PPOLY_KERNEL, options=('-std=c++11',),
     name_expressions=(
         [f'eval_ppoly<{type_name}>' for type_name in TYPES] +
+        [f'eval_ppoly_nd<{type_name}>' for type_name in TYPES] +
         [f'fix_continuity<{type_name}>' for type_name in TYPES] +
         [f'integrate<{type_name}>' for type_name in TYPES]))
 
@@ -488,7 +588,8 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     ascending = x[-1] >= x[0]
 
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
-    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_1d')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
@@ -501,6 +602,79 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     ppoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                  (c, x, xp, intervals, dx, c_shape, c_strides,
                   xp.shape[0], out))
+
+
+def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
+    """
+    Evaluate a piecewise tensor-product polynomial.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k_1*...*k_d, m_1*...*m_d, n)
+        Coefficients local polynomials of order `k-1` in
+        `m_1`, ..., `m_d` intervals. There are `n` polynomials
+        in each interval.
+    xs : d-tuple of ndarray of shape (m_d+1,) each
+        Breakpoints of polynomials
+    ks : ndarray of int, shape (d,)
+        Orders of polynomials in each dimension
+    xp : ndarray, shape (r, d)
+        Points to evaluate the piecewise polynomial at.
+    dx : ndarray of int, shape (d,)
+        Orders of derivative to evaluate.  The derivative is evaluated
+        piecewise and may have discontinuities.
+    extrapolate : int, optional
+        Whether to extrapolate to out-of-bounds points based on first
+        and last intervals, or to return NaNs.
+    out : ndarray, shape (r, n)
+        Value of each polynomial at each of the input points.
+        For points outside the span ``x[0] ... x[-1]``,
+        ``nan`` is returned.
+        This argument is modified in-place.
+    """
+    num_samples = xp.shape[0]
+    total_xp = xp.size
+    ndims = len(xs)
+    num_ks = ks.size
+
+    # Compose all n-dimensional breakpoints into a single array
+    xs_sizes = cupy.asarray([x.size for x in xs], dtype=cupy.int64)
+    xs_offsets = cupy.cumsum(xs_sizes)
+    xs_offsets = cupy.r_[0, xs_offsets[:-1]]
+    xs_complete = cupy.r_[xs]
+
+    xs_sizes_m1 = xs_sizes - 1
+    xs_strides = cupy.cumprod(xs_sizes_m1[:0:-1])
+    xs_strides = cupy.r_[xs_strides[::-1], 1]
+
+    # Map each element on the input to their corresponding dimension
+    intervals = cupy.empty(xp.shape, dtype=cupy.int64)
+    dim_seq = cupy.arange(ndims, dtype=cupy.int64)
+    xp_dims = cupy.broadcast_to(
+        cupy.expand_dims(dim_seq, 0), (num_samples, ndims))
+    xp_dims = xp_dims.copy()
+
+    # Compute n-dimensional intervals
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_nd')
+    interval_kernel(((total_xp + 128 - 1) // 128,), (128,),
+                    (xs_complete, xp, intervals, extrapolate, total_xp,
+                     xp_dims, xs_sizes, xs_offsets))
+
+    # Compute coefficient displacement stride (in elements)
+    c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
+    c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
+    c2 = cupy.zeros((num_samples * c.shape[0], 1, 1), dtype=_get_dtype(c))
+
+    # Compute order strides
+    ks_strides = cupy.cumprod(cupy.r_[1, ks])
+    ks_strides = ks_strides[:-1]
+
+    ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly_nd', c)
+    ppoly_kernel(((num_samples + 128 - 1) // 128,), (128,),
+                 (c, xs_complete, xp, intervals, dx, ks, c2, c_shape,
+                  c_strides, xs_strides, xs_offsets, ks_strides, num_samples,
+                  ndims, num_ks, out))
 
 
 def _fix_continuity(c, x, order):
@@ -560,7 +734,8 @@ def _integrate(c, x, a, b, extrapolate, out):
     start_interval = cupy.empty(a.shape, dtype=cupy.int64)
     end_interval = cupy.empty(b.shape, dtype=cupy.int64)
 
-    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_1d')
     interval_kernel(((a.shape[0] + 128 - 1) // 128,), (128,),
                     (x, a, start_interval, extrapolate, a.shape[0], x.shape[0],
                      ascending))
@@ -606,7 +781,8 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     ascending = x[-1] >= x[0]
 
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
-    interval_kernel = INTERVAL_MODULE.get_function('find_breakpoint_position')
+    interval_kernel = INTERVAL_MODULE.get_function(
+        'find_breakpoint_position_1d')
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
@@ -624,6 +800,28 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     bpoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                  (c, x, xp, intervals, dx, wrk, c_shape, c_strides, wrk_shape,
                   wrk_strides, xp.shape[0], out))
+
+
+def _ndim_coords_from_arrays(points, ndim=None):
+    """
+    Convert a tuple of coordinate arrays to a (..., ndim)-shaped array.
+    """
+
+    if isinstance(points, tuple) and len(points) == 1:
+        # handle argument tuple
+        points = points[0]
+    if isinstance(points, tuple):
+        p = cupy.broadcast_arrays(*points)
+        p = [cupy.expand_dims(x, -1) for x in p]
+        points = cupy.concatenate(p, axis=-1)
+    else:
+        points = cupy.asarray(points)
+        if points.ndim == 1:
+            if ndim is None:
+                points = points.reshape(-1, 1)
+            else:
+                points = points.reshape(-1, ndim)
+    return points
 
 
 class _PPolyBase:
@@ -1759,5 +1957,417 @@ class BPoly(_PPolyBase):
             c[-q-1] = yb[q] / spec.poch(n - q, q) * (-1)**q * (xb - xa)**q
             for j in range(0, q):
                 c[-q-1] -= (-1)**(j+1) * _comb(q, j+1) * c[-q+j]
+
+        return c
+
+
+class NdPPoly:
+    """
+    Piecewise tensor product polynomial
+
+    The value at point ``xp = (x', y', z', ...)`` is evaluated by first
+    computing the interval indices `i` such that::
+
+        x[0][i[0]] <= x' < x[0][i[0]+1]
+        x[1][i[1]] <= y' < x[1][i[1]+1]
+        ...
+
+    and then computing::
+
+        S = sum(c[k0-m0-1,...,kn-mn-1,i[0],...,i[n]]
+                * (xp[0] - x[0][i[0]])**m0
+                * ...
+                * (xp[n] - x[n][i[n]])**mn
+                for m0 in range(k[0]+1)
+                ...
+                for mn in range(k[n]+1))
+
+    where ``k[j]`` is the degree of the polynomial in dimension j. This
+    representation is the piecewise multivariate power basis.
+
+    Parameters
+    ----------
+    c : ndarray, shape (k0, ..., kn, m0, ..., mn, ...)
+        Polynomial coefficients, with polynomial order `kj` and
+        `mj+1` intervals for each dimension `j`.
+    x : ndim-tuple of ndarrays, shapes (mj+1,)
+        Polynomial breakpoints for each dimension. These must be
+        sorted in increasing order.
+    extrapolate : bool, optional
+        Whether to extrapolate to out-of-bounds points based on first
+        and last intervals, or to return NaNs. Default: True.
+
+    Attributes
+    ----------
+    x : tuple of ndarrays
+        Breakpoints.
+    c : ndarray
+        Coefficients of the polynomials.
+
+    See also
+    --------
+    PPoly : piecewise polynomials in 1D
+
+    Notes
+    -----
+    High-order polynomials in the power basis can be numerically
+    unstable.
+    """
+
+    def __init__(self, c, x, extrapolate=None):
+        self.x = tuple(cupy.ascontiguousarray(
+            v, dtype=cupy.float64) for v in x)
+        self.c = cupy.asarray(c)
+        if extrapolate is None:
+            extrapolate = True
+        self.extrapolate = bool(extrapolate)
+
+        ndim = len(self.x)
+        if any(v.ndim != 1 for v in self.x):
+            raise ValueError("x arrays must all be 1-dimensional")
+        if any(v.size < 2 for v in self.x):
+            raise ValueError("x arrays must all contain at least 2 points")
+        if c.ndim < 2*ndim:
+            raise ValueError("c must have at least 2*len(x) dimensions")
+        if any(cupy.any(v[1:] - v[:-1] < 0) for v in self.x):
+            raise ValueError("x-coordinates are not in increasing order")
+        if any(a != b.size - 1 for a, b in zip(c.shape[ndim:2*ndim], self.x)):
+            raise ValueError("x and c do not agree on the number of intervals")
+
+        dtype = self._get_dtype(self.c.dtype)
+        self.c = cupy.ascontiguousarray(self.c, dtype=dtype)
+
+    @classmethod
+    def construct_fast(cls, c, x, extrapolate=None):
+        """
+        Construct the piecewise polynomial without making checks.
+
+        Takes the same parameters as the constructor. Input arguments
+        ``c`` and ``x`` must be arrays of the correct shape and type.  The
+        ``c`` array can only be of dtypes float and complex, and ``x``
+        array must have dtype float.
+        """
+        self = object.__new__(cls)
+        self.c = c
+        self.x = x
+        if extrapolate is None:
+            extrapolate = True
+        self.extrapolate = extrapolate
+        return self
+
+    def _get_dtype(self, dtype):
+        if (cupy.issubdtype(dtype, cupy.complexfloating)
+                or cupy.issubdtype(self.c.dtype, cupy.complexfloating)):
+            return cupy.complex_
+        else:
+            return cupy.float_
+
+    def _ensure_c_contiguous(self):
+        if not self.c.flags.c_contiguous:
+            self.c = self.c.copy()
+        if not isinstance(self.x, tuple):
+            self.x = tuple(self.x)
+
+    def __call__(self, x, nu=None, extrapolate=None):
+        """
+        Evaluate the piecewise polynomial or its derivative
+
+        Parameters
+        ----------
+        x : array-like
+            Points to evaluate the interpolant at.
+        nu : tuple, optional
+            Orders of derivatives to evaluate. Each must be non-negative.
+        extrapolate : bool, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs.
+
+        Returns
+        -------
+        y : array-like
+            Interpolated values. Shape is determined by replacing
+            the interpolation axis in the original array with the shape of x.
+
+        Notes
+        -----
+        Derivatives are evaluated piecewise for each polynomial
+        segment, even if the polynomial is not differentiable at the
+        breakpoints. The polynomial intervals are considered half-open,
+        ``[a, b)``, except for the last interval which is closed
+        ``[a, b]``.
+        """
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+        else:
+            extrapolate = bool(extrapolate)
+
+        ndim = len(self.x)
+
+        x = _ndim_coords_from_arrays(x)
+        x_shape = x.shape
+        x = cupy.ascontiguousarray(x.reshape(-1, x.shape[-1]),
+                                   dtype=cupy.float64)
+
+        if nu is None:
+            nu = cupy.zeros((ndim,), dtype=cupy.int64)
+        else:
+            nu = cupy.asarray(nu, dtype=cupy.int64)
+            if nu.ndim != 1 or nu.shape[0] != ndim:
+                raise ValueError("invalid number of derivative orders nu")
+
+        dim1 = int(np.prod(self.c.shape[:ndim]))
+        dim2 = int(np.prod(self.c.shape[ndim:2*ndim]))
+        dim3 = int(np.prod(self.c.shape[2*ndim:]))
+        ks = cupy.asarray(self.c.shape[:ndim], dtype=cupy.int64)
+
+        out = cupy.empty((x.shape[0], dim3), dtype=self.c.dtype)
+        self._ensure_c_contiguous()
+
+        _ndppoly_evaluate(
+            self.c.reshape(dim1, dim2, dim3), self.x, ks, x, nu,
+            bool(extrapolate), out)
+
+        return out.reshape(x_shape[:-1] + self.c.shape[2*ndim:])
+
+    def _derivative_inplace(self, nu, axis):
+        """
+        Compute 1-D derivative along a selected dimension in-place
+        May result to non-contiguous c array.
+        """
+        if nu < 0:
+            return self._antiderivative_inplace(-nu, axis)
+
+        ndim = len(self.x)
+        axis = axis % ndim
+
+        # reduce order
+        if nu == 0:
+            # noop
+            return
+        else:
+            sl = [slice(None)]*ndim
+            sl[axis] = slice(None, -nu, None)
+            c2 = self.c[tuple(sl)]
+
+        if c2.shape[axis] == 0:
+            # derivative of order 0 is zero
+            shp = list(c2.shape)
+            shp[axis] = 1
+            c2 = cupy.zeros(shp, dtype=c2.dtype)
+
+        # multiply by the correct rising factorials
+        factor = spec.poch(cupy.arange(c2.shape[axis], 0, -1), nu)
+        sl = [None] * c2.ndim
+        sl[axis] = slice(None)
+        c2 *= factor[tuple(sl)]
+
+        self.c = c2
+
+    def _antiderivative_inplace(self, nu, axis):
+        """
+        Compute 1-D antiderivative along a selected dimension
+        May result to non-contiguous c array.
+        """
+        if nu <= 0:
+            return self._derivative_inplace(-nu, axis)
+
+        ndim = len(self.x)
+        axis = axis % ndim
+
+        perm = list(range(ndim))
+        perm[0], perm[axis] = perm[axis], perm[0]
+        perm = perm + list(range(ndim, self.c.ndim))
+
+        c = self.c.transpose(perm)
+
+        c2 = cupy.zeros((c.shape[0] + nu,) + c.shape[1:],
+                        dtype=c.dtype)
+        c2[:-nu] = c
+
+        # divide by the correct rising factorials
+        factor = spec.poch(cupy.arange(c.shape[0], 0, -1), nu)
+        c2[:-nu] /= factor[(slice(None),) + (None,)*(c.ndim-1)]
+
+        # fix continuity of added degrees of freedom
+        perm2 = list(range(c2.ndim))
+        perm2[1], perm2[ndim+axis] = perm2[ndim+axis], perm2[1]
+
+        c2 = c2.transpose(perm2)
+        c2 = c2.copy()
+        _fix_continuity(
+            c2.reshape(c2.shape[0], c2.shape[1], -1), self.x[axis], nu - 1)
+
+        c2 = c2.transpose(perm2)
+        c2 = c2.transpose(perm)
+
+        # Done
+        self.c = c2
+
+    def derivative(self, nu):
+        """
+        Construct a new piecewise polynomial representing the derivative.
+
+        Parameters
+        ----------
+        nu : ndim-tuple of int
+            Order of derivatives to evaluate for each dimension.
+            If negative, the antiderivative is returned.
+
+        Returns
+        -------
+        pp : NdPPoly
+            Piecewise polynomial of orders (k[0] - nu[0], ..., k[n] - nu[n])
+            representing the derivative of this polynomial.
+
+        Notes
+        -----
+        Derivatives are evaluated piecewise for each polynomial
+        segment, even if the polynomial is not differentiable at the
+        breakpoints. The polynomial intervals in each dimension are
+        considered half-open, ``[a, b)``, except for the last interval
+        which is closed ``[a, b]``.
+        """
+        p = self.construct_fast(self.c.copy(), self.x, self.extrapolate)
+
+        for axis, n in enumerate(nu):
+            p._derivative_inplace(n, axis)
+
+        p._ensure_c_contiguous()
+        return p
+
+    def antiderivative(self, nu):
+        """
+        Construct a new piecewise polynomial representing the antiderivative.
+        Antiderivative is also the indefinite integral of the function,
+        and derivative is its inverse operation.
+
+        Parameters
+        ----------
+        nu : ndim-tuple of int
+            Order of derivatives to evaluate for each dimension.
+            If negative, the derivative is returned.
+
+        Returns
+        -------
+        pp : PPoly
+            Piecewise polynomial of order k2 = k + n representing
+            the antiderivative of this polynomial.
+
+        Notes
+        -----
+        The antiderivative returned by this function is continuous and
+        continuously differentiable to order n-1, up to floating point
+        rounding error.
+        """
+        p = self.construct_fast(self.c.copy(), self.x, self.extrapolate)
+
+        for axis, n in enumerate(nu):
+            p._antiderivative_inplace(n, axis)
+
+        p._ensure_c_contiguous()
+        return p
+
+    def integrate_1d(self, a, b, axis, extrapolate=None):
+        r"""
+        Compute NdPPoly representation for one dimensional definite integral
+        The result is a piecewise polynomial representing the integral:
+
+        .. math::
+           p(y, z, ...) = \int_a^b dx\, p(x, y, z, ...)
+
+        where the dimension integrated over is specified with the
+        `axis` parameter.
+
+        Parameters
+        ----------
+        a, b : float
+            Lower and upper bound for integration.
+        axis : int
+            Dimension over which to compute the 1-D integrals
+        extrapolate : bool, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs.
+
+        Returns
+        -------
+        ig : NdPPoly or array-like
+            Definite integral of the piecewise polynomial over [a, b].
+            If the polynomial was 1D, an array is returned,
+            otherwise, an NdPPoly object.
+        """
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+        else:
+            extrapolate = bool(extrapolate)
+
+        ndim = len(self.x)
+        axis = int(axis) % ndim
+
+        # reuse 1-D integration routines
+        c = self.c
+        swap = list(range(c.ndim))
+        swap.insert(0, swap[axis])
+        del swap[axis + 1]
+        swap.insert(1, swap[ndim + axis])
+        del swap[ndim + axis + 1]
+
+        c = c.transpose(swap)
+        p = PPoly.construct_fast(c.reshape(c.shape[0], c.shape[1], -1),
+                                 self.x[axis],
+                                 extrapolate=extrapolate)
+        out = p.integrate(a, b, extrapolate=extrapolate)
+
+        # Construct result
+        if ndim == 1:
+            return out.reshape(c.shape[2:])
+        else:
+            c = out.reshape(c.shape[2:])
+            x = self.x[:axis] + self.x[axis+1:]
+            return self.construct_fast(c, x, extrapolate=extrapolate)
+
+    def integrate(self, ranges, extrapolate=None):
+        """
+        Compute a definite integral over a piecewise polynomial.
+
+        Parameters
+        ----------
+        ranges : ndim-tuple of 2-tuples float
+            Sequence of lower and upper bounds for each dimension,
+            ``[(a[0], b[0]), ..., (a[ndim-1], b[ndim-1])]``
+        extrapolate : bool, optional
+            Whether to extrapolate to out-of-bounds points based on first
+            and last intervals, or to return NaNs.
+
+        Returns
+        -------
+        ig : array_like
+            Definite integral of the piecewise polynomial over
+            [a[0], b[0]] x ... x [a[ndim-1], b[ndim-1]]
+        """
+
+        ndim = len(self.x)
+
+        if extrapolate is None:
+            extrapolate = self.extrapolate
+        else:
+            extrapolate = bool(extrapolate)
+
+        if not hasattr(ranges, '__len__') or len(ranges) != ndim:
+            raise ValueError("Range not a sequence of correct length")
+
+        self._ensure_c_contiguous()
+
+        # Reuse 1D integration routine
+        c = self.c
+        for n, (a, b) in enumerate(ranges):
+            swap = list(range(c.ndim))
+            swap.insert(1, swap[ndim - n])
+            del swap[ndim - n + 1]
+
+            c = c.transpose(swap)
+
+            p = PPoly.construct_fast(c, self.x[n], extrapolate=extrapolate)
+            out = p.integrate(a, b, extrapolate=extrapolate)
+            c = out.reshape(c.shape[2:])
 
         return c

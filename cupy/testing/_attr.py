@@ -9,12 +9,6 @@ if is_available():
 
     _gpu_limit = int(os.getenv('CUPY_TEST_GPU_LIMIT', '-1'))
 
-    def gpu(*args, **kwargs):
-        return pytest.mark.gpu(*args, **kwargs)
-
-    def cudnn(*args, **kwargs):
-        return pytest.mark.cudnn(*args, **kwargs)
-
     def slow(*args, **kwargs):
         return pytest.mark.slow(*args, **kwargs)
 
@@ -23,8 +17,6 @@ else:
         check_available('pytest attributes')
         assert False  # Not reachable
 
-    gpu = _dummy_callable
-    cudnn = _dummy_callable
     slow = _dummy_callable
 
 
