@@ -29,7 +29,7 @@ struct curand_pseudo_state {
     }
 
     __device__ uint32_t rk_int() {
-        return curand(_state_ptr);
+        return curand(&_state);
     }
 
     __device__ double rk_double() {
