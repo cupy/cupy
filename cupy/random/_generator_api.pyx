@@ -524,6 +524,7 @@ class Generator:
             :meth:`numpy.random.Generator.geometric`
         """
         cdef _ndarray_base y
+        cdef _ndarray_base p_a
 
         if not isinstance(p, _ndarray_base):
             if type(p) in (float, int):
@@ -573,6 +574,9 @@ class Generator:
             :meth:`numpy.random.Generator.hypergeometric`
         """
         cdef _ndarray_base y
+        cdef _ndarray_base ngood_a
+        cdef _ndarray_base nbad_a
+        cdef _ndarray_base nsample_a
 
         if not isinstance(ngood, _ndarray_base):
             if type(ngood) in (float, int):
@@ -733,6 +737,7 @@ class Generator:
             :meth:`numpy.random.Generator.poisson`
         """
         cdef _ndarray_base y
+        cdef _ndarray_base lam_a
 
         if not isinstance(lam, _ndarray_base):
             if type(lam) in (float, int):
@@ -890,6 +895,7 @@ class Generator:
             - :meth:`numpy.random.Generator.standard_gamma`
         """
         cdef _ndarray_base y
+        cdef _ndarray_base shape_a
 
         if not isinstance(shape, _ndarray_base):
             if type(shape) in (float, int):

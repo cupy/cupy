@@ -1012,6 +1012,12 @@ cpdef zgemmBatched(
         size_t alpha, size_t Aarray, int lda, size_t Barray, int ldb,
         size_t beta, size_t Carray, int ldc, int batchCount):
     _setStream(handle)
+    with nogil:
+        status = cublasZgemmBatched(  # no-cython-lint
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            <cuDoubleComplex*>alpha, <const cuDoubleComplex**>Aarray, lda,
+            <const cuDoubleComplex**>Barray, ldb, <cuDoubleComplex*>beta,
+            <cuDoubleComplex**>Carray, ldc, batchCount)
 
 
 cpdef sgemmStridedBatched(

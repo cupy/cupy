@@ -1128,6 +1128,8 @@ cpdef setConvolutionMathType(size_t convDesc, size_t mathType):
 
 cpdef size_t getConvolutionMathType(size_t convDesc) except? 0:
     cdef MathType mathType
+    status = cudnnGetConvolutionMathType(  # no-cython-lint
+        <ConvolutionDescriptor>convDesc, &mathType)
     return <size_t>mathType
 
 
@@ -1139,6 +1141,8 @@ cpdef setConvolutionGroupCount(size_t convDesc, int groupCount):
 
 cpdef int getConvolutionGroupCount(size_t convDesc) except? -1:
     cdef int groupCount
+    status = cudnnGetConvolutionGroupCount(  # no-cython-lint
+        <ConvolutionDescriptor>convDesc, &groupCount)
     return groupCount
 
 

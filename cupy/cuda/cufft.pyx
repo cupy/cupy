@@ -1024,7 +1024,11 @@ cdef class XtPlanNd:
 
     def fft(self, a, out, direction):
         cdef intptr_t plan = self.handle
+        cdef intptr_t s = stream.get_current_stream().ptr
+        cdef int result
 
+        with nogil:
+            result = cufftSetStream(<Handle>plan, <Stream>s)  # no-cython-lint
         XtExec(plan, a.data.ptr, out.data.ptr, direction)
 
     def _sanity_checks(self, int itype, int otype, int etype,
@@ -1182,6 +1186,9 @@ cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
 
 cpdef intptr_t setCallback(
         intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
+    cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef int result  # no-cython-lint
+    cdef void** callerInfo  # no-cython-lint
 
     IF CUPY_CUFFT_STATIC:
         with nogil:
