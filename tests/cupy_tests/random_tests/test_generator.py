@@ -145,7 +145,7 @@ class TestRandomState(unittest.TestCase):
         for method in methods:
             if (runtime.is_hip and
                     method == cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937
-                    and driver.get_build_version() < 50530600):
+                    and driver.get_build_version() < 50530201):
                 # hipRAND fails for MT19937 with the status code 1000,
                 # HIPRAND_STATUS_NOT_IMPLEMENTED. We use `pytest.raises` here
                 # so that we will be able to find it once hipRAND implement
