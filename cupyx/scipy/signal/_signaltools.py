@@ -1576,7 +1576,7 @@ def sosfiltfilt(sos, x, axis=-1, padtype='odd', padlen=None):
 
     # `method` is "pad"...
     ntaps = 2 * n_sections + 1
-    ntaps -= min((sos[:, 2] == 0).sum(), (sos[:, 5] == 0).sum())
+    ntaps -= min((sos[:, 2] == 0).sum().item(), (sos[:, 5] == 0).sum().item())
     edge, ext = _validate_pad(padtype, padlen, x, axis,
                               ntaps=ntaps)
 
