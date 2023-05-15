@@ -199,7 +199,7 @@ def _lombscargle(x, y, freqs, pgram, y_dot):
     num_blocks = device_id.attributes["MultiProcessorCount"] * 20
     block_sz = 512
     lombscargle_kernel = _get_module_func_raw(
-        LOMBSCARGLE_KERNEL, '_cupy_lombscargle')
+        LOMBSCARGLE_MODULE, '_cupy_lombscargle', x)
 
     args = (x.shape[0], freqs.shape[0], x, y, freqs, pgram, y_dot)
-    lombscargle_kernel((num_blocks,)(block_sz,), args)
+    lombscargle_kernel((num_blocks,), (block_sz,), args)
