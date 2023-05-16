@@ -1251,19 +1251,7 @@ def hamming(M, sym=True):
     >>> plt.xlabel("Normalized frequency [cycles per sample]")
 
     """
-    if M < 1:
-        return cupy.array([])
-    if M == 1:
-        return cupy.ones(1, "d")
-    odd = M % 2
-    if not sym and not odd:
-        M = M + 1
-
-    w = _hamming_kernel(size=M)
-
-    if not sym and not odd:
-        w = w[:-1]
-    return w
+    return general_hamming(M, 0.54, sym)
 
 
 _kaiser_kernel = cupy.ElementwiseKernel(
@@ -1922,6 +1910,7 @@ def taylor(M, nbar=4, sll=30, norm=True, sym=True):
     weighting for image formation processing because it provides strong,
     selectable sidelobe suppression with minimum broadening of the
     mainlobe [1]_.
+
     Parameters
     ----------
     M : int
@@ -1942,15 +1931,18 @@ def taylor(M, nbar=4, sll=30, norm=True, sym=True):
         When True (default), generates a symmetric window, for use in filter
         design.
         When False, generates a periodic window, for use in spectral analysis.
+
     Returns
     -------
     out : array
         The window. When `norm` is True (default), the maximum value is
         normalized to 1 (though the value 1 does not appear if `M` is
         even and `sym` is True).
+
     See Also
     --------
     chebwin, kaiser, bartlett, blackman, hamming, hanning
+
     References
     ----------
     .. [1] W. Carrara, R. Goodman, and R. Majewski, "Spotlight Synthetic
@@ -1981,7 +1973,7 @@ def taylor(M, nbar=4, sll=30, norm=True, sym=True):
     >>> plt.xlabel("Normalized frequency [cycles per sample]")
     """  # noqa: E501
     if _len_guards(M):
-        return np.ones(M)
+        return cupy.ones(M)
     M, needs_trunc = _extend(M, sym)
 
     # Original text uses a negative sidelobe level parameter and then negates

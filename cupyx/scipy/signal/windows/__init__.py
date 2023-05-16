@@ -19,3 +19,5 @@ from cupyx.scipy.signal.windows._windows import general_gaussian  # NOQA
 from cupyx.scipy.signal.windows._windows import chebwin  # NOQA
 from cupyx.scipy.signal.windows._windows import cosine  # NOQA
 from cupyx.scipy.signal.windows._windows import exponential  # NOQA
+from cupyx.scipy.signal.windows._windows import taylor  # NOQA
+from cupyx.scipy.signal.windows._windows import get_window  # NOQA
