@@ -12,50 +12,56 @@
 // avoid explicit compilation for hip<4.3
 #if !defined(CUPY_USE_HIP) || defined(COMPILE_FOR_HIP)
 
-struct rk_state {
-
-    __device__ virtual uint32_t rk_int() {
-        return  0;
-    }
-    __device__ virtual double rk_double() {
-        return  0.0;
-    }
-    __device__ virtual double rk_normal() {
-        return  0.0;
-    }
-    __device__ virtual float rk_normal_float() {
-        return  0.0;
-    }
-};
 
 template<typename CURAND_TYPE>
-struct curand_pseudo_state: rk_state {
+struct curand_pseudo_state {
     // Valid for  XORWOW and MRG32k3a
-    CURAND_TYPE* _state;
-    int _id;
+    CURAND_TYPE _state;
+    CURAND_TYPE* _state_ptr;
 
     __device__ curand_pseudo_state(int id, intptr_t state) {
-        _state = reinterpret_cast<CURAND_TYPE*>(state) + id;
-        _id = id;
+        _state_ptr = reinterpret_cast<CURAND_TYPE*>(state) + id;
+        _state = *_state_ptr;
     }
-    __device__ virtual uint32_t rk_int() {
-        return curand(_state);
+
+    __device__ ~curand_pseudo_state() {
+        *_state_ptr = _state;
     }
-    __device__ virtual double rk_double() {
+
+    __device__ uint32_t rk_int() {
+        return curand(&_state);
+    }
+
+    __device__ double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-        double r = curand_uniform(_state);
+#ifdef CUPY_USE_HIP
+        double r = curand_uniform(&_state);
+#else
+        double r = curand_uniform_double(&_state);
+#endif
         if (r >= 1.0) { 
            r = 0.0;
         }
         return r;
     }
-    __device__ virtual double rk_normal() {
-        return curand_normal_double(_state);
+
+    __device__ float rk_float() {
+        // Curand returns (0, 1] while the functions
+        // below rely on [0, 1)
+        float r = curand_uniform(&_state);
+        if (r >= 1.0) { 
+           r = 0.0;
+        }
+        return r;
     }
 
-    __device__ virtual float rk_normal_float() {
-        return curand_normal(_state);
+    __device__ double rk_normal() {
+        return curand_normal_double(&_state);
+    }
+
+    __device__ float rk_normal_float() {
+        return curand_normal(&_state);
     }
 };
 
@@ -79,7 +85,7 @@ __global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
        number, no offset */
     T curand_state(id, state);
     if (id < size) {
-        curand_init(seed, id, 0, curand_state._state);    
+        curand_init(seed, id, 0, &curand_state._state);    
     }
 }
 
@@ -103,23 +109,23 @@ void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssi
 }
 
 template<typename T>
-__device__ double rk_standard_exponential(T state) {
+__device__ double rk_standard_exponential(T& state) {
     /* We use -log(1-U) since U is [0, 1) */
     return -log(1.0 - state.rk_double());
 }
 
 template<typename T>
-__device__ double rk_standard_normal(T state) {
+__device__ double rk_standard_normal(T& state) {
     return state.rk_normal();
 }
 
 template<typename T>
-__device__ float rk_standard_normal_float(T state) {
+__device__ float rk_standard_normal_float(T& state) {
     return state.rk_normal_float();
 }
 
 template<typename T>
-__device__ double rk_standard_gamma(T state, double shape) {
+__device__ double rk_standard_gamma(T& state, double shape) {
     double b, c;
     double U, V, X, Y;
     if (shape == 1.0) {
@@ -160,7 +166,7 @@ __device__ double rk_standard_gamma(T state, double shape) {
 }
 
 template<typename T>
-__device__ double rk_beta(T state, double a, double b) {
+__device__ double rk_beta(T& state, double a, double b) {
     double Ga, Gb;
     if ((a <= 1.0) && (b <= 1.0)) {
         double U, V, X, Y;
@@ -191,7 +197,7 @@ __device__ double rk_beta(T state, double a, double b) {
 }
 
 template<typename T>
-__device__ int64_t rk_geometric_search(T state, double p) {
+__device__ int64_t rk_geometric_search(T& state, double p) {
     double U, sum, prod, q;
     int64_t X;
     X = 1;
@@ -207,12 +213,12 @@ __device__ int64_t rk_geometric_search(T state, double p) {
 }
 
 template<typename T>
-__device__ int64_t rk_geometric_inversion(T state, double p) {
+__device__ int64_t rk_geometric_inversion(T& state, double p) {
     return ceil(log(1.0-state.rk_double())/log(1.0-p));
 }
 
 template<typename T>
-__device__ int64_t rk_geometric(T state, double p) {
+__device__ int64_t rk_geometric(T& state, double p) {
     if (p >= 0.333333333333333333333333) {
         return rk_geometric_search(state, p);
     } else {
@@ -254,7 +260,7 @@ __device__ double loggam(double x) {
 }
 
 template<typename T>
-__device__ int64_t rk_hypergeometric_hyp(T state, int64_t good, int64_t bad, int64_t sample) {
+__device__ int64_t rk_hypergeometric_hyp(T& state, int64_t good, int64_t bad, int64_t sample) {
     int64_t d1, K, Z;
     double d2, U, Y;
 
@@ -277,7 +283,7 @@ __device__ int64_t rk_hypergeometric_hyp(T state, int64_t good, int64_t bad, int
 
 
 template<typename T>
-__device__ int64_t rk_hypergeometric_hrua(T state, int64_t good, int64_t bad, int64_t sample) {
+__device__ int64_t rk_hypergeometric_hrua(T& state, int64_t good, int64_t bad, int64_t sample) {
 
     int64_t mingoodbad, maxgoodbad, popsize, m, d9;
     int64_t Z;
@@ -324,7 +330,7 @@ __device__ int64_t rk_hypergeometric_hrua(T state, int64_t good, int64_t bad, in
 }
 
 template<typename T>
-__device__ int64_t rk_hypergeometric(T state, int64_t good, int64_t bad, int64_t sample) {
+__device__ int64_t rk_hypergeometric(T& state, int64_t good, int64_t bad, int64_t sample) {
     if (sample > 10) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
@@ -334,7 +340,7 @@ __device__ int64_t rk_hypergeometric(T state, int64_t good, int64_t bad, int64_t
 }
 
 template<typename T>
-__device__ int64_t rk_logseries(T state, double p)
+__device__ int64_t rk_logseries(T& state, double p)
 {
     double q, r, U, V;
     int64_t result;
@@ -365,7 +371,7 @@ __device__ int64_t rk_logseries(T state, double p)
 }
 
 template<typename T>
-__device__ int64_t rk_poisson_mult(T state, double lam) {
+__device__ int64_t rk_poisson_mult(T& state, double lam) {
     int64_t X;
     double prod, U, enlam;
     enlam = exp(-lam);
@@ -383,7 +389,7 @@ __device__ int64_t rk_poisson_mult(T state, double lam) {
 }
 
 template<typename T>
-__device__ int64_t rk_poisson_ptrs(T state, double lam) {
+__device__ int64_t rk_poisson_ptrs(T& state, double lam) {
     int64_t k;
     double U, V, slam, loglam, a, b, invalpha, vr, us;
     slam = sqrt(lam);
@@ -412,7 +418,7 @@ __device__ int64_t rk_poisson_ptrs(T state, double lam) {
 }
 
 template<typename T>
-__device__ int64_t rk_poisson(T state, double lam) {
+__device__ int64_t rk_poisson(T& state, double lam) {
     if (lam >= 10) {
         return rk_poisson_ptrs(state, lam);
     } else if (lam == 0) {
@@ -423,17 +429,22 @@ __device__ int64_t rk_poisson(T state, double lam) {
 }
 
 template<typename T>
-__device__ uint32_t rk_raw(T state) {
+__device__ uint32_t rk_raw(T& state) {
     return state.rk_int();
 }
 
 template<typename T>
-__device__ double rk_random_uniform(T state) {
+__device__ double rk_random_uniform(T& state) {
     return state.rk_double();
 }
 
 template<typename T>
-__device__ uint32_t rk_interval_32(T state, uint32_t mx, uint32_t mask) {
+__device__ float rk_random_uniform_float(T& state) {
+    return state.rk_float();
+}
+
+template<typename T>
+__device__ uint32_t rk_interval_32(T& state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state.rk_int() & mask;
     while(sampled > mx)  {
         sampled = state.rk_int() & mask;
@@ -442,7 +453,7 @@ __device__ uint32_t rk_interval_32(T state, uint32_t mx, uint32_t mask) {
 }
 
 template<typename T>
-__device__ uint64_t rk_interval_64(T state, uint64_t  mx, uint64_t mask) {
+__device__ uint64_t rk_interval_64(T& state, uint64_t  mx, uint64_t mask) {
     uint32_t hi= state.rk_int();
     uint32_t lo= state.rk_int();
     uint64_t sampled = (static_cast<uint64_t>(hi) << 32 | lo)  & mask;
@@ -455,7 +466,7 @@ __device__ uint64_t rk_interval_64(T state, uint64_t  mx, uint64_t mask) {
 }
 
 template<typename T>
-__device__ int64_t rk_binomial_btpe(T state, long n, double p, rk_binomial_state *binomial_state) {
+__device__ int64_t rk_binomial_btpe(T& state, long n, double p, rk_binomial_state *binomial_state) {
     double r,q,fm,p1,xm,xl,xr,c,laml,lamr,p2,p3,p4;
     double a,u,v,s,F,rho,t,A,nrq,x1,x2,f1,f2,z,z2,w,w2,x;
     int m,y,k,i;
@@ -572,7 +583,7 @@ __device__ int64_t rk_binomial_btpe(T state, long n, double p, rk_binomial_state
 }
 
 template<typename T>
-__device__ int64_t rk_binomial_inversion(T state, int n, double p, rk_binomial_state *binomial_state) {
+__device__ int64_t rk_binomial_inversion(T& state, int n, double p, rk_binomial_state *binomial_state) {
     double q, qn, np, px, U;
     int X, bound;
 
@@ -610,7 +621,7 @@ __device__ int64_t rk_binomial_inversion(T state, int n, double p, rk_binomial_s
 }
 
 template<typename T>
-__device__ int64_t rk_binomial(T state, int n, double p, rk_binomial_state *binomial_state) {
+__device__ int64_t rk_binomial(T& state, int n, double p, rk_binomial_state *binomial_state) {
     double q;
 
     if (p <= 0.5) {
@@ -642,6 +653,13 @@ struct random_uniform_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
         return rk_random_uniform(args...);
+    }
+};
+
+struct random_uniform_float_functor {
+    template<typename... Args>
+    __device__ float operator () (Args&&... args) {
+        return rk_random_uniform_float(args...);
     }
 };
 
@@ -741,7 +759,7 @@ template<typename T>
 struct array_data {};  // opaque type always used as a pointer type
 
 template<typename T>
-__device__ T get_index(array_data<T> *value, int id) {
+__device__ T get_index(array_data<T> *value, int id, ssize_t state_size) {
     int64_t* data = reinterpret_cast<int64_t*>(value);
     intptr_t ptr = reinterpret_cast<intptr_t>(data[0]);
     int ndim = data[1];
@@ -754,23 +772,23 @@ __device__ T get_index(array_data<T> *value, int id) {
 }
 
 template<typename T>
-__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id, ssize_t state_size) {
     return value;
 }
 
-__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id) {
-    return value + id;
+__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id, ssize_t state_size) {
+    return (value + id % state_size);
 }
 
 template<typename F, typename T, typename R, typename... Args>
-__global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
+__global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, Args... args) {
     R* out_ptr = reinterpret_cast<R*>(out);
-    if (id < size) {
-        T random(id, state);
-        F func;
-        // need to pass it by copy due to hip issues with templating
-        out_ptr[id] = func(random, (get_index(args, id))...);
+    F func;
+    T random(blockIdx.x * blockDim.x + threadIdx.x, state);
+    for (int id = blockIdx.x * blockDim.x + threadIdx.x; 
+             id < size; 
+             id += state_size) {
+        out_ptr[id] = func(random, (get_index(args, id, state_size))...);
     }
     return;
 }
@@ -782,7 +800,8 @@ struct kernel_launcher {
     template<typename T, typename... Args>
     void operator()(Args&&... args) { 
         int tpb = 256;
-        int bpg =  (_size + tpb - 1) / tpb;
+        // Launch one thread per state size
+        int bpg = (_size + tpb - 1) / tpb; 
         execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
     }
     ssize_t _size;
@@ -790,94 +809,100 @@ struct kernel_launcher {
 };
 
 //These functions will take the generator_id as a parameter
-void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<raw_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<raw_functor, int32_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<random_uniform_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
+}
+
+void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_float_functor, float> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
 //These functions will take the generator_id as a parameter
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
-    kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, static_cast<uint32_t>(mx), static_cast<uint32_t>(mask));
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
+    kernel_launcher<interval_32_functor, int32_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, static_cast<uint32_t>(mx), static_cast<uint32_t>(mask));
 }
 
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {
-    kernel_launcher<interval_64_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {
+    kernel_launcher<interval_64_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
 }
 
-void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
-    kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(a), reinterpret_cast<array_data<double>*>(b));
+void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
+    kernel_launcher<beta_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(a), reinterpret_cast<array_data<double>*>(b));
 }
 
-void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<exponential_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<exponential_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
-    kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
+void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<geometric_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
-void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
-    kernel_launcher<hypergeometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int64_t>*>(ngood), reinterpret_cast<array_data<int64_t>*>(nbad), reinterpret_cast<array_data<int64_t>*>(nsample));
+void hypergeometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {
+    kernel_launcher<hypergeometric_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<int64_t>*>(ngood), reinterpret_cast<array_data<int64_t>*>(nbad), reinterpret_cast<array_data<int64_t>*>(nsample));
 }
 
-void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
-    kernel_launcher<logseries_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(p));
+void logseries(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<logseries_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(p));
 }
 
-void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
-    kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(lam));
+void poisson(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
+    kernel_launcher<poisson_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(lam));
 }
 
-void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<standard_normal_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void standard_normal(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    kernel_launcher<standard_normal_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size);
+void standard_normal_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_float_functor, float> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size);
 }
 
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
-    kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<double>*>(shape));
+void standard_gamma(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
+    kernel_launcher<standard_gamma_functor, double> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<double>*>(shape));
 }
 
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
-    kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
+void binomial(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {
+    kernel_launcher<binomial_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, reinterpret_cast<array_data<int>*>(n), reinterpret_cast<array_data<double>*>(p), reinterpret_cast<rk_binomial_state*>(binomial_state));
 }
 
 #else
 // the stubs need to be redeclared here for HIP versions less than 4.3 to avoid redeclarations in cython when importing the headers
 // No cuda will not compile the .cu file, so the definition needs to be done here explicitly
-void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {}
-void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
-void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
-void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
-void hypergeometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {}
-void logseries(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
-void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
-void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {}
+void init_curand_generator(int generator, intptr_t state_ptr, ssize_t state_size, uint64_t seed, ssize_t size, intptr_t stream) {}
+void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
+void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
+void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
+void hypergeometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t ngood, intptr_t nbad, intptr_t nsample) {}
+void logseries(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
+void poisson(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
+void standard_normal(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void standard_normal_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
+void standard_gamma(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
+void binomial(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p, intptr_t binomial_state) {}
 
 #endif
