@@ -562,3 +562,80 @@ class TestDeconvolve:
         b = testing.shaped_random((order,), xp, scale=0.3)
         o = scp.signal.convolve(x, b)
         return scp.signal.deconvolve(o, b)
+
+
+@testing.with_requires('scipy')
+class TestFiltFilt:
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [1, 2, 3])
+    @pytest.mark.parametrize('method', ['pad', 'gust'])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+                                 type_check=False, accept_error=True)
+    def test_filtfilt_1d(self, size, fir_order, iir_order, method, padtype,
+                         in_dtype, const_dtype, xp, scp):
+        out_dtype = xp.result_type(in_dtype, const_dtype)
+        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
+            pytest.skip()
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
+        b = testing.shaped_random(
+            (fir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = testing.shaped_random(
+            (iir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = xp.r_[1, a]
+        a = a.astype(const_dtype)
+
+        res = scp.signal.filtfilt(b, a, x, method=method, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('method', ['pad', 'gust'])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+    def test_filtfilt_ndim(
+            self, size, fir_order, iir_order, axis, method, padtype, in_dtype,
+            const_dtype, xp, scp):
+        out_dtype = xp.result_type(in_dtype, const_dtype)
+        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
+            pytest.skip()
+
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
+        b = testing.shaped_random(
+            (fir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = testing.shaped_random(
+            (iir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = xp.r_[1, a]
+        a = a.astype(const_dtype)
+
+        res = scp.signal.filtfilt(b, a, x, axis=axis,
+                                  method=method, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
