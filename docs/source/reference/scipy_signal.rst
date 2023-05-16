@@ -33,6 +33,10 @@ Filtering
    wiener
    symiirorder1
    symiirorder2
+   lfilter
+   lfiltic
+   lfilter_zi
+   filtfilt
    savgol_filter
    deconvolve
    detrend
