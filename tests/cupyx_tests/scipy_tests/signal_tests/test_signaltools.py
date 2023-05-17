@@ -744,6 +744,13 @@ class TestFiltFilt:
         ):
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
+        if (
+            not runtime.is_hip
+            and cupy.cuda.runtime.runtimeGetVersion() == 10020
+        ):
+            # The tests fail on CUDA 10.2
+            pytest.skip()
+
         x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
         c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
 
@@ -756,7 +763,7 @@ class TestFiltFilt:
         a = a.astype(const_dtype)
 
         res = scp.signal.filtfilt(b, a, x, method=method, padtype=padtype)
-        res = xp.nan_to_num(res, nan=0, posinf=xp.nan, neginf=xp.nan)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
@@ -781,6 +788,12 @@ class TestFiltFilt:
         ):
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
+        if (
+            not runtime.is_hip
+            and cupy.cuda.runtime.runtimeGetVersion() == 10020
+        ):
+            # The tests fail on CUDA 10.2
+            pytest.skip()
 
         x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
         c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
@@ -795,5 +808,5 @@ class TestFiltFilt:
 
         res = scp.signal.filtfilt(b, a, x, axis=axis,
                                   method=method, padtype=padtype)
-        res = xp.nan_to_num(res, nan=0, posinf=xp.nan, neginf=xp.nan)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
