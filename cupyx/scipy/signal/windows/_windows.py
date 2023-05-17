@@ -1375,19 +1375,13 @@ def kaiser(M, beta, sym=True):
     >>> plt.xlabel("Normalized frequency [cycles per sample]")
 
     """
-    if M < 1:
-        return cupy.array([])
-    if M == 1:
-        return cupy.ones(1, "d")
-    odd = M % 2
-    if not sym and not odd:
-        M = M + 1
+    if _len_guards(M):
+        return cupy.ones(M)
 
+    M, needs_trunc = _extend(M, sym)
     w = _kaiser_kernel(beta, size=M)
 
-    if not sym and not odd:
-        w = w[:-1]
-    return w
+    return _truncate(w, needs_trunc)
 
 
 _gaussian_kernel = cupy.ElementwiseKernel(
@@ -2023,6 +2017,7 @@ _win_equiv_raw = {
     ("cosine", "halfcosine"): (cosine, False),
     ("exponential", "poisson"): (exponential, True),
     ("flattop", "flat", "flt"): (flattop, False),
+    ('general cosine', 'general_cosine'): (general_cosine, True),
     ("gaussian", "gauss", "gss"): (gaussian, True),
     (
         "general gaussian",
@@ -2031,6 +2026,7 @@ _win_equiv_raw = {
         "general_gauss",
         "ggs",
     ): (general_gaussian, True),
+    ('general hamming', 'general_hamming'): (general_hamming, True),
     ("hamming", "hamm", "ham"): (hamming, False),
     ("hanning", "hann", "han"): (hann, False),
     ("kaiser", "ksr"): (kaiser, True),
