@@ -8,7 +8,8 @@ from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 from cupyx.scipy.signal._arraytools import (
     const_ext, even_ext, odd_ext, axis_reverse, axis_slice, axis_assign)
-from cupyx.scipy.signal._iir_utils import apply_iir, compute_correction_factors
+from cupyx.scipy.signal._iir_utils import (
+    apply_iir, apply_iir_sos, compute_correction_factors)
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -1272,3 +1273,53 @@ def _get_kernel_size(kernel_size, ndim):
     if any((k % 2) != 1 for k in kernel_size):
         raise ValueError("Each element of kernel_size should be odd")
     return kernel_size
+
+
+def sosfilt(sos, x, axis=-1, zi=None):
+    """
+    Filter data along one dimension using cascaded second-order sections.
+
+    Filter a data sequence, `x`, using a digital IIR filter defined by
+    `sos`.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. Each row corresponds to a second-order
+        section, with the first three columns providing the numerator
+        coefficients and the last three providing the denominator
+        coefficients.
+    x : array_like
+        An N-dimensional input array.
+    axis : int, optional
+        The axis of the input data array along which to apply the
+        linear filter. The filter is applied to each subarray along
+        this axis.  Default is -1.
+    zi : array_like, optional
+        Initial conditions for the cascaded filter delays.  It is a (at
+        least 2D) vector of shape ``(n_sections, ..., 4, ...)``, where
+        ``..., 4, ...`` denotes the shape of `x`, but with ``x.shape[axis]``
+        replaced by 4.  If `zi` is None or is not given then initial rest
+        (i.e. all zeros) is assumed.
+        Note that these initial conditions are *not* the same as the initial
+        conditions given by `lfiltic` or `lfilter_zi`.
+
+    Returns
+    -------
+    y : ndarray
+        The output of the digital filter.
+    zf : ndarray, optional
+        If `zi` is None, this is not returned, otherwise, `zf` holds the
+        final filter delay values.
+
+    See Also
+    --------
+    zpk2sos, sos2zpk, sosfilt_zi, sosfiltfilt, sosfreqz
+    """
+    x_ndim = x.ndim
+    axis = internal._normalize_axis_index(axis, x_ndim)
+    out = x
+
+    out = apply_iir_sos(out, sos, axis, zi)
+    return out
