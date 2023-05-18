@@ -22,7 +22,6 @@ except ImportError:
     {'rank': -1, 'connectivity': 0},
     {'rank': 3, 'connectivity': 0},
     {'rank': 3, 'connectivity': 500})
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGenerateBinaryStructure:
 
@@ -32,7 +31,6 @@ class TestGenerateBinaryStructure:
                                                      self.connectivity)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestIterateStructure:
 
@@ -72,7 +70,6 @@ class TestIterateStructure:
         'output': [None, numpy.float32, numpy.int8, 'array']}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestBinaryErosionAndDilation1d:
     def _filter(self, xp, scp, x):
@@ -126,7 +123,6 @@ class TestBinaryErosionAndDilation1d:
         'output': [None, numpy.float32, numpy.int8]}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy>=1.1.0')
 class TestBinaryOpeningAndClosing:
     def _filter(self, xp, scp, x):
@@ -177,7 +173,6 @@ class TestBinaryOpeningAndClosing:
         'output': [None, numpy.float32, numpy.int8]}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestBinaryFillHoles:
     def _filter(self, xp, scp, x):
@@ -226,7 +221,6 @@ class TestBinaryFillHoles:
         'output': [None, numpy.float32, numpy.int8]}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestBinaryHitOrMiss:
     def _filter(self, xp, scp, x):
@@ -299,7 +293,6 @@ class TestBinaryHitOrMiss:
         'output': [None, numpy.float32, numpy.int8]}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestBinaryPropagation:
     def _filter(self, xp, scp, x):
@@ -331,7 +324,6 @@ class TestBinaryPropagation:
         'output': [None, numpy.float32, 'array']}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestBinaryErosionAndDilation:
     def _filter(self, xp, scp, x):
@@ -368,7 +360,6 @@ class TestBinaryErosionAndDilation:
         'contiguity': ['C', 'F', 'none']}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestBinaryErosionAndDilationContiguity:
     def _filter(self, xp, scp, x):
@@ -427,7 +418,6 @@ class TestBinaryErosionAndDilationContiguity:
         'filter': ['grey_erosion', 'grey_dilation']
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGreyErosionAndDilation:
 
@@ -473,7 +463,6 @@ class TestGreyErosionAndDilation:
     'output': [None, numpy.float64],
     'filter': ['grey_closing', 'grey_opening']
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGreyClosingAndOpening:
 
@@ -523,7 +512,6 @@ class TestGreyClosingAndOpening:
         'structure': [None, 'random']}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestMorphologicalGradientAndLaplace:
 
@@ -586,7 +574,6 @@ class TestMorphologicalGradientAndLaplace:
         'structure': [None, 'random']}
     ))
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestWhiteTophatAndBlackTopHat:
 

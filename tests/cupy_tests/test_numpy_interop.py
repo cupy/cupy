@@ -14,7 +14,6 @@ except ImportError:
     scipy_available = False
 
 
-@testing.gpu
 class TestGetArrayModule(unittest.TestCase):
 
     def test_get_array_module_1(self):
@@ -59,7 +58,6 @@ class MockArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return name, inputs, kwargs
 
 
-@testing.gpu
 class TestArrayUfunc:
 
     def test_add(self):
@@ -115,7 +113,6 @@ class MockArray2:
         return 'gt'
 
 
-@testing.gpu
 class TestArrayUfuncOptout:
 
     def test_add(self):
@@ -137,7 +134,6 @@ class TestArrayUfuncOptout:
         assert (y < x) == 'lt'
 
 
-@testing.gpu
 class TestAsnumpy:
 
     def test_asnumpy(self):

@@ -5,11 +5,9 @@ import unittest
 
 import numpy
 
-from cupy import testing
 import cupy
 
 
-@testing.gpu
 class TestText(unittest.TestCase):
 
     def test_savetxt(self):

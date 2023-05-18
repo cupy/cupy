@@ -1770,7 +1770,6 @@ class TestCsrMatrixGetitem2:
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
 @testing.with_requires('scipy')
-@testing.gpu
 @pytest.mark.skipif(
     cupy.cuda.cub._get_cuda_build_version() >= 11000,
     reason='CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
@@ -1814,7 +1813,6 @@ class TestCubSpmv:
     'opt': ['maximum', 'minimum'],
 }))
 @testing.with_requires('scipy')
-@testing.gpu
 class TestCsrMatrixMaximumMinimum:
 
     def _make_array(self, shape, dtype, xp):
@@ -1926,7 +1924,6 @@ class TestCsrMatrixMaximumMinimum:
     'opt': ['_eq_', '_ne_', '_lt_', '_gt_', '_le_', '_ge_'],
 }))
 @testing.with_requires('scipy>=1.2')
-@testing.gpu
 class TestCsrMatrixComparison:
     nz_rate = 0.3
 
@@ -2089,7 +2086,6 @@ class TestCsrMatrixComparison:
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
 @testing.with_requires('scipy>=1.5.0')
-@testing.gpu
 class TestCsrMatrixDiagonal:
     density = 0.5
 

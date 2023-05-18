@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestAppend(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
@@ -65,7 +64,6 @@ class TestAppend(unittest.TestCase):
         return xp.append(xp.array([]), xp.arange(10))
 
 
-@testing.gpu
 class TestResize(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -166,7 +164,6 @@ class TestUnique:
 @testing.parameterize(*testing.product({
     'trim': ['fb', 'f', 'b']
 }))
-@testing.gpu
 class TestTrim_zeros(unittest.TestCase):
 
     @testing.for_all_dtypes()
