@@ -789,6 +789,13 @@ class TestFiltFilt:
         ):
             # ROCm 4.3 raises in Module.get_function()
             pytest.skip()
+        if (
+            not runtime.is_hip
+            and cupy.cuda.runtime.runtimeGetVersion() == 10020
+        ):
+            # The tests fail on CUDA 10.2
+            pytest.skip()
+
         x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
         c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
 
@@ -825,6 +832,12 @@ class TestFiltFilt:
             and iir_order > 0
         ):
             # ROCm 4.3 raises in Module.get_function()
+            pytest.skip()
+        if (
+            not runtime.is_hip
+            and cupy.cuda.runtime.runtimeGetVersion() == 10020
+        ):
+            # The tests fail on CUDA 10.2
             pytest.skip()
 
         x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
