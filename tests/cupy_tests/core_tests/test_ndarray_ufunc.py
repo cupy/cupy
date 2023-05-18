@@ -147,6 +147,38 @@ class TestArrayUfunc:
         b = cupy.testing.shaped_arange((5, 6), xp)
         return numpy.add.outer(a, b)
 
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_at(self, xp):
+        a = cupy.testing.shaped_arange((10,), xp)
+        b = cupy.testing.shaped_arange((5,), xp)
+        indices = xp.array([0, 3, 6, 7, 9])
+        numpy.add.at(a, indices, b)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_at_scalar(self, xp):
+        a = cupy.testing.shaped_arange((10,), xp)
+        b = 7
+        indices = xp.array([0, 3, 6, 7, 9])
+        numpy.add.at(a, indices, b)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_reduce(self, xp):
+        a = cupy.testing.shaped_arange((10, 12), xp)
+        return numpy.add.reduce(a, axis=-1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_accumulate(self, xp):
+        a = cupy.testing.shaped_arange((10, 12), xp)
+        return numpy.add.accumulate(a, axis=-1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_reduceat(self, xp):
+        a = cupy.testing.shaped_arange((10, 12), xp)
+        indices = xp.array([0, 3, 6, 7, 9])
+        return numpy.add.reduceat(a, indices, axis=-1)
+
 
 class TestUfunc:
     @pytest.mark.parametrize('ufunc', [
