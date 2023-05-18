@@ -34,7 +34,9 @@ struct rk_binomial_state {
 // When compiling cython extensions with hip 4.0
 // gcc will be used, but the hiprand_kernel can only be compiled with llvm
 // so we need to explicitly declare stubs for the functions
-#if HIP_VERSION > 400
+#if HIP_VERSION >= 50530600
+#include <hiprand/hiprand_kernel.h>
+#elif HIP_VERSION > 400
 #include <hiprand_kernel.h>
 #else
 #include <hiprand.h>
