@@ -141,6 +141,12 @@ class TestArrayUfunc:
         outb = numpy.add(b0, b1)
         testing.assert_allclose(outa, outb)
 
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_outer(self, xp):
+        a = cupy.testing.shaped_arange((3, 4), xp)
+        b = cupy.testing.shaped_arange((5, 6), xp)
+        return numpy.add.outer(a, b)
+
 
 class TestUfunc:
     @pytest.mark.parametrize('ufunc', [
