@@ -39,7 +39,7 @@ Filtering
    filtfilt
    savgol_filter
    deconvolve
-
+   detrend
 
 Filter design
 -------------

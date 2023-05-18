@@ -2,6 +2,7 @@ import warnings
 
 import cupy
 from cupy._core import internal
+from cupy.linalg import lstsq
 
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
@@ -862,6 +863,87 @@ def lfilter_zi(b, a):
         y_zi = cupy.nan_to_num(y_zi, nan=0, posinf=cupy.inf, neginf=-cupy.inf)
         zi = cupy.r_[zi, y_zi]
     return zi
+
+
+def detrend(data, axis=-1, type='linear', bp=0, overwrite_data=False):
+    """
+    Remove linear trend along axis from data.
+
+    Parameters
+    ----------
+    data : array_like
+        The input data.
+    axis : int, optional
+        The axis along which to detrend the data. By default this is the
+        last axis (-1).
+    type : {'linear', 'constant'}, optional
+        The type of detrending. If ``type == 'linear'`` (default),
+        the result of a linear least-squares fit to `data` is subtracted
+        from `data`.
+        If ``type == 'constant'``, only the mean of `data` is subtracted.
+    bp : array_like of ints, optional
+        A sequence of break points. If given, an individual linear fit is
+        performed for each part of `data` between two break points.
+        Break points are specified as indices into `data`. This parameter
+        only has an effect when ``type == 'linear'``.
+    overwrite_data : bool, optional
+        If True, perform in place detrending and avoid a copy. Default is False
+
+    Returns
+    -------
+    ret : ndarray
+        The detrended input data.
+
+    See Also
+    --------
+    scipy.signal.detrend
+
+
+    """
+    if type not in ['linear', 'l', 'constant', 'c']:
+        raise ValueError("Trend type must be 'linear' or 'constant'.")
+    data = cupy.asarray(data)
+    dtype = data.dtype.char
+    if dtype not in 'dfDF':
+        dtype = 'd'
+    if type in ['constant', 'c']:
+        ret = data - cupy.mean(data, axis, keepdims=True)
+        return ret
+    else:
+        dshape = data.shape
+        N = dshape[axis]
+        bp = cupy.sort(cupy.unique(cupy.r_[0, bp, N]))
+        if cupy.any(bp > N):
+            raise ValueError("Breakpoints must be less than length "
+                             "of data along given axis.")
+        bp = bp.tolist()
+        # Restructure data so that axis is along first dimension and
+        #  all other dimensions are collapsed into second dimension
+        rnk = len(dshape)
+        if axis < 0:
+            axis = axis + rnk
+        newdata = cupy.moveaxis(data, axis, 0)
+        newdata_shape = newdata.shape
+        newdata = newdata.reshape(N, -1)
+
+        if not overwrite_data:
+            newdata = newdata.copy()  # make sure we have a copy
+        if newdata.dtype.char not in 'dfDF':
+            newdata = newdata.astype(dtype)
+
+        # Find leastsq fit and remove it for each piece
+        for m in range(len(bp) - 1):
+            Npts = bp[m + 1] - bp[m]
+            A = cupy.ones((Npts, 2), dtype)
+            A[:, 0] = cupy.arange(1, Npts + 1, dtype=dtype) / Npts
+            sl = slice(bp[m], bp[m + 1])
+            coef, resids, rank, s = lstsq(A, newdata[sl], rcond=None)
+            newdata[sl] = newdata[sl] - A @ coef
+
+        # Put data back in original shape.
+        newdata = newdata.reshape(newdata_shape)
+        ret = cupy.moveaxis(newdata, 0, axis)
+        return ret
 
 
 def _filtfilt_gust(b, a, x, axis=-1, irlen=None):
