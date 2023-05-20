@@ -109,6 +109,7 @@ Elliptic integrals
 
    ellipk
    ellipkm1
+   ellipj
 
 
 Error function and Fresnel integrals
