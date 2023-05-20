@@ -152,10 +152,3 @@ def sliding_window_view(x, window_shape, axis=None, *,
         x_shape_trimmed[ax] -= dim - 1
     out_shape = tuple(x_shape_trimmed) + window_shape
     return as_strided(x, strides=out_strides, shape=out_shape)
-
-
-
-
-
-
-
