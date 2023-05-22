@@ -61,7 +61,7 @@ Binary packages are also available for Linux and Windows on [Conda-Forge](https:
 | --------------------- | --------------------------- | ------------------------------------------------------------- |
 | CUDA                  | x86_64 / aarch64 / ppc64le  | `conda install -c conda-forge cupy`                           |
 
-If you need to use a particular CUDA version (say 11.8), you can do `conda install -c conda-forge cupy cudatoolkit=11.8`.
+If you need to use a particular CUDA version (say 11.8), you can do `conda install -c conda-forge cupy cuda-version=11.8`.
 
 ### Docker
 
