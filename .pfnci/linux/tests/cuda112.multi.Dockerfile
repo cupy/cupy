@@ -25,7 +25,7 @@ ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv install 3.8.11 && \
     pyenv global 3.8.11 && \
-    pip install -U setuptools pip
+    pip install -U setuptools pip wheel
 
 RUN pip install -U 'numpy==1.21.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
