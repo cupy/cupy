@@ -36,7 +36,7 @@ You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://
 
 ### Pip
 
-Precompiled binary packages (wheels) are available for Linux and Windows on [PyPI](https://pypi.org/org/cupy/).
+Binary packages (wheels) are available for Linux and Windows on [PyPI](https://pypi.org/org/cupy/).
 Choose the right package for your platform.
 
 | Platform              | Architecture      | Command                                                       |
