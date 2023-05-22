@@ -127,9 +127,9 @@ and ``conda`` will install a pre-built CuPy binary package for you, along with t
 (``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
 
 Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
-However, if for any reason you need to force-install a particular CUDA version (say 11.0), you can do::
+However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
 
-    $ conda install -c conda-forge cupy cudatoolkit=11.0
+    $ conda install -c conda-forge cupy cuda-version=11.8
 
 .. note::
 
