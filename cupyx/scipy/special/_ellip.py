@@ -114,7 +114,7 @@ ellipk = _core.create_ufunc(
     """)
 
 
-ellipj_preamble="""
+ellipj_preamble = """
 #include <cupy/math_constants.h>
 
 __constant__ double M_PI_2 = 1.57079632679489661923;

@@ -29,4 +29,3 @@ class TestEllipj:
     def test_basic(self, xp, scp):
         el = scp.special.ellipj(0.2, 0)
         return el
-

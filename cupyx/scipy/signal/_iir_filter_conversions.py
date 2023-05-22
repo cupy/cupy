@@ -940,6 +940,13 @@ def cheb2ap(N, rs):
 
 # ### Elliptic filter prototype ###
 
+_POW10_LOG10 = cupy.log(10)
+
+
+def _pow10m1(x):
+    """10 ** x - 1 for x near 0"""
+    return cupy.expm1(_POW10_LOG10 * x)
+
 
 def _ellipdeg(n, m1):
     """Solve degree equation using nomes
@@ -972,3 +979,166 @@ def _ellipdeg(n, m1):
 
     return 16 * q * (num / den) ** 4
 
+
+def _arc_jac_sn(w, m):
+    """Inverse Jacobian elliptic sn
+
+    Solve for z in w = sn(z, m)
+
+    Parameters
+    ----------
+    w : complex scalar
+        argument
+
+    m : scalar
+        modulus; in interval [0, 1]
+
+
+    See [1], Eq. (56)
+
+    References
+    ----------
+    .. [1] Orfanidis, "Lecture Notes on Elliptic Filter Design",
+           https://www.ece.rutgers.edu/~orfanidi/ece521/notes.pdf
+
+    """
+    # Maximum number of iterations in Landen transformation recursion
+    # sequence.  10 is conservative; unit tests pass with 4, Orfanidis
+    # (see _arc_jac_cn [1]) suggests 5.
+    _ARC_JAC_SN_MAXITER = 10
+
+    def _complement(kx):
+        # (1-k**2) ** 0.5; the expression below
+        # works for small kx
+        return ((1 - kx) * (1 + kx)) ** 0.5
+
+    k = m ** 0.5
+
+    if k > 1:
+        return cupy.nan
+    elif k == 1:
+        return cupy.arctanh(w)
+
+    ks = [k]
+    niter = 0
+    while ks[-1] != 0:
+        k_ = ks[-1]
+        k_p = _complement(k_)
+        ks.append((1 - k_p) / (1 + k_p))
+        niter += 1
+        if niter > _ARC_JAC_SN_MAXITER:
+            raise ValueError('Landen transformation not converging')
+
+    K = cupy.prod(1 + cupy.array(ks[1:])) * pi/2
+
+    wns = [w]
+
+    for kn, knext in zip(ks[:-1], ks[1:]):
+        wn = wns[-1]
+        wnext = (2 * wn /
+                 ((1 + knext) * (1 + _complement(kn * wn))))
+        wns.append(wnext)
+
+    u = 2 / pi * cupy.arcsin(wns[-1])
+
+    z = K * u
+    return z
+
+
+def _arc_jac_sc1(w, m):
+    """Real inverse Jacobian sc, with complementary modulus
+
+    Solve for z in w = sc(z, 1-m)
+
+    w - real scalar
+
+    m - modulus
+
+    From [1], sc(z, m) = -i * sn(i * z, 1 - m)
+
+    References
+    ----------
+    .. [1] https://functions.wolfram.com/EllipticFunctions/JacobiSC/introductions/JacobiPQs/ShowAll.html,
+       "Representations through other Jacobi functions"
+
+    """
+
+    zcomplex = _arc_jac_sn(1j * w, m)
+    if abs(zcomplex.real) > 1e-14:
+        raise ValueError
+
+    return zcomplex.imag
+
+
+def ellipap(N, rp, rs):
+    """Return (z,p,k) of Nth-order elliptic analog lowpass filter.
+
+    The filter is a normalized prototype that has `rp` decibels of ripple
+    in the passband and a stopband `rs` decibels down.
+
+    The filter's angular (e.g., rad/s) cutoff frequency is normalized to 1,
+    defined as the point at which the gain first drops below ``-rp``.
+
+    See Also
+    --------
+    ellip : Filter design function using this prototype
+    scipy.signal.elliap
+
+    References
+    ----------
+    .. [1] Lutova, Tosic, and Evans, "Filter Design for Signal Processing",
+           Chapters 5 and 12.
+
+    .. [2] Orfanidis, "Lecture Notes on Elliptic Filter Design",
+           https://www.ece.rutgers.edu/~orfanidi/ece521/notes.pdf
+
+    """
+    if abs(int(N)) != N:
+        raise ValueError("Filter order must be a nonnegative integer")
+    elif N == 0:
+        # Avoid divide-by-zero warning
+        # Even order filters have DC gain of -rp dB
+        return cupy.array([]), cupy.array([]), 10**(-rp/20)
+    elif N == 1:
+        p = -cupy.sqrt(1.0 / _pow10m1(0.1 * rp))
+        k = -p
+        z = []
+        return cupy.asarray(z), cupy.asarray(p), k
+
+    eps_sq = _pow10m1(0.1 * rp)
+
+    eps = cupy.sqrt(eps_sq)
+    ck1_sq = eps_sq / _pow10m1(0.1 * rs)
+    if ck1_sq == 0:
+        raise ValueError("Cannot design a filter with given rp and rs"
+                         " specifications.")
+
+    m = _ellipdeg(N, ck1_sq)
+    capk = special.ellipk(m)
+    j = cupy.arange(1 - N % 2, N, 2)
+    EPSILON = 2e-16
+
+    s, c, d, phi = special.ellipj(j * capk / N, m * cupy.ones_like(j))
+    snew = cupy.compress(abs(s) > EPSILON, s, axis=-1)
+    z = 1.j / (cupy.sqrt(m) * snew)
+    z = cupy.concatenate((z, z.conj()))
+
+    r = _arc_jac_sc1(1. / eps, ck1_sq)
+    v0 = capk * r / (N * special.ellipk(ck1_sq))
+
+    sv, cv, dv, phi = special.ellipj(v0, 1 - m)
+    p = -(c * d * sv * cv + 1j * s * dv) / (1 - (d * sv) ** 2.0)
+
+    if N % 2:
+        mask = abs(p.imag) > EPSILON * \
+            cupy.sqrt((p * p.conj()).sum(axis=0).real)
+        newp = cupy.compress(mask, p, axis=-1)
+        p = cupy.concatenate((p, newp.conj()))
+    else:
+        p = cupy.concatenate((p, p.conj()))
+
+    k = (cupy.prod(-p, axis=0) / cupy.prod(-z, axis=0)).real
+    if N % 2 == 0:
+        k = k / cupy.sqrt(1 + eps_sq)
+
+    return z, p, k
