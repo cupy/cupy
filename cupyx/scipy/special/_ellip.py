@@ -119,7 +119,8 @@ ellipj_preamble = """
 
 __constant__ double M_PI_2 = 1.57079632679489661923;
 
-static __device__ double ellipj(double u, double m, double* sn, double* cn, double *dn, double *ph)
+static __device__ double ellipj(double u, double m, double* sn,
+                                double* cn, double *dn, double *ph)
 {
 
     double MACHEP = 1.11022302462515654042E-16;	/* 2**-53 */

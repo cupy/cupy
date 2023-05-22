@@ -1,11 +1,7 @@
-import numpy
-import pytest
-
-import cupy
 from cupy import testing
 
 try:
-    import cupyx.scipy.special
+    import cupyx.scipy.special    # NOQA
 except ImportError:
     pass
 

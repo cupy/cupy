@@ -891,7 +891,7 @@ def cheb1ap(N, rp):
 
     k = cupy.prod(-p, axis=0).real
     if N % 2 == 0:
-        k = k / sqrt(1 + eps * eps)
+        k = k / cupy.sqrt(1 + eps * eps)
 
     return z, p, k
 
