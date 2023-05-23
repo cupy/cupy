@@ -257,7 +257,7 @@
   cudnn: "8.7"
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -287,7 +287,7 @@
   cudnn: "8.8"
   python: "3.11"
   numpy: "1.24"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -317,7 +317,7 @@
   cudnn: "8.8"
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -414,7 +414,7 @@
   cudnn: null
   python: "3.10"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -438,7 +438,7 @@
   cudnn: null
   python: "3.11"
   numpy: "1.24"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -464,7 +464,7 @@
   cudnn: "8.6"
   python: "3.11"
   numpy: "1.23"
-  scipy: "1.9"
+  scipy: "1.10"
   optuna: "3"
   mpi4py: null
   cython: "0.29"

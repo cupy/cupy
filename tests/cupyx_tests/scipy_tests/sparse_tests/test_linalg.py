@@ -86,6 +86,8 @@ class TestMatrixNorm:
     def test_matrix_norm(self, xp, sp):
         if runtime.is_hip and self.ord in (1, -1, numpy.Inf, -numpy.Inf):
             pytest.xfail('csc spmv is buggy')
+        if self.ord == 2:
+            pytest.xfail('ord=2 is not implemented in cupy')
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
@@ -1157,7 +1159,7 @@ class TestLOBPCG:
         output = saved_stdout.getvalue().strip()
         return output
 
-    @testing.with_requires('scipy>=1.8.0rc1')
+    @testing.with_requires('scipy>=1.10')
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs
            and is identical to scipy's output format.

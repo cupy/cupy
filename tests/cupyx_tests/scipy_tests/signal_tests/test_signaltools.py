@@ -212,18 +212,17 @@ class TestConvolveCorrelate2D:
 class TestConvolve2DEdgeCase:
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.10')
     def test_convolve2d_1(self, xp, scp):
-        # see cupy/cupy#5989
-        from scipy import misc
-        ascent = misc.ascent()
-        if xp is cupy:
-            ascent = xp.asarray(ascent)
+        # Meant a gray-scale image
+        data = testing.shaped_random(
+            (512, 512), xp=xp, dtype=xp.uint8, scale=256)
         scharr = xp.array(
             [[-3-3j, 0-10j, +3-3j],
              [-10+0j, 0+0j, +10+0j],
              [-3+3j, 0+10j, +3+3j]])  # Gx + j*Gy
         return scp.signal.convolve2d(
-            ascent, scharr, boundary='symm', mode='same')
+            data, scharr, boundary='symm', mode='same')
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_convolve2d_2(self, xp, scp):
