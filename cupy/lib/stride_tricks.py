@@ -1,6 +1,5 @@
 import cupy as _cupy
 import numpy as np
-from ..core.internal import _normalize_axis_indices as normalize_axis_tuple
 
 def as_strided(x, shape=None, strides=None):
     """
@@ -112,14 +111,6 @@ def sliding_window_view(x, window_shape, axis=None, *,
                     if np.iterable(window_shape)
                     else (window_shape,))
 
-    # -- because normalize_axis_tuple does not handle lists:
-    # -- with Xarray it causes error : 
-    # -- TypeError: 'list' object cannot be interpreted as an integer
-    axis = (
-        axis[0]
-        if np.iterable(axis) and len(axis) == 1
-        else axis)
-
     # first convert input to array, possibly keeping subclass
     x = _cupy.array(x, copy=False, subok=subok)
 
@@ -135,7 +126,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
                              f'got {len(window_shape)} window_shape elements '
                              f'and `x.ndim` is {x.ndim}.')
     else:
-        axis = normalize_axis_tuple(axis, x.ndim)
+        axis = np.normalize_axis_tuple(axis, x.ndim)
         if len(window_shape) != len(axis):
             raise ValueError(f'Must provide matching length window_shape and '
                              f'axis; got {len(window_shape)} window_shape '
