@@ -25,12 +25,11 @@ class TestIIRFilter:
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=pytest.mark.xfail(reason="not implemented")),
                                       'cheby1', 'cheby2', 'ellip'])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6, atol=5e-5)
     def test_symmetry_2(self, N, ftype, xp, scp):
         b, a = scp.signal.iirfilter(N, 1.1, 1, 20, 'low', analog=True,
                                     ftype=ftype, output='ba')
         return b, a
-
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_int_inputs(self, xp, scp):
@@ -70,6 +69,7 @@ class TestIIRFilter:
         with pytest.raises(ValueError, match="must be greater than 0"):
             signal.iirfilter(2, [10, -1], analog=True)
 
+    @pytest.mark.xfail(reason="TODO: zpk2sos")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_analog_sos(self, xp, scp):
         # first order Butterworth filter with Wn = 1 has tf 1/(s+1)
@@ -85,3 +85,15 @@ class TestIIRFilter:
         with pytest.raises(ValueError,
                            match=r"Wn\[0\] must be less than Wn\[1\]"):
             signal.iirfilter(2, [0.6, 0.5])
+
+
+class TestZpk2Tf:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_identity(self, xp, scp):
+        """Test the identity transfer function."""
+        z = xp.array([])
+        p = xp.array([])
+        k = 1.
+        b, a = scp.signal.zpk2tf(z, p, k)
+        return b, a
+

@@ -3,7 +3,7 @@ from math import pi
 
 import cupy
 
-from cupyx.scipy.signal import (lp2bp_zpk, lp2lp_zpk, lp2hp_zpk, lp2bs_zpk, bilinear_zpk,)
+from cupyx.scipy.signal import (lp2bp_zpk, lp2lp_zpk, lp2hp_zpk, lp2bs_zpk, bilinear_zpk, zpk2tf)
 from cupyx.scipy.signal._iir_filter_conversions import buttap, cheb1ap, cheb2ap, ellipap
 
 

@@ -79,6 +79,36 @@ def _align_nums(nums):
         return aligned_nums
 
 
+def _polycoeffs_from_zeros(zeros, tol=10):
+    # a clone of numpy.poly, simplified
+    dtyp = (cupy.complex_
+            if cupy.issubdtype(zeros.dtype, cupy.complexfloating)
+            else cupy.float_)
+    a = cupy.ones(1, dtype=dtyp)
+    for z in zeros:
+        a = cupy.convolve(a, cupy.r_[1, -z], mode='full')
+
+    # Use real output if possible.
+    if dtyp == cupy.complex_:
+        mask = cupy.abs(a.imag) < tol * cupy.finfo(a.dtype).eps
+        a.imag[mask] = 0.0
+        if mask.shape[0] == a.shape[0]:
+            # all imag parts were fp noise
+            a = a.real.copy()
+        else:
+            # if all cmplx roots are complex conj, the coefficients are real
+            pos_roots = z[z.imag > 0]
+            neg_roots = z[z.imag < 0]
+            if pos_roots.shape[0] == neg_roots.shape[0]:
+                neg_roots = neg_roots.copy()
+                neg_roots.sort()
+                pos_roots = pos_roots.copy()
+                pos_roots.sort()
+                if (neg_roots == pos_roots.conj()).all():
+                    a = a.real.copy()
+    return a
+
+
 def normalize(b, a):
     """Normalize numerator/denominator of a continuous-time transfer function.
 
@@ -832,6 +862,39 @@ def lp2bs(b, a, wo=1.0, bw=1.0):
         aprime[Dp - j] = val
 
     return normalize(bprime, aprime)
+
+
+# ### LTI conversions ###
+
+def zpk2tf(z, p, k):
+    """
+    Return polynomial transfer function representation from zeros and poles
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the transfer function.
+    p : array_like
+        Poles of the transfer function.
+    k : float
+        System gain.
+
+    Returns
+    -------
+    b : ndarray
+        Numerator polynomial coefficients.
+    a : ndarray
+        Denominator polynomial coefficients.
+
+    See Also
+    --------
+    scipy.signal.zpk2tf
+    """
+    if z.ndim > 1:
+        raise NotImplementedError(f"zpk2tf: z.ndim = {z.ndim}.")
+    b = _polycoeffs_from_zeros(z) * k
+    a = _polycoeffs_from_zeros(p)
+    return b, a
 
 
 # ### Low-level analog filter prototypes ###

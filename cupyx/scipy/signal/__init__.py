@@ -41,6 +41,8 @@ from cupyx.scipy.signal._iir_filter_conversions import lp2hp_zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import lp2bp_zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import lp2bs_zpk  # NOQA
 
+from cupyx.scipy.signal._iir_filter_conversions import zpk2tf  # NOQA
+
 from cupyx.scipy.signal._iir_filter_conversions import buttap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import cheb1ap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import cheb2ap  # NOQA
