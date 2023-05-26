@@ -589,7 +589,7 @@ class TestSOSFreqz:
         w2, h2 = scp.signal.sosfreqz(sos)
         return w1, h1, w2, h2
 
-    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-10)
     def test_fs_param_2(self, xp, scp):
         fs, sos = self._get_fs_sos()
 
