@@ -35,13 +35,17 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
         even, e.g., `cupy.array([0, 1, 2, 3, 4, 5])`. Alternatively, the
         bands can be specified as an nx2 sized 2D array, where n is the
         number of bands, e.g, `cupy.array([[0, 1], [2, 3], [4, 5]])`.
+        All elements of `bands` must be monotonically nondecreasing, have
+        width > 0, and must not overlap. (This is not checked by the routine).
     desired : array_like
         A sequence the same size as `bands` containing the desired gain
         at the start and end point of each band.
+        All elements must be non-negative (this is not checked by the routine).
     weight : array_like, optional
         A relative weighting to give to each band region when solving
         the least squares problem. `weight` has to be half the size of
         `bands`.
+        All elements must be non-negative (this is not checked by the routine).
     fs : float, optional
         The sampling frequency of the signal. Each frequency in `bands`
         must be between 0 and ``fs/2`` (inclusive). Default is 2.
@@ -84,21 +88,21 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
                          "gains for %s frequencies."
                          % (desired.size, bands.size))
     desired.shape = (-1, 2)
-    if (cupy.diff(bands) <= 0).any() or (cupy.diff(bands[:, 0]) < 0).any():
-        raise ValueError("bands must be monotonically nondecreasing and have "
-                         "width > 0.")
-    if (bands[:-1, 1] > bands[1:, 0]).any():
-        raise ValueError("bands must not overlap.")
-    if (desired < 0).any():
-        raise ValueError("desired must be non-negative.")
+    # if (cupy.diff(bands) <= 0).any() or (cupy.diff(bands[:, 0]) < 0).any():
+    #     raise ValueError("bands must be monotonically nondecreasing and have "
+    #                     "width > 0.")
+    # if (bands[:-1, 1] > bands[1:, 0]).any():
+    #     raise ValueError("bands must not overlap.")
+    # if (desired < 0).any():
+    #     raise ValueError("desired must be non-negative.")
     if weight is None:
         weight = cupy.ones(len(desired))
     weight = cupy.asarray(weight).flatten()
     if len(weight) != len(desired):
         raise ValueError("weight must be the same size as the number of "
                          "band pairs ({}).".format(len(bands)))
-    if (weight < 0).any():
-        raise ValueError("weight must be non-negative.")
+    # if (weight < 0).any():
+    #    raise ValueError("weight must be non-negative.")
 
     # Set up the linear matrix equation to be solved, Qa = b
 
