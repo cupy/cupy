@@ -4,12 +4,14 @@ from pytest import raises as assert_raises
 from cupy import testing
 from cupyx.scipy import signal
 
+
 class TestIIRFilter:
 
     @pytest.mark.parametrize("N", list(range(1, 26)))
     @pytest.mark.parametrize("ftype", ['butter',
-                                       pytest.param('bessel', marks=pytest.mark.xfail(reason="not implemented")),
-                                      'cheby1', 'cheby2', 'ellip'])
+                                       pytest.param('bessel', marks=pytest.mark.xfail(
+                                           reason="not implemented")),
+                                       'cheby1', 'cheby2', 'ellip'])
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=3e-7)
     def test_symmetry(self, N, ftype, xp, scp):
         # All built-in IIR filters are real, so should have perfectly
@@ -20,11 +22,11 @@ class TestIIRFilter:
                                        ftype=ftype, output='zpk')
         return z, p, k
 
-
     @pytest.mark.parametrize("N", list(range(1, 26)))
     @pytest.mark.parametrize("ftype", ['butter',
-                                       pytest.param('bessel', marks=pytest.mark.xfail(reason="not implemented")),
-                                      'cheby1', 'cheby2', 'ellip'])
+                                       pytest.param('bessel', marks=pytest.mark.xfail(
+                                           reason="not implemented")),
+                                       'cheby1', 'cheby2', 'ellip'])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6, atol=5e-5)
     def test_symmetry_2(self, N, ftype, xp, scp):
         b, a = scp.signal.iirfilter(N, 1.1, 1, 20, 'low', analog=True,
@@ -36,15 +38,17 @@ class TestIIRFilter:
         # Using integer frequency arguments and large N should not produce
         # numpy integers that wraparound to negative numbers
         z, p, k = scp.signal.iirfilter(24, 100, btype='low', analog=True, ftype='bessel',
-                      output='zpk')
+                                       output='zpk')
         return z, p, k
 
     def test_invalid_wn_size(self):
         # low and high have 1 Wn, band and stop have 2 Wn
         assert_raises(ValueError, signal.iirfilter, 1, [0.1, 0.9], btype='low')
-        assert_raises(ValueError, signal.iirfilter, 1, [0.2, 0.5], btype='high')
+        assert_raises(ValueError, signal.iirfilter,
+                      1, [0.2, 0.5], btype='high')
         assert_raises(ValueError, signal.iirfilter, 1, 0.2, btype='bp')
-        assert_raises(ValueError, signal.iirfilter, 1, 400, btype='bs', analog=True)
+        assert_raises(ValueError, signal.iirfilter,
+                      1, 400, btype='bs', analog=True)
 
     def test_invalid_wn_range(self):
         # For digital filters, 0 <= Wn <= 1
@@ -74,7 +78,8 @@ class TestIIRFilter:
     def test_analog_sos(self, xp, scp):
         # first order Butterworth filter with Wn = 1 has tf 1/(s+1)
         sos = [[0., 0., 1., 0., 1., 1.]]
-        sos2 = scp.signal.iirfilter(N=1, Wn=1, btype='low', analog=True, output='sos')
+        sos2 = scp.signal.iirfilter(
+            N=1, Wn=1, btype='low', analog=True, output='sos')
         return sos2
 
     def test_wn1_ge_wn0(self):
@@ -96,4 +101,3 @@ class TestZpk2Tf:
         k = 1.
         b, a = scp.signal.zpk2tf(z, p, k)
         return b, a
-

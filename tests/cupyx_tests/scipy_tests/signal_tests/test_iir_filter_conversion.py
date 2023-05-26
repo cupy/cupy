@@ -3,6 +3,8 @@ from math import sqrt, pi
 
 import cupy
 import cupyx.scipy.signal as signal
+from cupyx.scipy.signal._iir_filter_conversions import _cplxreal
+
 from cupy import testing
 from cupy.testing import assert_array_almost_equal
 
@@ -237,6 +239,64 @@ class TestLp2bs_zpk:
         z_bs_s = z_bs[xp.argsort(z_bs.imag)]
         p_bs_s = p_bs[xp.argsort(p_bs.imag)]
         return z_bs_s, p_bs_s, k_bs
+
+
+@testing.with_requires("scipy")
+class TestCplxReal:
+    # _cplxreal is a private function, vendored from scipy.signal._filter_design.
+    # This test class is also vendored.
+    def test_trivial_input(self):
+        assert all(x.size == 0 for x in _cplxreal([]))
+
+        cplx1 = _cplxreal(1)
+        assert cplx1[0].size == 0
+        testing.assert_allclose(cplx1[1], cupy.array([1]))
+
+    def test_output_order(self):
+       # zc, zr = _cplxreal(np.roots(array([1, 0, 0, 1])))
+       # assert_allclose(np.append(zc, zr), [1/2 + 1j*sin(pi/3), -1])
+
+        eps = cupy.finfo(float).eps  # spacing(1)
+
+        a = [0+1j, 0-1j, eps + 1j, eps - 1j, -eps + 1j, -eps - 1j,
+             1, 4, 2, 3, 0, 0,
+             2+3j, 2-3j,
+             1-eps + 1j, 1+2j, 1-2j, 1+eps - 1j,  # sorts out of order
+             3+1j, 3+1j, 3+1j, 3-1j, 3-1j, 3-1j,
+             2-3j, 2+3j]
+        a = cupy.array(a)
+        zc, zr = _cplxreal(a)
+        testing.assert_allclose(zc, [1j, 1j, 1j, 1+1j, 1+2j, 2+3j, 2+3j, 3+1j, 3+1j,
+                                     3+1j])
+        testing.assert_allclose(zr, [0, 0, 1, 2, 3, 4])
+
+        z = cupy.array([1-eps + 1j, 1+2j, 1-2j, 1+eps - 1j, 1+eps+3j, 1-2*eps-3j,
+                        0+1j, 0-1j, 2+4j, 2-4j, 2+3j, 2-3j, 3+7j, 3-7j, 4-eps+1j,
+                        4+eps-2j, 4-1j, 4-eps+2j])
+
+        zc, zr = _cplxreal(z)
+        testing.assert_allclose(zc, [1j, 1+1j, 1+2j, 1+3j, 2+3j, 2+4j, 3+7j, 4+1j,
+                                     4+2j])
+        assert zr.size == 0
+
+    def test_unmatched_conjugates(self):
+        # 1+2j is unmatched
+        assert_raises(ValueError, _cplxreal, [1+3j, 1-3j, 1+2j])
+
+        # 1+2j and 1-3j are unmatched
+        assert_raises(ValueError, _cplxreal, [1+3j, 1-3j, 1+2j, 1-3j])
+
+        # 1+3j is unmatched
+        assert_raises(ValueError, _cplxreal, [1+3j, 1-3j, 1+3j])
+
+        # No pairs
+        assert_raises(ValueError, _cplxreal, [1+3j])
+        assert_raises(ValueError, _cplxreal, [1-3j])
+
+    def test_real_integer_input(self):
+        zc, zr = _cplxreal([2, 0, 1, 4])
+        assert zc.size == 0
+        testing.assert_allclose(zr, [0, 1, 2, 4], atol=1e-15)
 
 
 @testing.with_requires("scipy")

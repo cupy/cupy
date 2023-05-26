@@ -3,7 +3,8 @@ from math import pi
 
 import cupy
 
-from cupyx.scipy.signal import (lp2bp_zpk, lp2lp_zpk, lp2hp_zpk, lp2bs_zpk, bilinear_zpk, zpk2tf)
+from cupyx.scipy.signal import (
+    lp2bp_zpk, lp2lp_zpk, lp2hp_zpk, lp2bs_zpk, bilinear_zpk, zpk2tf)
 from cupyx.scipy.signal._iir_filter_conversions import buttap, cheb1ap, cheb2ap, ellipap
 
 
@@ -12,18 +13,21 @@ from cupyx.scipy.signal._iir_filter_conversions import buttap, cheb1ap, cheb2ap,
 def besselap():
     raise NotImplementedError
 
+
 def buttord():
     raise NotImplementedError
+
 
 def ellipord():
     raise NotImplementedError
 
+
 def cheb1ord():
     raise NotImplementedError
 
+
 def cheb2ord():
     raise NotImplementedError
-
 
 
 def iirfilter(N, Wn, rp=None, rs=None, btype='band', analog=False,
@@ -130,12 +134,14 @@ def iirfilter(N, Wn, rp=None, rs=None, btype='band', analog=False,
     try:
         btype = band_dict[btype]
     except KeyError as e:
-        raise ValueError("'%s' is an invalid bandtype for filter." % btype) from e
+        raise ValueError(
+            "'%s' is an invalid bandtype for filter." % btype) from e
 
     try:
         typefunc = filter_dict[ftype][0]
     except KeyError as e:
-        raise ValueError("'%s' is not a valid basic IIR filter." % ftype) from e
+        raise ValueError(
+            "'%s' is not a valid basic IIR filter." % ftype) from e
 
     if output not in ['ba', 'zpk', 'sos']:
         raise ValueError("'%s' is not a valid output form." % output)
@@ -220,9 +226,6 @@ def iirfilter(N, Wn, rp=None, rs=None, btype='band', analog=False,
         return zpk2sos(z, p, k, analog=analog)
 
 
-
-
-
 filter_dict = {'butter': [buttap, buttord],
                'butterworth': [buttap, buttord],
 
@@ -264,4 +267,3 @@ band_dict = {'band': 'bandpass',
              'h': 'highpass',
              'hp': 'highpass',
              }
-
