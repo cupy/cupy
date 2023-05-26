@@ -73,7 +73,6 @@ class TestIIRFilter:
         with pytest.raises(ValueError, match="must be greater than 0"):
             signal.iirfilter(2, [10, -1], analog=True)
 
-    @pytest.mark.xfail(reason="TODO: zpk2sos")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_analog_sos(self, xp, scp):
         # first order Butterworth filter with Wn = 1 has tf 1/(s+1)
