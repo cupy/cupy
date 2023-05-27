@@ -1,6 +1,8 @@
 import pytest
 from pytest import raises as assert_raises
 
+import cupy
+
 from cupy import testing
 from cupyx.scipy import signal
 
@@ -89,6 +91,114 @@ class TestIIRFilter:
         with pytest.raises(ValueError,
                            match=r"Wn\[0\] must be less than Wn\[1\]"):
             signal.iirfilter(2, [0.6, 0.5])
+
+
+@testing.with_requires("scipy")
+class TestButter:
+
+    @pytest.mark.parametrize('arg', [(0, 1), (1, 1)])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_degenerate(self, xp, scp, arg):
+        # 0-order filter is just a passthrough
+        b, a = scp.signal.butter(*arg, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_degenerate_1(self, xp, scp, arg):
+        z, p, k = scp.signal.butter(1, 0.3, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize('N', list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp, N):
+        # analog s-plane
+        wn = 0.01
+        z, p, k = scp.signal.butter(N, wn, 'low', analog=True, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize('N', list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic_1(self, xp, scp, N):
+        # digital z-plane
+        wn = 0.01
+        z, p, k = scp.signal.butter(N, wn, 'high', analog=False, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize('arg, analog',
+        [((2, 1), True),
+         ((5, 1), True),
+         ((10, 1), True),
+         ((19, 1.0441379169150726), True),
+         ((5, 0.4), False)
+        ])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic_2(self, xp, scp, arg, analog):
+        b, a = scp.signal.butter(*arg, analog=analog)
+        return b, a
+
+    @pytest.mark.parametrize('arg', [(28, 0.43), (27, 0.56)])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_highpass(self, xp, scp, arg):
+        # highpass, high even order
+        z, p, k = scp.signal.butter(*arg, 'high', output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize("format", ['zpk', 'ba'])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
+    def test_bandpass(self, xp, scp, format):
+        output = scp.signal.butter(8, [0.25, 0.33], 'band', output=format)
+        return output
+
+    @pytest.mark.parametrize("format", ['zpk', 'ba'])
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
+    def test_bandpass_analog(self, xp, scp, format):
+        output = scp.signal.butter(4, [90.5, 110.5], 'bp', analog=True, output=format)
+        return output
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_bandstop(self, xp, scp):
+        z, p, k = scp.signal.butter(7, [0.45, 0.56], 'stop', output='zpk')
+        z.sort()
+        p.sort()
+        return z, p, k
+
+    @pytest.mark.parametrize('outp',
+        ['zpk',
+         'sos',
+         pytest.param('ba', marks=pytest.mark.xfail(reason='zpk2tf loses precision'))])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ba_output(self, xp, scp, outp):
+        outp = scp.signal.butter(4, [100, 300], 'bandpass', analog=True, output=outp)
+        return outp
+
+      # in scipy.signal, this is the output in the ba format.
+      # in CUDA, zpk2tf loses precision and b,a output is garbage
+      #  b2 = [1.6e+09, 0, 0, 0, 0]
+      #  a2 = [1.000000000000000e+00, 5.226251859505511e+02,
+      #        2.565685424949238e+05, 6.794127417357160e+07,
+      #        1.519411254969542e+10, 2.038238225207147e+12,
+      #        2.309116882454312e+14, 1.411088002066486e+16,
+      #        8.099999999999991e+17]
+
+    def test_fs_param(self):
+        for fs in (900, 900.1, 1234.567):
+            for N in (0, 1, 2, 3, 10):
+                for fc in (100, 100.1, 432.12345):
+                    for btype in ('lp', 'hp'):
+                        ba1 = signal.butter(N, fc, btype, fs=fs)
+                        ba2 = signal.butter(N, fc/(fs/2), btype)
+                        testing.assert_allclose(ba1[0], ba2[0])
+                        testing.assert_allclose(ba1[1], ba2[1])
+
+                for fc in ((100, 200), (100.1, 200.2), (321.123, 432.123)):
+                    for btype in ('bp', 'bs'):
+                        ba1 = signal.butter(N, fc, btype, fs=fs)
+                        # for seq in (list, tuple, array):
+                        fcnorm = cupy.array([f/(fs/2) for f in fc])
+                        ba2 = signal.butter(N, fcnorm, btype)
+                        testing.assert_allclose(ba1[0], ba2[0])
+                        testing.assert_allclose(ba1[0], ba2[0])
+
 
 
 class TestZpk2Tf:

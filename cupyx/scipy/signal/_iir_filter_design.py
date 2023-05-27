@@ -119,17 +119,18 @@ def iirfilter(N, Wn, rp=None, rs=None, btype='band', analog=False,
 
     """
     ftype, btype, output = [x.lower() for x in (ftype, btype, output)]
+
+    Wn = cupy.asarray(Wn)
+    # if cupy.any(Wn <= 0):
+    #    raise ValueError("filter critical frequencies must be greater than 0")
+
+    if Wn.size > 1 and not Wn[0] < Wn[1]:
+        raise ValueError("Wn[0] must be less than Wn[1]")
+
     if fs is not None:
         if analog:
             raise ValueError("fs cannot be specified for an analog filter")
         Wn = 2*Wn/fs
-
-    Wn = cupy.asarray(Wn)
-    if cupy.any(Wn <= 0):
-        raise ValueError("filter critical frequencies must be greater than 0")
-
-    if Wn.size > 1 and not Wn[0] < Wn[1]:
-        raise ValueError("Wn[0] must be less than Wn[1]")
 
     try:
         btype = band_dict[btype]
