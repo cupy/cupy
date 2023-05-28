@@ -198,11 +198,11 @@ class TestCheby1:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_degenerate_1(self, xp, scp):
         # 1-order filter is same for all types
-        b, a = scp.signal.cheby1(1, 10*zp.log10(2), 1, analog=True)
+        b, a = scp.signal.cheby1(1, 10*xp.log10(2), 1, analog=True)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_degenerate_1(self, xp, scp):
+    def test_degenerate_2(self, xp, scp):
         z, p, k = scp.signal.cheby1(1, 0.1, 0.3, output='zpk')
         return z, p, k
 
@@ -281,6 +281,95 @@ class TestCheby1:
 #              ]
 #        assert_allclose(b, b2, rtol=1e-14)
 #        assert_allclose(a, a2, rtol=1e-14)
+
+
+@testing.with_requires("scipy")
+class TestCheby2:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate(self, xp, scp):
+        # 0-order filter is just a passthrough
+        # Stopband ripple factor doesn't matter
+        b, a = scp.signal.cheby2(0, 123.456, 1, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate_1(self, xp, scp):
+        # 1-order filter is same for all types
+        b, a = scp.signal.cheby2(1, 10*xp.log10(2), 1, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate_2(self, xp, scp):
+        z, p, k = scp.signal.cheby2(1, 50, 0.3, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize("N", list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic(self, xp, scp, N):
+        wn = 0.01
+        z, p, k = scp.signal.cheby2(N, 40, wn, 'low', analog=True, output='zpk')
+        return z, p, k
+        #    assert_(len(p) == N)
+        #    assert_(all(np.real(p) <= 0))  # No poles in right half of S-plane
+
+    @pytest.mark.parametrize("N", list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_1(self, xp, scp, N):
+        wn = 0.01
+        z, p, k = scp.signal.cheby2(N, 40, wn, 'high', analog=False, output='zpk')
+        return z, p, k
+        #    assert_(all(np.abs(p) <= 1))  # No poles outside unit circle
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_2(self, xp, scp):
+        B, A = scp.signal.cheby2(18, 100, 0.5)
+        return B, A
+
+    @pytest.mark.parametrize("arg, kwd",
+             # high even order
+            [((26, 60, 0.3), {'output': 'zpk'}),
+             # high odd order
+             ((25, 80, 0.5), {'output': 'zpk'}),
+            ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_highpass(self, xp, scp, arg, kwd):
+        # high even order
+        z, p, k = scp.signal.cheby2(*arg, 'high', **kwd)
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandpass(self, xp, scp):
+        z, p, k = scp.signal.cheby2(9, 40, [0.07, 0.2], 'pass', output='zpk')
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_bandstop(self, xp, scp):
+        z, p, k = scp.signal.cheby2(6, 55, [0.1, 0.9], 'stop', output='zpk')
+        z = z[xp.argsort(xp.angle(z))]
+        p = p[xp.argsort(xp.angle(p))]
+        return z, p, k
+
+    @pytest.mark.xfail(reason='zpk2tf loses precision')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_ba_output(self, xp, scp):
+        # with transfer function conversion, without digital conversion
+        b, a = scp.signal.cheby2(5, 20, [2010, 2100], 'stop', True)
+        return b, a
+        b2 = [1.000000000000000e+00, 0,  # Matlab: 6.683253076978249e-12,
+              2.111512500000000e+07, 0,  # Matlab: 1.134325604589552e-04,
+              1.782966433781250e+14, 0,  # Matlab: 7.216787944356781e+02,
+              7.525901316990656e+20, 0,  # Matlab: 2.039829265789886e+09,
+              1.587960565565748e+27, 0,  # Matlab: 2.161236218626134e+15,
+              1.339913493808585e+33]
+        a2 = [1.000000000000000e+00, 1.849550755473371e+02,
+              2.113222918998538e+07, 3.125114149732283e+09,
+              1.785133457155609e+14, 1.979158697776348e+16,
+              7.535048322653831e+20, 5.567966191263037e+22,
+              1.589246884221346e+27, 5.871210648525566e+28,
+              1.339913493808590e+33]
+        assert_allclose(b, b2, rtol=1e-14)
+        assert_allclose(a, a2, rtol=1e-14)
 
 
 class TestZpk2Tf:
