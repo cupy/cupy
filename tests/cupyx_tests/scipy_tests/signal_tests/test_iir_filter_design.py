@@ -35,6 +35,7 @@ class TestIIRFilter:
                                     ftype=ftype, output='ba')
         return b, a
 
+    @pytest.mark.xfail(reason="bessel IIR filter not implemented")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_int_inputs(self, xp, scp):
         # Using integer frequency arguments and large N should not produce
@@ -370,6 +371,107 @@ class TestCheby2:
               1.339913493808590e+33]
         assert_allclose(b, b2, rtol=1e-14)
         assert_allclose(a, a2, rtol=1e-14)
+
+
+@testing.with_requires("scipy")
+class TestEllip:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate(self, xp, scp):
+        # 0-order filter is just a passthrough
+        # Even-order filters have DC gain of -rp dB
+        # Stopband ripple factor doesn't matter
+        b, a = scp.signal.ellip(0, 10*xp.log10(2), 123.456, 1, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate_1(self, xp, scp):
+        # 1-order filter is same for all types
+        b, a = scp.signal.ellip(1, 10*xp.log10(2), 1, 1, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate_2(self, xp, scp):
+        z, p, k = scp.signal.ellip(1, 1, 55, 0.3, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize('N', list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic(self, xp, scp, N):
+        wn = 0.01
+        z, p, k = scp.signal.ellip(N, 1, 40, wn, 'low', analog=True, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize('N', list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_1(self, xp, scp, N):
+        wn = 0.01
+        z, p, k = scp.signal.ellip(N, 1, 40, wn, 'high', analog=False, output='zpk')
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_basic_2(self, xp, scp):
+        b3, a3 = scp.signal.ellip(5, 3, 26, 1, analog=True)
+        return b3, a3
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_3(self, xp, scp):
+        b, a = scp.signal.ellip(3, 1, 60, [0.4, 0.7], 'stop')
+        return b, a
+
+    @pytest.mark.parametrize("arg",
+             # high even order
+            [(24, 1, 80, 0.3, 'high'),
+             # high odd order
+             (23, 1, 70, 0.5, 'high'),
+            ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_highpass(self, xp, scp, arg):
+        # high even order
+        z, p, k = scp.signal.ellip(*arg, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize("arg",
+            [(7, 1, 40, [0.07, 0.2], 'pass'),
+             (5, 1, 75, [90.5, 110.5], 'pass', True),
+            ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandpass(self, xp, scp, arg):
+        z, p, k = scp.signal.ellip(7, 1, 40, [0.07, 0.2], 'pass', output='zpk')
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandstop(self, xp, scp):
+        z, p, k = scp.signal.ellip(8, 1, 65, [0.2, 0.4], 'stop', output='zpk')
+        z = z[xp.argsort(xp.angle(z))]
+        p = p[xp.argsort(xp.angle(p))]
+        return z, p, k
+
+    @pytest.mark.xfail(reason='zpk2tf loses precision')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_ba_output(self, xp, scp):
+        # with transfer function conversion,  without digital conversion
+        b, a = scp.signal.ellip(5, 1, 40, [201, 240], 'stop', True)
+        return b, a
+
+#        b2 = [
+#             1.000000000000000e+00, 0,  # Matlab: 1.743506051190569e-13,
+#             2.426561778314366e+05, 0,  # Matlab: 3.459426536825722e-08,
+#             2.348218683400168e+10, 0,  # Matlab: 2.559179747299313e-03,
+#             1.132780692872241e+15, 0,  # Matlab: 8.363229375535731e+01,
+#             2.724038554089566e+19, 0,  # Matlab: 1.018700994113120e+06,
+#             2.612380874940186e+23
+#             ]
+#        a2 = [
+#             1.000000000000000e+00, 1.337266601804649e+02,
+#             2.486725353510667e+05, 2.628059713728125e+07,
+#             2.436169536928770e+10, 1.913554568577315e+12,
+#             1.175208184614438e+15, 6.115751452473410e+16,
+#             2.791577695211466e+19, 7.241811142725384e+20,
+#             2.612380874940182e+23
+#             ]
+#        assert_allclose(b, b2, rtol=1e-6)
+#        assert_allclose(a, a2, rtol=1e-4)
 
 
 class TestZpk2Tf:
