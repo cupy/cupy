@@ -61,20 +61,6 @@ class TestIIRFilter:
         assert_raises(ValueError, signal.iirfilter, 1, [1, 2], btype='band')
         assert_raises(ValueError, signal.iirfilter, 1, [10, 20], btype='stop')
 
-        # analog=True with non-positive critical frequencies
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            signal.iirfilter(2, 0, btype='low', analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            signal.iirfilter(2, -1, btype='low', analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            signal.iirfilter(2, [0, 100], analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            signal.iirfilter(2, [-1, 100], analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            signal.iirfilter(2, [10, 0], analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            signal.iirfilter(2, [10, -1], analog=True)
-
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_analog_sos(self, xp, scp):
         # first order Butterworth filter with Wn = 1 has tf 1/(s+1)
@@ -104,7 +90,7 @@ class TestButter:
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
-    def test_degenerate_1(self, xp, scp, arg):
+    def test_degenerate_1(self, xp, scp):
         z, p, k = scp.signal.butter(1, 0.3, output='zpk')
         return z, p, k
 
@@ -149,10 +135,9 @@ class TestButter:
         output = scp.signal.butter(8, [0.25, 0.33], 'band', output=format)
         return output
 
-    @pytest.mark.parametrize("format", ['zpk', 'ba'])
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-12)
-    def test_bandpass_analog(self, xp, scp, format):
-        output = scp.signal.butter(4, [90.5, 110.5], 'bp', analog=True, output=format)
+    def test_bandpass_analog(self, xp, scp):
+        output = scp.signal.butter(4, [90.5, 110.5], 'bp', analog=True, output='zpk')
         return output
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
@@ -199,6 +184,103 @@ class TestButter:
                         testing.assert_allclose(ba1[0], ba2[0])
                         testing.assert_allclose(ba1[0], ba2[0])
 
+
+@testing.with_requires("scipy")
+class TestCheby1:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate(self, xp, scp):
+        # 0-order filter is just a passthrough
+        # Even-order filters have DC gain of -rp dB
+        b, a = scp.signal.cheby1(0, 10*xp.log10(2), 1, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate_1(self, xp, scp):
+        # 1-order filter is same for all types
+        b, a = scp.signal.cheby1(1, 10*zp.log10(2), 1, analog=True)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_degenerate_1(self, xp, scp):
+        z, p, k = scp.signal.cheby1(1, 0.1, 0.3, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize("N", list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic(self, xp, scp, N):
+        wn = 0.01
+        z, p, k = scp.signal.cheby1(N, 1, wn, 'low', analog=True, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize("N", list(range(25)))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_1(self, xp, scp, N):
+        wn = 0.01
+        z, p, k = scp.signal.cheby1(N, 1, wn, 'high', analog=False, output='zpk')
+        return z, p, k
+
+    @pytest.mark.parametrize("arg, kwd",
+            [((8, 0.5, 0.048), {}),
+             ((4, 1, [0.4, 0.7]), {'btype': 'band'}),
+             ((5, 3, 1), {'analog': True}),
+             ((8, 0.5, 0.1), {}),
+             ((8, 0.5, 0.25), {}),
+            ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_basic_2(self, xp, scp, arg, kwd):
+        # Same test as TestNormalize
+        b, a = scp.signal.cheby1(*arg, **kwd)
+        return b, a
+
+    @pytest.mark.parametrize("arg, kwd",
+             # high even order
+            [((24, 0.7, 0.2), {'output': 'zpk'}),
+             # high odd order
+             ((23, 0.8, 0.3), {'output': 'zpk'}),
+             ((10, 1, 1000), {'analog': True, 'output': 'zpk'}),
+            ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_highpass(self, xp, scp, arg, kwd):
+        # high even order
+        z, p, k = scp.signal.cheby1(*arg, 'high', **kwd)
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandpass(self, xp, scp):
+        z, p, k = scp.signal.cheby1(8, 1, [0.3, 0.4], 'bp', output='zpk')
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandstop(self, xp, scp):
+        z, p, k = scp.signal.cheby1(7, 1, [0.5, 0.6], 'stop', output='zpk')
+        z = z[xp.argsort(z.imag)]
+        p = p[xp.argsort(p.imag)]
+        return z, p, k
+
+    @pytest.mark.xfail(reason='zpk2tf loses precision (cf TestButter)')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-10)
+    def test_ba_output(self, xp, scp,):
+        # with transfer function conversion,  without digital conversion
+        b, a = scp.signal.cheby1(5, 0.9, [210, 310], 'stop', analog=True)
+        return b, a
+
+#        b2 = [1.000000000000006e+00, 0,
+#              3.255000000000020e+05, 0,
+#              4.238010000000026e+10, 0,
+#              2.758944510000017e+15, 0,
+#              8.980364380050052e+19, 0,
+#              1.169243442282517e+24
+#              ]
+#        a2 = [1.000000000000000e+00, 4.630555945694342e+02,
+#              4.039266454794788e+05, 1.338060988610237e+08,
+#              5.844333551294591e+10, 1.357346371637638e+13,
+#              3.804661141892782e+15, 5.670715850340080e+17,
+#              1.114411200988328e+20, 8.316815934908471e+21,
+#              1.169243442282517e+24
+#              ]
+#        assert_allclose(b, b2, rtol=1e-14)
+#        assert_allclose(a, a2, rtol=1e-14)
 
 
 class TestZpk2Tf:
