@@ -180,7 +180,7 @@ def select(condlist, choicelist, default=0):
         array in `condlist` is True.
 
     .. seealso:: :func:`numpy.select`
-    """
+    """  # NOQA
 
     if len(condlist) != len(choicelist):
         raise ValueError(

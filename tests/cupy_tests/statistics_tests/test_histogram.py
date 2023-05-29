@@ -38,7 +38,6 @@ def for_all_dtypes_combination_bincount(names):
     return testing.for_dtypes_combination(_all_types, names=names)
 
 
-@testing.gpu
 class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -435,7 +434,6 @@ class TestDigitize:
         return y,
 
 
-@testing.gpu
 @testing.parameterize(
     {'right': True},
     {'right': False})
@@ -509,7 +507,6 @@ class TestDigitizeNanInf(unittest.TestCase):
         return y,
 
 
-@testing.gpu
 class TestDigitizeInvalid(unittest.TestCase):
 
     def test_digitize_complex(self):
@@ -537,7 +534,6 @@ class TestDigitizeInvalid(unittest.TestCase):
          'range': [None, ((20, 50), (10, 100), (0, 40))]}
     )
 )
-@testing.gpu
 class TestHistogramdd:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -559,7 +555,6 @@ class TestHistogramdd:
         return [y, ] + [e for e in bin_edges]
 
 
-@testing.gpu
 class TestHistogramddErrors(unittest.TestCase):
 
     def test_histogramdd_invalid_bins(self):
@@ -613,7 +608,6 @@ class TestHistogramddErrors(unittest.TestCase):
          'range': [None, ((20, 50), (10, 100))]}
     )
 )
-@testing.gpu
 class TestHistogram2d:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -637,7 +631,6 @@ class TestHistogram2d:
         return y, edges0, edges1
 
 
-@testing.gpu
 class TestHistogram2dErrors(unittest.TestCase):
 
     def test_histogram2d_disallow_arraylike_bins(self):

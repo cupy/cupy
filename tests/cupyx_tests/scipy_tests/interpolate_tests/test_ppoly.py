@@ -1315,6 +1315,7 @@ class TestBPolyFromDerivatives:
         return res
 
 
+@testing.with_requires("scipy")
 class TestNdPPoly:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')

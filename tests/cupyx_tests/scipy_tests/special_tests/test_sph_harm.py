@@ -15,7 +15,6 @@ def _get_harmonic_list(degree_max):
     return harmonic_list
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 class TestBasic():
 

@@ -18,7 +18,6 @@ class C(cupy.ndarray):
         self.info = getattr(obj, 'info', None)
 
 
-@testing.gpu
 class TestArrayUfunc:
 
     @testing.for_all_dtypes()
@@ -141,6 +140,44 @@ class TestArrayUfunc:
         b1 = a1.get()
         outb = numpy.add(b0, b1)
         testing.assert_allclose(outa, outb)
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_outer(self, xp):
+        a = cupy.testing.shaped_arange((3, 4), xp)
+        b = cupy.testing.shaped_arange((5, 6), xp)
+        return numpy.add.outer(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_at(self, xp):
+        a = cupy.testing.shaped_arange((10,), xp)
+        b = cupy.testing.shaped_arange((5,), xp)
+        indices = xp.array([0, 3, 6, 7, 9])
+        numpy.add.at(a, indices, b)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_at_scalar(self, xp):
+        a = cupy.testing.shaped_arange((10,), xp)
+        b = 7
+        indices = xp.array([0, 3, 6, 7, 9])
+        numpy.add.at(a, indices, b)
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_reduce(self, xp):
+        a = cupy.testing.shaped_arange((10, 12), xp)
+        return numpy.add.reduce(a, axis=-1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_accumulate(self, xp):
+        a = cupy.testing.shaped_arange((10, 12), xp)
+        return numpy.add.accumulate(a, axis=-1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_ufunc_reduceat(self, xp):
+        a = cupy.testing.shaped_arange((10, 12), xp)
+        indices = xp.array([0, 3, 6, 7, 9])
+        return numpy.add.reduceat(a, indices, axis=-1)
 
 
 class TestUfunc:

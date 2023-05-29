@@ -22,7 +22,6 @@ def wrap_take(array, *args, **kwargs):
     return array.take(*args, **kwargs)
 
 
-@testing.gpu
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
@@ -112,7 +111,6 @@ class TestNdarrayInit(unittest.TestCase):
             numpy.uint16,  # itemsize=2
         ],
     }))
-@testing.gpu
 class TestNdarrayInitStrides(unittest.TestCase):
 
     # Check the strides given shape, itemsize and order.
@@ -126,7 +124,6 @@ class TestNdarrayInitStrides(unittest.TestCase):
             arr.flags.f_contiguous)
 
 
-@testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
     def test_unsupported_type(self):
@@ -146,7 +143,6 @@ class TestNdarrayInitRaise(unittest.TestCase):
         'shape': [(), (0,), (1,), (0, 0, 2), (2, 3)],
     })
 )
-@testing.gpu
 class TestNdarrayDeepCopy(unittest.TestCase):
 
     def _check_deepcopy(self, arr, arr2):
@@ -238,7 +234,6 @@ class TestNdarrayCopy:
                     b, numpy.array([0, 0], dtype=numpy.uint64))
 
 
-@testing.gpu
 class TestNdarrayShape(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -395,7 +390,6 @@ class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
         'axis': [None, 0, 1, 2, -1, -2],
     })
 )
-@testing.gpu
 class TestNdarrayTake(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -418,7 +412,6 @@ class TestNdarrayTake(unittest.TestCase):
         'axis': [None, 0, 1, -1, -2],
     })
 )
-@testing.gpu
 class TestNdarrayTakeWithInt(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -436,7 +429,6 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
         'axis': [None, 0, 1, -1, -2],
     })
 )
-@testing.gpu
 class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -458,7 +450,6 @@ class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
         'axis': [None, 0, -1],
     })
 )
-@testing.gpu
 class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
     shape = ()
@@ -478,7 +469,6 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2,), 'axis': 3},
     {'shape': (), 'indices': (0,), 'axis': 2}
 )
-@testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     def test_axis_overrun1(self):
@@ -497,7 +487,6 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 4)},
     {'shape': (), 'indices': (), 'out_shape': (1,)}
 )
-@testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
     def test_shape_mismatch(self):
@@ -513,7 +502,6 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 3)},
     {'shape': (), 'indices': (), 'out_shape': ()}
 )
-@testing.gpu
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
     def test_output_type_mismatch(self):
@@ -530,7 +518,6 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
     {'shape': (0,), 'indices': (0, 1), 'axis': None},
     {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
-@testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -544,7 +531,6 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     {'shape': (0,), 'indices': (1,)},
     {'shape': (0,), 'indices': (1, 1)},
 )
-@testing.gpu
 class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):
 
     def test_output_type_mismatch(self):
@@ -555,7 +541,6 @@ class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):
                 wrap_take(a, i)
 
 
-@testing.gpu
 class TestSize(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
@@ -597,7 +582,6 @@ class TestSize(unittest.TestCase):
                 xp.size(x, 0)
 
 
-@testing.gpu
 class TestPythonInterface(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -634,7 +618,6 @@ class TestPythonInterface(unittest.TestCase):
         return format(x, '.2f')
 
 
-@testing.gpu
 class TestNdarrayImplicitConversion(unittest.TestCase):
 
     def test_array(self):

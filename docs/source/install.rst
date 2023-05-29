@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.9, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.10, and has been tested against the following versions:
 
 * `NumPy <https://numpy.org/>`_: v1.21 / v1.22 / v1.23 / v1.24
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10
 
     * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -127,9 +127,9 @@ and ``conda`` will install a pre-built CuPy binary package for you, along with t
 (``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
 
 Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
-However, if for any reason you need to force-install a particular CUDA version (say 11.0), you can do::
+However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
 
-    $ conda install -c conda-forge cupy cudatoolkit=11.0
+    $ conda install -c conda-forge cupy cuda-version=11.8
 
 .. note::
 

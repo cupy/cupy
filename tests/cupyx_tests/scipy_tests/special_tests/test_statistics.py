@@ -36,7 +36,6 @@ atol_low = {'default': 5e-4, cupy.float64: 1e-12}
 rtol_low = {'default': 5e-4, cupy.float64: 1e-12}
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecial(_TestBase):
 
@@ -111,7 +110,6 @@ class TestSpecial(_TestBase):
         assert numpy.isnan(float(boxcox1p(-1.1, 5)))
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFusionSpecial(_TestBase):
 
@@ -153,7 +151,6 @@ class _TestDistributionsBase:
                                 atol=atol)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestTwoArgumentDistribution(_TestDistributionsBase):
 
@@ -204,7 +201,6 @@ class TestTwoArgumentDistribution(_TestDistributionsBase):
         self._test_scalar(function, args, expected)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestThreeArgumentDistributions(_TestDistributionsBase):
 

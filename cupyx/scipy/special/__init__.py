@@ -12,6 +12,7 @@ from cupyx.scipy.special._bessel import k1e  # NOQA
 from cupyx.scipy.special._bessel import y0  # NOQA
 from cupyx.scipy.special._bessel import y1  # NOQA
 from cupyx.scipy.special._bessel import yn  # NOQA
+from cupyx.scipy.special._spherical_bessel import spherical_yn  # NOQA
 
 # Raw statistical functions
 from cupyx.scipy.special._stats_distributions import bdtr  # NOQA
@@ -90,6 +91,7 @@ from cupyx.scipy.special._expn import expn  # NOQA
 from cupyx.scipy.special._softmax import softmax  # NOQA
 from cupyx.scipy.special._logsoftmax import log_softmax  # NOQA
 from cupyx.scipy.special._zeta import zeta  # NOQA
+from cupyx.scipy.special._zetac import zetac  # NOQA
 
 # Convenience functions
 from cupyx.scipy.special._basic import cbrt  # NOQA
@@ -102,6 +104,7 @@ from cupyx.scipy.special._basic import tandg  # NOQA
 from cupyx.scipy.special._basic import cotdg  # NOQA
 from cupyx.scipy.special._basic import log1p  # NOQA
 from cupyx.scipy.special._basic import expm1  # NOQA
+from cupyx.scipy.special._basic import exprel  # NOQA
 from cupyx.scipy.special._basic import cosm1  # NOQA
 from cupy._math.rounding import round_ as round  # NOQA
 from cupyx.scipy.special._xlogy import xlogy  # NOQA

@@ -3,7 +3,6 @@ import unittest
 from cupy import testing
 
 
-@testing.gpu
 class TestHyperbolic(unittest.TestCase):
 
     @testing.for_all_dtypes()

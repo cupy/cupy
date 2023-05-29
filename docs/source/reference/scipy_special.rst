@@ -24,6 +24,7 @@ Bessel functions
    i0e
    i1
    i1e
+   spherical_yn
 
 
 Raw statistical functions
@@ -135,9 +136,11 @@ Other special functions
    exp1
    expi
    expn
+   exprel
    softmax
    log_softmax
    zeta
+   zetac
 
 
 Convenience functions

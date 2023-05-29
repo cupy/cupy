@@ -598,7 +598,7 @@ def digitize(x, bins, right=False):
         cupy.ndarray: Output array of indices, of same shape as ``x``.
 
     .. seealso:: :func:`numpy.digitize`
-    """
+    """  # NOQA
     # This is for NumPy compat, although it works fine
     if x.dtype.kind == 'c':
         raise TypeError('x may not be complex')

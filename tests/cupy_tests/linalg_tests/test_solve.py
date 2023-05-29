@@ -14,7 +14,6 @@ from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
     'batched_gesv_limit': [None, 0],
     'order': ['C', 'F'],
 }))
-@testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
 
@@ -83,7 +82,6 @@ class TestSolve(unittest.TestCase):
     'axes': [None, (0, 2)],
 }))
 @testing.fix_random()
-@testing.gpu
 class TestTensorSolve(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -99,7 +97,6 @@ class TestTensorSolve(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'order': ['C', 'F'],
 }))
-@testing.gpu
 class TestInv(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -140,7 +137,6 @@ class TestInv(unittest.TestCase):
         self.check_shape((0, 2, 3))
 
 
-@testing.gpu
 class TestInvInvalid(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -161,7 +157,6 @@ class TestInvInvalid(unittest.TestCase):
                     xp.linalg.inv(a)
 
 
-@testing.gpu
 class TestPinv(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -208,7 +203,6 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 0, 3), rcond=1e-15)
 
 
-@testing.gpu
 class TestLstsq:
 
     @testing.for_dtypes('ifdFD')
@@ -296,7 +290,6 @@ class TestLstsq:
             return xp.linalg.lstsq(a, b)
 
 
-@testing.gpu
 class TestTensorInv(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')

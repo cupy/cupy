@@ -6,7 +6,6 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGamma:
 

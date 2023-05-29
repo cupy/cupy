@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestPolynomial(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)

@@ -43,7 +43,6 @@ class RandomDistributionsTestCase:
     'dtype': _float_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsBeta(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes_combination(
@@ -62,7 +61,6 @@ class TestDistributionsBeta(RandomDistributionsTestCase):
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsBinomial(RandomDistributionsTestCase):
 
     @cupy.testing.for_signed_dtypes('n_dtype')
@@ -81,7 +79,6 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
     'df_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsChisquare:
 
     def check_distribution(self, dist_func, df_dtype, dtype):
@@ -101,7 +98,6 @@ class TestDistributionsChisquare:
     'alpha_shape': [(3,)],
 })
 )
-@testing.gpu
 class TestDistributionsDirichlet(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes_combination(
@@ -117,7 +113,6 @@ class TestDistributionsDirichlet(RandomDistributionsTestCase):
     'scale_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsExponential(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -128,7 +123,6 @@ class TestDistributionsExponential(RandomDistributionsTestCase):
                                 {'scale': scale}, dtype)
 
 
-@testing.gpu
 class TestDistributionsExponentialError(RandomDistributionsTestCase):
 
     def test_negative_scale(self):
@@ -144,7 +138,6 @@ class TestDistributionsExponentialError(RandomDistributionsTestCase):
     'dtype': _float_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsF:
 
     def check_distribution(self, dist_func, dfnum_dtype, dfden_dtype, dtype):
@@ -168,7 +161,6 @@ class TestDistributionsF:
     'dtype': _float_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsGamma:
 
     def check_distribution(self, dist_func, shape_dtype, scale_dtype,
@@ -209,7 +201,6 @@ class TestDistributionsGamma:
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsGeometric:
 
     def check_distribution(self, dist_func, p_dtype, dtype):
@@ -230,7 +221,6 @@ class TestDistributionsGeometric:
     'scale_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsGumbel(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -252,7 +242,6 @@ class TestDistributionsGumbel(RandomDistributionsTestCase):
     'dtype': [numpy.int32, numpy.int64],  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsHyperGeometric:
 
     def check_distribution(self, dist_func, ngood_dtype, nbad_dtype,
@@ -277,7 +266,6 @@ class TestDistributionsHyperGeometric:
     'scale_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsuLaplace(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -296,7 +284,6 @@ class TestDistributionsuLaplace(RandomDistributionsTestCase):
     'scale_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsLogistic(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -315,7 +302,6 @@ class TestDistributionsLogistic(RandomDistributionsTestCase):
     'sigma_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsLognormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -333,7 +319,6 @@ class TestDistributionsLognormal(RandomDistributionsTestCase):
     'p_shape': [()],
 })
 )
-@testing.gpu
 class TestDistributionsLogseries(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes([numpy.int64, numpy.int32], 'dtype')
@@ -359,7 +344,6 @@ class TestDistributionsLogseries(RandomDistributionsTestCase):
     'd': [2, 4],
 })
 )
-@testing.gpu
 class TestDistributionsMultivariateNormal:
 
     def check_distribution(self, dist_func, mean_dtype, cov_dtype, dtype):
@@ -385,7 +369,6 @@ class TestDistributionsMultivariateNormal:
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsNegativeBinomial(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('n_dtype')
@@ -412,7 +395,6 @@ class TestDistributionsNegativeBinomial(RandomDistributionsTestCase):
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes_combination(
@@ -446,7 +428,6 @@ class TestDistributionsNoncentralChisquare(RandomDistributionsTestCase):
     'dtype': _int_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsNoncentralF(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes_combination(
@@ -490,7 +471,6 @@ class TestDistributionsNoncentralF(RandomDistributionsTestCase):
     'scale_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsNormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -508,7 +488,6 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
     'a_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsPareto:
 
     def check_distribution(self, dist_func, a_dtype, dtype):
@@ -530,7 +509,6 @@ class TestDistributionsPareto:
     'lam_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsPoisson:
 
     def check_distribution(self, dist_func, lam_dtype, dtype=None):
@@ -561,7 +539,6 @@ class TestDistributionsPoisson:
                                 lam_dtype)
 
 
-@testing.gpu
 class TestDistributionsPoissonInvalid:
 
     @pytest.mark.skipif(
@@ -583,7 +560,6 @@ class TestDistributionsPoissonInvalid:
     'a_shape': [()],
 })
 )
-@testing.gpu
 class TestDistributionsPower(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -607,7 +583,6 @@ class TestDistributionsPower(RandomDistributionsTestCase):
     'scale_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsRayleigh(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -637,7 +612,6 @@ class TestDistributionsRayleigh(RandomDistributionsTestCase):
     'shape': [(4, 3, 2), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsStandardCauchy(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -649,7 +623,6 @@ class TestDistributionsStandardCauchy(RandomDistributionsTestCase):
     'shape': [(4, 3, 2), (3, 2), None],
 })
 )
-@testing.gpu
 class TestDistributionsStandardExponential(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -662,7 +635,6 @@ class TestDistributionsStandardExponential(RandomDistributionsTestCase):
     'shape_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -686,7 +658,6 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
                                           dtype)
 
 
-@testing.gpu
 class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
 
     @pytest.mark.skipif(
@@ -707,7 +678,6 @@ class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
     'shape': [(4, 3, 2), (3, 2), None],
 })
 )
-@testing.gpu
 class TestDistributionsStandardNormal(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -720,7 +690,6 @@ class TestDistributionsStandardNormal(RandomDistributionsTestCase):
     'df_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsStandardT:
 
     def check_distribution(self, dist_func, df_dtype, dtype):
@@ -743,7 +712,6 @@ class TestDistributionsStandardT:
     'dtype': _regular_float_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsTriangular(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes_combination(
@@ -787,7 +755,6 @@ class TestDistributionsTriangular(RandomDistributionsTestCase):
     'high_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsUniform(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -807,7 +774,6 @@ class TestDistributionsUniform(RandomDistributionsTestCase):
     'dtype': _float_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsVonmises:
 
     def check_distribution(self, dist_func, mu_dtype, kappa_dtype, dtype):
@@ -831,7 +797,6 @@ class TestDistributionsVonmises:
     'dtype': _regular_float_dtypes,  # to escape timeout
 })
 )
-@testing.gpu
 class TestDistributionsWald(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes_combination(
@@ -848,7 +813,6 @@ class TestDistributionsWald(RandomDistributionsTestCase):
     'a_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsWeibull(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -879,7 +843,6 @@ class TestDistributionsWeibull(RandomDistributionsTestCase):
     'a_shape': [(), (3, 2)],
 })
 )
-@testing.gpu
 class TestDistributionsZipf(RandomDistributionsTestCase):
 
     @cupy.testing.for_dtypes([numpy.int32, numpy.int64], 'dtype')

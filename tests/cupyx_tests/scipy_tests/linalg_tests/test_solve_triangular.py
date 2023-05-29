@@ -21,7 +21,6 @@ except ImportError:
     'overwrite_b': [True, False],
     'check_finite': [True, False],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSolveTriangular(unittest.TestCase):
 

@@ -104,7 +104,6 @@ def _set_store_cb(code, element, data_type, callback_type, aux_type=None):
     'norm': [None, 'ortho'],
 }))
 @testing.with_requires('cython>=0.29.0')
-@testing.gpu
 @pytest.mark.skipif(not sys.platform.startswith('linux'),
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -423,7 +422,6 @@ class Test1dCallbacks:
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
 )
 @testing.with_requires('cython>=0.29.0')
-@testing.gpu
 @pytest.mark.skipif(not sys.platform.startswith('linux'),
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,

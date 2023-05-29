@@ -174,7 +174,6 @@ class TestBasic(unittest.TestCase):
         return b
 
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_empty_like_K_strides(self, dtype):
         # test strides that are both non-contiguous and non-descending;
         # also test accepting cupy.ndarray
@@ -266,7 +265,6 @@ class TestBasicReshape(unittest.TestCase):
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_empty_like_reshape_cupy_only(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupyx.empty_like_pinned(a, shape=self.shape)
@@ -291,7 +289,6 @@ class TestBasicReshape(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_empty_like_reshape_contiguity_cupy_only(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupyx.empty_like_pinned(a, order=order, shape=self.shape)
@@ -323,7 +320,6 @@ class TestBasicReshape(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_empty_like_reshape_contiguity2_cupy_only(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         a = cupy.asfortranarray(a)
@@ -366,7 +362,6 @@ class TestBasicReshape(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_empty_like_reshape_contiguity3_cupy_only(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         # test strides that are both non-contiguous and non-descending
@@ -393,7 +388,6 @@ class TestBasicReshape(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.17.0')
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_empty_like_K_strides_reshape(self, dtype):
         # test strides that are both non-contiguous and non-descending
         a = testing.shaped_arange((2, 3, 4), numpy, dtype)
@@ -421,7 +415,6 @@ class TestBasicReshape(unittest.TestCase):
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.gpu
     def test_zeros_like_reshape_cupy_only(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = cupyx.zeros_like_pinned(a, shape=self.shape)

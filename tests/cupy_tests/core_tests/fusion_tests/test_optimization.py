@@ -54,7 +54,6 @@ def check_number_of_ops(
     return wrapper
 
 
-@testing.gpu
 class TestOptimizations(unittest.TestCase):
 
     def generate_inputs(self, xp):

@@ -16,7 +16,6 @@ from cupy import testing
         'array_module_y': [numpy, cupy]
     })
 )
-@testing.gpu
 class TestEqualityAssertion(unittest.TestCase):
 
     def setUp(self):
@@ -55,7 +54,6 @@ def _convert_array(xs, array_module):
         'array_module_y': ['all_numpy', 'all_cupy', 'random']
     })
 )
-@testing.gpu
 class TestListEqualityAssertion(unittest.TestCase):
 
     def setUp(self):
@@ -80,7 +78,6 @@ class TestListEqualityAssertion(unittest.TestCase):
         'array_module_y': [numpy, cupy]
     })
 )
-@testing.gpu
 class TestStridesEqualityAssertion(unittest.TestCase):
 
     def setUp(self):
@@ -103,7 +100,6 @@ class TestStridesEqualityAssertion(unittest.TestCase):
         'array_module_y': [numpy, cupy]
     })
 )
-@testing.gpu
 class TestLessAssertion(unittest.TestCase):
 
     def setUp(self):

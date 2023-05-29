@@ -24,7 +24,6 @@ except ImportError:
     cupyx_scipy_ufuncs = set()
 
 
-@testing.gpu
 @testing.with_requires("scipy")
 @pytest.mark.parametrize("ufunc", sorted(cupyx_scipy_ufuncs & scipy_ufuncs))
 class TestUfunc:

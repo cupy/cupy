@@ -1664,12 +1664,16 @@ cdef class _ndarray_base:
             inout += out
             kwargs['out'] = out[0]
 
-        if method == '__call__':
+        if method in (
+                '__call__', 'outer', 'at', 'reduce', 'accumulate', 'reduceat'
+        ):
             name = ufunc.__name__
             try:
-                cp_ufunc = getattr(cupy, name, None) or getattr(
+                func = getattr(cupy, name, None) or getattr(
                     cupyx.scipy.special, name
                 )
+                if method != '__call__':
+                    func = getattr(func, method)
             except AttributeError:
                 return NotImplemented
             for x in inout:
@@ -1695,12 +1699,7 @@ cdef class _ndarray_base:
                     else x
                     for x in inputs
                 ])
-            return cp_ufunc(*inputs, **kwargs)
-        # Don't use for now, interface uncertain
-        # elif method =='at' and name == 'add':
-            # the only ufunc attribute currently
-            # http://docs.cupy.dev/en/stable/reference/ufunc.html#ufunc-at
-            # self.scatter_add(*inputs, **kwargs)
+            return func(*inputs, **kwargs)
         else:
             return NotImplemented
 
