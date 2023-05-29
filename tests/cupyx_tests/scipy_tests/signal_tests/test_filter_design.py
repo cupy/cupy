@@ -8,7 +8,6 @@ from cupy.testing import assert_array_almost_equal, assert_allclose
 import numpy as np
 
 import pytest
-from pytest import raises as assert_raises
 
 
 @testing.with_requires("scipy")
@@ -372,6 +371,12 @@ class TestFreqz_zpk:
         assert_allclose(h1, h2, rtol=1e-6)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_vs_freqz_zpk(self, xp, scp):
+        z, p, k = scp.signal.cheby1(4, 5, 0.5, analog=False, output='zpk')
+        w2, h2 = scp.signal.freqz_zpk(z, p, k)
+        return w2, h2
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_backward_compat(self, xp, scp):
         # For backward compatibility, test if None act as a wrapper for default
         w1, h1 = scp.signal.freqz_zpk([0.5], [0.5], 1.0)
@@ -442,31 +447,26 @@ class TestFreqz_zpk:
 @testing.with_requires("scipy")
 class TestSOSFreqz:
 
-    @pytest.mark.xfail(reason="TODO: implement butter et al")
-    def test_sosfreqz_basic(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfreqz_basic(self, xp, scp):
         # Compare the results of freqz and sosfreqz for a low order
         # Butterworth filter.
-
         N = 500
+        sos = scp.signal.butter(4, 0.2, output='sos')
+        w2, h2 = scp.signal.sosfreqz(sos, worN=N)
+        return w2, h2
 
-        b, a = butter(4, 0.2)
-        sos = butter(4, 0.2, output='sos')
-        w, h = freqz(b, a, worN=N)
-        w2, h2 = sosfreqz(sos, worN=N)
-        assert_equal(w2, w)
-        assert_allclose(h2, h, rtol=1e-10, atol=1e-14)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfreqz_basic_1(self, xp, scp):
+        N = 500
+        sos = scp.signal.ellip(3, 1, 30, (0.2, 0.3),
+                               btype='bandpass', output='sos')
+        w2, h2 = scp.signal.sosfreqz(sos, worN=N)
+        return w2, h2
 
-        b, a = ellip(3, 1, 30, (0.2, 0.3), btype='bandpass')
-        sos = ellip(3, 1, 30, (0.2, 0.3), btype='bandpass', output='sos')
-        w, h = freqz(b, a, worN=N)
-        w2, h2 = sosfreqz(sos, worN=N)
-        assert_equal(w2, w)
-        assert_allclose(h2, h, rtol=1e-10, atol=1e-14)
-        # must have at least one section
-        assert_raises(ValueError, sosfreqz, sos[:0])
-
-    @pytest.mark.xfail(reason="TODO: implement butter et al")
-    def test_sosfrez_design(self):
+    @pytest.mark.xfail(reason="TODO: implement cheb2ord et al")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design(self, xp, scp):
         # Compare sosfreqz output against expected values for different
         # filter types
 
@@ -535,7 +535,7 @@ class TestSOSFreqz:
         assert_array_less(dB[w >= 0.6], -99.9)
         assert_allclose(dB[(w >= 0.2) & (w <= 0.5)], 0, atol=3.01)
 
-    @pytest.mark.xfail(reason="TODO: implement ellip et al")
+    @pytest.mark.xfail(reason="TODO: implement ellipord et al")
     def test_sosfreqz_design_ellip(self):
         N, Wn = ellipord(0.3, 0.1, 3, 60)
         sos = ellip(N, 0.3, 60, Wn, 'high', output='sos')
