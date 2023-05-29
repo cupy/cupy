@@ -35,7 +35,7 @@ def batched_gesv(a, b):
     Returns:
         cupy.ndarray:
             The matrix with dimension ``(..., M)`` or ``(..., M, K)``.
-    """
+    """  # NOQA
     _util._assert_cupy_array(a, b)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
