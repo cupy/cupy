@@ -1054,12 +1054,9 @@ def _arc_jac_sc1(w, m):
 
     m - modulus
 
-    From [1], sc(z, m) = -i * sn(i * z, 1 - m)
-
-    References
-    ----------
-    .. [1] https://functions.wolfram.com/EllipticFunctions/JacobiSC/introductions/JacobiPQs/ShowAll.html,
-       "Representations through other Jacobi functions"
+    Using that sc(z, m) = -i * sn(i * z, 1 - m)
+    cf scipy/signal/_filter_design.py analog for an explanation
+    and a reference.
 
     """
 
