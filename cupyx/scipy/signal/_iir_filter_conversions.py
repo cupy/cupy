@@ -3,6 +3,7 @@
 Split off _filter_design.py
 """
 import warnings
+import math
 from math import pi
 
 import cupy
@@ -940,7 +941,7 @@ def cheb2ap(N, rs):
 
 # ### Elliptic filter prototype ###
 
-_POW10_LOG10 = cupy.log(10)
+_POW10_LOG10 = math.log(10)
 
 
 def _pow10m1(x):
