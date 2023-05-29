@@ -253,7 +253,8 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
             z1_idx = _nearest_real_complex_idx(z, p1, 'complex')
             z1 = z[z1_idx]
             z = cupy.delete(z, z1_idx)
-            sos[si] = _single_zpksos(cupy.r_[z1, z1.conj()], cupy.r_[p1, p1.conj()], 1)
+            sos[si] = _single_zpksos(
+                cupy.r_[z1, z1.conj()], cupy.r_[p1, p1.conj()], 1)
 
         else:
             if cupy.isreal(p1):
@@ -271,7 +272,8 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
                 z = cupy.delete(z, z1_idx)
 
                 if not cupy.isreal(z1):
-                    sos[si] = _single_zpksos(cupy.r_[z1, z1.conj()], cupy.r_[p1, p2], 1)
+                    sos[si] = _single_zpksos(
+                        cupy.r_[z1, z1.conj()], cupy.r_[p1, p2], 1)
                 else:
                     if len(z) > 0:
                         z2_idx = _nearest_real_complex_idx(z, p1, 'real')
@@ -293,12 +295,11 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
     return sos
 
 
-
 def _cplxreal(z, tol=None):
     """
     Split into complex and real parts, combining conjugate pairs.
 
-    The 1-D input vector `z` is split up into its complex (`zc`) and real (`zr`)
+    The 1-D input vector `z` is split up into its complex (zc) and real (zr)
     elements. Every complex element must be part of a complex-conjugate pair,
     which are combined into a single number (with positive imaginary part) in
     the output. Two complex numbers are considered a conjugate pair if their

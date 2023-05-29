@@ -265,7 +265,8 @@ class TestZpk2Sos:
         ([-1, -1], [0.57149 + 0.29360j, 0.57149 - 0.29360j], 1),
         ([1j, -1j], [0.9, -0.9, 0.7j, -0.7j], 1),
         ([], [0.8, -0.5+0.25j, -0.5-0.25j], 1),
-        ([1., 1., 0.9j, -0.9j], [0.99+0.01j, 0.99-0.01j, 0.1+0.9j, 0.1-0.9j], 1),
+        ([1., 1., 0.9j, -0.9j],
+         [0.99+0.01j, 0.99-0.01j, 0.1+0.9j, 0.1-0.9j], 1),
         ([0.9+0.1j, 0.9-0.1j, -0.9], [0.75+0.25j, 0.75-0.25j, 0.9], 1),
         # Cases that differ from octave:
         ([-0.3090 + 0.9511j, -0.3090 - 0.9511j, 0.8090 + 0.5878j,
@@ -287,7 +288,6 @@ class TestZpk2Sos:
         p = xp.asarray(p)
         sos = scp.signal.zpk2sos(z, p, k, pairing=pairing)
         return sos
-
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
     def test_basic_2(self, xp, scp):
@@ -338,13 +338,14 @@ class TestZpk2Sos:
         sos2_ct = scp.signal.zpk2sos([], p, 1, pairing='minimal', analog=True)
         return sos2_dt, sos2_ct
 
-
     def test_bad_args(self):
         with pytest.raises(ValueError, match=r'pairing must be one of'):
-            signal.zpk2sos(cupy.array([1]), cupy.array([2]), 1, pairing='no_such_pairing')
+            signal.zpk2sos(cupy.array([1]), cupy.array(
+                [2]), 1, pairing='no_such_pairing')
 
         with pytest.raises(ValueError, match=r'.*pairing must be "minimal"'):
-            signal.zpk2sos(cupy.array([1]), cupy.array([2]), 1, pairing='keep_odd', analog=True)
+            signal.zpk2sos(cupy.array([1]), cupy.array(
+                [2]), 1, pairing='keep_odd', analog=True)
 
         with pytest.raises(ValueError,
                            match=r'.*must have len\(p\)>=len\(z\)'):
@@ -356,8 +357,8 @@ class TestZpk2Sos:
 
 @testing.with_requires("scipy")
 class TestCplxReal:
-    # _cplxreal is a private function, vendored from scipy.signal._filter_design.
-    # This test class is also vendored.
+    # _cplxreal is a private function, vendored from
+    # scipy.signal._filter_design. This test class is also vendored.
     def test_trivial_input(self):
         assert all(x.size == 0 for x in _cplxreal([]))
 
@@ -366,8 +367,8 @@ class TestCplxReal:
         testing.assert_allclose(cplx1[1], cupy.array([1]))
 
     def test_output_order(self):
-       # zc, zr = _cplxreal(np.roots(array([1, 0, 0, 1])))
-       # assert_allclose(np.append(zc, zr), [1/2 + 1j*sin(pi/3), -1])
+        # zc, zr = _cplxreal(np.roots(array([1, 0, 0, 1])))
+        # assert_allclose(np.append(zc, zr), [1/2 + 1j*sin(pi/3), -1])
 
         eps = cupy.finfo(float).eps  # spacing(1)
 
@@ -379,17 +380,17 @@ class TestCplxReal:
              2-3j, 2+3j]
         a = cupy.array(a)
         zc, zr = _cplxreal(a)
-        testing.assert_allclose(zc, [1j, 1j, 1j, 1+1j, 1+2j, 2+3j, 2+3j, 3+1j, 3+1j,
-                                     3+1j])
+        testing.assert_allclose(zc, [1j, 1j, 1j, 1+1j, 1+2j, 2+3j, 2+3j, 3+1j,
+                                     3+1j, 3+1j])
         testing.assert_allclose(zr, [0, 0, 1, 2, 3, 4])
 
-        z = cupy.array([1-eps + 1j, 1+2j, 1-2j, 1+eps - 1j, 1+eps+3j, 1-2*eps-3j,
-                        0+1j, 0-1j, 2+4j, 2-4j, 2+3j, 2-3j, 3+7j, 3-7j, 4-eps+1j,
-                        4+eps-2j, 4-1j, 4-eps+2j])
+        z = cupy.array([1-eps + 1j, 1+2j, 1-2j, 1+eps - 1j, 1+eps+3j,
+                        1-2*eps-3j, 0+1j, 0-1j, 2+4j, 2-4j, 2+3j, 2-3j, 3+7j,
+                        3-7j, 4-eps+1j, 4+eps-2j, 4-1j, 4-eps+2j])
 
         zc, zr = _cplxreal(z)
-        testing.assert_allclose(zc, [1j, 1+1j, 1+2j, 1+3j, 2+3j, 2+4j, 3+7j, 4+1j,
-                                     4+2j])
+        testing.assert_allclose(zc, [1j, 1+1j, 1+2j, 1+3j, 2+3j, 2+4j, 3+7j,
+                                     4+1j, 4+2j])
         assert zr.size == 0
 
     def test_unmatched_conjugates(self):
