@@ -168,7 +168,7 @@ def _eigh(A, B=None):
     A(X) = lambda(B(X)) to standard eigen value problem using cholesky
     transformation
     """
-    if(B is None):  # use cupy's eigh in standard case
+    if B is None:  # use cupy's eigh in standard case
         vals, vecs = linalg.eigh(A)
         return vals, vecs
     R = _cholesky(B)

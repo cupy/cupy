@@ -17,7 +17,7 @@ def sgemm(A, B,
           dim_xa=64, dim_ya=4, dim_xb=4, dim_yb=64):
     assert A.dtype == cp.float32
     assert B.dtype == cp.float32
-    assert(dim_x * dim_y == dim_xa * dim_ya == dim_xb * dim_yb)
+    assert (dim_x * dim_y == dim_xa * dim_ya == dim_xb * dim_yb)
 
     m, k = A.shape
     k, n = B.shape
