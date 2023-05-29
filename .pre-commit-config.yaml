@@ -33,7 +33,7 @@ repos:
         args: [--config, ".flake8.cython"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.981
+    rev: v0.950
     hooks:
     -   id: mypy
         # Keep in sync with the list in setup.cfg
