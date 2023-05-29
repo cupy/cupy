@@ -89,8 +89,8 @@ def firls(numtaps, bands, desired, weight=None, fs=2):
                          % (desired.size, bands.size))
     desired.shape = (-1, 2)
     # if (cupy.diff(bands) <= 0).any() or (cupy.diff(bands[:, 0]) < 0).any():
-    #     raise ValueError("bands must be monotonically nondecreasing and have "
-    #                     "width > 0.")
+    #     raise ValueError("bands must be monotonically nondecreasing and have"
+    #                     " width > 0.")
     # if (bands[:-1, 1] > bands[1:, 0]).any():
     #     raise ValueError("bands must not overlap.")
     # if (desired < 0).any():

@@ -280,9 +280,10 @@ class TestFreqz:
             testing.assert_allclose(w, w1)
 
     @pytest.mark.parametrize('N',
-                             [7, cupy.int8(7), cupy.int16(7), cupy.int32(7), cupy.int64(7), cupy.array(7),
-                              8, cupy.int8(8), cupy.int16(8), cupy.int32(
-                                  8), cupy.int64(8), cupy.array(8)
+                             [7, cupy.int8(7), cupy.int16(7), cupy.int32(7),
+                              cupy.int64(7), cupy.array(7),
+                              8, cupy.int8(8), cupy.int16(8), cupy.int32(8),
+                              cupy.int64(8), cupy.array(8)
                               ])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_w_or_N_types(self, xp, scp, N):
@@ -297,9 +298,10 @@ class TestFreqz:
         return w, h, w1, h1
 
     @pytest.mark.parametrize('N',
-                             [7, cupy.int8(7), cupy.int16(7), cupy.int32(7), cupy.int64(7), cupy.array(7),
-                              8, cupy.int8(8), cupy.int16(8), cupy.int32(
-                                  8), cupy.int64(8), cupy.array(8)
+                             [7, cupy.int8(7), cupy.int16(7), cupy.int32(7),
+                              cupy.int64(7), cupy.array(7),
+                              8, cupy.int8(8), cupy.int16(8), cupy.int32(8),
+                              cupy.int64(8), cupy.array(8)
                               ])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_w_or_N_types_2(self, xp, scp, N):
@@ -614,7 +616,8 @@ class TestSOSFreqz:
         w2, h2 = scp.signal.sosfreqz(sos, 5, whole=True)
         return w1, h1, w2, h2
 
-    @pytest.mark.parametrize("w", [[123], (123,), np.array([123]), (50, 123, 230),
+    @pytest.mark.parametrize("w", [[123], (123,),
+                                   np.array([123]), (50, 123, 230),
                                    np.array([50, 123, 230])])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param_5(self, xp, scp, w):
