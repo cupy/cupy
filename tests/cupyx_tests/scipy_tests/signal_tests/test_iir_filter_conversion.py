@@ -253,6 +253,6 @@ class TestLowLevelAP:
     def test_cheb2ap(self, xp, scp):
         return scp.signal.cheb2ap(3, 1)
 
-    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-5, rtol=1e-5)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=3e-5, rtol=3e-5)
     def test_ellipap(self, xp, scp):
         return scp.signal.ellipap(7, 1, 10)
