@@ -573,7 +573,7 @@ class TestRaw:
         a = cupy.arange(32, dtype=dtype)
         f[1, 32](a)
         expected = [i for i in range(N)] + [i for i in range(32-N)]
-        assert(a == cupy.asarray(expected, dtype=dtype)).all()
+        assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
@@ -591,7 +591,7 @@ class TestRaw:
         f[1, block](a)
         expected = [i for i in range(N, block)]
         expected += [(block-N+i) for i in range(N)]
-        assert(a == cupy.asarray(expected, dtype=dtype)).all()
+        assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')

@@ -41,7 +41,7 @@ class _PerfCaseResult:
 
         These values are delta of the host-side performance counter
         (:func:`time.perf_counter`) between each repeat step.
-        """
+        """  # NOQA
         return self._ts[0]
 
     @property

@@ -135,7 +135,7 @@ def zeros_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
 
     .. seealso:: :func:`numpy.zeros_like`
 
-    """
+    """  # NOQA
     out = empty_like_pinned(a, dtype, order, subok, shape)
     numpy.copyto(out, 0, casting='unsafe')
     return out
