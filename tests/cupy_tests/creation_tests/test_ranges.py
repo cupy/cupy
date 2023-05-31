@@ -307,7 +307,7 @@ class TestMeshgrid(unittest.TestCase):
     def test_meshgrid0(self, dtype):
         out = cupy.meshgrid(indexing=self.indexing, sparse=self.sparse,
                             copy=self.copy)
-        assert(out == [])
+        assert (out == [])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

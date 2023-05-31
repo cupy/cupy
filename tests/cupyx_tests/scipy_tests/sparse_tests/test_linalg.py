@@ -157,7 +157,7 @@ class TestEigsh:
             ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
             res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
             tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
-            assert(res < tol)
+            assert (res < tol)
         else:
             w = ret
         return xp.sort(w)
@@ -946,7 +946,7 @@ class TestLOBPCG:
         """Build a pair of full diagonal matrices for the generalized eigenvalue
         problem. The Mikota pair acts as a nice test since the eigenvalues are
         the squares of the integers n, n=1,2,...
-        """
+        """  # NOQA
         x = xp.arange(1, n + 1)
         B = xp.diag(1. / x)
         y = xp.arange(n - 1, 0, -1)

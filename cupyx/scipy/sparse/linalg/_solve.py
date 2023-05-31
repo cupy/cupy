@@ -559,7 +559,7 @@ class SuperLU():
         Returns:
             cupy.ndarray:
                 Solution vector(s)
-        """
+        """  # NOQA
         if not isinstance(rhs, cupy.ndarray):
             raise TypeError('ojb must be cupy.ndarray')
         if rhs.ndim not in (1, 2):
@@ -656,7 +656,7 @@ def factorized(A):
         performed on the GPU.
 
     .. seealso:: :func:`scipy.sparse.linalg.factorized`
-    """
+    """  # NOQA
     return splu(A).solve
 
 
