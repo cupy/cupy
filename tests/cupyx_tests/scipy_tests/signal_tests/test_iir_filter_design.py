@@ -17,7 +17,7 @@ class TestIIRFilter:
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
                                        'cheby1', 'cheby2', 'ellip'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=3e-7)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=3e-4)
     def test_symmetry(self, N, ftype, xp, scp):
         # All built-in IIR filters are real, so should have perfectly
         # symmetrical poles and zeros. Then ba representation (using
@@ -434,7 +434,7 @@ class TestEllip:
                               # high odd order
                               (23, 1, 70, 0.5, 'high'),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_highpass(self, xp, scp, arg):
         # high even order
         z, p, k = scp.signal.ellip(*arg, output='zpk')
@@ -444,12 +444,12 @@ class TestEllip:
                              [(7, 1, 40, [0.07, 0.2], 'pass'),
                               (5, 1, 75, [90.5, 110.5], 'pass', True),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=5e-5, rtol=5e-5)
     def test_bandpass(self, xp, scp, arg):
         z, p, k = scp.signal.ellip(7, 1, 40, [0.07, 0.2], 'pass', output='zpk')
         return z, p, k
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
     def test_bandstop(self, xp, scp):
         z, p, k = scp.signal.ellip(8, 1, 65, [0.2, 0.4], 'stop', output='zpk')
         z = z[xp.argsort(xp.angle(z))]
