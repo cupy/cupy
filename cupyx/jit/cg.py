@@ -51,7 +51,7 @@ class _GridGroup(_ThreadGroup):
 
     .. _CUDA Grid Group API:
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#grid-group-cg
-    """
+    """  # NOQA
 
     def __init__(self):
         self.child_type = 'cg::grid_group'

@@ -24,6 +24,7 @@ Bessel functions
    i0e
    i1
    i1e
+   spherical_yn
 
 
 Raw statistical functions
@@ -103,6 +104,14 @@ Gamma and related functions
    poch
 
 
+Elliptic integrals
+------------------
+
+   ellipk
+   ellipkm1
+   ellipj
+
+
 Error function and Fresnel integrals
 ------------------------------------
 
@@ -135,9 +144,11 @@ Other special functions
    exp1
    expi
    expn
+   exprel
    softmax
    log_softmax
    zeta
+   zetac
 
 
 Convenience functions

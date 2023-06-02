@@ -4,7 +4,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd'])

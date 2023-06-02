@@ -23,7 +23,6 @@ negative_no_complex_types = [numpy.bool_] + float_types + signed_int_types
 no_complex_types = [numpy.bool_] + float_types + int_types
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
         'nargs': [1],
@@ -52,7 +51,6 @@ class TestArithmeticRaisesWithNumpyInput:
                 func(*arys)
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
@@ -112,7 +110,6 @@ class TestArithmeticUnary:
 @testing.parameterize(*testing.product({
     'shape': [(3, 2), (), (3, 0, 2)],
 }))
-@testing.gpu
 class TestComplex:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -260,7 +257,6 @@ class ArithmeticBinaryBase:
         return y
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
@@ -526,7 +522,6 @@ class TestArithmeticModf:
     'xp': [numpy, cupy],
     'shape': [(3, 2), (), (3, 0, 2)]
 }))
-@testing.gpu
 class TestBoolSubtract:
 
     def test_bool_subtract(self):

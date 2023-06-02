@@ -224,7 +224,7 @@ class RandomState(object):
         .. seealso::
             - :func:`cupy.random.hypergeometric` for full documentation
             - :meth:`numpy.random.RandomState.hypergeometric`
-        """
+        """  # NOQA
         ngood, nbad, nsample = \
             cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
         if size is None:
@@ -424,7 +424,7 @@ class RandomState(object):
         .. seealso::
             - :func:`cupy.random.negative_binomial` for full documentation
             - :meth:`numpy.random.RandomState.negative_binomial`
-        """
+        """  # NOQA
         n = cupy.asarray(n)
         p = cupy.asarray(p)
         if cupy.any(n <= 0):  # synchronize!
@@ -511,7 +511,7 @@ class RandomState(object):
         .. seealso::
             - :func:`cupy.random.noncentral_f` for full documentation
             - :meth:`numpy.random.RandomState.noncentral_f`
-        """
+        """  # NOQA
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
         if cupy.any(dfnum <= 0):  # synchronize!
@@ -810,7 +810,7 @@ class RandomState(object):
         .. seealso::
             - :func:`cupy.random.standard_cauchy` for full documentation
             - :meth:`numpy.random.RandomState.standard_cauchy`
-        """
+        """  # NOQA
         x = self.uniform(size=size, dtype=dtype)
         return cupy.tan(cupy.pi * (x - 0.5))
 
@@ -820,7 +820,7 @@ class RandomState(object):
          .. seealso::
             - :func:`cupy.random.standard_exponential` for full documentation
             - :meth:`numpy.random.RandomState.standard_exponential`
-        """
+        """  # NOQA
         if size is None:
             size = ()
         x = self._random_sample_raw(size, dtype)
@@ -832,7 +832,7 @@ class RandomState(object):
         .. seealso::
             - :func:`cupy.random.standard_gamma` for full documentation
             - :meth:`numpy.random.RandomState.standard_gamma`
-        """
+        """  # NOQA
         shape = cupy.asarray(shape)
         if size is None:
             size = shape.shape

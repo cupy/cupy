@@ -38,10 +38,25 @@ Univariate interpolation
 Multivariate interpolation
 --------------------------
 
+Unstructured data:
+
 .. autosummary::
    :toctree: generated/
 
    RBFInterpolator
+
+
+For data on a grid:
+
+.. autosummary::
+   :toctree: generated/
+
    interpn
    RegularGridInterpolator
 
+Tensor product polynomials:
+
+.. autosummary::
+   :toctree: generated/
+
+   NdPPoly

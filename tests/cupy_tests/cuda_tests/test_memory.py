@@ -44,7 +44,6 @@ class TestUnownedMemoryClass(unittest.TestCase):
     'allocator': [memory._malloc, memory.malloc_managed, memory.malloc_async],
     'specify_device_id': [True, False],
 }))
-@testing.gpu
 class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
@@ -115,7 +114,6 @@ class TestUnownedMemory(unittest.TestCase):
         self.check(1)
 
 
-@testing.gpu
 class TestMemoryPointer(unittest.TestCase):
 
     def test_int(self):
@@ -211,7 +209,6 @@ class TestMemoryPointer(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'use_streams': [True, False],
 }))
-@testing.gpu
 class TestMemoryPointerAsync(unittest.TestCase):
 
     def setUp(self):
@@ -287,7 +284,6 @@ class TestMemoryPointerAsync(unittest.TestCase):
 # -----------------------------------------------------------------------------
 # Memory pool
 
-@testing.gpu
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
@@ -675,7 +671,6 @@ class TestParseMempoolLimitEnvVar(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'allocator': [memory._malloc, memory.malloc_managed],
 }))
-@testing.gpu
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
@@ -762,7 +757,6 @@ class TestMemoryPool(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'mempool': ('MemoryPool',),
 }))
-@testing.gpu
 class TestAllocator(unittest.TestCase):
 
     def setUp(self):
@@ -911,7 +905,6 @@ class TestAllocator(unittest.TestCase):
         assert main_ptr != sub_ptr
 
 
-@testing.gpu
 class TestAllocatorDisabled(unittest.TestCase):
 
     def setUp(self):
@@ -950,7 +943,6 @@ class PythonAllocator(object):
         cupy.cuda.runtime.free(size)
 
 
-@testing.gpu
 class TestPythonFunctionAllocator(unittest.TestCase):
     def setUp(self):
         self.old_pool = cupy.get_default_memory_pool()
@@ -968,7 +960,6 @@ class TestPythonFunctionAllocator(unittest.TestCase):
         assert self.alloc.malloc_called and self.alloc.free_called
 
 
-@testing.gpu
 class TestMemInfo(unittest.TestCase):
 
     def test_mem_info(self):
@@ -980,7 +971,6 @@ class TestMemInfo(unittest.TestCase):
         assert all(m > 0 for m in mem_info)
 
 
-@testing.gpu
 class TestLockAndNoGc(unittest.TestCase):
 
     def test(self):
@@ -1006,7 +996,6 @@ class TestExceptionPicklable(unittest.TestCase):
         assert str(e1) == str(e2)
 
 
-@testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
 @pytest.mark.skipif(cupy.cuda.driver._is_cuda_python()
@@ -1085,7 +1074,6 @@ used_bytes_watermark = 0
 free_bytes_watermark = 0
 
 
-@testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
 @pytest.mark.skipif(cupy.cuda.driver._is_cuda_python()

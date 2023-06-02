@@ -92,7 +92,6 @@ class TestCholeskyDecomposition:
         return xp.linalg.cholesky(a)
 
 
-@testing.gpu
 class TestCholeskyInvalid(unittest.TestCase):
 
     def check_L(self, array):
@@ -183,7 +182,6 @@ class TestQRDecomposition(unittest.TestCase):
     'full_matrices': [True, False],
 }))
 @testing.fix_random()
-@testing.gpu
 class TestSVD(unittest.TestCase):
 
     def setUp(self):

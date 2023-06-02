@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestComparison(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -36,7 +35,6 @@ class TestComparison(unittest.TestCase):
         self.check_binary('equal')
 
 
-@testing.gpu
 class TestComparisonOperator(unittest.TestCase):
 
     operators = [
