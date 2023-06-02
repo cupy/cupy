@@ -1,7 +1,9 @@
 # mypy: ignore-errors
 
 import contextlib
+import logging
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -15,6 +17,8 @@ import cupy_builder.install_utils as utils
 from cupy_builder import _environment
 from cupy_builder._context import Context
 
+
+logging.basicConfig(level=logging.DEBUG)
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
@@ -689,9 +693,59 @@ def get_cusparselt_version(formatted=False):
     return _cusparselt_version
 
 
+def conda_get_target_name():
+    out = None
+    if PLATFORM_LINUX:
+        plat = platform.processor()
+        if plat == "aarch64":
+            out = "sbsa-linux"
+        else:
+            out = f"{plat}-linux"
+    else:
+        raise NotImplementedError
+    logging.debug(f"{out=}")
+    return out
+
+
+def conda_update_dirs(include_dirs, library_dirs):
+    # Note: These hacks are needed for the dependency detection stage to function,
+    # because we create a fresh compiler instance that does not honor CFLAGS etc set
+    # in the conda-build environment.
+    include_dirs = list(include_dirs)
+    library_dirs = list(library_dirs)
+
+    if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
+        # If we're cross compiling, we need to generate stub files that are
+        # executable in the build environment, not the target environment.
+        # This assumes, however, that the build/host environments see the same
+        # CUDA Toolkit.
+        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+            include_dirs.insert(0, f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/include')
+            library_dirs.insert(0, f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/lib')
+            library_dirs.insert(0, f'{os.environ["BUILD_PREFIX"]}/lib/stubs')
+        elif os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11'):
+            include_dirs.append('/usr/local/cuda/include')
+            library_dirs.append('/usr/local/cuda/lib64/stubs')
+
+        # for optional dependencies
+        include_dirs.append(f'{os.environ["BUILD_PREFIX"]}/include')
+        library_dirs.append(f'{os.environ["BUILD_PREFIX"]}/lib')
+
+    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+        include_dirs.append(f'{os.environ["BUILD_PREFIX"]}/targets/{conda_get_target_name()}/include')  # for crt headers
+        library_dirs.append(f'{os.environ["PREFIX"]}/lib/stubs')
+        # for optional dependencies
+        include_dirs.append(f'{os.environ["PREFIX"]}/include')
+        library_dirs.append(f'{os.environ["PREFIX"]}/lib')
+
+    return include_dirs, library_dirs
+
+
 def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=(), define_macros=None,
                 extra_compile_args=()):
+    include_dirs, library_dirs = conda_update_dirs(include_dirs, library_dirs)
+
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
@@ -717,6 +771,8 @@ def build_shlib(compiler, source, libraries=(),
 def build_and_run(compiler, source, libraries=(),
                   include_dirs=(), library_dirs=(), define_macros=None,
                   extra_compile_args=()):
+    include_dirs, library_dirs = conda_update_dirs(include_dirs, library_dirs)
+
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:

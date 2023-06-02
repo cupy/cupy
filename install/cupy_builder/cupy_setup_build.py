@@ -294,16 +294,36 @@ def make_extensions(ctx: Context, compiler, use_cython):
         # deprecated since ROCm 4.2.0
         settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
-    available_modules = []
-    if no_cuda:
-        available_modules = [m['name'] for m in MODULES]
-    else:
-        available_modules, settings = preconfigure_modules(
-            ctx, MODULES, compiler, settings)
-        required_modules = get_required_modules(MODULES)
-        if not (set(required_modules) <= set(available_modules)):
-            raise Exception('Your CUDA environment is invalid. '
-                            'Please check above error log.')
+    try:
+        host_compiler = compiler
+        if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
+            os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/bin/x86_64-conda-linux-gnu-ld',
+                       f'{os.environ["BUILD_PREFIX"]}/bin/ld')
+        if os.environ.get('CONDA_BUILD_CROSS_COMPILATION') or os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+            # If cross-compiling, we need build_and_run() & build_shlib() to use the compiler
+            # on the build platform to generate stub files that are executable in the build
+            # environment, not the target environment.
+            compiler = ccompiler.new_compiler()
+            compiler.compiler = [os.environ['CC_FOR_BUILD'],]
+            compiler.compiler_cxx = [os.environ['CXX_FOR_BUILD'],]
+            compiler.compiler_so = [os.environ['CC_FOR_BUILD'],]
+            compiler.linker_exe = [os.environ['CC_FOR_BUILD'], f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_so = [os.environ['CC_FOR_BUILD'], f'-B{os.environ["BUILD_PREFIX"]}/bin', '-shared']
+
+        available_modules = []
+        if no_cuda:
+            available_modules = [m['name'] for m in MODULES]
+        else:
+            available_modules, settings = preconfigure_modules(
+                ctx, MODULES, compiler, settings)
+            required_modules = get_required_modules(MODULES)
+            if not (set(required_modules) <= set(available_modules)):
+                raise Exception('Your CUDA environment is invalid. '
+                                'Please check above error log.')
+    finally:
+        compiler = host_compiler
+        if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
+            os.remove(f'{os.environ["BUILD_PREFIX"]}/bin/ld')
 
     ret = []
     for module in MODULES:
