@@ -30,62 +30,35 @@ class TestAsStrided(unittest.TestCase):
 
 
 class TestSlidingWindowView:
+    @testing.numpy_cupy_array_equal()
     def test_1d(self):
-        arr = np.arange(5)
+        arr = testing.shaped_arange((9,))
+        window_size = 3
         arr_view = sliding_window_view(arr, 2)
-        expected = np.array([[0, 1],
-                             [1, 2],
-                             [2, 3],
-                             [3, 4]])
-        assert_array_equal(arr_view, expected)
+        return arr_view
 
+    @testing.numpy_cupy_array_equal()
     def test_2d(self):
-        i, j = np.ogrid[:3, :4]
-        arr = 10*i + j
-        shape = (2, 2)
-        arr_view = sliding_window_view(arr, shape)
-        expected = np.array([[[[0, 1], [10, 11]],
-                              [[1, 2], [11, 12]],
-                              [[2, 3], [12, 13]]],
-                             [[[10, 11], [20, 21]],
-                              [[11, 12], [21, 22]],
-                              [[12, 13], [22, 23]]]])
-        assert_array_equal(arr_view, expected)
+        arr = testing.shaped_arange((3,4))
+        window_shape = (2,2)
+        arr_view = sliding_window_view_cp(arr, window_shape=window_shape)
+        return arr_view
 
+    @testing.numpy_cupy_array_equal()
     def test_2d_with_axis(self):
-        i, j = np.ogrid[:3, :4]
-        arr = 10*i + j
-        arr_view = sliding_window_view(arr, 3, 0)
-        expected = np.array([[[0, 10, 20],
-                              [1, 11, 21],
-                              [2, 12, 22],
-                              [3, 13, 23]]])
-        assert_array_equal(arr_view, expected)
+        arr = testing.shaped_arange((3,4))
+        window_shape = 3
+        axis = 0
+        arr_view = sliding_window_view_cp(arr, window_shape,axis)
+        return arr_view
 
-    def test_2d_repeated_axis(self):
-        i, j = np.ogrid[:3, :4]
-        arr = 10*i + j
-        arr_view = sliding_window_view(arr, (2, 3), (1, 1))
-        expected = np.array([[[[0, 1, 2],
-                               [1, 2, 3]]],
-                             [[[10, 11, 12],
-                               [11, 12, 13]]],
-                             [[[20, 21, 22],
-                               [21, 22, 23]]]])
-        assert_array_equal(arr_view, expected)
-
-    def test_2d_without_axis(self):
-        i, j = np.ogrid[:4, :4]
-        arr = 10*i + j
-        shape = (2, 3)
-        arr_view = sliding_window_view(arr, shape)
-        expected = np.array([[[[0, 1, 2], [10, 11, 12]],
-                              [[1, 2, 3], [11, 12, 13]]],
-                             [[[10, 11, 12], [20, 21, 22]],
-                              [[11, 12, 13], [21, 22, 23]]],
-                             [[[20, 21, 22], [30, 31, 32]],
-                              [[21, 22, 23], [31, 32, 33]]]])
-        assert_array_equal(arr_view, expected)
+    @testing.numpy_cupy_array_equal()
+    def test_2d_multi_axis(self):
+        arr = testing.shaped_arange((3,4))
+        window_shape = (2,3)
+        axis = (0,1)
+        arr_view = sliding_window_view_cp(arr, window_shape,axis)
+        return arr_view
 
 
 def rolling_window(a, window, axis=-1):
