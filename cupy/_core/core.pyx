@@ -943,7 +943,7 @@ cdef class _ndarray_base:
 
         .. seealso:: :func:`numpy.searchsorted`
 
-        """
+        """  # NOQA
         return cupy.searchsorted(self, v, side, sorter)
 
     cpdef tuple nonzero(self):
@@ -1077,7 +1077,7 @@ cdef class _ndarray_base:
            :func:`cupy.around` for full documentation,
            :meth:`numpy.ndarray.round`
 
-        """
+        """  # NOQA
         return _round_ufunc(self, decimals, out=out)
 
     cpdef _ndarray_base trace(
