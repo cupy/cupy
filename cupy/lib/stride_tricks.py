@@ -1,6 +1,5 @@
 import cupy as _cupy
 import numpy as np
-from numpy.core.numeric import normalize_axis_tuple
 
 def as_strided(x, shape=None, strides=None):
     """
@@ -127,7 +126,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
                              f'got {len(window_shape)} window_shape elements '
                              f'and `x.ndim` is {x.ndim}.')
     else:
-        axis = normalize_axis_tuple(axis, x.ndim)
+        axis = np.core.numeric.normalize_axis_tuple(axis, x.ndim)
         if len(window_shape) != len(axis):
             raise ValueError(f'Must provide matching length window_shape and '
                              f'axis; got {len(window_shape)} window_shape '
