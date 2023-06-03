@@ -16,6 +16,8 @@ from cupyx.scipy.signal._signaltools import lfilter_zi  # NOQA
 from cupyx.scipy.signal._signaltools import detrend  # NOQA
 from cupyx.scipy.signal._signaltools import filtfilt  # NOQA
 from cupyx.scipy.signal._signaltools import sosfilt  # NOQA
+from cupyx.scipy.signal._signaltools import hilbert  # NOQA
+from cupyx.scipy.signal._signaltools import hilbert2  # NOQA
 
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 

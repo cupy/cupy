@@ -40,6 +40,8 @@ Filtering
    savgol_filter
    deconvolve
    detrend
+   hilbert
+   hilbert2
 
 Filter design
 -------------
