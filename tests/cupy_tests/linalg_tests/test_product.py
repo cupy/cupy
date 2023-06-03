@@ -476,3 +476,56 @@ class TestMatrixPowerBatched:
         a = testing.shaped_arange(shape, xp, dtype)
         a += xp.identity(shape[-1], dtype)
         return xp.linalg.matrix_power(a, n)
+
+
+class TestKron:
+    @pytest.mark.parametrize(
+        "a, b, expected",
+        [
+            (cupy.array([2]), cupy.array([3]), cupy.array([6])),
+            (cupy.array([[0, -1j / 2], [1j / 2, 0]]),
+             cupy.array([[1, 0], [0, 1]]),
+             cupy.array([[0. + 0.j, 0. + 0.j, 0. - 0.5j, 0. - 0.j],
+                         [0. + 0.j, 0. + 0.j, 0. - 0.j, 0. - 0.5j],
+                         [0. + 0.5j, 0. + 0.j, 0. + 0.j, 0. + 0.j],
+                         [0. + 0.j, 0. + 0.5j, 0. + 0.j, 0. + 0.j]])
+             )
+        ]
+    )
+    def test_kron(self, a, b, expected):
+        result = cupy.kron(a, b)
+        assert cupy.array_equal(result, expected)
+
+    @pytest.mark.parametrize(
+        "a, b, expected",
+        [
+            (2, 3.0, 6.0),
+        ],
+    )
+    def test_kron_accepts_all_arguments_as_numbers(self, a, b, expected):
+        result = cupy.kron(a, b)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "a, b, expected",
+        [
+            (2,
+             cupy.array([[0, -1j / 2], [1j / 2, 0]]),
+             cupy.array([[0. + 0.j, 0. - 1.j], [0. + 1.j, 0. + 0.j]])
+             ),
+            (cupy.array([[0, -1j / 2], [1j / 2, 0]]),
+             2,
+             cupy.array([[0. + 0.j, 0. - 1.j], [0. + 1.j, 0. + 0.j]])
+             ),
+            (cupy.array([[0, -1j / 2], [1j / 2, 0]]),
+             cupy.array([[1, 0], [0, 1]]),
+             cupy.array([[0. + 0.j, 0. + 0.j, 0. - 0.5j, 0. - 0.j],
+                         [0. + 0.j, 0. + 0.j, 0. - 0.j, 0. - 0.5j],
+                         [0. + 0.5j, 0. + 0.j, 0. + 0.j, 0. + 0.j],
+                         [0. + 0.j, 0. + 0.5j, 0. + 0.j, 0. + 0.j]])
+             )
+        ],
+    )
+    def test_kron_accepts_numbers_as_arguments(self, a, b, expected):
+        result = cupy.kron(a, b)
+        assert cupy.array_equal(result, expected)
