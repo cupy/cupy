@@ -452,7 +452,6 @@ class TestLabeledComprehension():
                   self.pass_positions)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(500,), (220, 240), (16, 24, 32), (4, 6, 8, 10)],
 }))
