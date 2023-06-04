@@ -38,7 +38,7 @@ body:
     attributes:
       label: Environment
       description: |
-        Please copy and paste the output of `python -c 'import cupy; cupy.show_config()'`:
+        Please copy and paste the output of `python -c "import cupy; cupy.show_config()"`:
       value: |
         ```
         # Paste the output here

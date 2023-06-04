@@ -14,7 +14,6 @@ def _permutate_shapes(shapes_list):
     return list(permutated_shapes_set)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shapes': _permutate_shapes([
         # Same shapes
@@ -71,7 +70,6 @@ class TestFusionBroadcast(unittest.TestCase):
     #     return impl
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shapes': _permutate_shapes([
         ((2,), (3,)),
@@ -100,7 +98,6 @@ class TestFusionBroadcastInvalid(unittest.TestCase):
         return impl
 
 
-@testing.gpu
 class TestFusionParseInput(unittest.TestCase):
 
     def generate_inputs(self, xp):
@@ -169,7 +166,6 @@ class TestFusionParseInput(unittest.TestCase):
         return lambda x: xp.divmod(x, x)
 
 
-@testing.gpu
 class TestFusionOutDtype(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):
@@ -189,7 +185,6 @@ class TestFusionOutDtype(unittest.TestCase):
         return impl
 
 
-@testing.gpu
 class TestFusionScalar(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):

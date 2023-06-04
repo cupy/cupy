@@ -4,7 +4,7 @@ on:
   pull_request_target:
     types: [closed, labeled]
     branches:
-       - master
+       - main
 
 jobs:
   backport:
@@ -16,18 +16,16 @@ jobs:
             (github.event.action == 'labeled' && github.event.label.name == 'to-be-backported')
         )
     runs-on: ubuntu-22.04
-    env:
-      CUPY_CI: GitHub
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
     - name: setup python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.7'
+        python-version: '3.10'
 
     - name: setup backport
       run: |
@@ -36,7 +34,7 @@ jobs:
         git config --global user.email "33715081+chainer-ci@users.noreply.github.com"
         git clone https://github.com/cupy/backport.git
 
-    - name: run_backport
+    - name: run backport
       env:
         BACKPORT_GITHUB_TOKEN: ${{secrets.BACKPORT_TOKEN}}
       run: |

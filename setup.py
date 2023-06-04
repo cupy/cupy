@@ -23,12 +23,12 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.20,<1.26',  # see #4773
+    'numpy>=1.20,<1.27',  # see #4773
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.6,<1.12',  # see #4773
+        'scipy>=1.6,<1.13',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
@@ -108,7 +108,6 @@ Intended Audience :: Developers
 License :: OSI Approved :: MIT License
 Programming Language :: Python
 Programming Language :: Python :: 3
-Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
 Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
@@ -141,7 +140,7 @@ setup(
     packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,

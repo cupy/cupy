@@ -8,7 +8,6 @@ from cupy import testing
 
 
 @testing.parameterize(*(testing.product({'axis': [0, 1, -1]})))
-@testing.gpu
 class TestApplyAlongAxis(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -100,7 +99,6 @@ class TestApplyAlongAxis(unittest.TestCase):
         return xp.apply_along_axis(func, 1, a)
 
 
-@testing.gpu
 @testing.with_requires('numpy>=1.16')
 def test_apply_along_axis_invalid_axis():
     for xp in [numpy, cupy]:

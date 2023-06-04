@@ -28,7 +28,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 rtd_version = os.environ.get('READTHEDOCS_VERSION')
 if rtd_version == 'latest':
-    tag = 'master'
+    tag = 'main'
 else:
     tag = 'v{}'.format(__version__)
 extlinks = {
@@ -368,7 +368,7 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'numba': ('https://numba.readthedocs.io/en/stable', None),
-    #'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/', None),
+    'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/', None),
     # blocked by data-apis/array-api#428
     #'array-api': ('https://data-apis.org/array-api/2021.12/', None),
 }

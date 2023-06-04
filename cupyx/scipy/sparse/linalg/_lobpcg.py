@@ -168,7 +168,7 @@ def _eigh(A, B=None):
     A(X) = lambda(B(X)) to standard eigen value problem using cholesky
     transformation
     """
-    if(B is None):  # use cupy's eigh in standard case
+    if B is None:  # use cupy's eigh in standard case
         vals, vecs = linalg.eigh(A)
         return vals, vecs
     R = _cholesky(B)
@@ -375,9 +375,6 @@ def lobpcg(A, X,
     explicitGramFlag = False
     while iterationNumber < maxiter:
         iterationNumber += 1
-        if verbosityLevel > 0:
-            print('-' * 50)
-            print('iteration %d' % iterationNumber)
 
         if B is not None:
             aux = blockVectorBX * _lambda[cupy.newaxis, :]
@@ -393,8 +390,6 @@ def lobpcg(A, X,
 
         ii = cupy.where(residualNorms > residualTolerance, True, False)
         activeMask = activeMask & ii
-        if verbosityLevel > 2:
-            print(activeMask)
 
         currentBlockSize = int(activeMask.sum())
         if currentBlockSize != previousBlockSize:
@@ -405,6 +400,7 @@ def lobpcg(A, X,
             break
 
         if verbosityLevel > 0:
+            print('iteration %d' % iterationNumber)
             print(f'current block size: {currentBlockSize}')
             print(f'eigenvalue(s):\n{_lambda}')
             print(f'residual norm(s):\n{residualNorms}')
@@ -650,6 +646,10 @@ def lobpcg(A, X,
     aux = cupy.sum(blockVectorR.conj() * blockVectorR, 0)
     residualNorms = cupy.sqrt(aux)
 
+    if verbosityLevel > 0:
+        print(f'Final iterative eigenvalue(s):\n{_lambda}')
+        print(f'Final iterative residual norm(s):\n{residualNorms}')
+
     # Future work:
     # Generalized eigen value solver like `scipy.linalg.eigh`
     # that takes in `B` matrix as input
@@ -659,7 +659,7 @@ def lobpcg(A, X,
     # Computing the actual true residuals
 
     if verbosityLevel > 0:
-        print(f'Final eigenvalue(s):\n{_lambda}')
+        print(f'Final postprocessing eigenvalue(s):\n{_lambda}')
         print(f'Final residual norm(s):\n{residualNorms}')
 
     if retLambdaHistory:

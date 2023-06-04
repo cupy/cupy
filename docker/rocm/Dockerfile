@@ -9,13 +9,11 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends python3.7 python3.7-distutils && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 2 && \
+    apt-get install -y --no-install-recommends python3.8 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 2 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
-RUN curl https://bootstrap.pypa.io/get-pip.py | sudo python3.7
-
-RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-rocm-5-0[all]==12.0.0b3"
+RUN python3 -m pip install --no-cache-dir -U install setuptools pip
+RUN python3 -m pip install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-rocm-5-0[all]==13.0.0a1"
 
 USER rocm-user

@@ -2,7 +2,7 @@ name: "FlexCI"
 
 on:
   push:
-    branches: ["master", "v[0-9]+", "hotfix-*"]
+    branches: ["main", "v[0-9]+", "hotfix-*"]
   issue_comment:
     types: [created]
 
@@ -20,10 +20,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 

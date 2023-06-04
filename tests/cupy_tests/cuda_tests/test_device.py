@@ -77,7 +77,6 @@ class TestDeviceComparison(unittest.TestCase):
         self.check_comparison_other_type(cuda.Device(1), object())
 
 
-@testing.gpu
 class TestDeviceAttributes(unittest.TestCase):
 
     def test_device_attributes(self):
@@ -94,7 +93,6 @@ class TestDeviceAttributes(unittest.TestCase):
             cuda.device.Device(cuda.runtime.getDeviceCount()).attributes
 
 
-@testing.gpu
 class TestDevicePCIBusId(unittest.TestCase):
     def test_device_get_pci_bus_id(self):
         d = cuda.Device()
@@ -120,7 +118,6 @@ class TestDevicePCIBusId(unittest.TestCase):
             assert excinfo == 'cudaErrorInvalidDevice: invalid device ordinal'
 
 
-@testing.gpu
 class TestDeviceHandles(unittest.TestCase):
     def _check_handle(self, func):
         handles = [func(), None, None]
@@ -193,8 +190,8 @@ class TestDeviceSwitch(unittest.TestCase):
             dev1.use()
             with dev1:
                 assert 1 == cuda.Device().id
-            assert 0 == cuda.Device().id
-        assert 0 == cuda.Device().id
+            assert 1 == cuda.Device().id
+        assert 1 == cuda.Device().id
 
     def test_thread_safe(self):
         dev0 = cuda.Device(0)

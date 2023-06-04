@@ -17,7 +17,6 @@ from cupy import testing
                  'minimum', 'reflect', 'symmetric', 'wrap'],
     })
 )
-@testing.gpu
 class TestPadDefault(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -48,7 +47,6 @@ class TestPadDefault(unittest.TestCase):
         'pad_width': [1, [1, 2], [[1, 2], [3, 4]]],
     })
 )
-@testing.gpu
 class TestPadDefaultMean(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -121,7 +119,6 @@ class TestPadDefaultMean(unittest.TestCase):
      'pad_width': [[1, 2], [3, 4]], 'mode': 'maximum',
      'stat_length': None},
 )
-@testing.gpu
 # Old numpy does not work with multi-dimensional constant_values
 class TestPad(unittest.TestCase):
 
@@ -163,7 +160,6 @@ class TestPad(unittest.TestCase):
      'pad_width': [[1, 2], [3, 4]], 'mode': 'mean',
      'stat_length': None},
 )
-@testing.gpu
 # Old numpy does not work with multi-dimensional constant_values
 class TestPadMean(unittest.TestCase):
 
@@ -189,7 +185,6 @@ class TestPadMean(unittest.TestCase):
             return f()
 
 
-@testing.gpu
 class TestPadNumpybug(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -203,7 +198,6 @@ class TestPadNumpybug(unittest.TestCase):
         return a
 
 
-@testing.gpu
 class TestPadEmpty(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.17')
@@ -217,7 +211,6 @@ class TestPadEmpty(unittest.TestCase):
         return a[pad_width:-pad_width, pad_width:-pad_width]
 
 
-@testing.gpu
 class TestPadCustomFunction(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -248,7 +241,6 @@ class TestPadCustomFunction(unittest.TestCase):
     {'array': [0, 1, 2, 3], 'pad_width': 1, 'mode': 'reflect'},
     {'array': [0, 1, 2, 3], 'pad_width': [1, 2], 'mode': 'reflect'},
 )
-@testing.gpu
 class TestPadSpecial(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -289,7 +281,6 @@ class TestPadSpecial(unittest.TestCase):
     {'array': [0, 1, 2, 3], 'pad_width': [1], 'mode': 'reflect',
      'kwargs': {'notallowedkeyword': 3}},
 )
-@testing.gpu
 @testing.with_requires('numpy>=1.17')
 class TestPadValueError(unittest.TestCase):
 
@@ -310,7 +301,6 @@ class TestPadValueError(unittest.TestCase):
     {'array': [0, 1, 2, 3], 'pad_width': [], 'mode': 'reflect',
      'kwargs': {}},
 )
-@testing.gpu
 class TestPadTypeError(unittest.TestCase):
 
     def test_pad_failure(self):

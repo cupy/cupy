@@ -132,7 +132,6 @@ def get_numpy_version():
 
 
 @ignore_fallback_warnings
-@testing.gpu
 class TestFallbackMode(unittest.TestCase):
 
     def test_module_not_callable(self):
@@ -192,7 +191,6 @@ class TestFallbackMode(unittest.TestCase):
      'kwargs': {'dtype': numpy.float64}}
 )
 @ignore_fallback_warnings
-@testing.gpu
 class TestFallbackMethodsArrayExternal(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -217,7 +215,6 @@ class TestFallbackMethodsArrayExternal(unittest.TestCase):
      'kwargs': {'axis': 0}, 'numpy_version': None}
 )
 @ignore_fallback_warnings
-@testing.gpu
 class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -242,7 +239,6 @@ class TestFallbackMethodsArrayExternalOut(unittest.TestCase):
     {'object': 'vectorize'},
     {'object': 'linalg.eig'},
 )
-@testing.gpu
 class TestDocs(unittest.TestCase):
 
     @numpy_fallback_equal()
@@ -250,7 +246,6 @@ class TestDocs(unittest.TestCase):
         return operator.attrgetter(self.object)(xp).__doc__
 
 
-@testing.gpu
 class TestFallbackArray(unittest.TestCase):
 
     def test_ndarray_creation_compatible(self):
@@ -362,7 +357,6 @@ class TestFallbackArray(unittest.TestCase):
     {'func': 'compress', 'shape': (3, 2), 'args': ([False, True],),
      'kwargs': {'axis': 0}}
 )
-@testing.gpu
 class TestFallbackArrayMethodsInternal(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -393,7 +387,6 @@ class TestFallbackArrayMethodsInternal(unittest.TestCase):
     {'func': '__ge__', 'shape': (1, 2)},
     {'func': '__le__', 'shape': (1,)}
 )
-@testing.gpu
 class TestArrayComparison(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -413,7 +406,6 @@ class TestArrayComparison(unittest.TestCase):
     {'func': '__len__', 'shape': (3, 3)},
     {'func': '__bool__', 'shape': (1,)},
 )
-@testing.gpu
 class TestArrayUnaryMethods(unittest.TestCase):
 
     @numpy_fallback_equal()
@@ -428,7 +420,6 @@ class TestArrayUnaryMethods(unittest.TestCase):
     {'func': '__neg__', 'shape': (3, 3), 'dtype': numpy.float32},
     {'func': '__invert__', 'shape': (2, 4), 'dtype': numpy.int32}
 )
-@testing.gpu
 class TestArrayUnaryMethodsArray(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -452,7 +443,6 @@ class TestArrayUnaryMethodsArray(unittest.TestCase):
     {'func': '__lshift__', 'shape': (2,), 'dtype': numpy.int32},
     {'func': '__irshift__', 'shape': (3, 2), 'dtype': numpy.int32},
 )
-@testing.gpu
 class TestArrayArithmeticMethods(unittest.TestCase):
 
     @numpy_fallback_array_allclose(rtol=1e-6)
@@ -462,7 +452,6 @@ class TestArrayArithmeticMethods(unittest.TestCase):
         return getattr(a, self.func)(b)
 
 
-@testing.gpu
 class TestArrayMatmul(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.16')
@@ -474,7 +463,6 @@ class TestArrayMatmul(unittest.TestCase):
         return a.__matmul__(b)
 
 
-@testing.gpu
 class TestVectorizeWrapper(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -518,7 +506,6 @@ class TestVectorizeWrapper(unittest.TestCase):
 
 
 @ignore_fallback_warnings
-@testing.gpu
 class TestInplaceSpecialMethods(unittest.TestCase):
 
     @numpy_fallback_array_equal()
@@ -575,7 +562,6 @@ class TestInplaceSpecialMethods(unittest.TestCase):
 
 
 @ignore_fallback_warnings
-@testing.gpu
 class TestArrayVariants(unittest.TestCase):
 
     @numpy_fallback_array_equal()

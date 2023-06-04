@@ -97,7 +97,6 @@ class TestMinScalarType:
 @testing.parameterize(*testing.product({
     'cxx': (None, '--std=c++11'),
 }))
-@testing.gpu
 class TestCuPyHeaders(unittest.TestCase):
 
     def setUp(self):

@@ -39,7 +39,6 @@ class _TestBase(object):
         self.check_unary_boundary('erfcinv', boundary=2)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecial(unittest.TestCase, _TestBase):
 
@@ -105,7 +104,6 @@ class TestSpecial(unittest.TestCase, _TestBase):
         assert numpy.isneginf(cupy.asnumpy(a))
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestFusionSpecial(unittest.TestCase, _TestBase):
 

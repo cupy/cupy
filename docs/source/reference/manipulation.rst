@@ -114,6 +114,7 @@ Adding and removing elements
 .. autosummary::
    :toctree: generated/
 
+   delete
    append
    resize
    unique

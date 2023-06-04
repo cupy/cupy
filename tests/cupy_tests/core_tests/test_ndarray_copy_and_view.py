@@ -379,7 +379,6 @@ class TestArrayDiagonal:
     {'src_order': 'C'},
     {'src_order': 'F'},
 )
-@testing.gpu
 class TestNumPyArrayCopyView:
     @pytest.mark.skipif(
         not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
