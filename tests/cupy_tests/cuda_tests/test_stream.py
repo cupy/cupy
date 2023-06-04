@@ -14,7 +14,6 @@ from cupy import testing
     *testing.product({
         'stream_name': ['null', 'ptds'],
     }))
-@testing.gpu
 class TestStream(unittest.TestCase):
 
     def setUp(self):
@@ -244,7 +243,6 @@ class TestStream(unittest.TestCase):
             assert err is False
 
 
-@testing.gpu
 class TestExternalStream(unittest.TestCase):
 
     def setUp(self):

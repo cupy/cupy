@@ -23,9 +23,9 @@ RUN /update-alternatives-cutensor.sh
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.7.11 && \
-    pyenv global 3.7.11 && \
-    pip install -U setuptools pip
+RUN pyenv install 3.8.11 && \
+    pyenv global 3.8.11 && \
+    pip install -U setuptools pip wheel
 
 RUN pip install -U 'numpy==1.20.*' 'cython==0.29.*'
 RUN pip uninstall -y scipy optuna mpi4py cuda-python && \

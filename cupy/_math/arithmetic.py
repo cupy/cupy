@@ -128,7 +128,7 @@ float_power = _core.create_ufunc(
 
     .. seealso:: :data:`numpy.float_power`
 
-    '''
+    '''  # NOQA
 )
 
 fmod = _core.create_ufunc(

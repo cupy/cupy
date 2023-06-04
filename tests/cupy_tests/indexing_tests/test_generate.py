@@ -10,7 +10,6 @@ from cupy._indexing import generate
 from cupy import testing
 
 
-@testing.gpu
 class TestIndices(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -35,7 +34,6 @@ class TestIndices(unittest.TestCase):
                 xp.indices((1, 2, 3, 4), dtype=xp.bool_)
 
 
-@testing.gpu
 class TestIX_(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -58,7 +56,6 @@ class TestIX_(unittest.TestCase):
         return xp.ix_(xp.array([True, False] * 2))
 
 
-@testing.gpu
 class TestR_(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -112,7 +109,6 @@ class TestR_(unittest.TestCase):
             cupy.r_[a, b]
 
 
-@testing.gpu
 class TestC_(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -138,7 +134,6 @@ class TestC_(unittest.TestCase):
             cupy.c_[a, b]
 
 
-@testing.gpu
 class TestAxisConcatenator(unittest.TestCase):
 
     def test_AxisConcatenator_init1(self):
@@ -150,7 +145,6 @@ class TestAxisConcatenator(unittest.TestCase):
         assert len(a) == 0
 
 
-@testing.gpu
 class TestUnravelIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
@@ -186,7 +180,6 @@ class TestUnravelIndex(unittest.TestCase):
                 xp.unravel_index(a, (6, 4), order=order)
 
 
-@testing.gpu
 class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])

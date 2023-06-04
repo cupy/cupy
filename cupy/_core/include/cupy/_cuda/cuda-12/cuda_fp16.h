@@ -52,6 +52,19 @@
 * This section describes half precision intrinsic functions that are
 * only supported in device code.
 * To use these functions, include the header file \p cuda_fp16.h in your program.
+* The following macros are available to help users selectively enable/disable
+* various definitions present in the header file:
+* - \p CUDA_NO_HALF - If defined, this macro will prevent the definition of
+* additional type aliases in the global namespace, helping to avoid potential
+* conflicts with symbols defined in the user program.
+* - \p __CUDA_NO_HALF_CONVERSIONS__ - If defined, this macro will prevent the
+* use of the C++ type conversions (converting constructors and conversion
+* operators) that are common for built-in floating-point types, but may be
+* undesirable for \p half which is essentially a user-defined type.
+* - \p __CUDA_NO_HALF_OPERATORS__ and \p __CUDA_NO_HALF2_OPERATORS__ - If
+* defined, these macros will prevent the inadvertent use of usual arithmetic
+* and comparison operators. This enforces the storage-only type semantics and
+* prevents C++ style computations on \p half and \p half2 types.
 */
 
 /**

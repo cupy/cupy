@@ -7,7 +7,6 @@ from cupy import testing
 from cupy.lib import stride_tricks
 
 
-@testing.gpu
 class TestAsStrided(unittest.TestCase):
     def test_as_strided(self):
         a = cupy.array([1, 2, 3, 4])

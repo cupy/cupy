@@ -186,7 +186,11 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             depends = sorted(set(sum([
                 dumpbin_dependents(dumpbin, f) for f in self.get_outputs()
             ], [])))
-            with open('cupy/.data/_depends.json', 'w') as f:
+
+            depends_json = os.path.join(
+                self.build_lib, 'cupy', '.data', '_depends.json')
+            os.makedirs(os.path.dirname(depends_json), exist_ok=True)
+            with open(depends_json, 'w') as f:
                 json.dump({'depends': depends}, f)
 
     def build_extension(self, ext: setuptools.Extension) -> None:

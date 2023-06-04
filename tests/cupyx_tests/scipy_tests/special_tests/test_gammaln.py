@@ -7,7 +7,6 @@ from cupy import testing
 import cupyx.scipy.special  # NOQA
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestGammaln:
 
@@ -44,7 +43,6 @@ class TestGammaln:
         return scp.special.gammaln(a)
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestMultigammaln:
 

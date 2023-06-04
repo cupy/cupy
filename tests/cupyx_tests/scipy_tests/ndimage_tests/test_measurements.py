@@ -44,7 +44,6 @@ def _generate_binary_structure(rank, connectivity):
     'output': [None, numpy.int32, numpy.int64],
     'o_type': [None, 'ndarray']
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestLabel:
 
@@ -69,7 +68,6 @@ class TestLabel:
         return labels
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestLabelSpecialCases:
 
@@ -111,7 +109,6 @@ class TestLabelSpecialCases:
         return labels
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'op': stats_ops,
 }))
@@ -288,7 +285,6 @@ class TestStats:
         return result
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'op': ['maximum', 'median', 'minimum', 'maximum_position',
            'minimum_position', 'extrema'],
@@ -369,7 +365,6 @@ class TestMeasurementsSelect:
         return result
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'labels': [None, 4, 6],
     'index': [None, [0, 2], [3, 1, 0], [1]],
@@ -408,7 +403,6 @@ class TestHistogram():
         return xp.stack(result)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'labels': [None, 4],
     'index': [None, [0, 2], [3, 1, 0], [1]],

@@ -40,7 +40,6 @@ def _conditional_scipy_version_skip(mode, order):
     'cval': [1.0],
     'prefilter': [True],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestMapCoordinates:
 
@@ -122,7 +121,6 @@ class TestMapCoordinates:
     'order': [0, 1, 2, 3, 4, 5],
     'mode': ['constant', 'nearest', 'mirror'] + scipy16_modes,
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestMapCoordinatesHalfInteger:
 
@@ -151,7 +149,6 @@ class TestMapCoordinatesHalfInteger:
     'cval': [1.0],
     'prefilter': [False, True],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestAffineTransform:
 
@@ -236,7 +233,6 @@ class TestAffineTransform:
         return out
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestAffineExceptions:
 
@@ -324,7 +320,6 @@ class TestAffineExceptions:
     'shape': [(100, 100), (10, 20), (10, 10, 10), (10, 20, 30)],
     'theta': [0, 90, 180, 270]
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestAffineTransformTextureMemory:
 
@@ -410,7 +405,6 @@ class TestAffineTransformTextureMemory:
                      mode=self.mode)
 
 
-@testing.gpu
 @testing.with_requires('opencv-python')
 class TestAffineTransformOpenCV:
 
@@ -451,7 +445,6 @@ class TestAffineTransformOpenCV:
         'prefilter': [True],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestRotate:
 
@@ -528,7 +521,6 @@ class TestRotate:
         return out
 
 
-@testing.gpu
 # Scipy older than 1.3.0 raises IndexError instead of ValueError
 @testing.with_requires('scipy>=1.3.0')
 class TestRotateExceptions:
@@ -550,7 +542,6 @@ class TestRotateExceptions:
     {'axes': (2, 0)},
     {'axes': (-2, 2)},
 )
-@testing.gpu
 @testing.with_requires('scipy')
 class TestRotateAxes:
 
@@ -564,7 +555,6 @@ class TestRotateAxes:
         return rotate(a, 1, self.axes, order=1)
 
 
-@testing.gpu
 @testing.with_requires('opencv-python')
 class TestRotateOpenCV:
 
@@ -599,7 +589,6 @@ class TestRotateOpenCV:
         'prefilter': [True],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestShift:
 
@@ -680,7 +669,6 @@ class TestShift:
     'mode': ['constant', 'nearest'],
     'cval': [cupy.nan, cupy.inf, -cupy.inf],
 }))
-@testing.gpu
 class TestInterpolationInvalidCval:
 
     def _prep_output(self, a):
@@ -758,7 +746,6 @@ class TestInterpolationInvalidCval:
                             mode=self.mode, cval=self.cval)
 
 
-@testing.gpu
 @testing.with_requires('opencv-python')
 class TestShiftOpenCV:
 
@@ -785,7 +772,6 @@ class TestShiftOpenCV:
     'cval': [1.0],
     'prefilter': [True],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestZoom:
 
@@ -849,7 +835,6 @@ class TestZoom:
     'zoom': [(1, 1), (3, 5), (8, 2), (8, 8)],
     'mode': ['nearest', 'reflect', 'mirror', 'grid-wrap', 'grid-constant'],
 }))
-@testing.gpu
 class TestZoomOrder0IntegerGrid():
 
     def test_zoom_grid_by_int_order0(self):
@@ -873,7 +858,6 @@ class TestZoomOrder0IntegerGrid():
     'order': [0, 1, 2, 3, 4, 5],
     'grid_mode': [False, True],
 }))
-@testing.gpu
 class TestZoomOutputSize1():
 
     @testing.for_float_dtypes(no_float16=True)
@@ -890,7 +874,6 @@ class TestZoomOutputSize1():
     {'zoom': 3},
     {'zoom': 0.3},
 )
-@testing.gpu
 @testing.with_requires('opencv-python')
 class TestZoomOpenCV:
 
@@ -928,7 +911,6 @@ class TestZoomOpenCV:
     'output': [numpy.float64, numpy.float32],
     'axis': [0, 1, 2, -1],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSplineFilter1d:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
@@ -979,7 +961,6 @@ class TestSplineFilter1dLargeArray:
     'dtype': [numpy.uint8, numpy.float64],
     'output': [numpy.float64, numpy.float32],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSplineFilter:
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
@@ -1019,7 +1000,6 @@ class TestSplineFilter:
     'dtype': [numpy.complex64, numpy.complex128],
     'output': [numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSplineFilterComplex:
 

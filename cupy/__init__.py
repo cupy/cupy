@@ -274,6 +274,7 @@ from cupy._manipulation.split import vsplit  # NOQA
 from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
 
+from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
@@ -493,11 +494,11 @@ from cupy._logic.content import isposinf  # NOQA
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
 
-from cupy._logic.type_test import iscomplex  # NOQA
-from cupy._logic.type_test import iscomplexobj  # NOQA
-from cupy._logic.type_test import isfortran  # NOQA
-from cupy._logic.type_test import isreal  # NOQA
-from cupy._logic.type_test import isrealobj  # NOQA
+from cupy._logic.type_testing import iscomplex  # NOQA
+from cupy._logic.type_testing import iscomplexobj  # NOQA
+from cupy._logic.type_testing import isfortran  # NOQA
+from cupy._logic.type_testing import isreal  # NOQA
+from cupy._logic.type_testing import isrealobj  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import intersect1d  # NOQA

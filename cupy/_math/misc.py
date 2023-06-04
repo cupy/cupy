@@ -55,7 +55,7 @@ def convolve(a, v, mode='full'):
 
     .. seealso:: :func:`numpy.convolve`
 
-    """
+    """  # NOQA
     if a.size == 0:
         raise ValueError('a cannot be empty')
     if v.size == 0:

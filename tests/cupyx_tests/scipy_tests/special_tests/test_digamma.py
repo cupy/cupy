@@ -5,7 +5,6 @@ import cupyx.scipy.special  # NOQA
 import numpy
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestDigamma(unittest.TestCase):
 

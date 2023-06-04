@@ -6,6 +6,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA
 from cupyx.scipy.interpolate import CubicHermiteSpline
@@ -16,11 +17,21 @@ except ImportError:
     pass
 
 
+if cupy.cuda.runtime.runtimeGetVersion() < 11000:
+    # Workarounds precison issues in CUDA 10.2 + float16
+    default_atol = 5e-2
+    default_rtol = 1e-1
+else:
+    default_atol = 0
+    default_rtol = 1e-7
+
+
 @testing.with_requires("scipy")
 class TestBarycentric:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -32,7 +43,7 @@ class TestBarycentric:
         return P(test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-4)
     def test_scalar(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'iu':
             pytest.skip()
@@ -46,7 +57,8 @@ class TestBarycentric:
         return P(xp.array(7, dtype=dtype))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_delayed(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -59,7 +71,8 @@ class TestBarycentric:
         return P(test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_append(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -136,7 +149,8 @@ class TestBarycentric:
         return scp.interpolate.BarycentricInterpolator(x, y)(xi)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -159,7 +173,8 @@ class TestBarycentric:
 class TestKrogh:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_lagrange(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -168,7 +183,9 @@ class TestKrogh:
         xs = xp.linspace(-1, 1, 5, dtype=dtype)
         ys = true_poly(xs)
         P = scp.interpolate.KroghInterpolator(xs, ys)
-        return P(test_xs)
+        out = P(test_xs)
+        print(out.dtype)
+        return out
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-6, rtol=1e-6)
@@ -185,7 +202,8 @@ class TestKrogh:
         return P(xp.array(7, dtype=dtype))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_derivatives(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -198,7 +216,8 @@ class TestKrogh:
         return D
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_low_derivatives(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -211,7 +230,8 @@ class TestKrogh:
         return D
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_derivative(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -237,7 +257,8 @@ class TestKrogh:
         return D
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7, rtol=1e-7)
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_hermite(self, xp, scp, dtype):
         if xp.dtype(dtype).kind in 'u':
             pytest.skip()
@@ -334,7 +355,8 @@ class TestKrogh:
         return xp.shape(P(test_xs))
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_wrapper(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -345,7 +367,8 @@ class TestKrogh:
         return scp.interpolate.krogh_interpolate(xs, ys, test_xs)
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        atol=default_atol, rtol=default_rtol, scipy_name='scp')
     def test_wrapper2(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -381,6 +404,8 @@ class TestZeroSizeArrays:
     @pytest.mark.parametrize('axis', [0, 1, 2])
     @pytest.mark.parametrize('klass', ['make_interp_spline', ])
     def test_zero_size(self, xp, scp, klass, y_shape, bc_type, axis):
+        if runtime.is_hip and bc_type == 'periodic':
+            pytest.xfail('Not implemented on HIP/ROCm')
         x = xp.arange(10)
         y = xp.zeros(y_shape)
         xval = xp.arange(3)

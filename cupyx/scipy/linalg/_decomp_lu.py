@@ -285,7 +285,7 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
             The matrix with dimension ``(M,)`` or ``(M, N)``.
 
     .. seealso:: :func:`scipy.linalg.lu_solve`
-    """
+    """  # NOQA
 
     (lu, ipiv) = lu_and_piv
 

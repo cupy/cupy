@@ -5,6 +5,58 @@ Upgrade Guide
 This page covers changes introduced in each major version that users should know when migrating from older releases.
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
+CuPy v12
+========
+
+Change in :class:`cupy.cuda.Device` Behavior
+--------------------------------------------
+
+The CUDA current device (set via :meth:`cupy.cuda.Device.use()` or ``cudaSetDevice()``) will be reactivated when exiting a device context manager.
+This reverts the :ref:`change introduced in CuPy v10 <change in CuPy Device behavior>`, making the behavior identical to the one in CuPy v9 or earlier.
+
+This decision was made for better interoperability with other libraries that might mutate the current CUDA device.
+Suppose the following code:
+
+.. code-block:: py
+
+   def do_preprocess_cupy():
+       with cupy.cuda.Device(2):
+           # ...
+           pass
+
+   torch.cuda.set_device(1)
+   do_preprocess_cupy()
+   print(torch.cuda.get_device())  # -> ???
+
+In CuPy v10 and v11, the code prints ``0``, which can be surprising for users.
+In CuPy v12, the code now prints ``1``, making it easy for both users and library developers to maintain the current device where multiple devices are involved.
+
+Deprecation of ``cupy.ndarray.scatter_{add,max,min}``
+-----------------------------------------------------
+
+These APIs have been marked as deprecated as ``cupy.{add,maximum,minimum}.at`` ufunc methods have been implemented, which behave as equivalent and NumPy-compatible.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v12.
+
+* Python 3.7 or earlier
+* NumPy 1.20 or earlier
+* SciPy 1.6 or earlier
+
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.23 and SciPy 1.8 to NumPy 1.24 and SciPy 1.9.
+CuPy v12 will follow the upstream products' specifications of these baseline versions.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.8.
+
+
 CuPy v11
 ========
 
@@ -75,6 +127,9 @@ Change in :class:`cupy.cuda.Device` Behavior
 
 Current device set via :meth:`~cupy.cuda.Device.use` will not be honored by the ``with Device`` block
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+   This change has been reverted in CuPy v12. See **CuPy v12** section above for details.
 
 The current device set via :meth:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
 
@@ -444,7 +499,7 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
-   * - v12
+   * - v13
      -
      -
      -
@@ -456,18 +511,30 @@ Compatibility Matrix
      -
      -
      - `latest <https://docs.cupy.dev/en/latest/install.html>`__
-   * - v11
+   * - v12
      - 3.0~
      - 10.2~
      - 4.3~
      - 1.4~
      - 2.8~
      - 7.6~
-     - 3.7~
-     - 1.20~
-     - 1.6~
-     - NumPy 1.23 & SciPy 1.8
+     - 3.8~
+     - 1.21~
+     - 1.7~
+     - NumPy 1.24 & SciPy 1.9
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+   * - v11
+     - 3.0~9.0
+     - 10.2~12.0
+     - 4.3 & 5.0
+     - 1.4~1.6
+     - 2.8~2.16
+     - 7.6~8.7
+     - 3.7~3.11
+     - 1.20~1.24
+     - 1.6~1.9
+     - NumPy 1.23 & SciPy 1.8
+     - `v11.6.0 <https://docs.cupy.dev/en/v11.6.0/install.html>`__
    * - v10
      - 3.0~8.x
      - 10.2~11.7

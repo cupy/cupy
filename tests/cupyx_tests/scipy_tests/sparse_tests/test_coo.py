@@ -1099,7 +1099,6 @@ class TestIsspmatrixCoo:
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
 @testing.with_requires('scipy>=1.5.0')
-@testing.gpu
 class TestCooMatrixDiagonal:
     density = 0.5
 
