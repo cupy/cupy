@@ -582,7 +582,7 @@ __global__ void kernelColor(pixel_int2_t *input, pixel_int2_t *output, int size)
     last2 = input[TOID(tx, lasty, size)];
 
     if (last2.x == MARKER) {
-        lasty = last2.y;
+        lasty = max(last2.y, 0);
         last2 = input[TOID(tx, lasty, size)];
     }
 
@@ -645,7 +645,7 @@ __global__ void kernelColorWithSpacing(pixel_int2_t *input, pixel_int2_t *output
     last2 = input[TOID(tx, lasty, size)];
 
     if (last2.x == MARKER) {
-        lasty = last2.y;
+        lasty = max(last2.y, 0);
         last2 = input[TOID(tx, lasty, size)];
     }
 
