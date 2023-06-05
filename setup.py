@@ -17,7 +17,11 @@ if not cupy_builder.preflight_check(ctx):
     sys.exit(1)
 
 
-setup_requires = []
+setup_requires = [
+    # Keep the list in sync with `pyproject.toml`.
+    "Cython>=0.29.22,<3",
+    "fastrlock>=0.5",
+]
 install_requires = [
     'numpy>=1.20,<1.27',  # see #4773
     'fastrlock>=0.5',
