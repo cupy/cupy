@@ -197,7 +197,7 @@ def check_array(obj, *, arg_name):
 
 # This code is to signal when the interpreter is in shutdown mode
 # to prevent using globals that could be already deleted in
-# objects repr(__del__) method
+# objects `__del__` method
 #
 # This solution is taken from the Numba/llvmlite code
 _shutting_down = [False]

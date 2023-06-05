@@ -462,6 +462,7 @@ cdef class RawModule:
 
         """
         cdef RawKernel ker
+        cdef Function func
         cdef str mangled_name
 
         # check if the name is a valid C++ name expression
