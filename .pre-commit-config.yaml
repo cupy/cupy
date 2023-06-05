@@ -32,7 +32,7 @@ repos:
         args: [--config, ".flake8.cython"]
 
 -   repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.14.0
+    rev: v0.15.0
     hooks:
     -   id: cython-lint
 
