@@ -13,7 +13,6 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
-from libcpp cimport vector
 
 
 ###############################################################################
