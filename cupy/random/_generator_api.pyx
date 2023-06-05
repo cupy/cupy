@@ -1032,7 +1032,6 @@ cdef void _launch(
         func, int generator, intptr_t state, intptr_t strm,
         int bsize, out, args):
     cdef ssize_t size = out.size
-    shape = out.shape
     if size == 0:
         # Avoid issues launching empty grids in CUDA 10.2
         return
