@@ -12,6 +12,7 @@ There are four differences compared to the original C API.
 
 """
 import sys as _sys
+import locale as _locale
 
 cimport cython  # NOQA
 from libcpp cimport vector
@@ -157,9 +158,11 @@ cpdef destroyProgram(intptr_t prog):
 
 
 cpdef compileProgram(intptr_t prog, options):
+    encoding = _locale.getpreferredencoding()
+
     cdef int option_num = len(options)
     cdef vector.vector[const char*] option_vec
-    cdef option_list = [opt.encode() for opt in options]
+    cdef option_list = [opt.encode(encoding) for opt in options]
     cdef const char** option_vec_ptr = NULL
     for i in option_list:
         option_vec.push_back(<const char*>i)
