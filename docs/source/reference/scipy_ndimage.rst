@@ -101,6 +101,7 @@ Morphology
    binary_opening
    binary_propagation
    black_tophat
+   distance_transform_edt
    generate_binary_structure
    grey_closing
    grey_dilation
