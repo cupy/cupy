@@ -76,6 +76,7 @@ IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccudart cimport *
 ELSE:
     include '_runtime_extern.pxi'
+    pass  # for cython-lint
 
 cdef extern from '../../cupy_backend_runtime.h' nogil:
     bint hip_environment

@@ -24,6 +24,7 @@ IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccuda cimport *
 ELSE:
     include '_driver_extern.pxi'
+    pass  # for cython-lint
 
 cdef extern from '../../cupy_backend.h' nogil:
     # Build-time version
