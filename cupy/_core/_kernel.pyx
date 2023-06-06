@@ -7,7 +7,6 @@ import cupy
 from cupy.cuda import compiler
 from cupy import _util
 
-cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from libcpp cimport vector
@@ -369,7 +368,7 @@ cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
 
 cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
     cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t x, total_size
+    cdef Py_ssize_t total_size
     cdef shape_t vecshape, newshape, newstrides
     cdef vector.vector[int] array_indexes, axes
     cdef vector.vector[int] strides_indexes
@@ -677,8 +676,6 @@ cdef list _get_out_args_with_params(
         tuple out_params, bint is_size_specified):
     cdef ParameterInfo p
     cdef _ndarray_base arr
-    cdef shape_t shape
-    cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
             if p.raw and not is_size_specified:
@@ -847,7 +844,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
-        cdef tuple in_types, out_types, types
+        cdef tuple in_types, out_types
         cdef shape_t shape
 
         size = kwargs.pop('size', -1)
@@ -1243,7 +1240,6 @@ cdef class ufunc:
         cdef function.Function kern
         cdef list broad_values
         cdef shape_t shape
-        cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
         where = kwargs.pop('_where', None)
