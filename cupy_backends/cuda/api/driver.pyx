@@ -13,7 +13,6 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
-from libcpp cimport vector
 
 
 ###############################################################################
@@ -24,6 +23,7 @@ IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccuda cimport *
 ELSE:
     include '_driver_extern.pxi'
+    pass  # for cython-lint
 
 cdef extern from '../../cupy_backend.h' nogil:
     # Build-time version

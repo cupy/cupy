@@ -5,7 +5,6 @@ import warnings
 import weakref
 
 from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport device
 
 import threading
 
