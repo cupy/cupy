@@ -1,4 +1,5 @@
 import collections.abc
+import numbers
 
 import numpy
 
@@ -391,7 +392,6 @@ def kron(a, b):
     .. seealso:: :func:`numpy.kron`
 
     """
-    import numbers
     a_isnumber = isinstance(a, numbers.Number)
     b_isnumber = isinstance(b, numbers.Number)
     if a_isnumber and b_isnumber:
