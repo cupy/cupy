@@ -4,7 +4,6 @@ cimport cython  # NOQA
 
 import atexit
 import collections
-import ctypes
 import gc
 import os
 import threading
@@ -666,7 +665,6 @@ cpdef MemoryPointer malloc_async(size_t size):
     .. _Stream Ordered Memory Allocator:
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
-    cdef intptr_t stream_ptr
     mem = MemoryAsync(size, stream_module.get_current_stream())
     return MemoryPointer(mem, 0)
 

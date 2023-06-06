@@ -3,7 +3,7 @@
 cimport cython  # NOQA
 
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.stdint cimport uint8_t, int32_t, uint32_t, int64_t, intptr_t
+from libc.stdint cimport int32_t, uint32_t, int64_t, intptr_t
 
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
