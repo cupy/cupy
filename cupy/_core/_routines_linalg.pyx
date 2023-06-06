@@ -545,8 +545,7 @@ cpdef _ndarray_base tensordot_core(
         Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape):
     # out, if specified, must be C-contiguous and have correct shape.
     cdef shape_t shape
-    cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
-    cdef Py_ssize_t mode
+    cdef Py_ssize_t transa, transb, lda, ldb
     cdef intptr_t handle
     cdef _ndarray_base copy_to_out = None
     cdef str dtype = a.dtype.char
@@ -799,7 +798,6 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     """
     cdef int ndim = a._shape.size()
     assert ndim > 2
-    cdef Py_ssize_t sh_, st_
     cdef _ndarray_base idx
     idx = _mat_ptrs_kernel(
         a.data.ptr, a._strides[0],

@@ -50,3 +50,17 @@ Filter design
    bilinear
    bilinear_zpk
    savgol_coeffs
+
+
+Chirp Z-transform and Zoom FFT
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   czt
+   zoom_fft
+   CZT
+   ZoomFFT
+   czt_points
+

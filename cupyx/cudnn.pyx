@@ -14,7 +14,7 @@ from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device
-from cupy.cuda cimport memory
+from cupy.cuda cimport memory as _memory
 from cupy_backends.cuda.libs cimport cudnn
 
 from cupy._core._ufuncs import elementwise_copy as _elementwise_copy
@@ -414,7 +414,7 @@ def rnn_forward_inference_ex(
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
         xs)
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
     cudnn.RNNForwardInferenceEx(
@@ -473,9 +473,9 @@ def rnn_forward_training_ex(
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
         xs)
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
-    cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
+    cdef _memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
         rnn_desc, length, xs_descs)
 
     cudnn.RNNForwardTrainingEx(
@@ -497,7 +497,7 @@ def rnn_forward_training_ex(
 def rnn_backward_data_ex(
         DropoutStates states, int direction_mode, int rnn_mode,
         _ndarray_base hx, _ndarray_base cx, _ndarray_base w, _ndarray_base xs,
-        _ndarray_base ys, memory.MemoryPointer reserve_space,
+        _ndarray_base ys, _memory.MemoryPointer reserve_space,
         _ndarray_base dhy, _ndarray_base dcy, _ndarray_base dys,
         lengths):
     hx = core._internal_ascontiguousarray(hx)
@@ -545,7 +545,7 @@ def rnn_backward_data_ex(
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
         xs)
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
     cudnn.RNNBackwardDataEx(
@@ -572,7 +572,7 @@ def rnn_backward_weights_ex(
         DropoutStates states, int direction_mode, int rnn_mode,
         _ndarray_base xs, _ndarray_base hx, _ndarray_base ys,
         _ndarray_base w,
-        memory.MemoryPointer reserve_space, lengths):
+        _memory.MemoryPointer reserve_space, lengths):
     xs = core._internal_ascontiguousarray(xs)
     hx = core._internal_ascontiguousarray(hx)
     ys = core._internal_ascontiguousarray(ys)
@@ -598,7 +598,7 @@ def rnn_backward_weights_ex(
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array_for_padded(
         xs)
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
     cdef _ndarray_base dw = _core.ndarray(w.shape, w.dtype)
@@ -955,20 +955,20 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
     return descs
 
 
-cdef memory.MemoryPointer _make_rnn_workspace(
+cdef _memory.MemoryPointer _make_rnn_workspace(
         Descriptor rnn_desc, int length, _DescriptorArray descs):
     cdef size_t handle = get_handle()
     cdef size_t work_size = cudnn.getRNNWorkspaceSize(
         handle, rnn_desc.value, length, descs.data)
-    return memory.alloc(work_size)
+    return _memory.alloc(work_size)
 
 
-cdef memory.MemoryPointer _make_rnn_reserve_space(
+cdef _memory.MemoryPointer _make_rnn_reserve_space(
         Descriptor rnn_desc, int length, _DescriptorArray descs):
     cdef size_t handle = get_handle()
     cdef size_t reserve_size = cudnn.getRNNTrainingReserveSize(
         handle, rnn_desc.value, length, descs.data)
-    return memory.alloc(reserve_size)
+    return _memory.alloc(reserve_size)
 
 
 cdef Py_ssize_t _get_n_layers(int direction_mode, _ndarray_base hx):
@@ -1025,7 +1025,7 @@ def rnn_forward_inference(
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
     cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
 
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
     cudnn.RNNForwardInference(
@@ -1073,9 +1073,9 @@ def rnn_forward_training(
     cdef Descriptor hy_desc = create_tensor_nd_descriptor(hy)
     cdef Descriptor cy_desc = create_tensor_nd_descriptor(cy)
 
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
-    cdef memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
+    cdef _memory.MemoryPointer reserve_space = _make_rnn_reserve_space(
         rnn_desc, length, xs_descs)
 
     cudnn.RNNForwardTraining(
@@ -1092,7 +1092,7 @@ def rnn_forward_training(
 def rnn_backward_data(
         DropoutStates states, int direction_mode, int rnn_mode,
         _ndarray_base hx, _ndarray_base cx, _ndarray_base w, _ndarray_base xs,
-        _ndarray_base ys, memory.MemoryPointer reserve_space,
+        _ndarray_base ys, _memory.MemoryPointer reserve_space,
         _ndarray_base dhy, _ndarray_base dcy, _ndarray_base dys,
         lengths):
     hx = core._internal_ascontiguousarray(hx)
@@ -1136,7 +1136,7 @@ def rnn_backward_data(
     cdef Descriptor dcx_desc = create_tensor_nd_descriptor(dcx)
 
     cdef _DescriptorArray xs_descs = _make_tensor_descriptor_array(xs, lengths)
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
     cudnn.RNNBackwardData(
@@ -1156,7 +1156,7 @@ def rnn_backward_weights(
         DropoutStates states, int direction_mode, int rnn_mode,
         _ndarray_base xs, _ndarray_base hx, _ndarray_base ys,
         _ndarray_base w,
-        memory.MemoryPointer reserve_space, lengths):
+        _memory.MemoryPointer reserve_space, lengths):
     xs = core._internal_ascontiguousarray(xs)
     hx = core._internal_ascontiguousarray(hx)
     ys = core._internal_ascontiguousarray(ys)
@@ -1176,7 +1176,7 @@ def rnn_backward_weights(
     cdef Descriptor hx_desc = create_tensor_nd_descriptor(hx)
     cdef _DescriptorArray ys_descs = _make_tensor_descriptor_array(ys, lengths)
 
-    cdef memory.MemoryPointer workspace = _make_rnn_workspace(
+    cdef _memory.MemoryPointer workspace = _make_rnn_workspace(
         rnn_desc, length, xs_descs)
 
     cdef _ndarray_base dw = _core.ndarray(w.shape, w.dtype)
@@ -1254,7 +1254,7 @@ cdef class DropoutStates:
     cdef public:
         # TODO(unno): Make these attributes private. This is for backward
         # compatibility.
-        memory.MemoryPointer _states
+        _memory.MemoryPointer _states
         Descriptor _desc
 
     def __init__(self, handle, seed):
@@ -1264,7 +1264,7 @@ cdef class DropoutStates:
         else:
             cudnn_handle = handle
         state_size = cudnn.dropoutGetStatesSize(cudnn_handle)
-        self._states = memory.alloc(state_size)
+        self._states = _memory.alloc(state_size)
         self._desc = create_dropout_descriptor(
             cudnn_handle, 0., self._states.ptr,
             state_size, seed)
@@ -1367,7 +1367,7 @@ cpdef _Algorithm _find_algorithm_fwd(
     algo = _algorithm_fwd_cache.get(key, None)
     if algo is not None:
         return algo
-    workspace = memory.alloc(max_workspace_size)
+    workspace = _memory.alloc(max_workspace_size)
     if cudnn_version() >= 7000:
         perf = cudnn.findConvolutionForwardAlgorithmEx_v7(
             handle, x_desc, x.data.ptr, filter_desc, W.data.ptr, conv_desc,
@@ -1455,7 +1455,7 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
     algo = _algorithm_bwd_filter_cache.get(key, None)
     if algo is not None:
         return algo
-    workspace = memory.alloc(max_workspace_size)
+    workspace = _memory.alloc(max_workspace_size)
     if cudnn_version() >= 7000:
         if deterministic:
             ret = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
@@ -1560,7 +1560,7 @@ cpdef _Algorithm _find_algorithm_bwd_data(
     algo = _algorithm_bwd_data_cache.get(key, None)
     if algo is not None:
         return algo
-    workspace = memory.alloc(max_workspace_size)
+    workspace = _memory.alloc(max_workspace_size)
     if cudnn_version() >= 7000:
         if deterministic:
             ret = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
@@ -1726,7 +1726,7 @@ def convolution_forward(
         if cudnn_version() >= 7000:
             cudnn.setConvolutionMathType(conv_desc, perf.mathType)
 
-        workspace = memory.alloc(perf.memory)
+        workspace = _memory.alloc(perf.memory)
 
         try:
             cudnn.convolutionForward(
@@ -1845,7 +1845,7 @@ def convolution_backward_filter(
         if cudnn_version() >= 7000:
             cudnn.setConvolutionMathType(conv_desc, math_type)
 
-        workspace = memory.alloc(workspace_size)
+        workspace = _memory.alloc(workspace_size)
 
         cudnn.convolutionBackwardFilter_v3(
             handle, one, x_desc, x.data.ptr, gy_desc,
@@ -1945,7 +1945,7 @@ def convolution_backward_data(
         if cudnn_version() >= 7000:
             cudnn.setConvolutionMathType(conv_desc, math_type)
 
-        workspace = memory.alloc(workspace_size)
+        workspace = _memory.alloc(workspace_size)
 
         cudnn.convolutionBackwardData_v3(
             handle, one, filter_desc, W.data.ptr, x_desc, x.data.ptr,
@@ -2131,8 +2131,8 @@ cdef _batch_normalization_forward_training(
         bint is_for_conv2d, int cudnn_mode, bint debug,
         int d_layout=cudnn.CUDNN_TENSOR_NCHW):
 
-    cdef memory.MemoryPointer workspace = None
-    cdef memory.MemoryPointer reserve_space = None
+    cdef _memory.MemoryPointer workspace = None
+    cdef _memory.MemoryPointer reserve_space = None
 
     # Usually supply None to mean and inv_std, which are left for backward
     # compatibility. See cupy#2060 and cupy#2070.
@@ -2212,7 +2212,7 @@ cdef _batch_normalization_forward_training(
                         derivedBnDesc,
                         0,  # activation desc
                     ))
-                workspace = memory.alloc(workspace_size)
+                workspace = _memory.alloc(workspace_size)
 
                 reserve_space_size = (
                     cudnn.getBatchNormalizationTrainingExReserveSpaceSize(
@@ -2222,7 +2222,7 @@ cdef _batch_normalization_forward_training(
                         0,  # activation desc
                         x_desc,
                     ))
-                reserve_space = memory.alloc(reserve_space_size)
+                reserve_space = _memory.alloc(reserve_space_size)
 
             cudnn.batchNormalizationForwardTrainingEx(
                 handle,
@@ -2329,11 +2329,11 @@ def batch_normalization_backward(
         double eps, bint is_for_conv2d, int cudnn_mode, bint debug,
         int d_layout=cudnn.CUDNN_TENSOR_NCHW,
         *,
-        memory.MemoryPointer reserve_space=None,
+        _memory.MemoryPointer reserve_space=None,
 ):
     cdef _ndarray_base ggamma, gbeta
     cdef bint need_cast
-    cdef memory.MemoryPointer workspace = None
+    cdef _memory.MemoryPointer workspace = None
 
     x = core._internal_ascontiguousarray(x)
     gy = core._internal_ascontiguousarray(gy)
@@ -2380,7 +2380,7 @@ def batch_normalization_backward(
                     derivedBnDesc,
                     0,  # activation desc
                 ))
-            workspace = memory.alloc(workspace_size)
+            workspace = _memory.alloc(workspace_size)
 
             cudnn.batchNormalizationBackwardEx(
                 handle,
@@ -2482,7 +2482,7 @@ def fused_ops_execute(plan, var_pack):
 
 cpdef set_fused_ops_const_param_pack_attribute(
         Descriptor const_pack, int param_label, desc_or_scalar):
-    cdef int scaler
+    cdef int scalar
     cdef Descriptor desc
     if param_label in (cudnn.CUDNN_PARAM_XDATA_PLACEHOLDER,
                        cudnn.CUDNN_PARAM_BN_MODE,

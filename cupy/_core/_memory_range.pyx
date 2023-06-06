@@ -1,9 +1,7 @@
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 
-from libc.stdint cimport intptr_t
 from libcpp.pair cimport pair
-from libcpp.vector cimport vector
 
 
 cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(_ndarray_base array):

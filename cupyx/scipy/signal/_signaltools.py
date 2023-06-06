@@ -10,7 +10,8 @@ from cupyx.scipy.signal import _signaltools_core as _st_core
 from cupyx.scipy.signal._arraytools import (
     const_ext, even_ext, odd_ext, axis_reverse, axis_slice, axis_assign)
 from cupyx.scipy.signal._iir_utils import (
-    apply_iir, apply_iir_sos, compute_correction_factors)
+    apply_iir, apply_iir_sos, compute_correction_factors,
+    compute_correction_factors_sos)
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -1405,3 +1406,64 @@ def sosfilt(sos, x, axis=-1, zi=None):
 
     out = apply_iir_sos(out, sos, axis, zi)
     return out
+
+
+def sosfilt_zi(sos):
+    """
+    Construct initial conditions for sosfilt for step response steady-state.
+
+    Compute an initial state `zi` for the `sosfilt` function that corresponds
+    to the steady state of the step response.
+
+    A typical use of this function is to set the initial state so that the
+    output of the filter starts at the same value as the first element of
+    the signal to be filtered.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. See `sosfilt` for the SOS filter format
+        specification.
+
+    Returns
+    -------
+    zi : ndarray
+        Initial conditions suitable for use with ``sosfilt``, shape
+        ``(n_sections, 4)``.
+
+    See Also
+    --------
+    sosfilt, zpk2sos
+    """
+    n_sections = sos.shape[0]
+
+    C = compute_correction_factors_sos(sos, 3, sos.dtype)
+    zi = cupy.zeros((sos.shape[0], 4), dtype=sos.dtype)
+
+    # The initial state for a FIR filter will be always one for a step input
+    x_s = cupy.ones(3, dtype=sos.dtype)
+    for s in range(n_sections):
+        zi_s = cupy.atleast_2d(zi[s])
+        sos_s = cupy.atleast_2d(sos[s])
+
+        # The FIR starting value that guarantees a constant output will be
+        # the same constant input values.
+        zi_s[0, :2] = x_s[:2]
+
+        # Find the non-adjusted values after applying the IIR filter.
+        y_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
+
+        C_s = C[s]
+        y1 = y_s[:2]
+        y2 = y_s[-2:]
+        C1 = C_s[:, :2].T
+        C2 = C_s[:, -2:].T
+
+        # Take the difference between the non-adjusted output values and
+        # compute which initial output state would cause them to be constant.
+        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        zi_s[0, 2:] = y_zi
+        x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
+
+    return zi
