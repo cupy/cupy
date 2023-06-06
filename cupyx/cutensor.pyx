@@ -22,7 +22,6 @@ from cupy._core cimport _dtype
 from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _reduction
 from cupy.cuda cimport device
-from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cutensor
 
 
@@ -675,8 +674,6 @@ def reduction(
     Examples:
         See examples/cutensor/reduction.py
     """
-    cdef Handle handle
-
     if A.dtype != C.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
     if not (A._c_contiguous and C._c_contiguous):
@@ -836,7 +833,6 @@ def _try_elementwise_binary_routine(
         _ndarray_base a, _ndarray_base c, dtype, _ndarray_base out, op, alpha,
         gamma):
     cdef Handle handle
-    cdef TensorDescriptor desc_a, desc_c, desc_out
 
     if not check_availability('elementwise'):
         return None

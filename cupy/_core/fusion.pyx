@@ -16,7 +16,6 @@ from cupy._core import core
 from cupy._core import new_fusion
 
 
-
 _is_fusing = _fusion_thread_local.is_fusing  # NOQA
 _thread_local = _fusion_thread_local.thread_local
 

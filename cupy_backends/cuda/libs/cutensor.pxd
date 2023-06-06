@@ -69,15 +69,15 @@ cpdef enum:
 
     # cutensorComputeType_t
     # (*) compute types added in versoin 1.2
-    COMPUTE_16F  = 1     # NOQA, half
+    COMPUTE_16F = 1     # NOQA, half
     COMPUTE_16BF = 1024  # NOQA, bfloat
     COMPUTE_TF32 = 4096  # NOQA, tensor-float-32
-    COMPUTE_32F  = 4     # NOQA, float
-    COMPUTE_64F  = 16    # NOQA, double
-    COMPUTE_8U   = 64    # NOQA, uint8
-    COMPUTE_8I   = 256   # NOQA, int8
-    COMPUTE_32U  = 128   # NOQA, uint32
-    COMPUTE_32I  = 512   # NOQA, int32
+    COMPUTE_32F = 4     # NOQA, float
+    COMPUTE_64F = 16    # NOQA, double
+    COMPUTE_8U = 64    # NOQA, uint8
+    COMPUTE_8I = 256   # NOQA, int8
+    COMPUTE_32U = 128   # NOQA, uint32
+    COMPUTE_32I = 512   # NOQA, int32
     # (*) compute types below will be deprecated in the furture release.
     R_MIN_16F = 1    # NOQA, real as a half
     C_MIN_16F = 2    # NOQA, complex as a half
@@ -85,9 +85,9 @@ cpdef enum:
     C_MIN_32F = 8    # NOQA, complex as a float
     R_MIN_64F = 16   # NOQA, real as a double
     C_MIN_64F = 32   # NOQA, complex as a double
-    R_MIN_8U  = 64   # NOQA, real as a uint8
+    R_MIN_8U = 64   # NOQA, real as a uint8
     R_MIN_32U = 128  # NOQA, real as a uint32
-    R_MIN_8I  = 256  # NOQA, real as a int8
+    R_MIN_8I = 256  # NOQA, real as a int8
     R_MIN_32I = 512  # NOQA, real as a int32
     R_MIN_16BF = 1024  # NOQA, real as a bfloat16
     R_MIN_TF32 = 2048  # NOQA, real as a tensorfloat32
