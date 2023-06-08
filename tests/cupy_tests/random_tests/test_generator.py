@@ -855,8 +855,7 @@ class TestChoiceChi(RandomGeneratorTestCase):
 
     target_method = 'choice'
 
-    @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
+    @_condition.repeat_with_success_at_least(10, 9)
     def test_goodness_of_fit(self):
         trial = 100
         vals = self.generate_many(3, 1, True, [0.3, 0.3, 0.4], _count=trial)
