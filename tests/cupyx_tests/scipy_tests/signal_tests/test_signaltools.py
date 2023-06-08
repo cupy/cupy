@@ -863,6 +863,8 @@ class TestFiltFilt:
 
         res = scp.signal.filtfilt(b, a, x, axis=axis,
                                   method=method, padtype=padtype)
+        return res
+
 
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
