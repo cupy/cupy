@@ -11,13 +11,16 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-import sys as _sys  # no-cython-lint
+import sys as _sys
 
 cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda._softlink cimport SoftLink
+from cupy_backends.cuda._softlink cimport SoftLink, F_t
+
+
+cdef int _runtime_version = runtime.runtimeGetVersion()
 
 
 ###############################################################################
@@ -27,44 +30,46 @@ from cupy_backends.cuda._softlink cimport SoftLink
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
 ELSE:
-    cdef extern from '../../cupy_rtc.h' nogil:
-        const char *nvrtcGetErrorString(Result result)
-        int nvrtcVersion(int *major, int *minor)
-        int nvrtcCreateProgram(
-            Program* prog, const char* src, const char* name, int numHeaders,
-            const char** headers, const char** includeNames)
-        int nvrtcDestroyProgram(Program *prog)
-        int nvrtcCompileProgram(Program prog, int numOptions,
-                                const char** options)
-        int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
-        int nvrtcGetPTX(Program prog, char *ptx)
-        int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
-        int nvrtcGetCUBIN(Program prog, char *cubin)
-        int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
-        int nvrtcGetProgramLog(Program prog, char* log)
-        int nvrtcAddNameExpression(Program, const char*)
-        int nvrtcGetLoweredName(Program, const char*, const char**)
+    _prefix = 'nvrtc'
+    _libname = None
+    if CUPY_CUDA_VERSION != 0:
+        if 11020 <= _runtime_version < 12000:
+            # CUDA 11.x (11.2+)
+            if _sys.platform == 'linux':
+                _libname = 'libnvrtc.so.11.2'
+            else:
+                _libname = 'nvrtc64_112_0.dll'
+        elif 12000 <= _runtime_version < 13000:
+            # CUDA 12.x
+            if _sys.platform == 'linux':
+                _libname = 'libnvrtc.so.12'
+            else:
+                _libname = 'nvrtc64_120_0.dll'
+    elif CUPY_HIP_VERSION != 0:
+        # ROCm 5.x
+        _prefix = 'hiprtc'
+        _libname = 'libamdhip64.so.5'
 
-    ctypedef int (*f_type)(...) nogil  # NOQA
-    IF 11020 <= CUPY_CUDA_VERSION < 12000:
-        if _sys.platform == 'linux':
-            _libname = 'libnvrtc.so.11.2'
-        else:
-            _libname = 'nvrtc64_112_0.dll'
-    ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
-        if _sys.platform == 'linux':
-            _libname = 'libnvrtc.so.12'
-        else:
-            _libname = 'nvrtc64_120_0.dll'
-    ELSE:
-        _libname = None
-
-    cdef SoftLink _lib = SoftLink(_libname, 'nvrtc')
-    # APIs added after CUDA 11.2+.
-    cdef f_type nvrtcGetNumSupportedArchs = <f_type>_lib.get('GetNumSupportedArchs')  # NOQA
-    cdef f_type nvrtcGetSupportedArchs = <f_type>_lib.get('GetSupportedArchs')  # NOQA
-    cdef f_type nvrtcGetNVVMSize = <f_type>_lib.get('GetNVVMSize')
-    cdef f_type nvrtcGetNVVM = <f_type>_lib.get('GetNVVM')
+    cdef SoftLink _L = SoftLink(_libname, _prefix)
+    cdef F_t nvrtcGetErrorString = <F_t>_L.get('GetErrorString')
+    cdef F_t nvrtcVersion = <F_t>_L.get('Version')
+    cdef F_t nvrtcCreateProgram = <F_t>_L.get('CreateProgram')
+    cdef F_t nvrtcDestroyProgram = <F_t>_L.get('DestroyProgram')
+    cdef F_t nvrtcCompileProgram = <F_t>_L.get('CompileProgram')
+    cdef F_t nvrtcGetPTXSize = <F_t>_L.get(
+        'GetPTXSize' if _prefix == 'nvrtc' else 'GetCodeSize')
+    cdef F_t nvrtcGetPTX = <F_t>_L.get(
+        'GetPTX' if _prefix == 'nvrtc' else 'GetCode')
+    cdef F_t nvrtcGetCUBINSize = <F_t>_L.get('GetCUBINSize')
+    cdef F_t nvrtcGetCUBIN = <F_t>_L.get('GetCUBIN')
+    cdef F_t nvrtcGetProgramLogSize = <F_t>_L.get('GetProgramLogSize')
+    cdef F_t nvrtcGetProgramLog = <F_t>_L.get('GetProgramLog')
+    cdef F_t nvrtcAddNameExpression = <F_t>_L.get('AddNameExpression')
+    cdef F_t nvrtcGetLoweredName = <F_t>_L.get('GetLoweredName')
+    cdef F_t nvrtcGetNumSupportedArchs = <F_t>_L.get('GetNumSupportedArchs')
+    cdef F_t nvrtcGetSupportedArchs = <F_t>_L.get('GetSupportedArchs')
+    cdef F_t nvrtcGetNVVMSize = <F_t>_L.get('GetNVVMSize')
+    cdef F_t nvrtcGetNVVM = <F_t>_L.get('GetNVVM')
 
 
 ###############################################################################

@@ -12,9 +12,8 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef nvrtcResult Result
     ctypedef nvrtcProgram Program
 ELSE:
-    cdef extern from *:
-        ctypedef int Result 'nvrtcResult'
-        ctypedef void* Program 'nvrtcProgram'
+    ctypedef int Result
+    ctypedef void* Program
 
 
 cpdef check_status(int status)
