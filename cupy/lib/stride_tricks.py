@@ -88,11 +88,11 @@ def sliding_window_view(x, window_shape, axis=None, *,
     --------
     numpy.lib.stride_tricks.as_strided
 
-	Notes
-	--------
-	This function is adapted from numpy.lib.stride_tricks.as_strided.
+    Notes
+    --------
+    This function is adapted from numpy.lib.stride_tricks.as_strided.
 
-	Examples
+    Examples
     --------
     >>> x = _cupy.arange(6)
     >>> x.shape
