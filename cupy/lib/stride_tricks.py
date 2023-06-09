@@ -48,7 +48,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
     positions.
 
 
-	Parameters
+    Parameters
     ----------
     x : array_like
         Array to create the sliding window view from.
