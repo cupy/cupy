@@ -1,6 +1,7 @@
 import cupy as _cupy
 import numpy as np
 
+
 def as_strided(x, shape=None, strides=None):
     """
     Create a view into the array with the given shape and strides.
@@ -37,6 +38,7 @@ def as_strided(x, shape=None, strides=None):
 
     return _cupy.ndarray(shape=shape, dtype=x.dtype,
                          memptr=x.data, strides=strides)
+
 
 def sliding_window_view(x, window_shape, axis=None, *,
                         subok=False, writeable=False):
