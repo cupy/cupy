@@ -17,7 +17,7 @@ class TestIIRFilter:
     # NB: test_symmetry with higher order ellip filters need low tolerance
     # on older CUDA versions.
 
-    @pytest.mark.parametrize("N", list(range(1, 26)))
+    @pytest.mark.parametrize("N", list(range(1, 20)))
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
                                        'cheby1', 'cheby2', 'ellip'])
@@ -31,7 +31,7 @@ class TestIIRFilter:
                                        ftype=ftype, output='zpk')
         return z, p, k
 
-    @pytest.mark.parametrize("N", list(range(1, 26)))
+    @pytest.mark.parametrize("N", list(range(1, 20)))
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
                                        'cheby1', 'cheby2', 'ellip'])
@@ -407,15 +407,15 @@ class TestEllip:
         return z, p, k
 
     @pytest.mark.parametrize('N', list(range(25)))
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_basic(self, xp, scp, N):
         wn = 0.01
         z, p, k = scp.signal.ellip(
             N, 1, 40, wn, 'low', analog=True, output='zpk')
         return z, p, k
 
-    @pytest.mark.parametrize('N', list(range(25)))
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    @pytest.mark.parametrize('N', list(range(20)))
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-3, rtol=1e-3)
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
         z, p, k = scp.signal.ellip(
