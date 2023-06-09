@@ -908,6 +908,7 @@ class TestHilbert:
         return scp.signal.hilbert(in_typed)
 
 
+@testing.with_requires("scipy")
 class TestHilbert2:
 
     def test_bad_args(self):
