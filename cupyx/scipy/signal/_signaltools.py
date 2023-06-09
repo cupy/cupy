@@ -4,6 +4,7 @@ import cupy
 from cupy._core import internal
 from cupy.linalg import lstsq
 
+import cupyx.scipy.fft as sp_fft
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
@@ -1467,3 +1468,129 @@ def sosfilt_zi(sos):
         x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
 
     return zi
+
+
+def hilbert(x, N=None, axis=-1):
+    """
+    Compute the analytic signal, using the Hilbert transform.
+
+    The transformation is done along the last axis by default.
+
+    Parameters
+    ----------
+    x : ndarray
+        Signal data.  Must be real.
+    N : int, optional
+        Number of Fourier components.  Default: ``x.shape[axis]``
+    axis : int, optional
+        Axis along which to do the transformation.  Default: -1.
+
+    Returns
+    -------
+    xa : ndarray
+        Analytic signal of `x`, of each 1-D array along `axis`
+
+    Notes
+    -----
+    The analytic signal ``x_a(t)`` of signal ``x(t)`` is:
+
+    .. math:: x_a = F^{-1}(F(x) 2U) = x + i y
+
+    where `F` is the Fourier transform, `U` the unit step function,
+    and `y` the Hilbert transform of `x`. [1]_
+
+    In other words, the negative half of the frequency spectrum is zeroed
+    out, turning the real-valued signal into a complex signal.  The Hilbert
+    transformed signal can be obtained from ``np.imag(hilbert(x))``, and the
+    original signal from ``np.real(hilbert(x))``.
+
+    References
+    ----------
+    .. [1] Wikipedia, "Analytic signal".
+           https://en.wikipedia.org/wiki/Analytic_signal
+
+    See Also
+    --------
+    scipy.signal.hilbert
+
+    """
+    if cupy.iscomplexobj(x):
+        raise ValueError("x must be real.")
+    if N is None:
+        N = x.shape[axis]
+    if N <= 0:
+        raise ValueError("N must be positive.")
+
+    Xf = sp_fft.fft(x, N, axis=axis)
+    h = cupy.zeros(N, dtype=Xf.dtype)
+    if N % 2 == 0:
+        h[0] = h[N // 2] = 1
+        h[1:N // 2] = 2
+    else:
+        h[0] = 1
+        h[1:(N + 1) // 2] = 2
+
+    if x.ndim > 1:
+        ind = [cupy.newaxis] * x.ndim
+        ind[axis] = slice(None)
+        h = h[tuple(ind)]
+    x = sp_fft.ifft(Xf * h, axis=axis)
+    return x
+
+
+def hilbert2(x, N=None):
+    """
+    Compute the '2-D' analytic signal of `x`
+
+    Parameters
+    ----------
+    x : ndarray
+        2-D signal data.
+    N : int or tuple of two ints, optional
+        Number of Fourier components. Default is ``x.shape``
+
+    Returns
+    -------
+    xa : ndarray
+        Analytic signal of `x` taken along axes (0,1).
+
+    See Also
+    --------
+    scipy.signal.hilbert2
+
+    """
+    if x.ndim < 2:
+        x = cupy.atleast_2d(x)
+    if x.ndim > 2:
+        raise ValueError("x must be 2-D.")
+    if cupy.iscomplexobj(x):
+        raise ValueError("x must be real.")
+    if N is None:
+        N = x.shape
+    elif isinstance(N, int):
+        if N <= 0:
+            raise ValueError("N must be positive.")
+        N = (N, N)
+    elif len(N) != 2 or (N[0] <= 0 or N[1] <= 0):
+        raise ValueError("When given as a tuple, N must hold exactly "
+                         "two positive integers")
+
+    Xf = sp_fft.fft2(x, N, axes=(0, 1))
+    h1 = cupy.zeros(N[0], dtype=Xf.dtype)
+    h2 = cupy.zeros(N[1], dtype=Xf.dtype)
+    for h in (h1, h1):
+        N1 = h.shape[0]
+        if N1 % 2 == 0:
+            h[0] = h[N1 // 2] = 1
+            h[1:N1 // 2] = 2
+        else:
+            h[0] = 1
+            h[1:(N1 + 1) // 2] = 2
+
+    h = h1[:, cupy.newaxis] * h2[cupy.newaxis, :]
+    k = x.ndim
+    while k > 2:
+        h = h[:, cupy.newaxis]
+        k -= 1
+    x = sp_fft.ifft2(Xf * h, axes=(0, 1))
+    return x
