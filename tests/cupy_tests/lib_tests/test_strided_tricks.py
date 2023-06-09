@@ -25,23 +25,22 @@ class TestAsStrided(unittest.TestCase):
     def test_rolling_window(self, xp):
         a = testing.shaped_arange((3, 4), xp)
         a_rolling = rolling_window(a, 2, 0)
-
         return a_rolling
 
 
 class TestSlidingWindowView(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_1d(self, xp):
-        arr = testing.shaped_arange((9,), xp)
+        arr = testing.shaped_arange((3,4), xp)
         window_size = 2
-        arr_view = stride_tricks.sliding_window_view(arr, 2, 0)
+        arr_view = xp.lib.stride_tricks.sliding_window_view(arr, window_size, 0)
         return arr_view
 
     @testing.numpy_cupy_array_equal()
     def test_2d(self, xp):
         arr = testing.shaped_arange((3,4), xp)
         window_shape = (2,2)
-        arr_view = stride_tricks.sliding_window_view(arr, window_shape=window_shape)
+        arr_view = xp.lib.stride_tricks.sliding_window_view(arr, window_shape=window_shape)
         return arr_view
 
     @testing.numpy_cupy_array_equal()
@@ -49,7 +48,7 @@ class TestSlidingWindowView(unittest.TestCase):
         arr = testing.shaped_arange((3,4), xp)
         window_shape = 3
         axis = 0
-        arr_view = stride_tricks.sliding_window_view(arr, window_shape,axis)
+        arr_view = xp.lib.stride_tricks.sliding_window_view(arr, window_shape,axis)
         return arr_view
 
     @testing.numpy_cupy_array_equal()
@@ -57,7 +56,7 @@ class TestSlidingWindowView(unittest.TestCase):
         arr = testing.shaped_arange((3,4), xp)
         window_shape = (2,3)
         axis = (0,1)
-        arr_view = stride_tricks.sliding_window_view(arr, window_shape,axis)
+        arr_view = xp.lib.stride_tricks.sliding_window_view(arr, window_shape,axis)
         return arr_view
 
 
