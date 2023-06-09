@@ -11,6 +11,7 @@ nimpl = pytest.mark.xfail(reason="not implemented")
 prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
 
 
+@testing.with_requires("scipy")
 class TestIIRFilter:
 
     # NB: test_symmetry with higher order ellip filters need low tolerance
@@ -486,6 +487,7 @@ class TestEllip:
 #        assert_allclose(a, a2, rtol=1e-4)
 
 
+@testing.with_requires("scipy")
 class TestZpk2Tf:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_identity(self, xp, scp):
