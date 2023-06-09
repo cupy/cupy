@@ -29,35 +29,35 @@ class TestAsStrided(unittest.TestCase):
         return a_rolling
 
 
-class TestSlidingWindowView:
+class TestSlidingWindowView(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
-    def test_1d(self):
-        arr = testing.shaped_arange((9,))
-        window_size = 3
-        arr_view = sliding_window_view(arr, 2)
+    def test_1d(self, xp):
+        arr = testing.shaped_arange((9,), xp)
+        window_size = 2
+        arr_view = stride_tricks.sliding_window_view(arr, 2, 0)
         return arr_view
 
     @testing.numpy_cupy_array_equal()
-    def test_2d(self):
-        arr = testing.shaped_arange((3,4))
+    def test_2d(self, xp):
+        arr = testing.shaped_arange((3,4), xp)
         window_shape = (2,2)
-        arr_view = sliding_window_view_cp(arr, window_shape=window_shape)
+        arr_view = stride_tricks.sliding_window_view(arr, window_shape=window_shape)
         return arr_view
 
     @testing.numpy_cupy_array_equal()
-    def test_2d_with_axis(self):
-        arr = testing.shaped_arange((3,4))
+    def test_2d_with_axis(self, xp):
+        arr = testing.shaped_arange((3,4), xp)
         window_shape = 3
         axis = 0
-        arr_view = sliding_window_view_cp(arr, window_shape,axis)
+        arr_view = stride_tricks.sliding_window_view(arr, window_shape,axis)
         return arr_view
 
     @testing.numpy_cupy_array_equal()
-    def test_2d_multi_axis(self):
-        arr = testing.shaped_arange((3,4))
+    def test_2d_multi_axis(self, xp):
+        arr = testing.shaped_arange((3,4), xp)
         window_shape = (2,3)
         axis = (0,1)
-        arr_view = sliding_window_view_cp(arr, window_shape,axis)
+        arr_view = stride_tricks.sliding_window_view(arr, window_shape,axis)
         return arr_view
 
 
