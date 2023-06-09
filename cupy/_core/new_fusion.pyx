@@ -6,8 +6,8 @@ from cupy._core import core
 from cupy._core import _fusion_trace
 from cupy._core import _fusion_kernel
 from cupy._core import _fusion_thread_local
-from cupy._core._fusion_interface import _ScalarProxy  # NOQA  # no-cython-lint
-from cupy._core._fusion_interface import _ArrayProxy  # NOQA  # no-cython-lint
+from cupy._core._fusion_interface import _ScalarProxy  # no-cython-lint
+from cupy._core._fusion_interface import _ArrayProxy  # no-cython-lint
 from cupy._core._fusion_variable import _AbstractDim
 
 
