@@ -1028,7 +1028,8 @@ cdef class XtPlanNd:
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <Stream>s)  # no-cython-lint
+            result = cufftSetStream(<Handle>plan, <Stream>s)
+        check_result(result)
         XtExec(plan, a.data.ptr, out.data.ptr, direction)
 
     def _sanity_checks(self, int itype, int otype, int etype,

@@ -18,6 +18,8 @@ from cupyx.scipy.signal._signaltools import filtfilt  # NOQA
 from cupyx.scipy.signal._signaltools import sosfilt  # NOQA
 from cupyx.scipy.signal._signaltools import sosfilt_zi  # NOQA
 from cupyx.scipy.signal._signaltools import sosfiltfilt  # NOQA
+from cupyx.scipy.signal._signaltools import hilbert  # NOQA
+from cupyx.scipy.signal._signaltools import hilbert2  # NOQA
 
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 

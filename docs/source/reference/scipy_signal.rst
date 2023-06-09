@@ -43,6 +43,8 @@ Filtering
    sosfilt_zi
    sosfiltfilt
    detrend
+   hilbert
+   hilbert2
 
 Filter design
 -------------
