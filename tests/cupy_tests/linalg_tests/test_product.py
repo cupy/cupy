@@ -377,15 +377,20 @@ class TestProduct(unittest.TestCase):
         b = testing.shaped_arange((4, 5), xp, dtype)
         return xp.kron(a, b)
 
-    @testing.numpy_cupy_allclose()
-    def test_kron_accepts_numbers_as_arguments(self, xp):
-        args_list = [
+
+class TestKron:
+    @pytest.mark.parametrize(
+        "a, b", [
             (2, 3.0),
-            (2, xp.array([[0, -1j / 2], [1j / 2, 0]])),
-            (xp.array([[0, -1j / 2], [1j / 2, 0]]), 2)]
-        for args in args_list:
-            with self.subTest():
-                return xp.kron(*args)
+            (2, [[0, -1j / 2], [1j / 2, 0]]),
+            ([[0, -1j / 2], [1j / 2, 0]], 2)
+        ]
+    )
+    @testing.numpy_cupy_allclose()
+    def test_kron_accepts_numbers_as_arguments(self, a, b, xp):
+        args = [xp.array(arg) if type(arg) == list else arg for arg in [a, b]]
+        print('converted args are ', args)
+        return xp.kron(*args)
 
 
 @testing.parameterize(*testing.product({
