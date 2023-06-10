@@ -389,7 +389,6 @@ class TestKron:
     @testing.numpy_cupy_allclose()
     def test_kron_accepts_numbers_as_arguments(self, a, b, xp):
         args = [xp.array(arg) if type(arg) == list else arg for arg in [a, b]]
-        print('converted args are ', args)
         return xp.kron(*args)
 
 
