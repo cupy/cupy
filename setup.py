@@ -66,6 +66,9 @@ cupy_package_data = [
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
+    'cupyx/scipy/ndimage/cuda/LICENSE',
+    'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
+    'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
 ] + [
     x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
     if os.path.isfile(x)

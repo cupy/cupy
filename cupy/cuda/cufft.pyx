@@ -528,7 +528,7 @@ cdef class Plan1d:
         cdef XtArray* xtArr
         cdef intptr_t ptr
         cdef list xtArr_buffer, share, sizes
-        cdef int i, nGPUs, count
+        cdef int i, nGPUs
         cdef XtSubFormat fmt
 
         # First, get the buffers:
@@ -745,7 +745,7 @@ cdef class PlanNd:
                  int fft_type, int batch, str order, int last_axis, last_size):
         cdef Handle plan
         cdef size_t work_size
-        cdef int ndim, i, result
+        cdef int ndim, result
         cdef vector.vector[int] shape_arr = shape
         cdef vector.vector[int] inembed_arr
         cdef vector.vector[int] onembed_arr
@@ -1028,7 +1028,7 @@ cdef class XtPlanNd:
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <Stream>s)
+            result = cufftSetStream(<Handle>plan, <Stream>s)  # no-cython-lint
         XtExec(plan, a.data.ptr, out.data.ptr, direction)
 
     def _sanity_checks(self, int itype, int otype, int etype,
@@ -1186,9 +1186,9 @@ cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
 
 cpdef intptr_t setCallback(
         intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
-    cdef Handle h = <Handle>plan
-    cdef int result
-    cdef void** callerInfo
+    cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef int result  # no-cython-lint
+    cdef void** callerInfo  # no-cython-lint
 
     IF CUPY_CUFFT_STATIC:
         with nogil:
