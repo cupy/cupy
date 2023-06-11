@@ -2,12 +2,13 @@ import ctypes
 import pkg_resources
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from setuptools import setup
 
 
 VERSION = '13.0.0a1'
+META_VERSION = VERSION
 
 # List of packages supported by this version of CuPy.
 PACKAGES = [
@@ -259,20 +260,6 @@ def infer_best_package() -> str:
         'Unable to detect NVIDIA CUDA or AMD ROCm installation.')
 
 
-def _get_cmdclass(tag: str) -> Dict[str, type]:
-    try:
-        import wheel.bdist_wheel
-    except ModuleNotFoundError:
-        return {}
-
-    class bdist_wheel_with_tag(wheel.bdist_wheel.bdist_wheel):  # type: ignore[misc] # NOQA
-        def initialize_options(self) -> None:
-            super().initialize_options()
-            self.build_number = f'0_{tag}'
-
-    return {"bdist_wheel": bdist_wheel_with_tag}
-
-
 #
 # Entrypoint
 #
@@ -283,17 +270,14 @@ def main() -> None:
         requires = f'{package}=={VERSION}'
         _log(f'Installing package: {requires}')
         install_requires = [requires]
-        tag = package
     else:
         _log('Building cupy-wheel package for release.')
         install_requires = []
-        tag = '0'
 
     setup(
         name='cupy-wheel',
-        version=f'{VERSION}',
+        version=META_VERSION,
         install_requires=install_requires,
-        cmdclass=_get_cmdclass(tag),
     )
 
 
