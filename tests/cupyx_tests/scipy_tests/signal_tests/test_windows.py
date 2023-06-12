@@ -314,7 +314,6 @@ class TestNuttall:
                 scp.signal.windows.nuttall(7, True),)
 
 
-@pytest.mark.skip('The kernel requires a detailed inspection against SciPy')
 class TestParzen:
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
     def test_basic(self, xp, scp):

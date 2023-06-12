@@ -310,7 +310,7 @@ _parzen_kernel = cupy.ElementwiseKernel(
         temp = abs( n ) * den;
         w = 1.0 - 6.0 * temp * temp + 6.0 * temp * temp * temp;
     } else {
-        n = -( i - sizeS2 + s1 + sizeS1 );
+        n = s1 - ( i - ( sizeS2 + sizeS1 - ( 1 - odd ) ) );
         temp = 1.0 - abs( n ) * den;
         w = 2.0 * temp * temp * temp;
     }
