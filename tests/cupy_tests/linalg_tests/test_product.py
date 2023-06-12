@@ -128,7 +128,7 @@ class TestDotFor0Dim(unittest.TestCase):
         return xp.dot(a, b)
 
 
-class TestProduct(unittest.TestCase):
+class TestProduct:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -377,8 +377,6 @@ class TestProduct(unittest.TestCase):
         b = testing.shaped_arange((4, 5), xp, dtype)
         return xp.kron(a, b)
 
-
-class TestKron:
     @pytest.mark.parametrize(
         "a, b", [
             (2, 3.0),
