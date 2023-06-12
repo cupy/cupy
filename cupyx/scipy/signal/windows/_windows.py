@@ -916,7 +916,7 @@ _tukey_kernel = cupy.ElementwiseKernel(
     """
     if ( i < ( width + 1 ) ) {
         w = 0.5 * ( 1 + cos( M_PI * ( -1.0 + 2.0 * i / alpha * N ) ) );
-    } else if ( i > ( width + 1 ) && i < ( _ind.size() - width - 1) ) {
+    } else if ( i >= ( width + 1 ) && i < ( _ind.size() - width - 1) ) {
         w = 1.0;
     } else {
         w = 0.5 *

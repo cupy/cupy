@@ -353,7 +353,6 @@ tukey_data = [
 ]
 
 
-@pytest.mark.skip('The kernel requires a detailed inspection against SciPy')
 class TestTukey:
     @pytest.mark.parametrize('args', tukey_data)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
