@@ -1,4 +1,5 @@
 import collections.abc
+import numbers
 
 import numpy
 
@@ -391,6 +392,13 @@ def kron(a, b):
     .. seealso:: :func:`numpy.kron`
 
     """
+    a_isnumber = isinstance(a, numbers.Number)
+    b_isnumber = isinstance(b, numbers.Number)
+    if a_isnumber and b_isnumber:
+        return a * b
+    if a_isnumber or b_isnumber:
+        return cupy.multiply(a, b)
+
     a_ndim = a.ndim
     b_ndim = b.ndim
     if a_ndim == 0 or b_ndim == 0:
