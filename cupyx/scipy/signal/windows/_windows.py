@@ -82,11 +82,16 @@ def general_cosine(M, a, sym=True):
         design.
         When False, generates a periodic window, for use in spectral analysis.
 
+    Notes
+    -----
+    For more information, see [1]_ and [2]_
+
     References
     ----------
     .. [1] A. Nuttall, "Some windows with very good sidelobe behavior," IEEE
            Transactions on Acoustics, Speech, and Signal Processing, vol. 29,
-           no. 1, pp. 84-91, Feb 1981. :doi:`10.1109/TASSP.1981.1163506`.
+           no. 1, pp. 84-91, Feb 1981.
+           `10.1109/TASSP.1981.1163506 <https://doi.org/10.1109/TASSP.1981.1163506>`_
     .. [2] Heinzel G. et al., "Spectrum and spectral density estimation by the
            Discrete Fourier transform (DFT), including a comprehensive list of
            window functions and some new flat-top windows", February 15, 2002
@@ -135,7 +140,7 @@ def general_cosine(M, a, sym=True):
     >>> plt.xlabel("Normalized frequency [cycles per sample]")
     >>> plt.axhline(-90.2, color='red')
     >>> plt.show()
-    """
+    """  # NOQA
     if _len_guards(M):
         return cupy.ones(M)
     M, needs_trunc = _extend(M, sym)
@@ -345,6 +350,10 @@ def parzen(M, sym=True):
         The window, with the maximum value normalized to 1 (though the value 1
         does not appear if `M` is even and `sym` is True).
 
+    Notes
+    -----
+    For more information, see [1]_.
+
     References
     ----------
     .. [1] E. Parzen, "Mathematical Considerations in the Estimation of
@@ -501,6 +510,8 @@ def blackman(M, sym=True):
     "near optimal" tapering function, almost as good (by some measures)
     as the Kaiser window.
 
+    For more information, see [1]_, [2]_, and [3]_
+
     References
     ----------
     .. [1] Blackman, R.B. and Tukey, J.W., (1958) The measurement of power
@@ -509,7 +520,8 @@ def blackman(M, sym=True):
            Upper Saddle River, NJ: Prentice-Hall, 1999, pp. 468-471.
     .. [3] Harris, Fredric J. (Jan 1978). "On the use of Windows for Harmonic
            Analysis with the Discrete Fourier Transform". Proceedings of the
-           IEEE 66 (1): 51-83. :doi:`10.1109/PROC.1978.10837`.
+           IEEE 66 (1): 51-83.
+           `10.1109/PROC.1978.10837 <https://doi.org/10.1109/PROC.1978.10837>`_
 
     Examples
     --------
@@ -563,11 +575,16 @@ def nuttall(M, sym=True):
         The window, with the maximum value normalized to 1 (though the value 1
         does not appear if `M` is even and `sym` is True).
 
+    Notes
+    -----
+    For more information, see [1]_ and [2]_
+
     References
     ----------
     .. [1] A. Nuttall, "Some windows with very good sidelobe behavior," IEEE
            Transactions on Acoustics, Speech, and Signal Processing, vol. 29,
-           no. 1, pp. 84-91, Feb 1981. :doi:`10.1109/TASSP.1981.1163506`.
+           no. 1, pp. 84-91, Feb 1981.
+           `10.1109/TASSP.1981.1163506 <https://doi.org/10.1109/TASSP.1981.1163506>`_
     .. [2] Heinzel G. et al., "Spectrum and spectral density estimation by the
            Discrete Fourier transform (DFT), including a comprehensive list of
            window functions and some new flat-top windows", February 15, 2002
@@ -598,7 +615,7 @@ def nuttall(M, sym=True):
     >>> plt.ylabel("Normalized magnitude [dB]")
     >>> plt.xlabel("Normalized frequency [cycles per sample]")
 
-    """
+    """  # NOQA
     return general_cosine(M, [0.3635819, 0.4891775, 0.1365995, 0.0106411], sym)
 
 
@@ -681,7 +698,7 @@ def flattop(M, sym=True):
     ----------
     .. [1] D'Antona, Gabriele, and A. Ferrero, "Digital Signal Processing for
            Measurement Systems", Springer Media, 2006, p. 70
-           :doi:`10.1007/0-387-28666-7`.
+           `10.1007/0-387-28666-7 <https://doi.org/10.1007/0-387-28666-7>`_
 
     Examples
     --------
@@ -778,6 +795,8 @@ def bartlett(M, sym=True):
     of two sinc functions.
     Note the excellent discussion in Kanasewich. [2]_
 
+    For more information, see [1]_, [2]_, [3]_, [4]_ and [5]_
+
     References
     ----------
     .. [1] M.S. Bartlett, "Periodogram Analysis and Continuous Spectra",
@@ -868,6 +887,8 @@ def hann(M, sym=True):
     "removing the foot", i.e. smoothing discontinuities at the beginning
     and end of the sampled signal) or tapering function.
 
+    For more information, see [1]_, [2]_, [3]_, and [4]_
+
     References
     ----------
     .. [1] Blackman, R.B. and Tukey, J.W., (1958) The measurement of power
@@ -955,11 +976,16 @@ def tukey(M, alpha=0.5, sym=True):
         The window, with the maximum value normalized to 1 (though the value 1
         does not appear if `M` is even and `sym` is True).
 
+    Notes
+    -----
+    For more information, see [1]_ and [2]_.
+
     References
     ----------
     .. [1] Harris, Fredric J. (Jan 1978). "On the use of Windows for Harmonic
            Analysis with the Discrete Fourier Transform". Proceedings of the
-           IEEE 66 (1): 51-83. :doi:`10.1109/PROC.1978.10837`
+           IEEE 66 (1): 51-83.
+           `10.1109/PROC.1978.10837 <https://doi.org/10.1109/PROC.1978.10837>`_
     .. [2] Wikipedia, "Window function",
            https://en.wikipedia.org/wiki/Window_function#Tukey_window
 
@@ -1215,6 +1241,8 @@ def hamming(M, sym=True):
     "removing the foot", i.e. smoothing discontinuities at the beginning
     and end of the sampled signal) or tapering function.
 
+    For more information, see [1]_, [2]_, [3]_ and [4]_
+
     References
     ----------
     .. [1] Blackman, R.B. and Tukey, J.W., (1958) The measurement of power
@@ -1337,6 +1365,8 @@ def kaiser(M, beta, sym=True):
     "removing the foot", i.e. smoothing discontinuities at the beginning
     and end of the sampled signal) or tapering function.
 
+    For more information, see [1]_, [2]_, [3]_, and [4]_
+
     References
     ----------
     .. [1] J. F. Kaiser, "Digital Filters" - Ch 7 in "Systems analysis by
@@ -1348,7 +1378,9 @@ def kaiser(M, beta, sym=True):
            https://en.wikipedia.org/wiki/Window_function
     .. [4] F. J. Harris, "On the use of windows for harmonic analysis with the
            discrete Fourier transform," Proceedings of the IEEE, vol. 66,
-           no. 1, pp. 51-83, Jan. 1978. :doi:`10.1109/PROC.1978.10837`.
+           no. 1, pp. 51-83, Jan. 1978.
+           `10.1109/PROC.1978.10837 <https://doi.org/10.1109/PROC.1978.10837>`_
+
 
     Examples
     --------
@@ -1619,6 +1651,8 @@ def chebwin(M, at, sym=True):
 
     The equiripple condition in the frequency domain creates impulses in the
     time domain, which appear at the ends of the window.
+
+    For more information, see [1]_, [2]_ and [3]_
 
     References
     ----------
