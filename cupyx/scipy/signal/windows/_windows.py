@@ -19,6 +19,7 @@ from CuSignal under terms of the Apache license.
 # limitations under the License.
 
 import warnings
+from typing import Set
 
 import cupy
 import numpy as np
@@ -2044,7 +2045,7 @@ for k, v in _win_equiv_raw.items():
         _win_equiv[key] = v[0]
 
 # Keep track of which windows need additional parameters
-_needs_param: set[str] = set()
+_needs_param: Set[str] = set()
 for k, v in _win_equiv_raw.items():
     if v[1]:
         _needs_param.update(k)
