@@ -39,6 +39,9 @@ Filtering
    filtfilt
    savgol_filter
    deconvolve
+   sosfilt
+   sosfilt_zi
+   sosfiltfilt
    detrend
    hilbert
    hilbert2

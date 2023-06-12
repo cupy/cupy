@@ -863,6 +863,58 @@ class TestFiltFilt:
 
         res = scp.signal.filtfilt(b, a, x, axis=axis,
                                   method=method, padtype=padtype)
+        return res
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
+class TestSosFiltFilt:
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+                                 type_check=False, accept_error=True)
+    def test_sosfiltfilt_1d(self, size, sections, padtype, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        x_scale = 0.1
+        c_scale = 0.1
+
+        x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random(
+            (sections, 6,), xp, dtype=dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        res = scp.signal.sosfiltfilt(sos, x, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+    def test_filtfilt_ndim(
+            self, size, sections, axis, padtype, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.1
+        c_scale = 0.1
+
+        x = testing.shaped_random((4, 5, 3, size), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random(
+            (sections, 6), xp, dtype=dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        res = scp.signal.sosfiltfilt(sos, x, axis=axis, padtype=padtype)
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
 
