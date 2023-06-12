@@ -1,8 +1,6 @@
-import cupy
 import cupyx.scipy.signal as signal
 from cupy import testing
 
-import pytest
 from pytest import raises as assert_raises
 
 
@@ -35,7 +33,7 @@ class TestFirls:
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
         # design a halfband symmetric low-pass filter
-        h = scp.signal.firls(11, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
+        h = scp.signal.firls(N, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
         return h
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -43,8 +41,9 @@ class TestFirls:
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
 
-        # design a halfband symmetric low-pass filter and check the frequency response
-        h = scp.signal.firls(11, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
+        # design a halfband symmetric low-pass filter and check
+        # the freq response
+        h = scp.signal.firls(N, [0, a, 0.5-a, 0.5], [1, 1, 0, 0], fs=1.0)
         w, H = scp.signal.freqz(h, 1)
         return w, H
 
@@ -54,27 +53,11 @@ class TestFirls:
         taps = scp.signal.firls(9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], [1, 2])
         return taps
 
-  #      # >> taps = firls(8, [0 0.5 0.55 1], [1 1 0 0], [1, 2]);
-  #      known_taps = [-6.26930101730182e-04, -1.03354450635036e-01,
-  #                    -9.81576747564301e-03, 3.17271686090449e-01,
-  #                    5.11409425599933e-01, 3.17271686090449e-01,
-  #                    -9.81576747564301e-03, -1.03354450635036e-01,
-  #                    -6.26930101730182e-04]
-  #      assert_allclose(taps, known_taps)
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_2(self, xp, scp):
         # compare to MATLAB output
         taps = scp.signal.firls(11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], [1, 2])
         return taps
-
-        # >> taps = firls(10, [0 0.5 0.5 1], [1 1 0 0], [1, 2]);
- #       known_taps = [
- #           0.058545300496815, -0.014233383714318, -0.104688258464392,
- #           0.012403323025279, 0.317930861136062, 0.488047220029700,
- #           0.317930861136062, 0.012403323025279, -0.104688258464392,
- #           -0.014233383714318, 0.058545300496815]
- #       assert_allclose(taps, known_taps)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_3(self, xp, scp):
@@ -83,22 +66,12 @@ class TestFirls:
                                 1, 0, 0, 1, 1, 0], fs=20)
         return taps
 
-        # >> taps = firls(6, [0, 0.1, 0.2, 0.3, 0.4, 0.5], [1, 0, 0, 1, 1, 0])
- #       known_taps = [
- #           1.156090832768218, -4.1385894727395849, 7.5288619164321826,
- #           -8.5530572592947856, 7.5288619164321826, -4.1385894727395849,
- #           1.156090832768218]
- #       assert_allclose(taps, known_taps)
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rank_deficient(self, xp, scp):
         # solve() runs but warns (only sometimes, so here we don't use match)
         x = scp.signal.firls(21, [0, 0.1, 0.9, 1], [1, 1, 0, 0])
         w, h = scp.signal.freqz(x, fs=2.)
         return x, w, h
-
-#        assert_allclose(np.abs(h[:2]), 1., atol=1e-5)
-#        assert_allclose(np.abs(h[-2:]), 0., atol=1e-6)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rank_deficient_2(self, xp, scp):

@@ -8,7 +8,8 @@ import cupyx.scipy.fft as sp_fft
 
 
 def _try_convert_to_int(x):
-    """Return an integer for ``5`` and ``array(5)``, fail if not an integer scalar.
+    """Return an integer for ``5`` and ``array(5)``, fail if not an
+       integer scalar.
 
     NB: would be easier if ``operator.index(cupy.array(5))`` worked
     (numpy.array(5) does)
@@ -26,7 +27,8 @@ def _try_convert_to_int(x):
         return value, False
 
 
-def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi, include_nyquist=False):
+def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi,
+          include_nyquist=False):
     """
     Compute the frequency response of a digital filter.
 
@@ -55,7 +57,8 @@ def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi, include_nyquist=Fal
         If a single integer, then compute at that many frequencies (default is
         N=512). This is a convenient alternative to::
 
-            cupy.linspace(0, fs if whole else fs/2, N, endpoint=include_nyquist)
+            cupy.linspace(0, fs if whole else fs/2, N,
+                          endpoint=include_nyquist)
 
         Using a number that is fast for FFT computations can result in
         faster computations (see Notes).
@@ -327,4 +330,3 @@ def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
         w, rowh = freqz(row[:3], row[3:], worN=worN, whole=whole, fs=fs)
         h *= rowh
     return w, h
-

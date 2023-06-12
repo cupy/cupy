@@ -1,6 +1,5 @@
 """Functions for FIR filter design."""
 
-import warnings
 from cupy.linalg import solve, lstsq, LinAlgError
 from cupyx.scipy.linalg import toeplitz, hankel
 import cupyx
