@@ -1,6 +1,6 @@
 .. module:: cupyx.scipy.signal.windows
 
-Signal processing (:mod:`cupyx.scipy.signal`)
+Signal processing windows (:mod:`cupyx.scipy.signal.windows`)
 =============================================
 
 The suite of window functions for filtering and spectral estimation.
