@@ -955,11 +955,13 @@ class TestHilbert:
 
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires("scipy>=1.9")
     def test_hilbert_types(self, dtype, xp, scp):
         in_typed = xp.zeros(8, dtype=dtype)
         return scp.signal.hilbert(in_typed)
 
 
+@testing.with_requires("scipy")
 class TestHilbert2:
 
     def test_bad_args(self):
@@ -986,6 +988,7 @@ class TestHilbert2:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    @testing.with_requires("scipy>=1.9")
     def test_hilbert2_types(self, dtype, xp, scp):
         in_typed = xp.zeros((2, 32), dtype=dtype)
         return scp.signal.hilbert2(in_typed)
