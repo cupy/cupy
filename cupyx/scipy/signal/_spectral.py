@@ -20,7 +20,8 @@ limitations under the License.
 
 
 import cupy
-from cupyx.scipy.signal._spectral_impl import _lombscargle
+from cupyx.scipy.signal._spectral_impl import (
+    _lombscargle, _spectral_helper, _median_bias)
 
 
 def lombscargle(x, y, freqs, precenter=False, normalize=False):
@@ -444,7 +445,7 @@ def csd(
     """
     x = cupy.asarray(x)
     y = cupy.asarray(y)
-    freqs, _, Pxy = _spectral_helper(  # NOQA
+    freqs, _, Pxy = _spectral_helper(
         x,
         y,
         fs,
@@ -457,13 +458,13 @@ def csd(
         scaling,
         axis,
         mode="psd",
-    )  # NOQA
+    )
 
     # Average over windows.
     if len(Pxy.shape) >= 2 and Pxy.size > 0:
         if Pxy.shape[-1] > 1:
             if average == "median":
-                Pxy = cupy.median(Pxy, axis=-1) / _median_bias(Pxy.shape[-1])  # NOQA
+                Pxy = cupy.median(Pxy, axis=-1) / _median_bias(Pxy.shape[-1])
             elif average == "mean":
                 Pxy = Pxy.mean(axis=-1)
             else:

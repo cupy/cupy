@@ -30,8 +30,10 @@ import warnings
 import cupy
 
 from cupy_backends.cuda.api import runtime
+import cupyx.scipy.signal._signaltools as filtering
 from cupyx.scipy.signal._arraytools import (
-    odd_ext, even_ext, zero_ext, const_ext)
+    odd_ext, even_ext, zero_ext, const_ext, _as_strided)
+from cupyx.scipy.signal.windows._windows import get_window
 
 
 def _get_raw_typename(dtype):
@@ -303,6 +305,7 @@ def _spectral_helper(
         segments, so that all of the signal is included in the output.
         Defaults to `False`. Padding occurs after boundary extension, if
         `boundary` is not `None`, and `padded` is `True`.
+
     Returns
     -------
     freqs : ndarray
@@ -400,7 +403,7 @@ def _spectral_helper(
             raise ValueError("nperseg must be a positive integer")
 
     # parse window; if array like, then set nperseg = win.shape
-    win, nperseg = _triage_segments(window, nperseg, input_length=x.shape[-1])  # NOQA
+    win, nperseg = _triage_segments(window, nperseg, input_length=x.shape[-1])
 
     if nfft is None:
         nfft = nperseg
@@ -448,7 +451,7 @@ def _spectral_helper(
     elif not hasattr(detrend, "__call__"):
 
         def detrend_func(d):
-            return filtering.detrend(d, type=detrend, axis=-1)  # NOQA
+            return filtering.detrend(d, type=detrend, axis=-1)
 
     elif axis != -1:
         # Wrap this function so that it receives a shape that it could
@@ -499,7 +502,7 @@ def _spectral_helper(
         freqs = cupy.fft.rfftfreq(nfft, 1 / fs)
 
     # Perform the windowed FFTs
-    result = _fft_helper(x, win, detrend_func, nperseg, noverlap, nfft, sides)  # NOQA
+    result = _fft_helper(x, win, detrend_func, nperseg, noverlap, nfft, sides)
 
     if not same_data:
         # All the same operations on the y data
@@ -538,3 +541,137 @@ def _spectral_helper(
     result = cupy.rollaxis(result, -1, axis)
 
     return freqs, time, result
+
+
+def _triage_segments(window, nperseg, input_length):
+    """
+    Parses window and nperseg arguments for spectrogram and _spectral_helper.
+    This is a helper function, not meant to be called externally.
+
+    Parameters
+    ----------
+    window : string, tuple, or ndarray
+        If window is specified by a string or tuple and nperseg is not
+        specified, nperseg is set to the default of 256 and returns a window of
+        that length.
+        If instead the window is array_like and nperseg is not specified, then
+        nperseg is set to the length of the window. A ValueError is raised if
+        the user supplies both an array_like window and a value for nperseg but
+        nperseg does not equal the length of the window.
+
+    nperseg : int
+        Length of each segment
+
+    input_length: int
+        Length of input signal, i.e. x.shape[-1]. Used to test for errors.
+
+    Returns
+    -------
+    win : ndarray
+        window. If function was called with string or tuple than this will hold
+        the actual array used as a window.
+
+    nperseg : int
+        Length of each segment. If window is str or tuple, nperseg is set to
+        256. If window is array_like, nperseg is set to the length of the
+        6
+        window.
+    """
+
+    # parse window; if array like, then set nperseg = win.shape
+    if isinstance(window, str) or isinstance(window, tuple):
+        # if nperseg not specified
+        if nperseg is None:
+            nperseg = 256  # then change to default
+        if nperseg > input_length:
+            warnings.warn(
+                "nperseg = {0:d} is greater than input length "
+                " = {1:d}, using nperseg = {1:d}".format(nperseg, input_length)
+            )
+            nperseg = input_length
+        win = get_window(window, nperseg)
+    else:
+        win = cupy.asarray(window)
+        if len(win.shape) != 1:
+            raise ValueError("window must be 1-D")
+        if input_length < win.shape[-1]:
+            raise ValueError("window is longer than input signal")
+        if nperseg is None:
+            nperseg = win.shape[0]
+        elif nperseg is not None:
+            if nperseg != win.shape[0]:
+                raise ValueError(
+                    "value specified for nperseg is different"
+                    " from length of window"
+                )
+    return win, nperseg
+
+
+def _fft_helper(x, win, detrend_func, nperseg, noverlap, nfft, sides):
+    """
+    Calculate windowed FFT, for internal use by
+    cusignal.spectral_analysis.spectral._spectral_helper
+
+    This is a helper function that does the main FFT calculation for
+    `_spectral helper`. All input validation is performed there, and the
+    data axis is assumed to be the last axis of x. It is not designed to
+    be called externally. The windows are not averaged over; the result
+    from each window is returned.
+
+    Returns
+    -------
+    result : ndarray
+        Array of FFT data
+
+    Notes
+    -----
+    Adapted from matplotlib.mlab
+
+    """
+    # Created strided array of data segments
+    if nperseg == 1 and noverlap == 0:
+        result = x[..., cupy.newaxis]
+    else:
+        # https://stackoverflow.com/a/5568169
+        step = nperseg - noverlap
+        shape = x.shape[:-1] + ((x.shape[-1] - noverlap) // step, nperseg)
+        strides = x.strides[:-1] + (step * x.strides[-1], x.strides[-1])
+        # Need to optimize this in cuSignal
+        result = _as_strided(x, shape=shape, strides=strides)
+
+    # Detrend each data segment individually
+    result = detrend_func(result)
+
+    # Apply window by multiplication
+    result = win * result
+
+    # Perform the fft. Acts on last axis by default. Zero-pads automatically
+    if sides == "twosided":
+        func = cupy.fft.fft
+    else:
+        result = result.real
+        func = cupy.fft.rfft
+    result = func(result, n=nfft)
+
+    return result
+
+
+def _median_bias(n):
+    """
+    Returns the bias of the median of a set of periodograms relative to
+    the mean.
+
+    See arXiv:gr-qc/0509116 Appendix B for details.
+
+    Parameters
+    ----------
+    n : int
+        Numbers of periodograms being averaged.
+
+    Returns
+    -------
+    bias : float
+        Calculated bias.
+    """
+    ii_2 = 2 * cupy.arange(1.0, (n - 1) // 2 + 1)
+    return 1 + cupy.sum(1.0 / (ii_2 + 1) - 1.0 / ii_2)
