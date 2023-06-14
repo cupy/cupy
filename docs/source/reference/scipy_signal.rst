@@ -57,6 +57,7 @@ Filter design
    bilinear_zpk
    freqz
    freqz_zpk
+   sosfreqz
    firls
    minimum_phase
    savgol_coeffs
@@ -70,9 +71,13 @@ Matlab-style IIR filter design
    :toctree: generated/
 
    butter
+   buttord
    ellip
+   ellipord
    cheby1
+   cheby1ord
    cheby2
+   cheby2ord
 
 
 Low-level filter design functions
