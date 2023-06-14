@@ -1,0 +1,83 @@
+name: "Project (Pull-Request)"
+
+on:
+  issue_comment:
+  pull_request_target:
+    types: [edited, synchronize, converted_to_draft, ready_for_review, review_requested, auto_merge_disabled]
+  pull_request_review:
+  pull_request_review_comment:
+
+jobs:
+  needs-attention:
+    # Brings the pull-request to attention by any activities triggered by users other than assignees.
+    if: |
+        github.repository_owner == 'cupy' &&
+        (
+            (
+                github.event_name == 'issue_comment' &&
+                github.event.issue.pull_request &&
+                !contains(github.event.issue.assignees, github.actor)
+            ) ||
+            (
+                github.event_name != 'issue_comment' &&
+                !contains(github.event.pull_request.assignees, github.actor)
+            )
+        )
+
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Update Status
+        shell: /usr/bin/bash -uex "{0}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST: ${{ (github.event.pull_request || github.event.issue).number }}
+        run: |
+          # https://github.com/orgs/cupy/projects/4
+          gh api graphql -F "pull_request=${PULL_REQUEST}" -f query='
+            query ($pull_request: Int!) {
+              organization(login: "cupy") {
+                projectV2(number: 4) {
+                  id
+                  field(name: "Status") {
+                    ... on ProjectV2SingleSelectField {
+                      id
+                      options {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+                repository(name: "cupy") {
+                  pullRequest(number: $pull_request) {
+                    projectItems(first: 100, includeArchived: false) {
+                      nodes {
+                        project {
+                          id
+                        }
+                        id
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ' --jq '
+            .data.organization.projectV2.id as $project_id |
+            {
+              "project_id": $project_id,
+              "field_id":   .data.organization.projectV2.field.id,
+              "option_id":  .data.organization.projectV2.field.options[] | select(.name == "Needs Attention") | .id,
+              "item_id":    .data.organization.repository.pullRequest.projectItems.nodes[] | select(.project.id == $project_id) | .id,
+            }
+          ' > params.json
+          jq . params.json
+          gh api graphql $(jq -r '[to_entries[] | "-F " + .key + "=\"" + .value + "\""] | join(" ")' params.json) -f query='
+            mutation ($project_id: ID!, $field_id: ID!, $item_id: ID!) {
+              updateProjectV2ItemFieldValue(
+                input: {projectId: $project_id, fieldId: $field_id, itemId: $item_id, value: {singleSelectOptionId: "98236657"}}
+              ) {
+                clientMutationId
+              }
+            }
+          '
