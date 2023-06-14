@@ -375,7 +375,7 @@ def _spectral_helper(
                 cupy.empty(x.shape), cupy.empty(x.shape), cupy.empty(x.shape))
     else:
         if x.size == 0 or y.size == 0:
-            outshape = outershape + (cupy.min([x.shape[axis], y.shape[axis]]),)
+            outshape = outershape + (min([x.shape[axis], y.shape[axis]]),)
             emptyout = cupy.rollaxis(cupy.empty(outshape), -1, axis)
             return emptyout, emptyout, emptyout
 
