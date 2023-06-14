@@ -661,6 +661,70 @@ class TestSOSFreqz:
 
 
 @testing.with_requires('scipy')
+class TestGroupDelay:
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_identity_filter(self, xp, scp):
+        w1, gd1 = scp.signal.group_delay((1, 1))
+        w2, gd2 = scp.signal.group_delay((1, 1), whole=True)
+        return w1, gd1, w2, gd2
+
+    @pytest.mark.skip(reason='firwin is not available on CuPy')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_fir(self, xp, scp):
+        # Let's design linear phase FIR and check that the group delay
+        # is constant.
+        N = 100
+        b = scp.signal.firwin(N + 1, 0.1)
+        w, gd = scp.signal.group_delay((b, 1))
+        return w, gd
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_iir(self, xp, scp):
+        # Let's design Butterworth filter and test the group delay at
+        # some points against MATLAB answer.
+        b, a = scp.signal.butter(4, 0.1)
+        w = xp.linspace(0, xp.pi, num=10, endpoint=False)
+        w, gd = scp.signal.group_delay((b, a), w=w)
+        return w, gd
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_backward_compat(self, xp, scp):
+        # For backward compatibility, test if None act as a wrapper for default
+        w1, gd1 = scp.signal.group_delay((1, 1))
+        w2, gd2 = scp.signal.group_delay((1, 1), None)
+        return w1, gd1, w2, gd2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_fs_param(self, xp, scp):
+        # Let's design Butterworth filter and test the group delay at
+        # some points against the normalized frequency answer.
+        b, a = scp.signal.butter(4, 4800, fs=96000)
+        w = xp.linspace(0, 96000 / 2, num=10, endpoint=False)
+        w, gd = scp.signal.group_delay((b, a), w=w, fs=96000)
+        return w, gd
+
+    @pytest.mark.parametrize(
+        'type', [None, 'int8', 'int16', 'int32', 'int64', 'array'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_N_types(self, type_, xp, scp):
+        # Measure at 8 equally-spaced points
+        N = 8
+        if type_ is not None:
+            wrapper = getattr(xp, type_)
+            N = wrapper(N)
+
+        w, gd = scp.signal.group_delay((1, 1), N)
+        return w, gd
+
+    @pytest.mark.parametrize('w', [8.0, 8.0+0j])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_w_types(self, w, xp, scp):
+        # Measure at frequency 8 rad/sec
+        w_out, gd = scp.signal.group_delay((1, 1), w)
+        return w_out, gd
+
+
+@testing.with_requires('scipy')
 class TestGammatone:
     # Test erroneus input cases.
     @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
@@ -693,7 +757,7 @@ class TestGammatone:
         fs = 16000
         # Create a gammatone filter centered at 1000 Hz.
         b, a = scp.signal.gammatone(1000, ftype, fs=fs)
-        return b, a
+        return b, xp.asarray(a)
 
     # All built-in IIR filters are real, so should have perfectly
     # symmetrical poles and zeros. Then ba representation (using
