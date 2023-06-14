@@ -611,6 +611,89 @@ class TestButtord:
 
 
 @testing.with_requires("scipy")
+class TestCheb1ord:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_lowpass(self, xp, scp):
+        wp = 0.2
+        ws = 0.3
+        rp = 3
+        rs = 60
+        N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False)
+        return N, Wn
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_highpass(self, xp, scp):
+        wp = 0.3
+        ws = 0.2
+        rp = 3
+        rs = 70
+        N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False)
+        return N, Wn
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandpass(self, xp, scp):
+        wp = [0.2, 0.5]
+        ws = [0.1, 0.6]
+        rp = 3
+        rs = 80
+        N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False)
+        return N, Wn
+
+    @pytest.mark.xfail(reason="TODO: fminbound")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandstop(self, xp, scp):
+        wp = [0.1, 0.6]
+        ws = [0.2, 0.5]
+        rp = 3
+        rs = 90
+        N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False)
+        return N, Wn
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_analog(self, xp, scp):
+        wp = 700
+        ws = 100
+        rp = 3
+        rs = 70
+        N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, True)
+        return N, Wn
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_fs_param(self, xp, scp):
+        wp = 4800
+        ws = 7200
+        rp = 3
+        rs = 60
+        fs = 48000
+        N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False, fs=fs)
+        return N, Wn
+
+    def test_invalid_input(self):
+        with pytest.raises(ValueError) as exc_info:
+            signal.cheb1ord(0.2, 0.3, 3, 2)
+        assert "gpass should be smaller than gstop" in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            signal.cheb1ord(0.2, 0.3, -1, 2)
+        assert "gpass should be larger than 0.0" in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            signal.cheb1ord(0.2, 0.3, 1, -2)
+        assert "gstop should be larger than 0.0" in str(exc_info.value)
+
+    @pytest.mark.xfail(reason="TODO: fminbound")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_ellip_butter(self, xp, scp):
+        # The purpose of the test is to make sure the result of `cheb1ord`
+        # differs from that of `buttord`. The values to compare to are
+        # generated with scipy 1.9.1
+
+        n, wn = scp.signal.cheb1ord([0.1, 0.6], [0.2, 0.5], 3, 60)
+        return n, wn
+
+
+@testing.with_requires("scipy")
 class TestZpk2Tf:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_identity(self, xp, scp):
