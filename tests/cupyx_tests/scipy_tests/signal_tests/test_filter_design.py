@@ -1,16 +1,21 @@
 from math import sqrt, pi
 
-import cupy
-import cupyx.scipy.signal as signal
-from cupy import testing
-from cupy.testing import assert_array_almost_equal, assert_allclose
-
+import pytest
 import numpy as np
 
-import pytest
+import cupy
+from cupy import testing
+import cupyx.scipy.signal  # NOQA
+import cupyx.scipy.signal as signal
+from cupy.testing import assert_array_almost_equal, assert_allclose
 
 try:
-    import mpmath
+    import scipy.signal  # NOQA
+except ImportError:
+    pass
+
+try:
+    import mpmath  # NOQA
 except ImportError:
     pass
 
@@ -653,3 +658,61 @@ class TestSOSFreqz:
             w_out, h = signal.sosfreqz([1, 0, 0, 1, 0, 0], worN=w, fs=100)
             assert_array_almost_equal(w_out, [8])
             assert_array_almost_equal(h, [1])
+
+
+@testing.with_requires('scipy')
+class TestGammatone:
+    # Test erroneus input cases.
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_invalid_input(self, mod):
+        _, scp = mod
+
+        # Cutoff frequency is <= 0 or >= fs / 2.
+        fs = 16000
+        for args in [(-fs, 'iir'), (0, 'fir'), (fs / 2, 'iir'), (fs, 'fir')]:
+            with pytest.raises(ValueError, match='The frequency must be '
+                               'between '):
+                scp.signal.gammatone(*args, fs=fs)
+
+        # Filter type is not fir or iir
+        for args in [(440, 'fie'), (220, 'it')]:
+            with pytest.raises(ValueError, match='ftype must be '):
+                scp.signal.gammatone(*args, fs=fs)
+
+        # Order is <= 0 or > 24 for FIR filter.
+        for args in [(440, 'fir', -50), (220, 'fir', 0), (110, 'fir', 25),
+                     (55, 'fir', 50)]:
+            with pytest.raises(ValueError, match='Invalid order: '):
+                scp.signal.gammatone(*args, numtaps=None, fs=fs)
+
+    # Verify that the filter's frequency response is approximately
+    # 1 at the cutoff frequency.
+    @pytest.mark.parametrize('ftype', ['fir', 'iir'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_frequency_response(self, ftype, xp, scp):
+        fs = 16000
+        # Create a gammatone filter centered at 1000 Hz.
+        b, a = scp.signal.gammatone(1000, ftype, fs=fs)
+        return b, a
+
+    # All built-in IIR filters are real, so should have perfectly
+    # symmetrical poles and zeros. Then ba representation (using
+    # numpy.poly) will be purely real instead of having negligible
+    # imaginary parts.
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_iir_symmetry(self, xp, scp):
+        b, a = scp.signal.gammatone(440, 'iir', fs=24000)
+        return b, a
+
+    # Verify FIR filter coefficients with the paper's
+    # Mathematica implementation
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_fir_ba_output(self, xp, scp):
+        b, _ = scp.signal.gammatone(15, 'fir', fs=1000)
+        return b
+
+    # Verify IIR filter coefficients with the paper's MATLAB implementation
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_iir_ba_output(self, xp, scp):
+        b, a = scp.signal.gammatone(440, 'iir', fs=16000)
+        return b, a

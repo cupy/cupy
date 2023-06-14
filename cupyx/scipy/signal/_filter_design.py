@@ -1,5 +1,7 @@
 import operator
+import math
 from math import pi
+import warnings
 
 import cupy
 from cupy.polynomial.polynomial import (
@@ -522,3 +524,170 @@ def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
         w, rowh = freqz(row[:3], row[3:], worN=worN, whole=whole, fs=fs)
         h *= rowh
     return w, h
+
+
+def _hz_to_erb(hz):
+    """
+    Utility for converting from frequency (Hz) to the
+    Equivalent Rectangular Bandwidth (ERB) scale
+    ERB = frequency / EarQ + minBW
+    """
+    EarQ = 9.26449
+    minBW = 24.7
+    return hz / EarQ + minBW
+
+
+def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
+    """
+    Gammatone filter design.
+
+    This function computes the coefficients of an FIR or IIR gammatone
+    digital filter [1]_.
+
+    Parameters
+    ----------
+    freq : float
+        Center frequency of the filter (expressed in the same units
+        as `fs`).
+    ftype : {'fir', 'iir'}
+        The type of filter the function generates. If 'fir', the function
+        will generate an Nth order FIR gammatone filter. If 'iir', the
+        function will generate an 8th order digital IIR filter, modeled as
+        as 4th order gammatone filter.
+    order : int, optional
+        The order of the filter. Only used when ``ftype='fir'``.
+        Default is 4 to model the human auditory system. Must be between
+        0 and 24.
+    numtaps : int, optional
+        Length of the filter. Only used when ``ftype='fir'``.
+        Default is ``fs*0.015`` if `fs` is greater than 1000,
+        15 if `fs` is less than or equal to 1000.
+    fs : float, optional
+        The sampling frequency of the signal. `freq` must be between
+        0 and ``fs/2``. Default is 2.
+
+    Returns
+    -------
+    b, a : ndarray, ndarray
+        Numerator (``b``) and denominator (``a``) polynomials of the filter.
+
+    Raises
+    ------
+    ValueError
+        If `freq` is less than or equal to 0 or greater than or equal to
+        ``fs/2``, if `ftype` is not 'fir' or 'iir', if `order` is less than
+        or equal to 0 or greater than 24 when ``ftype='fir'``
+
+    See Also
+    --------
+    firwin
+    iirfilter
+
+    References
+    ----------
+    .. [1] Slaney, Malcolm, "An Efficient Implementation of the
+        Patterson-Holdsworth Auditory Filter Bank", Apple Computer
+        Technical Report 35, 1993, pp.3-8, 34-39.
+    """
+    # Converts freq to float
+    freq = float(freq)
+
+    # Set sampling rate if not passed
+    if fs is None:
+        fs = 2
+    fs = float(fs)
+
+    # Check for invalid cutoff frequency or filter type
+    ftype = ftype.lower()
+    filter_types = ['fir', 'iir']
+    if not 0 < freq < fs / 2:
+        raise ValueError("The frequency must be between 0 and {}"
+                         " (nyquist), but given {}.".format(fs / 2, freq))
+    if ftype not in filter_types:
+        raise ValueError('ftype must be either fir or iir.')
+
+    # Calculate FIR gammatone filter
+    if ftype == 'fir':
+        # Set order and numtaps if not passed
+        if order is None:
+            order = 4
+        order = operator.index(order)
+
+        if numtaps is None:
+            numtaps = max(int(fs * 0.015), 15)
+        numtaps = operator.index(numtaps)
+
+        # Check for invalid order
+        if not 0 < order <= 24:
+            raise ValueError("Invalid order: order must be > 0 and <= 24.")
+
+        # Gammatone impulse response settings
+        t = cupy.arange(numtaps) / fs
+        bw = 1.019 * _hz_to_erb(freq)
+
+        # Calculate the FIR gammatone filter
+        b = (t ** (order - 1)) * cupy.exp(-2 * cupy.pi * bw * t)
+        b *= cupy.cos(2 * cupy.pi * freq * t)
+
+        # Scale the FIR filter so the frequency response is 1 at cutoff
+        scale_factor = 2 * (2 * cupy.pi * bw) ** (order)
+        scale_factor /= float_factorial(order - 1)
+        scale_factor /= fs
+        b *= scale_factor
+        a = [1.0]
+
+    # Calculate IIR gammatone filter
+    elif ftype == 'iir':
+        # Raise warning if order and/or numtaps is passed
+        if order is not None:
+            warnings.warn('order is not used for IIR gammatone filter.')
+        if numtaps is not None:
+            warnings.warn('numtaps is not used for IIR gammatone filter.')
+
+        # Gammatone impulse response settings
+        T = 1./fs
+        bw = 2 * cupy.pi * 1.019 * _hz_to_erb(freq)
+        fr = 2 * freq * cupy.pi * T
+        bwT = bw * T
+
+        # Calculate the gain to normalize the volume at the center frequency
+        g1 = -2 * cupy.exp(2j * fr) * T
+        g2 = 2 * cupy.exp(-(bwT) + 1j * fr) * T
+        g3 = cupy.sqrt(3 + 2 ** (3 / 2)) * cupy.sin(fr)
+        g4 = cupy.sqrt(3 - 2 ** (3 / 2)) * cupy.sin(fr)
+        g5 = cupy.exp(2j * fr)
+
+        g = g1 + g2 * (cupy.cos(fr) - g4)
+        g *= (g1 + g2 * (cupy.cos(fr) + g4))
+        g *= (g1 + g2 * (cupy.cos(fr) - g3))
+        g *= (g1 + g2 * (cupy.cos(fr) + g3))
+        g /= ((-2 / cupy.exp(2 * bwT) - 2 * g5 + 2 * (1 + g5) /
+               cupy.exp(bwT)) ** 4)
+        g = cupy.abs(g)
+
+        # Create empty filter coefficient lists
+        b = cupy.empty(5)
+        a = cupy.empty(9)
+
+        # Calculate the numerator coefficients
+        b[0] = (T ** 4) / g
+        b[1] = -4 * T ** 4 * cupy.cos(fr) / cupy.exp(bw * T) / g
+        b[2] = 6 * T ** 4 * cupy.cos(2 * fr) / cupy.exp(2 * bw * T) / g
+        b[3] = -4 * T ** 4 * cupy.cos(3 * fr) / cupy.exp(3 * bw * T) / g
+        b[4] = T ** 4 * cupy.cos(4 * fr) / cupy.exp(4 * bw * T) / g
+
+        # Calculate the denominator coefficients
+        a[0] = 1
+        a[1] = -8 * cupy.cos(fr) / cupy.exp(bw * T)
+        a[2] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(2 * bw * T)
+        a[3] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
+        a[3] /= cupy.exp(3 * bw * T)
+        a[4] = 2 * (18 + 16 * cupy.cos(2 * fr) + cupy.cos(4 * fr))
+        a[4] /= cupy.exp(4 * bw * T)
+        a[5] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
+        a[5] /= cupy.exp(5 * bw * T)
+        a[6] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(6 * bw * T)
+        a[7] = -8 * cupy.cos(fr) / cupy.exp(7 * bw * T)
+        a[8] = cupy.exp(-8 * bw * T)
+
+    return b, a
