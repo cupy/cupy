@@ -369,7 +369,6 @@ class TestFreqz_zpk:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_vs_freqz(self, xp, scp):
-      #  b, a = cheby1(4, 5, 0.5, analog=False, output='ba')
         z, p, k = scp.signal.cheby1(4, 5, 0.5, analog=False, output='zpk')
         w, h = scp.signal.freqz_zpk(z, p, k)
         return w, h
