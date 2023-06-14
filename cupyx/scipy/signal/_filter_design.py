@@ -265,7 +265,7 @@ def _validate_sos(sos):
     n_sections, m = sos.shape
     if m != 6:
         raise ValueError('sos array must be shape (n_sections, 6)')
-    if not (sos[:, 3] == 1).all():
+    if ((sos[:, 3] - 1) > 1e-15).any():
         raise ValueError('sos[:, 3] should be all ones')
     return sos, n_sections
 
