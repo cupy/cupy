@@ -63,6 +63,7 @@ Filter design
    firls
    minimum_phase
    savgol_coeffs
+   gammatone
    iirfilter
    unique_roots
    residue
