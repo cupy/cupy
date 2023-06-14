@@ -494,6 +494,123 @@ class TestEllip:
 
 
 @testing.with_requires("scipy")
+class TestButtord:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
+    def test_lowpass(self, xp, scp):
+        wp = 0.2
+        ws = 0.3
+        rp = 3
+        rs = 60
+        N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
+        b, a = scp.signal.butter(N, Wn, 'lowpass', False)
+        w, h = scp.signal.freqz(b, a)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-10)
+    def test_highpass(self, xp, scp):
+        wp = 0.3
+        ws = 0.2
+        rp = 3
+        rs = 70
+        N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
+        b, a = scp.signal.butter(N, Wn, 'highpass', False)
+        w, h = scp.signal.freqz(b, a)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandpass(self, xp, scp):
+        wp = [0.2, 0.5]
+        ws = [0.1, 0.6]
+        rp = 3
+        rs = 80
+        N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
+        return N, Wn
+
+    @pytest.mark.xfail(reason="TODO: fminbound")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_bandstop(self, xp, scp):
+        wp = [0.1, 0.6]
+        ws = [0.2, 0.5]
+        rp = 3
+        rs = 90
+        N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
+        b, a = scp.signal.butter(N, Wn, 'bandstop', False)
+        w, h = scp.signal.freqz(b, a)
+        return w, h
+
+#        w /= np.pi
+#        assert_array_less(-rp,
+#                          dB(h[np.logical_or(w <= wp[0], wp[1] <= w)]))
+#        assert_array_less(dB(h[np.logical_and(ws[0] <= w, w <= ws[1])]),
+#                          -rs)
+#
+#        assert_equal(N, 20)
+#        assert_allclose(Wn, [1.4759432329294042e-01, 5.9997365985276407e-01],
+#                        rtol=1e-6)
+
+    @pytest.mark.xfail(reason="TODO: freqs")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_analog(self, xp, scp):
+        wp = 200
+        ws = 600
+        rp = 3
+        rs = 60
+        N, Wn = scp.signal.buttord(wp, ws, rp, rs, True)
+        b, a = scp.signal.butter(N, Wn, 'lowpass', True)
+        w, h = scp.signal.freqs(b, a)
+        return w, h
+
+#        assert_array_less(-rp, dB(h[w <= wp]))
+#        assert_array_less(dB(h[ws <= w]), -rs)
+#
+#        assert_equal(N, 7)
+#        assert_allclose(Wn, 2.0006785355671877e+02, rtol=1e-15)
+#
+#        n, Wn = buttord(1, 550/450, 1, 26, analog=True)
+#        assert_equal(n, 19)
+#        assert_allclose(Wn, 1.0361980524629517, rtol=1e-15)
+#
+#        assert_equal(buttord(1, 1.2, 1, 80, analog=True)[0], 55)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_fs_param(self, xp, scp):
+        wp = [4410, 11025]
+        ws = [2205, 13230]
+        rp = 3
+        rs = 80
+        fs = 44100
+        N, Wn = scp.signal.buttord(wp, ws, rp, rs, False, fs=fs)
+        return N, Wn
+
+    def test_invalid_input(self):
+        with pytest.raises(ValueError) as exc_info:
+            signal.buttord([20, 50], [14, 60], 3, 2)
+        assert "gpass should be smaller than gstop" in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            signal.buttord([20, 50], [14, 60], -1, 2)
+        assert "gpass should be larger than 0.0" in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            signal.buttord([20, 50], [14, 60], 1, -2)
+        assert "gstop should be larger than 0.0" in str(exc_info.value)
+
+    def test_runtime_warnings(self):
+        with pytest.warns(RuntimeWarning, match=r'Order is zero'):
+            signal.buttord(0.0, 1.0, 3, 60)
+
+    @pytest.mark.xfail(reason="TODO: fminbound")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_ellip_butter(self, xp, scp):
+        # The purpose of the test is to make sure the result of `ellipord`
+        # differs from that of `buttord`. The values to compare to are
+        # generated with scipy 1.9.1
+        n, wn = scp.signal.buttord([0.1, 0.6], [0.2, 0.5], 3, 60)
+        return n, wn
+
+
+@testing.with_requires("scipy")
 class TestZpk2Tf:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_identity(self, xp, scp):

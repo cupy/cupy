@@ -6,28 +6,12 @@ import cupy
 from cupyx.scipy.signal import (
     lp2bp_zpk, lp2lp_zpk, lp2hp_zpk, lp2bs_zpk, bilinear_zpk, zpk2tf, zpk2sos)
 from cupyx.scipy.signal._iir_filter_conversions import (
-    buttap, cheb1ap, cheb2ap, ellipap)
+    buttap, cheb1ap, cheb2ap, ellipap, buttord, ellipord, cheb1ord, cheb2ord)
 
 
 # FIXME
 
 def besselap():
-    raise NotImplementedError
-
-
-def buttord():
-    raise NotImplementedError
-
-
-def ellipord():
-    raise NotImplementedError
-
-
-def cheb1ord():
-    raise NotImplementedError
-
-
-def cheb2ord():
     raise NotImplementedError
 
 
