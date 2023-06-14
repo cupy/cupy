@@ -680,7 +680,6 @@ class TestShift:
     'mode': ['constant', 'nearest'],
     'cval': [cupy.nan, cupy.inf, -cupy.inf],
 }))
-@testing.gpu
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestInterpolationInvalidCval:
 
@@ -850,7 +849,6 @@ class TestZoom:
     'zoom': [(1, 1), (3, 5), (8, 2), (8, 8)],
     'mode': ['nearest', 'reflect', 'mirror', 'grid-wrap', 'grid-constant'],
 }))
-@testing.gpu
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestZoomOrder0IntegerGrid():
 
@@ -875,7 +873,6 @@ class TestZoomOrder0IntegerGrid():
     'order': [0, 1, 2, 3, 4, 5],
     'grid_mode': [False, True],
 }))
-@testing.gpu
 @pytest.mark.skipif(runtime.is_hip, reason='ROCm/HIP may have a bug')
 class TestZoomOutputSize1():
 
