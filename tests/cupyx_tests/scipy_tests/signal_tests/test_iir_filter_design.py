@@ -17,8 +17,7 @@ class TestIIRFilter:
     # NB: test_symmetry with higher order ellip filters need low tolerance
     # on older CUDA versions.
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @pytest.mark.parametrize("N", list(range(1, 25)))
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
@@ -33,8 +32,7 @@ class TestIIRFilter:
                                        ftype=ftype, output='zpk')
         return z, p, k
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @pytest.mark.parametrize("N", list(range(1, 25)))
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
@@ -410,8 +408,7 @@ class TestEllip:
         z, p, k = scp.signal.ellip(1, 1, 55, 0.3, output='zpk')
         return z, p, k
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @pytest.mark.parametrize('N', list(range(25)))
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
@@ -420,8 +417,7 @@ class TestEllip:
             N, 1, 40, wn, 'low', analog=True, output='zpk')
         return z, p, k
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @pytest.mark.parametrize('N', list(range(20)))
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
@@ -435,15 +431,13 @@ class TestEllip:
         b3, a3 = scp.signal.ellip(5, 3, 26, 1, analog=True)
         return b3, a3
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_3(self, xp, scp):
         b, a = scp.signal.ellip(3, 1, 60, [0.4, 0.7], 'stop')
         return b, a
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @pytest.mark.parametrize("arg",
                              # high even order
                              [(24, 1, 80, 0.3, 'high'),
@@ -456,8 +450,7 @@ class TestEllip:
         z, p, k = scp.signal.ellip(*arg, output='zpk')
         return z, p, k
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @pytest.mark.parametrize("arg",
                              [(7, 1, 40, [0.07, 0.2], 'pass'),
                               (5, 1, 75, [90.5, 110.5], 'pass', True),
@@ -467,8 +460,7 @@ class TestEllip:
         z, p, k = scp.signal.ellip(7, 1, 40, [0.07, 0.2], 'pass', output='zpk')
         return z, p, k
 
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() < 11060,
-                        reason='tolerance fails on older CUDA')
+    @testing.with_requires("scipy>=1.8")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandstop(self, xp, scp):
         z, p, k = scp.signal.ellip(8, 1, 65, [0.2, 0.4], 'stop', output='zpk')
