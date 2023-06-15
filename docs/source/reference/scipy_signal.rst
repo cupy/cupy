@@ -75,9 +75,9 @@ Matlab-style IIR filter design
    ellip
    ellipord
    cheby1
-   cheby1ord
+   cheb1ord
    cheby2
-   cheby2ord
+   cheb2ord
 
 
 Low-level filter design functions
