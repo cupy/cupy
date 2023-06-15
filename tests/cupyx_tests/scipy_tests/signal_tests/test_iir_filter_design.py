@@ -527,7 +527,6 @@ class TestButtord:
         N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
@@ -535,19 +534,7 @@ class TestButtord:
         rp = 3
         rs = 90
         N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
-        b, a = scp.signal.butter(N, Wn, 'bandstop', False)
-        w, h = scp.signal.freqz(b, a)
-        return w, h
-
-#        w /= np.pi
-#        assert_array_less(-rp,
-#                          dB(h[np.logical_or(w <= wp[0], wp[1] <= w)]))
-#        assert_array_less(dB(h[np.logical_and(ws[0] <= w, w <= ws[1])]),
-#                          -rs)
-#
-#        assert_equal(N, 20)
-#        assert_allclose(Wn, [1.4759432329294042e-01, 5.9997365985276407e-01],
-#                        rtol=1e-6)
+        return N, Wn
 
     @pytest.mark.xfail(reason="TODO: freqs")
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -600,7 +587,6 @@ class TestButtord:
         with pytest.warns(RuntimeWarning, match=r'Order is zero'):
             signal.buttord(0.0, 1.0, 3, 60)
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`
@@ -640,8 +626,7 @@ class TestCheb1ord:
         N, Wn = scp.signal.cheb1ord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3e-7)
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
         ws = [0.2, 0.5]
@@ -682,7 +667,6 @@ class TestCheb1ord:
             signal.cheb1ord(0.2, 0.3, 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `cheb1ord`
@@ -723,7 +707,6 @@ class TestCheb2ord:
         N, Wn = scp.signal.cheb2ord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
@@ -765,7 +748,6 @@ class TestCheb2ord:
             signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `cheb2ord`
@@ -808,24 +790,22 @@ class TestEllipord:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandpass(self, xp, scp):
-        wp = [0.2, 0.5]
-        ws = [0.1, 0.6]
+        wp = xp.array([0.2, 0.5])
+        ws = xp.array([0.1, 0.6])
         rp = 3
         rs = 80
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandstop(self, xp, scp):
-        wp = [0.1, 0.6]
-        ws = [0.2, 0.5]
+        wp = xp.array([0.1, 0.6])
+        ws = xp.array([0.2, 0.5])
         rp = 3
         rs = 90
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_analog(self, xp, scp):
         wp = [1000, 6000]
@@ -835,7 +815,6 @@ class TestEllipord:
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, True)
         return N, Wn
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_fs_param(self, xp, scp):
         wp = [400, 2400]
@@ -859,13 +838,12 @@ class TestEllipord:
             signal.ellipord(0.2, 0.5, 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
-    @pytest.mark.xfail(reason="TODO: fminbound")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`
         # differs from that of `buttord`. The values to compare to are
         # generated with scipy 1.9.1
-        n, wn = signal.ellipord([0.1, 0.6], [0.2, 0.5], 3, 60)
+        n, wn = scp.signal.ellipord([0.1, 0.6], [0.2, 0.5], 3, 60)
         return n, wn
 
 

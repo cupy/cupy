@@ -15,23 +15,32 @@ _status_message = {'success': 'Optimization terminated successfully.',
                    'out_of_bounds': 'The result is outside of the provided '
                                     'bounds.'}
 
-class OptimizeResult:
-    def __init__(self, **kwds):
-        self.__dict__.update(**kwds)
-
 
 class OptimizeResult(dict):
     """ Represents the optimization result.
     """
+
     def __getattr__(self, name):
         try:
             return self[name]
         except KeyError as e:
             raise AttributeError(name) from e
 
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
 
+def _endprint(x, flag, fval, maxfun, xtol, disp):
+    if flag == 0:
+        if disp > 1:
+            print("\nOptimization terminated successfully;\n"
+                  "The returned value satisfies the termination criteria\n"
+                  "(using xtol = ", xtol, ")")
+    if flag == 1:
+        if disp:
+            print("\nMaximum number of function evaluations exceeded --- "
+                  "increase maxfun argument.\n")
+    if flag == 2:
+        if disp:
+            print("\n{}".format(_status_message['nan']))
+    return
 
 
 def fminbound(func, x1, x2, args=(), xtol=1e-5, maxfun=500,
@@ -102,7 +111,7 @@ def fminbound(func, x1, x2, args=(), xtol=1e-5, maxfun=500,
     """
     options = {'xatol': xtol,
                'maxiter': maxfun,
-              }
+               }
 
     res = _minimize_scalar_bounded(func, (x1, x2), args, **options)
     if full_output:
@@ -250,4 +259,3 @@ def _minimize_scalar_bounded(func, bounds, args=(),
                             x=xf, nfev=num, nit=num)
 
     return result
-

@@ -9,6 +9,7 @@ from math import pi
 import cupy
 from cupyx.scipy.special import binom as comb
 import cupyx.scipy.special as special
+from cupyx.scipy.signal import _optimize
 
 
 class BadCoefficients(UserWarning):
@@ -1540,18 +1541,15 @@ def _find_nat_freq(stopb, passb, gpass, gstop, filter_type, filter_kind):
     elif filter_type == 2:          # high
         nat = passb / stopb
     elif filter_type == 3:          # stop
-
-        raise NotImplementedError
-
-        wp0 = optimize.fminbound(band_stop_obj, passb[0], stopb[0] - 1e-12,
-                                 args=(0, passb, stopb, gpass, gstop,
-                                       filter_kind),
-                                 disp=0)
+        wp0 = _optimize.fminbound(band_stop_obj, passb[0], stopb[0] - 1e-12,
+                                  args=(0, passb, stopb, gpass, gstop,
+                                        filter_kind),
+                                  disp=0)
         passb[0] = wp0
-        wp1 = optimize.fminbound(band_stop_obj, stopb[1] + 1e-12, passb[1],
-                                 args=(1, passb, stopb, gpass, gstop,
-                                       filter_kind),
-                                 disp=0)
+        wp1 = _optimize.fminbound(band_stop_obj, stopb[1] + 1e-12, passb[1],
+                                  args=(1, passb, stopb, gpass, gstop,
+                                        filter_kind),
+                                  disp=0)
         passb[1] = wp1
         nat = ((stopb * (passb[0] - passb[1])) /
                (stopb ** 2 - passb[0] * passb[1]))
@@ -1572,6 +1570,70 @@ def _postprocess_wn(WN, analog, fs):
     if fs is not None:
         wn = wn * fs / 2
     return wn
+
+
+def band_stop_obj(wp, ind, passb, stopb, gpass, gstop, type):
+    """
+    Band Stop Objective Function for order minimization.
+
+    Returns the non-integer order for an analog band stop filter.
+
+    Parameters
+    ----------
+    wp : scalar
+        Edge of passband `passb`.
+    ind : int, {0, 1}
+        Index specifying which `passb` edge to vary (0 or 1).
+    passb : ndarray
+        Two element sequence of fixed passband edges.
+    stopb : ndarray
+        Two element sequence of fixed stopband edges.
+    gstop : float
+        Amount of attenuation in stopband in dB.
+    gpass : float
+        Amount of ripple in the passband in dB.
+    type : {'butter', 'cheby', 'ellip'}
+        Type of filter.
+
+    Returns
+    -------
+    n : scalar
+        Filter order (possibly non-integer).
+
+    See Also
+    --------
+    scipy.signal.band_stop_obj
+
+    """
+
+    _validate_gpass_gstop(gpass, gstop)
+
+    passbC = passb.copy()
+    passbC[ind] = wp
+    nat = (stopb * (passbC[0] - passbC[1]) /
+           (stopb ** 2 - passbC[0] * passbC[1]))
+    nat = min(cupy.abs(nat))
+
+    if type == 'butter':
+        GSTOP = 10 ** (0.1 * cupy.abs(gstop))
+        GPASS = 10 ** (0.1 * cupy.abs(gpass))
+        n = (cupy.log10((GSTOP - 1.0) / (GPASS - 1.0)) / (2 * cupy.log10(nat)))
+    elif type == 'cheby':
+        GSTOP = 10 ** (0.1 * cupy.abs(gstop))
+        GPASS = 10 ** (0.1 * cupy.abs(gpass))
+        n = cupy.arccosh(
+            cupy.sqrt((GSTOP - 1.0) / (GPASS - 1.0))) / cupy.arccosh(nat)
+    elif type == 'ellip':
+        GSTOP = 10 ** (0.1 * gstop)
+        GPASS = 10 ** (0.1 * gpass)
+        arg1 = cupy.sqrt((GPASS - 1.0) / (GSTOP - 1.0))
+        arg0 = 1.0 / nat
+        d0 = special.ellipk(cupy.array([arg0 ** 2, 1 - arg0 ** 2]))
+        d1 = special.ellipk(cupy.array([arg1 ** 2, 1 - arg1 ** 2]))
+        n = (d0[0] * d1[1] / (d0[1] * d1[0]))
+    else:
+        raise ValueError("Incorrect type: %s" % type)
+    return n
 
 
 def buttord(wp, ws, gpass, gstop, analog=False, fs=None):
