@@ -93,6 +93,7 @@ Matlab-style IIR filter design
    cheb1ord
    cheby2
    cheb2ord
+   iircomb
 
 
 Low-level filter design functions

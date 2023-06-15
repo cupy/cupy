@@ -1085,6 +1085,80 @@ class TestIIRDesign:
 
 
 @testing.with_requires("scipy")
+class TestIIRComb:
+    # Test erroneous input cases
+    def test_invalid_input(self):
+        # w0 is <= 0 or >= fs / 2
+        fs = 1000
+        for args in [(-fs, 30), (0, 35), (fs / 2, 40), (fs, 35)]:
+            with pytest.raises(ValueError, match='w0 must be between '):
+                signal.iircomb(*args, fs=fs)
+
+        # fs is not divisible by w0
+        for args in [(120, 30), (157, 35)]:
+            with pytest.raises(ValueError, match='fs must be divisible '):
+                signal.iircomb(*args, fs=fs)
+
+        with pytest.raises(ValueError, match='fs must be divisible '):
+            signal.iircomb(w0=49.999/int(44100/2), Q=30)
+
+        with pytest.raises(ValueError, match='fs must be divisible '):
+            signal.iircomb(w0=49.999, Q=30, fs=44100)
+
+        # Filter type is not notch or peak
+        for args in [(0.2, 30, 'natch'), (0.5, 35, 'comb')]:
+            with pytest.raises(ValueError, match='ftype must be '):
+                signal.iircomb(*args)
+
+    # Verify that the filter's frequency response contains a
+    # notch at the cutoff frequency
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.parametrize('ftype', ('notch', 'peak'))
+    def test_frequency_response(self, ftype, xp, scp):
+        # Create a notching or peaking comb filter at 1000 Hz
+        b, a = scp.signal.iircomb(1000, 30, ftype=ftype, fs=10000)
+        return b, a
+
+    # Verify pass_zero parameter
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @pytest.mark.parametrize('ftype,pass_zero,peak,notch',
+                             [('peak', True, 123.45, 61.725),
+                              ('peak', False, 61.725, 123.45),
+                              ('peak', None, 61.725, 123.45),
+                              ('notch', None, 61.725, 123.45),
+                              ('notch', True, 123.45, 61.725),
+                              ('notch', False, 61.725, 123.45)])
+    def test_pass_zero(self, ftype, pass_zero, peak, notch, xp, scp):
+        # Create a notching or peaking comb filter
+        b, a = scp.signal.iircomb(123.45, 30, ftype=ftype, fs=1234.5, pass_zero=pass_zero)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_iir_symmetry(self, xp, scp):
+        b, a = scp.signal.iircomb(400, 30, fs=24000)
+        return b, a
+
+    # Verify filter coefficients with MATLAB's iircomb function
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ba_output(self, xp, scp):
+        b, a = scp.signal.iircomb(60, 35, ftype='notch', fs=600)
+        return b, a
+
+    # Verify filter coefficients with MATLAB's iircomb function
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ba_output_2(self, xp, scp):
+        b, a = scp.signal.iircomb(60, 35, ftype='peak', fs=600)
+        return b, a
+
+    # Verify that https://github.com/scipy/scipy/issues/14043 is fixed
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_nearest_divisor(self, xp, scp):
+        # Create a notching comb filter
+        b, a = scp.signal.iircomb(50/int(44100/2), 50.0, ftype='notch')
+        return b, a
+
+
+@testing.with_requires("scipy")
 class TestZpk2Tf:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_identity(self, xp, scp):
