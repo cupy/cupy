@@ -367,16 +367,6 @@ class TestFreqz_zpk:
         w, h = scp.signal.freqz_zpk([0.5], [0.5], 1.0, worN=8, whole=True)
         return w, h
 
-    @pytest.mark.xfail(reason="implement cheby1")
-    def test_vs_freqz(self):
-        b, a = cheby1(4, 5, 0.5, analog=False, output='ba')
-        z, p, k = cheby1(4, 5, 0.5, analog=False, output='zpk')
-
-        w1, h1 = freqz(b, a)
-        w2, h2 = signal.freqz_zpk(z, p, k)
-        assert_allclose(w1, w2)
-        assert_allclose(h1, h2, rtol=1e-6)
-
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_vs_freqz_zpk(self, xp, scp):
         z, p, k = scp.signal.cheby1(4, 5, 0.5, analog=False, output='zpk')
@@ -471,97 +461,6 @@ class TestSOSFreqz:
         w2, h2 = scp.signal.sosfreqz(sos, worN=N)
         return w2, h2
 
-    @pytest.mark.xfail(reason="TODO: implement cheb2ord et al")
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_sosfrez_design(self, xp, scp):
-        # Compare sosfreqz output against expected values for different
-        # filter types
-
-        # from cheb2ord
-        N, Wn = cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 60)
-        sos = cheby2(N, 60, Wn, 'stop', output='sos')
-        w, h = signal.sosfreqz(sos)
-        h = np.abs(h)
-        w /= np.pi
-        assert_allclose(20 * np.log10(h[w <= 0.1]), 0, atol=3.01)
-        assert_allclose(20 * np.log10(h[w >= 0.6]), 0., atol=3.01)
-        assert_allclose(h[(w >= 0.2) & (w <= 0.5)], 0., atol=1e-3)  # <= -60 dB
-
-        N, Wn = cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 150)
-        sos = cheby2(N, 150, Wn, 'stop', output='sos')
-        w, h = signal.sosfreqz(sos)
-        dB = 20*np.log10(np.abs(h))
-        w /= np.pi
-        assert_allclose(dB[w <= 0.1], 0, atol=3.01)
-        assert_allclose(dB[w >= 0.6], 0., atol=3.01)
-        assert_array_less(dB[(w >= 0.2) & (w <= 0.5)], -149.9)
-
-        # from cheb1ord
-        N, Wn = cheb1ord(0.2, 0.3, 3, 40)
-        sos = cheby1(N, 3, Wn, 'low', output='sos')
-        w, h = signal.sosfreqz(sos)
-        h = np.abs(h)
-        w /= np.pi
-        assert_allclose(20 * np.log10(h[w <= 0.2]), 0, atol=3.01)
-        assert_allclose(h[w >= 0.3], 0., atol=1e-2)  # <= -40 dB
-
-        N, Wn = cheb1ord(0.2, 0.3, 1, 150)
-        sos = cheby1(N, 1, Wn, 'low', output='sos')
-        w, h = signal.sosfreqz(sos)
-        dB = 20*np.log10(np.abs(h))
-        w /= np.pi
-        assert_allclose(dB[w <= 0.2], 0, atol=1.01)
-        assert_array_less(dB[w >= 0.3], -149.9)
-
-        # adapted from ellipord
-        N, Wn = ellipord(0.3, 0.2, 3, 60)
-        sos = ellip(N, 0.3, 60, Wn, 'high', output='sos')
-        w, h = signal.sosfreqz(sos)
-        h = np.abs(h)
-        w /= np.pi
-        assert_allclose(20 * np.log10(h[w >= 0.3]), 0, atol=3.01)
-        assert_allclose(h[w <= 0.1], 0., atol=1.5e-3)  # <= -60 dB (approx)
-
-        # adapted from buttord
-        N, Wn = buttord([0.2, 0.5], [0.14, 0.6], 3, 40)
-        sos = butter(N, Wn, 'band', output='sos')
-        w, h = signal.sosfreqz(sos)
-        h = np.abs(h)
-        w /= np.pi
-        assert_allclose(h[w <= 0.14], 0., atol=1e-2)  # <= -40 dB
-        assert_allclose(h[w >= 0.6], 0., atol=1e-2)  # <= -40 dB
-        assert_allclose(20 * np.log10(h[(w >= 0.2) & (w <= 0.5)]),
-                        0, atol=3.01)
-
-        N, Wn = buttord([0.2, 0.5], [0.14, 0.6], 3, 100)
-        sos = butter(N, Wn, 'band', output='sos')
-        w, h = signal.sosfreqz(sos)
-        dB = 20*np.log10(np.maximum(np.abs(h), 1e-10))
-        w /= np.pi
-        assert_array_less(dB[(w > 0) & (w <= 0.14)], -99.9)
-        assert_array_less(dB[w >= 0.6], -99.9)
-        assert_allclose(dB[(w >= 0.2) & (w <= 0.5)], 0, atol=3.01)
-
-    @pytest.mark.xfail(reason="TODO: implement ellipord et al")
-    def test_sosfreqz_design_ellip(self):
-        N, Wn = ellipord(0.3, 0.1, 3, 60)
-        sos = ellip(N, 0.3, 60, Wn, 'high', output='sos')
-        w, h = signal.sosfreqz(sos)
-        h = np.abs(h)
-        w /= np.pi
-        assert_allclose(20 * np.log10(h[w >= 0.3]), 0, atol=3.01)
-        assert_allclose(h[w <= 0.1], 0., atol=1.5e-3)  # <= -60 dB (approx)
-
-        N, Wn = ellipord(0.3, 0.2, .5, 150)
-        sos = ellip(N, .5, 150, Wn, 'high', output='sos')
-        w, h = signal.sosfreqz(sos)
-        dB = 20*np.log10(np.maximum(np.abs(h), 1e-10))
-        w /= np.pi
-        assert_allclose(dB[w >= 0.3], 0, atol=.55)
-        # Allow some numerical slop in the upper bound -150, so this is
-        # a check that dB[w <= 0.2] is less than or almost equal to -150.
-        assert dB[w <= 0.2].max() < -150*(1 - 1e-12)
-
     @testing.with_requires("mpmath > 0.10")
     def test_sos_freqz_against_mp(self):
         # Compare the result of sosfreqz applied to a high order Butterworth
@@ -577,7 +476,7 @@ class TestSOSFreqz:
         w_mp = np.array([float(x) for x in w_mp])
         h_mp = np.array([complex(x) for x in h_mp])
 
-        sos = butter(order, Wn, output='sos')
+        sos = signal.butter(order, Wn, output='sos')
         w, h = signal.sosfreqz(sos, worN=N)
         assert_allclose(w, w_mp, rtol=1e-12, atol=1e-14)
         assert_allclose(h, h_mp, rtol=1e-12, atol=1e-14)
