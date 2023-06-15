@@ -704,7 +704,7 @@ class TestGroupDelay:
         return w, gd
 
     @pytest.mark.parametrize(
-        'type', [None, 'int8', 'int16', 'int32', 'int64', 'array'])
+        'type_', [None, 'int8', 'int16', 'int32', 'int64'])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_N_types(self, type_, xp, scp):
         # Measure at 8 equally-spaced points

@@ -7,6 +7,7 @@ import cupy
 from cupy.polynomial.polynomial import (
     polyval as npp_polyval, polyvalfromroots as npp_polyvalfromroots)
 import cupyx.scipy.fft as sp_fft
+from cupyx import jit
 from cupyx.scipy._lib._util import float_factorial
 
 EPSILON = 2e-16
@@ -321,23 +322,7 @@ def group_delay(system, w=512, whole=False, fs=2 * cupy.pi):
     den = cupy.polyval(c[::-1], z)
     gd = cupy.real(num / den) - a.size + 1
     singular = ~cupy.isfinite(gd)
-    near_singular = cupy.absolute(den) < 10 * EPSILON
-
-    if cupy.any(singular):
-        gd[singular] = 0
-        warnings.warn(
-            "The group delay is singular at frequencies [{}], setting to 0".
-            format(", ".join(f"{ws:.3f}" for ws in w[singular])),
-            stacklevel=2
-        )
-
-    elif cupy.any(near_singular):
-        warnings.warn(
-            "The filter's denominator is extremely small at frequencies [{}], \
-            around which a singularity may be present".
-            format(", ".join(f"{ws:.3f}" for ws in w[near_singular])),
-            stacklevel=2
-        )
+    gd[singular] = 0
 
     w = w * fs / (2 * cupy.pi)
     return w, gd
@@ -659,6 +644,63 @@ def _hz_to_erb(hz):
     return hz / EarQ + minBW
 
 
+@jit.rawkernel()
+def _gammatone_iir_kernel(fs, freq, b, a):
+    tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
+
+    EarQ = 9.26449
+    minBW = 24.7
+    erb = freq / EarQ + minBW
+
+    T = 1./fs
+    bw = 2 * cupy.pi * 1.019 * erb
+    fr = 2 * freq * cupy.pi * T
+    bwT = bw * T
+
+    # Calculate the gain to normalize the volume at the center frequency
+    g1 = -2 * cupy.exp(2j * fr) * T
+    g2 = 2 * cupy.exp(-(bwT) + 1j * fr) * T
+    g3 = cupy.sqrt(3 + 2 ** (3 / 2)) * cupy.sin(fr)
+    g4 = cupy.sqrt(3 - 2 ** (3 / 2)) * cupy.sin(fr)
+    g5 = cupy.exp(2j * fr)
+
+    g = g1 + g2 * (cupy.cos(fr) - g4)
+    g *= (g1 + g2 * (cupy.cos(fr) + g4))
+    g *= (g1 + g2 * (cupy.cos(fr) - g3))
+    g *= (g1 + g2 * (cupy.cos(fr) + g3))
+    g /= ((-2 / cupy.exp(2 * bwT) - 2 * g5 + 2 * (1 + g5) /
+           cupy.exp(bwT)) ** 4)
+    g_act = cupy.abs(g)
+
+    # Calculate the numerator coefficients
+    if tid == 0:
+        b[tid] = (T ** 4) / g_act
+        a[tid] = 1
+    elif tid == 1:
+        b[tid] = -4 * T ** 4 * cupy.cos(fr) / cupy.exp(bw * T) / g_act
+        a[tid] = -8 * cupy.cos(fr) / cupy.exp(bw * T)
+    elif tid == 2:
+        b[tid] = 6 * T ** 4 * cupy.cos(2 * fr) / cupy.exp(2 * bw * T) / g_act
+        a[tid] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(2 * bw * T)
+    elif tid == 3:
+        b[tid] = -4 * T ** 4 * cupy.cos(3 * fr) / cupy.exp(3 * bw * T) / g_act
+        a[tid] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
+        a[tid] /= cupy.exp(3 * bw * T)
+    elif tid == 4:
+        b[tid] = T ** 4 * cupy.cos(4 * fr) / cupy.exp(4 * bw * T) / g_act
+        a[tid] = 2 * (18 + 16 * cupy.cos(2 * fr) + cupy.cos(4 * fr))
+        a[tid] /= cupy.exp(4 * bw * T)
+    elif tid == 5:
+        a[tid] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
+        a[tid] /= cupy.exp(5 * bw * T)
+    elif tid == 6:
+        a[tid] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(6 * bw * T)
+    elif tid == 7:
+        a[tid] = -8 * cupy.cos(fr) / cupy.exp(7 * bw * T)
+    elif tid == 8:
+        a[tid] = cupy.exp(-8 * bw * T)
+
+
 def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
     """
     Gammatone filter design.
@@ -766,50 +808,9 @@ def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
         if numtaps is not None:
             warnings.warn('numtaps is not used for IIR gammatone filter.')
 
-        # Gammatone impulse response settings
-        T = 1./fs
-        bw = 2 * cupy.pi * 1.019 * _hz_to_erb(freq)
-        fr = 2 * freq * cupy.pi * T
-        bwT = bw * T
-
-        # Calculate the gain to normalize the volume at the center frequency
-        g1 = -2 * cupy.exp(2j * fr) * T
-        g2 = 2 * cupy.exp(-(bwT) + 1j * fr) * T
-        g3 = cupy.sqrt(3 + 2 ** (3 / 2)) * cupy.sin(fr)
-        g4 = cupy.sqrt(3 - 2 ** (3 / 2)) * cupy.sin(fr)
-        g5 = cupy.exp(2j * fr)
-
-        g = g1 + g2 * (cupy.cos(fr) - g4)
-        g *= (g1 + g2 * (cupy.cos(fr) + g4))
-        g *= (g1 + g2 * (cupy.cos(fr) - g3))
-        g *= (g1 + g2 * (cupy.cos(fr) + g3))
-        g /= ((-2 / cupy.exp(2 * bwT) - 2 * g5 + 2 * (1 + g5) /
-               cupy.exp(bwT)) ** 4)
-        g = cupy.abs(g)
-
         # Create empty filter coefficient lists
         b = cupy.empty(5)
         a = cupy.empty(9)
-
-        # Calculate the numerator coefficients
-        b[0] = (T ** 4) / g
-        b[1] = -4 * T ** 4 * cupy.cos(fr) / cupy.exp(bw * T) / g
-        b[2] = 6 * T ** 4 * cupy.cos(2 * fr) / cupy.exp(2 * bw * T) / g
-        b[3] = -4 * T ** 4 * cupy.cos(3 * fr) / cupy.exp(3 * bw * T) / g
-        b[4] = T ** 4 * cupy.cos(4 * fr) / cupy.exp(4 * bw * T) / g
-
-        # Calculate the denominator coefficients
-        a[0] = 1
-        a[1] = -8 * cupy.cos(fr) / cupy.exp(bw * T)
-        a[2] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(2 * bw * T)
-        a[3] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
-        a[3] /= cupy.exp(3 * bw * T)
-        a[4] = 2 * (18 + 16 * cupy.cos(2 * fr) + cupy.cos(4 * fr))
-        a[4] /= cupy.exp(4 * bw * T)
-        a[5] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
-        a[5] /= cupy.exp(5 * bw * T)
-        a[6] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(6 * bw * T)
-        a[7] = -8 * cupy.cos(fr) / cupy.exp(7 * bw * T)
-        a[8] = cupy.exp(-8 * bw * T)
+        _gammatone_iir_kernel((9,), (1,), (fs, freq, b, a))
 
     return b, a
