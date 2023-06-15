@@ -64,6 +64,9 @@ Filter design
    minimum_phase
    savgol_coeffs
    iirfilter
+   kaiser_atten
+   kaiser_beta
+   kaiserord
    unique_roots
    residue
    residuez

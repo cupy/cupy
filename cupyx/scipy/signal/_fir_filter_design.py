@@ -10,6 +10,121 @@ import cupy
 __all__ = ["firls", "minimum_phase"]
 
 
+def kaiser_beta(a):
+    """Compute the Kaiser parameter `beta`, given the attenuation `a`.
+
+    Parameters
+    ----------
+    a : float
+        The desired attenuation in the stopband and maximum ripple in
+        the passband, in dB.  This should be a *positive* number.
+
+    Returns
+    -------
+    beta : float
+        The `beta` parameter to be used in the formula for a Kaiser window.
+
+    References
+    ----------
+    Oppenheim, Schafer, "Discrete-Time Signal Processing", p.475-476.
+
+    See Also
+    --------
+    scipy.signal.kaiser_beta
+
+    """
+    if a > 50:
+        beta = 0.1102 * (a - 8.7)
+    elif a > 21:
+        beta = 0.5842 * (a - 21) ** 0.4 + 0.07886 * (a - 21)
+    else:
+        beta = 0.0
+    return beta
+
+
+def kaiser_atten(numtaps, width):
+    """Compute the attenuation of a Kaiser FIR filter.
+
+    Given the number of taps `N` and the transition width `width`, compute the
+    attenuation `a` in dB, given by Kaiser's formula:
+
+        a = 2.285 * (N - 1) * pi * width + 7.95
+
+    Parameters
+    ----------
+    numtaps : int
+        The number of taps in the FIR filter.
+    width : float
+        The desired width of the transition region between passband and
+        stopband (or, in general, at any discontinuity) for the filter,
+        expressed as a fraction of the Nyquist frequency.
+
+    Returns
+    -------
+    a : float
+        The attenuation of the ripple, in dB.
+
+    See Also
+    --------
+    scipy.signal.kaiser_atten
+    """
+    a = 2.285 * (numtaps - 1) * cupy.pi * width + 7.95
+    return a
+
+
+def kaiserord(ripple, width):
+    """
+    Determine the filter window parameters for the Kaiser window method.
+
+    The parameters returned by this function are generally used to create
+    a finite impulse response filter using the window method, with either
+    `firwin` or `firwin2`.
+
+    Parameters
+    ----------
+    ripple : float
+        Upper bound for the deviation (in dB) of the magnitude of the
+        filter's frequency response from that of the desired filter (not
+        including frequencies in any transition intervals). That is, if w
+        is the frequency expressed as a fraction of the Nyquist frequency,
+        A(w) is the actual frequency response of the filter and D(w) is the
+        desired frequency response, the design requirement is that::
+
+            abs(A(w) - D(w))) < 10**(-ripple/20)
+
+        for 0 <= w <= 1 and w not in a transition interval.
+    width : float
+        Width of transition region, normalized so that 1 corresponds to pi
+        radians / sample. That is, the frequency is expressed as a fraction
+        of the Nyquist frequency.
+
+    Returns
+    -------
+    numtaps : int
+        The length of the Kaiser window.
+    beta : float
+        The beta parameter for the Kaiser window.
+
+    See Also
+    --------
+    scipy.signal.kaiserord
+
+
+    """
+    A = abs(ripple)  # in case somebody is confused as to what's meant
+    if A < 8:
+        # Formula for N is not valid in this range.
+        raise ValueError("Requested maximum ripple attentuation %f is too "
+                         "small for the Kaiser formula." % A)
+    beta = kaiser_beta(A)
+
+    # Kaiser's formula (as given in Oppenheim and Schafer) is for the filter
+    # order, so we have to add 1 to get the number of taps.
+    numtaps = (A - 7.95) / 2.285 / (cupy.pi * width) + 1
+
+    return int(cupy.ceil(numtaps)), beta
+
+
 # Scipy <= 1.12 has a deprecated `nyq` argument (nyq = fs/2).
 # Remove it here, to be forward-looking.
 def firls(numtaps, bands, desired, weight=None, fs=2):
