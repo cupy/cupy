@@ -848,6 +848,7 @@ class TestEllipord:
         return n, wn
 
 
+@testing.with_requires("scipy")
 class TestIIRDesign:
 
     def test_exceptions(self):
