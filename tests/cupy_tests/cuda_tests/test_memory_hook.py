@@ -3,7 +3,6 @@ import unittest
 import cupy.cuda
 from cupy.cuda import memory
 from cupy.cuda import memory_hook
-from cupy import testing
 
 
 class SimpleMemoryHook(memory_hook.MemoryHook):
@@ -36,7 +35,6 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
         self.free_postprocess_history.append(kwargs)
 
 
-@testing.gpu
 class TestMemoryHook(unittest.TestCase):
 
     def setUp(self):

@@ -4,7 +4,6 @@ import pytest
 import cupy
 from cupyx import cusolver
 from cupy import testing
-from cupy.testing import _attr
 from cupy._core import _routines_linalg as _linalg
 import cupyx
 
@@ -21,7 +20,6 @@ import cupyx
     'full_matrices': [True, False],
     'overwrite_a': [True, False],
 }))
-@_attr.gpu
 class TestGesvdj:
 
     @pytest.fixture(autouse=True)
@@ -81,7 +79,6 @@ class TestGesvdj:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(5, 4), (1, 4, 3), (4, 3, 2)],
 }))
-@_attr.gpu
 class TestGesvda:
 
     @pytest.fixture(autouse=True)
@@ -136,7 +133,6 @@ class TestGesvda:
     'order': ['C', 'F'],
     'UPLO': ['L', 'U'],
 }))
-@_attr.gpu
 class TestSyevj:
 
     @pytest.fixture(autouse=True)
@@ -191,7 +187,6 @@ class TestSyevj:
                      _linalg.COMPUTE_TYPE_TF32,
                      _linalg.COMPUTE_TYPE_FP32],
 }))
-@_attr.gpu
 class TestGesv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -249,7 +244,6 @@ class TestGesv:
                      _linalg.COMPUTE_TYPE_TF32,
                      _linalg.COMPUTE_TYPE_FP32],
 }))
-@_attr.gpu
 class TestGels:
     _tol = {'f': 1e-5, 'd': 1e-12}
 

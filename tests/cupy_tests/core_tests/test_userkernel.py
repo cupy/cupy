@@ -264,7 +264,6 @@ class TestUserkernelManualBlockSize(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 19)),
 }))
-@testing.gpu
 @pytest.mark.skipif(runtime.is_hip,
                     reason='texture support on HIP is not yet implemented')
 class TestElementwiseKernelTexture(unittest.TestCase):

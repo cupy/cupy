@@ -75,7 +75,6 @@ from cupy import testing
     {'shape': (2, 0), 'transpose': None,
      'indexes': (1, slice(None, None, None))},
 )
-@testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
 
     _getitem_hip_skip_condition = [
@@ -119,7 +118,6 @@ class TestArrayIndexingParameterized(unittest.TestCase):
     {'shape': (2, 3, 4), 'transpose': None,
      'indexes': (Ellipsis, Ellipsis, 1)},
 )
-@testing.gpu
 class TestArrayIndexIndexError(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -141,7 +139,6 @@ class TestArrayIndexIndexError(unittest.TestCase):
     {'error_class': TypeError,
      'indexes': (slice(None, None, (0, 0)), )},
 )
-@testing.gpu
 class TestArrayIndexOtherError(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -152,7 +149,6 @@ class TestArrayIndexOtherError(unittest.TestCase):
                 a[self.indexes]
 
 
-@testing.gpu
 class TestArrayIndex(unittest.TestCase):
 
     @testing.for_all_dtypes()

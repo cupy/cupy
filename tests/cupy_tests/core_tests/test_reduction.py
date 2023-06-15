@@ -48,7 +48,6 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None), 0)
 
 
-@testing.gpu
 class TestSimpleReductionFunction(
         unittest.TestCase, SimpleReductionFunctionTestBase):
     def test_shape1(self):
@@ -83,7 +82,6 @@ class TestSimpleReductionFunction(
         self.check_int8_sum((size, 1), axis=0)
 
 
-@testing.gpu
 @testing.parameterize(*_noncontiguous_params)
 class TestSimpleReductionFunctionNonContiguous(
         SimpleReductionFunctionTestBase, unittest.TestCase):
@@ -95,7 +93,6 @@ class TestSimpleReductionFunctionNonContiguous(
 @testing.parameterize(*testing.product({
     'backend': ([], ['cub']),
 }))
-@testing.gpu
 class TestSimpleReductionFunctionComplexWarning(unittest.TestCase):
 
     def setUp(self):
@@ -144,7 +141,6 @@ class ReductionKernelTestBase(AbstractReductionTestBase):
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
 
-@testing.gpu
 class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
 
     def test_shape1(self):
@@ -172,7 +168,6 @@ class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
 
 
-@testing.gpu
 @testing.parameterize(*_noncontiguous_params)
 class TestReductionKernelNonContiguous(
         ReductionKernelTestBase, unittest.TestCase):
@@ -181,7 +176,6 @@ class TestReductionKernelNonContiguous(
         self.check_int8_sum(self.shape, trans=self.trans, axis=self.axis)
 
 
-@testing.gpu
 class TestReductionKernelInvalidArgument(unittest.TestCase):
 
     def test_invalid_kernel_name(self):
@@ -190,7 +184,6 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
 
 
-@testing.gpu
 class TestReductionKernelCachedCode:
 
     @pytest.fixture(autouse=True)
@@ -229,7 +222,6 @@ class TestReductionKernelCachedCode:
         assert len(kernel._cached_codes) == 2
 
 
-@testing.gpu
 class TestLargeMultiDimReduction(
         ReductionKernelTestBase, unittest.TestCase):
 

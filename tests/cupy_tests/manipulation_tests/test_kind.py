@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestKind(unittest.TestCase):
 
     @testing.for_orders('CFAK')

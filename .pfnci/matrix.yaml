@@ -15,7 +15,7 @@
   cutensor: null
   cusparselt: null
   cudnn: "7.6"
-  python: "3.7"
+  python: "3.8"
   numpy: "1.20"
   scipy: "1.6"
   optuna: "3"
@@ -75,7 +75,7 @@
   cutensor: "1.5"
   cusparselt: null
   cudnn: "8.0"
-  python: "3.7"
+  python: "3.8"
   numpy: "1.20"
   scipy: null
   optuna: null  # Avoid SciPy installation
@@ -105,7 +105,7 @@
   cutensor: "1.4"
   cusparselt: "0.2.0"
   cudnn: "8.1"
-  python: "3.7"
+  python: "3.8"
   numpy: "1.21"
   scipy: "1.7"
   optuna: "3"
@@ -254,7 +254,7 @@
   nccl: "2.13"
   cutensor: "1.5"
   cusparselt: "0.2.0"
-  cudnn: "8.6"
+  cudnn: "8.7"
   python: "3.11"
   numpy: "1.23"
   scipy: "1.9"
@@ -284,9 +284,9 @@
   nccl: "2.16"
   cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.7"
+  cudnn: "8.8"
   python: "3.11"
-  numpy: "1.23"
+  numpy: "1.24"
   scipy: "1.9"
   optuna: "3"
   mpi4py: null
@@ -304,7 +304,6 @@
   test: "unit-multi"
 
 # CUDA 12.0 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda120"
   target: "cuda120"
   tags: ["@push", "full", "mini", "cuda120"]
@@ -315,7 +314,7 @@
   nccl: "2.16"
   cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: null  # TODO(kmaehashi): cuDNN for CUDA 12 not available yet
+  cudnn: "8.8"
   python: "3.11"
   numpy: "1.23"
   scipy: "1.9"
@@ -334,6 +333,38 @@
   mpi4py: "3"
   test: "unit-multi"
 
+# CUDA 12.1 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda121"
+  target: "cuda121"
+  tags: ["@push", "full", "mini", "cuda121"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.1"
+  rocm: null
+  nccl: "2.17"
+  cutensor: "1.7"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.9"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.1 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda121.multi"
+  _inherits: "cupy.linux.cuda121"
+  tags: ["@push", "full", "mini", "multi", "cuda121"]
+  target: "cuda121.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+
 ###############################################################################
 # CUDA (Windows)
 ###############################################################################
@@ -347,7 +378,7 @@
 # ROCm 4.3 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-3"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-4-3,label=mnj-mi50/"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-4-3,label=mnj-mi50/"
   tags: null  # Jenkins
   target: "rocm-4-3"
   system: "linux"
@@ -358,7 +389,7 @@
   cutensor: null
   cusparselt: null
   cudnn: null
-  python: "3.7"
+  python: "3.8"
   numpy: "1.20"
   scipy: "1.6"
   optuna: "3"
@@ -370,7 +401,7 @@
 
 # ROCm 5.0 | Linux
 - project: "cupy.linux.rocm-5-0"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-0,label=mnj-mi50/"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-0,label=mnj-mi50/"
   tags: null  # Jenkins
   target: "rocm-5-0"
   system: "linux"
@@ -394,7 +425,7 @@
 # ROCm 5.3 | Linux
 # The latest ROCm version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.rocm-5-3"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_master/TEST=rocm-5-3,label=mnj-mi50/"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-3,label=mnj-mi50/"
   tags: null  # Jenkins
   target: "rocm-5-3"
   system: "linux"
@@ -406,7 +437,7 @@
   cusparselt: null
   cudnn: null
   python: "3.11"
-  numpy: "1.23"
+  numpy: "1.24"
   scipy: "1.9"
   optuna: "3"
   mpi4py: null
@@ -448,7 +479,6 @@
 # Example (with Doctest) | Linux
 # Notes:
 # - Examples and Doctests are tested against the minimum supported Python version.
-#   (Uses Python 3.8 instead of 3.7 to test Array API support.)
 # - Libraries versions for doctests will be overridden by docs/requirements.txt
 # - Accelerators are disabled as doctests expect it (#5891)
 - project: "cupy.linux.cuda-example"

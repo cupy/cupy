@@ -4,7 +4,6 @@ from cupy import random
 from cupy import testing
 
 
-@testing.gpu
 class TestResetSeed(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)

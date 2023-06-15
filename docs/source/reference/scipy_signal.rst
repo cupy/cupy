@@ -31,3 +31,16 @@ Filtering
    medfilt
    medfilt2d
    wiener
+   symiirorder1
+   symiirorder2
+   savgol_filter
+   deconvolve
+
+
+Filter design
+-------------
+
+.. autosummary::
+   :toctree: generated/
+
+   savgol_coeffs

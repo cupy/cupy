@@ -32,7 +32,6 @@ from cupy_tests.core_tests.fusion_tests import fusion_utils
     {'shape': (2, 3, 4), 'indices': (1, Ellipsis)},
     {'shape': (2, 3, 4, 5), 'indices': (1, Ellipsis, 3)},
 )
-@testing.gpu
 class TestIndexing(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype):
@@ -52,7 +51,6 @@ class TestIndexing(unittest.TestCase):
     {'shape': (2, 3, 4), 'indices': 3},
 )
 @testing.with_requires('numpy>=1.12.0')
-@testing.gpu
 class TestArrayInvalidIndex(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype):
@@ -65,7 +63,6 @@ class TestArrayInvalidIndex(unittest.TestCase):
         return lambda x: x[self.indices]
 
 
-@testing.gpu
 class TestIndexingCombination(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):

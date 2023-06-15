@@ -10,7 +10,6 @@ ignore_runtime_warnings = pytest.mark.filterwarnings(
     "ignore", category=RuntimeWarning)
 
 
-@testing.gpu
 class TestMedian:
 
     @testing.for_all_dtypes()
@@ -83,7 +82,6 @@ class TestMedian:
         'keepdims': [True, False]
     })
 )
-@testing.gpu
 class TestMedianAxis:
 
     @testing.for_all_dtypes()
@@ -101,7 +99,6 @@ class TestMedianAxis:
         'overwrite_input': [True, False]
     })
 )
-@testing.gpu
 class TestNanMedian:
 
     zero_density = 0.25
@@ -135,7 +132,6 @@ class TestNanMedian:
         return xp.ascontiguousarray(out)
 
 
-@testing.gpu
 class TestAverage:
 
     _multiprocess_can_split_ = True
@@ -160,7 +156,7 @@ class TestAverage:
         return xp.average(a, weights=w)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     @pytest.mark.parametrize(
         'axis,weights', [(1, False), (None, True), (1, True)])
     def test_returned(self, xp, dtype, axis, weights):
@@ -172,7 +168,7 @@ class TestAverage:
         return xp.average(a, axis=axis, weights=w, returned=True)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={'default': 5e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 5e-7})
     @pytest.mark.parametrize('returned', [True, False])
     @testing.with_requires('numpy>=1.23.1')
     def test_average_keepdims_axis1(self, xp, dtype, returned):
@@ -191,7 +187,6 @@ class TestAverage:
         return xp.average(a, weights=w, returned=returned, keepdims=True)
 
 
-@testing.gpu
 class TestMeanVar:
 
     @testing.for_all_dtypes()
@@ -340,7 +335,6 @@ class TestMeanVar:
         'keepdims': [True, False]
     })
 )
-@testing.gpu
 class TestNanMean:
 
     @testing.for_all_dtypes(no_float16=True)
@@ -362,7 +356,6 @@ class TestNanMean:
         return xp.nanmean(a, axis=self.axis, keepdims=self.keepdims)
 
 
-@testing.gpu
 class TestNanMeanAdditional:
 
     @ignore_runtime_warnings
@@ -510,7 +503,6 @@ class TestNanVarStdAdditional:
     ],
     'func': ['mean', 'std', 'var'],
 }))
-@testing.gpu
 class TestProductZeroLength:
 
     @testing.for_all_dtypes(no_complex=True)

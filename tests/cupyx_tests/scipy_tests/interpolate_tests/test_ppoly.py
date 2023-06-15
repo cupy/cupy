@@ -1313,3 +1313,190 @@ class TestBPolyFromDerivatives:
         res.append(p(0))
         orders = 1
         return res
+
+
+@testing.with_requires("scipy")
+class TestNdPPoly:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple_1d(self, xp, scp):
+        c = testing.shaped_random((4, 5), xp)
+        x = xp.linspace(0, 1, 5+1)
+
+        xi = testing.shaped_random((200,), xp)
+
+        p = scp.interpolate.NdPPoly(c, (x,))
+        v1 = p((xi,))
+        return v1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple_2d(self, xp, scp):
+        c = testing.shaped_random((4, 5, 6, 7), xp)
+        x = xp.linspace(0, 1, 6+1)
+        y = xp.linspace(0, 1, 7+1)**2
+
+        xi = testing.shaped_random((200,), xp)
+        yi = testing.shaped_random((200,), xp)
+
+        p = scp.interpolate.NdPPoly(c, (x, y))
+        result = []
+        for nu in (None, (0, 0), (0, 1), (1, 0), (2, 3), (9, 2)):
+            result.append(p(xp.c_[xi, yi], nu=nu))
+        return result
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple_3d(self, xp, scp):
+        c = testing.shaped_random((4, 5, 6, 7, 8, 9), xp)
+        x = xp.linspace(0, 1, 7+1)
+        y = xp.linspace(0, 1, 8+1)**2
+        z = xp.linspace(0, 1, 9+1)**3
+
+        xi = testing.shaped_random((40,), xp)
+        yi = testing.shaped_random((40,), xp)
+        zi = testing.shaped_random((40,), xp)
+
+        p = scp.interpolate.NdPPoly(c, (x, y, z))
+        result = []
+        for nu in (None, (0, 0, 0), (0, 1, 0), (1, 0, 0), (2, 3, 0),
+                   (6, 0, 2)):
+            result.append(p((xi, yi, zi), nu=nu))
+        return result
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple_4d(self, xp, scp):
+        c = testing.shaped_random((4, 5, 6, 7, 8, 9, 10, 11), xp)
+        x = xp.linspace(0, 1, 8+1)
+        y = xp.linspace(0, 1, 9+1)**2
+        z = xp.linspace(0, 1, 10+1)**3
+        u = xp.linspace(0, 1, 11+1)**4
+
+        xi = testing.shaped_random((20,), xp)
+        yi = testing.shaped_random((20,), xp)
+        zi = testing.shaped_random((20,), xp)
+        ui = testing.shaped_random((20,), xp)
+
+        p = scp.interpolate.NdPPoly(c, (x, y, z, u))
+        v1 = p((xi, yi, zi, ui))
+        return v1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_deriv_1d(self, xp, scp):
+        c = testing.shaped_random((4, 5), xp)
+        x = xp.linspace(0, 1, 5+1)
+
+        p = scp.interpolate.NdPPoly(c, (x,))
+
+        # derivative
+        dp = p.derivative(nu=[1])
+
+        # antiderivative
+        ip = p.antiderivative(nu=[2])
+        return dp.c, ip.c
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_deriv_3d(self, xp, scp):
+        c = testing.shaped_random((4, 5, 6, 7, 8, 9), xp)
+        x = xp.linspace(0, 1, 7+1)
+        y = xp.linspace(0, 1, 8+1)**2
+        z = xp.linspace(0, 1, 9+1)**3
+
+        p = scp.interpolate.NdPPoly(c, (x, y, z))
+
+        # differentiate vs x
+        dpx = p.derivative(nu=[2])
+
+        # antidifferentiate vs y
+        dpy = p.antiderivative(nu=[0, 1, 0])
+
+        # differentiate vs z
+        dpz = p.derivative(nu=[0, 0, 3])
+
+        return dpx.c, dpy.c, dpz.c
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_deriv_3d_simple(self, xp, scp):
+        # Integrate to obtain function x y**2 z**4 / (2! 4!)
+
+        c = xp.ones((1, 1, 1, 3, 4, 5))
+        x = xp.linspace(0, 1, 3+1)**1
+        y = xp.linspace(0, 1, 4+1)**2
+        z = xp.linspace(0, 1, 5+1)**3
+
+        p = scp.interpolate.NdPPoly(c, (x, y, z))
+        ip = p.antiderivative((1, 0, 4))
+        ip = ip.antiderivative((0, 2, 0))
+
+        xi = testing.shaped_random((20,), xp)
+        yi = testing.shaped_random((20,), xp)
+        zi = testing.shaped_random((20,), xp)
+
+        return ip((xi, yi, zi))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate_2d(self, xp, scp):
+        c = testing.shaped_random((4, 5, 16, 17), xp, dtype=xp.float64)
+        x = xp.linspace(0, 1, 16+1)**1
+        y = xp.linspace(0, 1, 17+1)**2
+
+        # make continuously differentiable so that nquad() has an
+        # easier time
+        fix_continuity_mod = attrgetter(
+            'interpolate._interpolate._fix_continuity')
+        if xp is not cupy:
+            fix_continuity_mod = attrgetter(
+                'interpolate._ppoly.fix_continuity')
+
+        fix_continuity = fix_continuity_mod(scp)
+
+        c = c.transpose(0, 2, 1, 3)
+        cx = c.reshape(c.shape[0], c.shape[1], -1).copy()
+        fix_continuity(cx, x, 2)
+        c = cx.reshape(c.shape)
+        c = c.transpose(0, 2, 1, 3)
+        c = c.transpose(1, 3, 0, 2)
+        cx = c.reshape(c.shape[0], c.shape[1], -1).copy()
+        fix_continuity(cx, y, 2)
+        c = cx.reshape(c.shape)
+        c = c.transpose(2, 0, 3, 1).copy()
+
+        # Check integration
+        p = scp.interpolate.NdPPoly(c, (x, y))
+
+        result = []
+        for ranges in [[(0, 1), (0, 1)],
+                       [(0, 0.5), (0, 1)],
+                       [(0, 1), (0, 0.5)],
+                       [(0.3, 0.7), (0.6, 0.2)]]:
+            ig = p.integrate(ranges)
+            result.append(ig)
+        return result
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrate_1d(self, xp, scp):
+        c = testing.shaped_random((4, 5, 6, 16, 17, 18), xp)
+        x = xp.linspace(0, 1, 16+1)**1
+        y = xp.linspace(0, 1, 17+1)**2
+        z = xp.linspace(0, 1, 18+1)**3
+
+        # Check 1-D integration
+        p = scp.interpolate.NdPPoly(c, (x, y, z))
+
+        u = testing.shaped_random((200,), xp)
+        v = testing.shaped_random((200,), xp)
+        a, b = xp.asarray([0.2]), xp.asarray([0.7])
+
+        result = []
+
+        px = p.integrate_1d(a, b, axis=0)
+        pax = p.antiderivative((1, 0, 0))
+        result += [px((u, v)), pax((b, u, v)) - pax((a, u, v))]
+
+        py = p.integrate_1d(a, b, axis=1)
+        pay = p.antiderivative((0, 1, 0))
+        result += [py((u, v)), pay((u, b, v)) - pay((u, a, v))]
+
+        pz = p.integrate_1d(a, b, axis=2)
+        paz = p.antiderivative((0, 0, 1))
+        result += [pz((u, v)), paz((u, v, b)) - paz((u, v, a))]
+
+        return result

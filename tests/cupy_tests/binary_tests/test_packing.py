@@ -5,7 +5,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestPacking(unittest.TestCase):
 
     @testing.for_int_dtypes()

@@ -11,7 +11,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy import testing
 import cupyx
 
 
@@ -63,7 +62,6 @@ else:
 
 class TestAvailable(unittest.TestCase):
 
-    @testing.gpu
     def test_available(self):
         available = _test_cupy_available(self)
         assert available
