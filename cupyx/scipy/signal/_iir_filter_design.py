@@ -713,8 +713,8 @@ def iircomb(w0, Q, ftype='notch', fs=2.0, *, pass_zero=False):
 
     References
     ----------
-    .. [1] Sophocles J. Orfanidis, "Introduction To Signal Processing",
-           Prentice-Hall, 1996, ch. 11, "Digital Filter Design"
+    Sophocles J. Orfanidis, "Introduction To Signal Processing",
+         Prentice-Hall, 1996, ch. 11, "Digital Filter Design"
     """
 
     # Convert w0, Q, and fs to float
@@ -753,7 +753,8 @@ def iircomb(w0, Q, ftype='notch', fs=2.0, *, pass_zero=False):
 
     # Compute beta
     # Eq. 11.5.3 (p. 591) from reference [1]
-    beta = cupy.sqrt((GB**2 - G0**2) / (G**2 - GB**2)) * cupy.tan(N * w_delta / 4)
+    beta = cupy.sqrt((GB**2 - G0**2) / (G**2 - GB**2)) * \
+        cupy.tan(N * w_delta / 4)
 
     # Compute filter coefficients
     # Eq 11.5.1 (p. 590) variables a, b, c from reference [1]
@@ -788,6 +789,162 @@ def iircomb(w0, Q, ftype='notch', fs=2.0, *, pass_zero=False):
 
     return b, a
 
+
+def iirnotch(w0, Q, fs=2.0):
+    """
+    Design second-order IIR notch digital filter.
+
+    A notch filter is a band-stop filter with a narrow bandwidth
+    (high quality factor). It rejects a narrow frequency band and
+    leaves the rest of the spectrum little changed.
+
+    Parameters
+    ----------
+    w0 : float
+        Frequency to remove from a signal. If `fs` is specified, this is in
+        the same units as `fs`. By default, it is a normalized scalar that must
+        satisfy  ``0 < w0 < 1``, with ``w0 = 1`` corresponding to half of the
+        sampling frequency.
+    Q : float
+        Quality factor. Dimensionless parameter that characterizes
+        notch filter -3 dB bandwidth ``bw`` relative to its center
+        frequency, ``Q = w0/bw``.
+    fs : float, optional
+        The sampling frequency of the digital system.
+
+    Returns
+    -------
+    b, a : ndarray, ndarray
+        Numerator (``b``) and denominator (``a``) polynomials
+        of the IIR filter.
+
+    See Also
+    --------
+    scipy.signal.iirnotch
+
+    References
+    ----------
+    Sophocles J. Orfanidis, "Introduction To Signal Processing",
+         Prentice-Hall, 1996
+    """
+
+    return _design_notch_peak_filter(w0, Q, "notch", fs)
+
+
+def iirpeak(w0, Q, fs=2.0):
+    """
+    Design second-order IIR peak (resonant) digital filter.
+
+    A peak filter is a band-pass filter with a narrow bandwidth
+    (high quality factor). It rejects components outside a narrow
+    frequency band.
+
+    Parameters
+    ----------
+    w0 : float
+        Frequency to be retained in a signal. If `fs` is specified, this is in
+        the same units as `fs`. By default, it is a normalized scalar that must
+        satisfy  ``0 < w0 < 1``, with ``w0 = 1`` corresponding to half of the
+        sampling frequency.
+    Q : float
+        Quality factor. Dimensionless parameter that characterizes
+        peak filter -3 dB bandwidth ``bw`` relative to its center
+        frequency, ``Q = w0/bw``.
+    fs : float, optional
+        The sampling frequency of the digital system.
+
+
+    Returns
+    -------
+    b, a : ndarray, ndarray
+        Numerator (``b``) and denominator (``a``) polynomials
+        of the IIR filter.
+
+    See Also
+    --------
+    scpy.signal.iirpeak
+
+    References
+    ----------
+    .. [1] Sophocles J. Orfanidis, "Introduction To Signal Processing",
+           Prentice-Hall, 1996
+    """
+
+    return _design_notch_peak_filter(w0, Q, "peak", fs)
+
+
+def _design_notch_peak_filter(w0, Q, ftype, fs=2.0):
+    """
+    Design notch or peak digital filter.
+
+    Parameters
+    ----------
+    w0 : float
+        Normalized frequency to remove from a signal. If `fs` is specified,
+        this is in the same units as `fs`. By default, it is a normalized
+        scalar that must satisfy  ``0 < w0 < 1``, with ``w0 = 1``
+        corresponding to half of the sampling frequency.
+    Q : float
+        Quality factor. Dimensionless parameter that characterizes
+        notch filter -3 dB bandwidth ``bw`` relative to its center
+        frequency, ``Q = w0/bw``.
+    ftype : str
+        The type of IIR filter to design:
+
+            - notch filter : ``notch``
+            - peak filter  : ``peak``
+    fs : float, optional
+        The sampling frequency of the digital system.
+
+    Returns
+    -------
+    b, a : ndarray, ndarray
+        Numerator (``b``) and denominator (``a``) polynomials
+        of the IIR filter.
+    """
+
+    # Guarantee that the inputs are floats
+    w0 = float(w0)
+    Q = float(Q)
+    w0 = 2 * w0 / fs
+
+    # Checks if w0 is within the range
+    if w0 > 1.0 or w0 < 0.0:
+        raise ValueError("w0 should be such that 0 < w0 < 1")
+
+    # Get bandwidth
+    bw = w0 / Q
+
+    # Normalize inputs
+    bw = bw * pi
+    w0 = w0 * pi
+
+    # Compute -3dB attenuation
+    gb = 1 / cupy.sqrt(2)
+
+    if ftype == "notch":
+        # Compute beta: formula 11.3.4 (p.575) from reference [1]
+        beta = (cupy.sqrt(1.0 - gb**2.0) / gb) * cupy.tan(bw / 2.0)
+    elif ftype == "peak":
+        # Compute beta: formula 11.3.19 (p.579) from reference [1]
+        beta = (gb / cupy.sqrt(1.0 - gb**2.0)) * cupy.tan(bw / 2.0)
+    else:
+        raise ValueError("Unknown ftype.")
+
+    # Compute gain: formula 11.3.6 (p.575) from reference [1]
+    gain = 1.0 / (1.0 + beta)
+
+    # Compute numerator b and denominator a
+    # formulas 11.3.7 (p.575) and 11.3.21 (p.579)
+    # from reference [1]
+    if ftype == "notch":
+        b = gain * cupy.r_[1.0, -2.0 * cupy.cos(w0), 1.0]
+    else:
+        b = (1.0 - gain) * cupy.r_[1.0, 0.0, -1.0]
+
+    a = cupy.r_[1.0, -2.0 * gain * cupy.cos(w0), 2.0 * gain - 1.0]
+
+    return b, a
 
 
 filter_dict = {'butter': [buttap, buttord],

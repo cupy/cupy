@@ -849,6 +849,7 @@ class TestEllipord:
         return n, wn
 
 
+@testing.with_requires("scipy")
 class TestIIRDesign:
 
     def test_exceptions(self):
@@ -967,121 +968,69 @@ class TestIIRDesign:
 
 
 @testing.with_requires("scipy")
-class TestIIRDesign:
+class TestIIRNotch:
 
-    def test_exceptions(self):
-        with pytest.raises(ValueError, match="the same shape"):
-            iirdesign(0.2, [0.1, 0.3], 1, 40)
-        with pytest.raises(ValueError, match="the same shape"):
-            iirdesign(cupy.array([[0.3, 0.6], [0.3, 0.6]]),
-                      cupy.array([[0.4, 0.5], [0.4, 0.5]]), 1, 40)
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ba_output(self, xp, scp):
+        # Compare coeficients with Matlab ones
+        # for the equivalent input:
+        b, a = scp.signal.iirnotch(0.06, 30)
+        return b, a
 
-        # discrete filter with non-positive frequency
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign(0, 0.5, 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign(-0.1, 0.5, 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign(0.1, 0, 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign(0.1, -0.5, 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0, 0.3], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([-0.1, 0.3], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, -0.3], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0.3], [0, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0.3], [-0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0.3], [0.1, 0], 1, 40)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0.3], [0.1, -0.5], 1, 40)
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_frequency_response(self, xp, scp):
+        # Get filter coeficients
+        b, a = scp.signal.iirnotch(0.3, 30)
+        return b, a
 
-        # analog filter with negative frequency
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign(-0.1, 0.5, 1, 40, analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign(0.1, -0.5, 1, 40, analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([-0.1, 0.3], [0.1, 0.5], 1, 40, analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, -0.3], [0.1, 0.5], 1, 40, analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0.3], [-0.1, 0.5], 1, 40, analog=True)
-        with pytest.raises(ValueError, match="must be greater than 0"):
-            iirdesign([0.1, 0.3], [0.1, -0.5], 1, 40, analog=True)
+    def test_errors(self):
+        # Exception should be raised if w0 > 1 or w0 <0
+        assert_raises(ValueError, signal.iirnotch, w0=2, Q=30)
+        assert_raises(ValueError, signal.iirnotch, w0=-1, Q=30)
 
-        # discrete filter with fs=None, freq > 1
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign(1, 0.5, 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign(1.1, 0.5, 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign(0.1, 1, 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign(0.1, 1.5, 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([1, 0.3], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([1.1, 0.3], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([0.1, 1], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([0.1, 1.1], [0.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([0.1, 0.3], [1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([0.1, 0.3], [1.1, 0.5], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([0.1, 0.3], [0.1, 1], 1, 40)
-        with pytest.raises(ValueError, match="must be less than 1"):
-            iirdesign([0.1, 0.3], [0.1, 1.5], 1, 40)
+        # Exception should be raised if any of the parameters
+        # are not float (or cannot be converted to one)
+        assert_raises(ValueError, signal.iirnotch, w0="blabla", Q=30)
+        assert_raises(TypeError, signal.iirnotch, w0=-1, Q=[1, 2, 3])
 
-        # discrete filter with fs>2, wp, ws < fs/2 must pass
-        iirdesign(100, 500, 1, 40, fs=2000)
-        iirdesign(500, 100, 1, 40, fs=2000)
-        iirdesign([200, 400], [100, 500], 1, 40, fs=2000)
-        iirdesign([100, 500], [200, 400], 1, 40, fs=2000)
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_fs_param(self, xp, scp):
+        # Get filter coeficients
+        b, a = scp.signal.iirnotch(1500, 30, fs=10000)
+        return b, a
 
-        # discrete filter with fs>2, freq > fs/2: this must raise
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign(1000, 400, 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign(1100, 500, 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign(100, 1000, 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign(100, 1100, 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([1000, 400], [100, 500], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([1100, 400], [100, 500], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([200, 1000], [100, 500], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([200, 1100], [100, 500], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([200, 400], [1000, 500], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([200, 400], [1100, 500], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([200, 400], [100, 1000], 1, 40, fs=2000)
-        with pytest.raises(ValueError, match="must be less than fs/2"):
-            iirdesign([200, 400], [100, 1100], 1, 40, fs=2000)
 
-        with pytest.raises(ValueError, match="strictly inside stopband"):
-            iirdesign([0.1, 0.4], [0.5, 0.6], 1, 40)
-        with pytest.raises(ValueError, match="strictly inside stopband"):
-            iirdesign([0.5, 0.6], [0.1, 0.4], 1, 40)
-        with pytest.raises(ValueError, match="strictly inside stopband"):
-            iirdesign([0.3, 0.6], [0.4, 0.7], 1, 40)
-        with pytest.raises(ValueError, match="strictly inside stopband"):
-            iirdesign([0.4, 0.7], [0.3, 0.6], 1, 40)
+@testing.with_requires("scipy")
+class TestIIRPeak:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ba_output(self, xp, scp):
+        # Compare coeficients with Matlab ones
+        # for the equivalent input:
+        b, a = scp.signal.iirpeak(0.06, 30)
+        return b, a
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_frequency_response(self, xp, scp):
+        # Get filter coeficients
+        b, a = scp.signal.iirpeak(0.3, 30)
+        return b, a
+
+    def test_errors(self):
+        # Exception should be raised if w0 > 1 or w0 <0
+        assert_raises(ValueError, signal.iirpeak, w0=2, Q=30)
+        assert_raises(ValueError, signal.iirpeak, w0=-1, Q=30)
+
+        # Exception should be raised if any of the parameters
+        # are not float (or cannot be converted to one)
+        assert_raises(ValueError, signal.iirpeak, w0="blabla", Q=30)
+        assert_raises(TypeError, signal.iirpeak, w0=-1, Q=[1, 2, 3])
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_fs_param(self, xp, scp):
+        # Get filter coeficients
+        b, a = scp.signal.iirpeak(1200, 30, fs=8000)
+        return b, a
 
 
 @testing.with_requires("scipy")
@@ -1130,7 +1079,8 @@ class TestIIRComb:
                               ('notch', False, 61.725, 123.45)])
     def test_pass_zero(self, ftype, pass_zero, peak, notch, xp, scp):
         # Create a notching or peaking comb filter
-        b, a = scp.signal.iircomb(123.45, 30, ftype=ftype, fs=1234.5, pass_zero=pass_zero)
+        b, a = scp.signal.iircomb(
+            123.45, 30, ftype=ftype, fs=1234.5, pass_zero=pass_zero)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")

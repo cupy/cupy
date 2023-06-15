@@ -94,6 +94,8 @@ Matlab-style IIR filter design
    cheby2
    cheb2ord
    iircomb
+   iirnotch
+   iirpeak
 
 
 Low-level filter design functions
