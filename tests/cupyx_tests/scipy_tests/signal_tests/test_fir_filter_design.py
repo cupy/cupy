@@ -1,6 +1,9 @@
+import cupy
+
 import cupyx.scipy.signal as signal
 from cupy import testing
 
+import pytest
 from pytest import raises as assert_raises
 
 
@@ -66,6 +69,7 @@ class TestFirls:
                                 1, 0, 0, 1, 1, 0], fs=20)
         return taps
 
+    @pytest.mark.xfail(reason="https://github.com/scipy/scipy/issues/18533")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rank_deficient(self, xp, scp):
         # solve() runs but warns (only sometimes, so here we don't use match)
@@ -73,6 +77,7 @@ class TestFirls:
         w, h = scp.signal.freqz(x, fs=2.)
         return x, w, h
 
+    @pytest.mark.xfail(reason="https://github.com/scipy/scipy/issues/18533")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_rank_deficient_2(self, xp, scp):
         # switch to pinvh (tolerances could be higher with longer
@@ -82,9 +87,15 @@ class TestFirls:
         w, h = scp.signal.freqz(x, fs=2.)
         return x, w, h
 
-#        mask = w < 0.01
-#        assert mask.sum() > 3
-#        assert_allclose(np.abs(h[mask]), 1., atol=1e-4)
-#        mask = w > 0.99
-#        assert mask.sum() > 3
-#        assert_allclose(np.abs(h[mask]), 0., atol=1e-4)
+    def test_rank_deficient_3(self):
+        # the same test as in scipy.signal
+        x = signal.firls(101, [0, 0.01, 0.99, 1], [1, 1, 0, 0])
+        w, h = signal.freqz(x, fs=2.)
+
+        mask = w < 0.01
+        assert mask.sum() > 3
+        testing.assert_allclose(cupy.abs(h[mask]), 1., atol=1e-4)
+
+        mask = w > 0.99
+        assert mask.sum() > 3
+        testing.assert_allclose(cupy.abs(h[mask]), 0., atol=1e-4)
