@@ -99,3 +99,49 @@ class TestFirls:
         mask = w > 0.99
         assert mask.sum() > 3
         testing.assert_allclose(cupy.abs(h[mask]), 0., atol=1e-4)
+
+
+@testing.with_requires("scipy")
+class TestMinimumPhase:
+
+    def test_bad_args(self):
+        # not enough taps
+        assert_raises(ValueError, signal.minimum_phase, cupy.array([1.]))
+        assert_raises(ValueError, signal.minimum_phase, cupy.array([1., 1.]))
+        assert_raises(ValueError, signal.minimum_phase, cupy.full(10, 1j))
+        assert_raises((AttributeError, ValueError),
+                      signal.minimum_phase, 'foo')
+        assert_raises(ValueError, signal.minimum_phase, cupy.ones(10), n_fft=8)
+        assert_raises(ValueError, signal.minimum_phase,
+                      cupy.ones(10), method='foo')
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_homomorphic(self, xp, scp):
+        # check that it can recover frequency responses of arbitrary
+        # linear-phase filters
+
+        # for some cases we can get the actual filter back
+        h = xp.asarray([1, -1])
+        h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
+        return h_new
+
+    @pytest.mark.parametrize("n", [2, 3, 10, 11, 15, 16, 17, 20, 21, 100, 101])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_homomorphic_2(self, xp, scp, n):
+        # but in general we only guarantee we get the magnitude back
+        rng = cupy.random.RandomState(0)
+        h = rng.randn(n)
+        if xp != cupy:
+            h = h.get()
+        h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
+        return h_new
+
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-5)
+    def test_hilbert(self, xp, scp):  # , n):
+        # example from the docstring of `scipy.signal.minimum_phase`
+        from scipy.signal import remez
+        h_linear = remez(151, [0, 0.2, 0.3, 1.0], [1, 0], fs=2)
+
+        if xp == cupy:
+            h_linear = cupy.asarray(h_linear)
+        return scp.signal.minimum_phase(h_linear, method="hilbert")
