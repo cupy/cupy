@@ -88,8 +88,8 @@ def findfreqs(num, den, N, kind='ba'):
         ep = cupy.atleast_1d(-1000) + 0j
 
     ez = cupy.r_[
-                 cupy.compress(ep.imag >= 0, ep, axis=-1),
-                 cupy.compress((abs(tz) < 1e5) & (tz.imag >= 0), tz, axis=-1)]
+        cupy.compress(ep.imag >= 0, ep, axis=-1),
+        cupy.compress((abs(tz) < 1e5) & (tz.imag >= 0), tz, axis=-1)]
 
     integ = cupy.abs(ez) < 1e-10
     hfreq = cupy.around(cupy.log10(cupy.max(3 * cupy.abs(ez.real + integ) +
@@ -194,48 +194,27 @@ def freqs_zpk(z, p, k, worN=200):
 
     See Also
     --------
-    freqs : Compute the frequency response of an analog filter in TF form
-    freqz : Compute the frequency response of a digital filter in TF form
-    freqz_zpk : Compute the frequency response of a digital filter in ZPK form
-
-    Notes
-    -----
-    .. versionadded:: 0.19.0
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from scipy.signal import freqs_zpk, iirfilter
-
-    >>> z, p, k = iirfilter(4, [1, 10], 1, 60, analog=True, ftype='cheby1',
-    ...                     output='zpk')
-
-    >>> w, h = freqs_zpk(z, p, k, worN=np.logspace(-1, 2, 1000))
-
-    >>> import matplotlib.pyplot as plt
-    >>> plt.semilogx(w, 20 * np.log10(abs(h)))
-    >>> plt.xlabel('Frequency')
-    >>> plt.ylabel('Amplitude response [dB]')
-    >>> plt.grid(True)
-    >>> plt.show()
+    scipy.signal.freqs_zpk
 
     """
-    k = np.asarray(k)
+    k = cupy.asarray(k)
     if k.size > 1:
         raise ValueError('k must be a single scalar gain')
 
     if worN is None:
         # For backwards compatibility
         w = findfreqs(z, p, 200, kind='zp')
-    elif _is_int_type(worN):
-        w = findfreqs(z, p, worN, kind='zp')
     else:
-        w = worN
+        N, _is_int = _try_convert_to_int(worN)
+        if _is_int:
+            w = findfreqs(z, p, worN, kind='zp')
+        else:
+            w = worN
 
-    w = atleast_1d(w)
+    w = cupy.atleast_1d(w)
     s = 1j * w
-    num = polyvalfromroots(s, z)
-    den = polyvalfromroots(s, p)
+    num = npp_polyvalfromroots(s, z)
+    den = npp_polyvalfromroots(s, p)
     h = k * num/den
     return w, h
 

@@ -24,10 +24,9 @@ class TestFindFreqs:
         return ff(xp.array([1, 0]), xp.array([1, 8, 25]), N=9)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
-    def test_docstring(self, xp, scp):
+    def test_ones(self, xp, scp):
         ff = scp.signal.findfreqs
         return ff(xp.array([1.0]), [1.0], N=8)
-
 
 
 @testing.with_requires("scipy")
@@ -62,6 +61,50 @@ class TestFreqs:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_w_or_N_types(self, xp, scp, w):
         w, h = scp.signal.freqs(xp.asarray([1.0]), xp.asarray([1.0]), worN=w)
+        return w, h
+
+
+@testing.with_requires("scipy")
+class TestFreqs_zpk:
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        w, h = scp.signal.freqs_zpk(xp.asarray(
+            [1.0]), xp.asarray([1.0]), xp.asarray([1.0]), worN=8)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_output(self, xp, scp):
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        w = xp.asarray([0.1, 1, 10, 100])
+        z = xp.asarray([])
+        p = xp.asarray([-1])
+        k = 1
+        w, H = scp.signal.freqs_zpk(z, p, k, worN=w)
+        return w, H
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_freq_range(self, xp, scp):
+        # Test that freqresp() finds a reasonable frequency range.
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        # Expected range is from 0.01 to 10.
+        z = xp.asarray([])
+        p = xp.asarray([-1])
+        k = 1
+        n = 10
+        w, H = scp.signal.freqs_zpk(z, p, k, worN=n)
+        return w, H
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_vs_freqs(self, xp, scp):
+        z, p, k = scp.signal.cheby1(4, 5, 100, analog=True, output='zpk')
+        w2, h2 = scp.signal.freqs_zpk(z, p, k)
+        return w2, h2
+
+    @pytest.mark.parametrize('w', [8.0, 8.0 + 0j])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_w_or_N_types(self, xp, scp, w):
+        w, h = scp.signal.freqs_zpk(xp.asarray([]), xp.asarray([]), 1, worN=w)
         return w, h
 
 
