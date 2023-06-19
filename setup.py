@@ -23,12 +23,12 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.20,<1.27',  # see #4773
+    'numpy>=1.22,<1.27',  # see #4773
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.6,<1.13',  # see #4773
+        'scipy>=1.7,<1.13',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
