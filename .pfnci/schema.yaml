@@ -33,12 +33,6 @@ os:
 cuda:
   null:
     full_version: null
-  "10.2":
-    full_version: "10.2"
-  "11.0":
-    full_version: "11.0.3"
-  "11.1":
-    full_version: "11.1.1"
   "11.2":
     full_version: "11.2.1"
   "11.3":
@@ -89,69 +83,29 @@ nccl:
   # https://developer.nvidia.com/nccl/nccl-download
   null:
     spec: null
-  "2.8":
-    spec: "2.8.*"
-    cuda:
-      # "10.1":
-      "10.2":
-      "11.0":
-      "11.1":
-      "11.2":
-  "2.9":
-    spec: "2.9.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.3":
-  "2.10":
-    spec: "2.10.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.4":
-  "2.11":
-    spec: "2.11.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.4":
-      "11.5":
-      "11.6":
-  "2.12":
-    spec: "2.12.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.6":
-      "11.7":
-  "2.13":
-    spec: "2.13.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.7":
-  "2.14":
-    spec: "2.14.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.7":
-  "2.15":
-    spec: "2.15.*"
-    cuda:
-      "10.2":
-      "11.0":
-      "11.8":
   "2.16":
     spec: "2.16.*"
     cuda:
-      "11.0":
+      # "11.0":
+      "11.2":  # assumed
+      "11.3":  # assumed
+      "11.4":  # assumed
+      "11.5":  # assumed
+      "11.6":  # assumed
+      "11.7":  # assumed
       "11.8":
       "12.0":
   "2.17":
     spec: "2.17.*"
     cuda:
-      "11.0":
+      # "11.0":
+      "11.2":  # assumed
+      "11.3":  # assumed
+      "11.4":  # assumed
+      "11.5":  # assumed
+      "11.6":  # assumed
+      "11.7":  # assumed
+      "11.8":  # assumed
       "12.0":
       "12.1":
 cutensor:
@@ -159,35 +113,12 @@ cutensor:
   # https://developer.nvidia.com/cutensor/downloads
   null:
     spec: null
-  "1.4":
-    spec: "1.4.*"
-    cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
-      "11.1":
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-  "1.5":
-    spec: "1.5.*"
-    cuda:
-      # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
-      "11.1":
-      "11.2":
-      "11.3":
-      "11.4":
-      "11.5":
-      "11.6":
-      "11.7":
   "1.6":
     spec: "1.6.*"
     cuda:
       # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
-      "11.1":
+      # "11.0":
+      # "11.1":
       "11.2":
       "11.3":
       "11.4":
@@ -200,7 +131,7 @@ cutensor:
     spec: "1.7.*"
     cuda:
       # "10.2":  -- cuTENSOR distributed through binary package does not support CUDA 10.2
-      "11.0":
+      # "11.0":
       "11.8":
       "12.0":
       "12.1":
@@ -227,154 +158,13 @@ cudnn:
   # https://developer.nvidia.com/rdp/cudnn-download
   null:
     spec: null
-  "7.6":
-    spec: "7.6.*"
-    cuda:
-      # "10.0":
-      # "10.1":
-      "10.2":
-  "8.0":
-    spec: "8.0.*"
-    cuda:
-      # "10.1":  # note: RHEL 8 not supported
-      "10.2":
-      "11.0":
-      "11.1":
-  "8.1":
-    spec: "8.1.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.2"
-      "11.1":
-        alias: "11.2"
-      "11.2":
-        alias: "11.2"
-  "8.2":
-    spec: "8.2.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.4"
-      "11.1":
-        alias: "11.4"
-      "11.2":
-        alias: "11.4"
-      "11.3":
-        alias: "11.4"
-      "11.4":
-        alias: "11.4"
-      "11.5":
-        alias: "11.4"
-  "8.3":
-    spec: "8.3.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.5"
-      "11.1":
-        alias: "11.5"
-      "11.2":
-        alias: "11.5"
-      "11.3":
-        alias: "11.5"
-      "11.4":
-        alias: "11.5"
-      "11.5":
-        alias: "11.5"
-      "11.6":
-        alias: "11.5"
-  "8.4":
-    spec: "8.4.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.6"
-      "11.1":
-        alias: "11.6"
-      "11.2":
-        alias: "11.6"
-      "11.3":
-        alias: "11.6"
-      "11.4":
-        alias: "11.6"
-      "11.5":
-        alias: "11.6"
-      "11.6":
-        alias: "11.6"
-      "11.7":
-        alias: "11.6"
-  "8.5":
-    spec: "8.5.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.7"
-      "11.1":
-        alias: "11.7"
-      "11.2":
-        alias: "11.7"
-      "11.3":
-        alias: "11.7"
-      "11.4":
-        alias: "11.7"
-      "11.5":
-        alias: "11.7"
-      "11.6":
-        alias: "11.7"
-      "11.7":
-        alias: "11.7"
-  "8.6":
-    spec: "8.6.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.8"
-      "11.1":
-        alias: "11.8"
-      "11.2":
-        alias: "11.8"
-      "11.3":
-        alias: "11.8"
-      "11.4":
-        alias: "11.8"
-      "11.5":
-        alias: "11.8"
-      "11.6":
-        alias: "11.8"
-      "11.7":
-        alias: "11.8"
-      "11.8":
-        alias: "11.8"
-  "8.7":
-    spec: "8.7.*"
-    cuda:
-      "10.2":
-      "11.0":
-        alias: "11.8"
-      "11.1":
-        alias: "11.8"
-      "11.2":
-        alias: "11.8"
-      "11.3":
-        alias: "11.8"
-      "11.4":
-        alias: "11.8"
-      "11.5":
-        alias: "11.8"
-      "11.6":
-        alias: "11.8"
-      "11.7":
-        alias: "11.8"
-      "11.8":
-        alias: "11.8"
   "8.8":
     spec: "8.8.*"
     cuda:
-      "11.0":
-        alias: "11.8"
-      "11.1":
-        alias: "11.8"
+      # "11.0":
+      #   alias: "11.8"
+      # "11.1":
+      #   alias: "11.8"
       "11.2":
         alias: "11.8"
       "11.3":
@@ -394,7 +184,6 @@ cudnn:
       "12.1":
         alias: "12.0"
 
-
 ###############################################################################
 # Python
 ###############################################################################
@@ -403,10 +192,6 @@ cudnn:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
-  "3.7":
-    spec: "3.7.11"
-  "3.8":
-    spec: "3.8.11"
   "3.9":
     spec: "3.9.6"
   "3.10":
@@ -424,36 +209,23 @@ python:
 # When adding a new NumPy version, you may also need to add the version to the
 # list of supported Python versions in SciPy.
 numpy:
-  "1.20":
-    spec: "==1.20.*"
-    python:
-      - "3.7"
-      - "3.8"
-      - "3.9"
-  "1.21":
-    spec: "==1.21.*"
-    python:
-      - "3.7"
-      - "3.8"
-      - "3.9"
-      - "3.10"
   "1.22":
     spec: "==1.22.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
   "1.23":
     spec: "==1.23.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
   "1.24":
     spec: "==1.24.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
@@ -465,23 +237,11 @@ scipy:
     # Note: Optuna depends on SciPy, so Optuna must also be set to null when
     # setting SciPy to null to run tests without SciPy.
     spec: null
-  "1.6":
-    spec: "==1.6.*"
-    python:
-      - "3.7"
-      - "3.8"
-      - "3.9"
-    numpy:
-      # - "1.16"
-      # - "1.17"
-      # - "1.18"
-      # - "1.19"
-      - "1.20"
   "1.7":
     spec: "==1.7.*"
     python:
-      - "3.7"
-      - "3.8"
+      # - "3.7"
+      # - "3.8"
       - "3.9"
       - "3.10"
     numpy:
@@ -489,28 +249,28 @@ scipy:
       # - "1.17"
       # - "1.18"
       # - "1.19"
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
       - "1.22"
   "1.8":
     spec: "==1.8.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
     numpy:
       # - "1.17"
       # - "1.18"
       # - "1.19"
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
       - "1.22"
       - "1.23"
       - "1.24"
   "1.9":
     spec: "==1.9.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
@@ -518,20 +278,20 @@ scipy:
       # - "1.17"
       # - "1.18"
       # - "1.19"
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
       - "1.22"
       - "1.23"
   "1.10":
     spec: "==1.10.*"
     python:
-      - "3.8"
+      # - "3.8"
       - "3.9"
       - "3.10"
       - "3.11"
     numpy:
-      - "1.20"
-      - "1.21"
+      # - "1.20"
+      # - "1.21"
       - "1.22"
       - "1.23"
       - "1.24"
