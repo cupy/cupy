@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.11.*+cuda11.6' 'libnccl-dev=2.11.*+cuda11.6' 'libcutensor1=1.5.*' 'libcutensor-dev=1.5.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.5.*+cuda11.7' 'libcudnn8-dev=8.5.*+cuda11.7'
+            --allow-downgrades install 'libnccl2=2.16.*+cuda11.6' 'libnccl-dev=2.16.*+cuda11.6' 'libcutensor1=1.6.*' 'libcutensor-dev=1.6.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.8.*+cuda11.8' 'libcudnn8-dev=8.8.*+cuda11.8'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -28,6 +28,6 @@ RUN pyenv install 3.10.0 && \
     pyenv global 3.10.0 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.21.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*' 'cuda-python==11.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*' 'cuda-python==11.*'
 RUN pip uninstall -y mpi4py && \
     pip check

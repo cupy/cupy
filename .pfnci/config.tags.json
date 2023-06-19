@@ -1,39 +1,4 @@
 {
-    "cupy.linux.cuda102": [
-        "@push",
-        "full",
-        "mini",
-        "cuda102"
-    ],
-    "cupy.linux.cuda102.multi": [
-        "@push",
-        "full",
-        "mini",
-        "multi",
-        "cuda102"
-    ],
-    "cupy.linux.cuda110": [
-        "@push",
-        "full",
-        "cuda110"
-    ],
-    "cupy.linux.cuda110.multi": [
-        "@push",
-        "full",
-        "multi",
-        "cuda110"
-    ],
-    "cupy.linux.cuda111": [
-        "@push",
-        "full",
-        "cuda111"
-    ],
-    "cupy.linux.cuda111.multi": [
-        "@push",
-        "full",
-        "multi",
-        "cuda111"
-    ],
     "cupy.linux.cuda112": [
         "@push",
         "full",
