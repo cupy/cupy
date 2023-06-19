@@ -60,6 +60,11 @@ Filter design
    firls
    savgol_coeffs
    iirfilter
+   unique_roots
+   residue
+   residuez
+   invres
+   invresz
 
 
 Matlab-style IIR filter design

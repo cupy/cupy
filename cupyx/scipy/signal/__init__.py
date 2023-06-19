@@ -21,6 +21,12 @@ from cupyx.scipy.signal._signaltools import sosfiltfilt  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert2  # NOQA
 
+from cupyx.scipy.signal._polyutils import unique_roots  # NOQA
+from cupyx.scipy.signal._polyutils import invres  # NOQA
+from cupyx.scipy.signal._polyutils import invresz  # NOQA
+from cupyx.scipy.signal._polyutils import residue  # NOQA
+from cupyx.scipy.signal._polyutils import residuez  # NOQA
+
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 
 from cupyx.scipy.signal._splines import symiirorder1  # NOQA
