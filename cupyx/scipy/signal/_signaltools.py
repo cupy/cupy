@@ -4,13 +4,15 @@ import cupy
 from cupy._core import internal
 from cupy.linalg import lstsq
 
+import cupyx.scipy.fft as sp_fft
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 from cupyx.scipy.signal._arraytools import (
     const_ext, even_ext, odd_ext, axis_reverse, axis_slice, axis_assign)
 from cupyx.scipy.signal._iir_utils import (
-    apply_iir, apply_iir_sos, compute_correction_factors)
+    apply_iir, apply_iir_sos, compute_correction_factors,
+    compute_correction_factors_sos)
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -1357,6 +1359,26 @@ def _get_kernel_size(kernel_size, ndim):
     return kernel_size
 
 
+def _validate_sos(sos):
+    """Helper to validate a SOS input"""
+    sos = cupy.atleast_2d(sos)
+    if sos.ndim != 2:
+        raise ValueError('sos array must be 2D')
+    n_sections, m = sos.shape
+    if m != 6:
+        raise ValueError('sos array must be shape (n_sections, 6)')
+    if not (sos[:, 3] == 1).all():
+        raise ValueError('sos[:, 3] should be all ones')
+    return sos, n_sections
+
+
+def _validate_x(x):
+    x = cupy.asarray(x)
+    if x.ndim == 0:
+        raise ValueError('x must be at least 1-D')
+    return x
+
+
 def sosfilt(sos, x, axis=-1, zi=None):
     """
     Filter data along one dimension using cascaded second-order sections.
@@ -1405,3 +1427,261 @@ def sosfilt(sos, x, axis=-1, zi=None):
 
     out = apply_iir_sos(out, sos, axis, zi)
     return out
+
+
+def sosfilt_zi(sos):
+    """
+    Construct initial conditions for sosfilt for step response steady-state.
+
+    Compute an initial state `zi` for the `sosfilt` function that corresponds
+    to the steady state of the step response.
+
+    A typical use of this function is to set the initial state so that the
+    output of the filter starts at the same value as the first element of
+    the signal to be filtered.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. See `sosfilt` for the SOS filter format
+        specification.
+
+    Returns
+    -------
+    zi : ndarray
+        Initial conditions suitable for use with ``sosfilt``, shape
+        ``(n_sections, 4)``.
+
+    See Also
+    --------
+    sosfilt, zpk2sos
+    """
+    n_sections = sos.shape[0]
+
+    C = compute_correction_factors_sos(sos, 3, sos.dtype)
+    zi = cupy.zeros((sos.shape[0], 4), dtype=sos.dtype)
+
+    # The initial state for a FIR filter will be always one for a step input
+    x_s = cupy.ones(3, dtype=sos.dtype)
+    for s in range(n_sections):
+        zi_s = cupy.atleast_2d(zi[s])
+        sos_s = cupy.atleast_2d(sos[s])
+
+        # The FIR starting value that guarantees a constant output will be
+        # the same constant input values.
+        zi_s[0, :2] = x_s[:2]
+
+        # Find the non-adjusted values after applying the IIR filter.
+        y_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
+
+        C_s = C[s]
+        y1 = y_s[:2]
+        y2 = y_s[-2:]
+        C1 = C_s[:, :2].T
+        C2 = C_s[:, -2:].T
+
+        # Take the difference between the non-adjusted output values and
+        # compute which initial output state would cause them to be constant.
+        y_zi = cupy.linalg.solve(C1 - C2, y2 - y1)
+        zi_s[0, 2:] = y_zi
+        x_s, _ = sosfilt(sos_s, x_s, zi=zi_s)
+
+    return zi
+
+
+def sosfiltfilt(sos, x, axis=-1, padtype='odd', padlen=None):
+    """
+    A forward-backward digital filter using cascaded second-order sections.
+
+    See `filtfilt` for more complete information about this method.
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. Each row corresponds to a second-order
+        section, with the first three columns providing the numerator
+        coefficients and the last three providing the denominator
+        coefficients.
+    x : array_like
+        The array of data to be filtered.
+    axis : int, optional
+        The axis of `x` to which the filter is applied.
+        Default is -1.
+    padtype : str or None, optional
+        Must be 'odd', 'even', 'constant', or None.  This determines the
+        type of extension to use for the padded signal to which the filter
+        is applied.  If `padtype` is None, no padding is used.  The default
+        is 'odd'.
+    padlen : int or None, optional
+        The number of elements by which to extend `x` at both ends of
+        `axis` before applying the filter.  This value must be less than
+        ``x.shape[axis] - 1``.  ``padlen=0`` implies no padding.
+        The default value is::
+
+            3 * (2 * len(sos) + 1 - min((sos[:, 2] == 0).sum(),
+                                        (sos[:, 5] == 0).sum()))
+
+        The extra subtraction at the end attempts to compensate for poles
+        and zeros at the origin (e.g. for odd-order filters) to yield
+        equivalent estimates of `padlen` to those of `filtfilt` for
+        second-order section filters built with `scipy.signal` functions.
+
+    Returns
+    -------
+    y : ndarray
+        The filtered output with the same shape as `x`.
+
+    See Also
+    --------
+    filtfilt, sosfilt, sosfilt_zi, sosfreqz
+    """
+    sos, n_sections = _validate_sos(sos)
+    x = _validate_x(x)
+
+    # `method` is "pad"...
+    ntaps = 2 * n_sections + 1
+    ntaps -= min((sos[:, 2] == 0).sum().item(), (sos[:, 5] == 0).sum().item())
+    edge, ext = _validate_pad(padtype, padlen, x, axis,
+                              ntaps=ntaps)
+
+    # These steps follow the same form as filtfilt with modifications
+    zi = sosfilt_zi(sos)  # shape (n_sections, 4) --> (n_sections, ..., 4, ...)
+    zi_shape = [1] * x.ndim
+    zi_shape[axis] = 4
+    zi.shape = [n_sections] + zi_shape
+    x_0 = axis_slice(ext, stop=1, axis=axis)
+    (y, zf) = sosfilt(sos, ext, axis=axis, zi=zi * x_0)
+    y_0 = axis_slice(y, start=-1, axis=axis)
+    (y, zf) = sosfilt(sos, axis_reverse(y, axis=axis), axis=axis, zi=zi * y_0)
+    y = axis_reverse(y, axis=axis)
+    if edge > 0:
+        y = axis_slice(y, start=edge, stop=-edge, axis=axis)
+    return y
+
+
+def hilbert(x, N=None, axis=-1):
+    """
+    Compute the analytic signal, using the Hilbert transform.
+
+    The transformation is done along the last axis by default.
+
+    Parameters
+    ----------
+    x : ndarray
+        Signal data.  Must be real.
+    N : int, optional
+        Number of Fourier components.  Default: ``x.shape[axis]``
+    axis : int, optional
+        Axis along which to do the transformation.  Default: -1.
+
+    Returns
+    -------
+    xa : ndarray
+        Analytic signal of `x`, of each 1-D array along `axis`
+
+    Notes
+    -----
+    The analytic signal ``x_a(t)`` of signal ``x(t)`` is:
+
+    .. math:: x_a = F^{-1}(F(x) 2U) = x + i y
+
+    where `F` is the Fourier transform, `U` the unit step function,
+    and `y` the Hilbert transform of `x`. [1]_
+
+    In other words, the negative half of the frequency spectrum is zeroed
+    out, turning the real-valued signal into a complex signal.  The Hilbert
+    transformed signal can be obtained from ``np.imag(hilbert(x))``, and the
+    original signal from ``np.real(hilbert(x))``.
+
+    References
+    ----------
+    .. [1] Wikipedia, "Analytic signal".
+           https://en.wikipedia.org/wiki/Analytic_signal
+
+    See Also
+    --------
+    scipy.signal.hilbert
+
+    """
+    if cupy.iscomplexobj(x):
+        raise ValueError("x must be real.")
+    if N is None:
+        N = x.shape[axis]
+    if N <= 0:
+        raise ValueError("N must be positive.")
+
+    Xf = sp_fft.fft(x, N, axis=axis)
+    h = cupy.zeros(N, dtype=Xf.dtype)
+    if N % 2 == 0:
+        h[0] = h[N // 2] = 1
+        h[1:N // 2] = 2
+    else:
+        h[0] = 1
+        h[1:(N + 1) // 2] = 2
+
+    if x.ndim > 1:
+        ind = [cupy.newaxis] * x.ndim
+        ind[axis] = slice(None)
+        h = h[tuple(ind)]
+    x = sp_fft.ifft(Xf * h, axis=axis)
+    return x
+
+
+def hilbert2(x, N=None):
+    """
+    Compute the '2-D' analytic signal of `x`
+
+    Parameters
+    ----------
+    x : ndarray
+        2-D signal data.
+    N : int or tuple of two ints, optional
+        Number of Fourier components. Default is ``x.shape``
+
+    Returns
+    -------
+    xa : ndarray
+        Analytic signal of `x` taken along axes (0,1).
+
+    See Also
+    --------
+    scipy.signal.hilbert2
+
+    """
+    if x.ndim < 2:
+        x = cupy.atleast_2d(x)
+    if x.ndim > 2:
+        raise ValueError("x must be 2-D.")
+    if cupy.iscomplexobj(x):
+        raise ValueError("x must be real.")
+    if N is None:
+        N = x.shape
+    elif isinstance(N, int):
+        if N <= 0:
+            raise ValueError("N must be positive.")
+        N = (N, N)
+    elif len(N) != 2 or (N[0] <= 0 or N[1] <= 0):
+        raise ValueError("When given as a tuple, N must hold exactly "
+                         "two positive integers")
+
+    Xf = sp_fft.fft2(x, N, axes=(0, 1))
+    h1 = cupy.zeros(N[0], dtype=Xf.dtype)
+    h2 = cupy.zeros(N[1], dtype=Xf.dtype)
+    for h in (h1, h1):
+        N1 = h.shape[0]
+        if N1 % 2 == 0:
+            h[0] = h[N1 // 2] = 1
+            h[1:N1 // 2] = 2
+        else:
+            h[0] = 1
+            h[1:(N1 + 1) // 2] = 2
+
+    h = h1[:, cupy.newaxis] * h2[cupy.newaxis, :]
+    k = x.ndim
+    while k > 2:
+        h = h[:, cupy.newaxis]
+        k -= 1
+    x = sp_fft.ifft2(Xf * h, axes=(0, 1))
+    return x

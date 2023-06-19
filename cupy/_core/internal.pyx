@@ -5,7 +5,6 @@ cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
-import sys
 import warnings
 
 import numpy
@@ -350,7 +349,6 @@ cdef _broadcast_core(list arrays, shape_t& shape):
     cdef strides_t strides
     cdef vector.vector[int] index
     cdef _ndarray_base a
-    cdef list ret
 
     shape.clear()
     index.reserve(len(arrays))

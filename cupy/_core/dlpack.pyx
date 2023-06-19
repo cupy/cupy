@@ -12,7 +12,6 @@ from libcpp.vector cimport vector
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 import warnings

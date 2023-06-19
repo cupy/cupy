@@ -11,8 +11,8 @@ from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
 
-def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
-          return_eigenvectors=True):
+def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
+          tol=0, return_eigenvectors=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -31,6 +31,8 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
             eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
 
+        v0 (ndarray): Starting vector for iteration. If ``None``, a random
+            unit vector is used.
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -79,8 +81,12 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     V = cupy.empty((ncv, n), dtype=a.dtype)
 
     # Set initial vector
-    u = cupy.random.random((n,)).astype(a.dtype)
-    V[0] = u / cublas.nrm2(u)
+    if v0 is None:
+        u = cupy.random.random((n,)).astype(a.dtype)
+        V[0] = u / cublas.nrm2(u)
+    else:
+        u = v0
+        V[0] = v0 / cublas.nrm2(v0)
 
     # Choose Lanczos implementation, unconditionally use 'fast' for now
     upadte_impl = 'fast'

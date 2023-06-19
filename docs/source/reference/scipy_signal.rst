@@ -39,7 +39,13 @@ Filtering
    filtfilt
    savgol_filter
    deconvolve
+   sosfilt
+   sosfilt_zi
+   sosfiltfilt
    detrend
+   hilbert
+   hilbert2
+
 
 Filter design
 -------------
@@ -50,3 +56,40 @@ Filter design
    bilinear
    bilinear_zpk
    savgol_coeffs
+   iirfilter
+
+
+Matlab-style IIR filter design
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   butter
+   ellip
+   cheby1
+   cheby2
+
+
+Chirp Z-transform and Zoom FFT
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   czt
+   zoom_fft
+   CZT
+   ZoomFFT
+   czt_points
+
+
+LTI representations
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   zpk2tf
+   zpk2sos
+

@@ -1018,6 +1018,7 @@ cpdef zgemmBatched(
             <cuDoubleComplex*>alpha, <const cuDoubleComplex**>Aarray, lda,
             <const cuDoubleComplex**>Barray, ldb, <cuDoubleComplex*>beta,
             <cuDoubleComplex**>Carray, ldc, batchCount)
+    check_status(status)
 
 
 cpdef sgemmStridedBatched(

@@ -1,4 +1,3 @@
-import os
 import threading
 
 from cupy_backends.cuda.api cimport runtime
@@ -479,7 +478,6 @@ class Stream(_BaseStream):
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
-        tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
