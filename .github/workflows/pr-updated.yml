@@ -25,4 +25,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Needs Attention
-        run: echo "The pull-request will be marked as Needs Attention from maintainers."
+        run: |
+          echo "The pull-request will be marked as Needs Attention from maintainers."
+          echo "${{ github.event.number }}" > PULL_REQUEST_NUMBER
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: PULL_REQUEST_NUMBER
+          path: PULL_REQUEST_NUMBER
