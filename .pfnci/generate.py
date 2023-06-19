@@ -350,7 +350,7 @@ class CoverageGenerator:
                 table += [
                     [
                         key_header,
-                        value if value else 'null',
+                        value if value is not None else 'null',
                         str(count) if count != 0 else '🚨',
                     ] + [
                         '✅' if mv == value else '' for mv in matrix_values
