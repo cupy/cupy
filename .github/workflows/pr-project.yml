@@ -3,21 +3,43 @@ name: "Project (Pull-Request)"
 on:
   workflow_run:
     workflows: ["Pull-Request Update"]
-    types: [requested]
+    types: [completed]
 
 jobs:
   needs-attention:
     # Brings the pull-request to attention by any activities triggered by users other than assignees.
+    # c.f. https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
     if: github.repository_owner == 'cupy'
     runs-on: ubuntu-22.04
     steps:
+      - name: Download artifact
+        uses: actions/github-script@v6
+        with:
+          script: |
+            var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: ${{ github.event.workflow_run.id }},
+            });
+            var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "PULL_REQUEST_NUMBER"
+            })[0];
+            var download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            var fs = require('fs');
+            fs.writeFileSync('${{github.workspace}}/PULL_REQUEST_NUMBER.zip', Buffer.from(download.data));
+      - run: unzip PULL_REQUEST_NUMBER.zip
+
       - name: Update Status
         shell: /usr/bin/bash -uex "{0}"
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat "${GITHUB_EVENT_PATH}"
-          PULL_REQUEST=$(jq '.workflow_run.pull_requests[] | select(.base.repo.url == "https://api.github.com/repos/${{ github.repository }}") | .number' "${GITHUB_EVENT_PATH}")
+          PULL_REQUEST="$(cat 'PULL_REQUEST_NUMBER')"
 
           # https://github.com/orgs/cupy/projects/4
           gh api graphql -F "pull_request=${PULL_REQUEST}" -f query='
