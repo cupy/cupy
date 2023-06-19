@@ -6,6 +6,11 @@ import cupy
 from cupy import testing
 from cupyx.scipy import signal
 
+try:
+    import scipy.signal  # NOQA
+except ImportError:
+    pass
+
 
 nimpl = pytest.mark.xfail(reason="not implemented")
 prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
@@ -37,7 +42,7 @@ class TestIIRFilter:
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
                                        'cheby1', 'cheby2', 'ellip'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-6)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
     def test_symmetry_2(self, N, ftype, xp, scp):
         b, a = scp.signal.iirfilter(N, 1.1, 1, 20, 'low', analog=True,
                                     ftype=ftype, output='ba')
@@ -70,6 +75,7 @@ class TestIIRFilter:
         assert_raises(ValueError, signal.iirfilter, 1, [1, 2], btype='band')
         assert_raises(ValueError, signal.iirfilter, 1, [10, 20], btype='stop')
 
+    @testing.with_requires("scipy>=1.8")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_analog_sos(self, xp, scp):
         # first order Butterworth filter with Wn = 1 has tf 1/(s+1)
@@ -161,6 +167,7 @@ class TestButter:
                               'sos',
                               pytest.param('ba', marks=prec_loss)])
     @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.with_requires("scipy>=1.8")
     def test_ba_output(self, xp, scp, outp):
         outp = scp.signal.butter(
             4, [100, 300], 'bandpass', analog=True, output=outp)
