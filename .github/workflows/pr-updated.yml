@@ -1,0 +1,28 @@
+name: "Pull-Request Update"
+
+on:
+  issue_comment:
+  pull_request:
+    types: [edited, synchronize, converted_to_draft, ready_for_review, review_requested, auto_merge_disabled]
+  pull_request_review:
+  pull_request_review_comment:
+
+jobs:
+  mark-needs-attention:
+    if: |
+      github.repository_owner == 'cupy' &&
+      (
+        (
+            github.event_name == 'issue_comment' &&
+            github.event.issue.pull_request &&
+            !contains(github.event.issue.assignees, github.actor)
+        ) ||
+        (
+            github.event_name != 'issue_comment' &&
+            !contains(github.event.pull_request.assignees, github.actor)
+        )
+      )
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Needs Attention
+        run: echo "The pull-request will be marked as Needs Attention from maintainers."

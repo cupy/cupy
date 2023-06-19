@@ -1,37 +1,23 @@
 name: "Project (Pull-Request)"
 
 on:
-  issue_comment:
-  pull_request_target:
-    types: [edited, synchronize, converted_to_draft, ready_for_review, review_requested, auto_merge_disabled]
-  pull_request_review:
-  pull_request_review_comment:
+  workflow_run:
+    workflows: ["Pull-Request Update"]
+    types: [requested]
 
 jobs:
   needs-attention:
     # Brings the pull-request to attention by any activities triggered by users other than assignees.
-    if: |
-        github.repository_owner == 'cupy' &&
-        (
-            (
-                github.event_name == 'issue_comment' &&
-                github.event.issue.pull_request &&
-                !contains(github.event.issue.assignees, github.actor)
-            ) ||
-            (
-                github.event_name != 'issue_comment' &&
-                !contains(github.event.pull_request.assignees, github.actor)
-            )
-        )
-
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-22.04
     steps:
       - name: Update Status
         shell: /usr/bin/bash -uex "{0}"
         env:
           GH_TOKEN: ${{ github.token }}
-          PULL_REQUEST: ${{ (github.event.pull_request || github.event.issue).number }}
         run: |
+          PULL_REQUEST=$(jq '.workflow_run.pull_requests[] | select(.base.repo.url == "https://api.github.com/repos/${{ github.repository }}") | .number' "${GITHUB_EVENT_PATH}")
+
           # https://github.com/orgs/cupy/projects/4
           gh api graphql -F "pull_request=${PULL_REQUEST}" -f query='
             query ($pull_request: Int!) {
