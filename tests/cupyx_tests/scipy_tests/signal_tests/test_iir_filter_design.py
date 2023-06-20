@@ -4,6 +4,7 @@ from pytest import raises as assert_raises
 import cupy
 
 from cupy import testing
+from cupy.cuda import runtime
 from cupyx.scipy import signal
 
 try:
@@ -433,6 +434,7 @@ class TestEllip:
             N, 1, 40, wn, 'high', analog=False, output='zpk')
         return z, p, k
 
+    @testing.with_requires("scipy>=1.7")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14, rtol=1e-14)
     def test_basic_2(self, xp, scp):
         b3, a3 = scp.signal.ellip(5, 3, 26, 1, analog=True)
