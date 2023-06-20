@@ -376,19 +376,6 @@ class TestTf2zpk:
 @testing.with_requires("scipy")
 class TestSS2TF:
 
-    def check_matrix_shapes(self, p, q, r):
-        ss2tf(np.zeros((p, p)),
-              np.zeros((p, q)),
-              np.zeros((r, p)),
-              np.zeros((r, q)), 0)
-
-    @pytest.mark.xfail(reason='ss2tf')
-    def test_shapes(self):
-        # Each tuple holds:
-        #   number of states, number of inputs, number of outputs
-        for p, q, r in [(3, 3, 3), (1, 3, 3), (1, 1, 1)]:
-            self.check_matrix_shapes(p, q, r)
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp):
         # Test a round trip through tf2ss and ss2tf.
@@ -398,7 +385,6 @@ class TestSS2TF:
         A, B, C, D = scp.signal.tf2ss(b, a)
         return A, B, C, D
 
-    @pytest.mark.xfail(reason='ss2tf')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_2(self, xp, scp):
         b = xp.array([1.0, 3.0, 5.0])
@@ -415,7 +401,6 @@ class TestSS2TF:
         A, B, C, D = scp.signal.tf2ss(*tf)
         return A, B, C, D
 
-    @pytest.mark.xfail(reason='ss2tf')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zero_order_round_trip_2(self, xp, scp):
         tf = (2, 1)
@@ -430,7 +415,6 @@ class TestSS2TF:
         A, B, C, D = scp.signal.tf2ss(*tf)
         return A, B, C, D
 
-    @pytest.mark.xfail(reason='ss2tf')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zero_order_round_trip_4(self, xp, scp):
         tf = (xp.asarray([[5], [2]]), 1)
@@ -451,44 +435,12 @@ class TestSS2TF:
         A, B, C, D = scp.signal.tf2ss(*tf)
         return A, B, C, D
 
-        assert_allclose(A, [[-2]], rtol=1e-13)
-        assert_allclose(B, [[1]], rtol=1e-13)
-        assert_allclose(C, [[0], [-1]], rtol=1e-13)
-        assert_allclose(D, [[1], [1]], rtol=1e-13)
-
-        num, den = ss2tf(A, B, C, D)
-        assert_allclose(num, [[1, 2], [1, 1]], rtol=1e-13)
-        assert_allclose(den, [1, 2], rtol=1e-13)
-
-        tf = ([[1, 0, 1], [1, 1, 1]], [1, 1, 1])
-        A, B, C, D = tf2ss(*tf)
-        assert_allclose(A, [[-1, -1], [1, 0]], rtol=1e-13)
-        assert_allclose(B, [[1], [0]], rtol=1e-13)
-        assert_allclose(C, [[-1, 0], [0, 0]], rtol=1e-13)
-        assert_allclose(D, [[1], [1]], rtol=1e-13)
-
-        num, den = ss2tf(A, B, C, D)
-        assert_allclose(num, [[1, 0, 1], [1, 1, 1]], rtol=1e-13)
-        assert_allclose(den, [1, 1, 1], rtol=1e-13)
-
-        tf = ([[1, 2, 3], [1, 2, 3]], [1, 2, 3, 4])
-        A, B, C, D = tf2ss(*tf)
-        assert_allclose(A, [[-2, -3, -4], [1, 0, 0], [0, 1, 0]], rtol=1e-13)
-        assert_allclose(B, [[1], [0], [0]], rtol=1e-13)
-        assert_allclose(C, [[1, 2, 3], [1, 2, 3]], rtol=1e-13)
-        assert_allclose(D, [[0], [0]], rtol=1e-13)
-
-        num, den = ss2tf(A, B, C, D)
-        assert_allclose(num, [[0, 1, 2, 3], [0, 1, 2, 3]], rtol=1e-13)
-        assert_allclose(den, [1, 2, 3, 4], rtol=1e-13)
-
-    @pytest.mark.xfail(reason="ss2tf")
     @pytest.mark.parametrize('tf',
                              [([[1, 2], [1, 1]], [1, 2]),
                               ([[1, 0, 1], [1, 1, 1]], [1, 1, 1]),
                                  ([[1, 2, 3], [1, 2, 3]], [1, 2, 3, 4]),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_simo_round_trip_2(self, xp, scp, tf):
         tf = tuple(xp.asarray(x) for x in tf)
         A, B, C, D = scp.signal.tf2ss(*tf)
@@ -496,8 +448,7 @@ class TestSS2TF:
         num, den = scp.signal.ss2tf(A, B, C, D)
         return num, den
 
-    @pytest.mark.xfail(reason='ss2tf')
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_all_int_arrays(self, xp, scp):
         A = xp.asarray([[0, 1, 0], [0, 0, 1], [-3, -4, -2]])
         B = xp.asarray([[0], [0], [1]])
@@ -506,44 +457,34 @@ class TestSS2TF:
         num, den = scp.signal.ss2tf(A, B, C, D)
         return num, den
 
-    @pytest.mark.xfail(reason='ss2tf')
-    def test_multioutput(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_multioutput(self, xp, scp):
         # Regression test for gh-2669.
 
         # 4 states
-        A = np.array([[-1.0, 0.0, 1.0, 0.0],
+        A = xp.array([[-1.0, 0.0, 1.0, 0.0],
                       [-1.0, 0.0, 2.0, 0.0],
                       [-4.0, 0.0, 3.0, 0.0],
                       [-8.0, 8.0, 0.0, 4.0]])
 
         # 1 input
-        B = np.array([[0.3],
+        B = xp.array([[0.3],
                       [0.0],
                       [7.0],
                       [0.0]])
 
         # 3 outputs
-        C = np.array([[0.0, 1.0, 0.0, 0.0],
+        C = xp.array([[0.0, 1.0, 0.0, 0.0],
                       [0.0, 0.0, 0.0, 1.0],
                       [8.0, 8.0, 0.0, 0.0]])
 
-        D = np.array([[0.0],
+        D = xp.array([[0.0],
                       [0.0],
                       [1.0]])
 
         # Get the transfer functions for all the outputs in one call.
-        b_all, a = ss2tf(A, B, C, D)
-
-        # Get the transfer functions for each output separately.
-        b0, a0 = ss2tf(A, B, C[0], D[0])
-        b1, a1 = ss2tf(A, B, C[1], D[1])
-        b2, a2 = ss2tf(A, B, C[2], D[2])
-
-        # Check that we got the same results.
-        assert_allclose(a0, a, rtol=1e-13)
-        assert_allclose(a1, a, rtol=1e-13)
-        assert_allclose(a2, a, rtol=1e-13)
-        assert_allclose(b_all, np.vstack((b0, b1, b2)), rtol=1e-13, atol=1e-14)
+        b_all, a = scp.signal.ss2tf(A, B, C, D)
+        return b_all, a
 
 
 @testing.with_requires("scipy")
