@@ -1305,6 +1305,76 @@ def tf2sos(b, a, pairing=None, *, analog=False):
     return zpk2sos(*tf2zpk(b, a), pairing=pairing, analog=analog)
 
 
+def tf2ss(num, den):
+    r"""Transfer function to state-space representation.
+
+    Parameters
+    ----------
+    num, den : array_like
+        Sequences representing the coefficients of the numerator and
+        denominator polynomials, in order of descending degree. The
+        denominator needs to be at least as long as the numerator.
+
+    Returns
+    -------
+    A, B, C, D : ndarray
+        State space representation of the system, in controller canonical
+        form.
+
+    See Also
+    --------
+    scipy.signal.tf2ss
+    """
+    # Controller canonical state-space representation.
+    #  if M+1 = len(num) and K+1 = len(den) then we must have M <= K
+    #  states are found by asserting that X(s) = U(s) / D(s)
+    #  then Y(s) = N(s) * X(s)
+    #
+    #   A, B, C, and D follow quite naturally.
+    #
+    num, den = normalize(num, den)   # Strips zeros, checks arrays
+    nn = len(num.shape)
+    if nn == 1:
+        num = cupy.asarray([num], num.dtype)
+    M = num.shape[1]
+    K = len(den)
+    if M > K:
+        msg = "Improper transfer function. `num` is longer than `den`."
+        raise ValueError(msg)
+    if M == 0 or K == 0:  # Null system
+        return (cupy.array([], float),
+                cupy.array([], float),
+                cupy.array([], float),
+                cupy.array([], float))
+
+    # pad numerator to have same number of columns has denominator
+    num = cupy.hstack((cupy.zeros((num.shape[0], K - M), num.dtype), num))
+
+    if num.shape[-1] > 0:
+        D = cupy.atleast_2d(num[:, 0])
+
+    else:
+        # We don't assign it an empty array because this system
+        # is not 'null'. It just doesn't have a non-zero D
+        # matrix. Thus, it should have a non-zero shape so that
+        # it can be operated on by functions like 'ss2tf'
+        D = cupy.array([[0]], float)
+
+    if K == 1:
+        D = D.reshape(num.shape)
+
+        return (cupy.zeros((1, 1)), cupy.zeros((1, D.shape[1])),
+                cupy.zeros((D.shape[0], 1)), D)
+
+    frow = -cupy.array([den[1:]])
+    A = cupy.r_[frow, cupy.eye(K - 2, K - 1)]
+    B = cupy.eye(K - 1, 1)
+    C = num[:, 1:] - cupy.outer(num[:, 0], den[1:])
+    D = D.reshape((C.shape[0], B.shape[1]))
+
+    return A, B, C, D
+
+
 # ### Low-level analog filter prototypes ###
 
 # TODO (ev-br): move to a better place (_filter_design.py (?))
