@@ -1,5 +1,329 @@
 
-import cupy  # NOQA
+import cupy
+
+from cupy._core._scalar import get_typename
+from cupy_backends.cuda.api import runtime
+
+
+def _get_typename(dtype):
+    typename = get_typename(dtype)
+    if cupy.dtype(dtype).kind == 'c':
+        typename = 'thrust::' + typename
+    elif typename == 'float16':
+        if runtime.is_hip:
+            # 'half' in name_expressions weirdly raises
+            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
+            # ROCm
+            typename = '__half'
+        else:
+            typename = 'half'
+    return typename
+
+
+FLOAT_TYPES = [cupy.float16, cupy.float32, cupy.float64]
+INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
+UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
+TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES  # type: ignore
+TYPE_NAMES = [_get_typename(t) for t in TYPES]
+
+
+if runtime.is_hip:
+    PEAKS_KERNEL_BASE = r"""
+    #include <hip/hip_runtime.h>
+"""
+else:
+    PEAKS_KERNEL_BASE = r"""
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+"""
+
+PEAKS_KERNEL = PEAKS_KERNEL_BASE + r"""
+#include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+
+template<typename T>
+__global__ void local_maxima_1d(
+        const int n, const T* __restrict__ x, long long* midpoints,
+        long long* left_edges, long long* right_edges) {
+
+    const int orig_idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const int idx = orig_idx + 1;
+
+    if(idx >= n - 1) {
+        return;
+    }
+
+    long long midpoint = -1;
+    long long left = -1;
+    long long right = -1;
+
+    if(x[idx - 1] < x[idx]) {
+        int i_ahead = idx + 1;
+
+        while(i_ahead < n - 1 && x[i_ahead] == x[idx]) {
+            i_ahead++;
+        }
+
+        if(x[i_ahead] < x[idx]) {
+            left = idx;
+            right = i_ahead - 1;
+            midpoint = (left + right) / 2;
+        }
+    }
+
+    midpoints[orig_idx] = midpoint;
+    left_edges[orig_idx] = left;
+    right_edges[orig_idx] = right;
+}
+"""
+
+PEAKS_MODULE = cupy.RawModule(
+    code=PEAKS_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES])
+
+
+def _get_module_func(module, func_name, *template_args):
+    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
+
+
+def _local_maxima_1d(x):
+    samples = x.shape[0] - 2
+    block_sz = 128
+    n_blocks = (samples + block_sz - 1) // block_sz
+
+    midpoints = cupy.empty(samples, dtype=cupy.int64)
+    left_edges = cupy.empty(samples, dtype=cupy.int64)
+    right_edges = cupy.empty(samples, dtype=cupy.int64)
+
+    local_max_kernel = _get_module_func(PEAKS_MODULE, 'local_maxima_1d', x)
+    local_max_kernel((n_blocks,), (block_sz,),
+                     (x.shape[0], x, midpoints, left_edges, right_edges))
+
+    pos_idx = midpoints > 0
+    midpoints = midpoints[pos_idx]
+    left_edges = left_edges[pos_idx]
+    right_edges = right_edges[pos_idx]
+
+    return midpoints, left_edges, right_edges
+
+
+def _unpack_condition_args(interval, x, peaks):
+    """
+    Parse condition arguments for `find_peaks`.
+
+    Parameters
+    ----------
+    interval : number or ndarray or sequence
+        Either a number or ndarray or a 2-element sequence of the former. The
+        first value is always interpreted as `imin` and the second,
+        if supplied, as `imax`.
+    x : ndarray
+        The signal with `peaks`.
+    peaks : ndarray
+        An array with indices used to reduce `imin` and / or `imax` if those
+        are arrays.
+
+    Returns
+    -------
+    imin, imax : number or ndarray or None
+        Minimal and maximal value in `argument`.
+
+    Raises
+    ------
+    ValueError :
+        If interval border is given as array and its size does not match the
+        size of `x`.
+    """
+    try:
+        imin, imax = interval
+    except (TypeError, ValueError):
+        imin, imax = (interval, None)
+
+    # Reduce arrays if arrays
+    if isinstance(imin, cupy.ndarray):
+        if imin.size != x.size:
+            raise ValueError(
+                'array size of lower interval border must match x')
+        imin = imin[peaks]
+    if isinstance(imax, cupy.ndarray):
+        if imax.size != x.size:
+            raise ValueError(
+                'array size of upper interval border must match x')
+        imax = imax[peaks]
+
+    return imin, imax
+
+
+def _select_by_property(peak_properties, pmin, pmax):
+    """
+    Evaluate where the generic property of peaks confirms to an interval.
+
+    Parameters
+    ----------
+    peak_properties : ndarray
+        An array with properties for each peak.
+    pmin : None or number or ndarray
+        Lower interval boundary for `peak_properties`. ``None``
+        is interpreted as an open border.
+    pmax : None or number or ndarray
+        Upper interval boundary for `peak_properties`. ``None``
+        is interpreted as an open border.
+
+    Returns
+    -------
+    keep : bool
+        A boolean mask evaluating to true where `peak_properties` confirms
+        to the interval.
+
+    See Also
+    --------
+    find_peaks
+
+    """
+    keep = cupy.ones(peak_properties.size, dtype=bool)
+    if pmin is not None:
+        keep &= (pmin <= peak_properties)
+    if pmax is not None:
+        keep &= (peak_properties <= pmax)
+    return keep
+
+
+def _select_by_peak_threshold(x, peaks, tmin, tmax):
+    """
+    Evaluate which peaks fulfill the threshold condition.
+
+    Parameters
+    ----------
+    x : ndarray
+        A 1-D array which is indexable by `peaks`.
+    peaks : ndarray
+        Indices of peaks in `x`.
+    tmin, tmax : scalar or ndarray or None
+         Minimal and / or maximal required thresholds. If supplied as ndarrays
+         their size must match `peaks`. ``None`` is interpreted as an open
+         border.
+
+    Returns
+    -------
+    keep : bool
+        A boolean mask evaluating to true where `peaks` fulfill the threshold
+        condition.
+    left_thresholds, right_thresholds : ndarray
+        Array matching `peak` containing the thresholds of each peak on
+        both sides.
+
+    """
+    # Stack thresholds on both sides to make min / max operations easier:
+    # tmin is compared with the smaller, and tmax with the greater thresold to
+    # each peak's side
+    stacked_thresholds = cupy.vstack([x[peaks] - x[peaks - 1],
+                                      x[peaks] - x[peaks + 1]])
+    keep = cupy.ones(peaks.size, dtype=bool)
+    if tmin is not None:
+        min_thresholds = cupy.min(stacked_thresholds, axis=0)
+        keep &= (tmin <= min_thresholds)
+    if tmax is not None:
+        max_thresholds = cupy.max(stacked_thresholds, axis=0)
+        keep &= (max_thresholds <= tmax)
+
+    return keep, stacked_thresholds[0], stacked_thresholds[1]
+
+
+def _select_by_peak_distance(peaks, priority, distance):
+    """
+    Evaluate which peaks fulfill the distance condition.
+
+    Parameters
+    ----------
+    peaks : ndarray
+        Indices of peaks in `vector`.
+    priority : ndarray
+        An array matching `peaks` used to determine priority of each peak. A
+        peak with a higher priority value is kept over one with a lower one.
+    distance : np.float64
+        Minimal distance that peaks must be spaced.
+
+    Returns
+    -------
+    keep : ndarray[bool]
+        A boolean mask evaluating to true where `peaks` fulfill the distance
+        condition.
+
+    Notes
+    -----
+    Declaring the input arrays as C-contiguous doesn't seem to have performance
+    advantages.
+    """
+    peaks_size = peaks.shape[0]
+    # Round up because actual peak distance can only be natural number
+    distance_ = cupy.ceil(distance)
+    keep = cupy.ones(peaks_size, dtype=cupy.bool_)  # Prepare array of flags
+
+    # Create map from `i` (index for `peaks` sorted by `priority`) to `j`
+    # (index for `peaks` sorted by position). This allows to iterate `peaks`
+    # and `keep` with `j` by order of `priority` while still maintaining the
+    # ability to step to neighbouring peaks with (`j` + 1) or (`j` - 1).
+    priority_to_position = cupy.argsort(priority)
+
+    # Highest priority first -> iterate in reverse order (decreasing)
+
+    # NOTE: There's not an alternative way to do this procedure in a parallel
+    # fashion, since discarding a peak requires to know if there's a valid
+    # neighbour that subsumes it, which in turn requires to know
+    # if that neighbour is valid. If it was to done in parallel, there would be
+    # tons of repeated computations per peak, thus increasing the total runtime
+    # per peak compared to a sequential implementation.
+    for i in range(peaks_size - 1, -1, -1):
+        # "Translate" `i` to `j` which points to current peak whose
+        # neighbours are to be evaluated
+        j = priority_to_position[i]
+        if keep[j] == 0:
+            # Skip evaluation for peak already marked as "don't keep"
+            continue
+
+        k = j - 1
+        # Flag "earlier" peaks for removal until minimal distance is exceeded
+        while 0 <= k and peaks[j] - peaks[k] < distance_:
+            keep[k] = 0
+            k -= 1
+
+        k = j + 1
+        # Flag "later" peaks for removal until minimal distance is exceeded
+        while k < peaks_size and peaks[k] - peaks[j] < distance_:
+            keep[k] = 0
+            k += 1
+    return keep
+
+
+def _arg_wlen_as_expected(value):
+    """Ensure argument `wlen` is of type `np.intp` and larger than 1.
+
+    Used in `peak_prominences` and `peak_widths`.
+
+    Returns
+    -------
+    value : np.intp
+        The original `value` rounded up to an integer or -1 if `value` was
+        None.
+    """
+    if value is None:
+        # _peak_prominences expects an intp; -1 signals that no value was
+        # supplied by the user
+        value = -1
+    elif 1 < value:
+        # Round up to a positive integer
+        if not cupy.can_cast(value, cupy.intp, "safe"):
+            value = cupy.ceil(value)
+        value = cupy.intp(value)
+    else:
+        raise ValueError('`wlen` must be larger than 1, was {}'
+                         .format(value))
+    return value
 
 
 def find_peaks(x, height=None, threshold=None, distance=None,
@@ -82,8 +406,6 @@ def find_peaks(x, height=None, threshold=None, distance=None,
               the indices of a peak's edges (edges are still part of the
               plateau) and the calculated plateau sizes.
 
-              .. versionadded:: 1.2.0
-
         To calculate and return properties without excluding peaks, provide the
         open interval ``(None, None)`` as a value to the appropriate argument
         (excluding `distance`).
@@ -140,19 +462,18 @@ def find_peaks(x, height=None, threshold=None, distance=None,
       `prominence` or `width` if `x` is large or has many local maxima
       (see `peak_prominences`).
     """  # NOQA
-    # _argmaxima1d expects array of dtype 'float64'
-    x = _arg_x_as_expected(x)  # NOQA
+
     if distance is not None and distance < 1:
         raise ValueError('`distance` must be greater or equal to 1')
 
-    peaks, left_edges, right_edges = _local_maxima_1d(x)  # NOQA
+    peaks, left_edges, right_edges = _local_maxima_1d(x)
     properties = {}
 
     if plateau_size is not None:
         # Evaluate plateau size
         plateau_sizes = right_edges - left_edges + 1
-        pmin, pmax = _unpack_condition_args(plateau_size, x, peaks)  # NOQA
-        keep = _select_by_property(plateau_sizes, pmin, pmax)  # NOQA
+        pmin, pmax = _unpack_condition_args(plateau_size, x, peaks)
+        keep = _select_by_property(plateau_sizes, pmin, pmax)
         peaks = peaks[keep]
         properties["plateau_sizes"] = plateau_sizes
         properties["left_edges"] = left_edges
@@ -162,16 +483,16 @@ def find_peaks(x, height=None, threshold=None, distance=None,
     if height is not None:
         # Evaluate height condition
         peak_heights = x[peaks]
-        hmin, hmax = _unpack_condition_args(height, x, peaks)  # NOQA
-        keep = _select_by_property(peak_heights, hmin, hmax)  # NOQA
+        hmin, hmax = _unpack_condition_args(height, x, peaks)
+        keep = _select_by_property(peak_heights, hmin, hmax)
         peaks = peaks[keep]
         properties["peak_heights"] = peak_heights
         properties = {key: array[keep] for key, array in properties.items()}
 
     if threshold is not None:
         # Evaluate threshold condition
-        tmin, tmax = _unpack_condition_args(threshold, x, peaks)  # NOQA
-        keep, left_thresholds, right_thresholds = _select_by_peak_threshold(  # NOQA
+        tmin, tmax = _unpack_condition_args(threshold, x, peaks)
+        keep, left_thresholds, right_thresholds = _select_by_peak_threshold(
             x, peaks, tmin, tmax)
         peaks = peaks[keep]
         properties["left_thresholds"] = left_thresholds
