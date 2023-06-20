@@ -126,6 +126,7 @@ LTI representations
 
    zpk2tf
    zpk2sos
+   tf2zpk
 
 
 Peak finding

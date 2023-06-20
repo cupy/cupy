@@ -356,6 +356,24 @@ class TestZpk2Sos:
 
 
 @testing.with_requires("scipy")
+class TestTf2zpk:
+
+    @pytest.mark.parametrize('dt', ('float64', 'complex128'))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple(self, xp, scp, dt):
+        z_r = xp.array([0.5, -0.5])
+        p_r = xp.array([1.j / sqrt(2), -1.j / sqrt(2)])
+        b = xp.poly(z_r).astype(dt)
+        a = xp.poly(p_r).real.astype(dt)
+
+        z, p, k = scp.signal.tf2zpk(b, a)
+        z.sort()
+        # The real part of `p` is ~0.0, so sort by imaginary part
+        p = p[xp.argsort(p.imag)]
+        return z, p, k
+
+
+@testing.with_requires("scipy")
 class TestCplxReal:
     # _cplxreal is a private function, vendored from
     # scipy.signal._filter_design. This test class is also vendored.
