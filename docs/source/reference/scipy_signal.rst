@@ -71,6 +71,16 @@ Matlab-style IIR filter design
    cheby2
 
 
+Low-level filter design functions
+---------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   abcd_normalize
+
+
+
 Chirp Z-transform and Zoom FFT
 ------------------------------
 

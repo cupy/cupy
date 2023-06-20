@@ -57,3 +57,5 @@ from cupyx.scipy.signal._iir_filter_design import cheby2  # NOQA
 from cupyx.scipy.signal._iir_filter_design import ellip  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
+
+from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA
