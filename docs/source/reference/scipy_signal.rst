@@ -55,6 +55,9 @@ Filter design
 
    bilinear
    bilinear_zpk
+   freqz
+   freqz_zpk
+   firls
    savgol_coeffs
    iirfilter
 
