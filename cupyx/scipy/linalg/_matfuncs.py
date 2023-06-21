@@ -29,7 +29,7 @@ def khatri_rao(a, b):
     _util._assert_2d(a)
     _util._assert_2d(b)
 
-    if not a.shape[1] == b.shape[1]:
+    if a.shape[1] != b.shape[1]:
         raise ValueError("The number of columns for both arrays "
                          "should be equal.")
 
