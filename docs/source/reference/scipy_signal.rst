@@ -214,4 +214,7 @@ Spectral analysis
 .. autosummary::
    :toctree: generated/
 
+   periodogram
+   welch
+   csd
    lombscargle
