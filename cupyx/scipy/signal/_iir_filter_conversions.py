@@ -1306,6 +1306,44 @@ def tf2sos(b, a, pairing=None, *, analog=False):
     return zpk2sos(*tf2zpk(b, a), pairing=pairing, analog=analog)
 
 
+def sos2tf(sos):
+    """
+    Return a single transfer function from a series of second-order sections
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. See `sosfilt` for the SOS filter format
+        specification.
+
+    Returns
+    -------
+    b : ndarray
+        Numerator polynomial coefficients.
+    a : ndarray
+        Denominator polynomial coefficients.
+
+    See Also
+    --------
+    scipy.signal.sos2tf
+
+    """
+    sos = cupy.asarray(sos)
+    result_type = sos.dtype
+    if result_type.kind in 'bui':
+        result_type = cupy.float64
+
+    b = cupy.array([1], dtype=result_type)
+    a = cupy.array([1], dtype=result_type)
+    n_sections = sos.shape[0]
+    for section in range(n_sections):
+        b = cupy.polymul(b, sos[section, :3])
+        a = cupy.polymul(a, sos[section, 3:])
+    return b, a
+
+
+
 def tf2ss(num, den):
     r"""Transfer function to state-space representation.
 
@@ -1442,6 +1480,64 @@ def ss2tf(A, B, C, D, input=0):
         num[k] = poly(A - B @ Ck) + (D[k] - 1) * den
 
     return num, den
+
+
+def zpk2ss(z, p, k):
+    """Zero-pole-gain representation to state-space representation
+
+    Parameters
+    ----------
+    z, p : sequence
+        Zeros and poles.
+    k : float
+        System gain.
+
+    Returns
+    -------
+    A, B, C, D : ndarray
+        State space representation of the system, in controller canonical
+        form.
+
+    See Also
+    --------
+    scipy.signal.zpk2ss
+
+    """
+    return tf2ss(*zpk2tf(z, p, k))
+
+
+def ss2zpk(A, B, C, D, input=0):
+    """State-space representation to zero-pole-gain representation.
+
+    A, B, C, D defines a linear state-space system with `p` inputs,
+    `q` outputs, and `n` state variables.
+
+    Parameters
+    ----------
+    A : array_like
+        State (or system) matrix of shape ``(n, n)``
+    B : array_like
+        Input matrix of shape ``(n, p)``
+    C : array_like
+        Output matrix of shape ``(q, n)``
+    D : array_like
+        Feedthrough (or feedforward) matrix of shape ``(q, p)``
+    input : int, optional
+        For multiple-input systems, the index of the input to use.
+
+    Returns
+    -------
+    z, p : sequence
+        Zeros and poles.
+    k : float
+        System gain.
+
+    See Also
+    --------
+    scipy.signal.ss2zpk
+
+    """
+    return tf2zpk(*ss2tf(A, B, C, D, input=input))
 
 
 # ### Low-level analog filter prototypes ###
