@@ -142,6 +142,7 @@ Discrete-time linear systems
 .. autosummary::
    :toctree: generated/
 
+   lti
    dlti
    StateSpace
    TransferFunction

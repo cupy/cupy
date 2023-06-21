@@ -32,7 +32,7 @@ def _trim_zeros(filt, trim='fb'):
                 first = first + 1
 
     last = len(filt)
-    if 'f' in trim:
+    if 'b' in trim:
         for i in filt[::-1]:
             if i != 0.:
                 break

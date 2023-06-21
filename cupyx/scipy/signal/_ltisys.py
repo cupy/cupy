@@ -2,24 +2,17 @@
 ltisys -- a collection of classes and functions for modeling linear
 time invariant systems.
 """
-import warnings
 import copy
-
-#from scipy.linalg import qr as s_qr
-#from scipy import integrate, interpolate, linalg
-#from scipy.interpolate import interp1d
-#from ._filter_design import (tf2zpk, zpk2tf, normalize, freqs, freqz, freqs_zpk,
-#                            freqz_zpk)
-#from ._lti_conversion import (tf2ss, abcd_normalize, ss2tf, zpk2ss, ss2zpk,
-#                             cont2discrete)
 
 import cupy
 
 from cupyx.scipy import linalg
 from cupyx.scipy.interpolate import make_interp_spline
 
+from cupyx.scipy.signal._lti_conversion import (
+    _atleast_2d_or_none, abcd_normalize)
 from cupyx.scipy.signal._iir_filter_conversions import (
-        normalize, tf2zpk, tf2ss, _atleast_2d_or_none)
+    normalize, tf2zpk, tf2ss, zpk2ss, ss2tf, ss2zpk, zpk2tf)
 from cupyx.scipy.signal._filter_design import freqz, freqz_zpk
 
 
@@ -100,8 +93,8 @@ class LinearTimeInvariant:
         Returns
         -------
         sys: ZerosPolesGain
-            The `TransferFunction` system. If the class is already an instance of
-            `TransferFunction` then this instance is returned.
+            The `TransferFunction` system. If the class is already an instance
+            of `TransferFunction` then this instance is returned.
         """
         if isinstance(self, TransferFunction):
             return self
@@ -352,7 +345,6 @@ class dlti(LinearTimeInvariant):
         return dfreqresp(self, w=w, n=n, whole=whole)
 
 
-
 class TransferFunction(LinearTimeInvariant):
     r"""Linear Time Invariant system class in transfer function form.
 
@@ -443,7 +435,7 @@ class TransferFunction(LinearTimeInvariant):
             repr(self.num),
             repr(self.den),
             repr(self.dt),
-            )
+        )
 
     @property
     def num(self):
@@ -615,6 +607,7 @@ class TransferFunctionContinuous(TransferFunction, lti):
     ``[1, 3, 5]``)
 
     """
+
     def to_discrete(self, dt, method='zoh', alpha=None):
         """
         Returns the discretized `TransferFunction` system.
@@ -738,7 +731,7 @@ class ZerosPolesGain(LinearTimeInvariant):
                     ZerosPolesGainDiscrete,
                     *system,
                     **kwargs
-                    )
+                )
 
         # No special conversion needed
         return super().__new__(cls)
@@ -765,7 +758,7 @@ class ZerosPolesGain(LinearTimeInvariant):
             repr(self.poles),
             repr(self.gain),
             repr(self.dt),
-            )
+        )
 
     @property
     def zeros(self):
@@ -774,7 +767,7 @@ class ZerosPolesGain(LinearTimeInvariant):
 
     @zeros.setter
     def zeros(self, zeros):
-        self._zeros = atleast_1d(zeros)
+        self._zeros = cupy.atleast_1d(zeros)
 
         # Update dimensions
         if len(self.zeros.shape) > 1:
@@ -1054,11 +1047,11 @@ class StateSpace(LinearTimeInvariant):
             repr(self.C),
             repr(self.D),
             repr(self.dt),
-            )
+        )
 
     def _check_binop_other(self, other):
-        return isinstance(other, (StateSpace, np.ndarray, float, complex,
-                                  np.number, int))
+        return isinstance(other, (StateSpace, cupy.ndarray, float, complex,
+                                  cupy.number, int))
 
     def __mul__(self, other):
         """
@@ -1101,9 +1094,9 @@ class StateSpace(LinearTimeInvariant):
             #                    [x1]
             #  y2   = [C1 D1*C2] [x2] + D1*D2 u2
             a = cupy.vstack((cupy.hstack((self.A, self.B @ other.C)),
-                           cupy.hstack((cupy.zeros((n2, n1)), other.A))))
+                             cupy.hstack((cupy.zeros((n2, n1)), other.A))))
             b = cupy.vstack((self.B @ other.D, other.B))
-            c = cupy.hstack((self.C, self.D @ other.C ))
+            c = cupy.hstack((self.C, self.D @ other.C))
             d = self.D @ other.D
         else:
             # Assume that other is a scalar / matrix
@@ -1176,7 +1169,8 @@ class StateSpace(LinearTimeInvariant):
         else:
             other = cupy.atleast_2d(other)
             if self.D.shape == other.shape:
-                # A scalar/matrix is really just a static system (A=0, B=0, C=0)
+                # A scalar/matrix is really just a static system
+                # (A=0, B=0, C=0)
                 a = self.A
                 b = self.B
                 c = self.C
@@ -1186,7 +1180,7 @@ class StateSpace(LinearTimeInvariant):
                                  "dimensions ({} and {})"
                                  .format(self.D.shape, other.shape))
 
-        common_dtype = cipy.result_type(a.dtype, b.dtype, c.dtype, d.dtype)
+        common_dtype = cupy.result_type(a.dtype, b.dtype, c.dtype, d.dtype)
         return StateSpace(cupy.asarray(a, dtype=common_dtype),
                           cupy.asarray(b, dtype=common_dtype),
                           cupy.asarray(c, dtype=common_dtype),
@@ -1221,7 +1215,8 @@ class StateSpace(LinearTimeInvariant):
 
         if isinstance(other, cupy.ndarray) and other.ndim > 0:
             # It's ambiguous what this means, so disallow it
-            raise ValueError("Cannot divide StateSpace by non-scalar numpy arrays")
+            raise ValueError(
+                "Cannot divide StateSpace by non-scalar numpy arrays")
 
         return self.__mul__(1/other)
 
@@ -1656,7 +1651,7 @@ def dstep(system, x0=None, t=None, n=None):
     yout = None
     for i in range(0, system.inputs):
         u = cupy.zeros((t.shape[0], system.inputs))
-        u[:, i] = np.ones((t.shape[0],))
+        u[:, i] = cupy.ones((t.shape[0],))
 
         one_output = dlsim(system, u, t=t, x0=x0)
 
@@ -1805,4 +1800,3 @@ def dbode(system, w=None, n=100):
     phase = cupy.rad2deg(cupy.unwrap(cupy.angle(y)))
 
     return w / dt, mag, phase
-

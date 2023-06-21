@@ -143,4 +143,3 @@ class Test_abcd_normalize:
 
     def test_missing_CD_fails(self):
         assert_raises(ValueError, abcd_normalize, A=self.A, B=self.B)
-
