@@ -6,7 +6,7 @@ from cupy import testing
 
 
 class TestKhatriRao:
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     def test_basic(self, dtype):
         A = np.array([[1, 2], [3, 4]], dtype=dtype)
         B = np.array([[5, 6], [7, 8]], dtype=dtype)
@@ -17,20 +17,20 @@ class TestKhatriRao:
 
         testing.assert_array_equal(khatri_rao(A, B), prod)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     def test_shape(self, dtype):
         M = khatri_rao(np.empty([2, 2], dtype=dtype),
                        np.empty([2, 2], dtype=dtype))
         testing.assert_array_equal(M.shape, (4, 2))
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     def test_number_of_columns_equality(self, dtype):
         with pytest.raises(ValueError):
             A = np.array([[1, 2, 3], [4, 5, 6]], dtype=dtype)
             B = np.array([[1, 2], [3, 4]], dtype=dtype)
             khatri_rao(A, B)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     def test_to_assure_2d_array(self, dtype):
         with pytest.raises(linalg.LinAlgError):
             # both arrays are 1-D
@@ -56,7 +56,7 @@ class TestKhatriRao:
             B = np.array([1, 2, 3], dtype=dtype)
             khatri_rao(A, B)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     def test_equality_of_two_equations(self, dtype):
         A = np.array([[1, 2], [3, 4]], dtype=dtype)
         B = np.array([[5, 6], [7, 8]], dtype=dtype)
