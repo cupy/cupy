@@ -131,6 +131,7 @@ LTI representations
    tf2ss
    ss2tf
    sos2tf
+   sos2zpk
 
 
 Peak finding

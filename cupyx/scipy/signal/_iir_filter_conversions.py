@@ -1259,7 +1259,7 @@ def tf2zpk(b, a):
     b, a = normalize(b, a)
     b = (b + 0.0) / a[0]
     a = (a + 0.0) / a[0]
-    k = b[0]
+    k = b[0].copy()
     b /= b[0]
     z = roots(b)
     p = roots(a)
@@ -1342,6 +1342,48 @@ def sos2tf(sos):
         a = cupy.polymul(a, sos[section, 3:])
     return b, a
 
+
+def sos2zpk(sos):
+    """
+    Return zeros, poles, and gain of a series of second-order sections
+
+    Parameters
+    ----------
+    sos : array_like
+        Array of second-order filter coefficients, must have shape
+        ``(n_sections, 6)``. See `sosfilt` for the SOS filter format
+        specification.
+
+    Returns
+    -------
+    z : ndarray
+        Zeros of the transfer function.
+    p : ndarray
+        Poles of the transfer function.
+    k : float
+        System gain.
+
+    Notes
+    -----
+    The number of zeros and poles returned will be ``n_sections * 2``
+    even if some of these are (effectively) zero.
+
+    See Also
+    --------
+    scipy.signal.sos2zpk
+
+    """
+    n_sections = sos.shape[0]
+    z = cupy.zeros(n_sections*2, cupy.complex128)
+    p = cupy.zeros(n_sections*2, cupy.complex128)
+    k = 1.
+    for section in range(n_sections):
+        # XXX: may just solve a quadratic equation instead of tf2zpk
+        zpk = tf2zpk(sos[section, :3], sos[section, 3:])
+        z[2*section:2*section + len(zpk[0])] = zpk[0]
+        p[2*section:2*section + len(zpk[1])] = zpk[1]
+        k *= zpk[2]
+    return z, p, k
 
 
 def tf2ss(num, den):
