@@ -76,11 +76,58 @@ __global__ void local_maxima_1d(
     left_edges[orig_idx] = left;
     right_edges[orig_idx] = right;
 }
+
+template<typename T>
+__global__ void peak_prominences(
+        const int n, const T* __restrict__ x,
+        const long long* __restrict__ peaks, const long long wlen,
+        T* prominences, long long* left_bases, long long* right_bases) {
+
+    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n) {
+        return;
+    }
+
+    const long long peak = peaks[idx];
+    long long i_min = 0
+    long long i_max = n - 1;
+
+    if(wlen >= 2) {
+        i_min = max(peak - wlen / 2, i_min);
+        i_max = min(peak + wlen / 2, i_max);
+    }
+
+    left_bases[idx] = peak;
+    long long i = peak;
+    T left_min = x[peak];
+
+    while(i_min <= i && x[i] <= x[peak]) {
+        if(x[i] < left_min) {
+            left_min = x[i];
+            left_bases[idx] = i;
+        }
+        i--;
+    }
+
+    right_bases[idx] = peak;
+    i = peak;
+    right_min = x[peak];
+
+    while(i <= i_max && x[i] <= x[peak]) {
+        if(x[i] < right_min) {
+            right_min = x[i];
+            right_bases[peak_nr] = i;
+        }
+        i++;
+    }
+}
+
 """
 
 PEAKS_MODULE = cupy.RawModule(
     code=PEAKS_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES])
+    name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
+    [f'peak_prominences<{x}>' for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -317,13 +364,147 @@ def _arg_wlen_as_expected(value):
         value = -1
     elif 1 < value:
         # Round up to a positive integer
-        if not cupy.can_cast(value, cupy.intp, "safe"):
+        if not cupy.can_cast(value, cupy.int64, "safe"):
             value = cupy.ceil(value)
-        value = cupy.intp(value)
+        value = cupy.int64(value)
     else:
         raise ValueError('`wlen` must be larger than 1, was {}'
                          .format(value))
     return value
+
+
+def _arg_peaks_as_expected(value):
+    """Ensure argument `peaks` is a 1-D C-contiguous array of dtype('int64').
+
+    Used in `peak_prominences` and `peak_widths` to make `peaks` compatible
+    with the signature of the wrapped Cython functions.
+
+    Returns
+    -------
+    value : ndarray
+        A 1-D C-contiguous array with dtype('int64').
+    """
+    value = cupy.asarray(value)
+    if value.size == 0:
+        # Empty arrays default to cupy.float64 but are valid input
+        value = cupy.array([], dtype=cupy.int64)
+    try:
+        # Safely convert to C-contiguous array of type cupy.int64
+        value = value.astype(cupy.int64, order='C', casting='safe',
+                             subok=False, copy=False)
+    except TypeError as e:
+        raise TypeError("cannot safely cast `peaks` to dtype('intp')") from e
+    if value.ndim != 1:
+        raise ValueError('`peaks` must be a 1-D array')
+    return value
+
+
+def _peak_prominences(x, peaks, wlen=None):
+    prominences = cupy.empty_like(peaks)
+    left_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)
+    right_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)
+
+    n = peaks.shape[0]
+    block_sz = 128
+    n_blocks = (n + block_sz - 1) // block_sz
+
+    peak_prom_kernel = _get_module_func(PEAKS_MODULE, 'peak_prominences', x)
+    peak_prom_kernel(
+        (n_blocks,), (block_sz,),
+        (n, x, peaks, wlen, prominences, left_bases, right_bases))
+
+    return prominences, left_bases, right_bases
+
+
+def peak_prominences(x, peaks, wlen=None):
+    """
+    Calculate the prominence of each peak in a signal.
+
+    The prominence of a peak measures how much a peak stands out from the
+    surrounding baseline of the signal and is defined as the vertical distance
+    between the peak and its lowest contour line.
+
+    Parameters
+    ----------
+    x : sequence
+        A signal with peaks.
+    peaks : sequence
+        Indices of peaks in `x`.
+    wlen : int, optional
+        A window length in samples that optionally limits the evaluated area
+        for each peak to a subset of `x`. The peak is always placed in the
+        middle of the window therefore the given length is rounded up to the
+        next odd integer. This parameter can speed up the calculation
+        (see Notes).
+
+    Returns
+    -------
+    prominences : ndarray
+        The calculated prominences for each peak in `peaks`.
+    left_bases, right_bases : ndarray
+        The peaks' bases as indices in `x` to the left and right of each peak.
+        The higher base of each pair is a peak's lowest contour line.
+
+    Raises
+    ------
+    ValueError
+        If a value in `peaks` is an invalid index for `x`.
+
+    Warns
+    -----
+    PeakPropertyWarning
+        For indices in `peaks` that don't point to valid local maxima in `x`,
+        the returned prominence will be 0 and this warning is raised. This
+        also happens if `wlen` is smaller than the plateau size of a peak.
+
+    Warnings
+    --------
+    This function may return unexpected results for data containing NaNs. To
+    avoid this, NaNs should either be removed or replaced.
+
+    See Also
+    --------
+    find_peaks
+        Find peaks inside a signal based on peak properties.
+    peak_widths
+        Calculate the width of peaks.
+
+    Notes
+    -----
+    Strategy to compute a peak's prominence:
+
+    1. Extend a horizontal line from the current peak to the left and right
+       until the line either reaches the window border (see `wlen`) or
+       intersects the signal again at the slope of a higher peak. An
+       intersection with a peak of the same height is ignored.
+    2. On each side find the minimal signal value within the interval defined
+       above. These points are the peak's bases.
+    3. The higher one of the two bases marks the peak's lowest contour line.
+       The prominence can then be calculated as the vertical difference between
+       the peaks height itself and its lowest contour line.
+
+    Searching for the peak's bases can be slow for large `x` with periodic
+    behavior because large chunks or even the full signal need to be evaluated
+    for the first algorithmic step. This evaluation area can be limited with
+    the parameter `wlen` which restricts the algorithm to a window around the
+    current peak and can shorten the calculation time if the window length is
+    short in relation to `x`.
+    However, this may stop the algorithm from finding the true global contour
+    line if the peak's true bases are outside this window. Instead, a higher
+    contour line is found within the restricted window leading to a smaller
+    calculated prominence. In practice, this is only relevant for the highest
+    set of peaks in `x`. This behavior may even be used intentionally to
+    calculate "local" prominences.
+
+    References
+    ----------
+    .. [1] Wikipedia Article for Topographic Prominence:
+       https://en.wikipedia.org/wiki/Topographic_prominence
+
+    """
+    peaks = _arg_peaks_as_expected(peaks)
+    wlen = _arg_wlen_as_expected(wlen)
+    return _peak_prominences(x, peaks, wlen)
 
 
 def find_peaks(x, height=None, threshold=None, distance=None,
