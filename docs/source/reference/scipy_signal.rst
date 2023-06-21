@@ -55,6 +55,9 @@ Filter design
 
    bilinear
    bilinear_zpk
+   freqz
+   freqz_zpk
+   firls
    savgol_coeffs
    iirfilter
 
@@ -69,6 +72,16 @@ Matlab-style IIR filter design
    ellip
    cheby1
    cheby2
+
+
+Low-level filter design functions
+---------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   abcd_normalize
+
 
 
 Chirp Z-transform and Zoom FFT
