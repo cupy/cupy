@@ -16,9 +16,11 @@ import copy
 import cupy
 
 from cupyx.scipy import linalg
+from cupyx.scipy.interpolate import make_interp_spline
 
 from cupyx.scipy.signal._iir_filter_conversions import (
         normalize, tf2zpk, tf2ss, _atleast_2d_or_none)
+from cupyx.scipy.signal._filter_design import freqz, freqz_zpk
 
 
 class LinearTimeInvariant:
@@ -1418,4 +1420,389 @@ class StateSpaceDiscrete(StateSpace, dlti):
     pass
 
 
+# ### dlsim and related functions ###
+
+def dlsim(system, u, t=None, x0=None):
+    """
+    Simulate output of a discrete-time linear system.
+
+    Parameters
+    ----------
+    system : tuple of array_like or instance of `dlti`
+        A tuple describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1: (instance of `dlti`)
+            * 3: (num, den, dt)
+            * 4: (zeros, poles, gain, dt)
+            * 5: (A, B, C, D, dt)
+
+    u : array_like
+        An input array describing the input at each time `t` (interpolation is
+        assumed between given times).  If there are multiple inputs, then each
+        column of the rank-2 array represents an input.
+    t : array_like, optional
+        The time steps at which the input is defined.  If `t` is given, it
+        must be the same length as `u`, and the final value in `t` determines
+        the number of steps returned in the output.
+    x0 : array_like, optional
+        The initial conditions on the state vector (zero by default).
+
+    Returns
+    -------
+    tout : ndarray
+        Time values for the output, as a 1-D array.
+    yout : ndarray
+        System response, as a 1-D array.
+    xout : ndarray, optional
+        Time-evolution of the state-vector.  Only generated if the input is a
+        `StateSpace` system.
+
+    See Also
+    --------
+    scipy.signal.dlsim
+    lsim, dstep, dimpulse, cont2discrete
+    """
+    # Convert system to dlti-StateSpace
+    if isinstance(system, lti):
+        raise AttributeError('dlsim can only be used with discrete-time dlti '
+                             'systems.')
+    elif not isinstance(system, dlti):
+        system = dlti(*system[:-1], dt=system[-1])
+
+    # Condition needed to ensure output remains compatible
+    is_ss_input = isinstance(system, StateSpace)
+    system = system._as_ss()
+
+    u = cupy.atleast_1d(u)
+
+    if u.ndim == 1:
+        u = cupy.atleast_2d(u).T
+
+    if t is None:
+        out_samples = len(u)
+        stoptime = (out_samples - 1) * system.dt
+    else:
+        stoptime = t[-1]
+        out_samples = int(cupy.floor(stoptime / system.dt)) + 1
+
+    # Pre-build output arrays
+    xout = cupy.zeros((out_samples, system.A.shape[0]))
+    yout = cupy.zeros((out_samples, system.C.shape[0]))
+    tout = cupy.linspace(0.0, stoptime, num=out_samples)
+
+    # Check initial condition
+    if x0 is None:
+        xout[0, :] = cupy.zeros((system.A.shape[1],))
+    else:
+        xout[0, :] = cupy.asarray(x0)
+
+    # Pre-interpolate inputs into the desired time steps
+    if t is None:
+        u_dt = u
+    else:
+        if len(u.shape) == 1:
+            u = u[:, None]
+
+        u_dt = make_interp_spline(t, u, k=1)(tout)
+
+    # Simulate the system
+    for i in range(0, out_samples - 1):
+        xout[i+1, :] = system.A @ xout[i, :] + system.B @ u_dt[i, :]
+        yout[i, :] = system.C @ xout[i, :] + system.D @ u_dt[i, :]
+
+    # Last point
+    yout[out_samples-1, :] = (system.C @ xout[out_samples-1, :] +
+                              system.D @ u_dt[out_samples-1, :])
+
+    if is_ss_input:
+        return tout, yout, xout
+    else:
+        return tout, yout
+
+
+def dimpulse(system, x0=None, t=None, n=None):
+    """
+    Impulse response of discrete-time system.
+
+    Parameters
+    ----------
+    system : tuple of array_like or instance of `dlti`
+        A tuple describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1: (instance of `dlti`)
+            * 3: (num, den, dt)
+            * 4: (zeros, poles, gain, dt)
+            * 5: (A, B, C, D, dt)
+
+    x0 : array_like, optional
+        Initial state-vector.  Defaults to zero.
+    t : array_like, optional
+        Time points.  Computed if not given.
+    n : int, optional
+        The number of time points to compute (if `t` is not given).
+
+    Returns
+    -------
+    tout : ndarray
+        Time values for the output, as a 1-D array.
+    yout : tuple of ndarray
+        Impulse response of system.  Each element of the tuple represents
+        the output of the system based on an impulse in each input.
+
+    See Also
+    --------
+    scipy.signal.dimpulse
+    impulse, dstep, dlsim, cont2discrete
+    """
+    # Convert system to dlti-StateSpace
+    if isinstance(system, dlti):
+        system = system._as_ss()
+    elif isinstance(system, lti):
+        raise AttributeError('dimpulse can only be used with discrete-time '
+                             'dlti systems.')
+    else:
+        system = dlti(*system[:-1], dt=system[-1])._as_ss()
+
+    # Default to 100 samples if unspecified
+    if n is None:
+        n = 100
+
+    # If time is not specified, use the number of samples
+    # and system dt
+    if t is None:
+        t = cupy.linspace(0, n * system.dt, n, endpoint=False)
+    else:
+        t = cupy.asarray(t)
+
+    # For each input, implement a step change
+    yout = None
+    for i in range(0, system.inputs):
+        u = cupy.zeros((t.shape[0], system.inputs))
+        u[0, i] = 1.0
+
+        one_output = dlsim(system, u, t=t, x0=x0)
+
+        if yout is None:
+            yout = (one_output[1],)
+        else:
+            yout = yout + (one_output[1],)
+
+        tout = one_output[0]
+
+    return tout, yout
+
+
+def dstep(system, x0=None, t=None, n=None):
+    """
+    Step response of discrete-time system.
+
+    Parameters
+    ----------
+    system : tuple of array_like
+        A tuple describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1: (instance of `dlti`)
+            * 3: (num, den, dt)
+            * 4: (zeros, poles, gain, dt)
+            * 5: (A, B, C, D, dt)
+
+    x0 : array_like, optional
+        Initial state-vector.  Defaults to zero.
+    t : array_like, optional
+        Time points.  Computed if not given.
+    n : int, optional
+        The number of time points to compute (if `t` is not given).
+
+    Returns
+    -------
+    tout : ndarray
+        Output time points, as a 1-D array.
+    yout : tuple of ndarray
+        Step response of system.  Each element of the tuple represents
+        the output of the system based on a step response to each input.
+
+    See Also
+    --------
+    scipy.signal.dlstep
+    step, dimpulse, dlsim, cont2discrete
+    """
+    # Convert system to dlti-StateSpace
+    if isinstance(system, dlti):
+        system = system._as_ss()
+    elif isinstance(system, lti):
+        raise AttributeError('dstep can only be used with discrete-time dlti '
+                             'systems.')
+    else:
+        system = dlti(*system[:-1], dt=system[-1])._as_ss()
+
+    # Default to 100 samples if unspecified
+    if n is None:
+        n = 100
+
+    # If time is not specified, use the number of samples
+    # and system dt
+    if t is None:
+        t = cupy.linspace(0, n * system.dt, n, endpoint=False)
+    else:
+        t = cupy.asarray(t)
+
+    # For each input, implement a step change
+    yout = None
+    for i in range(0, system.inputs):
+        u = cupy.zeros((t.shape[0], system.inputs))
+        u[:, i] = np.ones((t.shape[0],))
+
+        one_output = dlsim(system, u, t=t, x0=x0)
+
+        if yout is None:
+            yout = (one_output[1],)
+        else:
+            yout = yout + (one_output[1],)
+
+        tout = one_output[0]
+
+    return tout, yout
+
+
+def dfreqresp(system, w=None, n=10000, whole=False):
+    r"""
+    Calculate the frequency response of a discrete-time system.
+
+    Parameters
+    ----------
+    system : an instance of the `dlti` class or a tuple describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1 (instance of `dlti`)
+            * 2 (numerator, denominator, dt)
+            * 3 (zeros, poles, gain, dt)
+            * 4 (A, B, C, D, dt)
+
+    w : array_like, optional
+        Array of frequencies (in radians/sample). Magnitude and phase data is
+        calculated for every value in this array. If not given a reasonable
+        set will be calculated.
+    n : int, optional
+        Number of frequency points to compute if `w` is not given. The `n`
+        frequencies are logarithmically spaced in an interval chosen to
+        include the influence of the poles and zeros of the system.
+    whole : bool, optional
+        Normally, if 'w' is not given, frequencies are computed from 0 to the
+        Nyquist frequency, pi radians/sample (upper-half of unit-circle). If
+        `whole` is True, compute frequencies from 0 to 2*pi radians/sample.
+
+    Returns
+    -------
+    w : 1D ndarray
+        Frequency array [radians/sample]
+    H : 1D ndarray
+        Array of complex magnitude values
+
+    See Also
+    --------
+    scipy.signal.dfeqresp
+
+    Notes
+    -----
+    If (num, den) is passed in for ``system``, coefficients for both the
+    numerator and denominator should be specified in descending exponent
+    order (e.g. ``z^2 + 3z + 5`` would be represented as ``[1, 3, 5]``).
+    """
+    if not isinstance(system, dlti):
+        if isinstance(system, lti):
+            raise AttributeError('dfreqresp can only be used with '
+                                 'discrete-time systems.')
+
+        system = dlti(*system[:-1], dt=system[-1])
+
+    if isinstance(system, StateSpace):
+        # No SS->ZPK code exists right now, just SS->TF->ZPK
+        system = system._as_tf()
+
+    if not isinstance(system, (TransferFunction, ZerosPolesGain)):
+        raise ValueError('Unknown system type')
+
+    if system.inputs != 1 or system.outputs != 1:
+        raise ValueError("dfreqresp requires a SISO (single input, single "
+                         "output) system.")
+
+    if w is not None:
+        worN = w
+    else:
+        worN = n
+
+    if isinstance(system, TransferFunction):
+        # Convert numerator and denominator from polynomials in the variable
+        # 'z' to polynomials in the variable 'z^-1', as freqz expects.
+        num, den = TransferFunction._z_to_zinv(system.num.ravel(), system.den)
+        w, h = freqz(num, den, worN=worN, whole=whole)
+
+    elif isinstance(system, ZerosPolesGain):
+        w, h = freqz_zpk(system.zeros, system.poles, system.gain, worN=worN,
+                         whole=whole)
+
+    return w, h
+
+
+def dbode(system, w=None, n=100):
+    r"""
+    Calculate Bode magnitude and phase data of a discrete-time system.
+
+    Parameters
+    ----------
+    system : an instance of the LTI class or a tuple describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1 (instance of `dlti`)
+            * 2 (num, den, dt)
+            * 3 (zeros, poles, gain, dt)
+            * 4 (A, B, C, D, dt)
+
+    w : array_like, optional
+        Array of frequencies (in radians/sample). Magnitude and phase data is
+        calculated for every value in this array. If not given a reasonable
+        set will be calculated.
+    n : int, optional
+        Number of frequency points to compute if `w` is not given. The `n`
+        frequencies are logarithmically spaced in an interval chosen to
+        include the influence of the poles and zeros of the system.
+
+    Returns
+    -------
+    w : 1D ndarray
+        Frequency array [rad/time_unit]
+    mag : 1D ndarray
+        Magnitude array [dB]
+    phase : 1D ndarray
+        Phase array [deg]
+
+    See Also
+    --------
+    scipy.signal.dbode
+
+    Notes
+    -----
+    If (num, den) is passed in for ``system``, coefficients for both the
+    numerator and denominator should be specified in descending exponent
+    order (e.g. ``z^2 + 3z + 5`` would be represented as ``[1, 3, 5]``).
+    """
+    w, y = dfreqresp(system, w=w, n=n)
+
+    if isinstance(system, dlti):
+        dt = system.dt
+    else:
+        dt = system[-1]
+
+    mag = 20.0 * cupy.log10(abs(y))
+    phase = cupy.rad2deg(cupy.unwrap(cupy.angle(y)))
+
+    return w / dt, mag, phase
 

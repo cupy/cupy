@@ -105,3 +105,12 @@ from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA
 from cupyx.scipy.signal._peak_finding import find_peaks  # NOQA
 from cupyx.scipy.signal._peak_finding import peak_prominences  # NOQA
 from cupyx.scipy.signal._peak_finding import peak_widths  # NOQA
+
+from cupyx.scipy.signal._ltisys import dlsim
+from cupyx.scipy.signal._ltisys import dstep
+from cupyx.scipy.signal._ltisys import dimpulse
+from cupyx.scipy.signal._ltisys import dbode
+from cupyx.scipy.signal._ltisys import dfreqresp
+from cupyx.scipy.signal._ltisys import StateSpace
+from cupyx.scipy.signal._ltisys import TransferFunction
+from cupyx.scipy.signal._ltisys import ZeroPolesGain

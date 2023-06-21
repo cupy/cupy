@@ -136,6 +136,23 @@ LTI representations
    sos2zpk
 
 
+Discrete-time linear systems
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   dlti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   dlsim
+   dimpulse
+   dstep
+   dfreqresp
+   dbode
+
+
 Peak finding
 ------------
 
