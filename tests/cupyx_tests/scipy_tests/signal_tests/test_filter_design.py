@@ -441,7 +441,7 @@ class TestFreqz_zpk:
             assert_array_almost_equal(h, [1])
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy>=1.8")
 class TestSOSFreqz:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
