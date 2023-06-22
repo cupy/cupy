@@ -154,8 +154,8 @@ from cupyx.scipy.signal._ltisys import dfreqresp  # NOQA
 from cupyx.scipy.signal._ltisys import StateSpace  # NOQA
 from cupyx.scipy.signal._ltisys import TransferFunction  # NOQA
 from cupyx.scipy.signal._ltisys import ZerosPolesGain  # NOQA
-
 from cupyx.scipy.signal._ltisys import cont2discrete  # NOQA
+from cupyx.scipy.signal._ltisys import place_poles  # NOQA
 
 from cupyx.scipy.signal._spectral import lombscargle  # NOQA
 from cupyx.scipy.signal._spectral import periodogram  # NOQA
