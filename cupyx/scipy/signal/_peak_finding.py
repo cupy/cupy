@@ -79,17 +79,17 @@ __global__ void local_maxima_1d(
 
 template<typename T>
 __global__ void peak_prominences(
-        const int n, const T* __restrict__ x,
+        const int n, const int n_peaks, const T* __restrict__ x,
         const long long* __restrict__ peaks, const long long wlen,
         T* prominences, long long* left_bases, long long* right_bases) {
 
     const int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n) {
+    if(idx >= n_peaks) {
         return;
     }
 
     const long long peak = peaks[idx];
-    long long i_min = 0
+    long long i_min = 0;
     long long i_max = n - 1;
 
     if(wlen >= 2) {
@@ -111,7 +111,7 @@ __global__ void peak_prominences(
 
     right_bases[idx] = peak;
     i = peak;
-    right_min = x[peak];
+    T right_min = x[peak];
 
     while(i <= i_max && x[i] <= x[peak]) {
         if(x[i] < right_min) {
@@ -121,19 +121,66 @@ __global__ void peak_prominences(
         i++;
     }
 
-    prominences[idx] = x[peak] - max(left_min, right_min)
+    prominences[idx] = x[peak] - max(left_min, right_min);
+}
+
+template<>
+__global__ void peak_prominences<half>(
+        const int n, const int n_peaks, const half* __restrict__ x,
+        const long long* __restrict__ peaks, const long long wlen,
+        half* prominences, long long* left_bases, long long* right_bases) {
+
+    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n_peaks) {
+        return;
+    }
+
+    const long long peak = peaks[idx];
+    long long i_min = 0;
+    long long i_max = n - 1;
+
+    if(wlen >= 2) {
+        i_min = max(peak - wlen / 2, i_min);
+        i_max = min(peak + wlen / 2, i_max);
+    }
+
+    left_bases[idx] = peak;
+    long long i = peak;
+    half left_min = x[peak];
+
+    while(i_min <= i && x[i] <= x[peak]) {
+        if(x[i] < left_min) {
+            left_min = x[i];
+            left_bases[idx] = i;
+        }
+        i--;
+    }
+
+    right_bases[idx] = peak;
+    i = peak;
+    half right_min = x[peak];
+
+    while(i <= i_max && x[i] <= x[peak]) {
+        if(x[i] < right_min) {
+            right_min = x[i];
+            right_bases[idx] = i;
+        }
+        i++;
+    }
+
+    prominences[idx] = x[peak] - __hmax(left_min, right_min);
 }
 
 template<typename T>
 __global__ void peak_widths(
         const int n, const T* __restrict__ x,
         const long long* __restrict__ peaks,
-        const float64 rel_height,
+        const double rel_height,
         const T* __restrict__ prominences,
         const long long* __restrict__ left_bases,
         const long long* __restrict__ right_bases,
-        float64* widths, float64* width_heights,
-        float64* left_ips, float64* right_ips) {
+        double* widths, double* width_heights,
+        double* left_ips, double* right_ips) {
 
     const int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if(idx >= n) {
@@ -144,8 +191,8 @@ __global__ void peak_widths(
     long long i_max = right_bases[idx];
     long long peak = peaks[idx];
 
-    float64 height = x[peak] - prominences[idx] * rel_height;
-    width_heights[p] = height;
+    double height = x[peak] - prominences[idx] * rel_height;
+    width_heights[idx] = height;
 
     // Find intersection point on left side
     long long i = peak;
@@ -153,7 +200,7 @@ __global__ void peak_widths(
         i--;
     }
 
-    float64 left_ip = (float64) i;
+    double left_ip = (double) i;
     if(x[i] < height) {
         // Interpolate if true intersection height is between samples
         left_ip += (height - x[i]) / (x[i + 1] - x[i]);
@@ -165,7 +212,7 @@ __global__ void peak_widths(
         i++;
     }
 
-    float64 right_ip = (float64) i;
+    double right_ip = (double) i;
     if(x[i] < height) {
         // Interpolate if true intersection height is between samples
         right_ip -= (height - x[i]) / (x[i - 1] - x[i]);
@@ -175,12 +222,65 @@ __global__ void peak_widths(
     left_ips[idx] = left_ip;
     right_ips[idx] = right_ip;
 }
-"""
+
+template<>
+__global__ void peak_widths<half>(
+        const int n, const half* __restrict__ x,
+        const long long* __restrict__ peaks,
+        const double rel_height,
+        const half* __restrict__ prominences,
+        const long long* __restrict__ left_bases,
+        const long long* __restrict__ right_bases,
+        double* widths, double* width_heights,
+        double* left_ips, double* right_ips) {
+
+    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n) {
+        return;
+    }
+
+    long long i_min = left_bases[idx];
+    long long i_max = right_bases[idx];
+    long long peak = peaks[idx];
+
+    double height = ((double) x[peak]) - ((double) prominences[idx]) * rel_height;
+    width_heights[idx] = height;
+
+    // Find intersection point on left side
+    long long i = peak;
+    while (i_min < i && height < ((double) x[i])) {
+        i--;
+    }
+
+    double left_ip = (double) i;
+    if(((double) x[i]) < height) {
+        // Interpolate if true intersection height is between samples
+        left_ip += (height - ((double) x[i])) / ((double) (x[i + 1] - x[i]));
+    }
+
+    // Find intersection point on right side
+    i = peak;
+    while(i < i_max && height < ((double) x[i])) {
+        i++;
+    }
+
+    double right_ip = (double) i;
+    if(((double) x[i]) < height) {
+        // Interpolate if true intersection height is between samples
+        right_ip -= (height - ((double) x[i])) / ((double) (x[i - 1] - x[i]));
+    }
+
+    widths[idx] = right_ip - left_ip;
+    left_ips[idx] = left_ip;
+    right_ips[idx] = right_ip;
+}
+"""  # NOQA
 
 PEAKS_MODULE = cupy.RawModule(
     code=PEAKS_KERNEL, options=('-std=c++11',),
     name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
-    [f'peak_prominences<{x}>' for x in TYPE_NAMES])
+    [f'peak_prominences<{x}>' for x in TYPE_NAMES] +
+    [f'peak_widths<{x}>' for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -400,6 +500,20 @@ def _select_by_peak_distance(peaks, priority, distance):
     return keep
 
 
+def _arg_x_as_expected(value):
+    """Ensure argument `x` is a 1-D C-contiguous array.
+
+    Returns
+    -------
+    value : ndarray
+        A 1-D C-contiguous array.
+    """
+    value = cupy.asarray(value, order='C')
+    if value.ndim != 1:
+        raise ValueError('`x` must be a 1-D array')
+    return value
+
+
 def _arg_wlen_as_expected(value):
     """Ensure argument `wlen` is of type `np.intp` and larger than 1.
 
@@ -453,7 +567,7 @@ def _arg_peaks_as_expected(value):
 
 
 def _peak_prominences(x, peaks, wlen=None):
-    prominences = cupy.empty_like(peaks)
+    prominences = cupy.empty(peaks.shape[0], dtype=x.dtype)
     left_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)
     right_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)
 
@@ -464,7 +578,7 @@ def _peak_prominences(x, peaks, wlen=None):
     peak_prom_kernel = _get_module_func(PEAKS_MODULE, 'peak_prominences', x)
     peak_prom_kernel(
         (n_blocks,), (block_sz,),
-        (n, x, peaks, wlen, prominences, left_bases, right_bases))
+        (x.shape[0], n, x, peaks, wlen, prominences, left_bases, right_bases))
 
     return prominences, left_bases, right_bases
 
@@ -479,8 +593,8 @@ def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases):
 
     widths = cupy.empty(peaks.shape[0], dtype=cupy.float64)
     width_heights = cupy.empty(peaks.shape[0], dtype=cupy.float64)
-    left_ips = cupy.empty_like(peaks)
-    right_ips = cupy.empty_like(peaks)
+    left_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
+    right_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
 
     n = peaks.shape[0]
     block_sz = 128
@@ -580,6 +694,7 @@ def peak_prominences(x, peaks, wlen=None):
        https://en.wikipedia.org/wiki/Topographic_prominence
 
     """
+    x = _arg_x_as_expected(x)
     peaks = _arg_peaks_as_expected(peaks)
     wlen = _arg_wlen_as_expected(wlen)
     return _peak_prominences(x, peaks, wlen)
@@ -670,6 +785,7 @@ def peak_widths(x, peaks, rel_height=0.5, prominence_data=None, wlen=None):
     known. You can supply these yourself with the argument `prominence_data`.
     Otherwise, they are internally calculated (see `peak_prominences`).
     """
+    x = _arg_x_as_expected(x)
     peaks = _arg_peaks_as_expected(peaks)
     if prominence_data is None:
         # Calculate prominence if not supplied and use wlen if supplied.
@@ -815,6 +931,7 @@ def find_peaks(x, height=None, threshold=None, distance=None,
       (see `peak_prominences`).
     """  # NOQA
 
+    x = _arg_x_as_expected(x)
     if distance is not None and distance < 1:
         raise ValueError('`distance` must be greater or equal to 1')
 
