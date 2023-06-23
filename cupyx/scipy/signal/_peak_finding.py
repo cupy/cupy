@@ -1,4 +1,5 @@
 
+import math
 import cupy
 
 from cupy._core._scalar import get_typename
@@ -532,8 +533,8 @@ def _arg_wlen_as_expected(value):
     elif 1 < value:
         # Round up to a positive integer
         if not cupy.can_cast(value, cupy.int64, "safe"):
-            value = cupy.ceil(value)
-        value = cupy.int64(value)
+            value = math.ceil(value)
+        value = int(value)
     else:
         raise ValueError('`wlen` must be larger than 1, was {}'
                          .format(value))
@@ -557,8 +558,7 @@ def _arg_peaks_as_expected(value):
         value = cupy.array([], dtype=cupy.int64)
     try:
         # Safely convert to C-contiguous array of type cupy.int64
-        value = value.astype(cupy.int64, order='C', casting='safe',
-                             subok=False, copy=False)
+        value = value.astype(cupy.int64, order='C', copy=False)
     except TypeError as e:
         raise TypeError("cannot safely cast `peaks` to dtype('intp')") from e
     if value.ndim != 1:
@@ -567,6 +567,9 @@ def _arg_peaks_as_expected(value):
 
 
 def _peak_prominences(x, peaks, wlen=None):
+    if cupy.any(cupy.logical_or(peaks < 0, peaks > x.shape[0] - 1)):
+        raise ValueError('peaks are not a valid index')
+
     prominences = cupy.empty(peaks.shape[0], dtype=x.dtype)
     left_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)
     right_bases = cupy.empty(peaks.shape[0], dtype=cupy.int64)

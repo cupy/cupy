@@ -1,6 +1,8 @@
 import pytest
 
 import cupy
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.signal  # NOQA
 
@@ -12,6 +14,99 @@ except ImportError:
     pass
 
 
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
+class TestPeakProminences:
+
+    @pytest.mark.parametrize('x', [[1, 2, 3], []])
+    @testing.numpy_cupy_allclose(scipy_name="scp", type_check=False)
+    def test_empty(self, x, xp, scp):
+        """
+        Test if an empty array is returned if no peaks are provided.
+        """
+        out = scp.signal.peak_prominences(x, [])
+        return out
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, xp, scp):
+        """
+        Test if height of prominences is correctly calculated in signal with
+        rising baseline (peak widths are 1 sample).
+        """
+        # Prepare basic signal
+        x = xp.array([-1, 1.2, 1.2, 1, 3.2, 1.3, 2.88, 2.1])
+        peaks = xp.array([1, 2, 4, 6])
+        # Test if calculation matches handcrafted result
+        out = scp.signal.peak_prominences(x, peaks)
+        return out
+
+    @pytest.mark.parametrize(
+        'x', [[0.0, 2, 1, 2, 1, 2, 0], [0, 1.0, 0, 1, 0, 1, 0]])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_edge_cases(self, x, xp, scp):
+        """
+        Test edge cases.
+        """
+        # Peaks have same height, prominence and bases
+        x = xp.asarray(x)
+        peaks = xp.asarray([1, 3, 5])
+        out = scp.signal.peak_prominences(x, peaks)
+        return out
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_non_contiguous(self, xp, scp):
+        """
+        Test with non-C-contiguous input arrays.
+        """
+        x = xp.repeat(xp.asarray([-9, 9, 9, 0, 3, 1.0]), 2)
+        peaks = xp.repeat(xp.asarray([1, 2, 4]), 2)
+        out = scp.signal.peak_prominences(x[::2], peaks[::2])
+        return out
+
+    @pytest.mark.parametrize('wlen', [8, 7, 6, 5, 3.2, 3, 1.1])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_wlen(self, wlen, xp, scp):
+        """
+        Test if wlen actually shrinks the evaluation range correctly.
+        """
+        x = xp.asarray([0, 1, 2, 3.0, 1, 0, -1])
+        peak = xp.asarray([3])
+        return scp.signal.peak_prominences(x, peak, wlen)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_exceptions(self, mod):
+        """
+        Verify that exceptions and warnings are raised.
+        """
+        xp, scp = mod
+        # x with dimension > 1
+        with pytest.raises(ValueError, match='1-D array'):
+            scp.signal.peak_prominences([[0, 1, 1, 0]], [1, 2])
+        # peaks with dimension > 1
+        with pytest.raises(ValueError, match='1-D array'):
+            scp.signal.peak_prominences([0, 1, 1, 0], [[1, 2]])
+        # x with dimension < 1
+        with pytest.raises(ValueError, match='1-D array'):
+            scp.signal.peak_prominences(3, [0,])
+
+        # empty x with supplied
+        with pytest.raises(ValueError, match='not a valid index'):
+            scp.signal.peak_prominences([], [0])
+        # invalid indices with non-empty x
+        for p in [-100, -1, 3, 1000]:
+            with pytest.raises(ValueError, match='not a valid index'):
+                scp.signal.peak_prominences([1, 0, 2], [p])
+
+        # wlen < 3
+        with pytest.raises(ValueError, match='wlen'):
+            scp.signal.peak_prominences(xp.arange(10), [3, 5], wlen=1)
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
 @testing.with_requires('scipy')
 class TestFindPeaks:
 
