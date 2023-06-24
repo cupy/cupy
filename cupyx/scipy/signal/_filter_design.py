@@ -1,5 +1,4 @@
 import operator
-import math
 from math import pi
 import warnings
 
