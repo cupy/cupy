@@ -5,6 +5,8 @@ import cupy
 from cupy._core._scalar import get_typename
 from cupy_backends.cuda.api import runtime
 
+from cupyx import jit
+
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
@@ -566,8 +568,18 @@ def _arg_peaks_as_expected(value):
     return value
 
 
-def _peak_prominences(x, peaks, wlen=None):
-    if cupy.any(cupy.logical_or(peaks < 0, peaks > x.shape[0] - 1)):
+@jit.rawkernel()
+def _check_prominence_invalid(n, peaks, left_bases, right_bases, out):
+    tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
+    i_min = left_bases[tid]
+    i_max = right_bases[tid]
+    peak = peaks[tid]
+    valid = 0 <= i_min and i_min <= peak and peak <= i_max and i_max < n
+    out[tid] = not valid
+
+
+def _peak_prominences(x, peaks, wlen=None, check=False):
+    if check and cupy.any(cupy.logical_or(peaks < 0, peaks > x.shape[0] - 1)):
         raise ValueError('peaks are not a valid index')
 
     prominences = cupy.empty(peaks.shape[0], dtype=x.dtype)
@@ -586,22 +598,37 @@ def _peak_prominences(x, peaks, wlen=None):
     return prominences, left_bases, right_bases
 
 
-def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases):
+def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
+                 check=False):
     if rel_height < 0:
         raise ValueError('`rel_height` must be greater or equal to 0.0')
+    if prominences is None:
+        raise TypeError('prominences must not be None')
+    if left_bases is None:
+        raise TypeError('left_bases must not be None')
+    if right_bases is None:
+        raise TypeError('right_bases must not be None')
     if not (peaks.shape[0] == prominences.shape[0] == left_bases.shape[0]
             == right_bases.shape[0]):
         raise ValueError("arrays in `prominence_data` must have the same "
                          "shape as `peaks`")
 
+    n = peaks.shape[0]
+    block_sz = 128
+    n_blocks = (n + block_sz - 1) // block_sz
+
+    if check and n > 0:
+        invalid = cupy.zeros(n, dtype=cupy.bool_)
+        _check_prominence_invalid(
+            (n_blocks,), (block_sz,),
+            (x.shape[0], peaks, left_bases, right_bases, invalid))
+        if cupy.any(invalid):
+            raise ValueError("prominence data is invalid")
+
     widths = cupy.empty(peaks.shape[0], dtype=cupy.float64)
     width_heights = cupy.empty(peaks.shape[0], dtype=cupy.float64)
     left_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
     right_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
-
-    n = peaks.shape[0]
-    block_sz = 128
-    n_blocks = (n + block_sz - 1) // block_sz
 
     peak_widths_kernel = _get_module_func(PEAKS_MODULE, 'peak_widths', x)
     peak_widths_kernel(
@@ -700,7 +727,7 @@ def peak_prominences(x, peaks, wlen=None):
     x = _arg_x_as_expected(x)
     peaks = _arg_peaks_as_expected(peaks)
     wlen = _arg_wlen_as_expected(wlen)
-    return _peak_prominences(x, peaks, wlen)
+    return _peak_prominences(x, peaks, wlen, check=True)
 
 
 def peak_widths(x, peaks, rel_height=0.5, prominence_data=None, wlen=None):
@@ -793,8 +820,8 @@ def peak_widths(x, peaks, rel_height=0.5, prominence_data=None, wlen=None):
     if prominence_data is None:
         # Calculate prominence if not supplied and use wlen if supplied.
         wlen = _arg_wlen_as_expected(wlen)
-        prominence_data = _peak_prominences(x, peaks, wlen)
-    return _peak_widths(x, peaks, rel_height, *prominence_data)
+        prominence_data = _peak_prominences(x, peaks, wlen, check=True)
+    return _peak_widths(x, peaks, rel_height, *prominence_data, check=True)
 
 
 def find_peaks(x, height=None, threshold=None, distance=None,

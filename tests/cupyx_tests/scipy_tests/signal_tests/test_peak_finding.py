@@ -108,6 +108,116 @@ class TestPeakProminences:
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
     reason='name_expressions with ROCm 4.3 may not work')
 @testing.with_requires('scipy')
+class TestPeakWidths:
+
+    @pytest.mark.parametrize('x', [[1, 2, 3], []])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_empty(self, x, xp, scp):
+        """
+        Test if an empty array is returned if no peaks are provided.
+        """
+        widths = scp.signal.peak_widths(x, [])
+        return widths
+
+    @pytest.mark.filterwarnings("ignore:some peaks have a width of 0")
+    @pytest.mark.parametrize('rel_height', [0, 0.25, 0.5, 0.75, 1.0, 2.0, 3.0])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_basic(self, rel_height, xp, scp):
+        """
+        Test a simple use case with easy to verify results at different
+        relative heights.
+        """
+        x = np.array([1, 0, 1, 2, 1, 0, -1])
+        out = scp.signal.peak_widths(x, [3], rel_height)
+        return out
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_non_contiguous(self, xp, scp):
+        """
+        Test with non-C-contiguous input arrays.
+        """
+        x = xp.repeat(xp.asarray([0, 100, 50]), 4)
+        peaks = xp.repeat(xp.asarray([1]), 3)
+        result = scp.signal.peak_widths(x[::4], peaks[::3])
+        return result
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_exceptions(self, mod):
+        """
+        Verify that argument validation works as intended.
+        """
+        xp, scp = mod
+        with pytest.raises(ValueError, match='1-D array'):
+            # x with dimension > 1
+            scp.signal.peak_widths(xp.zeros((3, 4)), xp.ones(3))
+        with pytest.raises(ValueError, match='1-D array'):
+            # x with dimension < 1
+            scp.signal.peak_widths(3, [0])
+        with pytest.raises(ValueError, match='1-D array'):
+            # peaks with dimension > 1
+            scp.signal.peak_widths(
+                xp.arange(10), xp.ones((3, 2), dtype=xp.intp))
+        with pytest.raises(ValueError, match='1-D array'):
+            # peaks with dimension < 1
+            scp.signal.peak_widths(xp.arange(10), 3)
+        with pytest.raises(ValueError, match='not a valid index'):
+            # peak pos exceeds x.size
+            scp.signal.peak_widths(xp.arange(10), [8, 11])
+        with pytest.raises(ValueError, match='not a valid index'):
+            # empty x with peaks supplied
+            scp.signal.peak_widths([], [1, 2])
+        with pytest.raises(ValueError, match='rel_height'):
+            # rel_height is < 0
+            scp.signal.peak_widths([0, 1, 0, 1, 0], [1, 3], rel_height=-1)
+        with pytest.raises(TypeError, match='None'):
+            # prominence data contains None
+            scp.signal.peak_widths(
+                [1, 2, 1], [1], prominence_data=(None, None, None))
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_mismatching_prominence_data(self, mod):
+        """Test with mismatching peak and / or prominence data."""
+        xp, scp = mod
+        x = xp.asarray([0, 1, 0])
+        peak = [1]
+        for i, (prominences, left_bases, right_bases) in enumerate([
+            ((1.,), (-1,), (2,)),  # left base not in x
+            ((1.,), (0,), (3,)),  # right base not in x
+            ((1.,), (2,), (0,)),  # swapped bases same as peak
+            ((1., 1.), (0, 0), (2, 2)),  # array shapes don't match peaks
+            ((1., 1.), (0,), (2,)),  # arrays with different shapes
+            ((1.,), (0, 0), (2,)),  # arrays with different shapes
+            ((1.,), (0,), (2, 2))  # arrays with different shapes
+        ]):
+            # Make sure input is matches output of signal.peak_prominences
+            prominence_data = (xp.array(prominences, dtype=xp.float64),
+                               xp.array(left_bases, dtype=xp.intp),
+                               xp.array(right_bases, dtype=np.intp))
+            # Test for correct exception
+            if i < 3:
+                match = "prominence data is invalid"
+            else:
+                match = "arrays in `prominence_data` must have the same shape"
+            with pytest.raises(ValueError, match=match):
+                scp.signal.peak_widths(
+                    x, peak, prominence_data=prominence_data)
+
+    @pytest.mark.filterwarnings("ignore:some peaks have a width of 0")
+    @pytest.mark.parametrize('rel_height', [0, 2/3])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_intersection_rules(self, rel_height, xp, scp):
+        """Test if x == eval_height counts as an intersection."""
+        # Flatt peak with two possible intersection points if evaluated at 1
+        x = [0, 1, 2, 1, 3, 3, 3, 1, 2, 1, 0]
+        # relative height is 0 -> width is 0 as well, raises warning
+        out = scp.signal.peak_widths(x, peaks=[5], rel_height=rel_height)
+        return out
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
 class TestFindPeaks:
 
     # Keys of optionally returned properties
