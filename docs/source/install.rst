@@ -18,7 +18,7 @@ Requirements
 
 .. note::
 
-   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS / 20.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 / 8 (x86_64) and Windows Server 2016 (x86_64).
+   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 20.04 LTS / 22.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 / 8 (x86_64) and Windows Server 2016 (x86_64).
 
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
