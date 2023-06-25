@@ -11,9 +11,9 @@ system:
 ###############################################################################
 # Name and version of the operating system to test on.
 os:
-  "ubuntu:18.04":
-    system: "linux"
   "ubuntu:20.04":
+    system: "linux"
+  "ubuntu:22.04":
     system: "linux"
   "centos:7":
     system: "linux"
