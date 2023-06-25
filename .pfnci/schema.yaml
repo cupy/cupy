@@ -77,7 +77,7 @@ rocm:
 # The optional libraries to install: NCCL, cuTENSOR, cuSPARSELt and cuDNN.
 # `spec` must be a version specifier accepted by apt and yum.
 # `cuda` lists the supported CUDA version.
-# `cuda.alias` (cuDNN only) is an alias name for package name suffix.
+# `cuda.alias` (cuDNN/NCCL) is an alias name for package name suffix.
 nccl:
   # https://docs.nvidia.com/deeplearning/nccl/archives/
   # https://developer.nvidia.com/nccl/nccl-download
@@ -88,25 +88,24 @@ nccl:
     cuda:
       # "11.0":
       "11.2":  # assumed
+        alias: "11.8"
       "11.3":  # assumed
+        alias: "11.8"
       "11.4":  # assumed
+        alias: "11.8"
       "11.5":  # assumed
+        alias: "11.8"
       "11.6":  # assumed
+        alias: "11.8"
       "11.7":  # assumed
+        alias: "11.8"
       "11.8":
       "12.0":
   "2.17":
     spec: "2.17.*"
     cuda:
-      # "11.0":
-      "11.2":  # assumed
-      "11.3":  # assumed
-      "11.4":  # assumed
-      "11.5":  # assumed
-      "11.6":  # assumed
-      "11.7":  # assumed
-      "11.8":  # assumed
-      "12.0":
+      # "11.0":  -- DEB/RPM packages are unavailable
+      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
       "12.1":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
