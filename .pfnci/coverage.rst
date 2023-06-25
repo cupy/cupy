@@ -789,7 +789,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 2.16
-     - 18
+     - 20
      - ✅
      - ✅
      - ✅
@@ -800,8 +800,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - 
@@ -819,7 +819,7 @@ CuPy CI Test Coverage
      - ✅
    * - 
      - 2.17
-     - 6
+     - 4
      - 
      - 
      - 
@@ -830,8 +830,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
      - ✅
