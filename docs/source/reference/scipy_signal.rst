@@ -58,6 +58,7 @@ Filter design
    freqz
    freqz_zpk
    firls
+   minimum_phase
    savgol_coeffs
    iirfilter
 
