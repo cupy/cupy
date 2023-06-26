@@ -10,6 +10,7 @@ import cupyx.scipy.signal as signal
 from cupy.testing import assert_array_almost_equal, assert_allclose
 
 try:
+    import scipy
     import scipy.signal  # NOQA
 except ImportError:
     pass
