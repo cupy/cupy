@@ -9,6 +9,7 @@ import cupyx.scipy.signal  # NOQA
 import numpy as np
 
 try:
+    import scipy
     import scipy.signal  # NOQA
 except ImportError:
     pass
