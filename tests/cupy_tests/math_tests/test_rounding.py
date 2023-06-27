@@ -68,6 +68,7 @@ class TestRounding(unittest.TestCase):
         self.check_unary('around')
         self.check_unary_complex('around')
 
+    @testing.with_requires('numpy<1.25')
     def test_round_(self):
         self.check_unary('round_')
         self.check_unary_complex('round_')
