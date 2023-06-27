@@ -12,7 +12,7 @@ try:
     import scipy
     import scipy.signal  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 
 @pytest.mark.xfail(
