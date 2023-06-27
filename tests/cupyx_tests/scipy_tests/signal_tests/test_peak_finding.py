@@ -385,7 +385,7 @@ class TestFindPeaks:
         """
         Test readonly arrays are accepted.
         """
-        x = np.linspace(0, 10, 15)
+        x = xp.linspace(0, 10, 15)
         x_readonly = x.copy()
         x_readonly.flags.writeable = False
 
