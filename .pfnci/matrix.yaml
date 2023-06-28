@@ -38,7 +38,7 @@
   tags: ["@push", "full", "cuda113"]
   target: "cuda113"
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:20.04"
   cuda: "11.3"
   rocm: null
   nccl: "2.16"
@@ -158,7 +158,7 @@
   target: "cuda117"
   tags: ["@push", "full", "cuda117"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "11.7"
   rocm: null
   nccl: "2.16"
