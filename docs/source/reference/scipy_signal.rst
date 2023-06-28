@@ -61,6 +61,11 @@ Filter design
    minimum_phase
    savgol_coeffs
    iirfilter
+   unique_roots
+   residue
+   residuez
+   invres
+   invresz
 
 
 Matlab-style IIR filter design
