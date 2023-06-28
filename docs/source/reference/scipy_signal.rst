@@ -55,6 +55,9 @@ Filter design
 
    bilinear
    bilinear_zpk
+   findfreqs
+   freqs
+   freqs_zpk
    freqz
    freqz_zpk
    firls
