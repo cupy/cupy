@@ -474,8 +474,8 @@ configs {
   key: "cupy.linux.cuda-rapids"
   value {
     requirement {
-      cpu: 8
-      memory: 50
+      cpu: 12
+      memory: 78
       disk: 10
       gpu: 1
     }
