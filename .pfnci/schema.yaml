@@ -86,6 +86,7 @@ nccl:
   "2.16":
     spec: "2.16.*"
     cuda:
+      # Note: DEB package for CUDA 11.x unavailable on Ubuntu 22.04
       # "11.0":
       "11.2":  # assumed
         alias: "11.8"
@@ -139,7 +140,7 @@ cusparselt:
   # https://developer.nvidia.com/cusparselt/downloads
   null:
     spec: null
-  "0.2.0":
+  "0.2.0":  # DEB package unavailable on Ubuntu 22.04
     spec: "0.2.0.*"
     cuda:
       "11.2":
