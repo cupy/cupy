@@ -720,6 +720,7 @@ class TestGroupDelay:
 
     @pytest.mark.parametrize('w', [8.0, 8.0+0j])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    @testing.with_requires('scipy>=1.8')
     def test_w_types(self, w, xp, scp):
         # Measure at frequency 8 rad/sec
         w_out, gd = scp.signal.group_delay((1, 1), w)
@@ -729,27 +730,26 @@ class TestGroupDelay:
 @testing.with_requires('scipy')
 class TestGammatone:
     # Test erroneus input cases.
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
-    def test_invalid_input(self, mod):
-        _, scp = mod
+    def test_invalid_input(self):
+        for scp in [cupyx.scipy, scipy]:
+            # Cutoff frequency is <= 0 or >= fs / 2.
+            fs = 16000
+            for args in [
+                    (-fs, 'iir'), (0, 'fir'), (fs / 2, 'iir'), (fs, 'fir')]:
+                with pytest.raises(ValueError, match='The frequency must be '
+                                   'between '):
+                    scp.signal.gammatone(*args, fs=fs)
 
-        # Cutoff frequency is <= 0 or >= fs / 2.
-        fs = 16000
-        for args in [(-fs, 'iir'), (0, 'fir'), (fs / 2, 'iir'), (fs, 'fir')]:
-            with pytest.raises(ValueError, match='The frequency must be '
-                               'between '):
-                scp.signal.gammatone(*args, fs=fs)
+            # Filter type is not fir or iir
+            for args in [(440, 'fie'), (220, 'it')]:
+                with pytest.raises(ValueError, match='ftype must be '):
+                    scp.signal.gammatone(*args, fs=fs)
 
-        # Filter type is not fir or iir
-        for args in [(440, 'fie'), (220, 'it')]:
-            with pytest.raises(ValueError, match='ftype must be '):
-                scp.signal.gammatone(*args, fs=fs)
-
-        # Order is <= 0 or > 24 for FIR filter.
-        for args in [(440, 'fir', -50), (220, 'fir', 0), (110, 'fir', 25),
-                     (55, 'fir', 50)]:
-            with pytest.raises(ValueError, match='Invalid order: '):
-                scp.signal.gammatone(*args, numtaps=None, fs=fs)
+            # Order is <= 0 or > 24 for FIR filter.
+            for args in [(440, 'fir', -50), (220, 'fir', 0), (110, 'fir', 25),
+                         (55, 'fir', 50)]:
+                with pytest.raises(ValueError, match='Invalid order: '):
+                    scp.signal.gammatone(*args, numtaps=None, fs=fs)
 
     # Verify that the filter's frequency response is approximately
     # 1 at the cutoff frequency.
