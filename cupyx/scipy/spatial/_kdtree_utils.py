@@ -1,8 +1,32 @@
 
 import cupy
+from cupy._core._scalar import get_typename
+from cupy_backends.cuda.api import runtime
+
 import numpy as np
 
-from cupy_backends.cuda.api import runtime
+
+def _get_typename(dtype):
+    typename = get_typename(dtype)
+    if cupy.dtype(dtype).kind == 'c':
+        typename = 'thrust::' + typename
+    elif typename == 'float16':
+        if runtime.is_hip:
+            # 'half' in name_expressions weirdly raises
+            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
+            # ROCm
+            typename = '__half'
+        else:
+            typename = 'half'
+    return typename
+
+
+FLOAT_TYPES = [cupy.float16, cupy.float32, cupy.float64]
+INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
+UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
+COMPLEX_TYPES = [cupy.complex64, cupy.complex128]
+TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore  # NOQA
+TYPE_NAMES = [_get_typename(t) for t in TYPES]
 
 
 if runtime.is_hip:
@@ -90,13 +114,159 @@ __global__ void update_tags(
 }
 '''
 
+KNN_KERNEL = KERNEL_BASE + r'''
+#include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+
+template<typename T>
+__device__ float compute_distance(
+        const T* __restrict__ point1, const T* __restrict__ point2,
+        const int n_dims, const float p) {
+
+    float dist = 0.0;
+    for(int i = 0; i < n_dims; i++) {
+        dist += pow(abs(point1[i] - point2[i]), p);
+    }
+
+    dist = pow(dist, 1.0 / p);
+    return dist;
+}
+
+template<typename T>
+__device__ void compute_knn(
+        const int k, const int n, const int n_dims, const float eps,
+        const float p, const float dist_bound, const T* __restrict__ point,
+        const T* __restrict__ tree, float* distances, long long* nodes) {
+
+    long long prev = -1;
+    long long curr = 0;
+    long long out_idx = 0;
+    float radius = dist_bound;
+
+    while(true) {
+        const long long parent = (curr + 1) / 2 - 1;
+        if(curr >= n) {
+            prev = curr;
+            curr = parent;
+            continue;
+        }
+
+        const long long child = 2 * curr + 1;
+        const long long r_child = 2 * curr + 2;
+
+        const bool from_child = prev >= child;
+        const T* cur_point = tree + n_dims * curr;
+
+        if(!from_child) {
+            float dist = compute_distance(point, cur_point, n_dims, p);
+            if(dist <= radius + eps) {
+                nodes[out_idx] = curr;
+                distances[out_idx] = dist;
+                radius = dist;
+                out_idx = (out_idx + 1) % n_dims;
+            }
+        }
+
+        const long long cur_level = 63 - __clzll(curr + 1);
+        const long long cur_dim = cur_level % n_dims;
+
+        const long long cur_close_child = child;
+        const long long cur_far_child = r_child;
+
+        if(point[cur_dim] > cur_point[cur_dim]) {
+            cur_close_child = r_child;
+            cur_far_child = child;
+        }
+
+        long long next = -1;
+        if(prev == curr_close_child) {
+            next
+          = ((curr_far_child < n) &&
+             ((curr_dim_dist * curr_dim_dist) <= radius + eps))
+          ? curr_far_child
+          : parent;
+        } else if (prev == curr_far_child) {
+            next = parent;
+        } else {
+            next = (child < n) ? curr_close_child : parent;
+        }
+
+        if(next == -1) {
+            return;
+        }
+
+        prev = curr;
+        curr = next;
+    }
+}
+
+template<typename T>
+__global__ knn(
+        const int k, const int n, const int points_size, const int n_dims,
+        const float eps, const float p, const float dist_bound,
+        const T* __restrict__ points, const T* __restrict__ tree,
+        float* all_distances, long long* all_nodes) {
+
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(idx >= points_size) {
+        return;
+    }
+
+    const T* point = points + n_dims * idx;
+    float* distances = all_distances + k * idx;
+    float* nodes = all_nodes + k * idx;
+
+    compute_knn<T>(k, n, n_dims, eps, p, dist_bound, point,
+                   tree, distances, nodes);
+}
+
+'''
+
 
 KD_MODULE = cupy.RawModule(
     code=KD_KERNEL, options=('-std=c++11',),
-    name_expressions=['update_tags'])  # +
+    name_expressions=['update_tags'])
+
+KNN_MODULE = cupy.RawModule(
+    code=KNN_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'knn<{x}>' for x in TYPE_NAMES])
+
+
+def _get_module_func(module, func_name, *template_args):
+    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
 
 
 def asm_kd_tree(points):
+    """
+    Build an array-based KD-Tree from a given set of points.
+
+    Parameters
+    ----------
+    points: ndarray
+        Array input of size (m, n) which contains `m` points with dimension
+        `n`.
+
+    Returns
+    -------
+    tree: ndarray
+        An array representation of a left balanced, dimension alternating
+        KD-Tree of the input points.
+
+    Notes
+    -----
+    This algorithm is derived from [1]_.
+
+    References
+    ----------
+    .. [1] Wald, I., GPU-friendly, Parallel, and (Almost-)In-Place
+           Construction of Left-Balanced k-d Trees, 2022.
+           doi:10.48550/arXiv.2211.00120.
+    """
     x = points.copy()
     tags = cupy.zeros(x.shape[0], dtype=cupy.int64)
     length = x.shape[0]
@@ -121,3 +291,27 @@ def asm_kd_tree(points):
     idx = cupy.lexsort(cupy.c_[x_dim, tags].T)
     x = x[idx]
     return x
+
+
+def compute_knn(points, tree, k=1, eps=0.0, p=2.0,
+                distance_upper_bound=cupy.inf):
+    n_points, n_dims = points.shape
+    if n_dims != tree.shape[-1]:
+        raise ValueError('The number of dimensions of the query points must '
+                         'match with the tree ones. '
+                         f'Expected {tree.shape[-1]}, got: {n_dims}')
+
+    if cupy.dtype(points.dtype) is not cupy.dtype(tree.dtype):
+        raise ValueError('Query points dtype must match the tree one.')
+
+    distances = cupy.empty((n_points, k), dtype=cupy.float32)
+    nodes = cupy.empty((n_points, k), dtype=cupy.int64)
+
+    block_sz = 128
+    n_blocks = (n_points + block_sz - 1) // block_sz
+    knn = _get_module_func(KNN_MODULE, 'knn', points)
+    knn((n_blocks,), (block_sz,),
+        (k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
+         points, tree, distances, nodes))
+
+    return distances, nodes
