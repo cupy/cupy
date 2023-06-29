@@ -912,3 +912,55 @@ class TestCSD:
         _, p_copied2 = scp.signal.csd(x, y, nperseg=8, average='median',
                                       return_onesided=False)
         return p_same1, p_copied1, p_same2, p_copied2
+
+
+@testing.with_requires('scipy')
+class TestCheckNOLACOLA:
+
+    @pytest.mark.parametrize('setting', [
+        ('boxcar', 10, 0),
+        ('boxcar', 10, 9),
+        ('bartlett', 51, 26),
+        ('hann', 256, 128),
+        ('hann', 256, 192),
+        ('blackman', 300, 200),
+        (('tukey', 0.5), 256, 64),
+        ('hann', 256, 255),
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_check_COLA(self, setting, xp, scp):
+        return scp.signal.check_COLA(*setting)
+
+    @pytest.mark.parametrize('setting', [
+        ('boxcar', 10, 0),
+        ('boxcar', 10, 9),
+        ('boxcar', 10, 7),
+        ('bartlett', 51, 26),
+        ('bartlett', 51, 10),
+        ('hann', 256, 128),
+        ('hann', 256, 192),
+        ('hann', 256, 37),
+        ('blackman', 300, 200),
+        ('blackman', 300, 123),
+        (('tukey', 0.5), 256, 64),
+        (('tukey', 0.5), 256, 38),
+        ('hann', 256, 255),
+        ('hann', 256, 39),
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_check_NOLA(self, setting, xp, scp):
+        return scp.signal.check_NOLA(*setting)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_check_NOLA_fail(self, xp, scp):
+        w_fail = xp.ones(16)
+        w_fail[::2] = 0
+
+        settings_fail = [
+            (w_fail, len(w_fail), len(w_fail) // 2),
+            ('hann', 64, 0),
+        ]
+        result = []
+        for setting in settings_fail:
+            result.append(scp.signal.check_NOLA(*setting))
+        return result
