@@ -148,6 +148,104 @@ class Test_abcd_normalize:
 
 
 @testing.with_requires("scipy")
+class Test_bode:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_01(self, xp, scp):
+        # Test bode() magnitude calculation (manual sanity check).
+        # 1st order low-pass filter: H(s) = 1 / (s + 1),
+        # cutoff: 1 rad/s, slope: -20 dB/decade
+        #   H(s=0.1) ~= 0 dB
+        #   H(s=1) ~= -3 dB
+        #   H(s=10) ~= -20 dB
+        #   H(s=100) ~= -40 dB
+        system = scp.signal.lti([1], [1, 1])
+        w = [0.1, 1, 10, 100]
+        w, mag, phase = scp.signal.bode(system, w=w)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_02(self, xp, scp):
+        # Test bode() phase calculation (manual sanity check).
+        # 1st order low-pass filter: H(s) = 1 / (s + 1),
+        #   angle(H(s=0.1)) ~= -5.7 deg
+        #   angle(H(s=1)) ~= -45 deg
+        #   angle(H(s=10)) ~= -84.3 deg
+        system = scp.signal.lti([1], [1, 1])
+        w = [0.1, 1, 10]
+        w, mag, phase = scp.signal.bode(system, w=w)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_03(self, xp, scp):
+        # Test bode() magnitude calculation.
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        system = scp.signal.lti([1], [1, 1])
+        w = [0.1, 1, 10, 100]
+        w, mag, phase = scp.signal.bode(system, w=w)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_04(self, xp, scp):
+        # Test bode() phase calculation.
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        system = scp.signal.lti([1], [1, 1])
+        w = [0.1, 1, 10, 100]
+        w, mag, phase = scp.signal.bode(system, w=w)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_05(self, xp, scp):
+        # Test that bode() finds a reasonable frequency range.
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        system = scp.signal.lti([1], [1, 1])
+        n = 10
+        w, mag, phase = scp.signal.bode(system, n=n)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_06(self, xp, scp):
+        # Test that bode() doesn't fail on a system with a pole at 0.
+        # integrator, pole at zero: H(s) = 1 / s
+        system = scp.signal.lti([1], [1, 0])
+        w, mag, phase = scp.signal.bode(system, n=2)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-10)
+    def test_07(self, xp, scp):
+        # bode() should not fail on a system with pure imaginary poles.
+        # The test passes if bode doesn't raise an exception.
+        system = scp.signal.lti([1], [1, 0, 100])
+        w, mag, phase = scp.signal.bode(system, n=2)
+        return w, mag, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_08(self, xp, scp):
+        # Test that bode() return continuous phase, issues/2331.
+        system = scp.signal.lti([], [-10, -30, -40, -60, -70], 1)
+        w, mag, phase = system.bode(w=xp.logspace(-3, 40, 100))
+        return w, mag, phase
+
+    @pytest.mark.xfail(reason="subject to fp errors in findfreqs")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_from_state_space(self, xp, scp):
+        # Ensure that bode works with a system that was created from the
+        # state space representation matrices A, B, C, D.  In this case,
+        # system.num will be a 2-D array with shape (1, n+1), where (n,n)
+        # is the shape of A.
+        # A Butterworth lowpass filter is used, so we know the exact
+        # frequency response.
+        a = xp.array([1.0, 2.0, 2.0, 1.0])
+        A = scp.linalg.companion(a).T
+        B = xp.array([[0.0], [0.0], [1.0]])
+        C = xp.array([[1.0, 0.0, 0.0]])
+        D = xp.array([[0.0]])
+        system = scp.signal.lti(A, B, C, D)
+        w, mag, phase = scp.signal.bode(system, n=100)
+        return w, mag, phase
+
+
+@testing.with_requires("scipy")
 class Test_freqresp:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
