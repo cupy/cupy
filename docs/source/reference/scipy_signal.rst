@@ -147,6 +147,7 @@ Discrete-time linear systems
    StateSpace
    TransferFunction
    ZerosPolesGain
+   freqresp
    dlsim
    dimpulse
    dstep

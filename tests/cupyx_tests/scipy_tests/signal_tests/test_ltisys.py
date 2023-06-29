@@ -1,7 +1,9 @@
 import cupy
 from cupyx.scipy.signal import abcd_normalize
 
+from cupy import testing
 from pytest import raises as assert_raises
+import pytest
 
 
 def assert_equal(actual, desired):
@@ -143,3 +145,72 @@ class Test_abcd_normalize:
 
     def test_missing_CD_fails(self):
         assert_raises(ValueError, abcd_normalize, A=self.A, B=self.B)
+
+
+@testing.with_requires("scipy")
+class Test_freqresp:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_output_manual(self, xp, scp):
+        # Test freqresp() output calculation (manual sanity check).
+        # 1st order low-pass filter: H(s) = 1 / (s + 1),
+        #   re(H(s=0.1)) ~= 0.99
+        #   re(H(s=1)) ~= 0.5
+        #   re(H(s=10)) ~= 0.0099
+        system = scp.signal.lti([1], [1, 1])
+        w = [0.1, 1, 10]
+        w, H = scp.signal.freqresp(system, w=w)
+        return w, H
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_output(self, xp, scp):
+        # Test freqresp() output calculation.
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        system = scp.signal.lti([1], [1, 1])
+        w = [0.1, 1, 10, 100]
+        w, H = scp.signal.freqresp(system, w=w)
+        return w, H
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_freq_range(self, xp, scp):
+        # Test that freqresp() finds a reasonable frequency range.
+        # 1st order low-pass filter: H(s) = 1 / (s + 1)
+        # Expected range is from 0.01 to 10.
+        system = scp.signal.lti([1], [1, 1])
+        n = 10
+        w, H = scp.signal.freqresp(system, n=n)
+        return w, H
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_pole_zero(self, xp, scp):
+        # Test that freqresp() doesn't fail on a system with a pole at 0.
+        # integrator, pole at zero: H(s) = 1 / s
+        system = scp.signal.lti([1], [1, 0])
+        w, H = scp.signal.freqresp(system, n=2)
+        return w, H
+
+    @pytest.mark.xfail(reason="subject to fp errors in findfreqs")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_from_state_space(self, xp, scp):
+        # Ensure that freqresp works with a system that was created from the
+        # state space representation matrices A, B, C, D.  In this case,
+        # system.num will be a 2-D array with shape (1, n+1), where (n,n) is
+        # the shape of A.
+        # A Butterworth lowpass filter is used, so we know the exact
+        # frequency response.
+        a = xp.array([1.0, 2.0, 2.0, 1.0])
+        A = scp.linalg.companion(a).T
+        B = xp.array([[0.0], [0.0], [1.0]])
+        C = xp.array([[1.0, 0.0, 0.0]])
+        D = xp.array([[0.0]])
+        system = scp.signal.lti(A, B, C, D)
+        w, H = scp.signal.freqresp(system, n=10)
+        return w, H
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_from_zpk(self, xp, scp):
+        # 4th order low-pass filter: H(s) = 1 / (s + 1)
+        system = scp.signal.lti([], [-1]*4, [1])
+        w = [0.1, 1, 10, 100]
+        w, H = scp.signal.freqresp(system, w=w)
+        return w, H
