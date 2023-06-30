@@ -771,6 +771,7 @@ class TestEllipord:
         return N, Wn
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires('scipy>=1.7')
     def test_lowpass_1000dB(self, xp, scp):
         # failed when ellipkm1 wasn't used in ellipord and ellipap
         wp = 0.2
