@@ -2,17 +2,16 @@
 
 set -uex
 
-# Python 3.8 (Ubuntu 20.04)
 apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install python3-pip python3-dev
+DEBIAN_FRONTEND=noninteractive apt-get -y install python3.9-dev python3-pip
 
 hipconfig
 
-pip3 install -U pip wheel
-pip3 install cython
+python3.9 -m pip install -U pip wheel
+python3.9 -m pip install cython
 
 export ROCM_HOME="/opt/rocm"
 export HCC_AMDGPU_TARGET="gfx900"
 export CUPY_INSTALL_USE_HIP="1"
-pip3 install -v -e .
-python3 -c "import cupy; cupy.show_config()"
+python3.9 -m pip install -v -e .
+python3.9 -c "import cupy; cupy.show_config()"
