@@ -14,7 +14,7 @@ try:
     import scipy
     import scipy.signal  # NOQA
 except ImportError:
-    scipy = None
+    pass
 
 try:
     import mpmath  # NOQA
