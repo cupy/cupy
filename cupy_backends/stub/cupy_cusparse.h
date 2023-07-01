@@ -34,6 +34,15 @@ cusparseStatus_t cusparseGetVersion(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+// Error handling
+const char* cusparseGetErrorName(...) {
+    return NULL;
+}
+
+const char* cusparseGetErrorString(...) {
+    return NULL;
+}
+
 // cuSPARSE Helper Function
 cusparseStatus_t cusparseCreate(...) {
   return CUSPARSE_STATUS_SUCCESS;
