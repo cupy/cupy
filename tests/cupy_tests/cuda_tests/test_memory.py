@@ -419,6 +419,15 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p3 = self.pool.malloc(self.unit)
         del p1, p2, p3
 
+    def test_alloc_limit_fragmented(self):
+        # Test for #7678.
+        self.pool.set_limit(size=(self.unit * 6))
+
+        p1 = self.pool.malloc(self.unit * 5)
+        del p1
+        p2 = self.pool.malloc(self.unit * 6)
+        del p2
+
     def test_free(self):
         p1 = self.pool.malloc(self.unit * 4)
         ptr1 = p1.ptr
