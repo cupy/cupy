@@ -9,10 +9,10 @@ import cupyx.scipy.signal  # NOQA
 import numpy as np
 
 try:
-    import scipy
+    import scipy  # NOQA
     import scipy.signal  # NOQA
 except ImportError:
-    scipy = None
+    pass
 
 
 @pytest.mark.xfail(
@@ -76,33 +76,32 @@ class TestPeakProminences:
         peak = xp.asarray([3])
         return scp.signal.peak_prominences(x, peak, wlen)
 
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
-    def test_exceptions(self, mod):
+    def test_exceptions(self):
         """
         Verify that exceptions and warnings are raised.
         """
-        xp, scp = mod
-        # x with dimension > 1
-        with pytest.raises(ValueError, match='1-D array'):
-            scp.signal.peak_prominences([[0, 1, 1, 0]], [1, 2])
-        # peaks with dimension > 1
-        with pytest.raises(ValueError, match='1-D array'):
-            scp.signal.peak_prominences([0, 1, 1, 0], [[1, 2]])
-        # x with dimension < 1
-        with pytest.raises(ValueError, match='1-D array'):
-            scp.signal.peak_prominences(3, [0,])
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            # x with dimension > 1
+            with pytest.raises(ValueError, match='1-D array'):
+                scp.signal.peak_prominences([[0, 1, 1, 0]], [1, 2])
+            # peaks with dimension > 1
+            with pytest.raises(ValueError, match='1-D array'):
+                scp.signal.peak_prominences([0, 1, 1, 0], [[1, 2]])
+            # x with dimension < 1
+            with pytest.raises(ValueError, match='1-D array'):
+                scp.signal.peak_prominences(3, [0,])
 
-        # empty x with supplied
-        with pytest.raises(ValueError, match='not a valid index'):
-            scp.signal.peak_prominences([], [0])
-        # invalid indices with non-empty x
-        for p in [-100, -1, 3, 1000]:
+            # empty x with supplied
             with pytest.raises(ValueError, match='not a valid index'):
-                scp.signal.peak_prominences([1, 0, 2], [p])
+                scp.signal.peak_prominences([], [0])
+            # invalid indices with non-empty x
+            for p in [-100, -1, 3, 1000]:
+                with pytest.raises(ValueError, match='not a valid index'):
+                    scp.signal.peak_prominences([1, 0, 2], [p])
 
-        # wlen < 3
-        with pytest.raises(ValueError, match='wlen'):
-            scp.signal.peak_prominences(xp.arange(10), [3, 5], wlen=1)
+            # wlen < 3
+            with pytest.raises(ValueError, match='wlen'):
+                scp.signal.peak_prominences(xp.arange(10), [3, 5], wlen=1)
 
 
 @pytest.mark.xfail(
@@ -142,66 +141,65 @@ class TestPeakWidths:
         result = scp.signal.peak_widths(x[::4], peaks[::3])
         return result
 
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
-    def test_exceptions(self, mod):
+    def test_exceptions(self):
         """
         Verify that argument validation works as intended.
         """
-        xp, scp = mod
-        with pytest.raises(ValueError, match='1-D array'):
-            # x with dimension > 1
-            scp.signal.peak_widths(xp.zeros((3, 4)), xp.ones(3))
-        with pytest.raises(ValueError, match='1-D array'):
-            # x with dimension < 1
-            scp.signal.peak_widths(3, [0])
-        with pytest.raises(ValueError, match='1-D array'):
-            # peaks with dimension > 1
-            scp.signal.peak_widths(
-                xp.arange(10), xp.ones((3, 2), dtype=xp.intp))
-        with pytest.raises(ValueError, match='1-D array'):
-            # peaks with dimension < 1
-            scp.signal.peak_widths(xp.arange(10), 3)
-        with pytest.raises(ValueError, match='not a valid index'):
-            # peak pos exceeds x.size
-            scp.signal.peak_widths(xp.arange(10), [8, 11])
-        with pytest.raises(ValueError, match='not a valid index'):
-            # empty x with peaks supplied
-            scp.signal.peak_widths([], [1, 2])
-        with pytest.raises(ValueError, match='rel_height'):
-            # rel_height is < 0
-            scp.signal.peak_widths([0, 1, 0, 1, 0], [1, 3], rel_height=-1)
-        with pytest.raises(TypeError, match='None'):
-            # prominence data contains None
-            scp.signal.peak_widths(
-                [1, 2, 1], [1], prominence_data=(None, None, None))
-
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
-    def test_mismatching_prominence_data(self, mod):
-        """Test with mismatching peak and / or prominence data."""
-        xp, scp = mod
-        x = xp.asarray([0, 1, 0])
-        peak = [1]
-        for i, (prominences, left_bases, right_bases) in enumerate([
-            ((1.,), (-1,), (2,)),  # left base not in x
-            ((1.,), (0,), (3,)),  # right base not in x
-            ((1.,), (2,), (0,)),  # swapped bases same as peak
-            ((1., 1.), (0, 0), (2, 2)),  # array shapes don't match peaks
-            ((1., 1.), (0,), (2,)),  # arrays with different shapes
-            ((1.,), (0, 0), (2,)),  # arrays with different shapes
-            ((1.,), (0,), (2, 2))  # arrays with different shapes
-        ]):
-            # Make sure input is matches output of signal.peak_prominences
-            prominence_data = (xp.array(prominences, dtype=xp.float64),
-                               xp.array(left_bases, dtype=xp.intp),
-                               xp.array(right_bases, dtype=np.intp))
-            # Test for correct exception
-            if i < 3:
-                match = "prominence data is invalid"
-            else:
-                match = "arrays in `prominence_data` must have the same shape"
-            with pytest.raises(ValueError, match=match):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            with pytest.raises(ValueError, match='1-D array'):
+                # x with dimension > 1
+                scp.signal.peak_widths(xp.zeros((3, 4)), xp.ones(3))
+            with pytest.raises(ValueError, match='1-D array'):
+                # x with dimension < 1
+                scp.signal.peak_widths(3, [0])
+            with pytest.raises(ValueError, match='1-D array'):
+                # peaks with dimension > 1
                 scp.signal.peak_widths(
-                    x, peak, prominence_data=prominence_data)
+                    xp.arange(10), xp.ones((3, 2), dtype=xp.intp))
+            with pytest.raises(ValueError, match='1-D array'):
+                # peaks with dimension < 1
+                scp.signal.peak_widths(xp.arange(10), 3)
+            with pytest.raises(ValueError, match='not a valid index'):
+                # peak pos exceeds x.size
+                scp.signal.peak_widths(xp.arange(10), [8, 11])
+            with pytest.raises(ValueError, match='not a valid index'):
+                # empty x with peaks supplied
+                scp.signal.peak_widths([], [1, 2])
+            with pytest.raises(ValueError, match='rel_height'):
+                # rel_height is < 0
+                scp.signal.peak_widths([0, 1, 0, 1, 0], [1, 3], rel_height=-1)
+            with pytest.raises(TypeError, match='None'):
+                # prominence data contains None
+                scp.signal.peak_widths(
+                    [1, 2, 1], [1], prominence_data=(None, None, None))
+
+    def test_mismatching_prominence_data(self):
+        """Test with mismatching peak and / or prominence data."""
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            x = xp.asarray([0, 1, 0])
+            peak = [1]
+            for i, (prominences, left_bases, right_bases) in enumerate([
+                ((1.,), (-1,), (2,)),  # left base not in x
+                ((1.,), (0,), (3,)),  # right base not in x
+                ((1.,), (2,), (0,)),  # swapped bases same as peak
+                ((1., 1.), (0, 0), (2, 2)),  # array shapes don't match peaks
+                ((1., 1.), (0,), (2,)),  # arrays with different shapes
+                ((1.,), (0, 0), (2,)),  # arrays with different shapes
+                ((1.,), (0,), (2, 2))  # arrays with different shapes
+            ]):
+                # Make sure input is matches output of signal.peak_prominences
+                prominence_data = (xp.array(prominences, dtype=xp.float64),
+                                   xp.array(left_bases, dtype=xp.intp),
+                                   xp.array(right_bases, dtype=np.intp))
+                # Test for correct exception
+                if i < 3:
+                    match = "prominence data is invalid"
+                else:
+                    match = ("arrays in `prominence_data` must have the "
+                             "same shape")
+                with pytest.raises(ValueError, match=match):
+                    scp.signal.peak_widths(
+                        x, peak, prominence_data=prominence_data)
 
     @pytest.mark.filterwarnings("ignore:some peaks have a width of 0")
     @pytest.mark.parametrize('rel_height', [0, 2/3])
@@ -344,18 +342,17 @@ class TestFindPeaks:
         return (peaks,) + tuple(
             [props[k] for k in self.property_keys if k in props])
 
-    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
-    def test_raises(self, mod):
+    def test_raises(self):
         """
         Test exceptions raised by function.
         """
-        xp, scp = mod
-        with pytest.raises(ValueError, match="1-D array"):
-            scp.signal.find_peaks(xp.array(1))
-        with pytest.raises(ValueError, match="1-D array"):
-            scp.signal.find_peaks(xp.ones((2, 2)))
-        with pytest.raises(ValueError, match="distance"):
-            scp.signal.find_peaks(xp.arange(10), distance=-1)
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            with pytest.raises(ValueError, match="1-D array"):
+                scp.signal.find_peaks(xp.array(1))
+            with pytest.raises(ValueError, match="1-D array"):
+                scp.signal.find_peaks(xp.ones((2, 2)))
+            with pytest.raises(ValueError, match="distance"):
+                scp.signal.find_peaks(xp.arange(10), distance=-1)
 
     @pytest.mark.filterwarnings("ignore:some peaks have a prominence of 0",
                                 "ignore:some peaks have a width of 0")
