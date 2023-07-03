@@ -21,6 +21,12 @@ from cupyx.scipy.signal._signaltools import sosfiltfilt  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert2  # NOQA
 
+from cupyx.scipy.signal._polyutils import unique_roots  # NOQA
+from cupyx.scipy.signal._polyutils import invres  # NOQA
+from cupyx.scipy.signal._polyutils import invresz  # NOQA
+from cupyx.scipy.signal._polyutils import residue  # NOQA
+from cupyx.scipy.signal._polyutils import residuez  # NOQA
+
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 
 from cupyx.scipy.signal._splines import symiirorder1  # NOQA
@@ -55,5 +61,17 @@ from cupyx.scipy.signal._iir_filter_design import butter  # NOQA
 from cupyx.scipy.signal._iir_filter_design import cheby1  # NOQA
 from cupyx.scipy.signal._iir_filter_design import cheby2  # NOQA
 from cupyx.scipy.signal._iir_filter_design import ellip  # NOQA
+from cupyx.scipy.signal._fir_filter_design import firls  # NOQA
+from cupyx.scipy.signal._fir_filter_design import minimum_phase  # NOQA
+
+from cupyx.scipy.signal._filter_design import findfreqs  # NOQA
+from cupyx.scipy.signal._filter_design import freqs  # NOQA
+from cupyx.scipy.signal._filter_design import freqs_zpk  # NOQA
+
+from cupyx.scipy.signal._filter_design import freqz  # NOQA
+from cupyx.scipy.signal._filter_design import freqz_zpk  # NOQA
+from cupyx.scipy.signal._filter_design import sosfreqz  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
+
+from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA

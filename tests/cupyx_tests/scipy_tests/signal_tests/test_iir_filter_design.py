@@ -6,22 +6,27 @@ import cupy
 from cupy import testing
 from cupyx.scipy import signal
 
+try:
+    import scipy.signal  # NOQA
+except ImportError:
+    pass
+
 
 nimpl = pytest.mark.xfail(reason="not implemented")
 prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy>=1.8")
 class TestIIRFilter:
 
     # NB: test_symmetry with higher order ellip filters need low tolerance
     # on older CUDA versions.
 
-    @pytest.mark.parametrize("N", list(range(1, 20)))
+    @pytest.mark.parametrize("N", list(range(1, 25)))
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
                                        'cheby1', 'cheby2', 'ellip'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-2)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-6)
     def test_symmetry(self, N, ftype, xp, scp):
         # All built-in IIR filters are real, so should have perfectly
         # symmetrical poles and zeros. Then ba representation (using
@@ -31,11 +36,11 @@ class TestIIRFilter:
                                        ftype=ftype, output='zpk')
         return z, p, k
 
-    @pytest.mark.parametrize("N", list(range(1, 20)))
+    @pytest.mark.parametrize("N", list(range(1, 25)))
     @pytest.mark.parametrize("ftype", ['butter',
                                        pytest.param('bessel', marks=nimpl),
                                        'cheby1', 'cheby2', 'ellip'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6, atol=1e-2)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
     def test_symmetry_2(self, N, ftype, xp, scp):
         b, a = scp.signal.iirfilter(N, 1.1, 1, 20, 'low', analog=True,
                                     ftype=ftype, output='ba')
@@ -159,6 +164,7 @@ class TestButter:
                               'sos',
                               pytest.param('ba', marks=prec_loss)])
     @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.with_requires("scipy>=1.8")
     def test_ba_output(self, xp, scp, outp):
         outp = scp.signal.butter(
             4, [100, 300], 'bandpass', analog=True, output=outp)
@@ -384,7 +390,7 @@ class TestCheby2:
         # assert_allclose(a, a2, rtol=1e-14)
 
 
-@testing.with_requires("scipy")
+@testing.with_requires("scipy>=1.8")
 class TestEllip:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -407,7 +413,7 @@ class TestEllip:
         return z, p, k
 
     @pytest.mark.parametrize('N', list(range(25)))
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
         z, p, k = scp.signal.ellip(
@@ -415,19 +421,19 @@ class TestEllip:
         return z, p, k
 
     @pytest.mark.parametrize('N', list(range(20)))
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-3, rtol=1e-3)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
         z, p, k = scp.signal.ellip(
             N, 1, 40, wn, 'high', analog=False, output='zpk')
         return z, p, k
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14, rtol=1e-14)
     def test_basic_2(self, xp, scp):
         b3, a3 = scp.signal.ellip(5, 3, 26, 1, analog=True)
         return b3, a3
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_3(self, xp, scp):
         b, a = scp.signal.ellip(3, 1, 60, [0.4, 0.7], 'stop')
         return b, a
@@ -438,7 +444,7 @@ class TestEllip:
                               # high odd order
                               (23, 1, 70, 0.5, 'high'),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_highpass(self, xp, scp, arg):
         # high even order
         z, p, k = scp.signal.ellip(*arg, output='zpk')
@@ -448,12 +454,12 @@ class TestEllip:
                              [(7, 1, 40, [0.07, 0.2], 'pass'),
                               (5, 1, 75, [90.5, 110.5], 'pass', True),
                               ])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=5e-5, rtol=5e-5)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandpass(self, xp, scp, arg):
         z, p, k = scp.signal.ellip(7, 1, 40, [0.07, 0.2], 'pass', output='zpk')
         return z, p, k
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=3e-5, rtol=3e-5)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_bandstop(self, xp, scp):
         z, p, k = scp.signal.ellip(8, 1, 65, [0.2, 0.4], 'stop', output='zpk')
         z = z[xp.argsort(xp.angle(z))]
