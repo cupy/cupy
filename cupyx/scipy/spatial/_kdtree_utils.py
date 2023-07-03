@@ -119,30 +119,88 @@ KNN_KERNEL = KERNEL_BASE + r'''
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
 
-template<typename T>
-__device__ float compute_distance(
-        const T* __restrict__ point1, const T* __restrict__ point2,
-        const int n_dims, const float p) {
+__device__ unsigned long long abs(unsigned long long x) {
+    return x;
+}
 
-    float dist = 0.0;
+__device__ unsigned int abs(unsigned int x) {
+    return x;
+}
+
+__device__ half abs(half x) {
+    return __habs(x);
+}
+
+template<typename T>
+__device__ double compute_distance(
+        const T* __restrict__ point1, const T* __restrict__ point2,
+        const int n_dims, const double p) {
+
+    double dist = 0.0;
     for(int i = 0; i < n_dims; i++) {
-        dist += pow(abs(point1[i] - point2[i]), p);
+        dist += pow((double)(abs(point1[i] - point2[i])), p);
     }
 
     dist = pow(dist, 1.0 / p);
     return dist;
 }
 
+/**
+template<>
+__device__ double compute_distance<half>(
+        const half* __restrict__ point1, const half* __restrict__ point2,
+        const int n_dims, const double p) {
+
+    double dist = 0.0;
+    for(int i = 0; i < n_dims; i++) {
+        dist += pow((double)(__habs(point1[i] - point2[i])), p);
+    }
+
+    dist = pow(dist, 1.0 / p);
+    return dist;
+}
+
+template<>
+__device__ double compute_distance<unsigned int>(
+        const unsigned int* __restrict__ point1,
+        const unsigned int* __restrict__ point2,
+        const int n_dims, const double p) {
+
+    double dist = 0.0;
+    for(int i = 0; i < n_dims; i++) {
+        dist += pow((double)(point1[i] - point2[i]), p);
+    }
+
+    dist = pow(dist, 1.0 / p);
+    return dist;
+}
+
+template<>
+__device__ double compute_distance<unsigned long long>(
+        const unsigned long long* __restrict__ point1,
+        const unsigned long long* __restrict__ point2,
+        const int n_dims, const double p) {
+
+    double dist = 0.0;
+    for(int i = 0; i < n_dims; i++) {
+        dist += pow((double)(point1[i] - point2[i]), p);
+    }
+
+    dist = pow(dist, 1.0 / p);
+    return dist;
+}
+**/
+
 template<typename T>
 __device__ void compute_knn(
-        const int k, const int n, const int n_dims, const float eps,
-        const float p, const float dist_bound, const T* __restrict__ point,
-        const T* __restrict__ tree, float* distances, long long* nodes) {
+        const int k, const int n, const int n_dims, const double eps,
+        const double p, const double dist_bound, const T* __restrict__ point,
+        const T* __restrict__ tree, double* distances, long long* nodes) {
 
-    long long prev = -1;
-    long long curr = 0;
-    long long out_idx = 0;
-    float radius = dist_bound;
+    volatile long long prev = -1;
+    volatile long long curr = 0;
+    volatile long long out_idx = 0;
+    volatile double radius = dist_bound;
 
     while(true) {
         const long long parent = (curr + 1) / 2 - 1;
@@ -158,8 +216,8 @@ __device__ void compute_knn(
         const bool from_child = prev >= child;
         const T* cur_point = tree + n_dims * curr;
 
+        const double dist = compute_distance(point, cur_point, n_dims, p);
         if(!from_child) {
-            float dist = compute_distance(point, cur_point, n_dims, p);
             if(dist <= radius + eps) {
                 nodes[out_idx] = curr;
                 distances[out_idx] = dist;
@@ -170,9 +228,10 @@ __device__ void compute_knn(
 
         const long long cur_level = 63 - __clzll(curr + 1);
         const long long cur_dim = cur_level % n_dims;
+        const T curr_dim_dist = point[cur_dim] - cur_point[cur_dim];
 
-        const long long cur_close_child = child;
-        const long long cur_far_child = r_child;
+        long long cur_close_child = child;
+        long long cur_far_child = r_child;
 
         if(point[cur_dim] > cur_point[cur_dim]) {
             cur_close_child = r_child;
@@ -180,16 +239,16 @@ __device__ void compute_knn(
         }
 
         long long next = -1;
-        if(prev == curr_close_child) {
+        if(prev == cur_close_child) {
             next
-          = ((curr_far_child < n) &&
-             ((curr_dim_dist * curr_dim_dist) <= radius + eps))
-          ? curr_far_child
+          = ((cur_far_child < n) && (
+            ((double) abs(curr_dim_dist)) <= radius + eps))
+          ? cur_far_child
           : parent;
-        } else if (prev == curr_far_child) {
+        } else if (prev == cur_far_child) {
             next = parent;
         } else {
-            next = (child < n) ? curr_close_child : parent;
+            next = (child < n) ? cur_close_child : parent;
         }
 
         if(next == -1) {
@@ -202,11 +261,11 @@ __device__ void compute_knn(
 }
 
 template<typename T>
-__global__ knn(
+__global__ void knn(
         const int k, const int n, const int points_size, const int n_dims,
-        const float eps, const float p, const float dist_bound,
+        const double eps, const double p, const double dist_bound,
         const T* __restrict__ points, const T* __restrict__ tree,
-        float* all_distances, long long* all_nodes) {
+        double* all_distances, long long* all_nodes) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx >= points_size) {
@@ -214,8 +273,8 @@ __global__ knn(
     }
 
     const T* point = points + n_dims * idx;
-    float* distances = all_distances + k * idx;
-    float* nodes = all_nodes + k * idx;
+    double* distances = all_distances + k * idx;
+    long long* nodes = all_nodes + k * idx;
 
     compute_knn<T>(k, n, n_dims, eps, p, dist_bound, point,
                    tree, distances, nodes);
@@ -304,7 +363,7 @@ def compute_knn(points, tree, k=1, eps=0.0, p=2.0,
     if cupy.dtype(points.dtype) is not cupy.dtype(tree.dtype):
         raise ValueError('Query points dtype must match the tree one.')
 
-    distances = cupy.empty((n_points, k), dtype=cupy.float32)
+    distances = cupy.empty((n_points, k), dtype=cupy.float64)
     nodes = cupy.empty((n_points, k), dtype=cupy.int64)
 
     block_sz = 128
