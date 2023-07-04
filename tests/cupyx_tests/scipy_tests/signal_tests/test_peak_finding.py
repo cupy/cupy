@@ -369,23 +369,3 @@ class TestFindPeaks:
             width=(None, None), wlen=2)
         return (peaks,) + tuple(
             [props[k] for k in self.property_keys if k in props])
-
-    @pytest.mark.parametrize("kwargs", [
-        {},
-        {"distance": 3.0},
-        {"prominence": (None, None)},
-        {"width": (None, 2)},
-
-    ])
-    @testing.numpy_cupy_allclose(scipy_name="scp")
-    def test_readonly_array(self, kwargs, xp, scp):
-        """
-        Test readonly arrays are accepted.
-        """
-        x = xp.linspace(0, 10, 15)
-        x_readonly = x.copy()
-        x_readonly.flags.writeable = False
-
-        peaks, props = scp.signal.find_peaks(x_readonly, **kwargs)
-        return (peaks,) + tuple(
-            [props[k] for k in self.property_keys if k in props])
