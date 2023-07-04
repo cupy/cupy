@@ -55,14 +55,24 @@ Filter design
 
    bilinear
    bilinear_zpk
+   findfreqs
+   freqs
+   freqs_zpk
    freqz
    freqz_zpk
    sosfreqz
    firls
    minimum_phase
    savgol_coeffs
+   gammatone
+   group_delay
    iirdesign
    iirfilter
+   unique_roots
+   residue
+   residuez
+   invres
+   invresz
 
 
 Matlab-style IIR filter design

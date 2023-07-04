@@ -59,6 +59,17 @@ cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle,
   return hipsparseGetVersion(handle, version);
 }
 
+// Error handling
+const char* cusparseGetErrorName(...) {
+    // Unavailable in hipSparse; this should not be called
+    return "CUPY_HIPSPARSE_BINDING_UNEXPECTED_ERROR";
+}
+
+const char* cusparseGetErrorString(...) {
+    // Unavailable in hipSparse; this should not be called
+    return "unexpected error in CuPy hipSparse binding";
+}
+
 // cuSPARSE Helper Function
 cusparseStatus_t cusparseCreate(cusparseHandle_t* handle) {
   return hipsparseCreate(handle);

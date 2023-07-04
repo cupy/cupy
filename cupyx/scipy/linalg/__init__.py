@@ -16,3 +16,4 @@ from cupyx.scipy.linalg._uarray import __ua_domain__  # NOQA
 from cupyx.scipy.linalg._uarray import __ua_function__  # NOQA
 
 from cupyx.scipy.linalg._array_utils import bandwidth  # NOQA
+from cupyx.scipy.linalg._matfuncs import khatri_rao  # NOQA

@@ -1,10 +1,15 @@
 import operator
 from math import pi
+import warnings
 
 import cupy
 from cupy.polynomial.polynomial import (
     polyval as npp_polyval, polyvalfromroots as npp_polyvalfromroots)
 import cupyx.scipy.fft as sp_fft
+from cupyx import jit
+from cupyx.scipy._lib._util import float_factorial
+
+EPSILON = 2e-16
 
 
 def _try_convert_to_int(x):
@@ -25,6 +30,301 @@ def _try_convert_to_int(x):
         return operator.index(value), True
     except TypeError:
         return value, False
+
+
+def roots(arr):
+    """np.roots replacement. XXX: calls into NumPy, then converts back.
+    """
+    import numpy as np
+
+    arr = cupy.asarray(arr).get()
+    return cupy.asarray(np.roots(arr))
+
+
+def findfreqs(num, den, N, kind='ba'):
+    """
+    Find array of frequencies for computing the response of an analog filter.
+
+    Parameters
+    ----------
+    num, den : array_like, 1-D
+        The polynomial coefficients of the numerator and denominator of the
+        transfer function of the filter or LTI system, where the coefficients
+        are ordered from highest to lowest degree. Or, the roots  of the
+        transfer function numerator and denominator (i.e., zeroes and poles).
+    N : int
+        The length of the array to be computed.
+    kind : str {'ba', 'zp'}, optional
+        Specifies whether the numerator and denominator are specified by their
+        polynomial coefficients ('ba'), or their roots ('zp').
+
+    Returns
+    -------
+    w : (N,) ndarray
+        A 1-D array of frequencies, logarithmically spaced.
+
+    See Also
+    --------
+    scipy.signal.find_freqs
+
+    Examples
+    --------
+    Find a set of nine frequencies that span the "interesting part" of the
+    frequency response for the filter with the transfer function
+
+        H(s) = s / (s^2 + 8s + 25)
+
+    >>> from scipy import signal
+    >>> signal.findfreqs([1, 0], [1, 8, 25], N=9)
+    array([  1.00000000e-02,   3.16227766e-02,   1.00000000e-01,
+             3.16227766e-01,   1.00000000e+00,   3.16227766e+00,
+             1.00000000e+01,   3.16227766e+01,   1.00000000e+02])
+    """
+    if kind == 'ba':
+        ep = cupy.atleast_1d(roots(den)) + 0j
+        tz = cupy.atleast_1d(roots(num)) + 0j
+    elif kind == 'zp':
+        ep = cupy.atleast_1d(den) + 0j
+        tz = cupy.atleast_1d(num) + 0j
+    else:
+        raise ValueError("input must be one of {'ba', 'zp'}")
+
+    if len(ep) == 0:
+        ep = cupy.atleast_1d(-1000) + 0j
+
+    ez = cupy.r_[
+        cupy.compress(ep.imag >= 0, ep, axis=-1),
+        cupy.compress((abs(tz) < 1e5) & (tz.imag >= 0), tz, axis=-1)]
+
+    integ = cupy.abs(ez) < 1e-10
+    hfreq = cupy.around(cupy.log10(cupy.max(3 * cupy.abs(ez.real + integ) +
+                                            1.5 * ez.imag)) + 0.5)
+    lfreq = cupy.around(cupy.log10(0.1 * cupy.min(cupy.abs((ez + integ).real) +
+                                                  2 * ez.imag)) - 0.5)
+    w = cupy.logspace(lfreq, hfreq, N)
+    return w
+
+
+def freqs(b, a, worN=200, plot=None):
+    """
+    Compute frequency response of analog filter.
+
+    Given the M-order numerator `b` and N-order denominator `a` of an analog
+    filter, compute its frequency response::
+
+             b[0]*(jw)**M + b[1]*(jw)**(M-1) + ... + b[M]
+     H(w) = ----------------------------------------------
+             a[0]*(jw)**N + a[1]*(jw)**(N-1) + ... + a[N]
+
+    Parameters
+    ----------
+    b : array_like
+        Numerator of a linear filter.
+    a : array_like
+        Denominator of a linear filter.
+    worN : {None, int, array_like}, optional
+        If None, then compute at 200 frequencies around the interesting parts
+        of the response curve (determined by pole-zero locations). If a single
+        integer, then compute at that many frequencies. Otherwise, compute the
+        response at the angular frequencies (e.g., rad/s) given in `worN`.
+    plot : callable, optional
+        A callable that takes two arguments. If given, the return parameters
+        `w` and `h` are passed to plot. Useful for plotting the frequency
+        response inside `freqs`.
+
+    Returns
+    -------
+    w : ndarray
+        The angular frequencies at which `h` was computed.
+    h : ndarray
+        The frequency response.
+
+    See Also
+    --------
+    scipy.signal.freqs
+    freqz : Compute the frequency response of a digital filter.
+
+    """
+    if worN is None:
+        # For backwards compatibility
+        w = findfreqs(b, a, 200)
+
+    else:
+        N, _is_int = _try_convert_to_int(worN)
+        if _is_int:
+            w = findfreqs(b, a, N)
+        else:
+            w = cupy.atleast_1d(worN)
+
+    s = 1j * w
+    h = cupy.polyval(b, s) / cupy.polyval(a, s)
+
+    if plot is not None:
+        plot(w, h)
+
+    return w, h
+
+
+def freqs_zpk(z, p, k, worN=200):
+    """
+    Compute frequency response of analog filter.
+
+    Given the zeros `z`, poles `p`, and gain `k` of a filter, compute its
+    frequency response::
+
+                (jw-z[0]) * (jw-z[1]) * ... * (jw-z[-1])
+     H(w) = k * ----------------------------------------
+                (jw-p[0]) * (jw-p[1]) * ... * (jw-p[-1])
+
+    Parameters
+    ----------
+    z : array_like
+        Zeroes of a linear filter
+    p : array_like
+        Poles of a linear filter
+    k : scalar
+        Gain of a linear filter
+    worN : {None, int, array_like}, optional
+        If None, then compute at 200 frequencies around the interesting parts
+        of the response curve (determined by pole-zero locations). If a single
+        integer, then compute at that many frequencies. Otherwise, compute the
+        response at the angular frequencies (e.g., rad/s) given in `worN`.
+
+    Returns
+    -------
+    w : ndarray
+        The angular frequencies at which `h` was computed.
+    h : ndarray
+        The frequency response.
+
+    See Also
+    --------
+    scipy.signal.freqs_zpk
+
+    """
+    k = cupy.asarray(k)
+    if k.size > 1:
+        raise ValueError('k must be a single scalar gain')
+
+    if worN is None:
+        # For backwards compatibility
+        w = findfreqs(z, p, 200, kind='zp')
+    else:
+        N, _is_int = _try_convert_to_int(worN)
+        if _is_int:
+            w = findfreqs(z, p, worN, kind='zp')
+        else:
+            w = worN
+
+    w = cupy.atleast_1d(w)
+    s = 1j * w
+    num = npp_polyvalfromroots(s, z)
+    den = npp_polyvalfromroots(s, p)
+    h = k * num/den
+    return w, h
+
+
+def _is_int_type(x):
+    """
+    Check if input is of a scalar integer type (so ``5`` and ``array(5)`` will
+    pass, while ``5.0`` and ``array([5])`` will fail.
+    """
+    if cupy.ndim(x) != 0:
+        # Older versions of NumPy did not raise for np.array([1]).__index__()
+        # This is safe to remove when support for those versions is dropped
+        return False
+    try:
+        operator.index(x)
+    except TypeError:
+        return False
+    else:
+        return True
+
+
+def group_delay(system, w=512, whole=False, fs=2 * cupy.pi):
+    r"""Compute the group delay of a digital filter.
+
+    The group delay measures by how many samples amplitude envelopes of
+    various spectral components of a signal are delayed by a filter.
+    It is formally defined as the derivative of continuous (unwrapped) phase::
+
+               d        jw
+     D(w) = - -- arg H(e)
+              dw
+
+    Parameters
+    ----------
+    system : tuple of array_like (b, a)
+        Numerator and denominator coefficients of a filter transfer function.
+    w : {None, int, array_like}, optional
+        If a single integer, then compute at that many frequencies (default is
+        N=512).
+
+        If an array_like, compute the delay at the frequencies given. These
+        are in the same units as `fs`.
+    whole : bool, optional
+        Normally, frequencies are computed from 0 to the Nyquist frequency,
+        fs/2 (upper-half of unit-circle). If `whole` is True, compute
+        frequencies from 0 to fs. Ignored if w is array_like.
+    fs : float, optional
+        The sampling frequency of the digital system. Defaults to 2*pi
+        radians/sample (so w is from 0 to pi).
+
+    Returns
+    -------
+    w : ndarray
+        The frequencies at which group delay was computed, in the same units
+        as `fs`.  By default, `w` is normalized to the range [0, pi)
+        (radians/sample).
+    gd : ndarray
+        The group delay.
+
+    See Also
+    --------
+    freqz : Frequency response of a digital filter
+
+    Notes
+    -----
+    The similar function in MATLAB is called `grpdelay`.
+
+    If the transfer function :math:`H(z)` has zeros or poles on the unit
+    circle, the group delay at corresponding frequencies is undefined.
+    When such a case arises the warning is raised and the group delay
+    is set to 0 at those frequencies.
+
+    For the details of numerical computation of the group delay refer to [1]_.
+
+    References
+    ----------
+    .. [1] Richard G. Lyons, "Understanding Digital Signal Processing,
+           3rd edition", p. 830.
+
+    """
+    if w is None:
+        # For backwards compatibility
+        w = 512
+
+    if _is_int_type(w):
+        if whole:
+            w = cupy.linspace(0, 2 * cupy.pi, w, endpoint=False)
+        else:
+            w = cupy.linspace(0, cupy.pi, w, endpoint=False)
+    else:
+        w = cupy.atleast_1d(w)
+        w = 2 * cupy.pi * w / fs
+
+    b, a = map(cupy.atleast_1d, system)
+    c = cupy.convolve(b, a[::-1])
+    cr = c * cupy.arange(c.size)
+    z = cupy.exp(-1j * w)
+    num = cupy.polyval(cr[::-1], z)
+    den = cupy.polyval(c[::-1], z)
+    gd = cupy.real(num / den) - a.size + 1
+    singular = ~cupy.isfinite(gd)
+    gd[singular] = 0
+
+    w = w * fs / (2 * cupy.pi)
+    return w, gd
 
 
 def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi,
@@ -330,3 +630,186 @@ def sosfreqz(sos, worN=512, whole=False, fs=2*pi):
         w, rowh = freqz(row[:3], row[3:], worN=worN, whole=whole, fs=fs)
         h *= rowh
     return w, h
+
+
+def _hz_to_erb(hz):
+    """
+    Utility for converting from frequency (Hz) to the
+    Equivalent Rectangular Bandwidth (ERB) scale
+    ERB = frequency / EarQ + minBW
+    """
+    EarQ = 9.26449
+    minBW = 24.7
+    return hz / EarQ + minBW
+
+
+@jit.rawkernel()
+def _gammatone_iir_kernel(fs, freq, b, a):
+    tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
+
+    EarQ = 9.26449
+    minBW = 24.7
+    erb = freq / EarQ + minBW
+
+    T = 1./fs
+    bw = 2 * cupy.pi * 1.019 * erb
+    fr = 2 * freq * cupy.pi * T
+    bwT = bw * T
+
+    # Calculate the gain to normalize the volume at the center frequency
+    g1 = -2 * cupy.exp(2j * fr) * T
+    g2 = 2 * cupy.exp(-(bwT) + 1j * fr) * T
+    g3 = cupy.sqrt(3 + 2 ** (3 / 2)) * cupy.sin(fr)
+    g4 = cupy.sqrt(3 - 2 ** (3 / 2)) * cupy.sin(fr)
+    g5 = cupy.exp(2j * fr)
+
+    g = g1 + g2 * (cupy.cos(fr) - g4)
+    g *= (g1 + g2 * (cupy.cos(fr) + g4))
+    g *= (g1 + g2 * (cupy.cos(fr) - g3))
+    g *= (g1 + g2 * (cupy.cos(fr) + g3))
+    g /= ((-2 / cupy.exp(2 * bwT) - 2 * g5 + 2 * (1 + g5) /
+           cupy.exp(bwT)) ** 4)
+    g_act = cupy.abs(g)
+
+    # Calculate the numerator coefficients
+    if tid == 0:
+        b[tid] = (T ** 4) / g_act
+        a[tid] = 1
+    elif tid == 1:
+        b[tid] = -4 * T ** 4 * cupy.cos(fr) / cupy.exp(bw * T) / g_act
+        a[tid] = -8 * cupy.cos(fr) / cupy.exp(bw * T)
+    elif tid == 2:
+        b[tid] = 6 * T ** 4 * cupy.cos(2 * fr) / cupy.exp(2 * bw * T) / g_act
+        a[tid] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(2 * bw * T)
+    elif tid == 3:
+        b[tid] = -4 * T ** 4 * cupy.cos(3 * fr) / cupy.exp(3 * bw * T) / g_act
+        a[tid] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
+        a[tid] /= cupy.exp(3 * bw * T)
+    elif tid == 4:
+        b[tid] = T ** 4 * cupy.cos(4 * fr) / cupy.exp(4 * bw * T) / g_act
+        a[tid] = 2 * (18 + 16 * cupy.cos(2 * fr) + cupy.cos(4 * fr))
+        a[tid] /= cupy.exp(4 * bw * T)
+    elif tid == 5:
+        a[tid] = -8 * (6 * cupy.cos(fr) + cupy.cos(3 * fr))
+        a[tid] /= cupy.exp(5 * bw * T)
+    elif tid == 6:
+        a[tid] = 4 * (4 + 3 * cupy.cos(2 * fr)) / cupy.exp(6 * bw * T)
+    elif tid == 7:
+        a[tid] = -8 * cupy.cos(fr) / cupy.exp(7 * bw * T)
+    elif tid == 8:
+        a[tid] = cupy.exp(-8 * bw * T)
+
+
+def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
+    """
+    Gammatone filter design.
+
+    This function computes the coefficients of an FIR or IIR gammatone
+    digital filter [1]_.
+
+    Parameters
+    ----------
+    freq : float
+        Center frequency of the filter (expressed in the same units
+        as `fs`).
+    ftype : {'fir', 'iir'}
+        The type of filter the function generates. If 'fir', the function
+        will generate an Nth order FIR gammatone filter. If 'iir', the
+        function will generate an 8th order digital IIR filter, modeled as
+        as 4th order gammatone filter.
+    order : int, optional
+        The order of the filter. Only used when ``ftype='fir'``.
+        Default is 4 to model the human auditory system. Must be between
+        0 and 24.
+    numtaps : int, optional
+        Length of the filter. Only used when ``ftype='fir'``.
+        Default is ``fs*0.015`` if `fs` is greater than 1000,
+        15 if `fs` is less than or equal to 1000.
+    fs : float, optional
+        The sampling frequency of the signal. `freq` must be between
+        0 and ``fs/2``. Default is 2.
+
+    Returns
+    -------
+    b, a : ndarray, ndarray
+        Numerator (``b``) and denominator (``a``) polynomials of the filter.
+
+    Raises
+    ------
+    ValueError
+        If `freq` is less than or equal to 0 or greater than or equal to
+        ``fs/2``, if `ftype` is not 'fir' or 'iir', if `order` is less than
+        or equal to 0 or greater than 24 when ``ftype='fir'``
+
+    See Also
+    --------
+    firwin
+    iirfilter
+
+    References
+    ----------
+    .. [1] Slaney, Malcolm, "An Efficient Implementation of the
+        Patterson-Holdsworth Auditory Filter Bank", Apple Computer
+        Technical Report 35, 1993, pp.3-8, 34-39.
+    """
+    # Converts freq to float
+    freq = float(freq)
+
+    # Set sampling rate if not passed
+    if fs is None:
+        fs = 2
+    fs = float(fs)
+
+    # Check for invalid cutoff frequency or filter type
+    ftype = ftype.lower()
+    filter_types = ['fir', 'iir']
+    if not 0 < freq < fs / 2:
+        raise ValueError("The frequency must be between 0 and {}"
+                         " (nyquist), but given {}.".format(fs / 2, freq))
+    if ftype not in filter_types:
+        raise ValueError('ftype must be either fir or iir.')
+
+    # Calculate FIR gammatone filter
+    if ftype == 'fir':
+        # Set order and numtaps if not passed
+        if order is None:
+            order = 4
+        order = operator.index(order)
+
+        if numtaps is None:
+            numtaps = max(int(fs * 0.015), 15)
+        numtaps = operator.index(numtaps)
+
+        # Check for invalid order
+        if not 0 < order <= 24:
+            raise ValueError("Invalid order: order must be > 0 and <= 24.")
+
+        # Gammatone impulse response settings
+        t = cupy.arange(numtaps) / fs
+        bw = 1.019 * _hz_to_erb(freq)
+
+        # Calculate the FIR gammatone filter
+        b = (t ** (order - 1)) * cupy.exp(-2 * cupy.pi * bw * t)
+        b *= cupy.cos(2 * cupy.pi * freq * t)
+
+        # Scale the FIR filter so the frequency response is 1 at cutoff
+        scale_factor = 2 * (2 * cupy.pi * bw) ** (order)
+        scale_factor /= float_factorial(order - 1)
+        scale_factor /= fs
+        b *= scale_factor
+        a = [1.0]
+
+    # Calculate IIR gammatone filter
+    elif ftype == 'iir':
+        # Raise warning if order and/or numtaps is passed
+        if order is not None:
+            warnings.warn('order is not used for IIR gammatone filter.')
+        if numtaps is not None:
+            warnings.warn('numtaps is not used for IIR gammatone filter.')
+
+        # Create empty filter coefficient lists
+        b = cupy.empty(5)
+        a = cupy.empty(9)
+        _gammatone_iir_kernel((9,), (1,), (fs, freq, b, a))
+
+    return b, a

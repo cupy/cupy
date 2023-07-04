@@ -173,7 +173,7 @@ def fill_diagonal(a, val, wrap=False):
         if not wrap:
             end = a.shape[1] * a.shape[1]
     else:
-        if not numpy.alltrue(numpy.diff(a.shape) == 0):
+        if not numpy.all(numpy.diff(a.shape) == 0):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
