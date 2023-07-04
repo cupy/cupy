@@ -1,5 +1,6 @@
 import functools
 import pickle
+import sys
 
 import numpy
 import pytest
@@ -377,14 +378,19 @@ class TestSpgemm:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if not cusparse.check_availability('spgemm'):
+            pytest.skip('spgemm is not available.')
+
+        if (sys.platform == 'win32'
+            and cusparse.getVersion() == 11301
+                and self.dtype == numpy.complex128):
+            pytest.xfail('spgemm fails on CUDA 11.2 on Windows')
+
         m, n, k = self.shape
         self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
         self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
 
     def test_spgemm_ab(self):
-        if not cusparse.check_availability('spgemm'):
-            pytest.skip('spgemm is not available.')
-
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         c = cusparse.spgemm(a, b, alpha=self.alpha)
