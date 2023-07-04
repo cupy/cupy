@@ -20,6 +20,10 @@ cdef extern from '../../cupy_sparse.h' nogil:
     # Version
     cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int* version)
 
+    # Error handling
+    const char* cusparseGetErrorName(Status status)
+    const char* cusparseGetErrorString(Status status)
+
     # cuSPARSE Helper Function
     Status cusparseCreate(Handle *handle)
     Status cusparseCreateMatDescr(MatDescr descr)
@@ -1401,35 +1405,19 @@ cdef f_type cusparseDenseToSparse_bufferSize = <f_type>_lib.get('DenseToSparse_b
 cdef f_type cusparseDenseToSparse_analysis = <f_type>_lib.get('DenseToSparse_analysis')  # NOQA
 cdef f_type cusparseDenseToSparse_convert = <f_type>_lib.get('DenseToSparse_convert')  # NOQA
 
-
-cdef dict STATUS = {
-    0: 'CUSPARSE_STATUS_SUCCESS',
-    1: 'CUSPARSE_STATUS_NOT_INITIALIZED',
-    2: 'CUSPARSE_STATUS_ALLOC_FAILED',
-    3: 'CUSPARSE_STATUS_INVALID_VALUE',
-    4: 'CUSPARSE_STATUS_ARCH_MISMATCH',
-    5: 'CUSPARSE_STATUS_MAPPING_ERROR',
-    6: 'CUSPARSE_STATUS_EXECUTION_FAILED',
-    7: 'CUSPARSE_STATUS_INTERNAL_ERROR',
-    8: 'CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
-    9: 'CUSPARSE_STATUS_ZERO_PIVOT',
-    10: 'CUSPARSE_STATUS_NOT_SUPPORTED',
-}
-
-
 cdef dict HIP_STATUS = {
-    0: 'HIPSPARSE_STATUS_SUCCESS',
-    1: 'HIPSPARSE_STATUS_NOT_INITIALIZED',
-    2: 'HIPSPARSE_STATUS_ALLOC_FAILED',
-    3: 'HIPSPARSE_STATUS_INVALID_VALUE',
-    4: 'HIPSPARSE_STATUS_ARCH_MISMATCH',
-    5: 'HIPSPARSE_STATUS_MAPPING_ERROR',
-    6: 'HIPSPARSE_STATUS_EXECUTION_FAILED',
-    7: 'HIPSPARSE_STATUS_INTERNAL_ERROR',
-    8: 'HIPSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
-    9: 'HIPSPARSE_STATUS_ZERO_PIVOT',
-    10: 'HIPSPARSE_STATUS_NOT_SUPPORTED',
-    11: 'HIPSPARSE_STATUS_INSUFFICIENT_RESOURCES',
+    0: b'HIPSPARSE_STATUS_SUCCESS',
+    1: b'HIPSPARSE_STATUS_NOT_INITIALIZED',
+    2: b'HIPSPARSE_STATUS_ALLOC_FAILED',
+    3: b'HIPSPARSE_STATUS_INVALID_VALUE',
+    4: b'HIPSPARSE_STATUS_ARCH_MISMATCH',
+    5: b'HIPSPARSE_STATUS_MAPPING_ERROR',
+    6: b'HIPSPARSE_STATUS_EXECUTION_FAILED',
+    7: b'HIPSPARSE_STATUS_INTERNAL_ERROR',
+    8: b'HIPSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
+    9: b'HIPSPARSE_STATUS_ZERO_PIVOT',
+    10: b'HIPSPARSE_STATUS_NOT_SUPPORTED',
+    11: b'HIPSPARSE_STATUS_INSUFFICIENT_RESOURCES',
 }
 
 
@@ -1525,14 +1513,17 @@ cdef class DnMatBatchAttributes:
 
 class CuSparseError(RuntimeError):
 
-    def __init__(self, int status):
+    def __init__(self, Status status):
         self.status = status
-        cdef str err
+        cdef bytes name
+        cdef bytes msg
         if _is_hip_environment:
-            err = HIP_STATUS[status]
+            name = HIP_STATUS[status]
+            msg = name
         else:
-            err = STATUS[status]
-        super(CuSparseError, self).__init__('%s' % (err))
+            name = cusparseGetErrorName(status)
+            msg = cusparseGetErrorString(status)
+        super().__init__(f'{name.decode()}: {msg.decode()}')
 
     def __reduce__(self):
         return (type(self), (self.status,))
