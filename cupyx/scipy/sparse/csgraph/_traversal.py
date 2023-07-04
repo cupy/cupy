@@ -70,9 +70,6 @@ def connected_components(csgraph, directed=True, connection='weak',
             labels=None,
             do_expensive_check=False,
             )
-        # Note: In the case of weak connection, cuGraph creates labels with a
-        # start number of 1, so decrement the label number.
-        labels -= 1
 
     count = cupy.zeros((1,), dtype=csgraph.indices.dtype)
     root_labels = cupy.empty((m,), dtype=csgraph.indices.dtype)
