@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:11.2.1-devel-centos7"
+ARG BASE_IMAGE="nvidia/cuda:11.2.2-devel-centos7"
 FROM ${BASE_IMAGE}
 
 RUN yum -y install centos-release-scl && \

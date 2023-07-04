@@ -63,6 +63,8 @@ Filter design
    firls
    minimum_phase
    savgol_coeffs
+   gammatone
+   group_delay
    iirfilter
    kaiser_atten
    kaiser_beta
