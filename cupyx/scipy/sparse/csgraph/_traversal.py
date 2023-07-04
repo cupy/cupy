@@ -69,7 +69,7 @@ def connected_components(csgraph, directed=True, connection='weak',
             weights=None,
             labels=None,
             do_expensive_check=False,
-            )
+        )
 
     count = cupy.zeros((1,), dtype=csgraph.indices.dtype)
     root_labels = cupy.empty((m,), dtype=csgraph.indices.dtype)
