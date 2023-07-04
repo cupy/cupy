@@ -845,6 +845,9 @@ class TestCsrMatrixScipyComparison:
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
+        if (cupyx.cusparse.getVersion() == 11702
+                and self.make_method == '_make_duplicate'):
+            pytest.xfail('Known to fail on CUDA 11.6.1/11.6.2')
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m * x
