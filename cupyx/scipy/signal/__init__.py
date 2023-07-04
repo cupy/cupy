@@ -34,6 +34,9 @@ from cupyx.scipy.signal._splines import symiirorder2  # NOQA
 
 from cupyx.scipy.signal._savitzky_golay import savgol_coeffs, savgol_filter   # NOQA
 
+from cupyx.scipy.signal._filter_design import gammatone  # NOQA
+from cupyx.scipy.signal._filter_design import group_delay  # NOQA
+
 from cupyx.scipy.signal._iir_filter_conversions import normalize  # NOQA
 
 from cupyx.scipy.signal._iir_filter_conversions import bilinear  # NOQA

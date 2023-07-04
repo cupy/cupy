@@ -1,16 +1,23 @@
 from math import sqrt, pi
 
-import cupy
-import cupyx.scipy.signal as signal
-from cupy import testing
-from cupy.testing import assert_array_almost_equal, assert_allclose
-
+import pytest
 import numpy as np
 
-import pytest
+import cupy
+from cupy import testing
+import cupyx.scipy.signal  # NOQA
+import cupyx.scipy.signal as signal
+from cupy.testing import assert_array_almost_equal, assert_allclose
+
 
 try:
-    import mpmath
+    import scipy
+    import scipy.signal  # NOQA
+except ImportError:
+    pass
+
+try:
+    import mpmath  # NOQA
 except ImportError:
     pass
 
@@ -653,3 +660,125 @@ class TestSOSFreqz:
             w_out, h = signal.sosfreqz([1, 0, 0, 1, 0, 0], worN=w, fs=100)
             assert_array_almost_equal(w_out, [8])
             assert_array_almost_equal(h, [1])
+
+
+@testing.with_requires('scipy')
+class TestGroupDelay:
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_identity_filter(self, xp, scp):
+        w1, gd1 = scp.signal.group_delay((1, 1))
+        w2, gd2 = scp.signal.group_delay((1, 1), whole=True)
+        return w1, gd1, w2, gd2
+
+    @pytest.mark.skip(reason='firwin is not available on CuPy')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_fir(self, xp, scp):
+        # Let's design linear phase FIR and check that the group delay
+        # is constant.
+        N = 100
+        b = scp.signal.firwin(N + 1, 0.1)
+        w, gd = scp.signal.group_delay((b, 1))
+        return w, gd
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_iir(self, xp, scp):
+        # Let's design Butterworth filter and test the group delay at
+        # some points against MATLAB answer.
+        b, a = scp.signal.butter(4, 0.1)
+        w = xp.linspace(0, xp.pi, num=10, endpoint=False)
+        w, gd = scp.signal.group_delay((b, a), w=w)
+        return w, gd
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_backward_compat(self, xp, scp):
+        # For backward compatibility, test if None act as a wrapper for default
+        w1, gd1 = scp.signal.group_delay((1, 1))
+        w2, gd2 = scp.signal.group_delay((1, 1), None)
+        return w1, gd1, w2, gd2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_fs_param(self, xp, scp):
+        # Let's design Butterworth filter and test the group delay at
+        # some points against the normalized frequency answer.
+        b, a = scp.signal.butter(4, 4800, fs=96000)
+        w = xp.linspace(0, 96000 / 2, num=10, endpoint=False)
+        w, gd = scp.signal.group_delay((b, a), w=w, fs=96000)
+        return w, gd
+
+    @pytest.mark.parametrize(
+        'type_', [None, 'int8', 'int16', 'int32', 'int64'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_N_types(self, type_, xp, scp):
+        # Measure at 8 equally-spaced points
+        N = 8
+        if type_ is not None:
+            wrapper = getattr(xp, type_)
+            N = wrapper(N)
+
+        w, gd = scp.signal.group_delay((1, 1), N)
+        return w, gd
+
+    @pytest.mark.parametrize('w', [8.0, 8.0+0j])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    @testing.with_requires('scipy>=1.8')
+    def test_w_types(self, w, xp, scp):
+        # Measure at frequency 8 rad/sec
+        w_out, gd = scp.signal.group_delay((1, 1), w)
+        return w_out, gd
+
+
+@testing.with_requires('scipy')
+class TestGammatone:
+    # Test erroneus input cases.
+    def test_invalid_input(self):
+        for scp in [cupyx.scipy, scipy]:
+            # Cutoff frequency is <= 0 or >= fs / 2.
+            fs = 16000
+            for args in [
+                    (-fs, 'iir'), (0, 'fir'), (fs / 2, 'iir'), (fs, 'fir')]:
+                with pytest.raises(ValueError, match='The frequency must be '
+                                   'between '):
+                    scp.signal.gammatone(*args, fs=fs)
+
+            # Filter type is not fir or iir
+            for args in [(440, 'fie'), (220, 'it')]:
+                with pytest.raises(ValueError, match='ftype must be '):
+                    scp.signal.gammatone(*args, fs=fs)
+
+            # Order is <= 0 or > 24 for FIR filter.
+            for args in [(440, 'fir', -50), (220, 'fir', 0), (110, 'fir', 25),
+                         (55, 'fir', 50)]:
+                with pytest.raises(ValueError, match='Invalid order: '):
+                    scp.signal.gammatone(*args, numtaps=None, fs=fs)
+
+    # Verify that the filter's frequency response is approximately
+    # 1 at the cutoff frequency.
+    @pytest.mark.parametrize('ftype', ['fir', 'iir'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_frequency_response(self, ftype, xp, scp):
+        fs = 16000
+        # Create a gammatone filter centered at 1000 Hz.
+        b, a = scp.signal.gammatone(1000, ftype, fs=fs)
+        return b, xp.asarray(a)
+
+    # All built-in IIR filters are real, so should have perfectly
+    # symmetrical poles and zeros. Then ba representation (using
+    # numpy.poly) will be purely real instead of having negligible
+    # imaginary parts.
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_iir_symmetry(self, xp, scp):
+        b, a = scp.signal.gammatone(440, 'iir', fs=24000)
+        return b, a
+
+    # Verify FIR filter coefficients with the paper's
+    # Mathematica implementation
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_fir_ba_output(self, xp, scp):
+        b, _ = scp.signal.gammatone(15, 'fir', fs=1000)
+        return b
+
+    # Verify IIR filter coefficients with the paper's MATLAB implementation
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_iir_ba_output(self, xp, scp):
+        b, a = scp.signal.gammatone(440, 'iir', fs=16000)
+        return b, a
