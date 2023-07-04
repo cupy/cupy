@@ -51,9 +51,9 @@ def connected_components(csgraph, directed=True, connection='weak',
         raise ValueError('graph should be a square array')
     if csgraph.nnz == 0:
         return m, cupy.arange(m, dtype=csgraph.indices.dtype)
-    labels = cupy.empty(m, dtype=csgraph.indices.dtype)
 
     if connection == 'strong':
+        labels = cupy.empty(m, dtype=csgraph.indices.dtype)
         pylibcugraph.strongly_connected_components(
             offsets=csgraph.indptr, indices=csgraph.indices, weights=None,
             num_verts=m, num_edges=csgraph.nnz, labels=labels)
@@ -61,9 +61,15 @@ def connected_components(csgraph, directed=True, connection='weak',
         csgraph += csgraph.T
         if not cupyx.scipy.sparse.isspmatrix_csr(csgraph):
             csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
-        pylibcugraph.weakly_connected_components(
-            offsets=csgraph.indptr, indices=csgraph.indices, weights=None,
-            num_verts=m, num_edges=csgraph.nnz, labels=labels)
+        _, labels = pylibcugraph.weakly_connected_components(
+            resource_handle=None,
+            graph=None,
+            indices=csgraph.indices,
+            offsets=csgraph.indptr,
+            weights=None,
+            labels=None,
+            do_expensive_check=False,
+            )
         # Note: In the case of weak connection, cuGraph creates labels with a
         # start number of 1, so decrement the label number.
         labels -= 1
