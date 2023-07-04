@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:10.2-devel-ubuntu18.04"
+ARG BASE_IMAGE="cupy/nvidia-cuda:10.2-devel-ubuntu18.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
