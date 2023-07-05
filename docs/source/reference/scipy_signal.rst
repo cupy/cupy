@@ -181,17 +181,30 @@ Discrete-time linear systems
    dbode
 
 
+<<<<<<< HEAD
 Window functions
 ----------------
 For window functions, see the :mod:`cupyx.scipy.signal.windows` namespace.
 
 In the :mod:`cupyx.scipy.signal` namespace, there is a convenience function
 to obtain these windows by name:
+=======
+Waveforms
+---------
+>>>>>>> 07d58c877... Expose functions in docs
 
 .. autosummary::
    :toctree: generated/
 
+<<<<<<< HEAD
    get_window
+=======
+   chirp
+   gausspulse
+   sawtooth
+   square
+   unit_impulse
+>>>>>>> 07d58c877... Expose functions in docs
 
 
 Peak finding
