@@ -20,7 +20,42 @@ limitations under the License.
 """
 
 import cupy
+from cupy._core._scalar import get_typename
+from cupy_backends.cuda.api import runtime
+
 import numpy as np
+
+
+def _get_typename(dtype):
+    typename = get_typename(dtype)
+    if cupy.dtype(dtype).kind == 'c':
+        typename = 'thrust::' + typename
+    elif typename == 'float16':
+        if runtime.is_hip:
+            # 'half' in name_expressions weirdly raises
+            # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
+            # ROCm
+            typename = '__half'
+        else:
+            typename = 'half'
+    return typename
+
+
+FLOAT_TYPES = [cupy.float16, cupy.float32, cupy.float64]
+INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
+UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
+COMPLEX_TYPES = [cupy.complex64, cupy.complex128]
+TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore  # NOQA
+TYPE_NAMES = [_get_typename(t) for t in TYPES]
+
+
+def _get_module_func(module, func_name, *template_args):
+    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    template = ', '.join(args_dtypes)
+    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel = module.get_function(kernel_name)
+    return kernel
+
 
 _sawtooth_kernel = cupy.ElementwiseKernel(
     "T t, T w",
@@ -489,8 +524,10 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True,
     >>> plt.grid()
     >>> plt.show()
     """
-
     t = cupy.asarray(t)
+
+    if cupy.issubdtype(t.dtype, cupy.int_):
+        t = t.astype(cupy.float64)
 
     phi *= np.pi / 180
 
@@ -530,19 +567,41 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True,
         )
 
 
-_unit_impulse_kernel = cupy.ElementwiseKernel(
-    "int32 idx",
-    "float64 out",
-    """
-    if (i != idx) {
-        out = 0;
-    } else {
-        out = 1;
+if runtime.is_hip:
+    KERNEL_BASE = r"""
+    #include <hip/hip_runtime.h>
+"""
+else:
+    KERNEL_BASE = r"""
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+"""
+
+UNIT_KERNEL = KERNEL_BASE + r'''
+#include <cupy/math_constants.h>
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+
+
+template<typename T>
+__global__ void unit_impulse(const int n, const int iidx, T* out) {
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(idx >= n) {
+        return;
     }
-    """,
-    "_unit_impulse_kernel",
-    options=("-std=c++11",),
-)
+
+    if(idx == iidx) {
+        out[idx] = 1;
+    } else {
+        out[idx] = 0;
+    }
+}
+'''
+
+UNIT_MODULE = cupy.RawModule(
+    code=UNIT_KERNEL, options=('-std=c++11',),
+    name_expressions=[f'unit_impulse<{x}>' for x in TYPE_NAMES])
 
 
 def unit_impulse(shape, idx=None, dtype=float):
@@ -601,13 +660,22 @@ def unit_impulse(shape, idx=None, dtype=float):
            [ 0.,  0.,  1.,  0.],
            [ 0.,  0.,  0.,  0.]])
     """
+    out = cupy.empty(shape, dtype)
     shape = np.atleast_1d(shape)
 
     if idx is None:
         idx = (0,) * len(shape)
-    elif idx == "mid":
+    elif idx == 'mid':
         idx = tuple(shape // 2)
     elif not hasattr(idx, "__iter__"):
         idx = (idx,) * len(shape)
 
-    return _unit_impulse_kernel(idx[0], size=shape[0])
+    pos = np.ravel_multi_index(idx, out.shape)
+
+    n = out.size
+    block_sz = 128
+    n_blocks = (n + block_sz - 1) // block_sz
+
+    unit_impulse_kernel = _get_module_func(UNIT_MODULE, 'unit_impulse', out)
+    unit_impulse_kernel((n_blocks,), (block_sz,), (n, pos, out))
+    return out
