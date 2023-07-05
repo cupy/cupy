@@ -167,3 +167,21 @@ class TestUnitImpulse:
         imp2 = scp.signal.unit_impulse(5, 3, dtype=int)
         imp3 = scp.signal.unit_impulse((5, 2), (3, 1), dtype=complex)
         return imp1, imp2, imp3
+
+
+@testing.with_requires('scipy')
+class TestSawtooth:
+    @pytest.mark.parametrize('width', [1.0, 0.5, 3.0])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_sawtooth(self, width, xp, scp):
+        t = xp.linspace(0, 1, 500)
+        return scp.signal.sawtooth(t, width)
+
+
+@testing.with_requires('scipy')
+class TestSquare:
+    @pytest.mark.parametrize('duty', [1.0, 0.5, 3.0])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_square(self, duty, xp, scp):
+        t = xp.linspace(0, 1, 500)
+        return scp.signal.square(t, duty)
