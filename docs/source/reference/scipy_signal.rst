@@ -188,6 +188,9 @@ Peak finding
 .. autosummary::
    :toctree: generated/
 
+   argrelmin
+   argrelmax
+   argrelextrema
    find_peaks
    peak_prominences
    peak_widths
