@@ -117,6 +117,12 @@ from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
 
+from cupyx.scipy.signal._wavelets import morlet  # NOQA
+from cupyx.scipy.signal._wavelets import qmf  # NOQA
+from cupyx.scipy.signal._wavelets import ricker  # NOQA
+from cupyx.scipy.signal._wavelets import morlet2  # NOQA
+from cupyx.scipy.signal._wavelets import cwt  # NOQA
+
 from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA
 
 from cupyx.scipy.signal._peak_finding import find_peaks  # NOQA

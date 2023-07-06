@@ -199,6 +199,18 @@ to obtain these windows by name:
    get_window
 
 
+Wavelets
+--------
+
+.. autosummary::
+   :toctree: generated/
+
+   morlet
+   qmf
+   ricker
+   morlet2
+   cwt
+
 
 Peak finding
 ------------
