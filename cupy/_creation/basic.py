@@ -4,7 +4,7 @@ import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
 
 
-def empty(shape, dtype=float, order='C'):
+def empty(shape, dtype=None, order='C'):
     """Returns an array without initializing the elements.
 
     Args:
@@ -88,7 +88,7 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
-def eye(N, M=None, k=0, dtype=float, order='C'):
+def eye(N, M=None, k=0, dtype=None, order='C'):
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
     Args:
@@ -117,7 +117,7 @@ def eye(N, M=None, k=0, dtype=float, order='C'):
     return ret
 
 
-def identity(n, dtype=float):
+def identity(n, dtype=None):
     """Returns a 2-D identity array.
 
     It is equivalent to ``eye(n, n, dtype)``.
@@ -135,7 +135,7 @@ def identity(n, dtype=float):
     return eye(n, dtype=dtype)
 
 
-def ones(shape, dtype=float, order='C'):
+def ones(shape, dtype=None, order='C'):
     """Returns a new array of given shape and dtype, filled with ones.
 
     This function currently does not support ``order`` option.
@@ -193,7 +193,7 @@ def ones_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def zeros(shape, dtype=float, order='C'):
+def zeros(shape, dtype=None, order='C'):
     """Returns a new array of given shape and dtype, filled with zeros.
 
     Args:
