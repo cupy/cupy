@@ -718,11 +718,6 @@ def peak_prominences(x, peaks, wlen=None):
     set of peaks in `x`. This behavior may even be used intentionally to
     calculate "local" prominences.
 
-    References
-    ----------
-    .. [1] Wikipedia Article for Topographic Prominence:
-       https://en.wikipedia.org/wiki/Topographic_prominence
-
     """
     x = _arg_x_as_expected(x)
     peaks = _arg_peaks_as_expected(peaks)
