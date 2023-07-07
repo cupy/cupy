@@ -26,11 +26,11 @@ from cupyx.scipy.signal._signaltools import convolve
 
 
 _qmf_kernel = cupy.ElementwiseKernel(
-    "",
-    "int64 output",
+    "raw T coef",
+    "T output",
     """
     const int sign { ( i & 1 ) ? -1 : 1 };
-    output = ( _ind.size() - ( i + 1 ) ) * sign;
+    output = ( coef[_ind.size() - ( i + 1 )] ) * sign;
     """,
     "_qmf_kernel",
     options=("-std=c++11",),
@@ -47,7 +47,8 @@ def qmf(hk):
         Coefficients of high-pass filter.
 
     """
-    return _qmf_kernel(size=len(hk))
+    hk = cupy.asarray(hk)
+    return _qmf_kernel(hk, size=len(hk))
 
 
 _morlet_kernel = cupy.ElementwiseKernel(
@@ -183,7 +184,7 @@ def ricker(points, a):
     >>> plt.show()
 
     """
-    return _ricker_kernel(a, size=points)
+    return _ricker_kernel(a, size=int(points))
 
 
 _morlet2_kernel = cupy.ElementwiseKernel(
@@ -270,7 +271,7 @@ def morlet2(M, s, w=5):
         cmap='viridis', shading='gouraud')
     >>> plt.show()
     """
-    return _morlet2_kernel(w, s, size=M)
+    return _morlet2_kernel(w, s, size=int(M))
 
 
 def cwt(data, wavelet, widths):
