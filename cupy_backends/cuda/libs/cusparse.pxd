@@ -217,4 +217,4 @@ cdef class DnMatBatchAttributes:
         public int64_t stride
 
 cpdef intptr_t create() except? 0
-cpdef destroy(intptr_t handle)
+cpdef void destroy(intptr_t handle) except *
