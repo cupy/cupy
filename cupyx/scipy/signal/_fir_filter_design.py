@@ -6,6 +6,8 @@ from cupyx.scipy.linalg import toeplitz, hankel
 import cupyx
 
 import cupy
+import numpy
+
 
 __all__ = ["firls", "minimum_phase"]
 
@@ -122,7 +124,7 @@ def kaiserord(ripple, width):
     # order, so we have to add 1 to get the number of taps.
     numtaps = (A - 7.95) / 2.285 / (cupy.pi * width) + 1
 
-    return int(cupy.ceil(numtaps)), beta
+    return int(numpy.ceil(numtaps)), beta
 
 
 # Scipy <= 1.12 has a deprecated `nyq` argument (nyq = fs/2).
