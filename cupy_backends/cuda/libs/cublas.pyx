@@ -1430,7 +1430,10 @@ cpdef gemmEx(
         int ldc, int computeType, int algo):
     _setStream(handle)
     with nogil:
-        if not runtime._is_hip_environment and computeType >= CUBLAS_COMPUTE_16F:
+        if (
+            not runtime._is_hip_environment and
+            computeType >= CUBLAS_COMPUTE_16F
+        ):
             status = cublasGemmEx_v11(
                 <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
                 <const void*>alpha,

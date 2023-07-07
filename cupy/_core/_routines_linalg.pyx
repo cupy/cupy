@@ -646,7 +646,8 @@ cpdef _ndarray_base tensordot_core(
     if dtype == 'e':
         use_tensor_core = (not runtime._is_hip_environment and
                            _cuda_runtime_version >= 9000 and
-                           compute_capability >= 70) or (runtime._is_hip_environment)
+                           compute_capability >= 70
+                           ) or runtime._is_hip_environment
         if use_tensor_core:
             can_opt_in_tensorcore = not runtime._is_hip_environment
 
