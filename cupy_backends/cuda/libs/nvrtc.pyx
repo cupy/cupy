@@ -50,10 +50,14 @@ ELSE:
         _prefix = 'hiprtc'
         _libname = 'libamdhip64.so.5'
 
+    ctypedef int (*F_createProgram)(  # naming convention TBD  # noqa
+        Program* prog, const char* src, const char* name, int numHeaders,
+        const char* const *headers, const char** includeNames) nogil
+
     cdef SoftLink _L = SoftLink(_libname, _prefix)
     cdef F_t nvrtcGetErrorString = <F_t>_L.get('GetErrorString')
     cdef F_t nvrtcVersion = <F_t>_L.get('Version')
-    cdef F_t nvrtcCreateProgram = <F_t>_L.get('CreateProgram')
+    cdef F_createProgram nvrtcCreateProgram = <F_createProgram>_L.get('CreateProgram')  # noqa
     cdef F_t nvrtcDestroyProgram = <F_t>_L.get('DestroyProgram')
     cdef F_t nvrtcCompileProgram = <F_t>_L.get('CompileProgram')
     cdef F_t nvrtcGetPTXSize = <F_t>_L.get(
