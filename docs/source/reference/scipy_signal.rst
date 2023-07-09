@@ -146,6 +146,7 @@ Continuous-time linear systems
    StateSpace
    TransferFunction
    ZerosPolesGain
+   lsim
    freqresp
    bode
 

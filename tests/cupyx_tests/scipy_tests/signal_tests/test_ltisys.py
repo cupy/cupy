@@ -1,5 +1,6 @@
 import cupy
 from cupyx.scipy.signal import abcd_normalize
+import cupyx.scipy.signal as signal
 
 from cupy import testing
 from pytest import raises as assert_raises
@@ -312,3 +313,112 @@ class Test_freqresp:
         w = [0.1, 1, 10, 100]
         w, H = scp.signal.freqresp(system, w=w)
         return w, H
+
+
+@testing.with_requires("scipy")
+class TestLsim:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_first_order(self, xp, scp):
+        # y' = -y
+        # exact solution is y(t) = exp(-t)
+        # system = self.lti_nowarn(-1.,1.,1.,0.)
+        system = scp.signal.lti(-1., 1., 1., 0.)
+        t = xp.linspace(0, 5)
+        u = xp.zeros_like(t)
+        tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([1.0]))
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    def test_second_order(self, xp, scp):
+        t = xp.linspace(0, 10, 1001)
+        u = xp.zeros_like(t)
+        # Second order system with a repeated root: x''(t) + 2*x(t) + x(t) = 0.
+        # With initial conditions x(0)=1.0 and x'(t)=0.0, the exact solution
+        # is (1-t)*exp(-t).
+        system = scp.signal.lti([1.0], [1.0, 2.0, 1.0])
+        tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([1.0, 0.0]))
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrator(self, xp, scp):
+        # integrator: y' = u
+        system = scp.signal.lti(0., 1., 1., 0.)
+        t = xp.linspace(0, 5)
+        u = t
+        tout, y, x = scp.signal.lsim(system, u, t)
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_two_states(self, xp, scp):
+        # A system with two state variables, two inputs, and one output.
+        A = xp.array([[-1.0, 0.0], [0.0, -2.0]])
+        B = xp.array([[1.0, 0.0], [0.0, 1.0]])
+        C = xp.array([1.0, 0.0])
+        D = xp.zeros((1, 2))
+
+        system = scp.signal.lti(A, B, C, D)
+
+        t = xp.linspace(0, 10.0, 21)
+        u = xp.zeros((len(t), 2))
+        tout, y, x = scp.signal.lsim(
+            system, U=u, T=t, X0=xp.asarray([1.0, 1.0]))
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_double_integrator(self, xp, scp):
+        # double integrator: y'' = 2u
+        A = xp.array([[0., 1.], [0., 0.]])
+        B = xp.array([[0.], [1.]])
+        C = xp.array([[2., 0.]])
+        system = scp.signal.lti(A, B, C, 0.)
+        t = xp.linspace(0, 5)
+        u = xp.ones_like(t)
+        tout, y, x = scp.signal.lsim(system, u, t)
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_jordan_block(self, xp, scp):
+        # Non-diagonalizable A matrix
+        #   x1' + x1 = x2
+        #   x2' + x2 = u
+        #   y = x1
+        # Exact solution with u = 0 is y(t) = t exp(-t)
+        A = xp.array([[-1., 1.], [0., -1.]])
+        B = xp.array([[0.], [1.]])
+        C = xp.array([[1., 0.]])
+        system = scp.signal.lti(A, B, C, 0.)
+        t = xp.linspace(0, 5)
+        u = xp.zeros_like(t)
+        tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([0.0, 1.0]))
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_miso(self, xp, scp):
+        # A system with two state variables, two inputs, and one output.
+        A = xp.array([[-1.0, 0.0], [0.0, -2.0]])
+        B = xp.array([[1.0, 0.0], [0.0, 1.0]])
+        C = xp.array([1.0, 0.0])
+        D = xp.zeros((1, 2))
+        system = scp.signal.lti(A, B, C, D)
+
+        t = xp.linspace(0, 5.0, 101)
+        u = xp.zeros((len(t), 2))
+        tout, y, x = scp.signal.lsim(system, u, t, X0=xp.asarray([1.0, 1.0]))
+        return tout, y, x
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_nonzero_initial_time(self, xp, scp):
+        system = scp.signal.lti(-1., 1., 1., 0.)
+        t = xp.linspace(1, 2)
+        u = xp.zeros_like(t)
+        tout, y, x = scp.signal.lsim(system, u, t, X0=xp.array([1.0]))
+        return tout, y, x
+
+    def test_nonequal_timesteps(self):
+        t = cupy.array([0.0, 1.0, 1.0, 3.0])
+        u = cupy.array([0.0, 0.0, 1.0, 1.0])
+        # Simple integrator: x'(t) = u(t)
+        system = ([1.0], [1.0, 0.0])
+        with assert_raises(ValueError,
+                           match="Time steps are not equally spaced."):
+            signal.lsim(system, u, t, X0=cupy.array([1.0]))
