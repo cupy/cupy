@@ -63,6 +63,7 @@ from cupyx.scipy.signal._iir_filter_conversions import tf2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2sos  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2ss  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import ss2tf  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import ss2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import sos2tf  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import sos2zpk  # NOQA
 
@@ -122,3 +123,5 @@ from cupyx.scipy.signal._ltisys import dfreqresp  # NOQA
 from cupyx.scipy.signal._ltisys import StateSpace  # NOQA
 from cupyx.scipy.signal._ltisys import TransferFunction  # NOQA
 from cupyx.scipy.signal._ltisys import ZerosPolesGain  # NOQA
+
+from cupyx.scipy.signal._ltisys import cont2discrete  # NOQA
