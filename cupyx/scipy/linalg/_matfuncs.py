@@ -1,3 +1,5 @@
+import math
+
 import cupy
 from cupy.linalg import _util
 
@@ -35,3 +37,97 @@ def khatri_rao(a, b):
 
     c = a[..., :, cupy.newaxis, :] * b[..., cupy.newaxis, :, :]
     return c.reshape((-1,) + c.shape[2:])
+
+
+# ### expm ###
+b = [0]*14
+
+b[0] = 64764752532480000.
+b[1] = 32382376266240000.
+b[2] = 7771770303897600.
+b[3] = 1187353796428800.
+b[4] = 129060195264000.
+b[5] = 10559470521600.
+b[6] = 670442572800.
+b[7] = 33522128640.
+b[8] = 1323241920.
+b[9] = 40840800.
+b[10] = 960960.
+b[11] = 16380.
+b[12] = 182.
+b[13] = 1.
+
+th13 = 5.37
+
+
+def expm(a):
+    """Compute the matrix exponential.
+
+    Parameters
+    ----------
+    a : ndarray, 2D, float64
+
+    Returns
+    -------
+    matrix exponential of `a`
+
+    Notes
+    -----
+    Uses (a simplified) version of Algorithm 2.3 of [1]_:
+    a [13 / 13] Pade approximant with scaling and squaring.
+
+    Simplifications:
+    - we always use a [13/13] approximant
+    - no matrix balancing
+
+    References
+    ----------
+    .. [1] N. Higham, SIAM J. MATRIX ANAL. APPL. Vol. 26(4), p. 1179 (2005)
+       https://doi.org/10.1137/04061101X
+
+    """
+    if a.size == 0:
+        return cupy.zeros((0, 0), dtype=a.dtype)
+
+    n = a.shape[0]
+
+    # try reducing the norm
+    mu = cupy.diag(a).sum() / n
+    A = a - cupy.eye(n)*mu
+
+    # scale factor
+    nrmA = cupy.linalg.norm(A, ord=1)
+
+    scale = nrmA > th13
+    if scale:
+        s = int(math.ceil(math.log2(float(nrmA) / th13))) + 1
+    else:
+        s = 1
+
+    A /= 2**s
+
+    # compute [13/13] Pade approximant
+    A2 = A @ A
+    A4 = A2 @ A2
+    A6 = A2 @ A4
+
+    E = cupy.eye(A.shape[0])
+
+    u = A6 @ (b[13]*A6 + b[11]*A4 + b[9]*A2) + \
+        b[7]*A6 + b[5]*A4 + b[3]*A2 + b[1]*E
+    u = A @ u
+
+    v = A6 @ (b[12]*A6 + b[10]*A4 + b[8]*A) + \
+        b[6]*A6 + b[4]*A4 + b[2]*A2 + b[0]*E
+
+    r13 = cupy.linalg.solve(-u + v, u + v)
+
+    # squaring
+    x = r13
+    for _ in range(s):
+        x = x @ x
+
+    # undo preprocessing
+    x *= math.exp(mu)
+
+    return x
