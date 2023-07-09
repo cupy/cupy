@@ -147,6 +147,7 @@ Continuous-time linear systems
    TransferFunction
    ZerosPolesGain
    lsim
+   impulse
    freqresp
    bode
 

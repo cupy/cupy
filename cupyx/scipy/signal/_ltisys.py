@@ -1576,6 +1576,110 @@ def lsim(system, U, T, X0=None, interp=True):
     return T, cupy.squeeze(yout), cupy.squeeze(xout)
 
 
+def _default_response_times(A, n):
+    """Compute a reasonable set of time samples for the response time.
+
+    This function is used by `impulse`, `impulse2`, `step` and `step2`
+    to compute the response time when the `T` argument to the function
+    is None.
+
+    Parameters
+    ----------
+    A : array_like
+        The system matrix, which is square.
+    n : int
+        The number of time samples to generate.
+
+    Returns
+    -------
+    t : ndarray
+        The 1-D array of length `n` of time samples at which the response
+        is to be computed.
+
+    """
+    # Create a reasonable time interval.
+    # TODO (scipy): This could use some more work.
+    # For example, what is expected when the system is unstable?
+
+    # XXX: note this delegates to numpy because of eigvals.
+    # this can be avoided by e.g. using Gershgorin circles to estimate the
+    # eigenvalue locations, but that would change the default behavior.
+
+    import numpy as np
+    vals = np.linalg.eigvals(A.get())
+    vals = cupy.asarray(vals)
+
+    r = cupy.min(cupy.abs(vals.real))
+    if r == 0.0:
+        r = 1.0
+    tc = 1.0 / r
+    t = cupy.linspace(0.0, 7 * tc, n)
+    return t
+
+
+def impulse(system, X0=None, T=None, N=None):
+    """Impulse response of continuous-time system.
+
+    Parameters
+    ----------
+    system : an instance of the LTI class or a tuple of array_like
+        describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1 (instance of `lti`)
+            * 2 (num, den)
+            * 3 (zeros, poles, gain)
+            * 4 (A, B, C, D)
+
+    X0 : array_like, optional
+        Initial state-vector.  Defaults to zero.
+    T : array_like, optional
+        Time points.  Computed if not given.
+    N : int, optional
+        The number of time points to compute (if `T` is not given).
+
+    Returns
+    -------
+    T : ndarray
+        A 1-D array of time points.
+    yout : ndarray
+        A 1-D array containing the impulse response of the system (except for
+        singularities at zero).
+
+    Notes
+    -----
+    If (num, den) is passed in for ``system``, coefficients for both the
+    numerator and denominator should be specified in descending exponent
+    order (e.g. ``s^2 + 3s + 5`` would be represented as ``[1, 3, 5]``).
+
+    See Also
+    --------
+    scipy.signal.impulse
+
+    """
+    if isinstance(system, lti):
+        sys = system._as_ss()
+    elif isinstance(system, dlti):
+        raise AttributeError('impulse can only be used with continuous-time '
+                             'systems.')
+    else:
+        sys = lti(*system)._as_ss()
+    if X0 is None:
+        X = cupy.squeeze(sys.B)
+    else:
+        X = cupy.squeeze(sys.B + X0)
+    if N is None:
+        N = 100
+    if T is None:
+        T = _default_response_times(sys.A, N)
+    else:
+        T = cupy.asarray(T)
+
+    _, h, _ = lsim(sys, 0., T, X, interp=False)
+    return T, h
+
+
 def bode(system, w=None, n=100):
     """
     Calculate Bode magnitude and phase data of a continuous-time system.

@@ -422,3 +422,63 @@ class TestLsim:
         with assert_raises(ValueError,
                            match="Time steps are not equally spaced."):
             signal.lsim(system, u, t, X0=cupy.array([1.0]))
+
+
+@testing.with_requires("scipy")
+class TestImpulse:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_first_order(self, xp, scp):
+        # First order system: x'(t) + x(t) = u(t)
+        # Exact impulse response is x(t) = exp(-t).
+        system = ([1.0], [1.0, 1.0])
+        tout, y = scp.signal.impulse(system)
+        return tout, y
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_first_order_fixed_time(self, xp, scp):
+        # Specify the desired time values for the output.
+
+        # First order system: x'(t) + x(t) = u(t)
+        # Exact impulse response is x(t) = exp(-t).
+        system = ([1.0], [1.0, 1.0])
+        n = 21
+        t = xp.linspace(0, 2.0, n)
+        tout, y = scp.signal.impulse(system, T=t)
+        return tout, y
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_first_order_initial(self, xp, scp):
+        # Specify an initial condition as a scalar.
+
+        # First order system: x'(t) + x(t) = u(t), x(0)=3.0
+        # Exact impulse response is x(t) = 4*exp(-t).
+        system = ([1.0], [1.0, 1.0])
+        tout, y = scp.signal.impulse(system, X0=3.0)
+        return tout, y
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_first_order_initial_list(self, xp, scp):
+        # Specify an initial condition as a list.
+
+        # First order system: x'(t) + x(t) = u(t), x(0)=3.0
+        # Exact impulse response is x(t) = 4*exp(-t).
+        system = ([1.0], [1.0, 1.0])
+        tout, y = scp.signal.impulse(system, X0=xp.asarray([3.0]))
+        return tout, y
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_integrator(self, xp, scp):
+        # Simple integrator: x'(t) = u(t)
+        system = ([1.0], [1.0, 0.0])
+        tout, y = scp.signal.impulse(system)
+        return tout, y
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_second_order(self, xp, scp):
+        # Second order system with a repeated root:
+        #     x''(t) + 2*x(t) + x(t) = u(t)
+        # The exact impulse response is t*exp(-t).
+        system = ([1.0], [1.0, 2.0, 1.0])
+        tout, y = scp.signal.impulse(system)
+        return tout, y
