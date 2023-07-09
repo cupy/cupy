@@ -148,6 +148,7 @@ Continuous-time linear systems
    ZerosPolesGain
    lsim
    impulse
+   step
    freqresp
    bode
 

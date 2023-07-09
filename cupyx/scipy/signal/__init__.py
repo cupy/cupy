@@ -109,6 +109,7 @@ from cupyx.scipy.signal._peak_finding import peak_widths  # NOQA
 from cupyx.scipy.signal._ltisys import lti  # NOQA
 from cupyx.scipy.signal._ltisys import lsim  # NOQA
 from cupyx.scipy.signal._ltisys import impulse  # NOQA
+from cupyx.scipy.signal._ltisys import step  # NOQA
 from cupyx.scipy.signal._ltisys import freqresp  # NOQA
 from cupyx.scipy.signal._ltisys import bode  # NOQA
 

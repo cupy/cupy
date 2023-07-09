@@ -1680,6 +1680,65 @@ def impulse(system, X0=None, T=None, N=None):
     return T, h
 
 
+def step(system, X0=None, T=None, N=None):
+    """Step response of continuous-time system.
+
+    Parameters
+    ----------
+    system : an instance of the LTI class or a tuple of array_like
+        describing the system.
+        The following gives the number of elements in the tuple and
+        the interpretation:
+
+            * 1 (instance of `lti`)
+            * 2 (num, den)
+            * 3 (zeros, poles, gain)
+            * 4 (A, B, C, D)
+
+    X0 : array_like, optional
+        Initial state-vector (default is zero).
+    T : array_like, optional
+        Time points (computed if not given).
+    N : int, optional
+        Number of time points to compute if `T` is not given.
+
+    Returns
+    -------
+    T : 1D ndarray
+        Output time points.
+    yout : 1D ndarray
+        Step response of system.
+
+
+    Notes
+    -----
+    If (num, den) is passed in for ``system``, coefficients for both the
+    numerator and denominator should be specified in descending exponent
+    order (e.g. ``s^2 + 3s + 5`` would be represented as ``[1, 3, 5]``).
+
+    See Also
+    --------
+    scipy.signal.step
+
+    """
+    if isinstance(system, lti):
+        sys = system._as_ss()
+    elif isinstance(system, dlti):
+        raise AttributeError('step can only be used with continuous-time '
+                             'systems.')
+    else:
+        sys = lti(*system)._as_ss()
+    if N is None:
+        N = 100
+    if T is None:
+        T = _default_response_times(sys.A, N)
+    else:
+        T = cupy.asarray(T)
+    U = cupy.ones(T.shape, sys.A.dtype)
+    vals = lsim(sys, U, T, X0=X0, interp=False)
+    return vals[0], vals[1]
+
+
 def bode(system, w=None, n=100):
     """
     Calculate Bode magnitude and phase data of a continuous-time system.
