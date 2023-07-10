@@ -117,3 +117,13 @@ LTI representations
    zpk2tf
    zpk2sos
 
+
+Peak finding
+------------
+
+.. autosummary::
+   :toctree: generated/
+
+   find_peaks
+   peak_prominences
+   peak_widths
