@@ -7,6 +7,25 @@ import pytest
 from pytest import raises as assert_raises
 
 
+@testing.with_requires("scipy")
+class TestKaiser:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_kaiser_beta(self, xp, scp):
+        k = scp.signal.kaiser_beta
+        return k(58.7), k(22.0), k(21.0), k(10.0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_kaiser_atten(self, xp, scp):
+        k = scp.signal.kaiser_atten
+        return k(1, 1.0), k(2, 1.0 / xp.pi)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_kaiserord(self, xp, scp):
+        assert_raises(ValueError, scp.signal.kaiserord, 1.0, 1.0)
+
+        return scp.signal.kaiserord(2.285 + 7.95 - 0.001, 1 / xp.pi)
+
+
 @testing.with_requires('scipy')
 class TestFirls:
 

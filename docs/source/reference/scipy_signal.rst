@@ -66,6 +66,9 @@ Filter design
    gammatone
    group_delay
    iirfilter
+   kaiser_atten
+   kaiser_beta
+   kaiserord
    unique_roots
    residue
    residuez
