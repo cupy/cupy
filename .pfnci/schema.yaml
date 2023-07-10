@@ -28,35 +28,50 @@ os:
 # The platform to test with.
 # `cuda` and `rocm` are mutually exclusive; when one is set, the other must be null.
 # `full_version` is the version used in base Docker images.
+# `repository` is the Docker repository. (CUDA only)
+# `packages` is the list of DEB/RPM packages to be installed. (ROCm only)
 # When adding a new CUDA version, you may also need to add the version to the
 # list of supported CUDA versions in the optional libraries.
 cuda:
   null:
     full_version: null
+    repository: null
   "10.2":
     full_version: "10.2"
+    repository: "cupy/nvidia-cuda"
   "11.0":
     full_version: "11.0.3"
+    repository: "nvidia/cuda"
   "11.1":
     full_version: "11.1.1"
+    repository: "nvidia/cuda"
   "11.2":
     full_version: "11.2.2"
+    repository: "nvidia/cuda"
   "11.3":
     full_version: "11.3.1"
+    repository: "nvidia/cuda"
   "11.4":
     full_version: "11.4.3"
+    repository: "nvidia/cuda"
   "11.5":
     full_version: "11.5.2"
+    repository: "nvidia/cuda"
   "11.6":
     full_version: "11.6.2"
+    repository: "nvidia/cuda"
   "11.7":
     full_version: "11.7.1"
+    repository: "nvidia/cuda"
   "11.8":
     full_version: "11.8.0"
+    repository: "nvidia/cuda"
   "12.0":
     full_version: "12.0.1"
+    repository: "nvidia/cuda"
   "12.1":
     full_version: "12.1.1"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
