@@ -1,5 +1,6 @@
 import contextlib
 import pickle
+import sys
 import warnings
 
 import numpy
@@ -494,6 +495,10 @@ class TestCsrMatrixScipyComparison:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
         if runtime.is_hip:
             if self.make_method in ('_make_empty', '_make_shape'):
                 # xcsr2coo, xcsrgemm2Nnz, csrmm2, nnz_compress, ... could raise
@@ -1251,6 +1256,13 @@ class TestCsrMatrixScipyComparison:
 }))
 @testing.with_requires('scipy')
 class TestCsrMatrixPowScipyComparison:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
 
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
