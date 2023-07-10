@@ -57,7 +57,8 @@ class LinuxGenerator:
         os_name, os_version = matrix.os.split(':')
         if matrix.cuda is not None:
             full_ver = self.schema['cuda'][matrix.cuda]['full_version']
-            base_image = f'nvidia/cuda:{full_ver}-devel-{os_name}{os_version}'
+            repo = self.schema['cuda'][matrix.cuda]['repository']
+            base_image = f'{repo}:{full_ver}-devel-{os_name}{os_version}'
         elif matrix.rocm is not None:
             full_ver = self.schema['rocm'][matrix.rocm]['full_version']
             base_image = f'rocm/dev-{os_name}-{os_version}:{full_ver}'
