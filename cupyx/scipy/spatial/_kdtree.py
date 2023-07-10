@@ -111,4 +111,4 @@ class KDTree:
 
         self.m, self.n = self.data.shape
         self.size = self.m
-        self.tree = asm_kd_tree(self.data)
+        self.tree, self.index = asm_kd_tree(self.data)

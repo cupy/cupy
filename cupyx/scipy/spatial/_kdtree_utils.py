@@ -145,61 +145,58 @@ __device__ double compute_distance(
     return dist;
 }
 
-/**
-template<>
-__device__ double compute_distance<half>(
-        const half* __restrict__ point1, const half* __restrict__ point2,
-        const int n_dims, const double p) {
+__device__ double insort(
+        const long long curr, const double dist, const int k, const double eps,
+        double* distances, long long* nodes) {
 
-    double dist = 0.0;
-    for(int i = 0; i < n_dims; i++) {
-        dist += pow((double)(__habs(point1[i] - point2[i])), p);
+    if(dist > distances[k - 1] + eps) {
+        return distances[k - 1];
     }
 
-    dist = pow(dist, 1.0 / p);
-    return dist;
-}
+    long long left = 0;
+    long long right = k - 1;
 
-template<>
-__device__ double compute_distance<unsigned int>(
-        const unsigned int* __restrict__ point1,
-        const unsigned int* __restrict__ point2,
-        const int n_dims, const double p) {
-
-    double dist = 0.0;
-    for(int i = 0; i < n_dims; i++) {
-        dist += pow((double)(point1[i] - point2[i]), p);
+    while(left != right) {
+        long long pos = (left + right) / 2;
+        if(distances[pos] + eps < dist) {
+            left = pos + 1;
+        } else {
+            right = pos;
+        }
     }
 
-    dist = pow(dist, 1.0 / p);
-    return dist;
-}
+    long long node_to_insert = curr;
+    double dist_to_insert = dist;
+    double dist_to_return = dist;
 
-template<>
-__device__ double compute_distance<unsigned long long>(
-        const unsigned long long* __restrict__ point1,
-        const unsigned long long* __restrict__ point2,
-        const int n_dims, const double p) {
+    for(long long i = left; i < k; i++) {
+        long long node_tmp = nodes[i];
+        double dist_tmp = distances[i];
 
-    double dist = 0.0;
-    for(int i = 0; i < n_dims; i++) {
-        dist += pow((double)(point1[i] - point2[i]), p);
+        nodes[i] = node_to_insert;
+        distances[i] = dist_to_insert;
+
+        if(nodes[i] != CUDART_INF) {
+            dist_to_return = max(dist_to_return, distances[i]);
+        }
+
+        node_to_insert = node_tmp;
+        dist_to_insert = dist_tmp;
+
     }
 
-    dist = pow(dist, 1.0 / p);
-    return dist;
+    return dist_to_return;
 }
-**/
 
 template<typename T>
 __device__ void compute_knn(
         const int k, const int n, const int n_dims, const double eps,
         const double p, const double dist_bound, const T* __restrict__ point,
-        const T* __restrict__ tree, double* distances, long long* nodes) {
+        const T* __restrict__ tree, const long long* __restrict__ index,
+        double* distances, long long* nodes) {
 
     volatile long long prev = -1;
     volatile long long curr = 0;
-    volatile long long out_idx = 0;
     volatile double radius = dist_bound;
 
     while(true) {
@@ -219,10 +216,7 @@ __device__ void compute_knn(
         const double dist = compute_distance(point, cur_point, n_dims, p);
         if(!from_child) {
             if(dist <= radius + eps) {
-                nodes[out_idx] = curr;
-                distances[out_idx] = dist;
-                radius = dist;
-                out_idx = (out_idx + 1) % n_dims;
+                radius = insort(index[curr], dist, k, eps, distances, nodes);
             }
         }
 
@@ -265,6 +259,7 @@ __global__ void knn(
         const int k, const int n, const int points_size, const int n_dims,
         const double eps, const double p, const double dist_bound,
         const T* __restrict__ points, const T* __restrict__ tree,
+        const long long* __restrict__ index,
         double* all_distances, long long* all_nodes) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -277,7 +272,7 @@ __global__ void knn(
     long long* nodes = all_nodes + k * idx;
 
     compute_knn<T>(k, n, n_dims, eps, p, dist_bound, point,
-                   tree, distances, nodes);
+                   tree, index, distances, nodes);
 }
 
 '''
@@ -315,6 +310,9 @@ def asm_kd_tree(points):
     tree: ndarray
         An array representation of a left balanced, dimension alternating
         KD-Tree of the input points.
+    indices: ndarray
+        An index array that maps the original input to its corresponding
+        KD-Tree representation.
 
     Notes
     -----
@@ -327,6 +325,7 @@ def asm_kd_tree(points):
            doi:10.48550/arXiv.2211.00120.
     """
     x = points.copy()
+    track_idx = cupy.arange(x.shape[0])
     tags = cupy.zeros(x.shape[0], dtype=cupy.int64)
     length = x.shape[0]
     dims = x.shape[1]
@@ -342,6 +341,7 @@ def asm_kd_tree(points):
         idx = cupy.lexsort(cupy.c_[x_dim, tags].T)
         x = x[idx]
         tags = tags[idx]
+        track_idx = track_idx[idx]
         update_tags((n_blocks,), (block_sz,), (length, level, tags))
 
     level += 1
@@ -349,10 +349,11 @@ def asm_kd_tree(points):
     x_dim = x[:, dim]
     idx = cupy.lexsort(cupy.c_[x_dim, tags].T)
     x = x[idx]
-    return x
+    track_idx = track_idx[idx]
+    return x, track_idx
 
 
-def compute_knn(points, tree, k=1, eps=0.0, p=2.0,
+def compute_knn(points, tree, index, k=1, eps=0.0, p=2.0,
                 distance_upper_bound=cupy.inf):
     n_points, n_dims = points.shape
     if n_dims != tree.shape[-1]:
@@ -363,14 +364,14 @@ def compute_knn(points, tree, k=1, eps=0.0, p=2.0,
     if cupy.dtype(points.dtype) is not cupy.dtype(tree.dtype):
         raise ValueError('Query points dtype must match the tree one.')
 
-    distances = cupy.empty((n_points, k), dtype=cupy.float64)
-    nodes = cupy.empty((n_points, k), dtype=cupy.int64)
+    distances = cupy.full((n_points, k), cupy.inf, dtype=cupy.float64)
+    nodes = cupy.full((n_points, k), -1, dtype=cupy.int64)
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
     knn = _get_module_func(KNN_MODULE, 'knn', points)
     knn((n_blocks,), (block_sz,),
         (k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
-         points, tree, distances, nodes))
+         points, tree, index, distances, nodes))
 
     return distances, nodes
