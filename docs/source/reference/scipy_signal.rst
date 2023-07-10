@@ -19,6 +19,7 @@ Convolution
    correlate2d
    sepfir2d
    choose_conv_method
+   correlation_lags
 
 
 Filtering
