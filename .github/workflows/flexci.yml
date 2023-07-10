@@ -6,6 +6,10 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   dispatch:
     if: |
@@ -19,8 +23,18 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    - name: Get Base Branch of Pull Request
+      id: base
+      if: github.event_name == 'issue_comment'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run:
+        echo "pr_base_ref=$(gh api '${{ github.event.issue.pull_request.url }}' | jq -r .base.ref)" >> "${GITHUB_OUTPUT}"
+
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event_name == 'push' && github.ref || steps.base.outputs.pr_base_ref }}
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -33,7 +47,7 @@ jobs:
 
     - name: Dispatch
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
         FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
       run: |
         ./.github/workflows/flexci_dispatcher.py \
