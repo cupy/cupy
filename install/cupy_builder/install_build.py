@@ -709,9 +709,9 @@ def conda_get_target_name():
 
 
 def conda_update_dirs(include_dirs, library_dirs):
-    # Note: These hacks are needed for the dependency detection stage to function,
-    # because we create a fresh compiler instance that does not honor CFLAGS etc set
-    # in the conda-build environment.
+    # Note: These hacks are needed for the dependency detection stage to
+    # function, because we create a fresh compiler instance that does not
+    # honor CFLAGS etc set in the conda-build environment.
     include_dirs = list(include_dirs)
     library_dirs = list(library_dirs)
 
@@ -721,8 +721,11 @@ def conda_update_dirs(include_dirs, library_dirs):
         # This assumes, however, that the build/host environments see the same
         # CUDA Toolkit.
         if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
-            include_dirs.insert(0, f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/include')
-            library_dirs.insert(0, f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/lib')
+            include_dirs.insert(
+                0,
+                f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/include')
+            library_dirs.insert(
+                0, f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/lib')
             library_dirs.insert(0, f'{os.environ["BUILD_PREFIX"]}/lib/stubs')
         elif os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('11'):
             include_dirs.append('/usr/local/cuda/include')
@@ -733,7 +736,9 @@ def conda_update_dirs(include_dirs, library_dirs):
         library_dirs.append(f'{os.environ["BUILD_PREFIX"]}/lib')
 
     if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
-        include_dirs.append(f'{os.environ["BUILD_PREFIX"]}/targets/{conda_get_target_name()}/include')  # for crt headers
+        include_dirs.append(
+            f'{os.environ["BUILD_PREFIX"]}/targets/{conda_get_target_name()}/'
+            'include')  # for crt headers
         library_dirs.append(f'{os.environ["PREFIX"]}/lib/stubs')
         # for optional dependencies
         include_dirs.append(f'{os.environ["PREFIX"]}/include')

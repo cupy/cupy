@@ -297,18 +297,25 @@ def make_extensions(ctx: Context, compiler, use_cython):
     try:
         host_compiler = compiler
         if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
-            os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/bin/x86_64-conda-linux-gnu-ld',
+            os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/'
+                       'bin/x86_64-conda-linux-gnu-ld',
                        f'{os.environ["BUILD_PREFIX"]}/bin/ld')
-        if os.environ.get('CONDA_BUILD_CROSS_COMPILATION') or os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
-            # If cross-compiling, we need build_and_run() & build_shlib() to use the compiler
-            # on the build platform to generate stub files that are executable in the build
-            # environment, not the target environment.
+        if (os.environ.get('CONDA_BUILD_CROSS_COMPILATION') or
+                os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12')):
+            # If cross-compiling, we need build_and_run() & build_shlib() to
+            # use the compiler on the build platform to generate stub files
+            # that are executable in the build environment, not the target
+            # environment.
             compiler = ccompiler.new_compiler()
             compiler.compiler = [os.environ['CC_FOR_BUILD'],]
             compiler.compiler_cxx = [os.environ['CXX_FOR_BUILD'],]
             compiler.compiler_so = [os.environ['CC_FOR_BUILD'],]
-            compiler.linker_exe = [os.environ['CC_FOR_BUILD'], f'-B{os.environ["BUILD_PREFIX"]}/bin']
-            compiler.linker_so = [os.environ['CC_FOR_BUILD'], f'-B{os.environ["BUILD_PREFIX"]}/bin', '-shared']
+            compiler.linker_exe = [
+                os.environ['CC_FOR_BUILD'],
+                f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_so = [os.environ['CC_FOR_BUILD'],
+                                  f'-B{os.environ["BUILD_PREFIX"]}/bin',
+                                  '-shared']
 
         available_modules = []
         if no_cuda:
