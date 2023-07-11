@@ -132,9 +132,30 @@ __device__ half abs(half x) {
 }
 
 template<typename T>
+__device__ double compute_distance_inf(
+        const T* __restrict__ point1, const T* __restrict__ point2,
+        const int n_dims, const double p) {
+
+    double dist = -CUDART_INF ? p == CUDART_INF : CUDART_INF;
+    for(int i = 0; i < n_dims; i++) {
+        double diff = abs(point1[i] - point2[i]);
+        if(p == CUDART_INF) {
+            dist = max(dist, diff);
+        } else {
+            dist = min(dist, diff);
+        }
+    }
+    return dist;
+}
+
+template<typename T>
 __device__ double compute_distance(
         const T* __restrict__ point1, const T* __restrict__ point2,
         const int n_dims, const double p) {
+
+    if(abs(p) == CUDART_INF) {
+        return compute_distance_inf<T>(point1, point2, n_dims, p);
+    }
 
     double dist = 0.0;
     for(int i = 0; i < n_dims; i++) {
@@ -355,6 +376,7 @@ def asm_kd_tree(points):
 
 def compute_knn(points, tree, index, k=1, eps=0.0, p=2.0,
                 distance_upper_bound=cupy.inf):
+    max_k = int(np.max(k))
     n_points, n_dims = points.shape
     if n_dims != tree.shape[-1]:
         raise ValueError('The number of dimensions of the query points must '
@@ -364,14 +386,21 @@ def compute_knn(points, tree, index, k=1, eps=0.0, p=2.0,
     if cupy.dtype(points.dtype) is not cupy.dtype(tree.dtype):
         raise ValueError('Query points dtype must match the tree one.')
 
-    distances = cupy.full((n_points, k), cupy.inf, dtype=cupy.float64)
-    nodes = cupy.full((n_points, k), -1, dtype=cupy.int64)
+    distances = cupy.full((n_points, max_k), cupy.inf, dtype=cupy.float64)
+    nodes = cupy.full((n_points, max_k), -1, dtype=cupy.int64)
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
     knn = _get_module_func(KNN_MODULE, 'knn', points)
     knn((n_blocks,), (block_sz,),
-        (k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
+        (max_k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
          points, tree, index, distances, nodes))
 
+    if not isinstance(k, int):
+        indices = [k_i - 1 for k_i in k]
+        distances = distances[:, indices]
+        nodes = nodes[:, indices]
+    elif k == 1:
+        distances = cupy.squeeze(distances, -1)
+        nodes = cupy.squeeze(nodes, -1)
     return distances, nodes
