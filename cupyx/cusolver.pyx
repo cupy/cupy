@@ -871,7 +871,7 @@ cpdef _geqrf_orgqr_batched(a, mode):
     is of shape (batch_size, m, n)
     '''
     cdef intptr_t x_ptr, tau_ptr, w_ptr, info_ptr
-    cdef int m, n, batch_size, buffersize, orig_n
+    cdef int m, n, mn, mc, batch_size, buffersize, orig_n
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _cupy.linalg._util.linalg_common_type(a)
@@ -947,7 +947,8 @@ cpdef _geqrf_orgqr_batched(a, mode):
     x_ptr = q.data.ptr
 
     # compute working space of orgqr and solve Q
-    cdef orgqr_ptr orgqr
+    cdef object orgqr_bufferSize = None
+    cdef orgqr_ptr orgqr = NULL
     if dtype == 'f':
         orgqr_bufferSize = sorgqr_bufferSize
         orgqr = orgqr_loop[float]
