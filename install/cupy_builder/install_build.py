@@ -18,7 +18,8 @@ from cupy_builder import _environment
 from cupy_builder._context import Context
 
 
-logging.basicConfig(level=logging.DEBUG)
+if os.environ.get('CONDA_BUILD', '0') == '1':
+    logging.basicConfig(level=logging.DEBUG)
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
