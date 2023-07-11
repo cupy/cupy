@@ -119,6 +119,6 @@ jobs:
         uses: actions/github-script@v6
         if: always() && steps.token.outcome == 'success'
         with:
-          github-token: ${{ steps.token.outputs.result }}
+          github-token: ${{ steps.token.outputs.token }}
           script: |
             await github.rest.apps.revokeInstallationAccessToken();
