@@ -17,7 +17,7 @@ jobs:
       uses: actions/setup-python@v4
       id: setup-python
       with:
-        python-version: '3.8'
+        python-version: '3.9'
 
     - name: Setup cache
       uses: actions/cache@v3
@@ -50,15 +50,14 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        # cupyx.array_api uses Python 3.8 syntaxes
-        python-version: '3.8'
+        python-version: '3.9'
 
     - name: Setup cache
       uses: actions/cache@v3
       with:
         path: ~/.cache
         key: build-cuda-${{ github.sha }}
-        restore-keys:
+        restore-keys: |
           build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           build-cuda-
 

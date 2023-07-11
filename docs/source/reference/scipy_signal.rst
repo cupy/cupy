@@ -39,7 +39,13 @@ Filtering
    filtfilt
    savgol_filter
    deconvolve
+   sosfilt
+   sosfilt_zi
+   sosfiltfilt
    detrend
+   hilbert
+   hilbert2
+
 
 Filter design
 -------------
@@ -49,4 +55,78 @@ Filter design
 
    bilinear
    bilinear_zpk
+   findfreqs
+   freqs
+   freqs_zpk
+   freqz
+   freqz_zpk
+   firls
+   minimum_phase
    savgol_coeffs
+   gammatone
+   group_delay
+   iirfilter
+   kaiser_atten
+   kaiser_beta
+   kaiserord
+   unique_roots
+   residue
+   residuez
+   invres
+   invresz
+
+
+Matlab-style IIR filter design
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   butter
+   ellip
+   cheby1
+   cheby2
+
+
+Low-level filter design functions
+---------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   abcd_normalize
+
+
+
+Chirp Z-transform and Zoom FFT
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   czt
+   zoom_fft
+   CZT
+   ZoomFFT
+   czt_points
+
+
+LTI representations
+-------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   zpk2tf
+   zpk2sos
+
+
+Peak finding
+------------
+
+.. autosummary::
+   :toctree: generated/
+
+   find_peaks
+   peak_prominences
+   peak_widths

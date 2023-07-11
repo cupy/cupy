@@ -79,6 +79,326 @@ def _align_nums(nums):
         return aligned_nums
 
 
+def _polycoeffs_from_zeros(zeros, tol=10):
+    # a clone of numpy.poly, simplified
+    dtyp = (cupy.complex_
+            if cupy.issubdtype(zeros.dtype, cupy.complexfloating)
+            else cupy.float_)
+    a = cupy.ones(1, dtype=dtyp)
+    for z in zeros:
+        a = cupy.convolve(a, cupy.r_[1, -z], mode='full')
+
+    # Use real output if possible.
+    if dtyp == cupy.complex_:
+        mask = cupy.abs(a.imag) < tol * cupy.finfo(a.dtype).eps
+        a.imag[mask] = 0.0
+        if mask.shape[0] == a.shape[0]:
+            # all imag parts were fp noise
+            a = a.real.copy()
+        else:
+            # if all cmplx roots are complex conj, the coefficients are real
+            pos_roots = z[z.imag > 0]
+            neg_roots = z[z.imag < 0]
+            if pos_roots.shape[0] == neg_roots.shape[0]:
+                neg_roots = neg_roots.copy()
+                neg_roots.sort()
+                pos_roots = pos_roots.copy()
+                pos_roots.sort()
+                if (neg_roots == pos_roots.conj()).all():
+                    a = a.real.copy()
+    return a
+
+
+def _nearest_real_complex_idx(fro, to, which):
+    """Get the next closest real or complex element based on distance"""
+    assert which in ('real', 'complex', 'any')
+    order = cupy.argsort(cupy.abs(fro - to))
+    if which == 'any':
+        return order[0]
+    else:
+        mask = cupy.isreal(fro[order])
+        if which == 'complex':
+            mask = ~mask
+        return order[cupy.nonzero(mask)[0][0]]
+
+
+def _single_zpksos(z, p, k):
+    """Create one second-order section from up to two zeros and poles"""
+    sos = cupy.zeros(6)
+    b, a = zpk2tf(cupy.asarray(z), cupy.asarray(p), k)
+    sos[3-len(b):3] = b
+    sos[6-len(a):6] = a
+    return sos
+
+
+def zpk2sos(z, p, k, pairing=None, *, analog=False):
+    """Return second-order sections from zeros, poles, and gain of a system
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the transfer function.
+    p : array_like
+        Poles of the transfer function.
+    k : float
+        System gain.
+    pairing : {None, 'nearest', 'keep_odd', 'minimal'}, optional
+        The method to use to combine pairs of poles and zeros into sections.
+        If analog is False and pairing is None, pairing is set to 'nearest';
+        if analog is True, pairing must be 'minimal', and is set to that if
+        it is None.
+    analog : bool, optional
+        If True, system is analog, otherwise discrete.
+
+    Returns
+    -------
+    sos : ndarray
+        Array of second-order filter coefficients, with shape
+        ``(n_sections, 6)``. See `sosfilt` for the SOS filter format
+        specification.
+
+    See Also
+    --------
+    sosfilt
+    scipy.signal.zpk2sos
+
+    """
+    if pairing is None:
+        pairing = 'minimal' if analog else 'nearest'
+
+    valid_pairings = ['nearest', 'keep_odd', 'minimal']
+    if pairing not in valid_pairings:
+        raise ValueError('pairing must be one of %s, not %s'
+                         % (valid_pairings, pairing))
+
+    if analog and pairing != 'minimal':
+        raise ValueError('for analog zpk2sos conversion, '
+                         'pairing must be "minimal"')
+
+    if len(z) == len(p) == 0:
+        if not analog:
+            return cupy.array([[k, 0., 0., 1., 0., 0.]])
+        else:
+            return cupy.array([[0., 0., k, 0., 0., 1.]])
+
+    if pairing != 'minimal':
+        # ensure we have the same number of poles and zeros, and make copies
+        p = cupy.concatenate((p, cupy.zeros(max(len(z) - len(p), 0))))
+        z = cupy.concatenate((z, cupy.zeros(max(len(p) - len(z), 0))))
+        n_sections = (max(len(p), len(z)) + 1) // 2
+
+        if len(p) % 2 == 1 and pairing == 'nearest':
+            p = cupy.concatenate((p, cupy.zeros(1)))
+            z = cupy.concatenate((z, cupy.zeros(1)))
+        assert len(p) == len(z)
+    else:
+        if len(p) < len(z):
+            raise ValueError('for analog zpk2sos conversion, '
+                             'must have len(p)>=len(z)')
+
+        n_sections = (len(p) + 1) // 2
+
+    # Ensure we have complex conjugate pairs
+    # (note that _cplxreal only gives us one element of each complex pair):
+    z = cupy.concatenate(_cplxreal(z))
+    p = cupy.concatenate(_cplxreal(p))
+    if not cupy.isreal(k):
+        raise ValueError('k must be real')
+    k = k.real
+
+    if not analog:
+        # digital: "worst" is the closest to the unit circle
+        def idx_worst(p):
+            return cupy.argmin(cupy.abs(1 - cupy.abs(p)))
+    else:
+        # analog: "worst" is the closest to the imaginary axis
+        def idx_worst(p):
+            return cupy.argmin(cupy.abs(cupy.real(p)))
+
+    sos = cupy.zeros((n_sections, 6))
+
+    # Construct the system, reversing order so the "worst" are last
+    for si in range(n_sections-1, -1, -1):
+        # Select the next "worst" pole
+        p1_idx = idx_worst(p)
+        p1 = p[p1_idx]
+        p = cupy.delete(p, p1_idx)
+
+        # Pair that pole with a zero
+
+        if cupy.isreal(p1) and cupy.isreal(p).sum() == 0:
+            # Special case (1): last remaining real pole
+            if pairing != 'minimal':
+                z1_idx = _nearest_real_complex_idx(z, p1, 'real')
+                z1 = z[z1_idx]
+                z = cupy.delete(z, z1_idx)
+                sos[si] = _single_zpksos(cupy.r_[z1, 0], cupy.r_[p1, 0], 1)
+            elif len(z) > 0:
+                z1_idx = _nearest_real_complex_idx(z, p1, 'real')
+                z1 = z[z1_idx]
+                z = cupy.delete(z, z1_idx)
+                sos[si] = _single_zpksos([z1], [p1], 1)
+            else:
+                sos[si] = _single_zpksos([], [p1], 1)
+
+        elif (len(p) + 1 == len(z)
+              and not cupy.isreal(p1)
+              and cupy.isreal(p).sum() == 1
+              and cupy.isreal(z).sum() == 1):
+
+            # Special case (2): there's one real pole and one real zero
+            # left, and an equal number of poles and zeros to pair up.
+            # We *must* pair with a complex zero
+
+            z1_idx = _nearest_real_complex_idx(z, p1, 'complex')
+            z1 = z[z1_idx]
+            z = cupy.delete(z, z1_idx)
+            sos[si] = _single_zpksos(
+                cupy.r_[z1, z1.conj()], cupy.r_[p1, p1.conj()], 1)
+
+        else:
+            if cupy.isreal(p1):
+                prealidx = cupy.flatnonzero(cupy.isreal(p))
+                p2_idx = prealidx[idx_worst(p[prealidx])]
+                p2 = p[p2_idx]
+                p = cupy.delete(p, p2_idx)
+            else:
+                p2 = p1.conj()
+
+            # find closest zero
+            if len(z) > 0:
+                z1_idx = _nearest_real_complex_idx(z, p1, 'any')
+                z1 = z[z1_idx]
+                z = cupy.delete(z, z1_idx)
+
+                if not cupy.isreal(z1):
+                    sos[si] = _single_zpksos(
+                        cupy.r_[z1, z1.conj()], cupy.r_[p1, p2], 1)
+                else:
+                    if len(z) > 0:
+                        z2_idx = _nearest_real_complex_idx(z, p1, 'real')
+                        z2 = z[z2_idx]
+                        assert cupy.isreal(z2)
+                        z = cupy.delete(z, z2_idx)
+                        sos[si] = _single_zpksos(cupy.r_[z1, z2], [p1, p2], 1)
+                    else:
+                        sos[si] = _single_zpksos([z1], [p1, p2], 1)
+            else:
+                # no more zeros
+                sos[si] = _single_zpksos([], [p1, p2], 1)
+
+    assert len(p) == len(z) == 0  # we've consumed all poles and zeros
+    del p, z
+
+    # put gain in first sos
+    sos[0][:3] *= k
+    return sos
+
+
+def _cplxreal(z, tol=None):
+    """
+    Split into complex and real parts, combining conjugate pairs.
+
+    The 1-D input vector `z` is split up into its complex (zc) and real (zr)
+    elements. Every complex element must be part of a complex-conjugate pair,
+    which are combined into a single number (with positive imaginary part) in
+    the output. Two complex numbers are considered a conjugate pair if their
+    real and imaginary parts differ in magnitude by less than ``tol * abs(z)``.
+
+    Parameters
+    ----------
+    z : array_like
+        Vector of complex numbers to be sorted and split
+    tol : float, optional
+        Relative tolerance for testing realness and conjugate equality.
+        Default is ``100 * spacing(1)`` of `z`'s data type (i.e., 2e-14 for
+        float64)
+
+    Returns
+    -------
+    zc : ndarray
+        Complex elements of `z`, with each pair represented by a single value
+        having positive imaginary part, sorted first by real part, and then
+        by magnitude of imaginary part. The pairs are averaged when combined
+        to reduce error.
+    zr : ndarray
+        Real elements of `z` (those having imaginary part less than
+        `tol` times their magnitude), sorted by value.
+
+    Raises
+    ------
+    ValueError
+        If there are any complex numbers in `z` for which a conjugate
+        cannot be found.
+
+    See Also
+    --------
+    scipy.signal.cmplxreal
+
+    Examples
+    --------
+    >>> a = [4, 3, 1, 2-2j, 2+2j, 2-1j, 2+1j, 2-1j, 2+1j, 1+1j, 1-1j]
+    >>> zc, zr = _cplxreal(a)
+    >>> print(zc)
+    [ 1.+1.j  2.+1.j  2.+1.j  2.+2.j]
+    >>> print(zr)
+    [ 1.  3.  4.]
+    """
+
+    z = cupy.atleast_1d(z)
+    if z.size == 0:
+        return z, z
+    elif z.ndim != 1:
+        raise ValueError('_cplxreal only accepts 1-D input')
+
+    if tol is None:
+        # Get tolerance from dtype of input
+        tol = 100 * cupy.finfo((1.0 * z).dtype).eps
+
+    # Sort by real part, magnitude of imaginary part (speed up further sorting)
+    z = z[cupy.lexsort(cupy.array([abs(z.imag), z.real]))]
+
+    # Split reals from conjugate pairs
+    real_indices = abs(z.imag) <= tol * abs(z)
+    zr = z[real_indices].real
+
+    if len(zr) == len(z):
+        # Input is entirely real
+        return cupy.array([]), zr
+
+    # Split positive and negative halves of conjugates
+    z = z[~real_indices]
+    zp = z[z.imag > 0]
+    zn = z[z.imag < 0]
+
+    if len(zp) != len(zn):
+        raise ValueError('Array contains complex value with no matching '
+                         'conjugate.')
+
+    # Find runs of (approximately) the same real part
+    same_real = cupy.diff(zp.real) <= tol * abs(zp[:-1])
+    diffs = cupy.diff(cupy.r_[0, same_real, 0])
+    run_starts = cupy.nonzero(diffs > 0)[0]
+    run_stops = cupy.nonzero(diffs < 0)[0]
+
+    # Sort each run by their imaginary parts
+    for i in range(len(run_starts)):
+        start = run_starts[i]
+        stop = run_stops[i] + 1
+        for chunk in (zp[start:stop], zn[start:stop]):
+            chunk[...] = chunk[cupy.lexsort(cupy.array([abs(chunk.imag)]))]
+
+    # Check that negatives match positives
+    if any(abs(zp - zn.conj()) > tol * abs(zn)):
+        raise ValueError('Array contains complex value with no matching '
+                         'conjugate.')
+
+    # Average out numerical inaccuracy in real vs imag parts of pairs
+    zc = (zp + zn.conj()) / 2
+
+    return zc, zr
+
+
 def normalize(b, a):
     """Normalize numerator/denominator of a continuous-time transfer function.
 
@@ -832,6 +1152,39 @@ def lp2bs(b, a, wo=1.0, bw=1.0):
         aprime[Dp - j] = val
 
     return normalize(bprime, aprime)
+
+
+# ### LTI conversions ###
+
+def zpk2tf(z, p, k):
+    """
+    Return polynomial transfer function representation from zeros and poles
+
+    Parameters
+    ----------
+    z : array_like
+        Zeros of the transfer function.
+    p : array_like
+        Poles of the transfer function.
+    k : float
+        System gain.
+
+    Returns
+    -------
+    b : ndarray
+        Numerator polynomial coefficients.
+    a : ndarray
+        Denominator polynomial coefficients.
+
+    See Also
+    --------
+    scipy.signal.zpk2tf
+    """
+    if z.ndim > 1:
+        raise NotImplementedError(f"zpk2tf: z.ndim = {z.ndim}.")
+    b = _polycoeffs_from_zeros(z) * k
+    a = _polycoeffs_from_zeros(p)
+    return b, a
 
 
 # ### Low-level analog filter prototypes ###

@@ -482,7 +482,7 @@ cdef class RawModule:
         # for lookup in case we specialize a template
         ker.name_expressions = self.name_expressions
         # register the kernel in the cache
-        func = ker.kernel  # noqa
+        func = ker.kernel  # no-cython-lint
         return ker
 
     def get_global(self, name):

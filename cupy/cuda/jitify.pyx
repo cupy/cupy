@@ -2,7 +2,6 @@
 
 """Wrapper of Jitify utilities for CuPy API."""
 
-from cython.operator cimport dereference as deref
 from libcpp cimport nullptr
 from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
@@ -77,10 +76,9 @@ cpdef jitify(str code, tuple opt):
     cdef list hdr_names = []
 
     # dummy
-    cdef cpp_str hdr_name, hdr_source, h
+    cdef cpp_str h
     cdef str s
     cdef bytes k, v
-    cdef int i
 
     cuda_source = code.encode()
     _options = [s.encode() for s in opt]

@@ -1,7 +1,3 @@
-import os
-
-from libcpp cimport vector
-
 from cupy.cuda cimport function
 from cupy._core cimport internal
 
