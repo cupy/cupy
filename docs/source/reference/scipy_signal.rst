@@ -60,11 +60,13 @@ Filter design
    freqs_zpk
    freqz
    freqz_zpk
+   sosfreqz
    firls
    minimum_phase
    savgol_coeffs
    gammatone
    group_delay
+   iirdesign
    iirfilter
    kaiser_atten
    kaiser_beta
@@ -83,9 +85,13 @@ Matlab-style IIR filter design
    :toctree: generated/
 
    butter
+   buttord
    ellip
+   ellipord
    cheby1
+   cheb1ord
    cheby2
+   cheb2ord
 
 
 Low-level filter design functions
