@@ -1,6 +1,8 @@
 import cupy
 import cupyx.scipy.ndimage
 
+from cupyx.scipy.signal._iir_utils import apply_iir_sos
+
 
 def sepfir2d(input, hrow, hcol):
     """Convolve with a 2-D separable FIR filter.
@@ -96,15 +98,31 @@ def _cubic_smooth_coeff(signal, lamb):
 def _cubic_coeff(signal):
     zi = -2 + cupy.sqrt(3)
     K = len(signal)
-    yplus = cupy.zeros((K,), signal.dtype.char)
     powers = zi ** cupy.arange(K)
-    yplus[0] = signal[0] + zi * sum(powers * signal)
-    for k in range(1, K):
-        yplus[k] = signal[k] + zi * yplus[k - 1]
-    output = cupy.zeros((K,), signal.dtype)
-    output[K - 1] = zi / (zi - 1) * yplus[K - 1]
-    for k in range(K - 2, -1, -1):
-        output[k] = zi * (output[k + 1] - yplus[k])
+
+    state = cupy._r[0, 0, 0, cupy.sum(powers * signal)]
+    state = cupy.atleast_2d(state)
+    coef = cupy.r_[1, 0, 0, 1, -zi, 0]
+    coef = cupy.atleast_2d(coef)
+
+    # yplus[0] = signal[0] + zi * sum(powers * signal)
+    # for k in range(1, K):
+    #     yplus[k] = signal[k] + zi * yplus[k - 1]
+    yplus = apply_iir_sos(signal, coef, zi=state, apply_fir=False,
+                          dtype=signal.dtype)
+
+    out_last = zi / (zi - 1) * yplus[K - 1]
+    state = cupy.r_[0, 0, 0, out_last]
+    state = cupy.atleast_2d(state)
+
+    coef = cupy.r_[-zi, 0, 0, 1, -zi, 0]
+    coef = cupy.atleast_2d(coef)
+
+    # output[K - 1] = zi / (zi - 1) * yplus[K - 1]
+    # for k in range(K - 2, -1, -1):
+    #     output[k] = zi * (output[k + 1] - yplus[k])
+    output = apply_iir_sos(yplus[:0:-1], coef, zi=state, dtype=signal.dtype)
+    output = cupy.r_[output[::-1], out_last]
     return output * 6.0
 
 
