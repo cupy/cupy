@@ -540,9 +540,6 @@ class TestSos2Tf:
         b, a = scp.signal.sos2tf(sos)
         return b, a
 
-        assert_array_almost_equal(b, [-2, 1, 2, 4, 1])
-        assert_array_almost_equal(a, [1, 10, 0, -10, -1])
-
 
 @testing.with_requires("scipy")
 class TestCplxReal:

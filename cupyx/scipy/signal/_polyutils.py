@@ -24,20 +24,19 @@ def poly(A):
     import numpy as np
 
     seq_of_zeros = np.linalg.eigvals(A.get())
-    seq_of_zeros = cupy.asarray(seq_of_zeros)
 
     dt = seq_of_zeros.dtype
-    a = cupy.ones((1,), dtype=dt)
+    a = np.ones((1,), dtype=dt)
     for zero in seq_of_zeros:
-        a = cupy.convolve(a, cupy.r_[1, -zero], mode='full')
+        a = np.convolve(a, np.r_[1, -zero], mode='full')
 
     if issubclass(a.dtype.type, cupy.complexfloating):
         # if complex roots are all complex conjugates, the roots are real.
-        roots = cupy.asarray(seq_of_zeros, dtype=complex)
-        if cupy.all(cupy.sort(roots) == cupy.sort(roots.conjugate())):
+        roots = np.asarray(seq_of_zeros, dtype=complex)
+        if np.all(np.sort(roots) == np.sort(roots.conjugate())):
             a = a.real.copy()
 
-    return a
+    return cupy.asarray(a)
 
 
 def _cmplx_sort(p):
