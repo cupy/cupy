@@ -4,7 +4,7 @@ from cupy.fft import fft, ifft
 from cupy.linalg import solve, lstsq, LinAlgError
 from cupyx.scipy.linalg import toeplitz, hankel
 import cupyx
-from cupyx.signal.windows import get_window
+from cupyx.scipy.signal.windows import get_window
 
 import cupy
 import numpy
@@ -182,7 +182,7 @@ def firwin(
     window="hamming",
     pass_zero=True,
     scale=True,
-    fs=None,
+    fs=2,
 ):
     """
     FIR filter design using the window method.
@@ -304,7 +304,8 @@ def firwin(
 
     # Check for invalid input.
     if cutoff.ndim > 1:
-        raise ValueError("The cutoff argument must be at most " "one-dimensional.")
+        raise ValueError(
+            "The cutoff argument must be at most " "one-dimensional.")
     if cutoff.size == 0:
         raise ValueError("At least one cutoff frequency must be given.")
     if cutoff.min() <= 0 or cutoff.max() >= 1:
@@ -312,7 +313,7 @@ def firwin(
             "Invalid cutoff frequency: frequencies must be "
             "greater than 0 and less than nyq."
         )
-    if pp.any(pp.diff(cutoff) <= 0):
+    if cupy.any(cupy.diff(cutoff) <= 0):
         raise ValueError(
             "Invalid cutoff frequencies: the frequencies "
             "must be strictly increasing."
@@ -406,7 +407,6 @@ def firwin(
             h /= s
 
     return h
-
 
 
 # Scipy <= 1.12 has a deprecated `nyq` argument (nyq = fs/2).
