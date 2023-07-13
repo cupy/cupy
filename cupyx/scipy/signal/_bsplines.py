@@ -2,6 +2,7 @@ import cupy
 import cupyx.scipy.ndimage
 
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
+from cupyx.scipy.interpolate._bspline import BSpline
 
 
 def sepfir2d(input, hrow, hcol):
@@ -39,6 +40,15 @@ def sepfir2d(input, hrow, hcol):
     filters = (hcol[::-1].conj(), hrow[::-1].conj())
     return cupyx.scipy.ndimage._filters._run_1d_correlates(
         input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
+
+
+def _cubic(x):
+    x = cupy.asarray(x, dtype=float)
+    b = BSpline.basis_element(
+        cupy.asarray([-2, -1, 0, 1, 2]), extrapolate=False)
+    out = b(x)
+    out[(x < -2) | (x > 2)] = 0
+    return out
 
 
 def _coeff_smooth(lam):
@@ -257,3 +267,59 @@ def qspline1d(signal, lamb=0.0):
         raise ValueError("Smoothing quadratic splines not supported yet.")
     else:
         return _quadratic_coeff(signal)
+
+
+def cspline1d_eval(cj, newx, dx=1.0, x0=0):
+    """Evaluate a cubic spline at the new set of points.
+
+    `dx` is the old sample-spacing while `x0` was the old origin. In
+    other-words the old-sample points (knot-points) for which the `cj`
+    represent spline coefficients were at equally-spaced points of:
+
+      oldx = x0 + j*dx  j=0...N-1, with N=len(cj)
+
+    Edges are handled using mirror-symmetric boundary conditions.
+
+    Parameters
+    ----------
+    cj : ndarray
+        cublic spline coefficients
+    newx : ndarray
+        New set of points.
+    dx : float, optional
+        Old sample-spacing, the default value is 1.0.
+    x0 : int, optional
+        Old origin, the default value is 0.
+
+    Returns
+    -------
+    res : ndarray
+        Evaluated a cubic spline points.
+
+    See Also
+    --------
+    cspline1d : Compute cubic spline coefficients for rank-1 array.
+
+    """
+    newx = (cupy.asarray(newx) - x0) / float(dx)
+    res = cupy.zeros_like(newx, dtype=cj.dtype)
+    if res.size == 0:
+        return res
+    N = len(cj)
+    cond1 = newx < 0
+    cond2 = newx > (N - 1)
+    cond3 = ~(cond1 | cond2)
+    # handle general mirror-symmetry
+    res[cond1] = cspline1d_eval(cj, -newx[cond1])
+    res[cond2] = cspline1d_eval(cj, 2 * (N - 1) - newx[cond2])
+    newx = newx[cond3]
+    if newx.size == 0:
+        return res
+    result = cupy.zeros_like(newx, dtype=cj.dtype)
+    jlower = cupy.floor(newx - 2).astype(int) + 1
+    for i in range(4):
+        thisj = jlower + i
+        indj = thisj.clip(0, N - 1)  # handle edge cases
+        result += cj[indj] * _cubic(newx - thisj)
+    res[cond3] = result
+    return res
