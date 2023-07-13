@@ -42,6 +42,15 @@ def sepfir2d(input, hrow, hcol):
         input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
 
 
+def _quadratic(x):
+    x = abs(cupy.asarray(x, dtype=float))
+    b = BSpline.basis_element(
+        cupy.asarray([-1.5, -0.5, 0.5, 1.5]), extrapolate=False)
+    out = b(x)
+    out[(x < -1.5) | (x > 1.5)] = 0
+    return out
+
+
 def _cubic(x):
     x = cupy.asarray(x, dtype=float)
     b = BSpline.basis_element(
@@ -321,5 +330,63 @@ def cspline1d_eval(cj, newx, dx=1.0, x0=0):
         thisj = jlower + i
         indj = thisj.clip(0, N - 1)  # handle edge cases
         result += cj[indj] * _cubic(newx - thisj)
+    res[cond3] = result
+    return res
+
+
+def qspline1d_eval(cj, newx, dx=1.0, x0=0):
+    """Evaluate a quadratic spline at the new set of points.
+
+    Parameters
+    ----------
+    cj : ndarray
+        Quadratic spline coefficients
+    newx : ndarray
+        New set of points.
+    dx : float, optional
+        Old sample-spacing, the default value is 1.0.
+    x0 : int, optional
+        Old origin, the default value is 0.
+
+    Returns
+    -------
+    res : ndarray
+        Evaluated a quadratic spline points.
+
+    See Also
+    --------
+    qspline1d : Compute quadratic spline coefficients for rank-1 array.
+
+    Notes
+    -----
+    `dx` is the old sample-spacing while `x0` was the old origin. In
+    other-words the old-sample points (knot-points) for which the `cj`
+    represent spline coefficients were at equally-spaced points of::
+
+      oldx = x0 + j*dx  j=0...N-1, with N=len(cj)
+
+    Edges are handled using mirror-symmetric boundary conditions.
+
+    """
+    newx = (cupy.asarray(newx) - x0) / dx
+    res = cupy.zeros_like(newx)
+    if res.size == 0:
+        return res
+    N = len(cj)
+    cond1 = newx < 0
+    cond2 = newx > (N - 1)
+    cond3 = ~(cond1 | cond2)
+    # handle general mirror-symmetry
+    res[cond1] = qspline1d_eval(cj, -newx[cond1])
+    res[cond2] = qspline1d_eval(cj, 2 * (N - 1) - newx[cond2])
+    newx = newx[cond3]
+    if newx.size == 0:
+        return res
+    result = cupy.zeros_like(newx)
+    jlower = cupy.floor(newx - 1.5).astype(int) + 1
+    for i in range(3):
+        thisj = jlower + i
+        indj = thisj.clip(0, N - 1)  # handle edge cases
+        result += cj[indj] * _quadratic(newx - thisj)
     res[cond3] = result
     return res

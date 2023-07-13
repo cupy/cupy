@@ -32,6 +32,7 @@ from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 from cupyx.scipy.signal._bsplines import cspline1d  # NOQA
 from cupyx.scipy.signal._bsplines import qspline1d  # NOQA
 from cupyx.scipy.signal._bsplines import cspline1d_eval  # NOQA
+from cupyx.scipy.signal._bsplines import qspline1d_eval  # NOQA
 
 from cupyx.scipy.signal._splines import symiirorder1  # NOQA
 from cupyx.scipy.signal._splines import symiirorder2  # NOQA
