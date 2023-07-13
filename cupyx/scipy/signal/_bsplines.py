@@ -393,3 +393,40 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
         result += cj[indj] * _quadratic(newx - thisj)
     res[cond3] = result
     return res
+
+
+def spline_filter(Iin, lmbda=5.0):
+    """Smoothing spline (cubic) filtering of a rank-2 array.
+
+    Filter an input data set, `Iin`, using a (cubic) smoothing spline of
+    fall-off `lmbda`.
+
+    Parameters
+    ----------
+    Iin : array_like
+        input data set
+    lmbda : float, optional
+        spline smooghing fall-off value, default is `5.0`.
+
+    Returns
+    -------
+    res : ndarray
+        filterd input data
+
+    """
+    intype = Iin.dtype.char
+    hcol = cupy.asarray([1.0, 4.0, 1.0], 'f') / 6.0
+    if intype in ['F', 'D']:
+        Iin = Iin.astype('F')
+        ckr = cspline2d(Iin.real, lmbda)  # NOQA
+        cki = cspline2d(Iin.imag, lmbda)  # NOQA
+        outr = sepfir2d(ckr, hcol, hcol)
+        outi = sepfir2d(cki, hcol, hcol)
+        out = (outr + 1j * outi).astype(intype)
+    elif intype in ['f', 'd']:
+        ckr = cspline2d(Iin, lmbda)  # NOQA
+        out = sepfir2d(ckr, hcol, hcol)
+        out = out.astype(intype)
+    else:
+        raise TypeError("Invalid data type for Iin")
+    return out
