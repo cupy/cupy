@@ -1069,6 +1069,7 @@ class TestIIRComb:
         return b, a
 
     # Verify pass_zero parameter
+    @testing.with_requires("scipy>=1.9.0")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     @pytest.mark.parametrize('ftype,pass_zero,peak,notch',
                              [('peak', True, 123.45, 61.725),
