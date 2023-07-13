@@ -157,6 +157,43 @@ def _cubic_coeff(signal):
     return output * 6.0
 
 
+def _quadratic_coeff(signal):
+    zi = -3 + 2 * cupy.sqrt(2.0)
+    K = len(signal)
+    powers = zi ** cupy.arange(K)
+
+    if K == 1:
+        yplus = signal[0] + zi * cupy.sum(powers * signal)
+        output = zi / (zi - 1) * yplus
+        return cupy.atleast_1d(output)
+
+    state = cupy.r_[0, 0, 0, cupy.sum(powers * signal)]
+    state = cupy.atleast_2d(state)
+    coef = cupy.r_[1, 0, 0, 1, -zi, 0]
+    coef = cupy.atleast_2d(coef)
+
+    # yplus[0] = signal[0] + zi * cupy.sum(powers * signal)
+    # for k in range(1, K):
+    #     yplus[k] = signal[k] + zi * yplus[k - 1]
+    yplus, _ = apply_iir_sos(signal, coef, zi=state, apply_fir=False,
+                             dtype=signal.dtype)
+
+    out_last = zi / (zi - 1) * yplus[K - 1]
+    state = cupy.r_[0, 0, 0, out_last]
+    state = cupy.atleast_2d(state)
+
+    coef = cupy.r_[-zi, 0, 0, 1, -zi, 0]
+    coef = cupy.atleast_2d(coef)
+
+    # output[K - 1] = zi / (zi - 1) * yplus[K - 1]
+    # for k in range(K - 2, -1, -1):
+    #     output[k] = zi * (output[k + 1] - yplus[k])
+    output, _ = apply_iir_sos(
+        yplus[-2::-1], coef, zi=state, dtype=signal.dtype)
+    output = cupy.r_[output[::-1], out_last]
+    return output * 8.0
+
+
 def cspline1d(signal, lamb=0.0):
     """
     Compute cubic spline coefficients for rank-1 array.
@@ -187,3 +224,36 @@ def cspline1d(signal, lamb=0.0):
         return _cubic_smooth_coeff(signal, lamb)
     else:
         return _cubic_coeff(signal)
+
+
+def qspline1d(signal, lamb=0.0):
+    """Compute quadratic spline coefficients for rank-1 array.
+
+    Parameters
+    ----------
+    signal : ndarray
+        A rank-1 array representing samples of a signal.
+    lamb : float, optional
+        Smoothing coefficient (must be zero for now).
+
+    Returns
+    -------
+    c : ndarray
+        Quadratic spline coefficients.
+
+    See Also
+    --------
+    qspline1d_eval : Evaluate a quadratic spline at the new set of points.
+
+    Notes
+    -----
+    Find the quadratic spline coefficients for a 1-D signal assuming
+    mirror-symmetric boundary conditions. To obtain the signal back from the
+    spline representation mirror-symmetric-convolve these coefficients with a
+    length 3 FIR window [1.0, 6.0, 1.0]/ 8.0 .
+
+    """
+    if lamb != 0.0:
+        raise ValueError("Smoothing quadratic splines not supported yet.")
+    else:
+        return _quadratic_coeff(signal)

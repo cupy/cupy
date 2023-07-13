@@ -1,9 +1,18 @@
 import sys
 import unittest
+import pytest
 
+import cupy
 from cupy import testing
 
 import cupyx.scipy.signal  # NOQA
+
+import numpy as np
+
+try:
+    import scipy  # NOQA
+except ImportError:
+    pass
 
 try:
     import scipy.signal  # NOQA
@@ -46,3 +55,19 @@ class TestCSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline(self, xp, scp):
         return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]))
+
+
+@testing.with_requires('scipy')
+class TestQSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_qspline_zero(self, xp, scp):
+        return scp.signal.qspline1d(xp.asarray([0]))
+
+    def test_qspline_lambda_nonzero(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            with pytest.raises(ValueError):
+                scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]), 1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_qspline(self, xp, scp):
+        return scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]))
