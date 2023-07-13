@@ -1,5 +1,6 @@
 """IIR filter design APIs"""
 from math import pi
+import math
 
 import cupy
 
@@ -749,12 +750,12 @@ def iircomb(w0, Q, ftype='notch', fs=2.0, *, pass_zero=False):
         G0, G = 1, 0
     elif ftype == 'peak':
         G0, G = 0, 1
-    GB = 1 / cupy.sqrt(2)
+    GB = 1 / math.sqrt(2)
 
     # Compute beta
     # Eq. 11.5.3 (p. 591) from reference [1]
-    beta = cupy.sqrt((GB**2 - G0**2) / (G**2 - GB**2)) * \
-        cupy.tan(N * w_delta / 4)
+    beta = math.sqrt((GB**2 - G0**2) / (G**2 - GB**2)) * \
+        math.tan(N * w_delta / 4)
 
     # Compute filter coefficients
     # Eq 11.5.1 (p. 590) variables a, b, c from reference [1]
@@ -920,14 +921,14 @@ def _design_notch_peak_filter(w0, Q, ftype, fs=2.0):
     w0 = w0 * pi
 
     # Compute -3dB attenuation
-    gb = 1 / cupy.sqrt(2)
+    gb = 1 / math.sqrt(2)
 
     if ftype == "notch":
         # Compute beta: formula 11.3.4 (p.575) from reference [1]
-        beta = (cupy.sqrt(1.0 - gb**2.0) / gb) * cupy.tan(bw / 2.0)
+        beta = (math.sqrt(1.0 - gb**2.0) / gb) * math.tan(bw / 2.0)
     elif ftype == "peak":
         # Compute beta: formula 11.3.19 (p.579) from reference [1]
-        beta = (gb / cupy.sqrt(1.0 - gb**2.0)) * cupy.tan(bw / 2.0)
+        beta = (gb / math.sqrt(1.0 - gb**2.0)) * math.tan(bw / 2.0)
     else:
         raise ValueError("Unknown ftype.")
 
@@ -938,11 +939,14 @@ def _design_notch_peak_filter(w0, Q, ftype, fs=2.0):
     # formulas 11.3.7 (p.575) and 11.3.21 (p.579)
     # from reference [1]
     if ftype == "notch":
-        b = gain * cupy.r_[1.0, -2.0 * cupy.cos(w0), 1.0]
+        b = [gain * x for x in (1.0, -2.0 * math.cos(w0), 1.0)]
     else:
-        b = (1.0 - gain) * cupy.r_[1.0, 0.0, -1.0]
+        b = [(1.0 - gain) * x for x in (1.0, 0.0, -1.0)]
 
-    a = cupy.r_[1.0, -2.0 * gain * cupy.cos(w0), 2.0 * gain - 1.0]
+    a = [1.0, -2.0 * gain * math.cos(w0), 2.0 * gain - 1.0]
+
+    a = cupy.asarray(a)
+    b = cupy.asarray(b)
 
     return b, a
 
