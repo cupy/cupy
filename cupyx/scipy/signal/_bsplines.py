@@ -70,28 +70,53 @@ def _cubic_smooth_coeff(signal, lamb):
     K = len(signal)
     yp = cupy.zeros((K,), signal.dtype.char)
     k = cupy.arange(K)
-    yp[0] = (_hc(0, cs, rho, omega) * signal[0] +
-             cupy.sum(_hc(k + 1, cs, rho, omega) * signal))
 
-    yp[1] = (_hc(0, cs, rho, omega) * signal[0] +
-             _hc(1, cs, rho, omega) * signal[1] +
-             cupy.sum(_hc(k + 2, cs, rho, omega) * signal))
+    state_0 = (_hc(0, cs, rho, omega) * signal[0] +
+               cupy.sum(_hc(k + 1, cs, rho, omega) * signal))
+    state_1 = (_hc(0, cs, rho, omega) * signal[0] +
+               _hc(1, cs, rho, omega) * signal[1] +
+               cupy.sum(_hc(k + 2, cs, rho, omega) * signal))
 
-    for n in range(2, K):
-        yp[n] = (cs * signal[n] + 2 * rho * cupy.cos(omega) * yp[n - 1] -
-                 rho * rho * yp[n - 2])
+    zi = cupy.r_[0, 0, state_0, state_1]
+    zi = cupy.atleast_2d(zi)
 
-    y = cupy.zeros((K,), signal.dtype.char)
+    coef = cupy.r_[cs, 0, 0, 1, -2 * rho * cupy.cos(omega), rho * rho]
+    coef = cupy.atleast_2d(coef)
 
-    y[K - 1] = cupy.sum((_hs(k, cs, rho, omega) +
-                         _hs(k + 1, cs, rho, omega)) * signal[::-1])
-    y[K - 2] = cupy.sum((_hs(k - 1, cs, rho, omega) +
-                         _hs(k + 2, cs, rho, omega)) * signal[::-1])
+    # Forward pass:
+    #
+    # yp[0] = (_hc(0, cs, rho, omega) * signal[0] +
+    #          cupy.sum(_hc(k + 1, cs, rho, omega) * signal))
+    # yp[1] = (_hc(0, cs, rho, omega) * signal[0] +
+    #          _hc(1, cs, rho, omega) * signal[1] +
+    #          cupy.sum(_hc(k + 2, cs, rho, omega) * signal))
+    # for n in range(2, K):
+    #     yp[n] = (cs * signal[n] + 2 * rho * cupy.cos(omega) * yp[n - 1] -
+    #              rho * rho * yp[n - 2])
 
-    for n in range(K - 3, -1, -1):
-        y[n] = (cs * yp[n] + 2 * rho * cupy.cos(omega) * y[n + 1] -
-                rho * rho * y[n + 2])
+    yp = apply_iir_sos(signal[2:], coef, zi=zi, dtype=signal.dtype)
+    yp = cupy.r_[state_0, state_1, yp]
 
+    # Reverse pass:
+    #
+    # y[K - 1] = cupy.sum((_hs(k, cs, rho, omega) +
+    #                      _hs(k + 1, cs, rho, omega)) * signal[::-1])
+    # y[K - 2] = cupy.sum((_hs(k - 1, cs, rho, omega) +
+    #                      _hs(k + 2, cs, rho, omega)) * signal[::-1])
+    # for n in range(K - 3, -1, -1):
+    #     y[n] = (cs * yp[n] + 2 * rho * cupy.cos(omega) * y[n + 1] -
+    #             rho * rho * y[n + 2])
+
+    state_0 = cupy.sum((_hs(k, cs, rho, omega) +
+                        _hs(k + 1, cs, rho, omega)) * signal[::-1])
+    state_1 = cupy.sum((_hs(k - 1, cs, rho, omega) +
+                        _hs(k + 2, cs, rho, omega)) * signal[::-1])
+
+    zi = cupy.r_[0, 0, state_0, state_1]
+    zi = cupy.atleast_2d(zi)
+
+    y = apply_iir_sos(yp[:2:-1], coef, zi=zi, dtype=signal.dtype)
+    y = cupy.r_[y[::-1], state_1, state_0]
     return y
 
 
