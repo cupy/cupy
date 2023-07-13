@@ -31,3 +31,18 @@ class TestSepFIR2d(unittest.TestCase):
         hrow = testing.shaped_random((self.hrow,), xp, dtype)
         hcol = testing.shaped_random((self.hcol,), xp, dtype)
         return scp.signal.sepfir2d(input, hrow, hcol)
+
+
+@testing.with_requires('scipy')
+class TestCSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline_zero(self, xp, scp):
+        return scp.signal.cspline1d(xp.asarray([0]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline_lambda_nonzero(self, xp, scp):
+        return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]), 1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline(self, xp, scp):
+        return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]))
