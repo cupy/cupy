@@ -27,6 +27,262 @@ class TestKaiser:
 
 
 @testing.with_requires('scipy')
+class TestFirwin:
+
+    def check_response(self, h, expected_response, tol=.05):
+        N = len(h)
+        alpha = 0.5 * (N-1)
+        m = np.arange(0,N) - alpha   # time indices of taps
+        for freq, expected in expected_response:
+            actual = abs(np.sum(h*np.exp(-1.j*np.pi*m*freq)))
+            mse = abs(actual-expected)**2
+            assert_(mse < tol, 'response not as expected, mse=%g > %g'
+               % (mse, tol))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_response(self, xp, scp):
+        N = 51
+        f = .5
+        # increase length just to try even/odd
+        h = scp.signal.firwin(N, f)  # low-pass from 0 to f
+        return h
+
+        self.check_response(h, [(.25,1), (.75,0)])
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_response_2(self, xp, scp):
+        N = 51
+        f = .5
+        h = scp.signal.firwin(N+1, f, window='nuttall')  # specific window
+        return h
+
+        self.check_response(h, [(.25,1), (.75,0)])
+
+        h = firwin(N+2, f, pass_zero=False)  # stop from 0 to f --> high-pass
+        self.check_response(h, [(.25,0), (.75,1)])
+
+        f1, f2, f3, f4 = .2, .4, .6, .8
+        h = firwin(N+3, [f1, f2], pass_zero=False)  # band-pass filter
+        self.check_response(h, [(.1,0), (.3,1), (.5,0)])
+
+        h = firwin(N+4, [f1, f2])  # band-stop filter
+        self.check_response(h, [(.1,1), (.3,0), (.5,1)])
+
+        h = firwin(N+5, [f1, f2, f3, f4], pass_zero=False, scale=False)
+        self.check_response(h, [(.1,0), (.3,1), (.5,0), (.7,1), (.9,0)])
+
+        h = firwin(N+6, [f1, f2, f3, f4])  # multiband filter
+        self.check_response(h, [(.1,1), (.3,0), (.5,1), (.7,0), (.9,1)])
+
+        h = firwin(N+7, 0.1, width=.03)  # low-pass
+        self.check_response(h, [(.05,1), (.75,0)])
+
+        h = firwin(N+8, 0.1, pass_zero=False)  # high-pass
+        self.check_response(h, [(.05,0), (.75,1)])
+
+    def mse(self, h, bands):
+        """Compute mean squared error versus ideal response across frequency
+        band.
+          h -- coefficients
+          bands -- list of (left, right) tuples relative to 1==Nyquist of
+            passbands
+        """
+        w, H = freqz(h, worN=1024)
+        f = w/np.pi
+        passIndicator = np.zeros(len(w), bool)
+        for left, right in bands:
+            passIndicator |= (f >= left) & (f < right)
+        Hideal = np.where(passIndicator, 1, 0)
+        mse = np.mean(abs(abs(H)-Hideal)**2)
+        return mse
+
+    def test_scaling(self):
+        """
+        For one lowpass, bandpass, and highpass example filter, this test
+        checks two things:
+          - the mean squared error over the frequency domain of the unscaled
+            filter is smaller than the scaled filter (true for rectangular
+            window)
+          - the response of the scaled filter is exactly unity at the center
+            of the first passband
+        """
+        N = 11
+        cases = [
+            ([.5], True, (0, 1)),
+            ([0.2, .6], False, (.4, 1)),
+            ([.5], False, (1, 1)),
+        ]
+        for cutoff, pass_zero, expected_response in cases:
+            h = firwin(N, cutoff, scale=False, pass_zero=pass_zero, window='ones')
+            hs = firwin(N, cutoff, scale=True, pass_zero=pass_zero, window='ones')
+            if len(cutoff) == 1:
+                if pass_zero:
+                    cutoff = [0] + cutoff
+                else:
+                    cutoff = cutoff + [1]
+            assert_(self.mse(h, [cutoff]) < self.mse(hs, [cutoff]),
+                'least squares violation')
+            self.check_response(hs, [expected_response], 1e-12)
+
+#class TestFirWinMore:
+#    """Different author, different style, different tests..."""
+
+    def test_lowpass(self):
+        width = 0.04
+        ntaps, beta = kaiserord(120, width)
+        kwargs = dict(cutoff=0.5, window=('kaiser', beta), scale=False)
+        taps = firwin(ntaps, **kwargs)
+
+        # Check the symmetry of taps.
+        assert_array_almost_equal(taps[:ntaps//2], taps[ntaps:ntaps-ntaps//2-1:-1])
+
+        # Check the gain at a few samples where we know it should be approximately 0 or 1.
+        freq_samples = np.array([0.0, 0.25, 0.5-width/2, 0.5+width/2, 0.75, 1.0])
+        freqs, response = freqz(taps, worN=np.pi*freq_samples)
+        assert_array_almost_equal(np.abs(response),
+                                    [1.0, 1.0, 1.0, 0.0, 0.0, 0.0], decimal=5)
+
+        taps_str = firwin(ntaps, pass_zero='lowpass', **kwargs)
+        assert_allclose(taps, taps_str)
+
+    def test_highpass(self):
+        width = 0.04
+        ntaps, beta = kaiserord(120, width)
+
+        # Ensure that ntaps is odd.
+        ntaps |= 1
+
+        kwargs = dict(cutoff=0.5, window=('kaiser', beta), scale=False)
+        taps = firwin(ntaps, pass_zero=False, **kwargs)
+
+        # Check the symmetry of taps.
+        assert_array_almost_equal(taps[:ntaps//2], taps[ntaps:ntaps-ntaps//2-1:-1])
+
+        # Check the gain at a few samples where we know it should be approximately 0 or 1.
+        freq_samples = np.array([0.0, 0.25, 0.5-width/2, 0.5+width/2, 0.75, 1.0])
+        freqs, response = freqz(taps, worN=np.pi*freq_samples)
+        assert_array_almost_equal(np.abs(response),
+                                    [0.0, 0.0, 0.0, 1.0, 1.0, 1.0], decimal=5)
+
+        taps_str = firwin(ntaps, pass_zero='highpass', **kwargs)
+        assert_allclose(taps, taps_str)
+
+    def test_bandpass(self):
+        width = 0.04
+        ntaps, beta = kaiserord(120, width)
+        kwargs = dict(cutoff=[0.3, 0.7], window=('kaiser', beta), scale=False)
+        taps = firwin(ntaps, pass_zero=False, **kwargs)
+
+        # Check the symmetry of taps.
+        assert_array_almost_equal(taps[:ntaps//2], taps[ntaps:ntaps-ntaps//2-1:-1])
+
+        # Check the gain at a few samples where we know it should be approximately 0 or 1.
+        freq_samples = np.array([0.0, 0.2, 0.3-width/2, 0.3+width/2, 0.5,
+                                0.7-width/2, 0.7+width/2, 0.8, 1.0])
+        freqs, response = freqz(taps, worN=np.pi*freq_samples)
+        assert_array_almost_equal(np.abs(response),
+                [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0], decimal=5)
+
+        taps_str = firwin(ntaps, pass_zero='bandpass', **kwargs)
+        assert_allclose(taps, taps_str)
+
+    def test_bandstop_multi(self):
+        width = 0.04
+        ntaps, beta = kaiserord(120, width)
+        kwargs = dict(cutoff=[0.2, 0.5, 0.8], window=('kaiser', beta),
+                      scale=False)
+        taps = firwin(ntaps, **kwargs)
+
+        # Check the symmetry of taps.
+        assert_array_almost_equal(taps[:ntaps//2], taps[ntaps:ntaps-ntaps//2-1:-1])
+
+        # Check the gain at a few samples where we know it should be approximately 0 or 1.
+        freq_samples = np.array([0.0, 0.1, 0.2-width/2, 0.2+width/2, 0.35,
+                                0.5-width/2, 0.5+width/2, 0.65,
+                                0.8-width/2, 0.8+width/2, 0.9, 1.0])
+        freqs, response = freqz(taps, worN=np.pi*freq_samples)
+        assert_array_almost_equal(np.abs(response),
+                [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+                decimal=5)
+
+        taps_str = firwin(ntaps, pass_zero='bandstop', **kwargs)
+        assert_allclose(taps, taps_str)
+
+    def test_fs_nyq(self):
+        """Test the fs and nyq keywords."""
+        nyquist = 1000
+        width = 40.0
+        relative_width = width/nyquist
+        ntaps, beta = kaiserord(120, relative_width)
+        taps = firwin(ntaps, cutoff=[300, 700], window=('kaiser', beta),
+                        pass_zero=False, scale=False, fs=2*nyquist)
+
+        # Check the symmetry of taps.
+        assert_array_almost_equal(taps[:ntaps//2], taps[ntaps:ntaps-ntaps//2-1:-1])
+
+        # Check the gain at a few samples where we know it should be approximately 0 or 1.
+        freq_samples = np.array([0.0, 200, 300-width/2, 300+width/2, 500,
+                                700-width/2, 700+width/2, 800, 1000])
+        freqs, response = freqz(taps, worN=np.pi*freq_samples/nyquist)
+        assert_array_almost_equal(np.abs(response),
+                [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0], decimal=5)
+        with np.testing.suppress_warnings() as sup:
+            sup.filter(DeprecationWarning, "Keyword argument 'nyq'")
+            taps2 = firwin(ntaps, cutoff=[300, 700], window=('kaiser', beta),
+                           pass_zero=False, scale=False, nyq=nyquist)
+        assert_allclose(taps2, taps)
+
+    def test_bad_cutoff(self):
+        """Test that invalid cutoff argument raises ValueError."""
+        # cutoff values must be greater than 0 and less than 1.
+        assert_raises(ValueError, firwin, 99, -0.5)
+        assert_raises(ValueError, firwin, 99, 1.5)
+        # Don't allow 0 or 1 in cutoff.
+        assert_raises(ValueError, firwin, 99, [0, 0.5])
+        assert_raises(ValueError, firwin, 99, [0.5, 1])
+        # cutoff values must be strictly increasing.
+        assert_raises(ValueError, firwin, 99, [0.1, 0.5, 0.2])
+        assert_raises(ValueError, firwin, 99, [0.1, 0.5, 0.5])
+        # Must have at least one cutoff value.
+        assert_raises(ValueError, firwin, 99, [])
+        # 2D array not allowed.
+        assert_raises(ValueError, firwin, 99, [[0.1, 0.2],[0.3, 0.4]])
+        # cutoff values must be less than nyq.
+        with np.testing.suppress_warnings() as sup:
+            sup.filter(DeprecationWarning, "Keyword argument 'nyq'")
+            assert_raises(ValueError, firwin, 99, 50.0, nyq=40)
+            assert_raises(ValueError, firwin, 99, [10, 20, 30], nyq=25)
+        assert_raises(ValueError, firwin, 99, 50.0, fs=80)
+        assert_raises(ValueError, firwin, 99, [10, 20, 30], fs=50)
+
+    def test_even_highpass_raises_value_error(self):
+        """Test that attempt to create a highpass filter with an even number
+        of taps raises a ValueError exception."""
+        assert_raises(ValueError, firwin, 40, 0.5, pass_zero=False)
+        assert_raises(ValueError, firwin, 40, [.25, 0.5])
+
+    def test_bad_pass_zero(self):
+        """Test degenerate pass_zero cases."""
+        with assert_raises(ValueError, match='pass_zero must be'):
+            firwin(41, 0.5, pass_zero='foo')
+        with assert_raises(TypeError, match='cannot be interpreted'):
+            firwin(41, 0.5, pass_zero=1.)
+        for pass_zero in ('lowpass', 'highpass'):
+            with assert_raises(ValueError, match='cutoff must have one'):
+                firwin(41, [0.5, 0.6], pass_zero=pass_zero)
+        for pass_zero in ('bandpass', 'bandstop'):
+            with assert_raises(ValueError, match='must have at least two'):
+                firwin(41, [0.5], pass_zero=pass_zero)
+
+    def test_nyq_deprecation(self):
+        with pytest.warns(DeprecationWarning,
+                          match="Keyword argument 'nyq' is deprecated in "
+                          ):
+            firwin(1, 1, nyq=10)
+
+
+
+@testing.with_requires('scipy')
 class TestFirls:
 
     def test_bad_args(self):
