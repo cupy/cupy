@@ -22,6 +22,18 @@ Convolution
    correlation_lags
 
 
+B-Splines
+---------
+
+.. autosummary::
+   :toctree: generated/
+
+   cspline1d
+   qspline1d
+   cspline1d_eval
+   qspline1d_eval
+
+
 Filtering
 ---------
 
