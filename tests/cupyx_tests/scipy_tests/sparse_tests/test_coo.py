@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 import numpy
 import pytest
@@ -12,6 +13,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
+import cupyx.cusparse
 from cupyx.scipy import sparse
 
 
@@ -469,6 +471,13 @@ class TestCooMatrixInit:
 }))
 @testing.with_requires('scipy')
 class TestCooMatrixScipyComparison:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
 
     @property
     def make(self):
