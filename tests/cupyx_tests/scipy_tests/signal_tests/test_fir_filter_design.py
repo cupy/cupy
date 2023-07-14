@@ -146,6 +146,154 @@ class TestFirwin:
 
 
 @testing.with_requires('scipy')
+class TestFirwin2:
+
+    def test_invalid_args(self):
+        # `freq` and `gain` have different lengths.
+        with assert_raises(ValueError, match='must be of same length'):
+            signal.firwin2(50, [0, 0.5, 1], [0.0, 1.0])
+        # `nfreqs` is less than `ntaps`.
+        with assert_raises(ValueError, match='ntaps must be less than nfreqs'):
+            signal.firwin2(50, [0, 0.5, 1], [0.0, 1.0, 1.0], nfreqs=33)
+        # Decreasing value in `freq`
+        with assert_raises(ValueError, match='must be nondecreasing'):
+            signal.firwin2(50, [0, 0.5, 0.4, 1.0], [0, .25, .5, 1.0])
+        # Value in `freq` repeated more than once.
+        with assert_raises(ValueError, match='must not occur more than twice'):
+            signal.firwin2(50, [0, .1, .1, .1, 1.0], [
+                           0.0, 0.5, 0.75, 1.0, 1.0])
+        # `freq` does not start at 0.0.
+        with assert_raises(ValueError, match='start with 0'):
+            signal.firwin2(50, [0.5, 1.0], [0.0, 1.0])
+        # `freq` does not end at fs/2.
+        with assert_raises(ValueError, match='end with fs/2'):
+            signal.firwin2(50, [0.0, 0.5], [0.0, 1.0])
+        # Value 0 is repeated in `freq`
+        with assert_raises(ValueError, match='0 must not be repeated'):
+            signal.firwin2(50, [0.0, 0.0, 0.5, 1.0], [1.0, 1.0, 0.0, 0.0])
+        # Value fs/2 is repeated in `freq`
+        with assert_raises(ValueError, match='fs/2 must not be repeated'):
+            signal.firwin2(50, [0.0, 0.5, 1.0, 1.0], [1.0, 1.0, 0.0, 0.0])
+        # Value in `freq` that is too close to a repeated number
+        with assert_raises(ValueError, match='cannot contain numbers '
+                                             'that are too close'):
+            eps = cupy.finfo(float).eps
+            signal.firwin2(50, [0.0, 0.5 - eps * 0.5, 0.5, 0.5, 1.0],
+                           [1.0, 1.0, 1.0, 0.0, 0.0])
+
+        # Type II filter, but the gain at nyquist frequency is not zero.
+        with assert_raises(ValueError, match='Type II filter'):
+            signal.firwin2(16, [0.0, 0.5, 1.0], [0.0, 1.0, 1.0])
+
+        # Type III filter, but the gains at nyquist and zero rate are not zero.
+        with assert_raises(ValueError, match='Type III filter'):
+            signal.firwin2(17, [0.0, 0.5, 1.0], [
+                           0.0, 1.0, 1.0], antisymmetric=True)
+        with assert_raises(ValueError, match='Type III filter'):
+            signal.firwin2(17, [0.0, 0.5, 1.0], [
+                           1.0, 1.0, 0.0], antisymmetric=True)
+        with assert_raises(ValueError, match='Type III filter'):
+            signal.firwin2(17, [0.0, 0.5, 1.0], [
+                           1.0, 1.0, 1.0], antisymmetric=True)
+
+        # Type IV filter, but the gain at zero rate is not zero.
+        with assert_raises(ValueError, match='Type IV filter'):
+            signal.firwin2(16, [0.0, 0.5, 1.0], [
+                           1.0, 1.0, 0.0], antisymmetric=True)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test01(self, xp, scp):
+        beta = 12.0
+        ntaps = 400
+        # Filter is 1 from w=0 to w=0.5, then decreases linearly from 1 to 0
+        # as w increases from w=0.5 to w=1  (w=1 is the Nyquist frequency).
+        freq = xp.asarray([0.0, 0.5, 1.0])
+        gain = xp.asarray([1.0, 1.0, 0.0])
+        taps = scp.signal.firwin2(ntaps, freq, gain, window=('kaiser', beta))
+        return taps
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test02(self, xp, scp):
+        beta = 12.0
+        # ntaps must be odd for positive gain at Nyquist.
+        ntaps = 401
+        # An ideal highpass filter.
+        freq = xp.asarray([0.0, 0.5, 0.5, 1.0])
+        gain = xp.asarray([0.0, 0.0, 1.0, 1.0])
+        taps = scp.signal.firwin2(ntaps, freq, gain, window=('kaiser', beta))
+        return taps
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test03(self, xp, scp):
+        width = 0.02
+        ntaps, beta = scp.signal.kaiserord(120, width)
+        # ntaps must be odd for positive gain at Nyquist.
+        ntaps = int(ntaps) | 1
+        freq = xp.asarray([0.0, 0.4, 0.4, 0.5, 0.5, 1.0])
+        gain = xp.asarray([1.0, 1.0, 0.0, 0.0, 1.0, 1.0])
+        taps = scp.signal.firwin2(ntaps, freq, gain, window=('kaiser', beta))
+        return taps
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test04(self, xp, scp):
+        """Test firwin2 when window=None."""
+        ntaps = 5
+        # Ideal lowpass: gain is 1 on [0,0.5], and 0 on [0.5, 1.0]
+        freq = xp.asarray([0.0, 0.5, 0.5, 1.0])
+        gain = xp.asarray([1.0, 1.0, 0.0, 0.0])
+        taps = scp.signal.firwin2(ntaps, freq, gain, window=None, nfreqs=8193)
+        return taps
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test05(self, xp, scp):
+        """Test firwin2 for calculating Type IV filters"""
+        ntaps = 1500
+
+        freq = xp.asarray([0.0, 1.0])
+        gain = xp.asarray([0.0, 1.0])
+        taps = scp.signal.firwin2(
+            ntaps, freq, gain, window=None, antisymmetric=True)
+        return taps
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test06(self, xp, scp):
+        """Test firwin2 for calculating Type III filters"""
+        ntaps = 1501
+
+        freq = xp.asarray([0.0, 0.5, 0.55, 1.0])
+        gain = xp.asarray([0.0, 0.5, 0.0, 0.0])
+        taps = scp.signal.firwin2(
+            ntaps, freq, gain, window=None, antisymmetric=True)
+        return taps
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_fs_nyq(self, xp, scp):
+        taps1 = scp.signal.firwin2(80,
+                                   xp.asarray([0.0, 0.5, 1.0]),
+                                   xp.asarray([1.0, 1.0, 0.0]))
+        taps2 = scp.signal.firwin2(80,
+                                   xp.asarray([0.0, 30.0, 60.0]),
+                                   xp.asarray([1.0, 1.0, 0.0]), fs=120.0)
+        return taps1, taps2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_tuple(self, xp, scp):
+        taps1 = scp.signal.firwin2(150,
+                                   xp.asarray((0.0, 0.5, 0.5, 1.0)),
+                                   xp.asarray((1.0, 1.0, 0.0, 0.0)))
+        taps2 = scp.signal.firwin2(150,
+                                   xp.asarray([0.0, 0.5, 0.5, 1.0]),
+                                   xp.asarray([1.0, 1.0, 0.0, 0.0]))
+        return taps1, taps2
+
+    def test_input_modyfication(self):
+        freq1 = cupy.array([0.0, 0.5, 0.5, 1.0])
+        freq2 = cupy.array(freq1, copy=True)
+        signal.firwin2(80, freq1, cupy.array([1.0, 1.0, 0.0, 0.0]))
+        assert (freq1 == freq2).all()
+
+
+@testing.with_requires('scipy')
 class TestFirls:
 
     def test_bad_args(self):

@@ -78,6 +78,7 @@ Filter design
    freqz_zpk
    sosfreqz
    firwin
+   firwin2
    firls
    minimum_phase
    savgol_coeffs
