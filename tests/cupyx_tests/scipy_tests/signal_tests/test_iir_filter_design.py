@@ -1102,6 +1102,7 @@ class TestIIRComb:
         return b, a
 
     # Verify that https://github.com/scipy/scipy/issues/14043 is fixed
+    @testing.with_requires('scipy>=1.9.0')
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nearest_divisor(self, xp, scp):
         # Create a notching comb filter
