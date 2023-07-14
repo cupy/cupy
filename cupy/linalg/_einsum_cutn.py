@@ -13,11 +13,22 @@ from cupy._core import _accelerator
 
 
 @_util.memoize()
-def _is_nonblocking_supported():
+def _is_cuqnt_22_11_or_higher():
     ver = [int(i) for i in cuquantum.__version__.split('.')]
     if (ver[0] > 22) or (ver[0] == 22 and ver[1] >= 11):
         return True
     return False
+
+
+def _is_nonblocking_supported():
+    return _is_cuqnt_22_11_or_higher()
+
+
+def _is_trace_supported():
+    # We should really check the cuTENSOR version here, but we use cuQuantum
+    # Python as a proxy (cuTensorNet v2.0.0 from cuQuantum v22.11 requires
+    # cuTENSOR v1.6.1+) instead
+    return _is_cuqnt_22_11_or_higher()
 
 
 def _get_einsum_operands(args):
@@ -82,7 +93,8 @@ def _try_use_cutensornet(*args, **kwargs):
         # As of cuTENSOR 1.5.0 it still chokes with some common operations
         # like trace ("ii->") so it's easier to just skip all single-operand
         # cases instead of whitelisting what could be done explicitly
-        return None
+        if not _is_trace_supported():
+            return None
 
     if (any(op.size == 0 for op in operands) or
             any(len(op.shape) == 0 for op in operands)):
