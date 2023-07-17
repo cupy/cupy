@@ -2,7 +2,10 @@ import cupy
 import cupyx.scipy.ndimage
 
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
+from cupyx.scipy.signal._splines import _symiirorder1_nd
 from cupyx.scipy.interpolate._bspline import BSpline
+
+import numpy as np
 
 
 def sepfir2d(input, hrow, hcol):
@@ -393,6 +396,37 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
         result += cj[indj] * _quadratic(newx - thisj)
     res[cond3] = result
     return res
+
+
+def cspline2d(signal, lamb=0.0, precision=-1.0):
+    """
+    Coefficients for 2-D cubic (3rd order) B-spline.
+
+    Return the third-order B-spline coefficients over a regularly spaced
+    input grid for the two-dimensional input image.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input signal.
+    lambda : float
+        Specifies the amount of smoothing in the transfer function.
+    precision : float
+        Specifies the precision for computing the infinite sum needed to apply
+        mirror-symmetric boundary conditions.
+
+    Returns
+    -------
+    output : ndarray
+        The filtered signal.
+    """
+    if lamb <= 1 / 144.0:
+        # Normal cubic spline
+        r = -2 + np.sqrt(3.0)
+        out = _symiirorder1_nd(signal, -r * 6.0, r, precision=precision,
+                               axis=-1)
+        out = _symiirorder1_nd(out - r * 6.0, r, precision=precision,
+                               axis=0)
 
 
 def spline_filter(Iin, lmbda=5.0):
