@@ -1,15 +1,19 @@
+import threading
 import warnings
 
 try:
     import cuquantum
     from cuquantum import cutensornet
-    cutn_handle_cache = {}  # type: ignore  # noqa
 except ImportError:
     cuquantum = cutensornet = None
 
 import cupy
 from cupy import _util
 from cupy._core import _accelerator
+from cupy.cuda.device import Handle
+
+
+_tls = threading.local()
 
 
 @_util.memoize()
@@ -21,13 +25,6 @@ def _is_cuqnt_22_11_or_higher():
 
 
 def _is_nonblocking_supported():
-    return _is_cuqnt_22_11_or_higher()
-
-
-def _is_trace_supported():
-    # We should really check the cuTENSOR version here, but we use cuQuantum
-    # Python as a proxy (cuTensorNet v2.0.0 from cuQuantum v22.11 requires
-    # cuTENSOR v1.6.1+) instead
     return _is_cuqnt_22_11_or_higher()
 
 
@@ -93,8 +90,7 @@ def _try_use_cutensornet(*args, **kwargs):
         # As of cuTENSOR 1.5.0 it still chokes with some common operations
         # like trace ("ii->") so it's easier to just skip all single-operand
         # cases instead of whitelisting what could be done explicitly
-        if not _is_trace_supported():
-            return None
+        return None
 
     if (any(op.size == 0 for op in operands) or
             any(len(op.shape) == 0 for op in operands)):
@@ -110,10 +106,16 @@ def _try_use_cutensornet(*args, **kwargs):
 
     # prepare cutn inputs
     device = cupy.cuda.runtime.getDevice()
+    if not hasattr(_tls, "cutn_handle_cache"):
+        cutn_handle_cache = _tls.cutn_handle_cache = {}
+    else:
+        cutn_handle_cache = _tls.cutn_handle_cache
     handle = cutn_handle_cache.get(device)
     if handle is None:
         handle = cutensornet.create()
-        cutn_handle_cache[device] = handle
+        cutn_handle_cache[device] = Handle(handle, cutensornet.destroy)
+    else:
+        handle = handle.handle
     cutn_options = {'device_id': device, 'handle': handle}
     if _is_nonblocking_supported():
         cutn_options['blocking'] = "auto"
