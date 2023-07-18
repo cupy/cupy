@@ -502,13 +502,13 @@ def spline_filter(Iin, lmbda=5.0):
     hcol = cupy.asarray([1.0, 4.0, 1.0], 'f') / 6.0
     if intype in ['F', 'D']:
         Iin = Iin.astype('F')
-        ckr = cspline2d(Iin.real, lmbda)  # NOQA
-        cki = cspline2d(Iin.imag, lmbda)  # NOQA
+        ckr = cspline2d(Iin.real, lmbda)
+        cki = cspline2d(Iin.imag, lmbda)
         outr = sepfir2d(ckr, hcol, hcol)
         outi = sepfir2d(cki, hcol, hcol)
         out = (outr + 1j * outi).astype(intype)
     elif intype in ['f', 'd']:
-        ckr = cspline2d(Iin, lmbda)  # NOQA
+        ckr = cspline2d(Iin, lmbda)
         out = sepfir2d(ckr, hcol, hcol)
         out = out.astype(intype)
     else:

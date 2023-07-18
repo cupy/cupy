@@ -30,8 +30,11 @@ B-Splines
 
    cspline1d
    qspline1d
+   cspline2d
+   qspline2d
    cspline1d_eval
    qspline1d_eval
+   spline_filter
 
 
 Filtering
