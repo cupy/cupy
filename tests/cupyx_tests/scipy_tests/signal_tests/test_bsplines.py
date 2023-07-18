@@ -113,3 +113,27 @@ class TestQSplineEval:
             1.396, 4.094])
         cj = scp.signal.qspline1d(y)
         return scp.signal.qspline1d_eval(cj, newx, dx=dx, x0=x[0])
+
+
+@testing.with_requires('scipy')
+class TestCSpline2D:
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_cspline2d_iir1(self, xp, scp):
+        image = testing.shaped_random((71, 73), xp, xp.float64,
+                                      scale=1, seed=181819142)
+        return scp.signal.cspline2d(image, -1.0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_cspline2d_iir2(self, xp, scp):
+        image = testing.shaped_random((71, 73), xp, xp.float64,
+                                      scale=1, seed=181819142)
+        return scp.signal.cspline2d(image, 8.0)
+
+
+@testing.with_requires('scipy')
+class TestQSpline2D:
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
+    def test_qspline2d_iir1(self, xp, scp):
+        image = testing.shaped_random((71, 73), xp, xp.float64,
+                                      scale=1, seed=181819142)
+        return scp.signal.qspline2d(image)

@@ -159,7 +159,7 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
         precision = cupy.finfo(input.dtype).resolution
 
     precision *= precision
-    pos = cupy.arange(1, input_shape[axis] + 1, dtype=input.dtype)
+    pos = cupy.arange(1, input_shape[-1] + 1, dtype=input.dtype)
     pow_z1 = z1 ** pos
 
     diff = pow_z1 * cupy.conjugate(pow_z1)
@@ -171,7 +171,7 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
 
     zi = _find_initial_cond(all_valid, cum_poly, input_shape[axis])
 
-    if cupy.isnan(zi):
+    if cupy.any(cupy.isnan(zi)):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
@@ -182,23 +182,17 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
 
     all_zi = cupy.zeros(zi_shape, dtype=input.dtype)
     all_zi = axis_assign(all_zi, zi, 3, 4)
-    # all_zi[:, :, -1] = zi
 
     coef = cupy.r_[1, 0, 0, 1, -z1, 0]
     coef = cupy.atleast_2d(coef)
 
-    y1 = cupy.array(input, dtype=input.dtype, copy=True)
-    y1 = axis_assign(y1, zi, 0, 1)
-
-    apply_iir_sos(axis_slice(input, 1), coef, zi=all_zi,
-                  out=axis_slice(y1, 1), dtype=input.dtype,
-                  apply_fir=False)
-    # y1 = cupy.c_[zi, y1]
+    y1, _ = apply_iir_sos(axis_slice(input, 1), coef, zi=all_zi,
+                          dtype=input.dtype, apply_fir=False)
+    y1 = cupy.c_[zi, y1]
 
     # Compute backward symmetric condition and apply the system
     # c0 / (1 - z1 * z)
     zi = -c0 / (z1 - 1.0) * axis_slice(y1, -1)
-    # all_zi[:, :, -1] = zi
     all_zi = axis_assign(all_zi, zi, 3, 4)
 
     coef = cupy.r_[c0, 0, 0, 1, -z1, 0]
@@ -399,18 +393,19 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
     if input_ndim > 1:
         zi_shape = (1, input.shape[0], 4)
 
-    zi = cupy.r_[y0, y1]
     sos = cupy.atleast_2d(cupy.r_[cs, 0, 0, 1, -a2, -a3])
     sos = sos.astype(input.dtype)
 
     all_zi = cupy.zeros(zi_shape, dtype=input.dtype)
-    all_zi = axis_assign(all_zi, zi, 2, 4)
+    all_zi = axis_assign(all_zi, y0, 2, 3)
+    all_zi = axis_assign(all_zi, y1, 3, 4)
 
-    y_fwd = cupy.array(input, dtype=input.dtype, copy=True)
-    y_fwd = axis_assign(y_fwd, zi, 0, 2)
-
-    apply_iir_sos(axis_slice(input, 2), sos, zi=all_zi,
-                  dtype=input.dtype, out=axis_slice(y_fwd, 2))
+    y_fwd, _ = apply_iir_sos(
+        axis_slice(input, 2), sos, zi=all_zi, dtype=input.dtype)
+    if input_ndim > 1:
+        y_fwd = cupy.c_[y0, y1, y_fwd]
+    else:
+        y_fwd = cupy.r_[y0, y1, y_fwd]
 
     # Then compute the symmetric backward starting conditions
     compute_symiirorder2_bwd_sc = _get_module_func(
@@ -432,10 +427,10 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
                                   axis=-1)
         y0 = _find_initial_cond(
             all_valid[:input_slice.shape[-1]], cum_poly_y0, input.shape[-1], i)
-        if not cupy.isnan(y0):
+        if not cupy.any(cupy.isnan(y0)):
             break
 
-    if cupy.isnan(y0):
+    if cupy.any(cupy.isnan(y0)):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
@@ -447,13 +442,14 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
                 cupy.asarray(omega, cs.dtype), precision, all_valid, diff))
 
         input_slice = axis_slice(rev_input, i, i + block_sz)
-        cum_poly_y1 = cupy.cumsum(diff[:input_slice.shape[-1]] * input_slice)
+        cum_poly_y1 = cupy.cumsum(diff[:input_slice.shape[-1]] * input_slice,
+                                  axis=-1)
         y1 = _find_initial_cond(
             all_valid[:input_slice.size], cum_poly_y1, input.size, i)
-        if not cupy.isnan(y1):
+        if not cupy.any(cupy.isnan(y1)):
             break
 
-    if cupy.isnan(y1):
+    if cupy.any(cupy.isnan(y1)):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
