@@ -8,7 +8,6 @@ DEBIAN_FRONTEND=noninteractive apt-get -y install python3.9-dev python3-pip
 hipconfig
 
 python3.9 -m pip install -U pip wheel
-python3.9 -m pip install cython
 
 export ROCM_HOME="/opt/rocm"
 export HCC_AMDGPU_TARGET="gfx900"
