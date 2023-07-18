@@ -169,7 +169,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
         w = fweights
 
     if aweights is not None:
-        if not isinstance(fweights, cupy.ndarray):
+        if not isinstance(aweights, cupy.ndarray):
             raise TypeError(
                 "aweights must be a cupy.ndarray")
         aweights = aweights.astype(dtype=float)
