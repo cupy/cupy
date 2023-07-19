@@ -156,7 +156,12 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
         raise ValueError('|z1| must be less than 1.0')
 
     if precision <= 0.0 or precision > 1.0:
-        precision = cupy.finfo(input.dtype).resolution
+        if input.dtype is cupy.dtype(cupy.float64):
+            precision = 1e-6
+        elif input.dtype is cupy.dtype(cupy.float32):
+            precision = 1e-3
+        else:
+            precision = 10 ** -cupy.finfo(input.dtype).iexp
 
     precision *= precision
     pos = cupy.arange(1, input_shape[-1] + 1, dtype=input.dtype)
@@ -169,7 +174,7 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
     # cupy.expand_dims(input_2d[:, 0], -1)
     all_valid = diff <= precision
 
-    zi = _find_initial_cond(all_valid, cum_poly, input_shape[axis])
+    zi = _find_initial_cond(all_valid, cum_poly, input_shape[-1])
 
     if cupy.any(cupy.isnan(zi)):
         raise ValueError(
@@ -378,7 +383,7 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
                            starting_diff[0] * axis_slice(input, 1, 2) +
                            starting_diff[1] * axis_slice(input, 0, 1))
             y1 = _find_initial_cond(
-                all_valid[1:][:input_slice.size], cum_poly_y1,
+                all_valid[1:][:input_slice.shape[-1]], cum_poly_y1,
                 input.shape[-1], i)
 
         if not cupy.any(cupy.isnan(cupy.r_[y0, y1])):
