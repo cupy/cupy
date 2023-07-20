@@ -38,7 +38,7 @@ repos:
     -   id: cython-lint
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.3.0
+    rev: v1.4.1
     hooks:
     -   id: mypy
         # Keep in sync with the list in setup.cfg
