@@ -356,6 +356,192 @@ class TestZpk2Sos:
 
 
 @testing.with_requires("scipy")
+class TestTf2zpk:
+
+    @pytest.mark.parametrize('dt', ('float64', 'complex128'))
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simple(self, xp, scp, dt):
+        z_r = xp.array([0.5, -0.5])
+        p_r = xp.array([1.j / sqrt(2), -1.j / sqrt(2)])
+        b = xp.poly(z_r).astype(dt)
+        a = xp.poly(p_r).real.astype(dt)
+
+        z, p, k = scp.signal.tf2zpk(b, a)
+        z.sort()
+        # The real part of `p` is ~0.0, so sort by imaginary part
+        p = p[xp.argsort(p.imag)]
+        return z, p, k
+
+
+@testing.with_requires("scipy")
+class TestSS2TF:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic(self, xp, scp):
+        # Test a round trip through tf2ss and ss2tf.
+        b = xp.array([1.0, 3.0, 5.0])
+        a = xp.array([1.0, 2.0, 3.0])
+
+        A, B, C, D = scp.signal.tf2ss(b, a)
+        return A, B, C, D
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_2(self, xp, scp):
+        b = xp.array([1.0, 3.0, 5.0])
+        a = xp.array([1.0, 2.0, 3.0])
+        A, B, C, D = scp.signal.tf2ss(b, a)
+
+        bb, aa = scp.signal.ss2tf(A, B, C, D)
+        return bb, aa
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero_order_round_trip(self, xp, scp):
+        # See gh-5760
+        tf = (2, 1)
+        A, B, C, D = scp.signal.tf2ss(*tf)
+        return A, B, C, D
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero_order_round_trip_2(self, xp, scp):
+        tf = (2, 1)
+        A, B, C, D = scp.signal.tf2ss(*tf)
+
+        num, den = scp.signal.ss2tf(A, B, C, D)
+        return num, den
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero_order_round_trip_3(self, xp, scp):
+        tf = (xp.asarray([[5], [2]]), 1)
+        A, B, C, D = scp.signal.tf2ss(*tf)
+        return A, B, C, D
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero_order_round_trip_4(self, xp, scp):
+        tf = (xp.asarray([[5], [2]]), 1)
+        A, B, C, D = scp.signal.tf2ss(*tf)
+
+        num, den = scp.signal.ss2tf(A, B, C, D)
+        return num, den
+
+    @pytest.mark.parametrize('tf',
+                             [([[1, 2], [1, 1]], [1, 2]),
+                              ([[1, 0, 1], [1, 1, 1]], [1, 1, 1]),
+                                 ([[1, 2, 3], [1, 2, 3]], [1, 2, 3, 4]),
+                              ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_simo_round_trip(self, xp, scp, tf):
+        # See gh-5753
+        tf = tuple(xp.asarray(x) for x in tf)
+        A, B, C, D = scp.signal.tf2ss(*tf)
+        return A, B, C, D
+
+    @pytest.mark.parametrize('tf',
+                             [([[1, 2], [1, 1]], [1, 2]),
+                              ([[1, 0, 1], [1, 1, 1]], [1, 1, 1]),
+                                 ([[1, 2, 3], [1, 2, 3]], [1, 2, 3, 4]),
+                              ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_simo_round_trip_2(self, xp, scp, tf):
+        tf = tuple(xp.asarray(x) for x in tf)
+        A, B, C, D = scp.signal.tf2ss(*tf)
+
+        num, den = scp.signal.ss2tf(A, B, C, D)
+        return num, den
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_all_int_arrays(self, xp, scp):
+        A = xp.asarray([[0, 1, 0], [0, 0, 1], [-3, -4, -2]])
+        B = xp.asarray([[0], [0], [1]])
+        C = xp.asarray([[5, 1, 0]])
+        D = xp.asarray([[0]])
+        num, den = scp.signal.ss2tf(A, B, C, D)
+        return num, den
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_multioutput(self, xp, scp):
+        # Regression test for gh-2669.
+
+        # 4 states
+        A = xp.array([[-1.0, 0.0, 1.0, 0.0],
+                      [-1.0, 0.0, 2.0, 0.0],
+                      [-4.0, 0.0, 3.0, 0.0],
+                      [-8.0, 8.0, 0.0, 4.0]])
+
+        # 1 input
+        B = xp.array([[0.3],
+                      [0.0],
+                      [7.0],
+                      [0.0]])
+
+        # 3 outputs
+        C = xp.array([[0.0, 1.0, 0.0, 0.0],
+                      [0.0, 0.0, 0.0, 1.0],
+                      [8.0, 8.0, 0.0, 0.0]])
+
+        D = xp.array([[0.0],
+                      [0.0],
+                      [1.0]])
+
+        # Get the transfer functions for all the outputs in one call.
+        b_all, a = scp.signal.ss2tf(A, B, C, D)
+        return b_all, a
+
+
+@testing.with_requires('scipy')
+class TestSos2Zpk:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic(self, xp, scp):
+        sos = xp.asarray([[1, 0, 1, 1, 0, -0.81],
+                          [1, 0, 0, 1, 0, +0.49]])
+        z, p, k = scp.signal.sos2zpk(sos)
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_2(self, xp, scp):
+        sos = [[1.00000, +0.61803, 1.0000, 1.00000, +0.60515, 0.95873],
+               [1.00000, -1.61803, 1.0000, 1.00000, -1.58430, 0.95873],
+               [1.00000, +1.00000, 0.0000, 1.00000, +0.97915, 0.00000]]
+        sos = xp.asarray(sos)
+        z, p, k = scp.signal.sos2zpk(sos)
+        return z, p, k
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic_3(self, xp, scp):
+        sos = xp.array([[1, 2, 3, 1, 0.2, 0.3],
+                        [4, 5, 6, 1, 0.4, 0.5]])
+        z2, p2, k2 = scp.signal.sos2zpk(sos)
+        return z2, p2, k2
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
+    def test_fewer_zeros(self, xp, scp):
+        """Test not the expected number of p/z (effectively at origin)."""
+        sos = scp.signal.butter(3, 0.1, output='sos')
+        z, p, k = scp.signal.sos2zpk(sos)
+        return z, p, k
+
+    def test_fewer_zeros_2(self):
+        sos = signal.butter(12, [5., 30.], 'bandpass', fs=1200., analog=False,
+                            output='sos')
+        with pytest.warns(signal.BadCoefficients, match='Badly conditioned'):
+            z, p, k = signal.sos2zpk(sos)
+
+        assert len(z) == 24
+        assert len(p) == 24
+
+
+@testing.with_requires("scipy")
+class TestSos2Tf:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_basic(self, xp, scp):
+        sos = xp.array([[1, 1, 1, 1, 0, -1],
+                        [-2, 3, 1, 1, 10, 1]])
+        b, a = scp.signal.sos2tf(sos)
+        return b, a
+
+
+@testing.with_requires("scipy")
 class TestCplxReal:
     # _cplxreal is a private function, vendored from
     # scipy.signal._filter_design. This test class is also vendored.
