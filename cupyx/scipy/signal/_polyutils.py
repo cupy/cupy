@@ -5,7 +5,6 @@ Routines for manipulating partial fraction expansions.
 import cupy
 
 
-# FIXME: remove the clone from _filter_design.py (gh-7641)
 def roots(arr):
     """np.roots replacement. XXX: calls into NumPy, then converts back.
     """
