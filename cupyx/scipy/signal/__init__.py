@@ -76,6 +76,9 @@ from cupyx.scipy.signal._iir_filter_design import cheby1  # NOQA
 from cupyx.scipy.signal._iir_filter_design import cheby2  # NOQA
 from cupyx.scipy.signal._iir_filter_design import ellip  # NOQA
 from cupyx.scipy.signal._iir_filter_design import iirdesign  # NOQA
+from cupyx.scipy.signal._iir_filter_design import iircomb  # NOQA
+from cupyx.scipy.signal._iir_filter_design import iirnotch  # NOQA
+from cupyx.scipy.signal._iir_filter_design import iirpeak  # NOQA
 
 from cupyx.scipy.signal._fir_filter_design import firls  # NOQA
 from cupyx.scipy.signal._fir_filter_design import minimum_phase  # NOQA

@@ -93,6 +93,9 @@ Matlab-style IIR filter design
    cheb1ord
    cheby2
    cheb2ord
+   iircomb
+   iirnotch
+   iirpeak
 
 
 Low-level filter design functions
@@ -102,7 +105,6 @@ Low-level filter design functions
    :toctree: generated/
 
    abcd_normalize
-
 
 
 Chirp Z-transform and Zoom FFT
