@@ -1,10 +1,17 @@
+from typing import Any, Literal, Optional
+
 import numpy
 
 import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
+from cupy.typing._types import _ShapeLike, DTypeLike, NDArray
 
 
-def empty(shape, dtype=float, order='C'):
+def empty(
+        shape: _ShapeLike,
+        dtype: DTypeLike = float,
+        order: Literal['C', 'F'] = 'C',
+) -> NDArray[Any]:
     """Returns an array without initializing the elements.
 
     Args:
@@ -53,7 +60,13 @@ def _new_like_order_and_strides(
         return order, None, None
 
 
-def empty_like(a, dtype=None, order='K', subok=None, shape=None):
+def empty_like(
+        a: NDArray[Any],
+        dtype: DTypeLike = None,
+        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns a new array with same shape and dtype of a given array.
 
     This function currently does not support ``subok`` option.
@@ -88,7 +101,13 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
-def eye(N, M=None, k=0, dtype=float, order='C'):
+def eye(
+        N: int,
+        M: Optional[int] = None,
+        k: int = 0,
+        dtype: DTypeLike = float,
+        order: Literal['C', 'F'] = 'C',
+) -> NDArray[Any]:
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
     Args:
@@ -117,7 +136,7 @@ def eye(N, M=None, k=0, dtype=float, order='C'):
     return ret
 
 
-def identity(n, dtype=float):
+def identity(n: int, dtype: DTypeLike = float) -> NDArray[Any]:
     """Returns a 2-D identity array.
 
     It is equivalent to ``eye(n, n, dtype)``.
@@ -135,7 +154,11 @@ def identity(n, dtype=float):
     return eye(n, dtype=dtype)
 
 
-def ones(shape, dtype=float, order='C'):
+def ones(
+        shape: _ShapeLike,
+        dtype: DTypeLike = float,
+        order: Literal['C', 'F'] = 'C',
+) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with ones.
 
     This function currently does not support ``order`` option.
@@ -157,7 +180,13 @@ def ones(shape, dtype=float, order='C'):
     return a
 
 
-def ones_like(a, dtype=None, order='K', subok=None, shape=None):
+def ones_like(
+        a: NDArray[Any],
+        dtype: DTypeLike = None,
+        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns an array of ones with same shape and dtype as a given array.
 
     This function currently does not support ``subok`` option.
@@ -193,7 +222,11 @@ def ones_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def zeros(shape, dtype=float, order='C'):
+def zeros(
+        shape: _ShapeLike,
+        dtype: DTypeLike = float,
+        order: Literal['C', 'F'] = 'C',
+) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with zeros.
 
     Args:
@@ -213,7 +246,13 @@ def zeros(shape, dtype=float, order='C'):
     return a
 
 
-def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
+def zeros_like(
+        a: NDArray[Any],
+        dtype: DTypeLike = None,
+        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns an array of zeros with same shape and dtype as a given array.
 
     This function currently does not support ``subok`` option.
@@ -249,7 +288,12 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def full(shape, fill_value, dtype=None, order='C'):
+def full(
+        shape: _ShapeLike,
+        fill_value: Any,
+        dtype: DTypeLike = None,
+        order: Literal['C', 'F'] = 'C',
+) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
 
     This function currently does not support ``order`` option.
@@ -277,7 +321,14 @@ def full(shape, fill_value, dtype=None, order='C'):
     return a
 
 
-def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
+def full_like(
+        a: NDArray[Any],
+        fill_value: Any,
+        dtype: DTypeLike = None,
+        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns a full array with same shape and dtype as a given array.
 
     This function currently does not support ``subok`` option.
