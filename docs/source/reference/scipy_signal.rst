@@ -137,7 +137,7 @@ LTI representations
 
 
 Continuous-time linear systems
-----------------------------
+------------------------------
 
 .. autosummary::
    :toctree: generated/

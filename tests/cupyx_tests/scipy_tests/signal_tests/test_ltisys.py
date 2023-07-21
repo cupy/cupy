@@ -4,7 +4,6 @@ import cupyx.scipy.signal as signal
 
 from cupy import testing
 from pytest import raises as assert_raises
-import pytest
 
 
 def assert_equal(actual, desired):
@@ -227,7 +226,6 @@ class Test_bode:
         w, mag, phase = system.bode(w=xp.logspace(-3, 40, 100))
         return w, mag, phase
 
-    @pytest.mark.xfail(reason="subject to fp errors in findfreqs")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_from_state_space(self, xp, scp):
         # Ensure that bode works with a system that was created from the
@@ -288,7 +286,6 @@ class Test_freqresp:
         w, H = scp.signal.freqresp(system, n=2)
         return w, H
 
-    @pytest.mark.xfail(reason="subject to fp errors in findfreqs")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_from_state_space(self, xp, scp):
         # Ensure that freqresp works with a system that was created from the
