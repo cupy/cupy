@@ -1478,9 +1478,9 @@ cdef class _ndarray_base:
 
     @classmethod
     def __class_getitem__(cls, tuple item):
-        from cupy.typing._generic_alias import GenericAlias
+        from types import GenericAlias
         item1, item2 = item
-        return GenericAlias(cupy.ndarray, (item1, item2))
+        return GenericAlias(ndarray, (item1, item2))
 
     # TODO(okuta): Implement __array_wrap__
 
