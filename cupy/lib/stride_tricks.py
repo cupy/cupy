@@ -116,6 +116,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
     # first convert input to array, possibly keeping subclass
     x = _cupy.array(x, copy=False, subok=subok)
 
+    window_shape_array = _cupy.array(window_shape)
     for dim in window_shape_array:
         if dim < 0:
             raise ValueError('`window_shape` cannot contain negative values')
