@@ -1,5 +1,5 @@
 /*
-* Copyright 1993-2022 NVIDIA Corporation.  All rights reserved.
+* Copyright 1993-2023 NVIDIA Corporation.  All rights reserved.
 *
 * NOTICE TO LICENSEE:
 *
@@ -93,7 +93,6 @@
 #if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #define __CUDA_FP16_DECL__ static __device__ __inline__
 #define __CUDA_HOSTDEVICE_FP16_DECL__ static __host__ __device__ __inline__
-#define __VECTOR_FUNCTIONS_DECL__ static __inline__ __host__ __device__
 #define __CUDA_HOSTDEVICE__ __host__ __device__
 #else /* !defined(__CUDACC__) */
 #if defined(__GNUC__)
@@ -154,17 +153,43 @@
    return val; \
 } /* while(0) */
 
+// define __CUDA_FP16_CONSTEXPR__ in order to
+// use constexpr where possible, with supporting C++ dialects
+// undef after use
+#if (defined __CPP_VERSION_AT_LEAST_11_FP16)
+#define __CUDA_FP16_CONSTEXPR__   constexpr
+#else
+#define __CUDA_FP16_CONSTEXPR__
+#endif
+
 /**
-* Types which allow static initialization of "half" and "half2" until
-* these become an actual builtin. Note this initialization is as a
-* bitfield representation of "half", and not a conversion from short->half.
-* Such a representation will be deprecated in a future version of CUDA. 
-* (Note these are visible to non-nvcc compilers, including C-only compilation)
-*/
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief __half_raw data type
+ * \details Type allows static initialization of \p half until it becomes
+ * a builtin type.
+ * 
+ * - Note: this initialization is as a bit-field representation of \p half,
+ * and not a conversion from \p short to \p half.
+ * Such representation will be deprecated in a future version of CUDA.
+ * 
+ * - Note: this is visible to non-nvcc compilers, including C-only compilations
+ */
 typedef struct __CUDA_ALIGN__(2) {
     unsigned short x;
 } __half_raw;
 
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief __half2_raw data type
+ * \details Type allows static initialization of \p half2 until it becomes
+ * a builtin type.
+ * 
+ * - Note: this initialization is as a bit-field representation of \p half2,
+ * and not a conversion from \p short2 to \p half2.
+ * Such representation will be deprecated in a future version of CUDA.
+ * 
+ * - Note: this is visible to non-nvcc compilers, including C-only compilations
+ */
 typedef struct __CUDA_ALIGN__(4) {
     unsigned short x;
     unsigned short y;
@@ -189,11 +214,72 @@ typedef struct __CUDA_ALIGN__(4) {
 #pragma warning( disable:4522 )
 #endif /* defined(__GNUC__) */
 
+// forward-declaration of bfloat type to be used in converting constructor
+struct __nv_bfloat16;
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines floating-point positive infinity value for the \p half data type
+ */
+#define CUDART_INF_FP16            __ushort_as_half((unsigned short)0x7C00U)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines canonical NaN value for the \p half data type
+ */
+#define CUDART_NAN_FP16            __ushort_as_half((unsigned short)0x7FFFU)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines a minimum representable (denormalized) value for the \p half data type
+ */
+#define CUDART_MIN_DENORM_FP16     __ushort_as_half((unsigned short)0x0001U)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines a maximum representable value for the \p half data type
+ */
+#define CUDART_MAX_NORMAL_FP16     __ushort_as_half((unsigned short)0x7BFFU)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines a negative zero value for the \p half data type
+ */
+#define CUDART_NEG_ZERO_FP16       __ushort_as_half((unsigned short)0x8000U)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines a positive zero value for the \p half data type
+ */
+#define CUDART_ZERO_FP16           __ushort_as_half((unsigned short)0x0000U)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS
+ * \brief Defines a value of 1.0 for the \p half data type
+ */
+#define CUDART_ONE_FP16            __ushort_as_half((unsigned short)0x3C00U)
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief __half data type
+ * \details This structure implements the datatype for storing 
+ * half-precision floating-point numbers. The structure implements 
+ * assignment, arithmetic and comparison operators, and type conversions. 
+ * 16 bits are being used in total: 1 sign bit, 5 bits for the exponent, 
+ * and the significand is being stored in 10 bits. 
+ * The total precision is 11 bits. There are 15361 representable 
+ * numbers within the interval [0.0, 1.0], endpoints included. 
+ * On average we have log10(2**11) ~ 3.311 decimal digits. 
+ * 
+ * The objective here is to provide IEEE754-compliant implementation
+ * of \p binary16 type and arithmetic with limitations due to
+ * device HW not supporting floating-point exceptions.
+ */
 struct __CUDA_ALIGN__(2) __half {
 protected:
+    /**
+     * Protected storage variable contains the bits of floating-point data.
+     */
     unsigned short __x;
 
 public:
+    /**
+     * Constructor by default.
+     */
 #if defined(__CPP_VERSION_AT_LEAST_11_FP16)
     __half() = default;
 #else
@@ -201,82 +287,379 @@ public:
 #endif /* defined(__CPP_VERSION_AT_LEAST_11_FP16) */
 
     /* Convert to/from __half_raw */
-    __CUDA_HOSTDEVICE__ __half(const __half_raw &hr) : __x(hr.x) { }
+    /**
+     * Constructor from \p __half_raw.
+     */
+    __CUDA_HOSTDEVICE__ __CUDA_FP16_CONSTEXPR__ __half(const __half_raw &hr) : __x(hr.x) { }
+    /**
+     * Assignment operator from \p __half_raw.
+     */
     __CUDA_HOSTDEVICE__ __half &operator=(const __half_raw &hr) { __x = hr.x; return *this; }
+    /**
+     * Assignment operator from \p __half_raw to \p volatile \p __half.
+     */
     __CUDA_HOSTDEVICE__ volatile __half &operator=(const __half_raw &hr) volatile { __x = hr.x; return *this; }
+    /**
+     * Assignment operator from \p volatile \p __half_raw to \p volatile \p __half.
+     */
     __CUDA_HOSTDEVICE__ volatile __half &operator=(const volatile __half_raw &hr) volatile { __x = hr.x; return *this; }
+    /**
+     * Type cast to \p __half_raw operator.
+     */
     __CUDA_HOSTDEVICE__ operator __half_raw() const { __half_raw ret; ret.x = __x; return ret; }
+    /**
+     * Type cast to \p __half_raw operator with \p volatile input.
+     */
     __CUDA_HOSTDEVICE__ operator __half_raw() const volatile { __half_raw ret; ret.x = __x; return ret; }
 
 #if !defined(__CUDA_NO_HALF_CONVERSIONS__)
+#if defined(__CPP_VERSION_AT_LEAST_11_FP16)
+    /**
+     * Construct \p __half from \p __nv_bfloat16 input using default round-to-nearest-even rounding mode.
+     * Need to include the header file \p cuda_bf16.h
+     */
+    explicit __CUDA_HOSTDEVICE__ __half(const __nv_bfloat16 f); //forward declaration only, implemented in cuda_bf16.hpp
+#endif /* #if defined(__CPP_VERSION_AT_LEAST_11_FP16) */
 
     /* Construct from float/double */
+    /**
+     * Construct \p __half from \p float input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const float f) { __x = __float2half(f).__x;  }
+    /**
+     * Construct \p __half from \p double input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const double f) { __x = __double2half(f).__x;  }
 
+    /**
+     * Type cast to \p float operator.
+     */
     __CUDA_HOSTDEVICE__ operator float() const { return __half2float(*this); }
+    /**
+     * Type cast to \p __half assignment operator from \p float input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half &operator=(const float f) { __x = __float2half(f).__x; return *this; }
 
     /* We omit "cast to double" operator, so as to not be ambiguous about up-cast */
+    /**
+     * Type cast to \p __half assignment operator from \p double input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half &operator=(const double f) { __x = __double2half(f).__x; return *this; }
 
-/* Member functions only available to nvcc compilation so far */
-#if defined(__CUDACC__)
+/*
+ * Implicit type conversions to/from integer types were only available to nvcc compilation.
+ * Introducing them for all compilers is a potentially breaking change that may affect
+ * overloads resolution and will require users to update their code.
+ * Define __CUDA_FP16_DISABLE_IMPLICIT_INTEGER_CONVERTS_FOR_HOST_COMPILERS__ to opt-out.
+ */
+#if !(defined __CUDA_FP16_DISABLE_IMPLICIT_INTEGER_CONVERTS_FOR_HOST_COMPILERS__) || (defined __CUDACC__)
     /* Allow automatic construction from types supported natively in hardware */
     /* Note we do avoid constructor init-list because of special host/device compilation rules */
+
+    /**
+     * Construct \p __half from \p short integer input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const short val) { __x = __short2half_rn(val).__x;  }
+    /**
+     * Construct \p __half from \p unsigned \p short integer input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const unsigned short val) { __x = __ushort2half_rn(val).__x;  }
+    /**
+     * Construct \p __half from \p int input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const int val) { __x = __int2half_rn(val).__x;  }
+    /**
+     * Construct \p __half from \p unsigned \p int input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const unsigned int val) { __x = __uint2half_rn(val).__x;  }
+
+
+    /**
+     * Construct \p __half from \p long input using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half(const long val) {
+
+        /* Suppress VS warning: warning C4127: conditional expression is constant */
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (disable: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        if (sizeof(long) == sizeof(long long))
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (default: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+
+        {
+            __x = __ll2half_rn(static_cast<long long>(val)).__x;
+        } else {
+            __x = __int2half_rn(static_cast<int>(val)).__x;
+        }
+    }
+
+    /**
+     * Construct \p __half from \p unsigned \p long input using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half(const unsigned long val) {
+
+        /* Suppress VS warning: warning C4127: conditional expression is constant */
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (disable: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        if (sizeof(unsigned long) == sizeof(unsigned long long))
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (default: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+
+        {
+            __x = __ull2half_rn(static_cast<unsigned long long>(val)).__x;
+        } else {
+            __x = __uint2half_rn(static_cast<unsigned int>(val)).__x;
+        }
+    }
+
+    /**
+     * Construct \p __half from \p long \p long input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const long long val) { __x = __ll2half_rn(val).__x;  }
+    /**
+     * Construct \p __half from \p unsigned \p long \p long input using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half(const unsigned long long val) { __x = __ull2half_rn(val).__x; }
 
     /* Allow automatic casts to supported builtin types, matching all that are permitted with float */
+
+    /**
+     * Conversion operator to \p signed \p char data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2char_rz(__half) for further details
+     */
+    __CUDA_HOSTDEVICE__ operator signed char() const { return __half2char_rz(*this); }
+    /**
+     * Conversion operator to \p unsigned \p char data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2uchar_rz(__half) for further details
+     */
+    __CUDA_HOSTDEVICE__ operator unsigned char() const { return __half2uchar_rz(*this); }
+    /**
+     * Conversion operator to an implementation defined \p char data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * Detects signedness of the \p char type and proceeds accordingly, see
+     * further details in signed and unsigned char operators.
+     */
+    __CUDA_HOSTDEVICE__ operator char() const {
+        char value;
+        /* Suppress VS warning: warning C4127: conditional expression is constant */
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (disable: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        if (((char)-1) < (char)0)
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (default: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        {
+            value = static_cast<char>(__half2char_rz(*this));
+        }
+        else
+        {
+            value = static_cast<char>(__half2uchar_rz(*this));
+        }
+        return value;
+    }
+    /**
+     * Conversion operator to \p short data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2short_rz(__half) for further details
+     */
     __CUDA_HOSTDEVICE__ operator short() const { return __half2short_rz(*this); }
-    __CUDA_HOSTDEVICE__ __half &operator=(const short val) { __x = __short2half_rn(val).__x; return *this; }
-
+    /**
+     * Conversion operator to \p unsigned \p short data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2ushort_rz(__half) for further details
+     */
     __CUDA_HOSTDEVICE__ operator unsigned short() const { return __half2ushort_rz(*this); }
-    __CUDA_HOSTDEVICE__ __half &operator=(const unsigned short val) { __x = __ushort2half_rn(val).__x; return *this; }
-
+    /**
+     * Conversion operator to \p int data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2int_rz(__half) for further details
+     */
     __CUDA_HOSTDEVICE__ operator int() const { return __half2int_rz(*this); }
-    __CUDA_HOSTDEVICE__ __half &operator=(const int val) { __x = __int2half_rn(val).__x; return *this; }
-
+    /**
+     * Conversion operator to \p unsigned \p int data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2uint_rz(__half) for further details
+     */
     __CUDA_HOSTDEVICE__ operator unsigned int() const { return __half2uint_rz(*this); }
-    __CUDA_HOSTDEVICE__ __half &operator=(const unsigned int val) { __x = __uint2half_rn(val).__x; return *this; }
 
+
+    /**
+     * Conversion operator to \p long data type.
+     * Using round-toward-zero rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ operator long() const {
+        long retval;
+        /* Suppress VS warning: warning C4127: conditional expression is constant */
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (disable: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        if (sizeof(long) == sizeof(long long))
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (default: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        {
+            retval = static_cast<long>(__half2ll_rz(*this));
+        }
+        else
+        {
+            retval = static_cast<long>(__half2int_rz(*this));
+        }
+        return retval;
+    }
+
+    /**
+     * Conversion operator to \p unsigned \p long data type.
+     * Using round-toward-zero rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ operator unsigned long() const {
+        unsigned long retval;
+        /* Suppress VS warning: warning C4127: conditional expression is constant */
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (disable: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        if (sizeof(unsigned long) == sizeof(unsigned long long))
+#if defined(_MSC_VER) && !defined(__CUDA_ARCH__)
+#pragma warning (default: 4127)
+#endif /* _MSC_VER && !defined(__CUDA_ARCH__) */
+        {
+            retval = static_cast<unsigned long>(__half2ull_rz(*this));
+        }
+        else
+        {
+            retval = static_cast<unsigned long>(__half2uint_rz(*this));
+        }
+        return retval;
+    }
+
+    /**
+     * Conversion operator to \p long \p long data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2ll_rz(__half) for further details
+     */
     __CUDA_HOSTDEVICE__ operator long long() const { return __half2ll_rz(*this); }
-    __CUDA_HOSTDEVICE__ __half &operator=(const long long val) { __x = __ll2half_rn(val).__x; return *this; }
-
+    /**
+     * Conversion operator to \p unsigned \p long \p long data type.
+     * Using round-toward-zero rounding mode.
+     * 
+     * See __half2ull_rz(__half) for further details
+     */
     __CUDA_HOSTDEVICE__ operator unsigned long long() const { return __half2ull_rz(*this); }
+
+    /**
+     * Type cast from \p short assignment operator, using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half &operator=(const short val) { __x = __short2half_rn(val).__x; return *this; }
+    /**
+     * Type cast from \p unsigned \p short assignment operator, using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half &operator=(const unsigned short val) { __x = __ushort2half_rn(val).__x; return *this; }
+    /**
+     * Type cast from \p int assignment operator, using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half &operator=(const int val) { __x = __int2half_rn(val).__x; return *this; }
+    /**
+     * Type cast from \p unsigned \p int assignment operator, using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half &operator=(const unsigned int val) { __x = __uint2half_rn(val).__x; return *this; }
+    /**
+     * Type cast from \p long \p long assignment operator, using default round-to-nearest-even rounding mode.
+     */
+    __CUDA_HOSTDEVICE__ __half &operator=(const long long val) { __x = __ll2half_rn(val).__x; return *this; }
+    /**
+     * Type cast from \p unsigned \p long \p long assignment operator, using default round-to-nearest-even rounding mode.
+     */
     __CUDA_HOSTDEVICE__ __half &operator=(const unsigned long long val) { __x = __ull2half_rn(val).__x; return *this; }
 
-    /* Boolean conversion - note both 0 and -0 must return false */
-    __CUDA_HOSTDEVICE__ operator bool() const { return (__x & 0x7FFFU) != 0U; }
-#endif /* defined(__CUDACC__) */
+    /**
+     * Conversion operator to \p bool data type.
+     * +0 and -0 inputs convert to \p false.
+     * Non-zero inputs convert to \p true.
+     */
+    __CUDA_HOSTDEVICE__ __CUDA_FP16_CONSTEXPR__ operator bool() const { return (__x & 0x7FFFU) != 0U; }
+#endif /* !(defined __CUDA_FP16_DISABLE_IMPLICIT_INTEGER_CONVERTS_FOR_HOST_COMPILERS__) || (defined __CUDACC__) */
 #endif /* !defined(__CUDA_NO_HALF_CONVERSIONS__) */
 };
 
-/* Global-space operator functions are only available to nvcc compilation */
-#if defined(__CUDACC__)
-
-/* Arithmetic FP16 operations only supported on arch >= 5.3 */
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA)
 #if !defined(__CUDA_NO_HALF_OPERATORS__)
 /* Some basic arithmetic operations expected of a builtin */
-__device__ __forceinline__ __half operator+(const __half &lh, const __half &rh) { return __hadd(lh, rh); }
-__device__ __forceinline__ __half operator-(const __half &lh, const __half &rh) { return __hsub(lh, rh); }
-__device__ __forceinline__ __half operator*(const __half &lh, const __half &rh) { return __hmul(lh, rh); }
-__device__ __forceinline__ __half operator/(const __half &lh, const __half &rh) { return __hdiv(lh, rh); }
 
-__device__ __forceinline__ __half &operator+=(__half &lh, const __half &rh) { lh = __hadd(lh, rh); return lh; }
-__device__ __forceinline__ __half &operator-=(__half &lh, const __half &rh) { lh = __hsub(lh, rh); return lh; }
-__device__ __forceinline__ __half &operator*=(__half &lh, const __half &rh) { lh = __hmul(lh, rh); return lh; }
-__device__ __forceinline__ __half &operator/=(__half &lh, const __half &rh) { lh = __hdiv(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half addition operation.
+ * See also __hadd(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half operator+(const __half &lh, const __half &rh) { return __hadd(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half subtraction operation.
+ * See also __hsub(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half operator-(const __half &lh, const __half &rh) { return __hsub(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half multiplication operation.
+ * See also __hmul(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half operator*(const __half &lh, const __half &rh) { return __hmul(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half division operation.
+ * See also __hdiv(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half operator/(const __half &lh, const __half &rh) { return __hdiv(lh, rh); }
+
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half compound assignment with addition operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half &operator+=(__half &lh, const __half &rh) { lh = __hadd(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half compound assignment with subtraction operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half &operator-=(__half &lh, const __half &rh) { lh = __hsub(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half compound assignment with multiplication operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half &operator*=(__half &lh, const __half &rh) { lh = __hmul(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half compound assignment with division operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half &operator/=(__half &lh, const __half &rh) { lh = __hdiv(lh, rh); return lh; }
 
 /* Note for increment and decrement we use the raw value 0x3C00U equating to half(1.0F), to avoid the extra conversion */
-__device__ __forceinline__ __half &operator++(__half &h)      { __half_raw one; one.x = 0x3C00U; h += one; return h; }
-__device__ __forceinline__ __half &operator--(__half &h)      { __half_raw one; one.x = 0x3C00U; h -= one; return h; }
-__device__ __forceinline__ __half  operator++(__half &h, const int ignored)
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half prefix increment operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half &operator++(__half &h)      { __half_raw one; one.x = 0x3C00U; h += one; return h; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half prefix decrement operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half &operator--(__half &h)      { __half_raw one; one.x = 0x3C00U; h -= one; return h; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half postfix increment operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half  operator++(__half &h, const int ignored)
 {
     // ignored on purpose. Parameter only needed to distinguish the function declaration from other types of operators.
     static_cast<void>(ignored);
@@ -287,7 +670,11 @@ __device__ __forceinline__ __half  operator++(__half &h, const int ignored)
     h += one;
     return ret;
 }
-__device__ __forceinline__ __half  operator--(__half &h, const int ignored)
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Performs \p half postfix decrement operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half  operator--(__half &h, const int ignored)
 {
     // ignored on purpose. Parameter only needed to distinguish the function declaration from other types of operators.
     static_cast<void>(ignored);
@@ -300,63 +687,184 @@ __device__ __forceinline__ __half  operator--(__half &h, const int ignored)
 }
 
 /* Unary plus and inverse operators */
-__device__ __forceinline__ __half operator+(const __half &h) { return h; }
-__device__ __forceinline__ __half operator-(const __half &h) { return __hneg(h); }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Implements \p half unary plus operator, returns input value.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half operator+(const __half &h) { return h; }
+/**
+ * \ingroup CUDA_MATH__HALF_ARITHMETIC
+ * Implements \p half unary minus operator.
+ * See also __hneg(__half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half operator-(const __half &h) { return __hneg(h); }
 
 /* Some basic comparison operations to make it look like a builtin */
-__device__ __forceinline__ bool operator==(const __half &lh, const __half &rh) { return __heq(lh, rh); }
-__device__ __forceinline__ bool operator!=(const __half &lh, const __half &rh) { return __hneu(lh, rh); }
-__device__ __forceinline__ bool operator> (const __half &lh, const __half &rh) { return __hgt(lh, rh); }
-__device__ __forceinline__ bool operator< (const __half &lh, const __half &rh) { return __hlt(lh, rh); }
-__device__ __forceinline__ bool operator>=(const __half &lh, const __half &rh) { return __hge(lh, rh); }
-__device__ __forceinline__ bool operator<=(const __half &lh, const __half &rh) { return __hle(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_COMPARISON
+ * Performs \p half ordered compare equal operation.
+ * See also __heq(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator==(const __half &lh, const __half &rh) { return __heq(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_COMPARISON
+ * Performs \p half unordered compare not-equal operation.
+ * See also __hneu(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator!=(const __half &lh, const __half &rh) { return __hneu(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_COMPARISON
+ * Performs \p half ordered greater-than compare operation.
+ * See also __hgt(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator> (const __half &lh, const __half &rh) { return __hgt(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_COMPARISON
+ * Performs \p half ordered less-than compare operation.
+ * See also __hlt(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator< (const __half &lh, const __half &rh) { return __hlt(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_COMPARISON
+ * Performs \p half ordered greater-or-equal compare operation.
+ * See also __hge(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator>=(const __half &lh, const __half &rh) { return __hge(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF_COMPARISON
+ * Performs \p half ordered less-or-equal compare operation.
+ * See also __hle(__half, __half)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator<=(const __half &lh, const __half &rh) { return __hle(lh, rh); }
 #endif /* !defined(__CUDA_NO_HALF_OPERATORS__) */
-#endif /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA) */
-#endif /* defined(__CUDACC__) */
 
-/* __half2 is visible to non-nvcc host compilers */
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief __half2 data type
+ * \details This structure implements the datatype for storing two 
+ * half-precision floating-point numbers. 
+ * The structure implements assignment, arithmetic and comparison
+ * operators, and type conversions. 
+ * 
+ * - NOTE: __half2 is visible to non-nvcc host compilers
+ */
 struct __CUDA_ALIGN__(4) __half2 {
+    /**
+     * Storage field holding lower \p __half part.
+     */
     __half x;
+    /**
+     * Storage field holding upper \p __half part.
+     */
     __half y;
 
     // All construct/copy/assign/move
 public:
+    /**
+     * Constructor by default.
+     */
 #if defined(__CPP_VERSION_AT_LEAST_11_FP16)
     __half2() = default;
+    /**
+     * Move constructor, available for \p C++11 and later dialects
+     */
     __CUDA_HOSTDEVICE__ __half2(const __half2 &&src) { __HALF2_TO_UI(*this) = std::move(__HALF2_TO_CUI(src)); }
+    /**
+     * Move assignment operator, available for \p C++11 and later dialects
+     */
     __CUDA_HOSTDEVICE__ __half2 &operator=(const __half2 &&src) { __HALF2_TO_UI(*this) = std::move(__HALF2_TO_CUI(src)); return *this; }
 #else
     __CUDA_HOSTDEVICE__ __half2() { }
 #endif /* defined(__CPP_VERSION_AT_LEAST_11_FP16) */
-    __CUDA_HOSTDEVICE__ __half2(const __half &a, const __half &b) : x(a), y(b) { }
+
+    /**
+     * Constructor from two \p __half variables
+     */
+    __CUDA_HOSTDEVICE__ __CUDA_FP16_CONSTEXPR__ __half2(const __half &a, const __half &b) : x(a), y(b) { }
+    /**
+     * Copy constructor
+     */
     __CUDA_HOSTDEVICE__ __half2(const __half2 &src) { __HALF2_TO_UI(*this) = __HALF2_TO_CUI(src); }
+    /**
+     * Copy assignment operator
+     */
     __CUDA_HOSTDEVICE__ __half2 &operator=(const __half2 &src) { __HALF2_TO_UI(*this) = __HALF2_TO_CUI(src); return *this; }
 
     /* Convert to/from __half2_raw */
+    /**
+     * Constructor from \p __half2_raw
+     */
     __CUDA_HOSTDEVICE__ __half2(const __half2_raw &h2r ) { __HALF2_TO_UI(*this) = __HALF2_TO_CUI(h2r); }
+    /**
+     * Assignment operator from \p __half2_raw
+     */
     __CUDA_HOSTDEVICE__ __half2 &operator=(const __half2_raw &h2r) { __HALF2_TO_UI(*this) = __HALF2_TO_CUI(h2r); return *this; }
+    /**
+     * Conversion operator to \p __half2_raw
+     */
     __CUDA_HOSTDEVICE__ operator __half2_raw() const { __half2_raw ret; ret.x = 0U; ret.y = 0U; __HALF2_TO_UI(ret) = __HALF2_TO_CUI(*this); return ret; }
 };
 
-/* Global-space operator functions are only available to nvcc compilation */
-#if defined(__CUDACC__)
-
-/* Arithmetic FP16x2 operations only supported on arch >= 5.3 */
-#if (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA)) && !defined(__CUDA_NO_HALF2_OPERATORS__)
-
-__device__ __forceinline__ __half2 operator+(const __half2 &lh, const __half2 &rh) { return __hadd2(lh, rh); }
-__device__ __forceinline__ __half2 operator-(const __half2 &lh, const __half2 &rh) { return __hsub2(lh, rh); }
-__device__ __forceinline__ __half2 operator*(const __half2 &lh, const __half2 &rh) { return __hmul2(lh, rh); }
-__device__ __forceinline__ __half2 operator/(const __half2 &lh, const __half2 &rh) { return __h2div(lh, rh); }
-
-__device__ __forceinline__ __half2& operator+=(__half2 &lh, const __half2 &rh) { lh = __hadd2(lh, rh); return lh; }
-__device__ __forceinline__ __half2& operator-=(__half2 &lh, const __half2 &rh) { lh = __hsub2(lh, rh); return lh; }
-__device__ __forceinline__ __half2& operator*=(__half2 &lh, const __half2 &rh) { lh = __hmul2(lh, rh); return lh; }
-__device__ __forceinline__ __half2& operator/=(__half2 &lh, const __half2 &rh) { lh = __h2div(lh, rh); return lh; }
-
-__device__ __forceinline__ __half2 &operator++(__half2 &h)      { __half2_raw one; one.x = 0x3C00U; one.y = 0x3C00U; h = __hadd2(h, one); return h; }
-__device__ __forceinline__ __half2 &operator--(__half2 &h)      { __half2_raw one; one.x = 0x3C00U; one.y = 0x3C00U; h = __hsub2(h, one); return h; }
-__device__ __forceinline__ __half2  operator++(__half2 &h, const int ignored)
+#if !defined(__CUDA_NO_HALF2_OPERATORS__)
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half addition operation.
+ * See also __hadd2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 operator+(const __half2 &lh, const __half2 &rh) { return __hadd2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half subtraction operation.
+ * See also __hsub2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 operator-(const __half2 &lh, const __half2 &rh) { return __hsub2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half multiplication operation.
+ * See also __hmul2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 operator*(const __half2 &lh, const __half2 &rh) { return __hmul2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half division operation.
+ * See also __h2div(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 operator/(const __half2 &lh, const __half2 &rh) { return __h2div(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half compound assignment with addition operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2& operator+=(__half2 &lh, const __half2 &rh) { lh = __hadd2(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half compound assignment with subtraction operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2& operator-=(__half2 &lh, const __half2 &rh) { lh = __hsub2(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half compound assignment with multiplication operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2& operator*=(__half2 &lh, const __half2 &rh) { lh = __hmul2(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half compound assignment with division operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2& operator/=(__half2 &lh, const __half2 &rh) { lh = __h2div(lh, rh); return lh; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half prefix increment operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 &operator++(__half2 &h)      { __half2_raw one; one.x = 0x3C00U; one.y = 0x3C00U; h = __hadd2(h, one); return h; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half prefix decrement operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 &operator--(__half2 &h)      { __half2_raw one; one.x = 0x3C00U; one.y = 0x3C00U; h = __hsub2(h, one); return h; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half postfix increment operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2  operator++(__half2 &h, const int ignored)
 {
     // ignored on purpose. Parameter only needed to distinguish the function declaration from other types of operators.
     static_cast<void>(ignored);
@@ -368,7 +876,11 @@ __device__ __forceinline__ __half2  operator++(__half2 &h, const int ignored)
     h = __hadd2(h, one);
     return ret;
 }
-__device__ __forceinline__ __half2  operator--(__half2 &h, const int ignored)
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Performs packed \p half postfix decrement operation.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2  operator--(__half2 &h, const int ignored)
 {
     // ignored on purpose. Parameter only needed to distinguish the function declaration from other types of operators.
     static_cast<void>(ignored);
@@ -380,19 +892,55 @@ __device__ __forceinline__ __half2  operator--(__half2 &h, const int ignored)
     h = __hsub2(h, one);
     return ret;
 }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Implements packed \p half unary plus operator, returns input value.
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 operator+(const __half2 &h) { return h; }
+/**
+ * \ingroup CUDA_MATH__HALF2_ARITHMETIC
+ * Implements packed \p half unary minus operator.
+ * See also __hneg2(__half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ __half2 operator-(const __half2 &h) { return __hneg2(h); }
+/**
+ * \ingroup CUDA_MATH__HALF2_COMPARISON
+ * Performs packed \p half ordered compare equal operation.
+ * See also __hbeq2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator==(const __half2 &lh, const __half2 &rh) { return __hbeq2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_COMPARISON
+ * Performs packed \p half unordered compare not-equal operation.
+ * See also __hbneu2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator!=(const __half2 &lh, const __half2 &rh) { return __hbneu2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_COMPARISON
+ * Performs packed \p half ordered greater-than compare operation.
+ * See also __hbgt2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator>(const __half2 &lh, const __half2 &rh) { return __hbgt2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_COMPARISON
+ * Performs packed \p half ordered less-than compare operation.
+ * See also __hblt2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator<(const __half2 &lh, const __half2 &rh) { return __hblt2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_COMPARISON
+ * Performs packed \p half ordered greater-or-equal compare operation.
+ * See also __hbge2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator>=(const __half2 &lh, const __half2 &rh) { return __hbge2(lh, rh); }
+/**
+ * \ingroup CUDA_MATH__HALF2_COMPARISON
+ * Performs packed \p half ordered less-or-equal compare operation.
+ * See also __hble2(__half2, __half2)
+ */
+__CUDA_HOSTDEVICE__ __forceinline__ bool operator<=(const __half2 &lh, const __half2 &rh) { return __hble2(lh, rh); }
 
-__device__ __forceinline__ __half2 operator+(const __half2 &h) { return h; }
-__device__ __forceinline__ __half2 operator-(const __half2 &h) { return __hneg2(h); }
-
-__device__ __forceinline__ bool operator==(const __half2 &lh, const __half2 &rh) { return __hbeq2(lh, rh); }
-__device__ __forceinline__ bool operator!=(const __half2 &lh, const __half2 &rh) { return __hbneu2(lh, rh); }
-__device__ __forceinline__ bool operator>(const __half2 &lh, const __half2 &rh) { return __hbgt2(lh, rh); }
-__device__ __forceinline__ bool operator<(const __half2 &lh, const __half2 &rh) { return __hblt2(lh, rh); }
-__device__ __forceinline__ bool operator>=(const __half2 &lh, const __half2 &rh) { return __hbge2(lh, rh); }
-__device__ __forceinline__ bool operator<=(const __half2 &lh, const __half2 &rh) { return __hble2(lh, rh); }
-
-#endif /* (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA)) && !defined(__CUDA_NO_HALF2_OPERATORS__) */
-#endif /* defined(__CUDACC__) */
+#endif /* !defined(__CUDA_NO_HALF2_OPERATORS__) */
 
 /* Restore warning for multiple assignment operators */
 #if defined(_MSC_VER) && _MSC_VER >= 1500
@@ -589,7 +1137,6 @@ IF_DEVICE_OR_CUDACC(
     return result;
 )
 }
-
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __float2half(const float a)
 {
     __half val;
@@ -685,8 +1232,7 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     return val;
 }
 
-#if defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA)
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half2 __internal_device_float2_to_half2_rn(const float a, const float b) {
     __half2 val;
 NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
@@ -701,13 +1247,13 @@ NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     return val;
 }
 
-#endif
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 
 __CUDA_HOSTDEVICE_FP16_DECL__ __half2 __floats2half2_rn(const float a, const float b)
 {
     __half2 val;
 NV_IF_ELSE_TARGET(NV_IS_DEVICE,
-   val = __internal_device_float2_to_half2_rn(a,b);
+    val = __internal_device_float2_to_half2_rn(a,b);
 ,
     val = __half2(__float2half_rn(a), __float2half_rn(b));
 )
@@ -784,6 +1330,68 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return val;
 }
+
+__CUDA_HOSTDEVICE_FP16_DECL__ signed char __half2char_rz(const __half h)
+{
+    signed char i;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned int tmp;
+    asm("cvt.rzi.s8.f16 %0, %1;" : "=r"(tmp) : "h"(__HALF_TO_CUS(h)));
+    const unsigned char u = static_cast<unsigned char>(tmp);
+    i = static_cast<signed char>(u);
+,
+    const float f = __half2float(h);
+    const signed char max_val = (signed char)0x7fU;
+    const signed char min_val = (signed char)0x80U;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<signed char>(f);
+    }
+)
+    return i;
+}
+
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned char __half2uchar_rz(const __half h)
+{
+    unsigned char i;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned int tmp;
+    asm("cvt.rzi.u8.f16 %0, %1;" : "=r"(tmp) : "h"(__HALF_TO_CUS(h)));
+    i = static_cast<unsigned char>(tmp);
+,
+    const float f = __half2float(h);
+    const unsigned char max_val = 0xffU;
+    const unsigned char min_val = 0U;
+    const unsigned short bits = static_cast<unsigned short>(static_cast<__half_raw>(h).x << 1U);
+    // saturation fixup
+    if (bits > (unsigned short)0xF800U) {
+        // NaN
+        i = 0U;
+    } else if (f > static_cast<float>(max_val)) {
+        // saturate maximum
+        i = max_val;
+    } else if (f < static_cast<float>(min_val)) {
+        // saturate minimum
+        i = min_val;
+    } else {
+        // normal value, conversion is well-defined
+        i = static_cast<unsigned char>(f);
+    }
+)
+    return i;
+}
+
 __CUDA_HOSTDEVICE_FP16_DECL__ short int __half2short_rz(const __half h)
 {
     short int i;
@@ -946,16 +1554,11 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return i;
 }
-
-/* Intrinsic functions only available to nvcc compilers */
-#if defined(__CUDACC__)
-
 /* CUDA vector-types compatible vector creation function (note returns __half2, not half2) */
-__VECTOR_FUNCTIONS_DECL__ __half2 make_half2(const __half x, const __half y)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 make_half2(const __half x, const __half y)
 {
     __half2 t; t.x = x; t.y = y; return t;
 }
-#undef __VECTOR_FUNCTIONS_DECL__
 
 
 /* Definitions of intrinsics */
@@ -982,6 +1585,7 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return make_float2(lo_float, hi_float);
 }
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ int __half2int_rn(const __half h)
 {
     int i;
@@ -1000,6 +1604,7 @@ __CUDA_FP16_DECL__ int __half2int_ru(const __half h)
     asm("cvt.rpi.s32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rn(const int i)
 {
     __half h;
@@ -1015,25 +1620,40 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return h;
 }
-__CUDA_FP16_DECL__ __half __int2half_rz(const int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rz(const int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rz.f16.s32 %0, %1;" : "=h"(__HALF_TO_US(h)) : "r"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rz(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __int2half_rd(const int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rd(const int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rm.f16.s32 %0, %1;" : "=h"(__HALF_TO_US(h)) : "r"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rd(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __int2half_ru(const int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_ru(const int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rp.f16.s32 %0, %1;" : "=h"(__HALF_TO_US(h)) : "r"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_ru(f);
+)
     return h;
 }
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ short int __half2short_rn(const __half h)
 {
     short int i;
@@ -1052,6 +1672,7 @@ __CUDA_FP16_DECL__ short int __half2short_ru(const __half h)
     asm("cvt.rpi.s16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rn(const short int i)
 {
     __half h;
@@ -1063,25 +1684,40 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return h;
 }
-__CUDA_FP16_DECL__ __half __short2half_rz(const short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rz(const short int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rz.f16.s16 %0, %1;" : "=h"(__HALF_TO_US(h)) : "h"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rz(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __short2half_rd(const short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rd(const short int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rm.f16.s16 %0, %1;" : "=h"(__HALF_TO_US(h)) : "h"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rd(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __short2half_ru(const short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_ru(const short int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rp.f16.s16 %0, %1;" : "=h"(__HALF_TO_US(h)) : "h"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_ru(f);
+)
     return h;
 }
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ unsigned int __half2uint_rn(const __half h)
 {
     unsigned int i;
@@ -1100,6 +1736,7 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_ru(const __half h)
     asm("cvt.rpi.u32.f16 %0, %1;" : "=r"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rn(const unsigned int i)
 {
     __half h;
@@ -1115,25 +1752,40 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return h;
 }
-__CUDA_FP16_DECL__ __half __uint2half_rz(const unsigned int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rz(const unsigned int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rz.f16.u32 %0, %1;" : "=h"(__HALF_TO_US(h)) : "r"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rz(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __uint2half_rd(const unsigned int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rd(const unsigned int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rm.f16.u32 %0, %1;" : "=h"(__HALF_TO_US(h)) : "r"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rd(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __uint2half_ru(const unsigned int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_ru(const unsigned int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rp.f16.u32 %0, %1;" : "=h"(__HALF_TO_US(h)) : "r"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_ru(f);
+)
     return h;
 }
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ unsigned short int __half2ushort_rn(const __half h)
 {
     unsigned short int i;
@@ -1152,6 +1804,7 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_ru(const __half h)
     asm("cvt.rpi.u16.f16 %0, %1;" : "=h"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rn(const unsigned short int i)
 {
     __half h;
@@ -1163,25 +1816,40 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return h;
 }
-__CUDA_FP16_DECL__ __half __ushort2half_rz(const unsigned short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rz(const unsigned short int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rz.f16.u16 %0, %1;" : "=h"(__HALF_TO_US(h)) : "h"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rz(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __ushort2half_rd(const unsigned short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rd(const unsigned short int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rm.f16.u16 %0, %1;" : "=h"(__HALF_TO_US(h)) : "h"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rd(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rp.f16.u16 %0, %1;" : "=h"(__HALF_TO_US(h)) : "h"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_ru(f);
+)
     return h;
 }
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ unsigned long long int __half2ull_rn(const __half h)
 {
     unsigned long long int i;
@@ -1200,6 +1868,7 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_ru(const __half h)
     asm("cvt.rpi.u64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rn(const unsigned long long int i)
 {
     __half h;
@@ -1215,25 +1884,40 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return h;
 }
-__CUDA_FP16_DECL__ __half __ull2half_rz(const unsigned long long int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rz(const unsigned long long int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rz.f16.u64 %0, %1;" : "=h"(__HALF_TO_US(h)) : "l"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rz(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __ull2half_rd(const unsigned long long int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rd(const unsigned long long int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rm.f16.u64 %0, %1;" : "=h"(__HALF_TO_US(h)) : "l"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rd(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rp.f16.u64 %0, %1;" : "=h"(__HALF_TO_US(h)) : "l"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_ru(f);
+)
     return h;
 }
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ long long int __half2ll_rn(const __half h)
 {
     long long int i;
@@ -1252,6 +1936,7 @@ __CUDA_FP16_DECL__ long long int __half2ll_ru(const __half h)
     asm("cvt.rpi.s64.f16 %0, %1;" : "=l"(i) : "h"(__HALF_TO_CUS(h)));
     return i;
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 __CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rn(const long long int i)
 {
     __half h;
@@ -1267,25 +1952,40 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
 )
     return h;
 }
-__CUDA_FP16_DECL__ __half __ll2half_rz(const long long int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rz(const long long int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rz.f16.s64 %0, %1;" : "=h"(__HALF_TO_US(h)) : "l"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rz(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __ll2half_rd(const long long int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rd(const long long int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rm.f16.s64 %0, %1;" : "=h"(__HALF_TO_US(h)) : "l"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_rd(f);
+)
     return h;
 }
-__CUDA_FP16_DECL__ __half __ll2half_ru(const long long int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_ru(const long long int i)
 {
     __half h;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("cvt.rp.f16.s64 %0, %1;" : "=h"(__HALF_TO_US(h)) : "l"(i));
+,
+    const float  f = static_cast<float>(i);
+                 h = __float2half_ru(f);
+)
     return h;
 }
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half htrunc(const __half h)
 {
     __half r;
@@ -1351,119 +2051,184 @@ __CUDA_FP16_DECL__ __half2 h2rint(const __half2 h)
         "  mov.b32 %0, {low,high};}\n" : "=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(h)));
     return val;
 }
-__CUDA_FP16_DECL__ __half2 __lows2half2(const __half2 a, const __half2 b)
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __lows2half2(const __half2 a, const __half2 b)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 alow,ahigh,blow,bhigh;\n"
         "  mov.b32 {alow,ahigh}, %1;\n"
         "  mov.b32 {blow,bhigh}, %2;\n"
         "  mov.b32 %0, {alow,blow};}\n" : "=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)), "r"(__HALF2_TO_CUI(b)));
+,
+    val.x = a.x;
+    val.y = b.x;
+)
     return val;
 }
-__CUDA_FP16_DECL__ __half2 __highs2half2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __highs2half2(const __half2 a, const __half2 b)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 alow,ahigh,blow,bhigh;\n"
         "  mov.b32 {alow,ahigh}, %1;\n"
         "  mov.b32 {blow,bhigh}, %2;\n"
         "  mov.b32 %0, {ahigh,bhigh};}\n" : "=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)), "r"(__HALF2_TO_CUI(b)));
+,
+    val.x = a.y;
+    val.y = b.y;
+)
     return val;
 }
-__CUDA_FP16_DECL__ __half __low2half(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __low2half(const __half2 a)
 {
     __half ret;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 low,high;\n"
         " mov.b32 {low,high}, %1;\n"
         " mov.b16 %0, low;}" : "=h"(__HALF_TO_US(ret)) : "r"(__HALF2_TO_CUI(a)));
+,
+    ret = a.x;
+)
     return ret;
 }
-__CUDA_FP16_DECL__ int __hisinf(const __half a)
+__CUDA_HOSTDEVICE_FP16_DECL__ int __hisinf(const __half a)
 {
     int retval;
-    if (__HALF_TO_CUS(a) == 0xFC00U) {
+    const __half_raw araw = __half_raw(a);
+    if (araw.x == 0xFC00U) {
         retval = -1;
-    } else if (__HALF_TO_CUS(a) == 0x7C00U) {
+    } else if (araw.x == 0x7C00U) {
         retval = 1;
     } else {
         retval = 0;
     }
     return retval;
 }
-__CUDA_FP16_DECL__ __half2 __low2half2(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __low2half2(const __half2 a)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 low,high;\n"
         "  mov.b32 {low,high}, %1;\n"
         "  mov.b32 %0, {low,low};}\n" : "=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)));
+,
+    val.x = a.x;
+    val.y = a.x;
+)
     return val;
 }
-__CUDA_FP16_DECL__ __half2 __high2half2(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __high2half2(const __half2 a)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 low,high;\n"
         "  mov.b32 {low,high}, %1;\n"
         "  mov.b32 %0, {high,high};}\n" : "=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)));
+,
+    val.x = a.y;
+    val.y = a.y;
+)
     return val;
 }
-__CUDA_FP16_DECL__ __half __high2half(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __high2half(const __half2 a)
 {
     __half ret;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 low,high;\n"
         " mov.b32 {low,high}, %1;\n"
         " mov.b16 %0, high;}" : "=h"(__HALF_TO_US(ret)) : "r"(__HALF2_TO_CUI(a)));
+,
+    ret = a.y;
+)
     return ret;
 }
-__CUDA_FP16_DECL__ __half2 __halves2half2(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __halves2half2(const __half a, const __half b)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{  mov.b32 %0, {%1,%2};}\n"
         : "=r"(__HALF2_TO_UI(val)) : "h"(__HALF_TO_CUS(a)), "h"(__HALF_TO_CUS(b)));
+,
+    val.x = a;
+    val.y = b;
+)
     return val;
 }
-__CUDA_FP16_DECL__ __half2 __half2half2(const __half a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __half2half2(const __half a)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{  mov.b32 %0, {%1,%1};}\n"
         : "=r"(__HALF2_TO_UI(val)) : "h"(__HALF_TO_CUS(a)));
+,
+    val.x = a;
+    val.y = a;
+)
     return val;
 }
-__CUDA_FP16_DECL__ __half2 __lowhigh2highlow(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __lowhigh2highlow(const __half2 a)
 {
     __half2 val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     asm("{.reg .f16 low,high;\n"
         "  mov.b32 {low,high}, %1;\n"
         "  mov.b32 %0, {high,low};}\n" : "=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)));
+,
+    val.x = a.y;
+    val.y = a.x;
+)
     return val;
 }
-__CUDA_FP16_DECL__ short int __half_as_short(const __half h)
+__CUDA_HOSTDEVICE_FP16_DECL__ short int __half_as_short(const __half h)
 {
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     return static_cast<short int>(__HALF_TO_CUS(h));
+,
+    return static_cast<short int>(__half_raw(h).x);
+)
 }
-__CUDA_FP16_DECL__ unsigned short int __half_as_ushort(const __half h)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half_as_ushort(const __half h)
 {
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     return __HALF_TO_CUS(h);
+,
+    return __half_raw(h).x;
+)
 }
-__CUDA_FP16_DECL__ __half __short_as_half(const short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short_as_half(const short int i)
 {
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     __half h;
     __HALF_TO_US(h) = static_cast<unsigned short int>(i);
     return h;
+,
+    __half_raw hr;
+    hr.x = static_cast<unsigned short int>(i);
+    return __half(hr);
+)
 }
-__CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort_as_half(const unsigned short int i)
 {
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     __half h;
     __HALF_TO_US(h) = i;
     return h;
+,
+    __half_raw hr;
+    hr.x = i;
+    return __half(hr);)
 }
 
 /******************************************************************************
 *                             __half arithmetic                             *
 ******************************************************************************/
-__CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b)
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
+__CUDA_FP16_DECL__ __half __internal_device_hmax(const __half a, const __half b)
 {
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF_MACRO(max)
-#else
+,
     const float fa = __half2float(a);
     const float fb = __half2float(b);
     float fr;
@@ -1471,13 +2236,13 @@ __CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b)
         :"=f"(fr) : "f"(fa), "f"(fb));
     const __half hr = __float2half(fr);
     return hr;
-#endif
+)
 }
-__CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b)
+__CUDA_FP16_DECL__ __half __internal_device_hmin(const __half a, const __half b)
 {
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF_MACRO(min)
-#else
+,
     const float fa = __half2float(a);
     const float fb = __half2float(b);
     float fr;
@@ -1485,46 +2250,89 @@ __CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b)
         :"=f"(fr) : "f"(fa), "f"(fb));
     const __half hr = __float2half(fr);
     return hr;
-#endif
+)
 }
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmax(const __half a, const __half b)
+{
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_hmax(a, b);
+,
+    __half maxval;
+
+    maxval = (__hge(a, b) || __hisnan(b)) ? a : b;
+
+    if (__hisnan(maxval))
+    {
+        // if both inputs are NaN, return canonical NaN
+        maxval = CUDART_NAN_FP16;
+    }
+    else if (__heq(a, b))
+    {
+        // hmax(+0.0, -0.0) = +0.0
+        // unsigned compare 0x8000U > 0x0000U
+        __half_raw ra = __half_raw(a);
+        __half_raw rb = __half_raw(b);
+        maxval = (ra.x > rb.x) ? b : a;
+    }
+    return maxval;
+)
+}
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmin(const __half a, const __half b)
+{
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_hmin(a, b);
+,
+    __half minval;
+
+    minval = (__hle(a, b) || __hisnan(b)) ? a : b;
+
+    if (__hisnan(minval))
+    {
+        // if both inputs are NaN, return canonical NaN
+        minval = CUDART_NAN_FP16;
+    }
+    else if (__heq(a, b))
+    {
+        // hmin(+0.0, -0.0) = -0.0
+        // unsigned compare 0x8000U > 0x0000U
+        __half_raw ra = __half_raw(a);
+        __half_raw rb = __half_raw(b);
+        minval = (ra.x > rb.x) ? a : b;
+    }
+
+    return minval;
+)
+}
+
 
 /******************************************************************************
 *                            __half2 arithmetic                             *
 ******************************************************************************/
-__CUDA_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b)
 {
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF2_MACRO(max)
-#else
-    const float2 fa = __half22float2(a);
-    const float2 fb = __half22float2(b);
-    float2 fr;
-    asm("{max.f32 %0,%1,%2;\n}"
-        :"=f"(fr.x) : "f"(fa.x), "f"(fb.x));
-    asm("{max.f32 %0,%1,%2;\n}"
-        :"=f"(fr.y) : "f"(fa.y), "f"(fb.y));
-    const __half2 hr = __float22half2_rn(fr);
-    return hr;
-#endif
+,
+    __half2 val;
+    val.x = __hmax(a.x, b.x);
+    val.y = __hmax(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b)
 {
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF2_MACRO(min)
-#else
-    const float2 fa = __half22float2(a);
-    const float2 fb = __half22float2(b);
-    float2 fr;
-    asm("{min.f32 %0,%1,%2;\n}"
-        :"=f"(fr.x) : "f"(fa.x), "f"(fb.x));
-    asm("{min.f32 %0,%1,%2;\n}"
-        :"=f"(fr.y) : "f"(fa.y), "f"(fb.y));
-    const __half2 hr = __float22half2_rn(fr);
-    return hr;
-#endif
+,
+    __half2 val;
+    val.x = __hmin(a.x, b.x);
+    val.y = __hmin(a.y, b.y);
+    return val;
+)
 }
 
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 300) || defined(_NVHPC_CUDA)
 /******************************************************************************
 *                           __half, __half2 warp shuffle                     *
@@ -1779,7 +2587,8 @@ __CUDA_FP16_DECL__ void __stwt(__half *const ptr, const __half value)
 }
 #undef __LDG_PTR
 #endif /* defined(__cplusplus) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 320) || defined(_NVHPC_CUDA)) */
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA)
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
+
 /******************************************************************************
 *                             __half2 comparison                             *
 ******************************************************************************/
@@ -1789,53 +2598,137 @@ __CUDA_FP16_DECL__ void __stwt(__half *const ptr, const __half value)
         :"=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)),"r"(__HALF2_TO_CUI(b))); \
    return val; \
 } /* while(0) */
-__CUDA_FP16_DECL__ __half2 __heq2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __heq2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.eq)
+,
+    __half2_raw val;
+    val.x = __heq(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __heq(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hne2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hne2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.ne)
+,
+    __half2_raw val;
+    val.x = __hne(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hne(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hle2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hle2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.le)
+,
+    __half2_raw val;
+    val.x = __hle(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hle(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hge2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hge2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.ge)
+,
+    __half2_raw val;
+    val.x = __hge(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hge(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hlt2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hlt2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.lt)
+,
+    __half2_raw val;
+    val.x = __hlt(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hlt(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hgt2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hgt2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.gt)
+,
+    __half2_raw val;
+    val.x = __hgt(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hgt(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hequ2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hequ2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.equ)
+,
+    __half2_raw val;
+    val.x = __hequ(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hequ(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hneu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hneu2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.neu)
+,
+    __half2_raw val;
+    val.x = __hneu(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hneu(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hleu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hleu2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.leu)
+,
+    __half2_raw val;
+    val.x = __hleu(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hleu(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hgeu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hgeu2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.geu)
+,
+    __half2_raw val;
+    val.x = __hgeu(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hgeu(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hltu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hltu2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.ltu)
+,
+    __half2_raw val;
+    val.x = __hltu(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hltu(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO(set.gtu)
+,
+    __half2_raw val;
+    val.x = __hgtu(a.x, b.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hgtu(a.y, b.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    return __half2(val);
+)
 }
 #undef __COMPARISON_OP_HALF2_MACRO
 /******************************************************************************
@@ -1847,116 +2740,224 @@ __CUDA_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b)
         :"=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)),"r"(__HALF2_TO_CUI(b))); \
    return val; \
 } /* while(0) */
-__CUDA_FP16_DECL__ unsigned __heq2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __heq2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.eq)
+,
+    const unsigned short px = __heq(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __heq(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hne2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hne2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.ne)
+,
+    const unsigned short px = __hne(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hne(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hle2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hle2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.le)
+,
+    const unsigned short px = __hle(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hle(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hge2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hge2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.ge)
+,
+    const unsigned short px = __hge(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hge(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hlt2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hlt2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.lt)
+,
+    const unsigned short px = __hlt(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hlt(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hgt2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hgt2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.gt)
+,
+    const unsigned short px = __hgt(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hgt(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hequ2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hequ2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.equ)
+,
+    const unsigned short px = __hequ(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hequ(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hneu2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hneu2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.neu)
+,
+    const unsigned short px = __hneu(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hneu(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hleu2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hleu2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.leu)
+,
+    const unsigned short px = __hleu(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hleu(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hgeu2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hgeu2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.geu)
+,
+    const unsigned short px = __hgeu(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hgeu(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hltu2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hltu2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.ltu)
+,
+    const unsigned short px = __hltu(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hltu(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
-__CUDA_FP16_DECL__ unsigned __hgtu2_mask(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hgtu2_mask(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF2_MACRO_MASK(set.gtu)
+,
+    const unsigned short px = __hgtu(a.x, b.x) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    const unsigned short py = __hgtu(a.y, b.y) ? (unsigned short)0xFFFFU : (unsigned short)0U;
+    unsigned ur = (unsigned)py;
+             ur <<= (unsigned)16U;
+             ur |= (unsigned)px;
+    return ur;
+)
 }
 #undef __COMPARISON_OP_HALF2_MACRO_MASK
-#define __BOOL_COMPARISON_OP_HALF2_MACRO(name) /* do */ {\
-   __half2 val; \
-   bool retval; \
-   asm( "{ " __CUDA_FP16_STRINGIFY(name) ".f16x2.f16x2 %0,%1,%2;\n}" \
-        :"=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)),"r"(__HALF2_TO_CUI(b))); \
-   if (__HALF2_TO_CUI(val) == 0x3C003C00U) {\
-      retval = true; \
-   } else { \
-      retval = false; \
-   }\
-   return retval;\
-} /* while(0) */
-__CUDA_FP16_DECL__ bool __hbeq2(const __half2 a, const __half2 b)
+
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbeq2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.eq)
+    const unsigned mask = __heq2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbne2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbne2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.ne)
+    const unsigned mask = __hne2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hble2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hble2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.le)
+    const unsigned mask = __hle2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbge2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbge2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.ge)
+    const unsigned mask = __hge2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hblt2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hblt2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.lt)
+    const unsigned mask = __hlt2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbgt2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbgt2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.gt)
+    const unsigned mask = __hgt2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbequ2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbequ2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.equ)
+    const unsigned mask = __hequ2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbneu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbneu2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.neu)
+    const unsigned mask = __hneu2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbleu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbleu2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.leu)
+    const unsigned mask = __hleu2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbgeu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbgeu2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.geu)
+    const unsigned mask = __hgeu2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbltu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbltu2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.ltu)
+    const unsigned mask = __hltu2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-__CUDA_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b)
 {
-    __BOOL_COMPARISON_OP_HALF2_MACRO(set.gtu)
+    const unsigned mask = __hgtu2_mask(a, b);
+    return (mask == 0xFFFFFFFFU);
 }
-#undef __BOOL_COMPARISON_OP_HALF2_MACRO
 /******************************************************************************
 *                             __half comparison                              *
 ******************************************************************************/
@@ -1968,94 +2969,230 @@ __CUDA_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b)
         : "=h"(val) : "h"(__HALF_TO_CUS(a)), "h"(__HALF_TO_CUS(b))); \
    return (val != 0U) ? true : false; \
 } /* while(0) */
-__CUDA_FP16_DECL__ bool __heq(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __heq(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(eq)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa == fb);
+)
 }
-__CUDA_FP16_DECL__ bool __hne(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hne(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(ne)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa != fb) && (!__hisnan(a)) && (!__hisnan(b));
+)
 }
-__CUDA_FP16_DECL__ bool __hle(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hle(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(le)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa <= fb);
+)
 }
-__CUDA_FP16_DECL__ bool __hge(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hge(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(ge)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa >= fb);
+)
 }
-__CUDA_FP16_DECL__ bool __hlt(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hlt(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(lt)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa < fb);
+)
 }
-__CUDA_FP16_DECL__ bool __hgt(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hgt(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(gt)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa > fb);
+)
 }
-__CUDA_FP16_DECL__ bool __hequ(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hequ(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(equ)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa == fb) || (__hisnan(a)) || (__hisnan(b));
+)
 }
-__CUDA_FP16_DECL__ bool __hneu(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hneu(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(neu)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa != fb);
+)
 }
-__CUDA_FP16_DECL__ bool __hleu(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hleu(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(leu)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa <= fb) || (__hisnan(a)) || (__hisnan(b));
+)
 }
-__CUDA_FP16_DECL__ bool __hgeu(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hgeu(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(geu)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa >= fb) || (__hisnan(a)) || (__hisnan(b));
+)
 }
-__CUDA_FP16_DECL__ bool __hltu(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hltu(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(ltu)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa < fb) || (__hisnan(a)) || (__hisnan(b));
+)
 }
-__CUDA_FP16_DECL__ bool __hgtu(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hgtu(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __COMPARISON_OP_HALF_MACRO(gtu)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return (fa > fb) || (__hisnan(a)) || (__hisnan(b));
+)
 }
 #undef __COMPARISON_OP_HALF_MACRO
 /******************************************************************************
 *                            __half2 arithmetic                             *
 ******************************************************************************/
-__CUDA_FP16_DECL__ __half2 __hadd2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hadd2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(add)
+,
+    __half2 val;
+    val.x = __hadd(a.x, b.x);
+    val.y = __hadd(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(sub)
+,
+    __half2 val;
+    val.x = __hsub(a.x, b.x);
+    val.y = __hsub(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hmul2(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmul2(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(mul)
+,
+    __half2 val;
+    val.x = __hmul(a.x, b.x);
+    val.y = __hmul(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hadd2_sat(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hadd2_sat(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(add.sat)
+,
+    __half2 val;
+    val.x = __hadd_sat(a.x, b.x);
+    val.y = __hadd_sat(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hsub2_sat(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hsub2_sat(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(sub.sat)
+,
+    __half2 val;
+    val.x = __hsub_sat(a.x, b.x);
+    val.y = __hsub_sat(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hmul2_sat(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmul2_sat(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(mul.sat)
+,
+    __half2 val;
+    val.x = __hmul_sat(a.x, b.x);
+    val.y = __hmul_sat(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(add.rn)
+,
+    __half2 val;
+    val.x = __hadd_rn(a.x, b.x);
+    val.y = __hadd_rn(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(sub.rn)
+,
+    __half2 val;
+    val.x = __hsub_rn(a.x, b.x);
+    val.y = __hsub_rn(a.y, b.y);
+    return val;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF2_MACRO(mul.rn)
+,
+    __half2 val;
+    val.x = __hmul_rn(a.x, b.x);
+    val.y = __hmul_rn(a.y, b.y);
+    return val;
+)
 }
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half2 __hfma2(const __half2 a, const __half2 b, const __half2 c)
 {
     __TERNARY_OP_HALF2_MACRO(fma.rn)
@@ -2064,7 +3201,8 @@ __CUDA_FP16_DECL__ __half2 __hfma2_sat(const __half2 a, const __half2 b, const _
 {
     __TERNARY_OP_HALF2_MACRO(fma.rn.sat)
 }
-__CUDA_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b) {
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b) {
     __half ha = __low2half(a);
     __half hb = __low2half(b);
 
@@ -2077,45 +3215,96 @@ __CUDA_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b) {
 
     return __halves2half2(v1, v2);
 }
+
 /******************************************************************************
 *                             __half arithmetic                             *
 ******************************************************************************/
-__CUDA_FP16_DECL__ __half __hadd(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hadd(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(add)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa + fb);
+)
 }
-__CUDA_FP16_DECL__ __half __hsub(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hsub(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(sub)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa - fb);
+)
 }
-__CUDA_FP16_DECL__ __half __hmul(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmul(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(mul)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa * fb);
+)
 }
-__CUDA_FP16_DECL__ __half __hadd_sat(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hadd_sat(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(add.sat)
+,
+    return __hmin(__hmax(__hadd(a, b), CUDART_ZERO_FP16), CUDART_ONE_FP16);
+)
 }
-__CUDA_FP16_DECL__ __half __hsub_sat(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hsub_sat(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(sub.sat)
+,
+    return __hmin(__hmax(__hsub(a, b), CUDART_ZERO_FP16), CUDART_ONE_FP16);
+)
 }
-__CUDA_FP16_DECL__ __half __hmul_sat(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmul_sat(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(mul.sat)
+,
+    return __hmin(__hmax(__hmul(a, b), CUDART_ZERO_FP16), CUDART_ONE_FP16);
+)
 }
-__CUDA_FP16_DECL__ __half __hadd_rn(const __half a, const __half b)
+
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hadd_rn(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(add.rn)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa + fb);
+)
 }
-__CUDA_FP16_DECL__ __half __hsub_rn(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hsub_rn(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(sub.rn)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa - fb);
+)
 }
-__CUDA_FP16_DECL__ __half __hmul_rn(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmul_rn(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __BINARY_OP_HALF_MACRO(mul.rn)
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa * fb);
+)
 }
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half __hfma(const __half a, const __half b, const __half c)
 {
     __TERNARY_OP_HALF_MACRO(fma.rn)
@@ -2124,7 +3313,10 @@ __CUDA_FP16_DECL__ __half __hfma_sat(const __half a, const __half b, const __hal
 {
     __TERNARY_OP_HALF_MACRO(fma.rn.sat)
 }
-__CUDA_FP16_DECL__ __half __hdiv(const __half a, const __half b) {
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hdiv(const __half a, const __half b)
+{
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     __half v;
     __half abs;
     __half den;
@@ -2146,23 +3338,17 @@ __CUDA_FP16_DECL__ __half __hdiv(const __half a, const __half b) {
         v = __float2half(fv);
     }
     return v;
+,
+    const float fa = __half2float(a);
+    const float fb = __half2float(b);
+    return __float2half(fa / fb);
+)
 }
 
 /******************************************************************************
 *                             __half2 functions                  *
 ******************************************************************************/
-#define __SPEC_CASE2(i,r, spc, ulp) \
-   "{.reg.b32 spc, ulp, p;\n"\
-   "  mov.b32 spc," __CUDA_FP16_STRINGIFY(spc) ";\n"\
-   "  mov.b32 ulp," __CUDA_FP16_STRINGIFY(ulp) ";\n"\
-   "  set.eq.f16x2.f16x2 p," __CUDA_FP16_STRINGIFY(i) ", spc;\n"\
-   "  fma.rn.f16x2 " __CUDA_FP16_STRINGIFY(r) ",p,ulp," __CUDA_FP16_STRINGIFY(r) ";\n}\n"
-#define __SPEC_CASE(i,r, spc, ulp) \
-   "{.reg.b16 spc, ulp, p;\n"\
-   "  mov.b16 spc," __CUDA_FP16_STRINGIFY(spc) ";\n"\
-   "  mov.b16 ulp," __CUDA_FP16_STRINGIFY(ulp) ";\n"\
-   "  set.eq.f16.f16 p," __CUDA_FP16_STRINGIFY(i) ", spc;\n"\
-   "  fma.rn.f16 " __CUDA_FP16_STRINGIFY(r) ",p,ulp," __CUDA_FP16_STRINGIFY(r) ";\n}\n"
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #define __APPROX_FCAST(fun) /* do */ {\
    __half val;\
    asm("{.reg.b32         f;        \n"\
@@ -2190,6 +3376,19 @@ __CUDA_FP16_DECL__ __half __hdiv(const __half a, const __half b) {
                 "}":"=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)));       \
    return val;\
 } /* while(0) */
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA)
+#define __SPEC_CASE2(i,r, spc, ulp) \
+   "{.reg.b32 spc, ulp, p;\n"\
+   "  mov.b32 spc," __CUDA_FP16_STRINGIFY(spc) ";\n"\
+   "  mov.b32 ulp," __CUDA_FP16_STRINGIFY(ulp) ";\n"\
+   "  set.eq.f16x2.f16x2 p," __CUDA_FP16_STRINGIFY(i) ", spc;\n"\
+   "  fma.rn.f16x2 " __CUDA_FP16_STRINGIFY(r) ",p,ulp," __CUDA_FP16_STRINGIFY(r) ";\n}\n"
+#define __SPEC_CASE(i,r, spc, ulp) \
+   "{.reg.b16 spc, ulp, p;\n"\
+   "  mov.b16 spc," __CUDA_FP16_STRINGIFY(spc) ";\n"\
+   "  mov.b16 ulp," __CUDA_FP16_STRINGIFY(ulp) ";\n"\
+   "  set.eq.f16.f16 p," __CUDA_FP16_STRINGIFY(i) ", spc;\n"\
+   "  fma.rn.f16 " __CUDA_FP16_STRINGIFY(r) ",p,ulp," __CUDA_FP16_STRINGIFY(r) ";\n}\n"
 static __device__ __forceinline__ float __float_simpl_sinf(float a);
 static __device__ __forceinline__ float __float_simpl_cosf(float a);
 __CUDA_FP16_DECL__ __half hsin(const __half a) {
@@ -2365,6 +3564,7 @@ __CUDA_FP16_DECL__ __half2 h2exp(const __half2 a) {
         "}":"=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)));
     return val;
 }
+#endif /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA) */
 __CUDA_FP16_DECL__ __half hexp2(const __half a) {
     __half val;
     asm("{.reg.b32         f, ULP;         \n"
@@ -2397,6 +3597,7 @@ __CUDA_FP16_DECL__ __half2 h2exp2(const __half2 a) {
         "}":"=r"(__HALF2_TO_UI(val)) : "r"(__HALF2_TO_CUI(a)));
     return val;
 }
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half hexp10(const __half a) {
     __half val;
     asm("{.reg.b16         h,r;            \n"
@@ -2561,6 +3762,7 @@ __CUDA_FP16_DECL__ __half2 h2log10(const __half2 a) {
 }
 #undef __SPEC_CASE2
 #undef __SPEC_CASE
+#endif /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA) */
 __CUDA_FP16_DECL__ __half2 h2rcp(const __half2 a) {
     __APPROX_FCAST2(rcp)
 }
@@ -2581,49 +3783,88 @@ __CUDA_FP16_DECL__ __half hsqrt(const __half a) {
 }
 #undef __APPROX_FCAST
 #undef __APPROX_FCAST2
-__CUDA_FP16_DECL__ __half2 __hisnan2(const __half2 a)
+#endif /* defined(_NVHPC_CUDA) || defined(__CUDACC__) */
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hisnan2(const __half2 a)
 {
     __half2 r;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     asm("{set.nan.f16x2.f16x2 %0,%1,%2;\n}"
         :"=r"(__HALF2_TO_UI(r)) : "r"(__HALF2_TO_CUI(a)), "r"(__HALF2_TO_CUI(a)));
+,
+    __half2_raw val;
+    val.x = __hisnan(a.x) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    val.y = __hisnan(a.y) ? (unsigned short)0x3C00U : (unsigned short)0U;
+    r = __half2(val);
+)
     return r;
 }
-__CUDA_FP16_DECL__ bool __hisnan(const __half a)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hisnan(const __half a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __half r;
     asm("{set.nan.f16.f16 %0,%1,%2;\n}"
         :"=h"(__HALF_TO_US(r)) : "h"(__HALF_TO_CUS(a)), "h"(__HALF_TO_CUS(a)));
     return __HALF_TO_CUS(r) != 0U;
+,
+    const __half_raw hr = static_cast<__half_raw>(a);
+    return ((hr.x & (unsigned short)0x7FFFU) > (unsigned short)0x7C00U);
+)
 }
-__CUDA_FP16_DECL__ __half2 __hneg2(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hneg2(const __half2 a)
 {
     __half2 r;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     asm("{neg.f16x2 %0,%1;\n}"
         :"=r"(__HALF2_TO_UI(r)) : "r"(__HALF2_TO_CUI(a)));
+,
+    r.x = __hneg(a.x);
+    r.y = __hneg(a.y);
+)
     return r;
 }
-__CUDA_FP16_DECL__ __half __hneg(const __half a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hneg(const __half a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __half r;
     asm("{neg.f16 %0,%1;\n}"
         :"=h"(__HALF_TO_US(r)) : "h"(__HALF_TO_CUS(a)));
     return r;
+,
+    const float fa = __half2float(a);
+    return __float2half(-fa);
+)
 }
-__CUDA_FP16_DECL__ __half2 __habs2(const __half2 a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __habs2(const __half2 a)
 {
     __half2 r;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     asm("{abs.f16x2 %0,%1;\n}"
         :"=r"(__HALF2_TO_UI(r)) : "r"(__HALF2_TO_CUI(a)));
+,
+    r.x = __habs(a.x);
+    r.y = __habs(a.y);
+)
     return r;
 }
-__CUDA_FP16_DECL__ __half __habs(const __half a)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __habs(const __half a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53,
     __half r;
     asm("{abs.f16 %0,%1;\n}"
         :"=h"(__HALF_TO_US(r)) : "h"(__HALF_TO_CUS(a)));
     return r;
+,
+    __half_raw abs_a_raw = static_cast<__half_raw>(a);
+    abs_a_raw.x &= (unsigned short)0x7FFFU;
+    if (abs_a_raw.x > (unsigned short)0x7C00U)
+    {
+        // return canonical NaN
+        abs_a_raw.x = (unsigned short)0x7FFFU;
+    }
+    return static_cast<__half>(abs_a_raw);
+)
 }
-
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half2 __hcmadd(const __half2 a, const __half2 b, const __half2 c)
 {
     // fast version of complex multiply-accumulate
@@ -2636,37 +3877,103 @@ __CUDA_FP16_DECL__ __half2 __hcmadd(const __half2 a, const __half2 b, const __ha
     img_tmp  = __hfma(a.y,         b.x, img_tmp);
     return make_half2(real_tmp, img_tmp);
 }
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 
-#endif /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530) || defined(_NVHPC_CUDA) */
-
-#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
-__CUDA_FP16_DECL__ __half __hmax_nan(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmax_nan(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF_MACRO(max.NaN)
+,
+    __half maxval;
+    if (__hisnan(a) || __hisnan(b))
+    {
+        maxval = CUDART_NAN_FP16;
+    }
+    else
+    {
+        maxval = __hmax(a, b);
+    }
+    return maxval;
+)
 }
-__CUDA_FP16_DECL__ __half __hmin_nan(const __half a, const __half b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmin_nan(const __half a, const __half b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF_MACRO(min.NaN)
+,
+    __half minval;
+    if (__hisnan(a) || __hisnan(b))
+    {
+        minval = CUDART_NAN_FP16;
+    }
+    else
+    {
+        minval = __hmin(a, b);
+    }
+    return minval;
+)
 }
+
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half __hfma_relu(const __half a, const __half b, const __half c)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __TERNARY_OP_HALF_MACRO(fma.rn.relu)
+,
+    return __hmax_nan(__hfma(a, b, c), CUDART_ZERO_FP16);
+)
 }
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 
-__CUDA_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF2_MACRO(max.NaN)
+,
+    __half2 result = __hmax2(a, b);
+    if (__hisnan(a.x) || __hisnan(b.x))
+    {
+        result.x = CUDART_NAN_FP16;
+    }
+    if (__hisnan(a.y) || __hisnan(b.y))
+    {
+        result.y = CUDART_NAN_FP16;
+    }
+    return result;
+)
 }
-__CUDA_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b)
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __BINARY_OP_HALF2_MACRO(min.NaN)
+,
+    __half2 result = __hmin2(a, b);
+    if (__hisnan(a.x) || __hisnan(b.x))
+    {
+        result.x = CUDART_NAN_FP16;
+    }
+    if (__hisnan(a.y) || __hisnan(b.y))
+    {
+        result.y = CUDART_NAN_FP16;
+    }
+    return result;
+)
 }
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half2 __hfma2_relu(const __half2 a, const __half2 b, const __half2 c)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     __TERNARY_OP_HALF2_MACRO(fma.rn.relu)
+,
+    __half2_raw hzero;
+    hzero.x = (unsigned short)0U;
+    hzero.y = (unsigned short)0U;
+    return __hmax2_nan(__hfma2(a, b, c), __half2(hzero));
+)
 }
-#endif /*defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)*/
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /* Define __PTR for atomicAdd prototypes below, undef after done */
 #if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
 #define __PTR   "l"
@@ -2674,35 +3981,39 @@ __CUDA_FP16_DECL__ __half2 __hfma2_relu(const __half2 a, const __half2 b, const 
 #define __PTR   "r"
 #endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
 
-#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 600)
-
 __CUDA_FP16_DECL__  __half2 atomicAdd(__half2 *const address, const __half2 val) {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_60,
     __half2 r;
     asm volatile ("{ atom.add.noftz.f16x2 %0,[%1],%2; }\n"
                   : "=r"(__HALF2_TO_UI(r)) : __PTR(address), "r"(__HALF2_TO_CUI(val))
                   : "memory");
-   return r;
+    return r;
+,
+    unsigned int* address_as_uint = (unsigned int*)address;
+    unsigned int old = *address_as_uint;
+    unsigned int assumed;
+    do {
+        assumed = old;
+        __half2 new_val = __hadd2(val, *(__half2*)&assumed);
+        old = atomicCAS(address_as_uint, assumed, *(unsigned int*)&new_val);
+    } while (assumed != old);
+    return *(__half2*)&old;
+)
 }
 
-#endif /*defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 600)*/
-
-#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
-
+#if (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700))) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__  __half atomicAdd(__half *const address, const __half val) {
     __half r;
     asm volatile ("{ atom.add.noftz.f16 %0,[%1],%2; }\n"
                   : "=h"(__HALF_TO_US(r))
                   : __PTR(address), "h"(__HALF_TO_CUS(val))
                   : "memory");
-   return r;
+    return r;
 }
-
-#endif /*defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)*/
+#endif /* (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700))) || defined(_NVHPC_CUDA) */
 
 #undef __PTR
-
-#undef __CUDA_FP16_DECL__
-#endif /* defined(__CUDACC__) */
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 #endif /* defined(__cplusplus) */
 
 #undef __TERNARY_OP_HALF2_MACRO
@@ -2717,18 +4028,63 @@ __CUDA_FP16_DECL__  __half atomicAdd(__half *const address, const __half val) {
 #undef __HALF_TO_CUS
 #undef __HALF2_TO_UI
 #undef __HALF2_TO_CUI
+#undef __CUDA_FP16_CONSTEXPR__
 
 /* Define first-class types "half" and "half2", unless user specifies otherwise via "#define CUDA_NO_HALF" */
 /* C cannot ever have these types defined here, because __half and __half2 are C++ classes */
 #if defined(__cplusplus) && !defined(CUDA_NO_HALF)
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is meant to be the first-class or fundamental
+ * implementation of the half-precision numbers format.
+ * 
+ * \details Should be implemented in the compiler in the future.
+ * Current implementation is a simple typedef to a respective
+ * user-level type with underscores.
+ */
 typedef __half half;
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is meant to be the first-class or fundamental
+ * implementation of type for pairs of half-precision numbers.
+ * 
+ * \details Should be implemented in the compiler in the future.
+ * Current implementation is a simple typedef to a respective
+ * user-level type with underscores.
+ */
 typedef __half2 half2;
 // for consistency with __nv_bfloat16
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is an \p __nv_ prefixed alias
+ */
 typedef __half      __nv_half;
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is an \p __nv_ prefixed alias
+ */
 typedef __half2     __nv_half2;
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is an \p __nv_ prefixed alias
+ */
 typedef __half_raw  __nv_half_raw;
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is an \p __nv_ prefixed alias
+ */
 typedef __half2_raw __nv_half2_raw;
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is an \p nv_ prefixed alias
+ */
 typedef __half        nv_half;
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_HALF
+ * \brief This datatype is an \p nv_ prefixed alias
+ */
 typedef __half2       nv_half2;
 #endif /* defined(__cplusplus) && !defined(CUDA_NO_HALF) */
 
