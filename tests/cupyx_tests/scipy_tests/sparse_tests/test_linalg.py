@@ -1222,7 +1222,9 @@ class TestLOBPCG:
             (11, 4, 5),  # CUDA 12.1.1
             (11, 5, 0),  # CUDA 12.2.0
         ),
-        reason='cuSOLVER in CUDA 12.1+ may have a bug')
+        reason='cuSOLVER in CUDA 12.1+ may have a bug',
+        strict=False,  # Seems only failing with Volta (V100 / T4)
+    )
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should
