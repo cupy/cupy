@@ -1,7 +1,22 @@
 
 import warnings
 
+import cupy
 from cupyx.scipy.spatial._kdtree_utils import asm_kd_tree
+
+
+def broadcast_contiguous(x, shape, dtype):
+    """Broadcast ``x`` to ``shape`` and make contiguous, possibly by copying"""
+    # Avoid copying if possible
+    try:
+        if x.shape == shape:
+            return cupy.ascontiguousarray(x, dtype)
+    except AttributeError:
+        pass
+    # Assignment will broadcast automatically
+    ret = cupy.empty(shape, dtype)
+    ret[...] = x
+    return ret
 
 
 class KDTree:
@@ -52,10 +67,6 @@ class KDTree:
     nodes represents an axis-aligned hyperrectangle. Each node specifies
     an axis and splits the set of points based on whether their coordinate
     along that axis is greater than or less than a particular value.
-
-    During construction, the axis and splitting point are chosen by the
-    "sliding midpoint" rule, which ensures that the cells do not all
-    become long and thin.
 
     The tree can be queried for the r closest neighbors of any given point
     (optionally returning only those within some maximum distance of the
@@ -111,4 +122,25 @@ class KDTree:
 
         self.m, self.n = self.data.shape
         self.size = self.m
+
+        self.boxsize = cupy.full(self.m, cupy.inf, dtype=cupy.float64)
+        # self.boxsize_data = None
+
+        if boxsize is not None:
+            # self.boxsize_data = cupy.empty(self.m, dtype=data.dtype)
+            boxsize = broadcast_contiguous(boxsize, shape=(self.m,),
+                                           dtype=cupy.float64)
+            # self.boxsize_data[:self.m] = boxsize
+            # self.boxsize_data[self.m:] = 0.5 * boxsize
+
+            self.boxsize = boxsize
+            periodic_mask = self.boxsize > 0
+            if ((self.data >= self.boxsize[None, :])[:, periodic_mask]).any():
+                raise ValueError(
+                    "Some input data are greater than the size of the "
+                    "periodic box.")
+            if ((self.data < 0)[:, periodic_mask]).any():
+                raise ValueError("Negative input data are outside of the "
+                                 "periodic box.")
+
         self.tree, self.index = asm_kd_tree(self.data)
