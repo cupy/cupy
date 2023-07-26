@@ -1,5 +1,5 @@
 /*
-* Copyright 1993-2021 NVIDIA Corporation.  All rights reserved.
+* Copyright 1993-2023 NVIDIA Corporation.  All rights reserved.
 *
 * NOTICE TO LICENSEE:
 *
@@ -49,9 +49,16 @@
 
 /**
 * \defgroup CUDA_MATH_INTRINSIC_HALF Half Precision Intrinsics
-* This section describes half precision intrinsic functions that are
-* only supported in device code.
+* This section describes half precision intrinsic functions.
 * To use these functions, include the header file \p cuda_fp16.h in your program.
+* All of the functions defined here are available in device code.
+* Some of the functions are also available to host compilers, please
+* refer to respective functions' documentation for details.
+*
+* NOTE: Aggressive floating-point optimizations performed by host or device
+* compilers may affect numeric behavior of the functions implemented in this
+* header.
+*
 * The following macros are available to help users selectively enable/disable
 * various definitions present in the header file:
 * - \p CUDA_NO_HALF - If defined, this macro will prevent the definition of
@@ -65,6 +72,12 @@
 * defined, these macros will prevent the inadvertent use of usual arithmetic
 * and comparison operators. This enforces the storage-only type semantics and
 * prevents C++ style computations on \p half and \p half2 types.
+*/
+
+/**
+* \defgroup CUDA_MATH_INTRINSIC_HALF_CONSTANTS Half Arithmetic Constants
+* \ingroup CUDA_MATH_INTRINSIC_HALF
+* To use these constants, include the header file \p cuda_fp16.h in your program.
 */
 
 /**
@@ -112,11 +125,16 @@
 #ifndef __CUDA_FP16_H__
 #define __CUDA_FP16_H__
 
+/* bring in float2, double4, etc vector types */
+#include "vector_types.h"
+/* bring in operations on vector types like: make_float2 */
+#include "vector_functions.h"
+
 #define ___CUDA_FP16_STRINGIFY_INNERMOST(x) #x
 #define __CUDA_FP16_STRINGIFY(x) ___CUDA_FP16_STRINGIFY_INNERMOST(x)
 
 #if defined(__cplusplus)
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #define __CUDA_FP16_DECL__ static __device__ __inline__
 #define __CUDA_HOSTDEVICE_FP16_DECL__ static __host__ __device__ __inline__
 #else
@@ -126,37 +144,7 @@
 #define __CUDA_FP16_TYPES_EXIST__
 
 /* Forward-declaration of structures defined in "cuda_fp16.hpp" */
-
-/**
- * \brief half datatype 
- * 
- * \details This structure implements the datatype for storing 
- * half-precision floating-point numbers. The structure implements 
- * assignment operators and type conversions. 
- * 16 bits are being used in total: 1 sign bit, 5 bits for the exponent, 
- * and the significand is being stored in 10 bits. 
- * The total precision is 11 bits. There are 15361 representable 
- * numbers within the interval [0.0, 1.0], endpoints included. 
- * On average we have log10(2**11) ~ 3.311 decimal digits. 
- * 
- * \internal
- * \req IEEE 754-2008 compliant implementation of half-precision 
- * floating-point numbers. 
- * \endinternal
- */
 struct __half;
-
-/**
- * \brief half2 datatype
- * 
- * \details This structure implements the datatype for storing two 
- * half-precision floating-point numbers. 
- * The structure implements assignment operators and type conversions. 
- * 
- * \internal
- * \req Vectorified version of half. 
- * \endinternal
- */
 struct __half2;
 
 /**
@@ -339,6 +327,39 @@ __CUDA_HOSTDEVICE_FP16_DECL__ float __low2float(const __half2 a);
 __CUDA_HOSTDEVICE_FP16_DECL__ float __high2float(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to a signed char in round-towards-zero mode.
+*
+* \details Convert the half-precision floating-point value \p h to a signed char
+* integer in round-towards-zero mode. NaN inputs are converted to 0.
+* \param[in] h - half. Is only being read.
+*
+* \returns signed char
+* - \p h converted to a signed char.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ signed char __half2char_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Convert a half to an unsigned char in round-towards-zero
+* mode.
+*
+* \details Convert the half-precision floating-point value \p h to an unsigned
+* char in round-towards-zero mode. NaN inputs are converted to 0.
+* \param[in] h - half. Is only being read.
+*
+* \returns unsigned char
+* - \p h converted to an unsigned char.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned char __half2uchar_rz(const __half h);
+/**
+* \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed short integer in round-towards-zero mode.
 *
 * \details Convert the half-precision floating-point value \p h to a signed short
@@ -435,14 +456,30 @@ __CUDA_HOSTDEVICE_FP16_DECL__ long long int __half2ll_rz(const __half h);
 * \endinternal
 */
 __CUDA_HOSTDEVICE_FP16_DECL__ unsigned long long int __half2ull_rz(const __half h);
-
-#if defined(__CUDACC__)
+/**
+* \ingroup CUDA_MATH__HALF_MISC
+* \brief Vector function, combines two \p __half numbers into one \p __half2 number.
+* 
+* \details Combines two input \p __half number \p x and \p y into one \p __half2 number.
+* Input \p x is stored in low 16 bits of the return value, input \p y is stored
+* in high 16 bits of the return value.
+* \param[in] x - half. Is only being read. 
+* \param[in] y - half. Is only being read. 
+* 
+* \returns __half2
+* - The \p __half2 vector with one half equal to \p x and the other to \p y. 
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 make_half2(const __half x, const __half y);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Converts both components of float2 number to half precision in
 * round-to-nearest-even mode and returns \p half2 with converted values.
 * 
-* \details Converts both components of float2 to half precision in round-to-nearest
+* \details Converts both components of float2 to half precision in round-to-nearest-even
 * mode and combines the results into one \p half2 number. Low 16 bits of the
 * return value correspond to \p a.x and high 16 bits of the return value
 * correspond to \p a.y.
@@ -473,6 +510,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half2 __float22half2_rn(const float2 a);
 * \endinternal
 */
 __CUDA_HOSTDEVICE_FP16_DECL__ float2 __half22float2(const __half2 a);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed integer in round-to-nearest-even mode.
@@ -521,7 +559,7 @@ __CUDA_FP16_DECL__ int __half2int_rd(const __half h);
 * \endinternal
 */
 __CUDA_FP16_DECL__ int __half2int_ru(const __half h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-to-nearest-even mode.
@@ -553,7 +591,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rn(const int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __int2half_rz(const int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rz(const int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-down mode.
@@ -569,7 +607,7 @@ __CUDA_FP16_DECL__ __half __int2half_rz(const int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __int2half_rd(const int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_rd(const int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed integer to a half in round-up mode.
@@ -585,8 +623,8 @@ __CUDA_FP16_DECL__ __half __int2half_rd(const int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __int2half_ru(const int i);
-
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __int2half_ru(const int i);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed short integer in round-to-nearest-even
@@ -636,7 +674,7 @@ __CUDA_FP16_DECL__ short int __half2short_rd(const __half h);
 * \endinternal
 */
 __CUDA_FP16_DECL__ short int __half2short_ru(const __half h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-to-nearest-even
@@ -669,7 +707,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rn(const short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __short2half_rz(const short int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rz(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-down mode.
@@ -685,7 +723,7 @@ __CUDA_FP16_DECL__ __half __short2half_rz(const short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __short2half_rd(const short int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_rd(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed short integer to a half in round-up mode.
@@ -701,8 +739,8 @@ __CUDA_FP16_DECL__ __half __short2half_rd(const short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __short2half_ru(const short int i);
-
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short2half_ru(const short int i);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned integer in round-to-nearest-even mode.
@@ -751,7 +789,7 @@ __CUDA_FP16_DECL__ unsigned int __half2uint_rd(const __half h);
 * \endinternal
 */
 __CUDA_FP16_DECL__ unsigned int __half2uint_ru(const __half h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-to-nearest-even mode.
@@ -783,7 +821,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rn(const unsigned int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __uint2half_rz(const unsigned int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rz(const unsigned int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-down mode.
@@ -799,7 +837,7 @@ __CUDA_FP16_DECL__ __half __uint2half_rz(const unsigned int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __uint2half_rd(const unsigned int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_rd(const unsigned int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned integer to a half in round-up mode.
@@ -815,8 +853,8 @@ __CUDA_FP16_DECL__ __half __uint2half_rd(const unsigned int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __uint2half_ru(const unsigned int i);
-
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __uint2half_ru(const unsigned int i);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned short integer in round-to-nearest-even
@@ -858,7 +896,7 @@ __CUDA_FP16_DECL__ unsigned short int __half2ushort_rd(const __half h);
 * - \p h converted to an unsigned short integer. 
 */
 __CUDA_FP16_DECL__ unsigned short int __half2ushort_ru(const __half h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-to-nearest-even
@@ -892,7 +930,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rn(const unsigned short int i
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ushort2half_rz(const unsigned short int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rz(const unsigned short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-down mode.
@@ -908,7 +946,7 @@ __CUDA_FP16_DECL__ __half __ushort2half_rz(const unsigned short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ushort2half_rd(const unsigned short int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_rd(const unsigned short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned short integer to a half in round-up mode.
@@ -924,8 +962,8 @@ __CUDA_FP16_DECL__ __half __ushort2half_rd(const unsigned short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i);
-
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort2half_ru(const unsigned short int i);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to an unsigned 64-bit integer in round-to-nearest-even
@@ -975,7 +1013,7 @@ __CUDA_FP16_DECL__ unsigned long long int __half2ull_rd(const __half h);
 * \endinternal
 */
 __CUDA_FP16_DECL__ unsigned long long int __half2ull_ru(const __half h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-to-nearest-even
@@ -1009,7 +1047,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rn(const unsigned long long int 
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ull2half_rz(const unsigned long long int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rz(const unsigned long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-down mode.
@@ -1025,7 +1063,7 @@ __CUDA_FP16_DECL__ __half __ull2half_rz(const unsigned long long int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ull2half_rd(const unsigned long long int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_rd(const unsigned long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert an unsigned 64-bit integer to a half in round-up mode.
@@ -1041,8 +1079,8 @@ __CUDA_FP16_DECL__ __half __ull2half_rd(const unsigned long long int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i);
-
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ull2half_ru(const unsigned long long int i);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a half to a signed 64-bit integer in round-to-nearest-even
@@ -1092,7 +1130,7 @@ __CUDA_FP16_DECL__ long long int __half2ll_rd(const __half h);
 * \endinternal
 */
 __CUDA_FP16_DECL__ long long int __half2ll_ru(const __half h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-to-nearest-even
@@ -1121,7 +1159,7 @@ __CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rn(const long long int i);
 * \returns half
 * - \p i converted to half. 
 */
-__CUDA_FP16_DECL__ __half __ll2half_rz(const long long int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rz(const long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-down mode.
@@ -1137,7 +1175,7 @@ __CUDA_FP16_DECL__ __half __ll2half_rz(const long long int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ll2half_rd(const long long int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_rd(const long long int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Convert a signed 64-bit integer to a half in round-up mode.
@@ -1153,8 +1191,8 @@ __CUDA_FP16_DECL__ __half __ll2half_rd(const long long int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ll2half_ru(const long long int i);
-
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ll2half_ru(const long long int i);
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Truncate input argument to the integral part.
@@ -1285,7 +1323,7 @@ __CUDA_FP16_DECL__ __half2 h2floor(const __half2 h);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 h2rint(const __half2 h);
-
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Returns \p half2 with both halves equal to the input value.
@@ -1301,7 +1339,7 @@ __CUDA_FP16_DECL__ __half2 h2rint(const __half2 h);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __half2half2(const __half a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __half2half2(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Swaps both halves of the \p half2 input.
@@ -1317,7 +1355,7 @@ __CUDA_FP16_DECL__ __half2 __half2half2(const __half a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __lowhigh2highlow(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __lowhigh2highlow(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts low 16 bits from each of the two \p half2 inputs and combines
@@ -1337,7 +1375,7 @@ __CUDA_FP16_DECL__ __half2 __lowhigh2highlow(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __lows2half2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __lows2half2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts high 16 bits from each of the two \p half2 inputs and
@@ -1357,7 +1395,7 @@ __CUDA_FP16_DECL__ __half2 __lows2half2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __highs2half2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __highs2half2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Returns high 16 bits of \p half2 input.
@@ -1372,7 +1410,7 @@ __CUDA_FP16_DECL__ __half2 __highs2half2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __high2half(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __high2half(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Returns low 16 bits of \p half2 input.
@@ -1387,7 +1425,7 @@ __CUDA_FP16_DECL__ __half __high2half(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __low2half(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __low2half(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Checks if the input \p half number is infinite.
@@ -1404,7 +1442,7 @@ __CUDA_FP16_DECL__ __half __low2half(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ int __hisinf(const __half a);
+__CUDA_HOSTDEVICE_FP16_DECL__ int __hisinf(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Combines two \p half numbers into one \p half2 number.
@@ -1422,7 +1460,7 @@ __CUDA_FP16_DECL__ int __hisinf(const __half a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __halves2half2(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __halves2half2(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts low 16 bits from \p half2 input.
@@ -1438,7 +1476,7 @@ __CUDA_FP16_DECL__ __half2 __halves2half2(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __low2half2(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __low2half2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Extracts high 16 bits from \p half2 input.
@@ -1454,7 +1492,7 @@ __CUDA_FP16_DECL__ __half2 __low2half2(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __high2half2(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __high2half2(const __half2 a);
 
 /**
 * \ingroup CUDA_MATH__HALF_MISC
@@ -1471,7 +1509,7 @@ __CUDA_FP16_DECL__ __half2 __high2half2(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ short int __half_as_short(const __half h);
+__CUDA_HOSTDEVICE_FP16_DECL__ short int __half_as_short(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in a \p half as an unsigned short integer.
@@ -1487,7 +1525,7 @@ __CUDA_FP16_DECL__ short int __half_as_short(const __half h);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned short int __half_as_ushort(const __half h);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned short int __half_as_ushort(const __half h);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in a signed short integer as a \p half.
@@ -1503,7 +1541,7 @@ __CUDA_FP16_DECL__ unsigned short int __half_as_ushort(const __half h);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __short_as_half(const short int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __short_as_half(const short int i);
 /**
 * \ingroup CUDA_MATH__HALF_MISC
 * \brief Reinterprets bits in an unsigned short integer as a \p half.
@@ -1519,7 +1557,7 @@ __CUDA_FP16_DECL__ __half __short_as_half(const short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __ushort_as_half(const unsigned short int i);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Calculates \p half maximum of two input values.
@@ -1538,7 +1576,7 @@ __CUDA_FP16_DECL__ __half __ushort_as_half(const unsigned short int i);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmax(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Calculates \p half minimum of two input values.
@@ -1557,7 +1595,7 @@ __CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmin(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Calculates \p half2 vector maximum of two inputs.
@@ -1578,7 +1616,7 @@ __CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Calculates \p half2 vector minimum of two inputs.
@@ -1599,8 +1637,9 @@ __CUDA_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b);
 
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 300)
 #if !defined warpSize && !defined __local_warpSize
 #define warpSize    32
@@ -1973,8 +2012,8 @@ __CUDA_FP16_DECL__ void __stwt(__half2 *const ptr, const __half2 value);
 */
 __CUDA_FP16_DECL__ void __stwt(__half *const ptr, const __half value);
 #endif /*defined(__cplusplus) && ( !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 320) )*/
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs half2 vector if-equal comparison.
@@ -1992,7 +2031,7 @@ __CUDA_FP16_DECL__ void __stwt(__half *const ptr, const __half value);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __heq2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __heq2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector not-equal comparison.
@@ -2010,7 +2049,7 @@ __CUDA_FP16_DECL__ __half2 __heq2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hne2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hne2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector less-equal comparison.
@@ -2028,7 +2067,7 @@ __CUDA_FP16_DECL__ __half2 __hne2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hle2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hle2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-equal comparison.
@@ -2046,7 +2085,7 @@ __CUDA_FP16_DECL__ __half2 __hle2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hge2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hge2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector less-than comparison.
@@ -2064,7 +2103,7 @@ __CUDA_FP16_DECL__ __half2 __hge2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hlt2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hlt2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-than comparison.
@@ -2082,7 +2121,7 @@ __CUDA_FP16_DECL__ __half2 __hlt2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hgt2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hgt2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered if-equal comparison.
@@ -2100,7 +2139,7 @@ __CUDA_FP16_DECL__ __half2 __hgt2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hequ2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hequ2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered not-equal comparison.
@@ -2118,7 +2157,7 @@ __CUDA_FP16_DECL__ __half2 __hequ2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hneu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hneu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered less-equal comparison.
@@ -2136,7 +2175,7 @@ __CUDA_FP16_DECL__ __half2 __hneu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hleu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hleu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered greater-equal comparison.
@@ -2154,7 +2193,7 @@ __CUDA_FP16_DECL__ __half2 __hleu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hgeu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hgeu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered less-than comparison.
@@ -2172,7 +2211,7 @@ __CUDA_FP16_DECL__ __half2 __hgeu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hltu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hltu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered greater-than comparison.
@@ -2190,7 +2229,7 @@ __CUDA_FP16_DECL__ __half2 __hltu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs half2 vector if-equal comparison.
@@ -2208,7 +2247,7 @@ __CUDA_FP16_DECL__ __half2 __hgtu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __heq2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __heq2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector not-equal comparison.
@@ -2226,7 +2265,7 @@ __CUDA_FP16_DECL__ unsigned __heq2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hne2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hne2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector less-equal comparison.
@@ -2244,7 +2283,7 @@ __CUDA_FP16_DECL__ unsigned __hne2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hle2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hle2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-equal comparison.
@@ -2262,7 +2301,7 @@ __CUDA_FP16_DECL__ unsigned __hle2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hge2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hge2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector less-than comparison.
@@ -2280,7 +2319,7 @@ __CUDA_FP16_DECL__ unsigned __hge2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hlt2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hlt2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-than comparison.
@@ -2298,7 +2337,7 @@ __CUDA_FP16_DECL__ unsigned __hlt2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hgt2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hgt2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered if-equal comparison.
@@ -2316,7 +2355,7 @@ __CUDA_FP16_DECL__ unsigned __hgt2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hequ2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hequ2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered not-equal comparison.
@@ -2334,7 +2373,7 @@ __CUDA_FP16_DECL__ unsigned __hequ2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hneu2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hneu2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered less-equal comparison.
@@ -2352,7 +2391,7 @@ __CUDA_FP16_DECL__ unsigned __hneu2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hleu2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hleu2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered greater-equal comparison.
@@ -2370,7 +2409,7 @@ __CUDA_FP16_DECL__ unsigned __hleu2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hgeu2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hgeu2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered less-than comparison.
@@ -2388,7 +2427,7 @@ __CUDA_FP16_DECL__ unsigned __hgeu2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hltu2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hltu2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered greater-than comparison.
@@ -2406,7 +2445,7 @@ __CUDA_FP16_DECL__ unsigned __hltu2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ unsigned __hgtu2_mask(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ unsigned __hgtu2_mask(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Determine whether \p half2 argument is a NaN.
@@ -2422,12 +2461,12 @@ __CUDA_FP16_DECL__ unsigned __hgtu2_mask(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hisnan2(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hisnan2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector addition in round-to-nearest-even mode.
 *
-* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest
+* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest-even
 * mode.
 * \internal
 * \req DEEPLEARN-SRM_REQ-95
@@ -2442,7 +2481,7 @@ __CUDA_FP16_DECL__ __half2 __hisnan2(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hadd2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hadd2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector subtraction in round-to-nearest-even mode.
@@ -2462,7 +2501,7 @@ __CUDA_FP16_DECL__ __half2 __hadd2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector multiplication in round-to-nearest-even mode.
@@ -2482,12 +2521,12 @@ __CUDA_FP16_DECL__ __half2 __hsub2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmul2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmul2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector addition in round-to-nearest-even mode.
 *
-* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest
+* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest-even
 * mode. Prevents floating-point contractions of mul+add into fma.
 * \internal
 * \req DEEPLEARN-SRM_REQ-95
@@ -2502,7 +2541,7 @@ __CUDA_FP16_DECL__ __half2 __hmul2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector subtraction in round-to-nearest-even mode.
@@ -2523,7 +2562,7 @@ __CUDA_FP16_DECL__ __half2 __hadd2_rn(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector multiplication in round-to-nearest-even mode.
@@ -2544,12 +2583,12 @@ __CUDA_FP16_DECL__ __half2 __hsub2_rn(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector division in round-to-nearest-even mode.
 *
-* \details Divides \p half2 input vector \p a by input vector \p b in round-to-nearest
+* \details Divides \p half2 input vector \p a by input vector \p b in round-to-nearest-even
 * mode.
 * \internal
 * \req DEEPLEARN-SRM_REQ-103
@@ -2564,7 +2603,7 @@ __CUDA_FP16_DECL__ __half2 __hmul2_rn(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Calculates the absolute value of both halves of the input \p half2 number and
@@ -2581,13 +2620,13 @@ __CUDA_FP16_DECL__ __half2 __h2div(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __habs2(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __habs2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector addition in round-to-nearest-even mode, with
 * saturation to [0.0, 1.0].
 *
-* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest
+* \details Performs \p half2 vector add of inputs \p a and \p b, in round-to-nearest-even
 * mode, and clamps the results to range [0.0, 1.0]. NaN results are flushed to
 * +0.0.
 * \param[in] a - half2. Is only being read. 
@@ -2600,7 +2639,7 @@ __CUDA_FP16_DECL__ __half2 __habs2(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hadd2_sat(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hadd2_sat(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector subtraction in round-to-nearest-even mode,
@@ -2619,7 +2658,7 @@ __CUDA_FP16_DECL__ __half2 __hadd2_sat(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hsub2_sat(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hsub2_sat(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector multiplication in round-to-nearest-even mode,
@@ -2639,7 +2678,9 @@ __CUDA_FP16_DECL__ __half2 __hsub2_sat(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmul2_sat(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmul2_sat(const __half2 a, const __half2 b);
+
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector fused multiply-add in round-to-nearest-even
@@ -2685,6 +2726,7 @@ __CUDA_FP16_DECL__ __half2 __hfma2(const __half2 a, const __half2 b, const __hal
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 __hfma2_sat(const __half2 a, const __half2 b, const __half2 c);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Negates both halves of the input \p half2 number and returns the
@@ -2703,7 +2745,7 @@ __CUDA_FP16_DECL__ __half2 __hfma2_sat(const __half2 a, const __half2 b, const _
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hneg2(const __half2 a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hneg2(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Calculates the absolute value of input \p half number and returns the result.
@@ -2718,7 +2760,7 @@ __CUDA_FP16_DECL__ __half2 __hneg2(const __half2 a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __habs(const __half a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __habs(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half addition in round-to-nearest-even mode.
@@ -2738,12 +2780,12 @@ __CUDA_FP16_DECL__ __half __habs(const __half a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hadd(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hadd(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half subtraction in round-to-nearest-even mode.
 *
-* \details Subtracts \p half input \p b from input \p a in round-to-nearest
+* \details Subtracts \p half input \p b from input \p a in round-to-nearest-even
 * mode.
 * \internal
 * \req DEEPLEARN-SRM_REQ-97
@@ -2758,12 +2800,12 @@ __CUDA_FP16_DECL__ __half __hadd(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hsub(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hsub(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half multiplication in round-to-nearest-even mode.
 *
-* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest
+* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest-even
 * mode.
 * \internal
 * \req DEEPLEARN-SRM_REQ-99
@@ -2774,7 +2816,7 @@ __CUDA_FP16_DECL__ __half __hsub(const __half a, const __half b);
 * \returns half
 * - The result of multiplying \p a and \p b. 
 */
-__CUDA_FP16_DECL__ __half __hmul(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmul(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half addition in round-to-nearest-even mode.
@@ -2794,12 +2836,12 @@ __CUDA_FP16_DECL__ __half __hmul(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hadd_rn(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hadd_rn(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half subtraction in round-to-nearest-even mode.
 *
-* \details Subtracts \p half input \p b from input \p a in round-to-nearest
+* \details Subtracts \p half input \p b from input \p a in round-to-nearest-even
 * mode. Prevents floating-point contractions of mul+sub into fma.
 * \internal
 * \req DEEPLEARN-SRM_REQ-97
@@ -2814,12 +2856,12 @@ __CUDA_FP16_DECL__ __half __hadd_rn(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hsub_rn(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hsub_rn(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half multiplication in round-to-nearest-even mode.
 *
-* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest
+* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest-even
 * mode. Prevents floating-point contractions of mul+add or sub into fma.
 * \internal
 * \req DEEPLEARN-SRM_REQ-99
@@ -2830,12 +2872,12 @@ __CUDA_FP16_DECL__ __half __hsub_rn(const __half a, const __half b);
 * \returns half
 * - The result of multiplying \p a and \p b.
 */
-__CUDA_FP16_DECL__ __half __hmul_rn(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmul_rn(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half division in round-to-nearest-even mode.
 * 
-* \details Divides \p half input \p a by input \p b in round-to-nearest
+* \details Divides \p half input \p a by input \p b in round-to-nearest-even
 * mode.
 * \internal
 * \req DEEPLEARN-SRM_REQ-98
@@ -2850,7 +2892,7 @@ __CUDA_FP16_DECL__ __half __hmul_rn(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__  __half __hdiv(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__  __half __hdiv(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half addition in round-to-nearest-even mode, with
@@ -2868,13 +2910,13 @@ __CUDA_FP16_DECL__  __half __hdiv(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hadd_sat(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hadd_sat(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half subtraction in round-to-nearest-even mode, with
 * saturation to [0.0, 1.0].
 *
-* \details Subtracts \p half input \p b from input \p a in round-to-nearest
+* \details Subtracts \p half input \p b from input \p a in round-to-nearest-even
 * mode,
 * and clamps the result to range [0.0, 1.0]. NaN results are flushed to +0.0.
 * \param[in] a - half. Is only being read. 
@@ -2887,13 +2929,13 @@ __CUDA_FP16_DECL__ __half __hadd_sat(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hsub_sat(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hsub_sat(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half multiplication in round-to-nearest-even mode, with
 * saturation to [0.0, 1.0].
 *
-* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest
+* \details Performs \p half multiplication of inputs \p a and \p b, in round-to-nearest-even
 * mode, and clamps the result to range [0.0, 1.0]. NaN results are flushed to
 * +0.0.
 * \param[in] a - half. Is only being read. 
@@ -2906,7 +2948,9 @@ __CUDA_FP16_DECL__ __half __hsub_sat(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hmul_sat(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmul_sat(const __half a, const __half b);
+
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half fused multiply-add in round-to-nearest-even mode.
@@ -2952,6 +2996,8 @@ __CUDA_FP16_DECL__ __half __hfma(const __half a, const __half b, const __half c)
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half __hfma_sat(const __half a, const __half b, const __half c);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
+
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Negates input \p half number and returns the result.
@@ -2969,7 +3015,7 @@ __CUDA_FP16_DECL__ __half __hfma_sat(const __half a, const __half b, const __hal
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hneg(const __half a);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hneg(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector if-equal comparison and returns boolean true
@@ -2991,7 +3037,7 @@ __CUDA_FP16_DECL__ __half __hneg(const __half a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbeq2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbeq2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector not-equal comparison and returns boolean
@@ -3013,7 +3059,7 @@ __CUDA_FP16_DECL__ bool __hbeq2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbne2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbne2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector less-equal comparison and returns boolean
@@ -3035,7 +3081,7 @@ __CUDA_FP16_DECL__ bool __hbne2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hble2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hble2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-equal comparison and returns boolean
@@ -3057,7 +3103,7 @@ __CUDA_FP16_DECL__ bool __hble2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbge2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbge2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector less-than comparison and returns boolean
@@ -3079,7 +3125,7 @@ __CUDA_FP16_DECL__ bool __hbge2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hblt2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hblt2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector greater-than comparison and returns boolean
@@ -3101,7 +3147,7 @@ __CUDA_FP16_DECL__ bool __hblt2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbgt2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbgt2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered if-equal comparison and returns
@@ -3123,7 +3169,7 @@ __CUDA_FP16_DECL__ bool __hbgt2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbequ2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbequ2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered not-equal comparison and returns
@@ -3145,7 +3191,7 @@ __CUDA_FP16_DECL__ bool __hbequ2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbneu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbneu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered less-equal comparison and returns
@@ -3167,7 +3213,7 @@ __CUDA_FP16_DECL__ bool __hbneu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbleu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbleu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered greater-equal comparison and
@@ -3190,7 +3236,7 @@ __CUDA_FP16_DECL__ bool __hbleu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbgeu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbgeu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered less-than comparison and returns
@@ -3212,7 +3258,7 @@ __CUDA_FP16_DECL__ bool __hbgeu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbltu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbltu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Performs \p half2 vector unordered greater-than comparison and
@@ -3235,7 +3281,7 @@ __CUDA_FP16_DECL__ bool __hbltu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half if-equal comparison.
@@ -3252,7 +3298,7 @@ __CUDA_FP16_DECL__ bool __hbgtu2(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __heq(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __heq(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half not-equal comparison.
@@ -3269,7 +3315,7 @@ __CUDA_FP16_DECL__ bool __heq(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hne(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hne(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half less-equal comparison.
@@ -3286,7 +3332,7 @@ __CUDA_FP16_DECL__ bool __hne(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hle(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hle(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half greater-equal comparison.
@@ -3303,7 +3349,7 @@ __CUDA_FP16_DECL__ bool __hle(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hge(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hge(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half less-than comparison.
@@ -3320,7 +3366,7 @@ __CUDA_FP16_DECL__ bool __hge(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hlt(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hlt(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half greater-than comparison.
@@ -3337,7 +3383,7 @@ __CUDA_FP16_DECL__ bool __hlt(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hgt(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hgt(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half unordered if-equal comparison.
@@ -3355,7 +3401,7 @@ __CUDA_FP16_DECL__ bool __hgt(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hequ(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hequ(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half unordered not-equal comparison.
@@ -3373,7 +3419,7 @@ __CUDA_FP16_DECL__ bool __hequ(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hneu(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hneu(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half unordered less-equal comparison.
@@ -3391,7 +3437,7 @@ __CUDA_FP16_DECL__ bool __hneu(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hleu(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hleu(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half unordered greater-equal comparison.
@@ -3409,7 +3455,7 @@ __CUDA_FP16_DECL__ bool __hleu(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hgeu(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hgeu(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half unordered less-than comparison.
@@ -3427,7 +3473,7 @@ __CUDA_FP16_DECL__ bool __hgeu(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hltu(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hltu(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Performs \p half unordered greater-than comparison.
@@ -3445,7 +3491,7 @@ __CUDA_FP16_DECL__ bool __hltu(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hgtu(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hgtu(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Determine whether \p half argument is a NaN.
@@ -3460,8 +3506,7 @@ __CUDA_FP16_DECL__ bool __hgtu(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ bool __hisnan(const __half a);
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)
+__CUDA_HOSTDEVICE_FP16_DECL__ bool __hisnan(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Calculates \p half maximum of two input values, NaNs pass through.
@@ -3479,7 +3524,7 @@ __CUDA_FP16_DECL__ bool __hisnan(const __half a);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hmax_nan(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmax_nan(const __half a, const __half b);
 /**
 * \ingroup CUDA_MATH__HALF_COMPARISON
 * \brief Calculates \p half minimum of two input values, NaNs pass through.
@@ -3497,7 +3542,8 @@ __CUDA_FP16_DECL__ __half __hmax_nan(const __half a, const __half b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half __hmin_nan(const __half a, const __half b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half __hmin_nan(const __half a, const __half b);
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Performs \p half fused multiply-add in round-to-nearest-even mode with relu saturation.
@@ -3520,6 +3566,7 @@ __CUDA_FP16_DECL__ __half __hmin_nan(const __half a, const __half b);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half __hfma_relu(const __half a, const __half b, const __half c);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Calculates \p half2 vector maximum of two inputs, NaNs pass through.
@@ -3539,7 +3586,7 @@ __CUDA_FP16_DECL__ __half __hfma_relu(const __half a, const __half b, const __ha
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b);
 /**
 * \ingroup CUDA_MATH__HALF2_COMPARISON
 * \brief Calculates \p half2 vector minimum of two inputs, NaNs pass through.
@@ -3559,7 +3606,8 @@ __CUDA_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b);
 * \behavior reentrant, thread safe
 * \endinternal
 */
-__CUDA_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b);
+__CUDA_HOSTDEVICE_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b);
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs \p half2 vector fused multiply-add in round-to-nearest-even
@@ -3582,7 +3630,7 @@ __CUDA_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 __hfma2_relu(const __half2 a, const __half2 b, const __half2 c);
-#endif /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800) */
+
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
 * \brief Performs fast complex multiply-accumulate
@@ -3602,6 +3650,8 @@ __CUDA_FP16_DECL__ __half2 __hfma2_relu(const __half2 a, const __half2 b, const 
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 __hcmadd(const __half2 a, const __half2 b, const __half2 c);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Calculates \p half square root in round-to-nearest-even mode.
@@ -3622,7 +3672,7 @@ __CUDA_FP16_DECL__ __half hsqrt(const __half a);
 * \brief Calculates \p half reciprocal square root in round-to-nearest-even
 * mode.
 *
-* \details Calculates \p half reciprocal square root of input \p a in round-to-nearest
+* \details Calculates \p half reciprocal square root of input \p a in round-to-nearest-even
 * mode.
 * \param[in] a - half. Is only being read. 
 *
@@ -3649,6 +3699,7 @@ __CUDA_FP16_DECL__ __half hrsqrt(const __half a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half hrcp(const __half a);
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Calculates \p half natural logarithm in round-to-nearest-even mode.
@@ -3699,7 +3750,7 @@ __CUDA_FP16_DECL__ __half hlog2(const __half a);
 __CUDA_FP16_DECL__ __half hlog10(const __half a);
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
-* \brief Calculates \p half natural exponential function in round-to-nearest
+* \brief Calculates \p half natural exponential function in round-to-nearest-even
 * mode.
 *
 * \details Calculates \p half natural exponential function of input \p a in
@@ -3714,9 +3765,10 @@ __CUDA_FP16_DECL__ __half hlog10(const __half a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half hexp(const __half a);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
-* \brief Calculates \p half binary exponential function in round-to-nearest
+* \brief Calculates \p half binary exponential function in round-to-nearest-even
 * mode.
 *
 * \details Calculates \p half binary exponential function of input \p a in
@@ -3731,9 +3783,10 @@ __CUDA_FP16_DECL__ __half hexp(const __half a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half hexp2(const __half a);
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
-* \brief Calculates \p half decimal exponential function in round-to-nearest
+* \brief Calculates \p half decimal exponential function in round-to-nearest-even
 * mode.
 *
 * \details Calculates \p half decimal exponential function of input \p a in
@@ -3778,11 +3831,12 @@ __CUDA_FP16_DECL__ __half hcos(const __half a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half hsin(const __half a);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector square root in round-to-nearest-even mode.
 *
-* \details Calculates \p half2 square root of input vector \p a in round-to-nearest
+* \details Calculates \p half2 square root of input vector \p a in round-to-nearest-even
 * mode.
 * \param[in] a - half2. Is only being read. 
 *
@@ -3796,7 +3850,7 @@ __CUDA_FP16_DECL__ __half hsin(const __half a);
 __CUDA_FP16_DECL__ __half2 h2sqrt(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
-* \brief Calculates \p half2 vector reciprocal square root in round-to-nearest
+* \brief Calculates \p half2 vector reciprocal square root in round-to-nearest-even
 * mode.
 *
 * \details Calculates \p half2 reciprocal square root of input vector \p a in
@@ -3827,6 +3881,7 @@ __CUDA_FP16_DECL__ __half2 h2rsqrt(const __half2 a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 h2rcp(const __half2 a);
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector natural logarithm in round-to-nearest-even
@@ -3849,7 +3904,7 @@ __CUDA_FP16_DECL__ __half2 h2log(const __half2 a);
 * \brief Calculates \p half2 vector binary logarithm in round-to-nearest-even
 * mode.
 *
-* \details Calculates \p half2 binary logarithm of input vector \p a in round-to-nearest
+* \details Calculates \p half2 binary logarithm of input vector \p a in round-to-nearest-even
 * mode.
 * \param[in] a - half2. Is only being read. 
 *
@@ -3880,7 +3935,7 @@ __CUDA_FP16_DECL__ __half2 h2log2(const __half2 a);
 __CUDA_FP16_DECL__ __half2 h2log10(const __half2 a);
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
-* \brief Calculates \p half2 vector exponential function in round-to-nearest
+* \brief Calculates \p half2 vector exponential function in round-to-nearest-even
 * mode.
 *
 * \details Calculates \p half2 exponential function of input vector \p a in
@@ -3895,6 +3950,7 @@ __CUDA_FP16_DECL__ __half2 h2log10(const __half2 a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 h2exp(const __half2 a);
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector binary exponential function in
@@ -3912,6 +3968,7 @@ __CUDA_FP16_DECL__ __half2 h2exp(const __half2 a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 h2exp2(const __half2 a);
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF2_FUNCTIONS
 * \brief Calculates \p half2 vector decimal exponential function in
@@ -3960,10 +4017,7 @@ __CUDA_FP16_DECL__ __half2 h2cos(const __half2 a);
 * \endinternal
 */
 __CUDA_FP16_DECL__ __half2 h2sin(const __half2 a);
-
-#endif /*if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)*/
-
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 600)
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 530)) || defined(_NVHPC_CUDA) */
 
 /**
 * \ingroup CUDA_MATH__HALF2_ARITHMETIC
@@ -3972,7 +4026,8 @@ __CUDA_FP16_DECL__ __half2 h2sin(const __half2 a);
 * two __half elements; the entire __half2 is not guaranteed to be atomic as a single 32-bit access.
 * 
 * \details The location of \p address must be in global or shared memory. This operation has undefined
-* behavior otherwise. This operation is only supported by devices of compute capability 6.x and higher.
+* behavior otherwise. This operation is natively supported by devices of compute capability 6.x and higher,
+* older devices use emulation path.
 * 
 * \param[in] address - half2*. An address in global or shared memory.
 * \param[in] val - half2. The value to be added.
@@ -3984,10 +4039,7 @@ __CUDA_FP16_DECL__ __half2 h2sin(const __half2 a);
 */
 __CUDA_FP16_DECL__ __half2 atomicAdd(__half2 *const address, const __half2 val);
 
-#endif /*if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 600)*/
-
-#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
-
+#if (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700))) || defined(_NVHPC_CUDA)
 /**
 * \ingroup CUDA_MATH__HALF_ARITHMETIC
 * \brief Adds \p val to the value stored at \p address in global or shared memory, and writes this value
@@ -4005,10 +4057,9 @@ __CUDA_FP16_DECL__ __half2 atomicAdd(__half2 *const address, const __half2 val);
 * \note_ref_guide_atomic
 */
 __CUDA_FP16_DECL__ __half atomicAdd(__half *const address, const __half val);
+#endif /* (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700))) || defined(_NVHPC_CUDA) */
 
-#endif /*if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)*/
-
-#endif /* defined(__CUDACC__) */
+#endif /*defined(__CUDACC__) || defined(_NVHPC_CUDA)*/
 
 #undef __CUDA_FP16_DECL__
 #undef __CUDA_HOSTDEVICE_FP16_DECL__
