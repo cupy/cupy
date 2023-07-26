@@ -1,16 +1,18 @@
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 import numpy
 
 import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
-from cupy.typing._types import _ShapeLike, DTypeLike, NDArray
+from cupy.typing._types import (
+    _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
+)
 
 
 def empty(
         shape: _ShapeLike,
         dtype: DTypeLike = float,
-        order: Literal['C', 'F'] = 'C',
+        order: _OrderCF = 'C',
 ) -> NDArray[Any]:
     """Returns an array without initializing the elements.
 
@@ -63,7 +65,7 @@ def _new_like_order_and_strides(
 def empty_like(
         a: NDArray[Any],
         dtype: DTypeLike = None,
-        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        order: _OrderKACF = 'K',
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -106,7 +108,7 @@ def eye(
         M: Optional[int] = None,
         k: int = 0,
         dtype: DTypeLike = float,
-        order: Literal['C', 'F'] = 'C',
+        order: _OrderCF = 'C',
 ) -> NDArray[Any]:
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
@@ -157,7 +159,7 @@ def identity(n: int, dtype: DTypeLike = float) -> NDArray[Any]:
 def ones(
         shape: _ShapeLike,
         dtype: DTypeLike = float,
-        order: Literal['C', 'F'] = 'C',
+        order: _OrderCF = 'C',
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with ones.
 
@@ -183,7 +185,7 @@ def ones(
 def ones_like(
         a: NDArray[Any],
         dtype: DTypeLike = None,
-        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        order: _OrderKACF = 'K',
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -225,7 +227,7 @@ def ones_like(
 def zeros(
         shape: _ShapeLike,
         dtype: DTypeLike = float,
-        order: Literal['C', 'F'] = 'C',
+        order: _OrderCF = 'C',
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with zeros.
 
@@ -249,7 +251,7 @@ def zeros(
 def zeros_like(
         a: NDArray[Any],
         dtype: DTypeLike = None,
-        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        order: _OrderKACF = 'K',
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:
@@ -292,7 +294,7 @@ def full(
         shape: _ShapeLike,
         fill_value: Any,
         dtype: DTypeLike = None,
-        order: Literal['C', 'F'] = 'C',
+        order: _OrderCF = 'C',
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
 
@@ -325,7 +327,7 @@ def full_like(
         a: NDArray[Any],
         fill_value: Any,
         dtype: DTypeLike = None,
-        order: Literal['C', 'F', 'A', 'K'] = 'K',
+        order: _OrderKACF = 'K',
         subok: None = None,
         shape: Optional[_ShapeLike] = None,
 ) -> NDArray[Any]:

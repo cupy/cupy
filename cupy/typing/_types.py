@@ -1,4 +1,4 @@
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 import numpy
 from cupy._core import core
@@ -10,5 +10,7 @@ from numpy._typing import _DTypeLike  # NOQA
 from numpy._typing import _ShapeLike  # NOQA
 
 
+_OrderKACF = Literal[None, "K", "A", "C", "F"]
+_OrderCF = Literal[None, "C", "F"]
 _ScalarType_co = TypeVar("_ScalarType_co", bound=numpy.generic, covariant=True)
 NDArray = core.ndarray[Any, numpy.dtype[_ScalarType_co]]
