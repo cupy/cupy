@@ -16,6 +16,7 @@ cupy_builder.initialize(ctx)
 if not cupy_builder.preflight_check(ctx):
     sys.exit(1)
 
+## testing CI
 
 # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
 setup_requires = [
