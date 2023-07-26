@@ -72,6 +72,9 @@ cuda:
   "12.1":
     full_version: "12.1.1"
     repository: "nvidia/cuda"
+  "12.2":
+    full_version: "12.2.0"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -169,6 +172,13 @@ nccl:
       "11.0":
       "12.0":
       "12.1":
+  "2.18":
+    spec: "2.18.*"
+    cuda:
+      # "11.0":  -- DEB/RPM packages are unavailable
+      "12.0":  # Note: DEB package unavailable on Ubuntu 22.04
+      "12.1":
+      "12.2":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -218,7 +228,8 @@ cutensor:
       "11.0":
       "11.8":
       "12.0":
-      "12.1":
+      "12.1":  # assumed
+      "12.2":  # assumed
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -236,6 +247,7 @@ cusparselt:
       "11.8":
       "12.0":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
       "12.1":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
+      "12.2":  # TODO(kmaehashi): Tentatively use v0.2.0 for CUDA 12
 cudnn:
   # https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html
   # https://docs.nvidia.com/deeplearning/cudnn/archives/
@@ -406,7 +418,9 @@ cudnn:
         alias: "11.8"
       "12.0":
         alias: "12.0"
-      "12.1":
+      "12.1":  # TODO(kmaehashi): cuDNN 8.9 should be used
+        alias: "12.0"
+      "12.2":  # assumed
         alias: "12.0"
 
 
