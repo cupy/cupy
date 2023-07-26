@@ -2,7 +2,7 @@
 import warnings
 
 import cupy
-from cupyx.scipy.spatial._kdtree_utils import asm_kd_tree
+from cupyx.scipy.spatial._kdtree_utils import asm_kd_tree, compute_knn
 
 
 def broadcast_contiguous(x, shape, dtype):
@@ -120,8 +120,7 @@ class KDTree:
             warnings.warn('balanced_tree=False is not supported by the GPU '
                           'implementation of KDTree, skipping.')
 
-        self.m, self.n = self.data.shape
-        self.size = self.m
+        self.n, self.m = self.data.shape
 
         self.boxsize = cupy.full(self.m, cupy.inf, dtype=cupy.float64)
         # self.boxsize_data = None
@@ -144,3 +143,110 @@ class KDTree:
                                  "periodic box.")
 
         self.tree, self.index = asm_kd_tree(self.data)
+
+    def query(self, x, k=1, eps=0.0, p=2.0, distance_upper_bound=cupy.inf):
+        """
+        Query the kd-tree for nearest neighbors
+
+        Parameters
+        ----------
+        x : array_like, last dimension self.m
+            An array of points to query.
+        k : list of integer or integer
+            The list of k-th nearest neighbors to return. If k is an
+            integer it is treated as a list of [1, ... k] (range(1, k+1)).
+            Note that the counting starts from 1.
+        eps : non-negative float
+            Return approximate nearest neighbors; the k-th returned value
+            is guaranteed to be no further than (1+eps) times the
+            distance to the real k-th nearest neighbor.
+        p : float, 1<=p<=infinity
+            Which Minkowski p-norm to use.
+            1 is the sum-of-absolute-values "Manhattan" distance
+            2 is the usual Euclidean distance
+            infinity is the maximum-coordinate-difference distance
+            A finite large p may cause a ValueError if overflow can occur.
+        distance_upper_bound : nonnegative float
+            Return only neighbors within this distance.  This is used to prune
+            tree searches, so if you are doing a series of nearest-neighbor
+            queries, it may help to supply the distance to the nearest neighbor
+            of the most recent point.
+
+        Returns
+        -------
+        d : array of floats
+            The distances to the nearest neighbors.
+            If ``x`` has shape ``tuple+(self.m,)``, then ``d`` has shape
+            ``tuple+(k,)``. When k == 1, the last dimension of the output is
+            squeezed. Missing neighbors are indicated with infinite distances.
+        i : ndarray of ints
+            The index of each neighbor in ``self.data``.
+            If ``x`` has shape ``tuple+(self.m,)``, then ``i`` has shape
+            ``tuple+(k,)``. When k == 1, the last dimension of the output is
+            squeezed. Missing neighbors are indicated with ``self.n``.
+
+        Notes
+        -----
+        If the KD-Tree is periodic, the position ``x`` is wrapped into the
+        box.
+
+        When the input k is a list, a query for arange(max(k)) is performed,
+        but only columns that store the requested values of k are preserved.
+        This is implemented in a manner that reduces memory usage.
+
+        Examples
+        --------
+
+        >>> import cupy as cp
+        >>> from cupyx.scipy.spatial import KDTree
+        >>> x, y = cp.mgrid[0:5, 2:8]
+        >>> tree = KDTree(np.c_[x.ravel(), y.ravel()])
+
+        To query the nearest neighbours and return squeezed result, use
+
+        >>> dd, ii = tree.query([[0, 0], [2.2, 2.9]], k=1)
+        >>> print(dd, ii, sep='\n')
+        [2.         0.2236068]
+        [ 0 13]
+
+        To query the nearest neighbours and return unsqueezed result, use
+
+        >>> dd, ii = tree.query([[0, 0], [2.2, 2.9]], k=[1])
+        >>> print(dd, ii, sep='\n')
+        [[2.        ]
+         [0.2236068]]
+        [[ 0]
+         [13]]
+
+        To query the second nearest neighbours and return unsqueezed result,
+        use
+
+        >>> dd, ii = tree.query([[0, 0], [2.2, 2.9]], k=[2])
+        >>> print(dd, ii, sep='\n')
+        [[2.23606798]
+         [0.80622577]]
+        [[ 6]
+         [19]]
+
+        To query the first and second nearest neighbours, use
+
+        >>> dd, ii = tree.query([[0, 0], [2.2, 2.9]], k=2)
+        >>> print(dd, ii, sep='\n')
+        [[2.         2.23606798]
+         [0.2236068  0.80622577]]
+        [[ 0  6]
+         [13 19]]
+
+        or, be more specific
+
+        >>> dd, ii = tree.query([[0, 0], [2.2, 2.9]], k=[1, 2])
+        >>> print(dd, ii, sep='\n')
+        [[2.         2.23606798]
+         [0.2236068  0.80622577]]
+        [[ 0  6]
+         [13 19]]
+        """
+
+        return compute_knn(
+            x, self.tree, self.index, self.boxsize, k=int(k), eps=float(eps),
+            p=float(p), distance_upper_bound=distance_upper_bound)

@@ -143,7 +143,7 @@ __device__ double compute_distance_inf(
         double dim_bound = box_bounds[i];
 
         if(diff > dim_bound - diff) {
-            diff = dim_bound - diff + 1;
+            diff = dim_bound - diff;
         }
 
         if(p == CUDART_INF) {
@@ -170,7 +170,7 @@ __device__ double compute_distance(
         double diff = abs(point1[i] - point2[i]);
         double dim_bound = box_bounds[i];
         if(diff > dim_bound - diff) {
-            diff = dim_bound - diff + 1;
+            diff = dim_bound - diff;
         }
         dist += pow(diff, p);
     }
@@ -180,10 +180,10 @@ __device__ double compute_distance(
 }
 
 __device__ double insort(
-        const long long curr, const double dist, const int k, const double eps,
+        const long long curr, const double dist, const int k,
         double* distances, long long* nodes) {
 
-    if(dist > distances[k - 1] + eps) {
+    if(dist > distances[k - 1]) {
         return distances[k - 1];
     }
 
@@ -192,7 +192,7 @@ __device__ double insort(
 
     while(left != right) {
         long long pos = (left + right) / 2;
-        if(distances[pos] + eps < dist) {
+        if(distances[pos] < dist) {
             left = pos + 1;
         } else {
             right = pos;
@@ -210,7 +210,7 @@ __device__ double insort(
         nodes[i] = node_to_insert;
         distances[i] = dist_to_insert;
 
-        if(nodes[i] != CUDART_INF) {
+        if(nodes[i] != k) {
             dist_to_return = max(dist_to_return, distances[i]);
         }
 
@@ -253,7 +253,7 @@ __device__ void compute_knn(
 
         if(!from_child) {
             if(dist <= radius + eps) {
-                radius = insort(index[curr], dist, k, eps, distances, nodes);
+                radius = insort(index[curr], dist, k, distances, nodes);
             }
         }
 
@@ -263,7 +263,7 @@ __device__ void compute_knn(
         double curr_dim_dist = abs(point[cur_dim] - cur_point[cur_dim]);
 
         if(curr_dim_dist > dim_bound - curr_dim_dist) {
-            curr_dim_dist = dim_bound - curr_dim_dist + 1;
+            curr_dim_dist = dim_bound - curr_dim_dist;
         }
 
         long long cur_close_child = child;
@@ -408,7 +408,7 @@ def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
         raise ValueError('Query points dtype must match the tree one.')
 
     distances = cupy.full((n_points, max_k), cupy.inf, dtype=cupy.float64)
-    nodes = cupy.full((n_points, max_k), -1, dtype=cupy.int64)
+    nodes = cupy.full((n_points, max_k), tree.shape[0], dtype=cupy.int64)
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
