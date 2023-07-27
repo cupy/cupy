@@ -415,7 +415,18 @@ class coo_matrix(sparse_data._data_matrix):
             data = cupy.zeros(size, dtype=self.data.dtype)
             row = cupy.empty(size, dtype='i')
             col = cupy.empty(size, dtype='i')
-            if self.data.dtype.kind == 'f':
+            if self.data.dtype.kind == 'b':
+                cupy.ElementwiseKernel(
+                    'T src_data, int32 src_row, int32 src_col, int32 index',
+                    'raw T data, raw int32 row, raw int32 col',
+                    '''
+                    if (src_data) data[index] = true;
+                    row[index] = src_row;
+                    col[index] = src_col;
+                    ''',
+                    'cupyx_scipy_sparse_coo_sum_duplicates_assign'
+                )(src_data, src_row, src_col, index, data, row, col)
+            elif self.data.dtype.kind == 'f':
                 cupy.ElementwiseKernel(
                     'T src_data, int32 src_row, int32 src_col, int32 index',
                     'raw T data, raw int32 row, raw int32 col',
