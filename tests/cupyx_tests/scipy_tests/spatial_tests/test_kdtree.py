@@ -1,8 +1,16 @@
 
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.spatial  # NOQA
+
+import numpy as np
+
+try:
+    import scipy  # NOQA
+except ImportError:
+    pass
 
 try:
     import scipy.spatial  # NOQA
@@ -32,6 +40,7 @@ def create_small_kd_tree(xp, scp, n_points=1):
     return x, tree
 
 
+@testing.with_requires('scipy')
 class TestRandomConsistency:
     @pytest.mark.parametrize('args', [
         (100, 4, 1, 0),
@@ -102,7 +111,19 @@ class TestRandomConsistency:
         d, i = tree.query(x, k, eps=eps)
         return d, i
 
+    @pytest.mark.parametrize('k', [(1, 2, 3), (1, 3), (1,)])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_list_k(self, xp, scp, k):
+        n = 200
+        m = 2
+        data = testing.shaped_random(
+            (n, m), xp, xp.float64, scale=1, seed=1234)
+        kdtree = scp.spatial.KDTree(data)
+        dd, ii = kdtree.query(data, list(k))
+        return dd, ii
 
+
+@testing.with_requires('scipy')
 class TestSmall:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_nearest(self, xp, scp):
@@ -148,3 +169,34 @@ class TestSmall:
         x, tree = create_small_kd_tree(xp, scp)
         d, i = tree.query(x, k, eps=eps)
         return d, i
+
+
+@testing.with_requires('scipy')
+class TestVectorization:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_vectorized_query(self, xp, scp):
+        _, tree = create_small_kd_tree(xp, scp)
+        d, i = tree.query(xp.zeros((2, 4, 3)))
+        return d, i
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_query_multiple_neighbors(self, xp, scp):
+        s = 23
+        _, tree = create_small_kd_tree(xp, scp)
+        kk = tree.n + s
+        d, _ = tree.query(xp.array([0, 0, 0]), k=kk)
+        return d
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_vectorized_query_multiple_neighbors(self, xp, scp):
+        s = 23
+        _, tree = create_small_kd_tree(xp, scp)
+        kk = tree.n + s
+        d, _ = tree.query(xp.zeros((2, 4, 3)), k=kk)
+        return d
+
+    def test_query_raises_for_k_none(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            x, tree = create_small_kd_tree(xp, scp)
+            with pytest.raises(ValueError, match="k must be an integer*"):
+                tree.query(x, k=None)

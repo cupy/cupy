@@ -246,7 +246,19 @@ class KDTree:
         [[ 0  6]
          [13 19]]
         """
+        common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
+        tree = self.tree
+        if cupy.dtype(self.tree.dtype) is not common_dtype:
+            tree = self.tree.astype(common_dtype)
+        if cupy.dtype(x.dtype) is not common_dtype:
+            x = x.astype(common_dtype)
+
+        if not isinstance(k, list):
+            try:
+                k = int(k)
+            except TypeError:
+                raise ValueError('k must be an integer or list of integers')
 
         return compute_knn(
-            x, self.tree, self.index, self.boxsize, k=int(k), eps=float(eps),
+            x, tree, self.index, self.boxsize, k=k, eps=float(eps),
             p=float(p), distance_upper_bound=distance_upper_bound)

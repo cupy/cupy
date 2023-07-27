@@ -398,7 +398,18 @@ def asm_kd_tree(points):
 def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
                 distance_upper_bound=cupy.inf):
     max_k = int(np.max(k))
-    n_points, n_dims = points.shape
+    points_shape = points.shape
+    if points.ndim > 2:
+        points = points.reshape(-1, points_shape[-1])
+        if not points.flags.c_contiguous:
+            points = points.copy()
+
+    if points.ndim == 1:
+        n_points = 1
+        n_dims = points.shape[0]
+    else:
+        n_points, n_dims = points.shape
+
     if n_dims != tree.shape[-1]:
         raise ValueError('The number of dimensions of the query points must '
                          'match with the tree ones. '
@@ -421,7 +432,17 @@ def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
         indices = [k_i - 1 for k_i in k]
         distances = distances[:, indices]
         nodes = nodes[:, indices]
-    elif k == 1:
+
+    if len(points_shape) > 2:
+        distances = distances.reshape(*points_shape[:-1], -1)
+        nodes = nodes.reshape(*points_shape[:-1], -1)
+
+    if len(points_shape) == 1:
+        distances = cupy.squeeze(distances, 0)
+        nodes = cupy.squeeze(nodes, 0)
+
+    if k == 1 and len(points_shape) > 1:
         distances = cupy.squeeze(distances, -1)
         nodes = cupy.squeeze(nodes, -1)
+
     return distances, nodes
