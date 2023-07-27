@@ -75,7 +75,7 @@ def expm(a):
     a [13 / 13] Pade approximant with scaling and squaring.
 
     Simplifications:
-    
+
         * we always use a [13/13] approximate
         * no matrix balancing
 
@@ -112,12 +112,9 @@ def expm(a):
 
     E = cupy.eye(A.shape[0])
 
-    u = A6 @ (b[13]*A6 + b[11]*A4 + b[9]*A2) + \
-        b[7]*A6 + b[5]*A4 + b[3]*A2 + b[1]*E
-    u = A @ u
-
-    v = A6 @ (b[12]*A6 + b[10]*A4 + b[8]*A) + \
-        b[6]*A6 + b[4]*A4 + b[2]*A2 + b[0]*E
+    u1, u2, v1, v2 = _expm_inner(E, A, A2, A4, A6, cupy.asarray(b))
+    u = A @ (A6 @ u1 + u2)
+    v = A6 @ v1 + v2
 
     r13 = cupy.linalg.solve(-u + v, u + v)
 
@@ -130,3 +127,13 @@ def expm(a):
     x *= math.exp(mu)
 
     return x
+
+
+@cupy.fuse
+def _expm_inner(E, A, A2, A4, A6, b):
+    u1 = b[13]*A6 + b[11]*A4 + b[9]*A2
+    u2 = b[7]*A6 + b[5]*A4 + b[3]*A2 + b[1]*E
+
+    v1 = b[12]*A6 + b[10]*A4 + b[8]*A
+    v2 = b[6]*A6 + b[4]*A4 + b[2]*A2 + b[0]*E
+    return u1, u2, v1, v2
