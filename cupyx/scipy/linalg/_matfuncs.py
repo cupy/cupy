@@ -63,7 +63,7 @@ def expm(a):
 
     Parameters
     ----------
-    a : ndarray, 2D, float64
+    a : ndarray, 2D
 
     Returns
     -------
@@ -95,7 +95,7 @@ def expm(a):
     A = a - cupy.eye(n)*mu
 
     # scale factor
-    nrmA = cupy.linalg.norm(A, ord=1)
+    nrmA = cupy.linalg.norm(A, ord=1).item()
 
     scale = nrmA > th13
     if scale:

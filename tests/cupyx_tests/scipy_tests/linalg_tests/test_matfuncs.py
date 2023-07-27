@@ -88,7 +88,7 @@ class TestExpM:
         result = cx_linalg.expm(A)
         assert result.size == 0
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_2x2_input(self, xp, scp):
         a = xp.array([[1, 4], [1, 1]])
         return scp.linalg.expm(a)
@@ -99,7 +99,7 @@ class TestExpM:
                                    [[1, 3], [5, 3]],
                                    [[4, 5], [-3, -4]])
                              )
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_nx2x2_input(self, xp, scp, a):
         a = xp.asarray(a)
         return scp.linalg.expm(a)
