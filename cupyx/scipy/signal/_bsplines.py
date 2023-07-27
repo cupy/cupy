@@ -60,6 +60,7 @@ def _cubic(x):
     return out
 
 
+@cupy.fuse()
 def _coeff_smooth(lam):
     xi = 1 - 96 * lam + 24 * lam * cupy.sqrt(3 + 144 * lam)
     omeg = cupy.arctan2(cupy.sqrt(144 * lam - 1), cupy.sqrt(xi))
@@ -69,11 +70,13 @@ def _coeff_smooth(lam):
     return rho, omeg
 
 
+@cupy.fuse()
 def _hc(k, cs, rho, omega):
     return (cs / cupy.sin(omega) * (rho ** k) * cupy.sin(omega * (k + 1)) *
             cupy.greater(k, -1))
 
 
+@cupy.fuse()
 def _hs(k, cs, rho, omega):
     c0 = (cs * cs * (1 + rho * rho) / (1 - rho * rho) /
           (1 - 2 * rho * rho * cupy.cos(2 * omega) + rho ** 4))
