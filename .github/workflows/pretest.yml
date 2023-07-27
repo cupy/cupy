@@ -67,7 +67,6 @@ jobs:
     - name: Build
       run: |
         pip install -U pip wheel
-        pip install cython
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
 
