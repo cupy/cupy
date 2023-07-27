@@ -75,8 +75,9 @@ def expm(a):
     a [13 / 13] Pade approximant with scaling and squaring.
 
     Simplifications:
-    - we always use a [13/13] approximant
-    - no matrix balancing
+    
+        * we always use a [13/13] approximate
+        * no matrix balancing
 
     References
     ----------
