@@ -317,6 +317,43 @@ __global__ void knn(
                    tree, index, box_bounds, distances, nodes);
 }
 
+__device__ void adjust_to_box(
+        double* point, const int n_dims,
+        const double* __restrict__ box_bounds) {
+    for(int i = 0; i < n_dims; i++) {
+        double dim_value = point[i];
+        const double dim_box_bounds = box_bounds[i];
+        if(dim_box_bounds > 0) {
+            const double r = floor(dim_value / dim_box_bounds);
+            double x1 = dim_value - r * dim_box_bounds;
+            while(x1 >= dim_box_bounds) x1 -= dim_box_bounds;
+            while(x1 < 0) x1 += dim_box_bounds;
+            point[i] = x1;
+        }
+    }
+}
+
+__global__ void knn_periodic(
+        const int k, const int n, const int points_size, const int n_dims,
+        const double eps, const double p, const double dist_bound,
+        double* __restrict__ points, const double* __restrict__ tree,
+        const long long* __restrict__ index,
+        const double* __restrict__ box_bounds,
+        double* all_distances, long long* all_nodes) {
+
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(idx >= points_size) {
+        return;
+    }
+
+    double* point = points + n_dims * idx;
+    double* distances = all_distances + k * idx;
+    long long* nodes = all_nodes + k * idx;
+
+    adjust_to_box(point, n_dims, box_bounds);
+    compute_knn<double>(k, n, n_dims, eps, p, dist_bound, point,
+                        tree, index, box_bounds, distances, nodes);
+}
 '''
 
 
@@ -326,7 +363,7 @@ KD_MODULE = cupy.RawModule(
 
 KNN_MODULE = cupy.RawModule(
     code=KNN_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'knn<{x}>' for x in TYPE_NAMES])
+    name_expressions=['knn_periodic'] + [f'knn<{x}>' for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -396,7 +433,7 @@ def asm_kd_tree(points):
 
 
 def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
-                distance_upper_bound=cupy.inf):
+                distance_upper_bound=cupy.inf, adjust_to_box=False):
     max_k = int(np.max(k))
     points_shape = points.shape
     if points.ndim > 2:
@@ -423,7 +460,9 @@ def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
-    knn = _get_module_func(KNN_MODULE, 'knn', points)
+    knn_fn, fn_args = (
+        ('knn', (points,)) if not adjust_to_box else ('knn_periodic', tuple()))
+    knn = _get_module_func(KNN_MODULE, knn_fn, *fn_args)
     knn((n_blocks,), (block_sz,),
         (max_k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
          points, tree, index, boxdata, distances, nodes))

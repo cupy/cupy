@@ -120,6 +120,7 @@ class KDTree:
             warnings.warn('balanced_tree=False is not supported by the GPU '
                           'implementation of KDTree, skipping.')
 
+        self.copy_query_points = False
         self.n, self.m = self.data.shape
 
         self.boxsize = cupy.full(self.m, cupy.inf, dtype=cupy.float64)
@@ -127,6 +128,7 @@ class KDTree:
 
         if boxsize is not None:
             # self.boxsize_data = cupy.empty(self.m, dtype=data.dtype)
+            self.copy_query_points = True
             boxsize = broadcast_contiguous(boxsize, shape=(self.m,),
                                            dtype=cupy.float64)
             # self.boxsize_data[:self.m] = boxsize
@@ -246,6 +248,12 @@ class KDTree:
         [[ 0  6]
          [13 19]]
         """
+        if self.copy_query_points:
+            if cupy.dtype(x.dtype) is not cupy.dtype(cupy.float64):
+                raise ValueError('periodic KDTree is only available '
+                                 'on float64')
+            x = x.copy()
+
         common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
         tree = self.tree
         if cupy.dtype(self.tree.dtype) is not common_dtype:
@@ -261,4 +269,5 @@ class KDTree:
 
         return compute_knn(
             x, tree, self.index, self.boxsize, k=k, eps=float(eps),
-            p=float(p), distance_upper_bound=distance_upper_bound)
+            p=float(p), distance_upper_bound=distance_upper_bound,
+            adjust_to_box=self.copy_query_points)

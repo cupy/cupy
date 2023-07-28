@@ -195,8 +195,35 @@ class TestVectorization:
         d, _ = tree.query(xp.zeros((2, 4, 3)), k=kk)
         return d
 
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_vectorized_query_multiple_neighbors_random(self, xp, scp):
+        s = 23
+        x, tree = create_random_kd_tree(xp, scp, 100, 3, 8)
+        x = x.reshape(2, 4, 3).copy()
+        kk = tree.n + s
+        d, _ = tree.query(x, k=kk)
+        return d
+
     def test_query_raises_for_k_none(self):
         for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
             x, tree = create_small_kd_tree(xp, scp)
             with pytest.raises(ValueError, match="k must be an integer*"):
                 tree.query(x, k=None)
+
+
+class TestPeriodic:
+    @pytest.mark.parametrize('off', [0, 1, -1])
+    @pytest.mark.parametrize('p', [1, 2, 3.0, np.inf])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_kdtree_box(self, xp, scp, p, off):
+        # check ckdtree periodic boundary
+        n = 10
+        m = 2
+        k = 3
+
+        data = testing.shaped_random(
+            (n, m), xp, xp.float64, scale=1, seed=1234)
+        kdtree = scp.spatial.KDTree(data, boxsize=1.0)
+
+        dd, ii = kdtree.query(data + off, k, p=p)
+        return dd, ii
