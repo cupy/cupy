@@ -81,7 +81,7 @@ def _hs(k, cs, rho, omega):
     c0 = (cs * cs * (1 + rho * rho) / (1 - rho * rho) /
           (1 - 2 * rho * rho * cupy.cos(2 * omega) + rho ** 4))
     gamma = (1 - rho * rho) / (1 + rho * rho) / cupy.tan(omega)
-    ak = abs(k)
+    ak = cupy.abs(k)
     return c0 * rho ** ak * (
         cupy.cos(omega * ak) + gamma * cupy.sin(omega * ak))
 
