@@ -210,9 +210,6 @@ class NCCLBackend(_Backend):
             in_array (cupy.ndarray): array to be sent.
             out_array (cupy.ndarray): array where the result with be stored.
             count (int): Number of elements to send to each rank.
-            op (str): reduction operation, can be one of
-                ('sum', 'prod', 'min' 'max'), arrays of complex type only
-                support `'sum'`. Defaults to `'sum'`.
             stream (cupy.cuda.Stream, optional): if supported, stream to
                 perform the communication.
         """
