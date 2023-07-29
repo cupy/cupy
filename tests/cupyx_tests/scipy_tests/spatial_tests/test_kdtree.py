@@ -217,7 +217,7 @@ class TestPeriodic:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_kdtree_box(self, xp, scp, p, off):
         # check ckdtree periodic boundary
-        n = 10
+        n = 100
         m = 2
         k = 3
 

@@ -180,7 +180,7 @@ __device__ double compute_distance(
 }
 
 __device__ double insort(
-        const long long curr, const double dist, const int k,
+        const long long curr, const double dist, const int k, const int n,
         double* distances, long long* nodes) {
 
     if(dist > distances[k - 1]) {
@@ -210,9 +210,9 @@ __device__ double insort(
         nodes[i] = node_to_insert;
         distances[i] = dist_to_insert;
 
-        if(nodes[i] != k) {
+        // if(nodes[i] != n) {
             dist_to_return = max(dist_to_return, distances[i]);
-        }
+        // }
 
         node_to_insert = node_tmp;
         dist_to_insert = dist_tmp;
@@ -248,12 +248,13 @@ __device__ void compute_knn(
         const bool from_child = prev >= child;
         const T* cur_point = tree + n_dims * curr;
 
-        const double dist = compute_distance(
-            point, cur_point, box_bounds, n_dims, p);
 
         if(!from_child) {
+            const double dist = compute_distance(
+                point, cur_point, box_bounds, n_dims, p);
+
             if(dist <= radius + eps) {
-                radius = insort(index[curr], dist, k, distances, nodes);
+                radius = insort(index[curr], dist, k, n, distances, nodes);
             }
         }
 
@@ -261,15 +262,16 @@ __device__ void compute_knn(
         const long long cur_dim = cur_level % n_dims;
         const double dim_bound = box_bounds[cur_dim];
         double curr_dim_dist = abs(point[cur_dim] - cur_point[cur_dim]);
+        bool box_overflow = curr_dim_dist > dim_bound - curr_dim_dist;
 
-        if(curr_dim_dist > dim_bound - curr_dim_dist) {
+        if(box_overflow) {
             curr_dim_dist = dim_bound - curr_dim_dist;
         }
 
         long long cur_close_child = child;
         long long cur_far_child = r_child;
 
-        if(point[cur_dim] > cur_point[cur_dim]) {
+        if(point[cur_dim] > cur_point[cur_dim] && !box_overflow) {
             cur_close_child = r_child;
             cur_far_child = child;
         }
