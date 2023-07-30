@@ -16,30 +16,12 @@ jobs:
 
     runs-on: ubuntu-22.04
     steps:
-      # Get the GitHub app installation token.
-      # https://github.com/apps/cupy-project-automation
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: npm install @octokit/app
       - name: Generate Token
-        uses: actions/github-script@v6
+        uses: tibdex/github-app-token@b62528385c34dbc9f38e5f4225ac829252d1ea92  # v1.8.0
         id: token
-        env:
-          GH_APP_ID: 349488
-          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PROJECT_AUTOMATION_PEM }}
         with:
-          script: |
-            const { App } = require("@octokit/app");
-            const app = new App({
-              appId: process.env.GH_APP_ID,
-              privateKey: process.env.GH_APP_PRIVATE_KEY,
-            });
-            const id = (await app.octokit.request("GET /orgs/${{ github.repository_owner }}/installation")).data.id;
-            const token = (await app.octokit.request(`POST /app/installations/${id}/access_tokens`)).data.token;
-            core.setSecret(token);
-            return token;
-          result-encoding: string
+          app_id: 349488
+          private_key: ${{ secrets.GH_APP_PROJECT_AUTOMATION_PEM }}
 
       # Get the pull-request number.
       - name: Download artifact
@@ -70,7 +52,7 @@ jobs:
       - name: Update Status
         shell: /usr/bin/bash -uex "{0}"
         env:
-          GH_TOKEN: ${{ steps.token.outputs.result }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           PULL_REQUEST="$(cat 'PULL_REQUEST_NUMBER')"
           echo "::notice::Pull-Request: #${PULL_REQUEST}"
@@ -137,6 +119,6 @@ jobs:
         uses: actions/github-script@v6
         if: always() && steps.token.outcome == 'success'
         with:
-          github-token: ${{ steps.token.outputs.result }}
+          github-token: ${{ steps.token.outputs.token }}
           script: |
             await github.rest.apps.revokeInstallationAccessToken();

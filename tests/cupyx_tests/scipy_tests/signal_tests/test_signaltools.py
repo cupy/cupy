@@ -209,6 +209,30 @@ class TestConvolveCorrelate2D:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.parametrize("mode", ["valid", "same", "full"])
+@pytest.mark.parametrize("behind", [True, False])
+@pytest.mark.parametrize("input_size", [100, 101, 1000, 1001, 10000, 10001])
+@testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+def test_correlation_lags(mode, xp, scp, behind, input_size):
+    # generate random data
+    rng = np.random.RandomState(0)
+    in1 = rng.standard_normal(input_size)
+    in1 = xp.asarray(in1)
+
+    offset = int(input_size/10)
+    # generate offset version of array to correlate with
+    if behind:
+        # y is behind x
+        in2 = xp.concatenate([xp.asarray(rng.standard_normal(offset)), in1])
+    else:
+        # y is ahead of x
+        in2 = in1[offset:]
+    # cross correlate, returning lag information
+    lags = scp.signal.correlation_lags(in1.size, in2.size, mode=mode)
+    return lags
+
+
+@testing.with_requires('scipy')
 class TestConvolve2DEdgeCase:
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')

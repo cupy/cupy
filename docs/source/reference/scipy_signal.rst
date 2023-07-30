@@ -19,6 +19,7 @@ Convolution
    correlate2d
    sepfir2d
    choose_conv_method
+   correlation_lags
 
 
 Filtering
@@ -60,11 +61,13 @@ Filter design
    freqs_zpk
    freqz
    freqz_zpk
+   sosfreqz
    firls
    minimum_phase
    savgol_coeffs
    gammatone
    group_delay
+   iirdesign
    iirfilter
    kaiser_atten
    kaiser_beta
@@ -83,9 +86,16 @@ Matlab-style IIR filter design
    :toctree: generated/
 
    butter
+   buttord
    ellip
+   ellipord
    cheby1
+   cheb1ord
    cheby2
+   cheb2ord
+   iircomb
+   iirnotch
+   iirpeak
 
 
 Low-level filter design functions
@@ -95,7 +105,6 @@ Low-level filter design functions
    :toctree: generated/
 
    abcd_normalize
-
 
 
 Chirp Z-transform and Zoom FFT
@@ -119,6 +128,12 @@ LTI representations
 
    zpk2tf
    zpk2sos
+   tf2zpk
+   tf2sos
+   tf2ss
+   ss2tf
+   sos2tf
+   sos2zpk
 
 
 Peak finding

@@ -7,10 +7,6 @@ on:
   pull_request_review:
   pull_request_review_comment:
 
-concurrency:
-  group: "pull-request-update-${{ (github.event.pull_request || github.event.issue).number }}"
-  cancel-in-progress: true
-
 jobs:
   mark-needs-attention:
     if: |

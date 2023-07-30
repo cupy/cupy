@@ -39,7 +39,7 @@ extras_require = {
         'pbr==5.5.1',
         'pycodestyle==2.6.0',
 
-        'mypy==0.950',
+        'mypy==1.4.1',
         'types-setuptools==57.4.14',
     ],
     'test': [

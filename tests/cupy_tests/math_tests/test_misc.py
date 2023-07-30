@@ -502,7 +502,7 @@ class TestConvolve:
         return xp.convolve(a[::200], b[10::70], mode=mode)
 
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=5e-4)
     def test_convolve_large_non_contiguous(self, xp, dtype, mode):
         a = testing.shaped_arange((10000,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)

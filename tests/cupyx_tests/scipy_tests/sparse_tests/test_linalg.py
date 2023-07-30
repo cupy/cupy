@@ -1218,8 +1218,13 @@ class TestLOBPCG:
         runtime.is_hip and driver.get_build_version() >= 5_00_00000,
         reason='ROCm 5.0+ may have a bug')
     @pytest.mark.xfail(
-        cupy.cuda.cusolver._getVersion() == (11, 4, 5),
-        reason='CUDA 12.1.1 + cuSOLVER 11.4.5 may have a bug')
+        cupy.cuda.cusolver._getVersion() in (
+            (11, 4, 5),  # CUDA 12.1.1
+            (11, 5, 0),  # CUDA 12.2.0
+        ),
+        reason='cuSOLVER in CUDA 12.1+ may have a bug',
+        strict=False,  # Seems only failing with Volta (V100 / T4)
+    )
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should

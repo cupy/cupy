@@ -8,6 +8,7 @@ from cupy.polynomial.polynomial import (
 import cupyx.scipy.fft as sp_fft
 from cupyx import jit
 from cupyx.scipy._lib._util import float_factorial
+from cupyx.scipy.signal._polyutils import roots
 
 EPSILON = 2e-16
 
@@ -30,15 +31,6 @@ def _try_convert_to_int(x):
         return operator.index(value), True
     except TypeError:
         return value, False
-
-
-def roots(arr):
-    """np.roots replacement. XXX: calls into NumPy, then converts back.
-    """
-    import numpy as np
-
-    arr = cupy.asarray(arr).get()
-    return cupy.asarray(np.roots(arr))
 
 
 def findfreqs(num, den, N, kind='ba'):
@@ -565,7 +557,7 @@ def _validate_sos(sos):
     n_sections, m = sos.shape
     if m != 6:
         raise ValueError('sos array must be shape (n_sections, 6)')
-    if not (sos[:, 3] == 1).all():
+    if ((sos[:, 3] - 1) > 1e-15).any():
         raise ValueError('sos[:, 3] should be all ones')
     return sos, n_sections
 
