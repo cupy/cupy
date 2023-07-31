@@ -1037,6 +1037,21 @@ class TestCooMatrixSumDuplicates:
         assert m.nnz == 0
         return m
 
+    @testing.with_requires('scipy>=1.11.0')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_compatibility(self, xp, sp):
+        m = _make_sum_dup(xp, sp, self.dtype)
+        row = m.row.copy()
+        col = m.col.copy()
+        assert not m.has_canonical_format
+        m.sum_duplicates()
+        assert m.has_canonical_format
+        testing.assert_array_equal(m.row, row)
+        testing.assert_array_equal(m.col, col)
+        assert m.has_canonical_format
+        return m
+
+    @testing.with_requires('scipy<1.11.0')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates_incompatibility(self, xp, sp):
         # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
@@ -1052,9 +1067,9 @@ class TestCooMatrixSumDuplicates:
         # Here we ensure this sorting order is not altered by future PRs...
         sorted_first.sort()
         if xp is cupy:
-            assert (m.row == sorted_first).all()
+            testing.assert_array_equal(m.row, sorted_first)
         else:
-            assert (m.col == sorted_first).all()
+            testing.assert_array_equal(m.col, sorted_first)
         assert m.has_canonical_format
         # ...and now we make sure the dense matrix is the same
         return m
