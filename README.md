@@ -49,7 +49,8 @@ Choose the right package for your platform.
 | ROCm 4.3 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-4-3`                                   |
 | ROCm 5.0 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*)          | x86_64            | `pip install cupy-rocm-5-0`                                   |
 
-> **Note** To install pre-releases, append `--pre -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre`).
+> [!NOTE]\
+> To install pre-releases, append `--pre -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre`).
 
 ### Conda
 
@@ -61,7 +62,8 @@ Binary packages are also available for Linux and Windows on [Conda-Forge](https:
 
 If you need to use a particular CUDA version (say 11.8), you can do `conda install -c conda-forge cupy cuda-version=11.8`.
 
-> **Note** If you encounter any problem with CuPy installed from `conda-forge`, please feel free to report to [cupy-feedstock](https://github.com/conda-forge/cupy-feedstock/issues), and we will help investigate if it is just a packaging issue in `conda-forge`'s recipe or a real issue in CuPy.
+> [!NOTE]\
+> If you encounter any problem with CuPy installed from `conda-forge`, please feel free to report to [cupy-feedstock](https://github.com/conda-forge/cupy-feedstock/issues), and we will help investigate if it is just a packaging issue in `conda-forge`'s recipe or a real issue in CuPy.
 
 ### Docker
 
