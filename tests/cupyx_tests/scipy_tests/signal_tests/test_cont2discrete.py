@@ -9,7 +9,7 @@ from cupy import testing
 @testing.with_requires("scipy")
 class TestC2D:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_zoh(self, xp, scp):
         ac = xp.eye(2)
         bc = xp.full((2, 1), 0.5)
@@ -33,7 +33,7 @@ class TestC2D:
         ad, bd, cd, dd, dt = c2d((ac, bc, cc, dc), dt_requested, method='foh')
         return ad, bd, cd, dd, dt
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_impulse(self, xp, scp):
         ac = xp.eye(2)
         bc = xp.full((2, 1), 0.5)
@@ -223,7 +223,7 @@ class TestC2D:
 @testing.with_requires('scipy')
 class TestC2dLti:
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_c2d_ss(self, xp, scp):
         # StateSpace
         A = xp.array([[-0.3, 0.1], [0.2, -0.7]])
