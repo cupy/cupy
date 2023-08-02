@@ -1,9 +1,18 @@
 import sys
 import unittest
+import pytest
 
+import cupy
 from cupy import testing
 
 import cupyx.scipy.signal  # NOQA
+
+import numpy as np
+
+try:
+    import scipy  # NOQA
+except ImportError:
+    pass
 
 try:
     import scipy.signal  # NOQA
@@ -31,3 +40,76 @@ class TestSepFIR2d(unittest.TestCase):
         hrow = testing.shaped_random((self.hrow,), xp, dtype)
         hcol = testing.shaped_random((self.hcol,), xp, dtype)
         return scp.signal.sepfir2d(input, hrow, hcol)
+
+
+@testing.with_requires('scipy')
+class TestCSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline_zero(self, xp, scp):
+        return scp.signal.cspline1d(xp.asarray([0]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline_lambda_nonzero(self, xp, scp):
+        return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]), 1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline(self, xp, scp):
+        return scp.signal.cspline1d(xp.asarray([1., 2, 3, 4, 5]))
+
+
+@testing.with_requires('scipy')
+class TestQSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_qspline_zero(self, xp, scp):
+        return scp.signal.qspline1d(xp.asarray([0]))
+
+    def test_qspline_lambda_nonzero(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            with pytest.raises(ValueError):
+                scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]), 1)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_qspline(self, xp, scp):
+        return scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]))
+
+
+@testing.with_requires('scipy')
+class TestCSplineEval:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline_eval_zero(self, xp, scp):
+        return scp.signal.cspline1d_eval(xp.asarray([0., 0]), xp.asarray([0.]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_cspline_eval(self, xp, scp):
+        x = [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+        dx = x[1] - x[0]
+        newx = [-6., -5.5, -5., -4.5, -4., -3.5, -3., -2.5, -2., -1.5, -1.,
+                -0.5, 0., 0.5, 1., 1.5, 2., 2.5, 3., 3.5, 4., 4.5, 5., 5.5, 6.,
+                6.5, 7., 7.5, 8., 8.5, 9., 9.5, 10., 10.5, 11., 11.5, 12.,
+                12.5]
+        y = xp.asarray([
+            4.216, 6.864, 3.514, 6.203, 6.759, 7.433, 7.874, 5.879,
+            1.396, 4.094])
+        cj = scp.signal.cspline1d(y)
+        return scp.signal.cspline1d_eval(cj, newx, dx=dx, x0=x[0])
+
+
+@testing.with_requires('scipy')
+class TestQSplineEval:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_qspline_eval_zero(self, xp, scp):
+        return scp.signal.qspline1d_eval(xp.asarray([0., 0]), xp.asarray([0.]))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_qspline_eval(self, xp, scp):
+        x = [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+        dx = x[1] - x[0]
+        newx = [-6., -5.5, -5., -4.5, -4., -3.5, -3., -2.5, -2., -1.5, -1.,
+                -0.5, 0., 0.5, 1., 1.5, 2., 2.5, 3., 3.5, 4., 4.5, 5., 5.5, 6.,
+                6.5, 7., 7.5, 8., 8.5, 9., 9.5, 10., 10.5, 11., 11.5, 12.,
+                12.5]
+        y = xp.asarray([
+            4.216, 6.864, 3.514, 6.203, 6.759, 7.433, 7.874, 5.879,
+            1.396, 4.094])
+        cj = scp.signal.qspline1d(y)
+        return scp.signal.qspline1d_eval(cj, newx, dx=dx, x0=x[0])
