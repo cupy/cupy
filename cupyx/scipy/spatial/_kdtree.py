@@ -2,7 +2,8 @@
 import warnings
 
 import cupy
-from cupyx.scipy.spatial._kdtree_utils import asm_kd_tree, compute_knn
+from cupyx.scipy.spatial._kdtree_utils import (
+    asm_kd_tree, compute_knn, compute_tree_bounds)
 
 
 def broadcast_contiguous(x, shape, dtype):
@@ -145,6 +146,9 @@ class KDTree:
                                  "periodic box.")
 
         self.tree, self.index = asm_kd_tree(self.data)
+        self.bounds = compute_tree_bounds(self.tree)
+        self.mins = self.bounds[0, :, 0]
+        self.maxes = self.bounds[0, :, 1]
 
     def query(self, x, k=1, eps=0.0, p=2.0, distance_upper_bound=cupy.inf):
         """
@@ -202,7 +206,7 @@ class KDTree:
         >>> import cupy as cp
         >>> from cupyx.scipy.spatial import KDTree
         >>> x, y = cp.mgrid[0:5, 2:8]
-        >>> tree = KDTree(np.c_[x.ravel(), y.ravel()])
+        >>> tree = KDTree(cp.c_[x.ravel(), y.ravel()])
 
         To query the nearest neighbours and return squeezed result, use
 
@@ -249,7 +253,7 @@ class KDTree:
          [13 19]]
         """
         if self.copy_query_points:
-            if cupy.dtype(x.dtype) is not cupy.dtype(cupy.float64):
+            if x.dtype != cupy.float64:
                 raise ValueError('periodic KDTree is only available '
                                  'on float64')
             x = x.copy()
@@ -268,6 +272,7 @@ class KDTree:
                 raise ValueError('k must be an integer or list of integers')
 
         return compute_knn(
-            x, tree, self.index, self.boxsize, k=k, eps=float(eps),
-            p=float(p), distance_upper_bound=distance_upper_bound,
+            x, tree, self.index, self.boxsize, self.bounds, k=k,
+            eps=float(eps), p=float(p),
+            distance_upper_bound=distance_upper_bound,
             adjust_to_box=self.copy_query_points)

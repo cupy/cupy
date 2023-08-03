@@ -289,12 +289,28 @@ __device__ double insort(
 }
 
 template<typename T>
+__device__ double min_bound_dist(
+        const T* __restrict__ point_bounds, const T point_dim,
+        const double dim_bound, const int dim) {
+    const T min_bound = point_bounds[0];
+    const T max_bound = point_bounds[1];
+
+    double min_dist = abs(min_bound - point_dim);
+    min_dist = min(min_dist, dim_bound - min_dist);
+
+    double max_dist = abs(max_bound - point_dim);
+    max_dist = min(max_dist, dim_bound - max_dist);
+    return min(min_dist, max_dist);
+}
+
+template<typename T>
 __device__ void compute_knn(
         const int k, const int n, const int n_dims, const double eps,
         const double p, const double dist_bound, const bool periodic,
         const T* __restrict__ point, const T* __restrict__ tree,
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
+        const T* __restrict__ tree_bounds,
         double* distances, long long* nodes, long long* debug_nodes) {
 
     volatile long long prev = -1;
@@ -341,15 +357,7 @@ __device__ void compute_knn(
         volatile long long cur_close_child = child;
         volatile long long cur_far_child = r_child;
 
-        if(periodic && overflow) {
-            if(point[cur_dim] > cur_point[cur_dim]) {
-                cur_close_child = child;
-                cur_far_child = r_child;
-            } else {
-                cur_close_child = r_child;
-                cur_far_child = child;
-            }
-        } else if(point[cur_dim] > cur_point[cur_dim]) {
+        if(point[cur_dim] > cur_point[cur_dim]) {
             cur_close_child = r_child;
             cur_far_child = child;
         }
@@ -359,11 +367,15 @@ __device__ void compute_knn(
             if(periodic) {
                 const T* close_child = tree + n_dims * cur_close_child;
                 const T* far_child = tree + n_dims * cur_far_child;
+                const T* close_bounds = (
+                    tree + 2 * n_dims * cur_close_child + 2 * cur_dim);
+                const T* far_bounds = (
+                    tree + 2 * n_dims * cur_far_child + 2 * cur_dim);
 
                 double far_dist = CUDART_INF;
                 double close_dist = CUDART_INF;
-                double far_dim_dist = CUDART_INF;
-                double close_dim_dist = CUDART_INF;
+                double far_bound_dist = CUDART_INF;
+                double close_bound_dist = CUDART_INF;
 
                 double curr_dist = compute_distance(
                     point, cur_point, box_bounds, n_dims, p);
@@ -372,25 +384,25 @@ __device__ void compute_knn(
                     far_dist = compute_distance(
                         point, far_child, box_bounds, n_dims, p);
 
-                    far_dim_dist = abs(point[cur_dim] - far_child[cur_dim]);
-                    far_dim_dist = min(
-                        far_dim_dist, box_bounds[cur_dim] - far_dim_dist);
+                    far_bound_dist = min_bound_dist(
+                        far_bounds, point[cur_dim], box_bounds[cur_dim],
+                        cur_dim);
                 }
 
                 close_dist = compute_distance(
                     point, close_child, box_bounds, n_dims, p);
 
-                close_dim_dist = abs(point[cur_dim] - close_child[cur_dim]);
-                close_dim_dist = min(
-                    close_dim_dist, box_bounds[cur_dim] - close_dim_dist);
+                close_bound_dist = min_bound_dist(
+                    close_bounds, point[cur_dim], box_bounds[cur_dim],
+                    cur_dim);
 
                 next
                 = ((cur_far_child < n) &&
                    ((curr_dim_dist <= radius + eps) ||
-                    (far_dist <= curr_dist + eps) ||
-                    (far_dist <= radius + eps) ||
+                    (far_bound_dist <= curr_dim_dist + eps) ||
                     (far_dist <= close_dist + eps) ||
-                    (far_dim_dist <= close_dim_dist + eps)))
+                    (far_bound_dist <= close_bound_dist + eps) ||
+                    (far_bound_dist <= radius + eps)))
                 ? cur_far_child
                 : parent;
             } else {
@@ -421,6 +433,7 @@ __global__ void knn(
         const T* __restrict__ points, const T* __restrict__ tree,
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
+        const T* __restrict__ tree_bounds,
         double* all_distances, long long* all_nodes) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -433,7 +446,8 @@ __global__ void knn(
     long long* nodes = all_nodes + k * idx;
 
     compute_knn<T>(k, n, n_dims, eps, p, dist_bound, false, point,
-                   tree, index, box_bounds, distances, nodes, NULL);
+                   tree, index, box_bounds, tree_bounds,
+                   distances, nodes, NULL);
 }
 
 __device__ void adjust_to_box(
@@ -458,6 +472,7 @@ __global__ void knn_periodic(
         double* __restrict__ points, const double* __restrict__ tree,
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
+        const double* __restrict__ tree_bounds,
         double* all_distances, long long* all_nodes,
         long long* all_debug_nodes) {
 
@@ -473,8 +488,8 @@ __global__ void knn_periodic(
 
     adjust_to_box(point, n_dims, box_bounds);
     compute_knn<double>(k, n, n_dims, eps, p, dist_bound, true, point,
-                        tree, index, box_bounds, distances, nodes,
-                        debug_nodes);
+                        tree, index, box_bounds, tree_bounds,
+                        distances, nodes, debug_nodes);
 }
 '''
 
@@ -571,7 +586,7 @@ def compute_tree_bounds(tree):
     return bounds
 
 
-def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
+def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
                 distance_upper_bound=cupy.inf, adjust_to_box=False):
     max_k = int(np.max(k))
     points_shape = points.shape
@@ -607,7 +622,7 @@ def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
     knn = _get_module_func(KNN_MODULE, knn_fn, *fn_args)
     knn((n_blocks,), (block_sz,),
         (max_k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
-         points, tree, index, boxdata, distances, nodes, debug_nodes))
+         points, tree, index, boxdata, bounds, distances, nodes, debug_nodes))
 
     if not isinstance(k, int):
         indices = [k_i - 1 for k_i in k]
@@ -626,4 +641,4 @@ def compute_knn(points, tree, index, boxdata, k=1, eps=0.0, p=2.0,
         distances = cupy.squeeze(distances, -1)
         nodes = cupy.squeeze(nodes, -1)
 
-    return distances, nodes, debug_nodes
+    return distances, nodes
