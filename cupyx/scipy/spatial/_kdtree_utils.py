@@ -203,7 +203,7 @@ __device__ double compute_distance_inf(
         const double* __restrict__ box_bounds,
         const int n_dims, const double p) {
 
-    double dist = -CUDART_INF ? p == CUDART_INF : CUDART_INF;
+    double dist = p == CUDART_INF ? -CUDART_INF : CUDART_INF;
     for(int i = 0; i < n_dims; i++) {
         double diff = abs(point1[i] - point2[i]);
         double dim_bound = box_bounds[i];
@@ -276,10 +276,6 @@ __device__ double insort(
         nodes[i] = node_to_insert;
         distances[i] = dist_to_insert;
 
-        // if(nodes[i] != n) {
-            dist_to_return = max(dist_to_return, distances[i]);
-        // }
-
         node_to_insert = node_tmp;
         dist_to_insert = dist_tmp;
 
@@ -311,19 +307,13 @@ __device__ void compute_knn(
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
         const T* __restrict__ tree_bounds,
-        double* distances, long long* nodes, long long* debug_nodes) {
+        double* distances, long long* nodes) {
 
     volatile long long prev = -1;
     volatile long long curr = 0;
     volatile double radius = dist_bound;
-    volatile int node_count = 0;
 
     while(true) {
-        if(debug_nodes != NULL) {
-            debug_nodes[node_count] = index[curr];
-            node_count++;
-        }
-
         const long long parent = (curr + 1) / 2 - 1;
         if(curr >= n) {
             prev = curr;
@@ -447,7 +437,7 @@ __global__ void knn(
 
     compute_knn<T>(k, n, n_dims, eps, p, dist_bound, false, point,
                    tree, index, box_bounds, tree_bounds,
-                   distances, nodes, NULL);
+                   distances, nodes);
 }
 
 __device__ void adjust_to_box(
@@ -473,8 +463,7 @@ __global__ void knn_periodic(
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
         const double* __restrict__ tree_bounds,
-        double* all_distances, long long* all_nodes,
-        long long* all_debug_nodes) {
+        double* all_distances, long long* all_nodes) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx >= points_size) {
@@ -484,12 +473,11 @@ __global__ void knn_periodic(
     double* point = points + n_dims * idx;
     double* distances = all_distances + k * idx;
     long long* nodes = all_nodes + k * idx;
-    long long* debug_nodes = all_debug_nodes + 3 * n * idx;
 
     adjust_to_box(point, n_dims, box_bounds);
     compute_knn<double>(k, n, n_dims, eps, p, dist_bound, true, point,
                         tree, index, box_bounds, tree_bounds,
-                        distances, nodes, debug_nodes);
+                        distances, nodes);
 }
 '''
 
@@ -612,8 +600,6 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
 
     distances = cupy.full((n_points, max_k), cupy.inf, dtype=cupy.float64)
     nodes = cupy.full((n_points, max_k), tree.shape[0], dtype=cupy.int64)
-    debug_nodes = cupy.full(
-        (n_points, tree.shape[0] * 3), tree.shape[0], dtype=cupy.int64)
 
     block_sz = 128
     n_blocks = (n_points + block_sz - 1) // block_sz
@@ -622,7 +608,7 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
     knn = _get_module_func(KNN_MODULE, knn_fn, *fn_args)
     knn((n_blocks,), (block_sz,),
         (max_k, tree.shape[0], n_points, n_dims, eps, p, distance_upper_bound,
-         points, tree, index, boxdata, bounds, distances, nodes, debug_nodes))
+         points, tree, index, boxdata, bounds, distances, nodes))
 
     if not isinstance(k, int):
         indices = [k_i - 1 for k_i in k]
