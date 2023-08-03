@@ -67,6 +67,7 @@ from cupyx.scipy.signal._iir_filter_conversions import tf2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2sos  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2ss  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import ss2tf  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import ss2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import sos2tf  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import sos2zpk  # NOQA
 
@@ -109,3 +110,22 @@ from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA
 from cupyx.scipy.signal._peak_finding import find_peaks  # NOQA
 from cupyx.scipy.signal._peak_finding import peak_prominences  # NOQA
 from cupyx.scipy.signal._peak_finding import peak_widths  # NOQA
+
+from cupyx.scipy.signal._ltisys import lti  # NOQA
+from cupyx.scipy.signal._ltisys import lsim  # NOQA
+from cupyx.scipy.signal._ltisys import impulse  # NOQA
+from cupyx.scipy.signal._ltisys import step  # NOQA
+from cupyx.scipy.signal._ltisys import freqresp  # NOQA
+from cupyx.scipy.signal._ltisys import bode  # NOQA
+
+from cupyx.scipy.signal._ltisys import dlti  # NOQA
+from cupyx.scipy.signal._ltisys import dlsim  # NOQA
+from cupyx.scipy.signal._ltisys import dstep  # NOQA
+from cupyx.scipy.signal._ltisys import dimpulse  # NOQA
+from cupyx.scipy.signal._ltisys import dbode  # NOQA
+from cupyx.scipy.signal._ltisys import dfreqresp  # NOQA
+from cupyx.scipy.signal._ltisys import StateSpace  # NOQA
+from cupyx.scipy.signal._ltisys import TransferFunction  # NOQA
+from cupyx.scipy.signal._ltisys import ZerosPolesGain  # NOQA
+
+from cupyx.scipy.signal._ltisys import cont2discrete  # NOQA

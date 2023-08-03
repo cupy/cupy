@@ -148,6 +148,40 @@ LTI representations
    sos2zpk
 
 
+Continuous-time linear systems
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   lsim
+   impulse
+   step
+   freqresp
+   bode
+
+
+Discrete-time linear systems
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   dlti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   dlsim
+   dimpulse
+   dstep
+   dfreqresp
+   dbode
+
+
 Peak finding
 ------------
 
