@@ -84,6 +84,26 @@ class TestSlidingWindowView(unittest.TestCase):
         with pytest.raises(ValueError, match='Since axis is `None`'):
             stride_tricks.sliding_window_view(x, window_shape, axis)
 
+    def test_otherarrays (self):
+        x = numpy.arange(5)
+        arr_view = stride_tricks.sliding_window_view(x, 2)
+        expected=[[0,1],
+                  [1,2],
+                  [2,3],
+                  [3,4]]
+        testing.assert_array_equal(arr_view, expected)
+
+    def test_writeable_views_not_supported(self):
+        x = cupy.arange(24).reshape((2, 3, 4))
+        window_shape = (2, 2)
+        axis = None
+        writeable = True
+
+        with self.assertRaises(NotImplementedError):
+            stride_tricks.sliding_window_view(x, window_shape, axis, writeable=writeable)
+
+
+
 def rolling_window(a, window, axis=-1):
     """
     Make an ndarray with a rolling window along axis.
