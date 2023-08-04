@@ -6,6 +6,8 @@ import cupy
 from cupy import testing
 from cupy.lib import stride_tricks
 
+import pytest
+
 
 class TestAsStrided(unittest.TestCase):
     def test_as_strided(self):
@@ -63,6 +65,24 @@ class TestSlidingWindowView(unittest.TestCase):
             arr, window_shape, axis)
         return arr_view
 
+    def test_0d(self):
+        # Create a 0-D array (scalar) for testing
+        arr = cupy.array(42)
+        # Sliding window with window size 1
+        window_size = 1
+
+        # Test if the correct ValueError is raised!
+        with pytest.raises(ValueError, match='axis 0 is out of bounds'):
+            cupy.lib.stride_tricks.sliding_window_view(arr, window_size, 0)
+
+    def test_window_shape_axis_length_mismatch(self):
+        x = cupy.arange(24).reshape((2, 3, 4))
+        window_shape = (2, 2)
+        axis = None
+
+        # Test if ValueError is raised when len(window_shape) != len(axis)
+        with pytest.raises(ValueError, match='Since axis is `None`'):
+            stride_tricks.sliding_window_view(x, window_shape, axis)
 
 def rolling_window(a, window, axis=-1):
     """
