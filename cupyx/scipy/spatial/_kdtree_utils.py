@@ -276,6 +276,7 @@ __device__ double insort(
         nodes[i] = node_to_insert;
         distances[i] = dist_to_insert;
 
+        dist_to_return = max(dist_to_return, distances[i]);
         node_to_insert = node_tmp;
         dist_to_insert = dist_tmp;
 
