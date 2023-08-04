@@ -46,8 +46,10 @@ function PublishTestResults {
     echo "Uploading test results..."
     $artifact_id = $Env:CI_JOB_ID
     RunOrDie gsutil -m -q cp cupy_build_log.txt cupy_test_log.txt "gs://chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/"
-    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
-    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
+    echo "Build Log:"
+    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
+    echo "Test Log:"
+    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
 }
 
 function Main {
@@ -138,8 +140,10 @@ function Main {
         UploadCache "${cache_archive}"
     }
 
+    echo "====================================================================="
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
+    echo "====================================================================="
 
     PublishTestResults
     if ($test_retval -ne 0) {
