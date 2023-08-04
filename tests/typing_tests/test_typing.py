@@ -25,10 +25,9 @@ class MypyError:
     mes: str
 
 
-def generate_test_code(tmpdir: str) -> None:
+def generate_test_code(tmpdir: Path) -> None:
     # Generate test for numpy compatibility
-    for t in Path(tmpdir).glob("**/*.pyi"):
-        assert t.name.endswith(".pyi")
+    for t in tmpdir.glob("**/*.pyi"):
         assert not t.name.endswith("._numpy.pyi")
         with open(t) as f:
             text = f.read()
@@ -39,6 +38,9 @@ def generate_test_code(tmpdir: str) -> None:
         text = text.replace("import cupy as xp\n", "import numpy as xp\n")
         with (t.parent / name).open("w") as f:
             f.write(text)
+
+    # Check if "mypy.ini" exists
+    assert (tmpdir / "typing_tests" / "mypy.ini").exists()
 
 
 def collect_xfails(tests: list[Path]) -> dict[Pos, MypyError]:
@@ -85,7 +87,7 @@ def test_typecheck() -> None:
             ignore=shutil.ignore_patterns("*.py", "_numpy.pyi", ".gitignore"),
         )
 
-        generate_test_code(tmpdir)
+        generate_test_code(Path(tmpdir))
         tests = list(Path(tmpdir).glob("**/*.pyi"))
         xpass = collect_xfails(tests)
         mypy_fails = run_mypy(tests)
