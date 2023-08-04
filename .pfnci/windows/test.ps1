@@ -128,12 +128,8 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = 0
-    python -c "import cupy; cupy.show_config()" > ../cupy_test_log.txt
-    python -m pytest -rfEX @pytest_opts . >> ../cupy_test_log.txt
-    if (-not $?) {
-        $test_retval = $LastExitCode
-    }
+    RunOrDie python -c "import cupy; cupy.show_config()" > ../cupy_test_log.txt
+    $test_retval = RunWithTimeout -timeout 300 python -m pytest -rfEX @pytest_opts . >> ../cupy_test_log.txt
     popd
 
     if (-Not $is_pull_request) {
