@@ -18,7 +18,7 @@ def empty(
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -75,7 +75,8 @@ def empty_like(
 
     Args:
         a (cupy.ndarray): Base array.
-        dtype: Data type specifier. The data type of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The data type of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
@@ -118,7 +119,7 @@ def eye(
         k (int): Index of the diagonal. Zero indicates the main diagonal,
             a positive index an upper diagonal, and a negative index a lower
             diagonal.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -145,7 +146,7 @@ def identity(n: int, dtype: DTypeLike = float) -> NDArray[Any]:
 
     Args:
         n (int): Number of rows and columns.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
 
     Returns:
         cupy.ndarray: A 2-D identity array.
@@ -167,7 +168,7 @@ def ones(
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -195,7 +196,8 @@ def ones_like(
 
     Args:
         a (cupy.ndarray): Base array.
-        dtype: Data type specifier. The dtype of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
@@ -233,7 +235,7 @@ def zeros(
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -261,7 +263,8 @@ def zeros_like(
 
     Args:
         a (cupy.ndarray): Base array.
-        dtype: Data type specifier. The dtype of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
@@ -303,7 +306,7 @@ def full(
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
         fill_value: A scalar value to fill a new array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -338,7 +341,8 @@ def full_like(
     Args:
         a (cupy.ndarray): Base array.
         fill_value: A scalar value to fill a new array.
-        dtype: Data type specifier. The dtype of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
