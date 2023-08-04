@@ -69,7 +69,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
     subok : bool, optional
         If True, sub-classes will be passed-through, otherwise the returned
         array will be forced to be a base-class array (default).
-    writeable : bool, optional
+    writeable : bool, optional -- not supported
         When true, allow writing to the returned view. The default is false,
         as this should be used with caution: the returned view contains the
         same memory location multiple times, so writing to one location will
@@ -109,9 +109,14 @@ def sliding_window_view(x, window_shape, axis=None, *,
            [3, 4, 5]])
 
     """
+
     window_shape = (tuple(window_shape)
                     if np.iterable(window_shape)
                     else (window_shape,))
+
+    # writeable is not supported:
+    if writeable:
+            raise NotImplementedError("Writeable views are not supported.")
 
     # first convert input to array, possibly keeping subclass
     x = _cupy.array(x, copy=False, subok=subok)
@@ -129,7 +134,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
                              f'got {len(window_shape)} window_shape elements '
                              f'and `x.ndim` is {x.ndim}.')
     else:
-        axis = np.core.numeric.normalize_axis_tuple(axis, x.ndim)
+        axis = _cupy._core.internal._normalize_axis_indices(axis, x.ndim)
         if len(window_shape) != len(axis):
             raise ValueError(f'Must provide matching length window_shape and '
                              f'axis; got {len(window_shape)} window_shape '
