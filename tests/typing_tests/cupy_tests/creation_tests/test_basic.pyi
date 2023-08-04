@@ -1,24 +1,24 @@
-import numpy as np
-import cupy as cp
+import numpy
+import cupy
 import cupy as xp
 
 
-x = cp.array([1, 2, 3])
+x = cupy.array([1, 2, 3])
 
 xp.empty(10)
 xp.empty((10, 20))
-xp.empty(np.array([10, 20]))
-cp.empty()  # E: Missing positional argument "shape" in call to "empty"  [call-arg]
-cp.empty(10, 20)  # E: Argument 2 to "empty" has incompatible type "int"; [arg-type]
-xp.empty(cp.array([10, 20]))  # TODO(asi1024): Fix to fail typecheck
+xp.empty(numpy.array([10, 20]))
+cupy.empty()  # E: Missing positional argument "shape" in call to "empty"  [call-arg]
+cupy.empty(10, 20)  # E: Argument 2 to "empty" has incompatible type "int"; [arg-type]
+xp.empty(cupy.array([10, 20]))  # TODO(asi1024): Fix to fail typecheck
 xp.empty(x.shape)
 xp.empty((10, 20), float)
 xp.empty((10, 20), int)
-xp.empty((10, 20), np.float32)
+xp.empty((10, 20), numpy.float32)
 xp.empty((10, 20), 'i4')
 xp.empty((10, 20), 'int32')
-np.empty((10, 20), np.datetime64)
-cp.empty((10, 20), np.datetime64)  # TODO(asi1024): Fix to fail typecheck
+numpy.empty((10, 20), numpy.datetime64)
+cupy.empty((10, 20), numpy.datetime64)  # TODO(asi1024): Fix to fail typecheck
 xp.empty((10, 20), float, 'C')
 xp.empty((10, 20), float, 'F')
 xp.empty((10, 20), float, 'K')  # E: Argument 3 to "empty" has incompatible type [arg-type]
