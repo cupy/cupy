@@ -1,0 +1,76 @@
+name: "📦 Publish to PyPI"
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Source: cupy-release-tools"
+        type: choice
+        options:
+          - main
+          - v12
+      release:
+        description: "Release to Publish (draft/tag, e.g., v13.0.0a1)"
+        default: "v13.0.0rc9"
+      wheels:
+        description: "Upload Wheels (UNCHECK for pre-releases)"
+        type: boolean
+        default: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: cupy/cupy-release-tools
+        ref: ${{ inputs.branch }}
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Check
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        pip install distlib
+        ./check_release_assets.py --version "${{ inputs.release }}" --github
+    - name: Download (sdist)
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
+    - name: Download (wheels)
+      if: ${{ inputs.wheels }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
+    - name: Enumerate Files
+      run: |
+        cd dist
+        find . -ls | tee "${GITHUB_STEP_SUMMARY}"
+    - name: Upload Artifacts to Publish
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist
+        retention-days: 1
+
+  upload:
+    needs: prepare
+    environment:
+      name: pypi-release
+      url: https://pypi.org/org/cupy/
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Artifacts to Publish
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
+        print-hash: true
