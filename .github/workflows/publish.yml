@@ -15,7 +15,7 @@ on:
         default: "v13.0.0rc9"
 
 jobs:
-  prepare:
+  check:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -33,28 +33,10 @@ jobs:
       run: |
         pip install distlib
         ./check_release_assets.py --version "${{ inputs.release }}" --github
-    - name: Download (sdist)
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
-    - name: Download (wheels)
-      if: ${{ inputs.branch != 'main' }}
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
-    - name: Enumerate Files
-      run: |
-        cd dist
-        find . -ls | tee "${GITHUB_STEP_SUMMARY}"
-    - name: Upload Artifacts to Publish
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: dist
-        retention-days: 1
+        echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
 
   upload:
-    needs: prepare
+    needs: check
     environment:
       name: pypi-release
       url: https://pypi.org/org/cupy/
@@ -62,10 +44,21 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-    - name: Download Artifacts to Publish
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
+    - name: Download (sdist)
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
+    - name: Download (wheels)
+      if: ${{ inputs.branch != 'main' }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
+    - name: Enumerate Files
+      run: |
+        cd dist
+        echo '```' >> "${GITHUB_STEP_SUMMARY}"
+        find . -type f -ls | tee "${GITHUB_STEP_SUMMARY}"
+        echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
