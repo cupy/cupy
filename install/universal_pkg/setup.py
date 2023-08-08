@@ -7,7 +7,7 @@ from typing import List, Optional
 from setuptools import setup
 
 
-VERSION = '12.1.0'
+VERSION = '12.2.0'
 META_VERSION = VERSION
 
 # List of packages supported by this version of CuPy.
