@@ -65,11 +65,11 @@ jobs:
     - name: Enumerate Files
       run: |
         cd dist
-        ls -al $(find . -type f | sort) > files.txt
-        cat files.txt
+        ls -al $(find . -type f | sort) > ../files.txt
+        cat ../files.txt
 
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        cat files.txt >> "${GITHUB_STEP_SUMMARY}"
+        cat ../files.txt >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
