@@ -35,10 +35,11 @@ jobs:
       run: |
         pip install distlib
         ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt
+        cat result.txt
 
         echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        cat result.txt | tee "${GITHUB_STEP_SUMMARY}"
+        cat result.txt >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
         echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
 
@@ -65,9 +66,10 @@ jobs:
       run: |
         cd dist
         ls -al $(find . -type f | sort) > files.txt
+        cat files.txt
 
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        cat files.txt | tee "${GITHUB_STEP_SUMMARY}"
+        cat files.txt >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
