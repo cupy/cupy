@@ -55,7 +55,9 @@ jobs:
     - name: Enumerate Files
       run: |
         cd dist
+        echo '```' >> "${GITHUB_STEP_SUMMARY}"
         find . -ls | tee "${GITHUB_STEP_SUMMARY}"
+        echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
