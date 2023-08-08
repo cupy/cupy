@@ -15,7 +15,7 @@ on:
         default: "v13.0.0rc9"
 
 jobs:
-  prepare:
+  check:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -33,6 +33,16 @@ jobs:
       run: |
         pip install distlib
         ./check_release_assets.py --version "${{ inputs.release }}" --github
+
+  upload:
+    needs: check
+    environment:
+      name: pypi-release
+      url: https://pypi.org/org/cupy/
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
     - name: Download (sdist)
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,26 +56,6 @@ jobs:
       run: |
         cd dist
         find . -ls | tee "${GITHUB_STEP_SUMMARY}"
-    - name: Upload Artifacts to Publish
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: dist
-        retention-days: 1
-
-  upload:
-    needs: prepare
-    environment:
-      name: pypi-release
-      url: https://pypi.org/org/cupy/
-    permissions:
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download Artifacts to Publish
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
