@@ -1,4 +1,5 @@
-name: "📦 Publish to PyPI"
+name: "Publish to PyPI"
+run-name: "Publish to PyPI (${{ inputs.release }} - ${{ inputs.branch }})"
 
 on:
   workflow_dispatch:
@@ -12,10 +13,6 @@ on:
       release:
         description: "Release to Publish (draft/tag, e.g., v13.0.0a1)"
         default: "v13.0.0rc9"
-      wheels:
-        description: "Upload Wheels (UNCHECK for pre-releases)"
-        type: boolean
-        default: true
 
 jobs:
   prepare:
@@ -39,12 +36,12 @@ jobs:
     - name: Download (sdist)
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
+      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
     - name: Download (wheels)
-      if: ${{ inputs.wheels }}
+      if: ${{ inputs.branch != 'main' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
+      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
     - name: Enumerate Files
       run: |
         cd dist
