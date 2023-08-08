@@ -225,14 +225,14 @@ template<typename T>
 __device__ double compute_distance(
         const T* __restrict__ point1, const T* __restrict__ point2,
         const double* __restrict__ box_bounds,
-        const int n_dims, const double p) {
+        const int n_dims, const double p, const int stride) {
 
     if(abs(p) == CUDART_INF) {
         return compute_distance_inf<T>(point1, point2, box_bounds, n_dims, p);
     }
 
     double dist = 0.0;
-    for(int i = 0; i < n_dims; i++) {
+    for(int i = 0; i < n_dims; i += stride) {
         double diff = abs(point1[i] - point2[i]);
         double dim_bound = box_bounds[i];
         if(diff > dim_bound - diff) {
@@ -245,11 +245,12 @@ __device__ double compute_distance(
     return dist;
 }
 
-__device__ double insort(
-        const long long curr, const double dist, const int k, const int n,
-        double* distances, long long* nodes) {
+template<typename T>
+__device__ T insort(
+        const long long curr, const T dist, const int k, const int n,
+        T* distances, long long* nodes, bool check) {
 
-    if(dist > distances[k - 1]) {
+    if(check && dist > distances[k - 1]) {
         return distances[k - 1];
     }
 
@@ -266,12 +267,12 @@ __device__ double insort(
     }
 
     long long node_to_insert = curr;
-    double dist_to_insert = dist;
-    double dist_to_return = dist;
+    T dist_to_insert = dist;
+    T dist_to_return = dist;
 
     for(long long i = left; i < k; i++) {
         long long node_tmp = nodes[i];
-        double dist_tmp = distances[i];
+        T dist_tmp = distances[i];
 
         nodes[i] = node_to_insert;
         distances[i] = dist_to_insert;
@@ -331,10 +332,11 @@ __device__ void compute_knn(
 
         if(!from_child) {
             const double dist = compute_distance(
-                point, cur_point, box_bounds, n_dims, p);
+                point, cur_point, box_bounds, n_dims, p, 1);
 
             if(dist <= radius + eps) {
-                radius = insort(index[curr], dist, k, n, distances, nodes);
+                radius = insort<double>(
+                    index[curr], dist, k, n, distances, nodes, true);
             }
         }
 
@@ -369,11 +371,11 @@ __device__ void compute_knn(
                 double close_bound_dist = CUDART_INF;
 
                 double curr_dist = compute_distance(
-                    point, cur_point, box_bounds, n_dims, p);
+                    point, cur_point, box_bounds, n_dims, p, 1);
 
                 if(cur_far_child < n) {
                     far_dist = compute_distance(
-                        point, far_child, box_bounds, n_dims, p);
+                        point, far_child, box_bounds, n_dims, p, 1);
 
                     far_bound_dist = min_bound_dist(
                         far_bounds, point[cur_dim], box_bounds[cur_dim],
@@ -381,7 +383,7 @@ __device__ void compute_knn(
                 }
 
                 close_dist = compute_distance(
-                    point, close_child, box_bounds, n_dims, p);
+                    point, close_child, box_bounds, n_dims, p, 1);
 
                 close_bound_dist = min_bound_dist(
                     close_bounds, point[cur_dim], box_bounds[cur_dim],
@@ -480,6 +482,129 @@ __global__ void knn_periodic(
                         tree, index, box_bounds, tree_bounds,
                         distances, nodes);
 }
+
+template<typename T>
+__device__ long long compute_query_ball(
+        const int n, const int n_dims, const double radius, const double eps,
+        const double p, bool periodic, int sort, const T* __restrict__ point,
+        const T* __restrict__ tree, const long long* __restrict__ index,
+        const double* __restrict__ box_bounds,
+        const T* __restrict__ tree_bounds,
+        long long* nodes, long long* debug_nodes) {
+
+    volatile long long prev = -1;
+    volatile long long curr = 0;
+    long long node_count = 0;
+    int visit_count = 0;
+
+    while(true) {
+        const long long parent = (curr + 1) / 2 - 1;
+        if(curr >= n) {
+            prev = curr;
+            curr = parent;
+            continue;
+        }
+
+        debug_nodes[visit_count] = index[curr];
+        visit_count++;
+
+        const long long child = 2 * curr + 1;
+        const long long r_child = 2 * curr + 2;
+
+        const bool from_child = prev >= child;
+        const T* cur_point = tree + n_dims * curr;
+
+        if(!from_child) {
+            const double dist = compute_distance(
+                point, cur_point, box_bounds, n_dims, p, 1);
+
+            if(dist <= radius + eps) {
+                if(sort) {
+                    insort<long long>(
+                        index[curr], index[curr], n, n, nodes, nodes, false);
+                } else {
+                    nodes[node_count] = index[curr];
+                    node_count++;
+                }
+            }
+        }
+
+        volatile long long cur_close_child = child;
+        volatile long long cur_far_child = r_child;
+        bool check_far = false;
+
+        const T* close_bounds = tree + 2 * n_dims * cur_close_child;
+        double min_close_dist = compute_distance(
+            point, close_bounds, box_bounds, n_dims, p, 2);
+        double max_close_dist = compute_distance(
+            point, close_bounds + 1, box_bounds, n_dims, p, 2);
+
+        long long next = -1;
+        next = cur_close_child;
+
+        if(min_close_dist > radius / (1.0 + eps)) {
+            if(max_close_dist > radius * (1.0 + eps)) {
+                //prev = cur_close_child;
+                check_far = true;
+            }
+        }
+
+        if(prev == cur_close_child || prev == cur_far_child) {
+            next = parent;
+        } else if(check_far) {
+            const T* far_bounds = tree + 2 * n_dims * cur_far_child;
+            double min_far_dist = compute_distance(
+                point, far_bounds, box_bounds, n_dims, p, 2);
+            double max_far_dist = compute_distance(
+                point, far_bounds + 1, box_bounds, n_dims, p, 2);
+
+            next = cur_far_child;
+            if(min_far_dist > radius / (1.0 + eps)) {
+                if(max_far_dist > radius * (1.0 + eps)) {
+                    next = parent;
+                }
+            }
+        }
+
+        if(next >= n) {
+            next = parent;
+        }
+
+        if(next == -1) {
+            return node_count;
+        }
+
+        prev = curr;
+        curr = next;
+    }
+}
+
+template<typename T>
+__global__ void query_ball(
+        const int n, const int points_size, const int n_dims,
+        const double radius, const double eps, const double p, const int sort,
+        const T* __restrict__ points, const T* __restrict__ tree,
+        const long long* __restrict__ index,
+        const double* __restrict__ box_bounds,
+        const T* __restrict__ tree_bounds,
+        long long* all_nodes, long long* node_count,
+        long long* all_debug_nodes) {
+
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(idx >= points_size) {
+        return;
+    }
+
+    const T* point = points + n_dims * idx;
+    long long* nodes = all_nodes + n * idx;
+    long long* debug_nodes = all_debug_nodes + 3 * n * idx;
+
+    long long count = compute_query_ball<T>(
+        n, n_dims, radius, eps, p, false, sort, point, tree, index, box_bounds,
+        tree_bounds, nodes, debug_nodes);
+
+    node_count[idx] = count;
+}
 '''
 
 
@@ -490,7 +615,8 @@ KD_MODULE = cupy.RawModule(
 
 KNN_MODULE = cupy.RawModule(
     code=KNN_KERNEL, options=('-std=c++11',),
-    name_expressions=['knn_periodic'] + [f'knn<{x}>' for x in TYPE_NAMES])
+    name_expressions=['knn_periodic'] + [f'knn<{x}>' for x in TYPE_NAMES] +
+    [f'query_ball<{x}>' for x in TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -629,3 +755,51 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
         nodes = cupy.squeeze(nodes, -1)
 
     return distances, nodes
+
+
+def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
+                         p=2.0, eps=0, return_sorted=None,
+                         return_length=False, adjust_to_box=False):
+    points_shape = points.shape
+    tree_length = tree.shape[0]
+
+    if points.ndim > 2:
+        points = points.reshape(-1, points_shape[-1])
+        if not points.flags.c_contiguous:
+            points = points.copy()
+
+    if points.ndim == 1:
+        n_points = 1
+        n_dims = points.shape[0]
+    else:
+        n_points, n_dims = points.shape
+
+    if n_dims != tree.shape[-1]:
+        raise ValueError('The number of dimensions of the query points must '
+                         'match with the tree ones. '
+                         f'Expected {tree.shape[-1]}, got: {n_dims}')
+
+    if points.dtype != tree.dtype:
+        raise ValueError('Query points dtype must match the tree one.')
+
+    nodes = cupy.full((n_points, tree_length), tree.shape[0], dtype=cupy.int64)
+    total_nodes = cupy.empty((n_points,), cupy.int64)
+    debug_nodes = cupy.full((n_points, tree_length * 3), tree_length,
+                            dtype=cupy.int64)
+
+    return_sorted = 1 if return_sorted is None else return_sorted
+
+    block_sz = 128
+    n_blocks = (n_points + block_sz - 1) // block_sz
+    query_ball_fn, fn_args = (
+        ('query_ball', (points,)) if not adjust_to_box else
+        ('query_ball_periodic', tuple()))
+    query_ball = _get_module_func(KNN_MODULE, query_ball_fn, *fn_args)
+    query_ball((n_blocks,), (block_sz,),
+               (tree_length, n_points, n_dims, r, eps, p, int(return_sorted),
+                points, tree, index, boxdata, bounds, nodes, total_nodes,
+                debug_nodes))
+    if return_length:
+        return total_nodes
+    else:
+        return nodes

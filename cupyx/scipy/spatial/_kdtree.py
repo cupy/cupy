@@ -3,7 +3,7 @@ import warnings
 
 import cupy
 from cupyx.scipy.spatial._kdtree_utils import (
-    asm_kd_tree, compute_knn, compute_tree_bounds)
+    asm_kd_tree, compute_knn, compute_tree_bounds, find_nodes_in_radius)
 
 
 def broadcast_contiguous(x, shape, dtype):
@@ -145,6 +145,11 @@ class KDTree:
                 raise ValueError("Negative input data are outside of the "
                                  "periodic box.")
 
+        if self.copy_query_points:
+            if self.data.dtype != cupy.float64:
+                raise ValueError('periodic KDTree is only available '
+                                 'on float64')
+
         self.tree, self.index = asm_kd_tree(self.data)
         self.bounds = compute_tree_bounds(self.tree)
         self.mins = self.bounds[0, :, 0]
@@ -275,4 +280,73 @@ class KDTree:
             x, tree, self.index, self.boxsize, self.bounds, k=k,
             eps=float(eps), p=float(p),
             distance_upper_bound=distance_upper_bound,
+            adjust_to_box=self.copy_query_points)
+
+    def query_ball_point(self, x, r, p=2., eps=0, return_sorted=None,
+                         return_length=False):
+        """
+        Find all points within distance r of point(s) x.
+
+        Parameters
+        ----------
+        x : array_like, shape tuple + (self.m,)
+            The point or points to search for neighbors of.
+        r : array_like, float
+            The radius of points to return, shall broadcast to the length of x.
+        p : float, optional
+            Which Minkowski p-norm to use.  Should be in the range [1, inf].
+            A finite large p may cause a ValueError if overflow can occur.
+        eps : nonnegative float, optional
+            Approximate search. Branches of the tree are not explored if their
+            nearest points are further than ``r / (1 + eps)``, and branches are
+            added in bulk if their furthest points are nearer than
+            ``r * (1 + eps)``.
+        return_sorted : bool, optional
+            Sorts returned indices if True and does not sort them if False. If
+            None, does not sort single point queries, but does sort
+            multi-point queries which was the behavior before this option
+            was added in SciPy.
+        return_length: bool, optional
+            Return the number of points inside the radius instead of a list
+            of the indices.
+
+        Returns
+        -------
+        results : list or array of lists
+            If `x` is a single point, returns a list of the indices of the
+            neighbors of `x`. If `x` is an array of points, returns an object
+            array of shape tuple containing lists of neighbors.
+
+        Notes
+        -----
+        If you have many points whose neighbors you want to find, you may save
+        substantial amounts of time by putting them in a KDTree and using
+        query_ball_tree.
+
+        Examples
+        --------
+        >>> import cupy as cp
+        >>> from cupyx.scipy import spatial
+        >>> x, y = cp.mgrid[0:4, 0:4]
+        >>> points = cp.c_[x.ravel(), y.ravel()]
+        >>> tree = spatial.KDTree(points)
+        >>> tree.query_ball_point([2, 0], 1)
+        [4, 8, 9, 12]
+        """
+        if self.copy_query_points:
+            if x.dtype != cupy.float64:
+                raise ValueError('periodic KDTree is only available '
+                                 'on float64')
+            x = x.copy()
+
+        common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
+        tree = self.tree
+        if cupy.dtype(self.tree.dtype) is not common_dtype:
+            tree = self.tree.astype(common_dtype)
+        if cupy.dtype(x.dtype) is not common_dtype:
+            x = x.astype(common_dtype)
+
+        return find_nodes_in_radius(
+            x, tree, self.index, self.boxsize, self.bounds, r, p=p, eps=eps,
+            return_sorted=return_sorted, return_length=return_length,
             adjust_to_box=self.copy_query_points)

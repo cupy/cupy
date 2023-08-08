@@ -18,9 +18,10 @@ except ImportError:
     pass
 
 
-def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0):
-    data = testing.shaped_random((n, m), xp, xp.float64, seed=1234)
-    x = testing.shaped_random((n_points, m), xp, xp.float64) + x_offset
+def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10):
+    data = testing.shaped_random((n, m), xp, xp.float64, scale=scale,
+                                 seed=1234)
+    x = testing.shaped_random((n_points, m), xp, xp.float64, scale) + x_offset
     tree = scp.spatial.KDTree(data)
     return x, tree
 
@@ -227,3 +228,17 @@ class TestPeriodic:
 
         dd, ii = kdtree.query(data + off, k, p=p)
         return dd, ii
+
+
+@testing.with_requires('scipy')
+class TestBallConsistency:
+    @pytest.mark.parametrize('args', [
+        (100, 4, 1, 0),
+        (100, 4, 1, 10)
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_in_ball(self, xp, scp, args):
+        x, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        res = tree.query_ball_point(
+            x, 0.5, return_sorted=True)
+        return res
