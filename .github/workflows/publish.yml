@@ -1,5 +1,5 @@
-name: "📦 Publish to PyPI"
-run-name: "📦 Publish to PyPI (${{ inputs.release }} - ${{ inputs.branch }})"
+name: "Publish to PyPI"
+run-name: "Publish to PyPI (${{ inputs.release }} - ${{ inputs.branch }})"
 
 on:
   workflow_dispatch:
