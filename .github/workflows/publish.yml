@@ -47,12 +47,12 @@ jobs:
     - name: Download (sdist)
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
+      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
     - name: Download (wheels)
       if: ${{ inputs.branch != 'main' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
+      run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
     - name: Enumerate Files
       run: |
         cd dist
