@@ -33,6 +33,7 @@ jobs:
       run: |
         pip install distlib
         ./check_release_assets.py --version "${{ inputs.release }}" --github
+        echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
 
   upload:
     needs: check
