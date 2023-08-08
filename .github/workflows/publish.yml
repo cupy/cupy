@@ -18,7 +18,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write  # to read draft releases
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -34,8 +34,11 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         pip install distlib
+        ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt
+
+        echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        ./check_release_assets.py --version "${{ inputs.release }}" --github | tee "${GITHUB_STEP_SUMMARY}"
+        cat result.txt | tee "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
         echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
 
@@ -45,7 +48,7 @@ jobs:
       name: pypi-release
       url: https://pypi.org/org/cupy/
     permissions:
-      contents: read
+      contents: write  # to read draft releases
       id-token: write
     runs-on: ubuntu-latest
     steps:
@@ -61,8 +64,10 @@ jobs:
     - name: Enumerate Files
       run: |
         cd dist
+        ls -al $(find . -type f | sort) > files.txt
+
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
-        find . -type f -ls | tee "${GITHUB_STEP_SUMMARY}"
+        cat files.txt | tee "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
