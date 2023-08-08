@@ -18,7 +18,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write  # to read draft releases
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -34,6 +34,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         pip install distlib
+        echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
         ./check_release_assets.py --version "${{ inputs.release }}" --github | tee "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
@@ -45,7 +46,7 @@ jobs:
       name: pypi-release
       url: https://pypi.org/org/cupy/
     permissions:
-      contents: read
+      contents: write  # to read draft releases
       id-token: write
     runs-on: ubuntu-latest
     steps:
