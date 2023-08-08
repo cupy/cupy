@@ -15,7 +15,7 @@ on:
         default: "v13.0.0rc9"
 
 jobs:
-  check:
+  precheck:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # to read draft releases
@@ -33,8 +33,9 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        STATUS=0
         pip install distlib
-        ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt
+        ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt || STATUS=1
         cat result.txt
 
         echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
@@ -43,8 +44,10 @@ jobs:
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
         echo "::notice::Release: $(gh -R cupy/cupy release view '${{ inputs.release }}' --json 'url' --jq '.url')"
 
+        exit ${STATUS}
+
   upload:
-    needs: check
+    needs: precheck
     environment:
       name: pypi-release
       url: https://pypi.org/org/cupy/
@@ -76,3 +79,22 @@ jobs:
       with:
         skip-existing: true
         print-hash: true
+
+  postcheck:
+    needs: upload
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: cupy/cupy-release-tools
+        ref: ${{ inputs.branch }}
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Check
+      run: |
+        pip install distlib
+        CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
+        ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}
