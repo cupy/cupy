@@ -68,7 +68,7 @@ class TestLsqr(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -84,7 +84,7 @@ class TestMatrixNorm:
                                  accept_error=(ValueError,
                                                NotImplementedError))
     def test_matrix_norm(self, xp, sp):
-        if runtime.is_hip and self.ord in (1, -1, numpy.Inf, -numpy.Inf):
+        if runtime.is_hip and self.ord in (1, -1, numpy.inf, -numpy.inf):
             pytest.xfail('csc spmv is buggy')
         if self.ord == 2:
             pytest.xfail('ord=2 is not implemented in cupy')
@@ -95,7 +95,7 @@ class TestMatrixNorm:
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.inf, -2, -1, 0, 1, 2, numpy.inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
