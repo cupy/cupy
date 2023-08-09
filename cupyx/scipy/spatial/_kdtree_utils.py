@@ -201,11 +201,11 @@ template<typename T>
 __device__ double compute_distance_inf(
         const T* __restrict__ point1, const T* __restrict__ point2,
         const double* __restrict__ box_bounds,
-        const int n_dims, const double p) {
+        const int n_dims, const double p, const int stride) {
 
     double dist = p == CUDART_INF ? -CUDART_INF : CUDART_INF;
     for(int i = 0; i < n_dims; i++) {
-        double diff = abs(point1[i] - point2[i]);
+        double diff = abs(point1[i] - point2[i * stride]);
         double dim_bound = box_bounds[i];
 
         if(diff > dim_bound - diff) {
@@ -228,12 +228,13 @@ __device__ double compute_distance(
         const int n_dims, const double p, const int stride) {
 
     if(abs(p) == CUDART_INF) {
-        return compute_distance_inf<T>(point1, point2, box_bounds, n_dims, p);
+        return compute_distance_inf<T>(
+            point1, point2, box_bounds, n_dims, p, stride);
     }
 
     double dist = 0.0;
-    for(int i = 0; i < n_dims; i += stride) {
-        double diff = abs(point1[i] - point2[i]);
+    for(int i = 0; i < n_dims; i++) {
+        double diff = abs(point1[i] - point2[i * stride]);
         double dim_bound = box_bounds[i];
         if(diff > dim_bound - diff) {
             diff = dim_bound - diff;
@@ -361,9 +362,9 @@ __device__ void compute_knn(
                 const T* close_child = tree + n_dims * cur_close_child;
                 const T* far_child = tree + n_dims * cur_far_child;
                 const T* close_bounds = (
-                    tree + 2 * n_dims * cur_close_child + 2 * cur_dim);
+                    tree_bounds + 2 * n_dims * cur_close_child + 2 * cur_dim);
                 const T* far_bounds = (
-                    tree + 2 * n_dims * cur_far_child + 2 * cur_dim);
+                    tree_bounds + 2 * n_dims * cur_far_child + 2 * cur_dim);
 
                 double far_dist = CUDART_INF;
                 double close_dist = CUDART_INF;
@@ -495,7 +496,7 @@ __device__ long long compute_query_ball(
     volatile long long prev = -1;
     volatile long long curr = 0;
     long long node_count = 0;
-    int visit_count = 0;
+    int visit_count = 0;.
 
     while(true) {
         const long long parent = (curr + 1) / 2 - 1;
@@ -524,44 +525,74 @@ __device__ long long compute_query_ball(
                         index[curr], index[curr], n, n, nodes, nodes, false);
                 } else {
                     nodes[node_count] = index[curr];
-                    node_count++;
                 }
+
+                node_count++;
             }
         }
+
+        const long long cur_level = 63 - __clzll(curr + 1);
+        const long long cur_dim = cur_level % n_dims;
 
         volatile long long cur_close_child = child;
         volatile long long cur_far_child = r_child;
         bool check_far = false;
 
-        const T* close_bounds = tree + 2 * n_dims * cur_close_child;
-        double min_close_dist = compute_distance(
-            point, close_bounds, box_bounds, n_dims, p, 2);
-        double max_close_dist = compute_distance(
-            point, close_bounds + 1, box_bounds, n_dims, p, 2);
+        const T* close_child = tree + n_dims * cur_close_child;
+        const T* close_bounds = tree_bounds + 2 * n_dims * cur_close_child;
 
         long long next = -1;
         next = cur_close_child;
 
-        if(min_close_dist > radius / (1.0 + eps)) {
-            if(max_close_dist > radius * (1.0 + eps)) {
-                //prev = cur_close_child;
-                check_far = true;
+        if(!from_child) {
+            const T* close_bounds_dim = close_bounds + 2 * cur_dim;
+            if(point[cur_dim] < close_bounds_dim[0] ||
+                    point[cur_dim] > close_bounds_dim[1]) {
+                double min_close_dist = compute_distance(
+                    point, close_bounds, box_bounds, n_dims, p, 2);
+
+                if(min_close_dist > radius / (1.0 + eps)) {
+                    double max_close_dist = compute_distance(
+                        point, close_bounds + 1, box_bounds, n_dims, p, 2);
+
+                    if(max_close_dist > radius * (1.0 + eps)) {
+                        double close_dist = compute_distance(
+                            point, close_child, box_bounds, n_dims, p, 1);
+
+                        if(close_dist > radius / (1.0 + eps)) {
+                            check_far = true;
+                        }
+                    }
+                }
             }
         }
 
-        if(prev == cur_close_child || prev == cur_far_child) {
+        if(prev == cur_far_child) {
             next = parent;
-        } else if(check_far) {
-            const T* far_bounds = tree + 2 * n_dims * cur_far_child;
-            double min_far_dist = compute_distance(
-                point, far_bounds, box_bounds, n_dims, p, 2);
-            double max_far_dist = compute_distance(
-                point, far_bounds + 1, box_bounds, n_dims, p, 2);
+        } else if(prev == cur_close_child || check_far) {
+            const T* far_bounds = tree_bounds + 2 * n_dims * cur_far_child;
+            const T* far_child = tree + n_dims * cur_far_child;
+            const T* far_bounds_dim = far_bounds + 2 * cur_dim;
 
             next = cur_far_child;
-            if(min_far_dist > radius / (1.0 + eps)) {
-                if(max_far_dist > radius * (1.0 + eps)) {
-                    next = parent;
+
+            if(point[cur_dim] < far_bounds_dim[0] ||
+                    point[cur_dim] > far_bounds_dim[1]) {
+                double min_far_dist = compute_distance(
+                    point, far_bounds, box_bounds, n_dims, p, 2);
+
+                if(min_far_dist > radius / (1.0 + eps)) {
+                    double max_far_dist = compute_distance(
+                        point, far_bounds + 1, box_bounds, n_dims, p, 2);
+
+                    if(max_far_dist > radius * (1.0 + eps)) {
+                        double far_dist = compute_distance(
+                            point, far_child, box_bounds, n_dims, p, 1);
+
+                        if(far_dist > radius * (1.0 + eps)) {
+                            next = parent;
+                        }
+                    }
                 }
             }
         }
