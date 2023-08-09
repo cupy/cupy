@@ -35,13 +35,23 @@ class _PerfCaseResult:
         return self.to_str(show_gpu=True)
 
     @property
-    def cpu_times(self):
-        """ Returns an array of CPU times of size ``n_repeat``. """
+    def cpu_times(self) -> _numpy.ndarray:
+        """A :class:`numpy.ndarray` of shape ``(n_repeat,)``, holding times spent
+        on CPU in seconds.
+
+        These values are delta of the host-side performance counter
+        (:func:`time.perf_counter`) between each repeat step.
+        """  # NOQA
         return self._ts[0]
 
     @property
-    def gpu_times(self):
-        """ Returns an array of GPU times of size ``n_repeat``. """
+    def gpu_times(self) -> _numpy.ndarray:
+        """A :class:`numpy.ndarray` of shape ``(len(devices), n_repeat)``,
+        holding times spent on GPU in seconds.
+
+        These values are measured using ``cudaEventElapsedTime`` with events
+        recoreded before/after each repeat step.
+        """
         return self._ts[1:]
 
     @staticmethod
@@ -50,9 +60,9 @@ class _PerfCaseResult:
         assert t.size > 0
         t_us = t * 1e6
 
-        s = '    {}:{:9.03f} us'.format(device_name, t_us.mean())
+        s = '    {}: {:9.03f} us'.format(device_name, t_us.mean())
         if t.size > 1:
-            s += '   +/-{:6.03f} (min:{:9.03f} / max:{:9.03f}) us'.format(
+            s += '   +/- {:6.03f} (min: {:9.03f} / max: {:9.03f}) us'.format(
                 t_us.std(), t_us.min(), t_us.max())
         return s
 
@@ -158,9 +168,6 @@ def _repeat(
             events_2.append(_cupy.cuda.stream.Event())
         finally:
             runtime.setDevice(prev_device)
-
-    ev1 = _cupy.cuda.stream.Event()
-    ev2 = _cupy.cuda.stream.Event()
 
     for i in range(n_warmup):
         func(*args, **kwargs)

@@ -16,7 +16,6 @@ except ImportError:
     pass
 
 
-@testing.gpu
 class TestEntropyBasic(unittest.TestCase):
     def test_entropy_positive(self):
         # See ticket SciPy's gh-497
@@ -93,7 +92,6 @@ class TestEntropyBasic(unittest.TestCase):
         'normalize': [False, True],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.4.0')
 class TestEntropy(unittest.TestCase):
 

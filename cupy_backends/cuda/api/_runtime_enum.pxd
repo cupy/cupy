@@ -1,4 +1,7 @@
 cpdef enum:
+    # need to revisit this when cython supports C++ enums (in 3.0)
+    # https://stackoverflow.com/a/67138945
+
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
 

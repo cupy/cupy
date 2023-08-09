@@ -230,10 +230,9 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy_backends.cuda.libs.nvtx',
         ],
         'include': [
-            'nvToolsExt.h',
+            'nvtx3/nvToolsExt.h',
         ],
         'libraries': [
-            'nvToolsExt' if not build.PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
     }

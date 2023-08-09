@@ -27,10 +27,20 @@ typedef enum {} cusparseAction_t;
 typedef enum {} cusparseDirection_t;
 typedef enum {} cusparseAlgMode_t;
 typedef enum {} cusparseSolvePolicy_t;
+typedef enum {} cusparseSpMatAttribute_t;
 
 // Version
 cusparseStatus_t cusparseGetVersion(...) {
   return CUSPARSE_STATUS_SUCCESS;
+}
+
+// Error handling
+const char* cusparseGetErrorName(...) {
+    return NULL;
+}
+
+const char* cusparseGetErrorString(...) {
+    return NULL;
 }
 
 // cuSPARSE Helper Function
@@ -67,6 +77,10 @@ cusparseStatus_t cusparseSetMatDiagType(...) {
 }
 
 cusparseStatus_t cusparseSetPointerMode(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatSetAttribute(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
@@ -964,11 +978,13 @@ typedef void* cusparseSpVecDescr_t;
 typedef void* cusparseDnVecDescr_t;
 typedef void* cusparseSpMatDescr_t;
 typedef void* cusparseDnMatDescr_t;
+typedef void* cusparseSpSMDescr_t;
 
 typedef enum {} cusparseIndexType_t;
 typedef enum {} cusparseFormat_t;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseSpMVAlg_t;
+typedef enum {} cusparseSpSMAlg_t;
 typedef enum {} cusparseSpMMAlg_t;
 typedef enum {} cusparseSparseToDenseAlg_t;
 typedef enum {} cusparseDenseToSparseAlg_t;
@@ -1121,6 +1137,27 @@ cusparseStatus_t cusparseSpMV(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseSpSM_createDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_destroyDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpSM_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+// See cusparse.pyx for a comment
+cusparseStatus_t cusparseSpSM_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSpMM_bufferSize(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -1167,6 +1204,10 @@ cusparseStatus_t cusparseSpGEMM_compute(...) {
 }
 
 cusparseStatus_t cusparseSpGEMM_copy(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseGather(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

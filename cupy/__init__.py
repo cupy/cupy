@@ -1,6 +1,5 @@
 import functools as _functools
 import sys as _sys
-import warnings as _warnings
 
 import numpy as _numpy
 
@@ -100,7 +99,6 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
@@ -111,7 +109,6 @@ from numpy import intc  # NOQA
 from numpy import int_  # NOQA
 from numpy import longlong  # NOQA
 from numpy import intp  # NOQA
-from numpy import int0  # NOQA
 from numpy import int8  # NOQA
 from numpy import int16  # NOQA
 from numpy import int32  # NOQA
@@ -126,7 +123,6 @@ from numpy import uintc  # NOQA
 from numpy import uint  # NOQA
 from numpy import ulonglong  # NOQA
 from numpy import uintp  # NOQA
-from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
 from numpy import uint16  # NOQA
 from numpy import uint32  # NOQA
@@ -278,6 +274,7 @@ from cupy._manipulation.split import vsplit  # NOQA
 from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
 
+from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
@@ -497,11 +494,11 @@ from cupy._logic.content import isposinf  # NOQA
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
 
-from cupy._logic.type_test import iscomplex  # NOQA
-from cupy._logic.type_test import iscomplexobj  # NOQA
-from cupy._logic.type_test import isfortran  # NOQA
-from cupy._logic.type_test import isreal  # NOQA
-from cupy._logic.type_test import isrealobj  # NOQA
+from cupy._logic.type_testing import iscomplex  # NOQA
+from cupy._logic.type_testing import iscomplexobj  # NOQA
+from cupy._logic.type_testing import isfortran  # NOQA
+from cupy._logic.type_testing import isreal  # NOQA
+from cupy._logic.type_testing import isrealobj  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import intersect1d  # NOQA
@@ -532,9 +529,9 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import all as alltrue  # NOQA
+from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import any as sometrue  # NOQA
+from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -580,15 +577,15 @@ from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round  # NOQA
 from cupy._math.rounding import round_  # NOQA
-from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
-from cupy._math.sumprod import prod as product  # NOQA
+from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
-from cupy._math.sumprod import cumprod as cumproduct  # NOQA
+from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -912,29 +909,13 @@ def show_config(*, _full=False):
 
 
 _deprecated_apis = [
-    'MachAr',  # NumPy 1.22
+    'int0',
+    'uint0',
+    'bool8',
 ]
-
-_deprecated_scalar_aliases = {  # NumPy 1.20
-    'int': (int, 'cupy.int_'),
-    'bool': (bool, 'cupy.bool_'),
-    'float': (float, 'cupy.float_'),
-    'complex': (complex, 'cupy.complex_'),
-}
 
 
 def __getattr__(name):
-    value = _deprecated_scalar_aliases.get(name)
-    if value is not None:
-        attr, eq_attr = value
-        _warnings.warn(
-            f'`cupy.{name}` is a deprecated alias for the Python scalar type '
-            f'`{name}`. Please use the builtin `{name}` or its corresponding '
-            f'NumPy scalar type `{eq_attr}` instead.',
-            DeprecationWarning, stacklevel=2
-        )
-        return attr
-
     if name in _deprecated_apis:
         return getattr(_numpy, name)
 

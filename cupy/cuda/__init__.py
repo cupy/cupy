@@ -126,10 +126,6 @@ from cupy.cuda.stream import ExternalStream  # NOQA
 from cupy.cuda.graph import Graph  # NOQA
 
 
-# Importing only for backward compatibility:
-from cupy.cuda.compiler import compile_with_cache  # NOQA
-
-
 @contextlib.contextmanager
 def using_allocator(allocator=None):
     """Sets a thread-local allocator for GPU memory inside

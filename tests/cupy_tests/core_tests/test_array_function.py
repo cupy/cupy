@@ -6,7 +6,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestArrayFunction(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.17.0')

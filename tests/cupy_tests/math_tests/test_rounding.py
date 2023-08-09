@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -7,7 +8,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestRounding(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -69,9 +69,13 @@ class TestRounding(unittest.TestCase):
         self.check_unary('around')
         self.check_unary_complex('around')
 
-    def test_round_(self):
-        self.check_unary('round_')
-        self.check_unary_complex('round_')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_round_(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return xp.round_(a)
 
     def test_round(self):
         self.check_unary('round')

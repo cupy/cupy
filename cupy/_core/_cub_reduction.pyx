@@ -28,9 +28,12 @@ cdef function.Function _create_cub_reduction_function(
         _kernel._TypeMap type_map, preamble, options):
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
-
-    # static_assert needs at least C++11 in NVRTC
-    options += ('--std=c++11',)
+    # ROCm5.3 and above requires c++14
+    if runtime._is_hip_environment:
+        options += ('--std=c++14',)
+    else:
+        # static_assert needs at least C++11 in NVRTC
+        options += ('--std=c++11',)
 
     cdef str backend
     if runtime._is_hip_environment:
@@ -260,7 +263,6 @@ cdef str _get_cub_header_include():
         return _cub_header
 
     assert _cub_path is not None
-    cdef str rocm_path = None
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cuda_workaround.h>
@@ -289,7 +291,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     parameters, otherwise returns None.
     '''
     cdef tuple axis_permutes_cub
-    cdef _ndarray_base in_arr, out_arr
+    cdef _ndarray_base in_arr
     cdef Py_ssize_t contiguous_size = 1
     cdef str order
 
@@ -304,7 +306,6 @@ cpdef inline tuple _can_use_cub_block_reduction(
         return None
 
     in_arr = in_args[0]
-    out_arr = out_args[0]
 
     # the axes might not be sorted when we arrive here...
     reduce_axis = tuple(sorted(reduce_axis))
@@ -562,7 +563,6 @@ def _get_cub_optimized_params(
         self, optimize_config, in_args, out_args, in_shape, out_shape,
         type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
         stream, full_reduction, out_block_num, contiguous_size, params):
-    out_size = internal.prod(out_shape)
     in_args = [_reduction._optimizer_copy_arg(a) for a in in_args]
     out_args = [_reduction._optimizer_copy_arg(a) for a in out_args]
 

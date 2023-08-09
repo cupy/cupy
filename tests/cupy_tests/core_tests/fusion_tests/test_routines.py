@@ -22,7 +22,6 @@ class FusionBinaryUfuncTestBase(unittest.TestCase):
         return (x, y), {}
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': [
         'bitwise_and', 'bitwise_or', 'bitwise_xor', 'left_shift', 'right_shift'
@@ -50,7 +49,6 @@ class TestFusionBitwiseUnary(FusionUnaryUfuncTestBase):
         return lambda x: xp.invert(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': [
         'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
@@ -67,7 +65,6 @@ class TestFusionComparisonBinary(FusionBinaryUfuncTestBase):
         return lambda x, y: getattr(xp, self.func)(x, y)
 
 
-@testing.gpu
 class TestFusionComparisonUnary(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -76,7 +73,6 @@ class TestFusionComparisonUnary(FusionUnaryUfuncTestBase):
         return lambda x: xp.logical_not(x)
 
 
-@testing.gpu
 class TestFusionArrayContents(FusionUnaryUfuncTestBase):
 
     def generate_inputs(self, xp, has_nan, dtype):
@@ -109,7 +105,6 @@ class TestFusionArrayContents(FusionUnaryUfuncTestBase):
         return lambda x: xp.isnan(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': [
         'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
@@ -134,7 +129,6 @@ class TestFusionTrigonometricUnary(unittest.TestCase):
         return impl
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['arctan2', 'hypot']
 }))
@@ -147,7 +141,6 @@ class TestFusionTrigonometricBinary(FusionBinaryUfuncTestBase):
         return lambda x, y: getattr(xp, self.func)(x, y)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['deg2rad', 'rad2deg', 'degrees', 'radians']
 }))
@@ -159,9 +152,8 @@ class TestFusionDegRad(FusionUnaryUfuncTestBase):
         return lambda x: getattr(xp, self.func)(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
-    'func': ['around', 'round', 'round_', 'rint', 'floor', 'ceil', 'trunc',
+    'func': ['around', 'round', 'rint', 'floor', 'ceil', 'trunc',
              'fix']
 }))
 class TestFusionRounding(FusionUnaryUfuncTestBase):
@@ -172,7 +164,6 @@ class TestFusionRounding(FusionUnaryUfuncTestBase):
         return lambda x: getattr(xp, self.func)(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p']
 }))
@@ -188,7 +179,6 @@ class TestFusionExpLogUnary(unittest.TestCase):
         return lambda x: getattr(xp, self.func)(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['logaddexp', 'logaddexp2']
 }))
@@ -201,7 +191,6 @@ class TestFusionExpLogBinary(FusionBinaryUfuncTestBase):
         return lambda x, y: getattr(xp, self.func)(x, y)
 
 
-@testing.gpu
 class TestFusionLdexp(FusionBinaryUfuncTestBase):
 
     @testing.for_float_dtypes(name='dtype1')
@@ -211,7 +200,6 @@ class TestFusionLdexp(FusionBinaryUfuncTestBase):
         return lambda x, y: xp.ldexp(x, y)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['signbit', 'frexp']
 }))
@@ -223,7 +211,6 @@ class TestFusionFloatingUnary(FusionUnaryUfuncTestBase):
         return lambda x: getattr(xp, self.func)(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['copysign', 'nextafter']
 }))
@@ -236,7 +223,6 @@ class TestFusionFloatingBinary(FusionBinaryUfuncTestBase):
         return lambda x, y: getattr(xp, self.func)(x, y)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['reciprocal', 'negative', 'angle', 'conj', 'real', 'imag']
 }))
@@ -253,7 +239,6 @@ class TestArithmeticUnary(FusionUnaryUfuncTestBase):
         return lambda x: getattr(xp, self.func)(x)
 
 
-@testing.gpu
 class TestModf(FusionUnaryUfuncTestBase):
 
     def generate_inputs(self, xp, dtype):
@@ -266,7 +251,6 @@ class TestModf(FusionUnaryUfuncTestBase):
         return lambda x: xp.modf(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['add', 'subtract', 'multiply', 'power']
 }))
@@ -285,7 +269,6 @@ class TestArithmeticBinary(FusionBinaryUfuncTestBase):
         return lambda x, y: getattr(xp, self.func)(x, y)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['divide', 'true_divide', 'floor_divide', 'fmod', 'remainder']
 }))
@@ -304,7 +287,6 @@ class TestDivide(unittest.TestCase):
         return lambda x, y: getattr(xp, self.func)(x, y)
 
 
-@testing.gpu
 class TestDivmod(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):
@@ -321,7 +303,6 @@ class TestDivmod(unittest.TestCase):
         return lambda x, y: xp.divmod(x, y)
 
 
-@testing.gpu
 class TestFusionMisc(FusionUnaryUfuncTestBase):
 
     @testing.with_requires('numpy>=1.11.2')
@@ -362,7 +343,6 @@ class TestFusionMisc(FusionUnaryUfuncTestBase):
         return lambda x: xp.clip(x, dtype(2), dtype(4))
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['i0', 'sinc']
 }))
@@ -411,7 +391,6 @@ class TestFusionManipulation(unittest.TestCase):
         return lambda cond, x, y: xp.where(x, y, where=cond)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['sum', 'prod', 'amax', 'amin', 'max', 'min']
 }))
@@ -423,7 +402,6 @@ class TestFusionNumericalReduction(FusionUnaryUfuncTestBase):
         return lambda x: getattr(xp, self.func)(x)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': ['all', 'any']
 }))

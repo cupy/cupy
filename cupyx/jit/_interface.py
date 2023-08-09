@@ -3,7 +3,6 @@ import warnings
 
 import numpy
 
-from cupy_backends.cuda.api import runtime
 import cupy
 from cupy._core import core
 from cupyx.jit import _compile
@@ -182,11 +181,8 @@ blockDim = _internal_types.Data('blockDim', _cuda_types.dim3)
 blockIdx = _internal_types.Data('blockIdx', _cuda_types.dim3)
 gridDim = _internal_types.Data('gridDim', _cuda_types.dim3)
 
-warpsize = _internal_types.Data(
-    '64' if runtime.is_hip else '32', _cuda_types.uint32)
+warpsize = _internal_types.Data('warpSize', _cuda_types.int32)
 warpsize.__doc__ = r"""Returns the number of threads in a warp.
-
-In CUDA this is always 32, and in ROCm/HIP always 64.
 
 .. seealso:: :obj:`numba.cuda.warpsize`
 """

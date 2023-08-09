@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestIndexing(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -203,7 +202,6 @@ class TestIndexing(unittest.TestCase):
         return xp.extract(b, a)
 
 
-@testing.gpu
 class TestChoose(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -217,7 +215,7 @@ class TestChoose(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_choose_broadcast(self, xp, dtype):
         a = xp.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]])
-        c = xp.array([-10, 10], dtype=dtype)
+        c = xp.array([-10, 10]).astype(dtype)
         return a.choose(c)
 
     @testing.for_all_dtypes()
@@ -264,7 +262,6 @@ class TestChoose(unittest.TestCase):
                 return a.choose(c)
 
 
-@testing.gpu
 class TestSelect(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)

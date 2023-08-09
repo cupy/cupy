@@ -58,9 +58,18 @@ class InvalidOutsMixin:
         self.invalid_shape()
 
 
+@testing.parameterize(*common_distributions.uniform_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.fix_random()
+class TestUniform(
+    common_distributions.Uniform,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.parameterize(*common_distributions.exponential_params)
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestExponential(
     common_distributions.Exponential,
@@ -71,7 +80,6 @@ class TestExponential(
 
 @testing.parameterize(*common_distributions.poisson_params)
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestPoisson(
     common_distributions.Poisson,
@@ -92,7 +100,6 @@ class TestBinomial(
 
 @testing.parameterize(*common_distributions.beta_params)
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestBeta(
     common_distributions.Beta,
@@ -102,7 +109,6 @@ class TestBeta(
 
 
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestStandardExponential(
     InvalidOutsMixin,
@@ -113,7 +119,6 @@ class TestStandardExponential(
 
 
 @testing.parameterize(*common_distributions.gamma_params)
-@testing.gpu
 @testing.fix_random()
 class TestGamma(
     common_distributions.Gamma,
@@ -123,7 +128,6 @@ class TestGamma(
 
 
 @testing.parameterize(*common_distributions.standard_gamma_params)
-@testing.gpu
 @testing.fix_random()
 class TestStandardGamma(
     common_distributions.StandardGamma,
@@ -132,7 +136,6 @@ class TestStandardGamma(
     pass
 
 
-@testing.gpu
 @testing.fix_random()
 class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
 
@@ -157,7 +160,6 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
                 self.generate(size=(3, 2), shape=1.0, dtype=dtype)
 
 
-@testing.gpu
 @testing.fix_random()
 class TestStandardGammaEmpty(GeneratorTestCase):
 
@@ -179,7 +181,6 @@ class TestStandardGammaEmpty(GeneratorTestCase):
 
 
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.parameterize(*common_distributions.standard_normal_params)
 @testing.fix_random()
 class TestStandardNormal(
@@ -190,7 +191,6 @@ class TestStandardNormal(
 
 
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
 
@@ -203,7 +203,6 @@ class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
 
 
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestIntegers(GeneratorTestCase):
     target_method = 'integers'
@@ -254,7 +253,6 @@ class TestIntegers(GeneratorTestCase):
 
 
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @testing.fix_random()
 class TestRandom(InvalidOutsMixin, GeneratorTestCase):
     # TODO(niboshi):
@@ -302,7 +300,6 @@ class TestPower(
 
 
 @testing.with_requires('numpy>=1.17.0')
-@testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip
                     and (int(
                         str(cupy.cuda.runtime.runtimeGetVersion())[:3]) < 403),

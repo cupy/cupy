@@ -26,17 +26,15 @@ _nccl_records = []
 library_records = {}
 
 
-def _make_cudnn_url(public_version, cuda_version, filename):
-    # https://developer.download.nvidia.com/compute/redist/cudnn/v8.3.2/local_installers/11.5/cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz
+def _make_cudnn_url(platform, filename):
+    # https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-8.8.1.3_cuda12-archive.tar.xz
     return (
-        'https://developer.download.nvidia.com/compute/redist/cudnn' +
-        '/v{}/local_installers/{}/{}'.format(
-            public_version, cuda_version, filename))
+        'https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/' +
+        f'{platform}/{filename}')
 
 
 def __make_cudnn_record(
-        cuda_version, public_version, archive_cuda_version, filename_linux,
-        filename_windows):
+        cuda_version, public_version, filename_linux, filename_windows):
     major_version = public_version.split('.')[0]
     # Dependency order is documented at:
     # https://docs.nvidia.com/deeplearning/cudnn/api/index.html
@@ -48,14 +46,12 @@ def __make_cudnn_record(
         'cudnn': public_version,
         'assets': {
             'Linux': {
-                'url': _make_cudnn_url(
-                    public_version, archive_cuda_version, filename_linux),
+                'url': _make_cudnn_url('linux-x86_64', filename_linux),
                 'filenames': [f'libcudnn{suffix}.so.{public_version}'
                               for suffix in suffix_list]
             },
             'Windows': {
-                'url': _make_cudnn_url(
-                    public_version, archive_cuda_version, filename_windows),
+                'url': _make_cudnn_url('windows-x86_64', filename_windows),
                 'filenames': [f'cudnn{suffix}64_{major_version}.dll'
                               for suffix in suffix_list]
             },
@@ -64,20 +60,23 @@ def __make_cudnn_record(
 
 
 def _make_cudnn_record(cuda_version):
+    cuda_major = int(cuda_version.split('.')[0])
+    assert cuda_major in (11, 12)
     return __make_cudnn_record(
-        cuda_version, '8.6.0', '11.8',
-        'cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz',
-        'cudnn-windows-x86_64-8.6.0.163_cuda11-archive.zip')
+        cuda_version, '8.8.1',
+        f'cudnn-linux-x86_64-8.8.1.3_cuda{cuda_major}-archive.tar.xz',
+        f'cudnn-windows-x86_64-8.8.1.3_cuda{cuda_major}-archive.zip')
 
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
+_cudnn_records.append(_make_cudnn_record('12.x'))
 _cudnn_records.append(_make_cudnn_record('11.x'))  # CUDA 11.2+
 _cudnn_records.append(_make_cudnn_record('11.1'))
 _cudnn_records.append(_make_cudnn_record('11.0'))
 _cudnn_records.append(__make_cudnn_record(
-    '10.2', '8.6.0', '10.2',
-    'cudnn-linux-x86_64-8.6.0.163_cuda10-archive.tar.xz',
-    'cudnn-windows-x86_64-8.6.0.163_cuda10-archive.zip'))
+    '10.2', '8.7.0',
+    'cudnn-linux-x86_64-8.7.0.84_cuda10-archive.tar.xz',
+    'cudnn-windows-x86_64-8.7.0.84_cuda10-archive.zip'))
 library_records['cudnn'] = _cudnn_records
 
 
@@ -108,11 +107,12 @@ def __make_cutensor_record(
 
 def _make_cutensor_record(cuda_version):
     return __make_cutensor_record(
-        cuda_version, '1.6.1',
-        'libcutensor-linux-x86_64-1.6.1.5-archive.tar.xz',
-        'libcutensor-windows-x86_64-1.6.1.5-archive.zip')
+        cuda_version, '1.6.2',
+        'libcutensor-linux-x86_64-1.6.2.3-archive.tar.xz',
+        'libcutensor-windows-x86_64-1.6.2.3-archive.zip')
 
 
+_cutensor_records.append(_make_cutensor_record('12.x'))
 _cutensor_records.append(_make_cutensor_record('11.x'))  # CUDA 11.2+
 _cutensor_records.append(_make_cutensor_record('11.1'))
 _cutensor_records.append(_make_cutensor_record('11.0'))
@@ -143,14 +143,17 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '11.x', '2.15.5', '2.15.5',  # CUDA 11.2+
-    'nccl_2.15.5-1+cuda11.8_x86_64.txz'))
+    '12.x', '2.16.2', '2.16.2',
+    'nccl_2.16.2-1+cuda12.0_x86_64.txz'))
+_nccl_records.append(_make_nccl_record(
+    '11.x', '2.16.2', '2.16.2',  # CUDA 11.2+
+    'nccl_2.16.2-1+cuda11.8_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.1', '2.8.4', '2.8',
     'nccl_2.8.4-1+cuda11.1_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '11.0', '2.15.5', '2.15.5',
-    'nccl_2.15.5-1+cuda11.0_x86_64.txz'))
+    '11.0', '2.16.2', '2.16.2',
+    'nccl_2.16.2-1+cuda11.0_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '10.2', '2.15.5', '2.15.5',
     'nccl_2.15.5-1+cuda10.2_x86_64.txz'))
@@ -242,6 +245,8 @@ The current platform ({}) is not supported.'''.format(target_platform))
         elif library == 'cutensor':
             if cuda.startswith('11.') and cuda != '11.0':
                 cuda = '11'
+            elif cuda.startswith('12.'):
+                cuda = '12'
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),

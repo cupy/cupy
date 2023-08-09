@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 @testing.parameterize(*testing.product(
     {'shape': [(3,), (2, 3, 4), (0,), (0, 2), (3, 0)]},
 ))
@@ -26,7 +25,6 @@ class TestIter(unittest.TestCase):
         return len(x)
 
 
-@testing.gpu
 class TestIterInvalid(unittest.TestCase):
 
     @testing.for_all_dtypes()

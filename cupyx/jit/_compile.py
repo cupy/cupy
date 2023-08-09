@@ -14,6 +14,7 @@ import numpy
 from cupy_backends.cuda.api import runtime
 from cupy._core._codeblock import CodeBlock, _CodeType
 from cupy._core import _kernel
+from cupy._core._dtype import _raise_if_invalid_cast
 from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
@@ -196,6 +197,10 @@ def transpile(func, attributes, mode, in_types, ret_type):
     code = '\n'.join(generated.codes)
     backend = generated.backend
     enable_cg = generated.enable_cg
+
+    if _is_debug_mode:
+        print(code)
+
     return Result(
         func_name=func_name, code=code, return_type=return_type,
         enable_cooperative_groups=enable_cg, backend=backend)
@@ -556,11 +561,9 @@ def _transpile_stmt(
         assert isinstance(result, Data)
         assert isinstance(target.ctype, _cuda_types.Scalar)
         assert isinstance(result.ctype, _cuda_types.Scalar)
-        if not numpy.can_cast(
-                result.ctype.dtype, target.ctype.dtype, 'same_kind'):
-            raise TypeError(
-                f'dtype mismatch: {result.ctype.dtype}'
-                f' and {target.ctype.dtype}')
+        _raise_if_invalid_cast(
+            result.ctype.dtype, target.ctype.dtype, 'same_kind')
+
         return ['{ ' + target.ctype.declvar('&' + tmp.code, target) + '; ' +
                 target.ctype.assign(tmp, result) + '; }']
 
@@ -733,6 +736,9 @@ def _transpile_expr_internal(
 
         func = func.obj
 
+        if isinstance(func, _interface._cuda_types.TypeBase):
+            return func._instantiate(env, *args, **kwargs)
+
         if isinstance(func, _interface._JitRawKernel):
             if not func._device:
                 raise TypeError(
@@ -795,8 +801,6 @@ def _transpile_expr_internal(
         value = _transpile_expr(expr.value, env)
         if isinstance(value, Constant):
             return Constant(getattr(value.obj, expr.attr))
-        if isinstance(value, _internal_types.BuiltinFunc):
-            return Constant(getattr(value, expr.attr))
         if isinstance(value, Data) and hasattr(value.ctype, expr.attr):
             attr = getattr(value.ctype, expr.attr, None)
             if isinstance(attr, types.MethodType):
@@ -807,7 +811,10 @@ def _transpile_expr_internal(
 
     if isinstance(expr, ast.Tuple):
         elts = [_transpile_expr(x, env) for x in expr.elts]
-        # TODO: Support compile time constants.
+
+        if all([isinstance(x, Constant) for x in elts]):
+            return Constant(tuple([x.obj for x in elts]))
+
         elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
         if len(elts) == 2:
@@ -864,9 +871,8 @@ def _transpile_assign_stmt(
         return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Subscript):
-        target = _transpile_expr(target, env)
-        assert isinstance(target, Data)
-        return _emit_assign_stmt(target, value, env)
+        lvalue = Data.init(_transpile_expr(target, env), env)
+        return _emit_assign_stmt(lvalue, value, env)
 
     if isinstance(target, ast.Tuple):
         if not isinstance(value.ctype, _cuda_types.Tuple):
@@ -984,7 +990,9 @@ def _astype_scalar(
     if from_t == to_t:
         return x
     # Uses casting rules for scalar values.
-    if not numpy.can_cast(from_t.type(0), to_t.type(0), casting):
+    # TODO(seberg): NEP 50/NumPy 2.0 hopefully makes `from_t.type(0)`
+    #               unnecessary allowing to use `_raise_if_invalid_cast()`.
+    if not numpy.can_cast(from_t.type(0), to_t, casting):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")

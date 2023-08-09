@@ -16,7 +16,6 @@ from cupy import testing
     {'repeats': [1, 2, 3], 'axis': 1},
     {'repeats': [1, 2, 3], 'axis': -2},
 )
-@testing.gpu
 class TestRepeat(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -44,7 +43,6 @@ class TestRepeatRepeatsNdarray(unittest.TestCase):
     {'repeats': [2], 'axis': None},
     {'repeats': [2], 'axis': 1},
 )
-@testing.gpu
 class TestRepeatListBroadcast(unittest.TestCase):
 
     """Test for `repeats` argument using single element list.
@@ -65,7 +63,6 @@ class TestRepeatListBroadcast(unittest.TestCase):
     {'repeats': [1, 2, 3, 4], 'axis': None},
     {'repeats': [1, 2, 3, 4], 'axis': 0},
 )
-@testing.gpu
 class TestRepeat1D(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -78,7 +75,6 @@ class TestRepeat1D(unittest.TestCase):
     {'repeats': [2], 'axis': None},
     {'repeats': [2], 'axis': 0},
 )
-@testing.gpu
 class TestRepeat1DListBroadcast(unittest.TestCase):
 
     """See comment in TestRepeatListBroadcast class."""
@@ -97,7 +93,6 @@ class TestRepeat1DListBroadcast(unittest.TestCase):
     {'repeats': 2, 'axis': -4},
     {'repeats': 2, 'axis': 3},
 )
-@testing.gpu
 class TestRepeatFailure(unittest.TestCase):
 
     def test_repeat_failure(self):
@@ -115,7 +110,6 @@ class TestRepeatFailure(unittest.TestCase):
     {'reps': (2, 3)},
     {'reps': (2, 3, 4, 5)},
 )
-@testing.gpu
 class TestTile(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -128,7 +122,6 @@ class TestTile(unittest.TestCase):
     {'reps': -1},
     {'reps': (-1, -2)},
 )
-@testing.gpu
 class TestTileFailure(unittest.TestCase):
 
     def test_tile_failure(self):

@@ -45,7 +45,6 @@ class CubReductionTestBase(unittest.TestCase):
     'shape': [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
     'order': ('C', 'F'),
 }))
-@testing.gpu
 class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
 
     @testing.for_contiguous_axes()
@@ -72,7 +71,6 @@ class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
                                self.order, False)
 
 
-@testing.gpu
 class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
     def test_can_use_cub_nonsense_input1(self):

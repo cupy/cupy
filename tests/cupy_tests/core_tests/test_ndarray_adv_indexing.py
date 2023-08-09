@@ -33,7 +33,6 @@ def perm(iterable):
         )
     })
 )
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemPerm:
 
     @testing.for_all_dtypes()
@@ -129,7 +128,6 @@ class TestArrayAdvancedIndexingGetitemPerm:
      'indexes': (slice(None), [1, 0], Ellipsis, numpy.ones((5, 2), int))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrized:
 
     @testing.for_all_dtypes()
@@ -167,16 +165,15 @@ class TestArrayAdvancedIndexingGetitemParametrized2:
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
 )
-@testing.with_requires('numpy>=1.23')
-class TestArrayAdvancedIndexingGetitemParametrizedIndexError:
+@testing.with_requires('numpy>=1.24')
+class TestArrayAdvancedIndexingGetitemParametrizedValueError:
 
     @testing.for_all_dtypes()
     def test_adv_getitem(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp, dtype)
-            with pytest.raises(IndexError):
-                with testing.assert_warns(numpy.VisibleDeprecationWarning):
-                    a[self.indexes]
+            with pytest.raises(ValueError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -185,7 +182,6 @@ class TestArrayAdvancedIndexingGetitemParametrizedIndexError:
     {'shape': (2, 3, 4), 'transpose': (1, 0, 2),
      'indexes': (None, [1, 2], [0, -1])},
 )
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemParametrizedTransp:
 
     @testing.for_all_dtypes()
@@ -197,7 +193,6 @@ class TestArrayAdvancedIndexingGetitemParametrizedTransp:
         return a[self.indexes]
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingGetitemCupyIndices:
 
     shape = (2, 3, 4)
@@ -273,7 +268,6 @@ class TestArrayAdvancedIndexingGetitemCupyIndices:
         slice(None),
         numpy.array([1], dtype=numpy.int8))},
 )
-@testing.gpu
 class TestArrayAdvancedIndexingOverflow:
 
     def test_getitem(self):
@@ -332,7 +326,6 @@ class TestArrayAdvancedIndexingOverflow:
     {'shape': (2, 3, 4),
      'indexes': (numpy.empty(0, bool), numpy.empty((0, 2), bool))},
 )
-@testing.gpu
 class TestArrayInvalidIndexAdvGetitem:
 
     def test_invalid_adv_getitem(self):
@@ -350,7 +343,6 @@ class TestArrayInvalidIndexAdvGetitem:
      'indexes': numpy.random.choice([False, True], (1, 3))},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayInvalidIndexAdvGetitem2:
 
     def test_invalid_adv_getitem(self):
@@ -363,16 +355,14 @@ class TestArrayInvalidIndexAdvGetitem2:
 @testing.parameterize(
     {'shape': (2, 3, 4), 'indexes': [1, [1, [1]]]},
 )
-@testing.gpu
-@testing.with_requires('numpy>=1.16')
+@testing.with_requires('numpy>=1.24')
 class TestArrayInvalidValueAdvGetitem:
 
     def test_invalid_adv_getitem(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp)
-            with pytest.raises(IndexError):
-                with testing.assert_warns(FutureWarning):
-                    a[self.indexes]
+            with pytest.raises(ValueError):
+                a[self.indexes]
 
 
 @testing.parameterize(
@@ -562,7 +552,6 @@ class TestArrayAdvancedIndexingSetitemScalarValue2:
     {'shape': (0,), 'indexes': numpy.array([True]), 'value': 1},
     {'shape': (0,), 'indexes': numpy.array([False, True, True]), 'value': 1},
 )
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
 
     def test_adv_setitem(self):
@@ -578,16 +567,15 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError:
     {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
 )
-@testing.with_requires('numpy>=1.23')
-class TestArrayAdvancedIndexingSetitemScalarValueIndexError2:
+@testing.with_requires('numpy>=1.24')
+class TestArrayAdvancedIndexingSetitemScalarValueValueError2:
 
     @testing.for_all_dtypes()
     def test_adv_setitem(self, dtype):
         for xp in (numpy, cupy):
             a = xp.zeros(self.shape, dtype=dtype)
-            with pytest.raises(IndexError):
-                with testing.assert_warns(numpy.VisibleDeprecationWarning):
-                    a[self.indexes] = self.value
+            with pytest.raises(ValueError):
+                a[self.indexes] = self.value
 
 
 @testing.parameterize(
@@ -636,7 +624,6 @@ class TestArrayAdvancedIndexingSetitemScalarValueIndexError2:
      'value': numpy.arange(3 * 4).reshape(3, 4)},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestArrayAdvancedIndexingVectorValue:
 
     @testing.for_all_dtypes()
@@ -647,7 +634,6 @@ class TestArrayAdvancedIndexingVectorValue:
         return a
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemCupyIndices:
 
     shape = (2, 3)
@@ -689,7 +675,6 @@ class TestArrayAdvancedIndexingSetitemCupyIndices:
         testing.assert_array_almost_equal(original_index, index)
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemDifferentDtypes:
 
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'],
@@ -713,7 +698,6 @@ class TestArrayAdvancedIndexingSetitemDifferentDtypes:
         return a
 
 
-@testing.gpu
 class TestArrayAdvancedIndexingSetitemTranspose:
 
     @testing.numpy_cupy_array_equal()

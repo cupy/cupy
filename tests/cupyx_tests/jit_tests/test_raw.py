@@ -573,14 +573,14 @@ class TestRaw:
         a = cupy.arange(32, dtype=dtype)
         f[1, 32](a)
         expected = [i for i in range(N)] + [i for i in range(32-N)]
-        assert(a == cupy.asarray(expected, dtype=dtype)).all()
+        assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_down(self, dtype):
         N = 5
         # __shfl_down() on HIP does not seem to have the same behavior...
-        block = 64 if runtime.is_hip else 32
+        block = cupy._core._get_warpsize()
 
         @jit.rawkernel()
         def f(a):
@@ -591,7 +591,7 @@ class TestRaw:
         f[1, block](a)
         expected = [i for i in range(N, block)]
         expected += [(block-N+i) for i in range(N)]
-        assert(a == cupy.asarray(expected, dtype=dtype)).all()
+        assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
@@ -627,7 +627,7 @@ class TestRaw:
             if x < arr.size:
                 arr[x] = jit.laneid()
 
-        N = 64 if runtime.is_hip else 32
+        N = cupy._core._get_warpsize()
         x = cupy.zeros((N*2,), dtype=cupy.uint32)
         f((1,), (N*2,), (x,))
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
@@ -640,7 +640,7 @@ class TestRaw:
             if x == 0:
                 arr[0] = jit.warpsize
 
-        N = 64 if runtime.is_hip else 32
+        N = cupy._core._get_warpsize()
         x = cupy.zeros((1,), dtype=cupy.uint32)
         f((1,), (1,), (x,))
         assert x == N

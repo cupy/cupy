@@ -27,7 +27,6 @@ rtol = {cupy.float64: 1e-10, 'default': 1e-5}
     'bias': [0.0, 0.8, -0.5],
     'function': ['fht', 'ifht'],
 }))
-@testing.gpu
 class TestFftlog:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -49,7 +48,7 @@ class TestFftlog:
         mu = self.mu
         bias = self.bias
         if self.offset == 'optimal':
-            offset = fhtoffset(dln, mu, bias)
+            offset = fhtoffset(dln.item(), mu, bias)
         else:
             offset = self.offset
 
@@ -61,7 +60,6 @@ class TestFftlog:
 @testing.parameterize(*testing.product({
     'function': ['fht', 'ifht'],
 }))
-@testing.gpu
 class TestFftlogScipyBackend:
 
     @testing.for_all_dtypes()

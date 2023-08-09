@@ -1,5 +1,6 @@
 import functools
 import pickle
+import sys
 
 import numpy
 import pytest
@@ -13,6 +14,7 @@ from cupy import testing
 from cupyx import cusparse
 from cupy.cuda import driver
 from cupy.cuda import runtime
+from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy import sparse
 
 
@@ -376,14 +378,19 @@ class TestSpgemm:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if not cusparse.check_availability('spgemm'):
+            pytest.skip('spgemm is not available.')
+
+        if (sys.platform == 'win32'
+            and cusparse.getVersion() == 11301
+                and self.dtype == numpy.complex128):
+            pytest.xfail('spgemm fails on CUDA 11.2 on Windows')
+
         m, n, k = self.shape
         self.a = scipy.sparse.random(m, k, density=0.5, dtype=self.dtype)
         self.b = scipy.sparse.random(k, n, density=0.5, dtype=self.dtype)
 
     def test_spgemm_ab(self):
-        if not cusparse.check_availability('spgemm'):
-            pytest.skip('spgemm is not available.')
-
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
         c = cusparse.spgemm(a, b, alpha=self.alpha)
@@ -725,6 +732,17 @@ class TestSpmm:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if not cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
+        if cusparse.getVersion() == 11700 and self.format == 'coo':
+            pytest.skip('spmm fails on CUDA 11.5.x with COO')
+        if cusparse.getVersion() == 11702 and self.format in ('csr', 'csc'):
+            pytest.skip('spmm fails on CUDA 11.6.1/11.6.2 with CSR or CSC')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
         m, n, k = self.dims
         self.op_a = scipy.sparse.random(m, k, density=0.5, format=self.format,
                                         dtype=self.dtype)
@@ -746,14 +764,6 @@ class TestSpmm:
             self.sparse_matrix = sparse.coo_matrix
 
     def test_spmm(self):
-        if not cusparse.check_availability('spmm'):
-            pytest.skip('spmm is not available')
-        if runtime.is_hip:
-            if ((self.format == 'csr' and self.transa is True)
-                    or (self.format == 'csc' and self.transa is False)
-                    or (self.format == 'coo' and self.transa is True)):
-                pytest.xfail('may be buggy')
-
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -764,14 +774,6 @@ class TestSpmm:
         testing.assert_array_almost_equal(c, expect)
 
     def test_spmm_with_c(self):
-        if not cusparse.check_availability('spmm'):
-            pytest.skip('spmm is not available')
-        if runtime.is_hip:
-            if ((self.format == 'csr' and self.transa is True)
-                    or (self.format == 'csc' and self.transa is False)
-                    or (self.format == 'coo' and self.transa is True)):
-                pytest.xfail('may be buggy')
-
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -1017,3 +1019,100 @@ class TestSparseMatrixConversion:
             x = sparse.coo_matrix(x)
         y = cusparse.sparseToDense(x)
         testing.assert_array_equal(x.todense(), y)
+
+
+@pytest.mark.parametrize('dims', [(3, 4), (4, 3), (3, None)])
+@pytest.mark.parametrize(
+    'dtype', [cupy.float32, cupy.float64, cupy.complex64, cupy.complex128])
+@pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+@pytest.mark.parametrize(
+    'transa,lower,unit_diag,b_order',
+    [('N', True, False, 'f'),   # base
+     ('T', True, False, 'f'),   # transa == 'T'
+     ('H', True, False, 'f'),   # transa == 'H'
+     ('N', False, False, 'f'),  # lower == False
+     ('T', False, True, 'f'),   # transa == 'T', lower == False
+     ('H', False, True, 'f'),   # transa == 'H', lower == False
+     ('N', True, True, 'f'),    # unit_diag == True
+     ('N', True, False, 'c'),   # b_order == 'c'
+     ])
+@testing.with_requires('scipy')
+class TestSpsm:
+
+    alpha = 0.5
+
+    def _make_matrix(self, dtype, m, lower, unit_diag, format):
+        # Make a sparse m x m triangular non-singular matrix
+        a = scipy.sparse.random(
+            m, m, density=0.5, format=format, dtype=dtype)
+
+        if unit_diag:
+            diag = numpy.diag(numpy.ones(m).astype(dtype))
+        else:
+            diag = numpy.diag(numpy.random.uniform(0.1, 1, m).astype(dtype))
+        a = a - numpy.diag(a.diagonal()) + diag
+
+        if lower:
+            a = scipy.sparse.tril(a)
+        else:
+            a = scipy.sparse.triu(a)
+
+        if not a.has_canonical_format:
+            a.sum_duplicates()
+
+        return a
+
+    @pytest.fixture(autouse=True)
+    def setUp(self, dims, dtype, lower, unit_diag, transa, format):
+        m, n = dims
+
+        self.op_a = self._make_matrix(dtype, m, lower, unit_diag, format)
+        self.a = self.op_a
+
+        if n is None:
+            b_shape = m,
+        else:
+            b_shape = m, n
+        self.op_b = numpy.random.uniform(-1, 1, b_shape).astype(dtype)
+        self.b = self.op_b
+
+        if format == 'csr':
+            self.sparse_matrix = sparse.csr_matrix
+        elif format == 'csc':
+            self.sparse_matrix = sparse.csc_matrix
+        elif format == 'coo':
+            self.sparse_matrix = sparse.coo_matrix
+        else:
+            assert False
+
+    def test_spsm(self, lower, unit_diag, transa, b_order, dtype, format):
+        if not cusparse.check_availability('spsm'):
+            pytest.skip('spsm is not available')
+        if not runtime.is_hip and _cusparse.get_build_version() < 11701:
+            # eariler than CUDA 11.6
+            if b_order == 'c':
+                pytest.skip("Older CUDA has a bug")
+        if runtime.is_hip:
+            if format == 'coo' or b_order == 'c':
+                pytest.skip('may be buggy or not supported')
+        a = self.sparse_matrix(self.a)
+        b = cupy.array(self.b, order=b_order)
+        c = cusparse.spsm(
+            a, b, alpha=self.alpha, lower=lower, unit_diag=unit_diag,
+            transa=transa)
+
+        if transa == 'N':
+            op_a = self.op_a
+        elif transa == 'T':
+            op_a = self.op_a.T
+        else:
+            op_a = self.op_a.conj().T
+        lhs = op_a.dot(c.get())
+
+        rhs = self.alpha * self.op_b
+
+        if dtype in (cupy.float32, cupy.complex64):
+            tol = 1e-5
+        else:
+            tol = 1e-12
+        testing.assert_allclose(lhs, rhs, rtol=tol, atol=tol)

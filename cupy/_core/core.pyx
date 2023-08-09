@@ -5,7 +5,6 @@ import functools
 import os
 import pickle
 import re
-import sys
 import warnings
 
 import numpy
@@ -13,7 +12,6 @@ import numpy
 import cupy
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
-from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core import flags
 from cupy._core import syncdetect
@@ -25,9 +23,7 @@ from cupy.cuda import stream as stream_mod
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 
-cimport cpython  # NOQA
 cimport cython  # NOQA
-from libcpp cimport vector
 from libc.stdint cimport int64_t, intptr_t
 
 from cupy._core cimport _carray
@@ -194,7 +190,7 @@ cdef class _ndarray_base:
 
         # Check for erroneous shape
         if len(s) > _carray.MAX_NDIM:
-            msg = f'maximum supported dimension for an ndarray is '
+            msg = 'maximum supported dimension for an ndarray is '
             msg += f'{_carray.MAX_NDIM}, found {len(s)}'
             raise ValueError(msg)
         self._shape.reserve(len(s))
@@ -232,7 +228,7 @@ cdef class _ndarray_base:
         """ For internal ndarray creation. """
         cdef Py_ssize_t itemsize
         if shape.size() > _carray.MAX_NDIM:
-            msg = f'maximum supported dimension for an ndarray is '
+            msg = 'maximum supported dimension for an ndarray is '
             msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
             raise ValueError(msg)
         self._shape = shape
@@ -541,7 +537,6 @@ cdef class _ndarray_base:
 
         """
         cdef strides_t strides
-        cdef Py_ssize_t stride
 
         # TODO(beam2d): Support casting and subok option
         if casting is not None:
@@ -728,10 +723,6 @@ cdef class _ndarray_base:
             if value.shape != ():
                 raise ValueError(
                     'non-scalar cupy.ndarray cannot be used for fill')
-            if not cupy.can_cast(value, self.dtype):
-                raise TypeError(
-                    f'Cannot cast scalar from dtype(\'{value.dtype}\') to '
-                    f'dtype(\'{self.dtype}\') according to the rule \'safe\'')
             value = value.astype(self.dtype, copy=False)
             fill_kernel(value, self)
             return
@@ -740,11 +731,7 @@ cdef class _ndarray_base:
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
-            if not numpy.can_cast(value, self.dtype):
-                raise TypeError(
-                    f'Cannot cast scalar from dtype(\'{value.dtype}\') to '
-                    f'dtype(\'{self.dtype}\') according to the rule \'safe\'')
-            value = value.item()
+            value = value.astype(self.dtype, copy=False).item()
 
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes)
@@ -951,7 +938,7 @@ cdef class _ndarray_base:
 
         .. seealso:: :func:`numpy.searchsorted`
 
-        """
+        """  # NOQA
         return cupy.searchsorted(self, v, side, sorter)
 
     cpdef tuple nonzero(self):
@@ -1085,7 +1072,7 @@ cdef class _ndarray_base:
            :func:`cupy.around` for full documentation,
            :meth:`numpy.ndarray.round`
 
-        """
+        """  # NOQA
         return _round_ufunc(self, decimals, out=out)
 
     cpdef _ndarray_base trace(
@@ -1491,9 +1478,9 @@ cdef class _ndarray_base:
 
     @classmethod
     def __class_getitem__(cls, tuple item):
-        from cupy.typing._generic_alias import GenericAlias
+        from types import GenericAlias
         item1, item2 = item
-        return GenericAlias(cupy.ndarray, (item1, item2))
+        return GenericAlias(ndarray, (item1, item2))
 
     # TODO(okuta): Implement __array_wrap__
 
@@ -1625,7 +1612,7 @@ cdef class _ndarray_base:
 
         """
         warnings.warn(
-            '`ndarray.scatter_max` is deprecated ',
+            '`ndarray.scatter_max` is deprecated '
             'Please use `cupy.maximum.at` instead.',
             DeprecationWarning)
         self._scatter_op(slices, value, 'max')
@@ -1638,7 +1625,7 @@ cdef class _ndarray_base:
 
         """
         warnings.warn(
-            '`ndarray.scatter_min` is deprecated ',
+            '`ndarray.scatter_min` is deprecated '
             'Please use `cupy.minimum.at` instead.',
             DeprecationWarning)
         self._scatter_op(slices, value, 'min')
@@ -1672,12 +1659,16 @@ cdef class _ndarray_base:
             inout += out
             kwargs['out'] = out[0]
 
-        if method == '__call__':
+        if method in (
+                '__call__', 'outer', 'at', 'reduce', 'accumulate', 'reduceat'
+        ):
             name = ufunc.__name__
             try:
-                cp_ufunc = getattr(cupy, name, None) or getattr(
+                func = getattr(cupy, name, None) or getattr(
                     cupyx.scipy.special, name
                 )
+                if method != '__call__':
+                    func = getattr(func, method)
             except AttributeError:
                 return NotImplemented
             for x in inout:
@@ -1703,12 +1694,7 @@ cdef class _ndarray_base:
                     else x
                     for x in inputs
                 ])
-            return cp_ufunc(*inputs, **kwargs)
-        # Don't use for now, interface uncertain
-        # elif method =='at' and name == 'add':
-            # the only ufunc attribute currently
-            # http://docs.cupy.dev/en/stable/reference/ufunc.html#ufunc-at
-            # self.scatter_add(*inputs, **kwargs)
+            return func(*inputs, **kwargs)
         else:
             return NotImplemented
 
@@ -1992,7 +1978,7 @@ cdef class _ndarray_base:
         if shape.size() != strides.size():
             raise ValueError('len(shape) != len(strides)')
         if shape.size() > _carray.MAX_NDIM:
-            msg = f'maximum supported dimension for an ndarray is '
+            msg = 'maximum supported dimension for an ndarray is '
             msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
             raise ValueError(msg)
         self._shape = shape
@@ -2235,8 +2221,11 @@ cpdef function.Module compile_with_cache(
         elif 11010 <= _cuda_runtime_version < 11020:
             bundled_include = 'cuda-11.1'
         elif 11020 <= _cuda_runtime_version < 12000:
-            # for CUDA Enhanced Compatibility
+            # CUDA Enhanced Compatibility
             bundled_include = 'cuda-11'
+        elif 12000 <= _cuda_runtime_version < 13000:
+            # CUDA Enhanced Compatibility
+            bundled_include = 'cuda-12'
         else:
             # CUDA versions not yet supported.
             bundled_include = None
@@ -2489,7 +2478,6 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
     # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
     cdef pinned_memory.PinnedMemoryPointer mem = (
         _alloc_async_transfer_buffer(nbytes))
-    cdef size_t offset, length
     if mem is not None:
         # write concatenated arrays to the pinned memory directly
         src_cpu = (
@@ -2529,7 +2517,7 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(obj, dtype, shape, order):
 
 cdef _ndarray_base _array_default(obj, dtype, order, Py_ssize_t ndmin):
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
-        if isinstance(obj, numpy.ndarray) and obj.flags.f_contiguous:
+        if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
         else:
             order = 'C'
@@ -2720,7 +2708,6 @@ cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=None):
 
 cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
     cdef _ndarray_base newarray
-    cdef int m, n
     cdef bint same_dtype = False
     zero_dim = a._shape.size() == 0
 

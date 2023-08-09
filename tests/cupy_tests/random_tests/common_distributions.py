@@ -5,7 +5,6 @@ import numpy
 
 import cupy
 from cupy import testing
-from cupy.testing import _attr
 from cupy.testing import _condition
 
 
@@ -127,6 +126,35 @@ D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
             raise AssertionError(message)
 
 
+uniform_params = [
+    {'low': 1, 'high': 10.0, 'size': (3, 5)},
+    {'low': [1, 2], 'high': 3, 'size': None},
+    {'low': 20, 'high': 20.1, 'size': 1000}
+]
+
+
+class Uniform:
+    target_method = 'uniform'
+
+    def test_uniform(self):
+        low = self.low
+        if isinstance(low, list):
+            low = cupy.array(low)
+        high = self.high
+        if isinstance(high, list):
+            high = cupy.array(high)
+
+        result = self.generate(low, high, self.size)
+        assert cupy.all(result >= cupy.asarray(low).min())
+        assert cupy.all(result < cupy.asarray(high).max())
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_uniform_ks(self):
+        if (isinstance(self.low, list) or isinstance(self.high, list)):
+            self.skipTest('Stastical checks only for scalar args')
+        self.check_ks(0.05)(low=self.low, high=self.low, size=2000)
+
+
 beta_params = [
     {'a': 1.0, 'b': 3.0},
     {'a': 3.0, 'b': 3.0},
@@ -162,7 +190,7 @@ class StandardExponential:
     def test_standard_exponential(self):
         self.generate(size=(3, 2))
 
-    @_attr.slow
+    @testing.slow
     @_condition.repeat(10)
     def test_standard_exponential_isfinite(self):
         x = self.generate(size=10**7)

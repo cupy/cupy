@@ -7,7 +7,6 @@ from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1,), (3, 4), (2, 1, 4), (2, 0, 3)],
     'axis': [-4, -3, -2, -1, 0, 1, 2, 3, 4],
@@ -27,7 +26,6 @@ class TestFusionReductionAxis(unittest.TestCase):
         return lambda x: cupy.sum(x, axis=self.axis)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1,), (3, 4), (2, 1, 4), (2, 0, 3), (2, 3, 2, 2, 3)],
     'axis': [
@@ -51,7 +49,6 @@ class TestFusionReductionMultiAxis(unittest.TestCase):
         return lambda x: cupy.sum(x, axis=self.axis)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [
         (120, 128, 144),
@@ -74,7 +71,6 @@ class TestFusionReductionLarge(unittest.TestCase):
 
 
 # TODO(asi1024): Support for bool and complex dtypes.
-@testing.gpu
 class TestFusionReductionSpecifyDtype(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype1, dtype2):
@@ -88,7 +84,6 @@ class TestFusionReductionSpecifyDtype(unittest.TestCase):
         return lambda x: x.sum(axis=0, dtype=dtype2)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'axis': [None, 0, 1],
 }))
@@ -146,7 +141,6 @@ class TestFusionReductionAndElementwise(unittest.TestCase):
         return impl
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'axis1': [None, 0, 1],
     'axis2': [None, 0, 1],
@@ -173,7 +167,6 @@ class TestFusionMultipleReductions(unittest.TestCase):
         return lambda x, y: x.sum(self.axis1) + y.sum(self.axis2)
 
 
-@testing.gpu
 class TestFusionMultistageReductions(unittest.TestCase):
 
     def generate_inputs(self, xp):
@@ -195,7 +188,6 @@ class TestFusionMultistageReductions(unittest.TestCase):
         return lambda x: (xp.sqrt(x).prod(axis=0) + x).sum(axis=1) * 2
 
 
-@testing.gpu
 class TestFusionMultistageReductionsMultiAxis(unittest.TestCase):
 
     def generate_inputs(self, xp):
@@ -210,7 +202,6 @@ class TestFusionMultistageReductionsMultiAxis(unittest.TestCase):
         return lambda x: x.prod(axis=(-1, 1)).sum(axis=(0, 1))
 
 
-@testing.gpu
 class TestFusionReductionRoutines(unittest.TestCase):
 
     def generate_inputs(self, xp):
@@ -234,7 +225,6 @@ class TestFusionReductionRoutines(unittest.TestCase):
         return lambda x: xp.nanprod(x)
 
 
-@testing.gpu
 class TestFusionMisc(unittest.TestCase):
 
     def generate_inputs(self, xp):

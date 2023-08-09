@@ -3,7 +3,6 @@ import unittest
 from cupy import testing
 
 
-@testing.gpu
 class TestArrayContiguity(unittest.TestCase):
 
     def test_is_contiguous(self):

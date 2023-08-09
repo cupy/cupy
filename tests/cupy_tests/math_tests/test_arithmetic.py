@@ -23,7 +23,6 @@ negative_no_complex_types = [numpy.bool_] + float_types + signed_int_types
 no_complex_types = [numpy.bool_] + float_types + int_types
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
         'nargs': [1],
@@ -52,7 +51,6 @@ class TestArithmeticRaisesWithNumpyInput:
                 func(*arys)
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
         'arg1': ([testing.shaped_arange((2, 3), numpy, dtype=d)
@@ -112,7 +110,6 @@ class TestArithmeticUnary:
 @testing.parameterize(*testing.product({
     'shape': [(3, 2), (), (3, 0, 2)],
 }))
-@testing.gpu
 class TestComplex:
 
     @testing.for_all_dtypes(no_complex=True)
@@ -260,7 +257,6 @@ class ArithmeticBinaryBase:
         return y
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
@@ -288,14 +284,23 @@ class TestArithmeticBinary(ArithmeticBinaryBase):
         self.check_binary()
 
 
-@testing.gpu
 @testing.parameterize(*(
     testing.product({
+        'arg1': [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
+                 for d in unsigned_int_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'arg2': [numpy.array([3, 2, 1, 1, 2, 3], dtype=d)
+                 for d in unsigned_int_types
+                 ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
+        'name': ['true_divide'],
+        'dtype': [numpy.float64],
+        'use_dtype': [True, False],
+    }) + testing.product({
         'arg1': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in int_types
+                 for d in signed_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'arg2': [numpy.array([-3, -2, -1, 1, 2, 3], dtype=d)
-                 for d in int_types
+                 for d in signed_int_types
                  ] + [0, 0.0, 2, 2.0, -2, -2.0, True, False],
         'name': ['true_divide'],
         'dtype': [numpy.float64],
@@ -383,6 +388,18 @@ class UfuncTestBase:
 class TestUfunc(UfuncTestBase):
 
     @pytest.mark.parametrize('casting', [
+        'no',
+        'equiv',
+        'safe',
+        'same_kind',
+        'unsafe',
+    ])
+    @testing.for_all_dtypes_combination(
+        names=['in_type', 'out_type'])
+    def test_casting_out_only(self, in_type, out_type, casting):
+        self.check_casting_out(in_type, in_type, out_type, casting)
+
+    @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.skip('flaky xfail')),
         pytest.param('equiv', marks=pytest.mark.skip('flaky xfail')),
         'safe',
@@ -391,7 +408,7 @@ class TestUfunc(UfuncTestBase):
     ])
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'out_type'], full=False)
-    def test_casting_out(self, in0_type, in1_type, out_type, casting):
+    def test_casting_in_out(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.xfail()
@@ -402,7 +419,7 @@ class TestUfunc(UfuncTestBase):
     @pytest.mark.parametrize(('in0_type', 'in1_type', 'out_type'), [
         (numpy.int16, numpy.int32, numpy.int32),
     ])
-    def test_casting_out_xfail1(self, in0_type, in1_type, out_type, casting):
+    def test_casting_in_xfail1(self, in0_type, in1_type, out_type, casting):
         self.check_casting_out(in0_type, in1_type, out_type, casting)
 
     @pytest.mark.skip('flaky xfail')
@@ -443,14 +460,6 @@ class TestUfunc(UfuncTestBase):
     def test_casting_dtype_xfail2(self, in0_type, in1_type, dtype, casting):
         self.check_casting_dtype(in0_type, in1_type, dtype, casting)
 
-    @pytest.mark.xfail()
-    @pytest.mark.parametrize(('in0_type', 'in1_type', 'dtype'), [
-        (numpy.complex64, numpy.complex64, numpy.float32),
-    ])
-    def test_casting_dtype_xfail3(self, in0_type, in1_type, dtype):
-        casting = 'unsafe'
-        self.check_casting_dtype(in0_type, in1_type, dtype, casting)
-
     @testing.for_all_dtypes_combination(
         names=['in0_type', 'in1_type', 'dtype'], full=False)
     def test_casting_dtype_unsafe_ignore_warnings(
@@ -462,7 +471,6 @@ class TestUfunc(UfuncTestBase):
 
 @testing.slow
 class TestUfuncSlow(UfuncTestBase):
-
     @pytest.mark.parametrize('casting', [
         pytest.param('no', marks=pytest.mark.xfail()),
         pytest.param('equiv', marks=pytest.mark.xfail()),
@@ -514,7 +522,6 @@ class TestArithmeticModf:
     'xp': [numpy, cupy],
     'shape': [(3, 2), (), (3, 0, 2)]
 }))
-@testing.gpu
 class TestBoolSubtract:
 
     def test_bool_subtract(self):

@@ -71,25 +71,25 @@ class TestMinScalarType:
 
     @testing.for_all_dtypes()
     def test_numpy_scalar(self, dtype):
-        sc = dtype(-1)
+        sc = dtype(1)
         for v in (sc, [sc, sc]):
             assert cupy.min_scalar_type(v) is numpy.min_scalar_type(v)
 
     @testing.for_all_dtypes()
     def test_cupy_scalar(self, dtype):
-        sc = cupy.array(-1, dtype=dtype)
+        sc = cupy.array(-1).astype(dtype)
         for v in (sc, [sc, sc]):
             assert cupy.min_scalar_type(v) is sc.dtype
 
     @testing.for_all_dtypes()
     def test_numpy_ndarray(self, dtype):
-        arr = numpy.array([[-1, 1]], dtype=dtype)
+        arr = numpy.array([[-1, 1]]).astype(dtype)
         for v in (arr, (arr, arr)):
             assert cupy.min_scalar_type(v) is numpy.min_scalar_type(v)
 
     @testing.for_all_dtypes()
     def test_cupy_ndarray(self, dtype):
-        arr = cupy.array([[-1, 1]], dtype=dtype)
+        arr = cupy.array([[-1, 1]]).astype(dtype)
         for v in (arr, (arr, arr)):
             assert cupy.min_scalar_type(v) is arr.dtype
 
@@ -97,7 +97,6 @@ class TestMinScalarType:
 @testing.parameterize(*testing.product({
     'cxx': (None, '--std=c++11'),
 }))
-@testing.gpu
 class TestCuPyHeaders(unittest.TestCase):
 
     def setUp(self):

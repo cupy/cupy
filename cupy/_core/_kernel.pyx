@@ -7,7 +7,6 @@ import cupy
 from cupy.cuda import compiler
 from cupy import _util
 
-cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from libcpp cimport vector
@@ -19,7 +18,7 @@ from cupy.cuda cimport texture
 from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
-from cupy._core._dtype cimport get_dtype
+from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core._memory_range cimport may_share_bounds
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core cimport core
@@ -45,10 +44,15 @@ cdef inline bint _contains_zero(const shape_t& v) except? -1:
     return False
 
 
-cdef function.Function _get_simple_elementwise_kernel(
+@_util.memoize(for_each_device=True)
+def _get_warpsize():
+    device_id = runtime.getDevice()
+    return runtime.getDeviceProperties(device_id)['warpSize']
+
+
+cdef str _get_simple_elementwise_kernel_code(
         tuple params, tuple arginfos, str operation, str name,
-        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
-        tuple options=()):
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
     ${typedef_preamble}
@@ -70,8 +74,24 @@ cdef function.Function _get_simple_elementwise_kernel(
         preamble=preamble,
         loop_prep=loop_prep,
         after_loop=after_loop)
-    module = compile_with_cache(module_code, options)
+    return module_code
+
+
+cdef function.Function _get_simple_elementwise_kernel_from_code(
+        str name, str code, tuple options=()):
+    module = compile_with_cache(code, options)
     return module.get_function(name)
+
+
+cdef function.Function _get_simple_elementwise_kernel(
+        tuple params, tuple arginfos, str operation, str name,
+        _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
+        tuple options=()):
+    code = _get_simple_elementwise_kernel_code(
+        params, arginfos, operation, name, type_map, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef inline int _get_kind_score(int kind):
@@ -348,7 +368,7 @@ cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
 
 cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
     cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t x, total_size
+    cdef Py_ssize_t total_size
     cdef shape_t vecshape, newshape, newstrides
     cdef vector.vector[int] array_indexes, axes
     cdef vector.vector[int] strides_indexes
@@ -611,20 +631,6 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 cdef _numpy_can_cast = numpy.can_cast
 
 
-cdef bint _can_cast(d1, d2, casting):
-    # most ufunc passes `same_kind`
-    if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
-        return True
-    return _numpy_can_cast(d1, d2, casting=casting)
-
-
-cdef void _complex_warning(dtype_from, dtype_to):
-    if dtype_from.kind == 'c' and dtype_to.kind not in 'bc':
-        warnings.warn(
-            'Casting complex values to real discards the imaginary part',
-            numpy.ComplexWarning)
-
-
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
     obj
@@ -647,15 +653,8 @@ cdef list _get_out_args_from_optionals(
         if not internal.vector_equal(arr._shape, out_shape):
             raise ValueError('Out shape is mismatched')
         out_type = get_dtype(out_types[i])
-        if not _can_cast(out_type, arr.dtype, casting):
-            msg = 'output (typecode \'{}\') could not be coerced to ' \
-                  'provided output parameter (typecode \'{}\') according to ' \
-                  'the casting rule "{}"'.format(
-                      out_type.char,
-                      arr.dtype.char,
-                      casting)
-            raise TypeError(msg)
-        _complex_warning(out_type, arr.dtype)
+
+        _raise_if_invalid_cast(out_type, arr.dtype, casting, "output operand")
     return out_args
 
 
@@ -677,8 +676,6 @@ cdef list _get_out_args_with_params(
         tuple out_params, bint is_size_specified):
     cdef ParameterInfo p
     cdef _ndarray_base arr
-    cdef shape_t shape
-    cdef Py_ssize_t x
     if not out_args:
         for p in out_params:
             if p.raw and not is_size_specified:
@@ -697,8 +694,8 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@_util.memoize(for_each_device=True)
-def _get_elementwise_kernel(
+@_util.memoize()
+def _get_elementwise_kernel_code(
         tuple arginfos, _TypeMap type_map,
         tuple params, str operation, str name,
         str preamble, str loop_prep='', str after_loop='', tuple options=()):
@@ -714,9 +711,21 @@ def _get_elementwise_kernel(
             op.append(fmt.format(t=p.ctype, n=p.name))
     op.append(operation)
     operation = '\n'.join(op)
-    return _get_simple_elementwise_kernel(
+    return _get_simple_elementwise_kernel_code(
         params, arginfos, operation, name, type_map,
-        preamble, loop_prep, after_loop, options)
+        preamble, loop_prep, after_loop)
+
+
+@_util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
+        tuple arginfos, _TypeMap type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+    cdef str code = _get_elementwise_kernel_code(
+        arginfos, type_map, params, operation, name, preamble, loop_prep,
+        after_loop
+    )
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef class ElementwiseKernel:
@@ -776,6 +785,7 @@ cdef class ElementwiseKernel:
         readonly dict kwargs
         readonly dict _params_type_memo
         readonly dict _elementwise_kernel_memo
+        readonly dict _cached_codes
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -799,6 +809,7 @@ cdef class ElementwiseKernel:
         self.return_tuple = return_tuple
         self.kwargs = kwargs
         self._params_type_memo = {}
+        self._cached_codes = {}
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
@@ -833,7 +844,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
-        cdef tuple in_types, out_types, types
+        cdef tuple in_types, out_types
         cdef shape_t shape
 
         size = kwargs.pop('size', -1)
@@ -850,6 +861,10 @@ cdef class ElementwiseKernel:
                 'It must be either {} or {} (with outputs), '
                 'but given {}.'.format(
                     self.name, self.nin, self.nargs, n_args))
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
         dev_id = device.get_device_id()
         arg_list = _preprocess_args(dev_id, args, True)
 
@@ -934,8 +949,45 @@ cdef class ElementwiseKernel:
         # Store the compiled kernel in the cache.
         # Potentially overwrite a duplicate cache entry because
         # _get_elementwise_kernel() may include IO wait.
+        in_types = []
+        for x in arginfos:
+            if x.type is cupy.ndarray:
+                in_types.append(cupy.dtype(x.dtype).char)
+        in_types = tuple(in_types)
+        if in_types not in self._cached_codes:
+            code = _get_elementwise_kernel_code(
+                arginfos, type_map, self.params, self.operation,
+                self.name, self.preamble, **self.kwargs)
+            self._cached_codes[in_types] = code
         self._elementwise_kernel_memo[key] = kern
         return kern
+
+    @property
+    def cached_codes(self):
+        """Returns a dict that has input types as keys and codes values.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        if len(self._cached_codes) == 0:
+            warnings.warn(
+                'No codes are cached because compilation is deferred until '
+                'the first function call.')
+        return dict([(k, v) for k, v in self._cached_codes.items()])
+
+    @property
+    def cached_code(self):
+        """Returns `next(iter(self.cached_codes.values()))`.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        codes = self._cached_codes
+        if len(codes) > 1:
+            warnings.warn(
+                'The input types of the kernel could not be inferred. '
+                'Please use `.cached_codes` instead.')
+        return next(iter(codes.values()))
 
 
 cdef str fix_cast_expr(src_type, dst_type, str expr):
@@ -1177,13 +1229,17 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
+        for arg in args:
+            if hasattr(arg, '__cupy_override_elementwise_kernel__'):
+                return arg.__cupy_override_elementwise_kernel__(
+                    self, *args, **kwargs)
+
         if _fusion_thread_local.is_fusing():
             return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
         cdef function.Function kern
         cdef list broad_values
         cdef shape_t shape
-        cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
         where = kwargs.pop('_where', None)

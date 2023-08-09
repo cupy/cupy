@@ -1,5 +1,6 @@
 import contextlib
 import pickle
+import sys
 import warnings
 
 import numpy
@@ -15,6 +16,7 @@ from cupy_backends.cuda.api import runtime
 import cupy
 from cupy._core import _accelerator
 from cupy import testing
+import cupyx.cusparse
 from cupyx.scipy import sparse
 
 
@@ -493,6 +495,10 @@ class TestCsrMatrixScipyComparison:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
         if runtime.is_hip:
             if self.make_method in ('_make_empty', '_make_shape'):
                 # xcsr2coo, xcsrgemm2Nnz, csrmm2, nnz_compress, ... could raise
@@ -662,6 +668,9 @@ class TestCsrMatrixScipyComparison:
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
+        if (cupyx.cusparse.getVersion() == 11702
+                and self.make_method == '_make_duplicate'):
+            pytest.xfail('Known to fail on CUDA 11.6.1/11.6.2')
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m.dot(x)
@@ -841,6 +850,9 @@ class TestCsrMatrixScipyComparison:
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
+        if (cupyx.cusparse.getVersion() == 11702
+                and self.make_method == '_make_duplicate'):
+            pytest.xfail('Known to fail on CUDA 11.6.1/11.6.2')
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m * x
@@ -1244,6 +1256,13 @@ class TestCsrMatrixScipyComparison:
 }))
 @testing.with_requires('scipy')
 class TestCsrMatrixPowScipyComparison:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
 
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
@@ -1770,7 +1789,6 @@ class TestCsrMatrixGetitem2:
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
 @testing.with_requires('scipy')
-@testing.gpu
 @pytest.mark.skipif(
     cupy.cuda.cub._get_cuda_build_version() >= 11000,
     reason='CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
@@ -1814,7 +1832,6 @@ class TestCubSpmv:
     'opt': ['maximum', 'minimum'],
 }))
 @testing.with_requires('scipy')
-@testing.gpu
 class TestCsrMatrixMaximumMinimum:
 
     def _make_array(self, shape, dtype, xp):
@@ -1926,7 +1943,6 @@ class TestCsrMatrixMaximumMinimum:
     'opt': ['_eq_', '_ne_', '_lt_', '_gt_', '_le_', '_ge_'],
 }))
 @testing.with_requires('scipy>=1.2')
-@testing.gpu
 class TestCsrMatrixComparison:
     nz_rate = 0.3
 
@@ -2089,7 +2105,6 @@ class TestCsrMatrixComparison:
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
 @testing.with_requires('scipy>=1.5.0')
-@testing.gpu
 class TestCsrMatrixDiagonal:
     density = 0.5
 

@@ -12,6 +12,8 @@ from typing import List, Set
 
 import cupy_builder
 import cupy_builder.install_utils as utils
+from cupy_builder import _environment
+from cupy_builder._context import Context
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
@@ -124,7 +126,7 @@ def get_hipcc_path() -> List[str]:
         return None
 
 
-def get_compiler_setting(use_hip):
+def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
 
@@ -133,8 +135,8 @@ def get_compiler_setting(use_hip):
     else:
         cuda_path = get_cuda_path()
 
-    include_dirs = []
-    library_dirs = []
+    include_dirs = ctx.include_dirs.copy()
+    library_dirs = ctx.library_dirs.copy()
     define_macros = []
     extra_compile_args = []
 
@@ -159,10 +161,9 @@ def get_compiler_setting(use_hip):
         extra_compile_args.append('-std=c++11')
 
     if PLATFORM_WIN32:
-        nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
-        if os.path.exists(nvtoolsext_path):
-            include_dirs.append(os.path.join(nvtoolsext_path, 'include'))
-            library_dirs.append(os.path.join(nvtoolsext_path, 'lib', 'x64'))
+        nvtx_path = _environment.get_nvtx_path()
+        if nvtx_path is not None and os.path.exists(nvtx_path):
+            include_dirs.append(os.path.join(nvtx_path, 'include'))
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
@@ -490,20 +491,9 @@ def get_nccl_version(formatted=False):
 
 def check_nvtx(compiler, settings):
     if PLATFORM_WIN32:
-        path = os.environ.get('NVTOOLSEXT_PATH', None)
-        if path is None:
-            utils.print_warning(
-                'NVTX unavailable: NVTOOLSEXT_PATH is not set')
-        elif not os.path.exists(path):
-            utils.print_warning(
-                'NVTX unavailable: NVTOOLSEXT_PATH is set but the directory '
-                'does not exist')
-        elif utils.search_on_path(['nvToolsExt64_1.dll']) is None:
-            utils.print_warning(
-                'NVTX unavailable: nvToolsExt64_1.dll not found in PATH')
-        else:
-            return True
-        return False
+        if _environment.get_nvtx_path() is None:
+            utils.print_warning('NVTX unavailable')
+            return False
     return True
 
 

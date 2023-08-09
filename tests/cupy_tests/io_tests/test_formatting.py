@@ -6,7 +6,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestFormatting(unittest.TestCase):
 
     def test_array_repr(self):
@@ -22,7 +21,7 @@ class TestFormatting(unittest.TestCase):
     def test_array2string(self):
         a = testing.shaped_arange((2, 3, 4), cupy)
         b = testing.shaped_arange((2, 3, 4), numpy)
-        return cupy.array2string(a) == numpy.array2string(b)
+        assert cupy.array2string(a) == numpy.array2string(b)
 
     def test_format_float_positional_python_scalar(self):
         x = 1.0

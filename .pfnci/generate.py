@@ -57,7 +57,8 @@ class LinuxGenerator:
         os_name, os_version = matrix.os.split(':')
         if matrix.cuda is not None:
             full_ver = self.schema['cuda'][matrix.cuda]['full_version']
-            base_image = f'nvidia/cuda:{full_ver}-devel-{os_name}{os_version}'
+            repo = self.schema['cuda'][matrix.cuda]['repository']
+            base_image = f'{repo}:{full_ver}-devel-{os_name}{os_version}'
         elif matrix.rocm is not None:
             full_ver = self.schema['rocm'][matrix.rocm]['full_version']
             base_image = f'rocm/dev-{os_name}-{os_version}:{full_ver}'
@@ -144,6 +145,14 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
+        # Update alternatives for cuTENSOR for the current CUDA version.
+        if matrix.cutensor is not None:
+            lines += [
+                'COPY setup/update-alternatives-cutensor.sh /',
+                'RUN /update-alternatives-cutensor.sh',
+                '',
+            ]
+
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
             lines += [
@@ -165,7 +174,7 @@ class LinuxGenerator:
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip',
+            '    pip install -U setuptools pip wheel',
             '',
         ]
 
@@ -205,13 +214,17 @@ class LinuxGenerator:
             cudnn = matrix.cudnn
             if nccl is not None:
                 spec = self.schema['nccl'][nccl]['spec']
+                nccl_cuda_schema = self.schema['nccl'][nccl]['cuda'][cuda]
+                alias = cuda
+                if nccl_cuda_schema is not None:
+                    alias = nccl_cuda_schema['alias']
                 major = nccl.split('.')[0]
                 if apt:
-                    packages.append(f'libnccl{major}={spec}+cuda{cuda}')
-                    packages.append(f'libnccl-dev={spec}+cuda{cuda}')
+                    packages.append(f'libnccl{major}={spec}+cuda{alias}')
+                    packages.append(f'libnccl-dev={spec}+cuda{alias}')
                 else:
-                    packages.append(f'libnccl-{spec}-*+cuda{cuda}')
-                    packages.append(f'libnccl-devel-{spec}-*+cuda{cuda}')
+                    packages.append(f'libnccl-{spec}-*+cuda{alias}')
+                    packages.append(f'libnccl-devel-{spec}-*+cuda{alias}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 major = cutensor.split('.')[0]
@@ -324,12 +337,12 @@ class CoverageGenerator:
     def generate_rst(self) -> Tuple[str, List[str]]:
         # Generate a matrix table.
         table = [
-            ['Param', '', 'Test'] + [''] * (len(self.matrixes) - 1) + ['#'],
-            ['', 'System'] + [m.system for m in self.matrixes] + [''],
-            ['', 'Target'] + [
+            ['Param', '', '#', 'Test'] + [''] * (len(self.matrixes) - 1),
+            ['', 'System', ''] + [m.system for m in self.matrixes],
+            ['', 'Target', ''] + [
                 f'`{m.target} <t{i}_>`_ `🐳 <d{i}_>`_ `📜 <s{i}_>`_'
                 for i, m in enumerate(self.matrixes)
-            ] + [''],
+            ],
             [''] * (len(self.matrixes) + 3)
         ]
         coverage_warns = []
@@ -340,10 +353,12 @@ class CoverageGenerator:
             for value in possible_values:
                 count = matrix_values.count(value)
                 table += [
-                    [key_header, value if value else 'null'] + [
-                        '✅' if mv == value else '' for mv in matrix_values
+                    [
+                        key_header,
+                        value if value is not None else 'null',
+                        str(count) if count != 0 else '🚨',
                     ] + [
-                        str(count) if count != 0 else '0 🚨'
+                        '✅' if mv == value else '' for mv in matrix_values
                     ],
                 ]
                 key_header = ''
@@ -597,10 +612,14 @@ def main(argv: List[str]) -> int:
     for filename, content in output.items():
         filepath = f'{out_basedir}/{filename}'
         if options.dry_run:
-            with open(filepath) as f:
-                if f.read() != content:
-                    log(f'{filepath} needs to be regenerated')
-                    retval = 1
+            if os.path.exists(filepath):
+                with open(filepath) as f:
+                    if f.read() != content:
+                        log(f'{filepath} needs to be regenerated')
+                        retval = 1
+            else:
+                log(f'{filepath} needs to be generated')
+                retval = 1
         else:
             log(f'Writing {filepath}', options.verbose)
             with open(filepath, 'w') as f:

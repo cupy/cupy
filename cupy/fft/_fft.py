@@ -1079,9 +1079,7 @@ def fftshift(x, axes=None):
         axes = list(range(x.ndim))
     elif isinstance(axes, np.compat.integer_types):
         axes = (axes,)
-    for axis in axes:
-        x = cupy.roll(x, x.shape[axis] // 2, axis)
-    return x
+    return cupy.roll(x, [x.shape[axis] // 2 for axis in axes], axes)
 
 
 def ifftshift(x, axes=None):
@@ -1102,6 +1100,4 @@ def ifftshift(x, axes=None):
         axes = list(range(x.ndim))
     elif isinstance(axes, np.compat.integer_types):
         axes = (axes,)
-    for axis in axes:
-        x = cupy.roll(x, -(x.shape[axis] // 2), axis)
-    return x
+    return cupy.roll(x, [-(x.shape[axis] // 2) for axis in axes], axes)

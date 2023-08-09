@@ -1,5 +1,4 @@
 # distutils: language = c++
-import sys
 import warnings
 import string
 
@@ -7,12 +6,11 @@ import numpy
 
 import cupy
 import cupy._core.core as core
-from cupy._core._kernel import ElementwiseKernel
+from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
-from cupy_backends.cuda.api cimport runtime
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
 from cupy._core cimport core
@@ -28,7 +26,7 @@ from cupy._core cimport internal
 cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     cdef Py_ssize_t axis
     cdef list slice_list
-    cdef _ndarray_base a, mask
+    cdef _ndarray_base a
 
     slice_list = _prepare_slice_list(slices)
     a, adv = _view_getitem(self, slice_list)
@@ -108,7 +106,7 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
 
     nonzero.shape = self.shape
     if incomplete_scan:
-        warp_size = 64 if runtime._is_hip_environment else 32
+        warp_size = _get_warpsize()
         size = scan_index.size * chunk_size
         _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
             nonzero, scan_index, dst,
@@ -266,6 +264,9 @@ cpdef list _prepare_slice_list(slices):
                 # keep scalar int
                 continue
 
+        if cupy.min_scalar_type(s).char == 'O':
+            raise IndexError(
+                'arrays used as indices must be of integer (or boolean) type')
         try:
             s = core.array(s, dtype=None, copy=False)
         except ValueError:
@@ -298,7 +299,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
     cdef strides_t strides
     cdef _ndarray_base v
     cdef Py_ssize_t ndim_a, axis_a, ndim_v, axis_v, ndim_ellipsis
-    cdef Py_ssize_t i, k, offset, start
+    cdef Py_ssize_t i, k, offset
     cdef Py_ssize_t s_start, s_stop, s_step, dim, ind
     cdef slice ss
     cdef list index_list, axes
@@ -705,9 +706,9 @@ cdef _check_mask_shape(_ndarray_base a, _ndarray_base mask, Py_ssize_t axis):
 
 cpdef _prepare_mask_indexing_single(
         _ndarray_base a, _ndarray_base mask, Py_ssize_t axis):
-    cdef _ndarray_base mask_scanned, mask_br, mask_br_scanned
+    cdef _ndarray_base mask_scanned, mask_br
     cdef int n_true
-    cdef tuple lshape, rshape, out_shape, a_shape
+    cdef tuple lshape, rshape, a_shape
     cdef Py_ssize_t a_ndim, mask_ndim
 
     a_ndim = a._shape.size()
@@ -776,7 +777,7 @@ cdef _ndarray_base _take(
         _ndarray_base a, indices, int start, int stop, _ndarray_base out=None):
     # Take along (flattened) axes from start to stop.
     # When start + 1 == stop this function behaves similarly to np.take
-    cdef tuple out_shape, ind_shape, indices_shape
+    cdef tuple out_shape, indices_shape
     cdef int i, ndim = a._shape.size()
     cdef Py_ssize_t ldim, cdim, rdim, index_range
 
@@ -841,11 +842,9 @@ cdef _scatter_op_single(
     # slices = (slice(None),) * start + indices +\
     #     (slice(None),) * (a.ndim - stop)
     # a[slices] = value
-    cdef Py_ssize_t ndim, adim, cdim, rdim
+    cdef Py_ssize_t adim, cdim, rdim
     cdef tuple a_shape, indices_shape, lshape, rshape, v_shape
     cdef _ndarray_base v
-
-    ndim = a._shape.size()
 
     if not isinstance(value, _ndarray_base):
         v = core.array(value, dtype=a.dtype)
@@ -989,8 +988,8 @@ cdef _scatter_op_mask_single(
 
 
 cdef _scatter_op(_ndarray_base a, slices, value, op):
-    cdef Py_ssize_t i, start, stop, axis
-    cdef _ndarray_base v, x, y, reduced_idx, mask
+    cdef Py_ssize_t start, stop, axis
+    cdef _ndarray_base x, y, reduced_idx
     cdef list slice_list
 
     slice_list = _prepare_slice_list(slices)

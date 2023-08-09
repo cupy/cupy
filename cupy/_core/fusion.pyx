@@ -8,13 +8,12 @@ import string
 import numpy
 
 import cupy
-from cupy._core._dtype import get_dtype
+from cupy._core._dtype import get_dtype, _raise_if_invalid_cast
 from cupy._core import _kernel
 from cupy._core import _fusion_thread_local
 from cupy._core import _reduction
 from cupy._core import core
 from cupy._core import new_fusion
-
 
 
 _is_fusing = _fusion_thread_local.is_fusing  # NOQA
@@ -483,7 +482,7 @@ class _FusionHistory(object):
         for op in raw._ops.ops:
             input_type, = op.in_types
             output_type, = op.out_types
-            if numpy.can_cast(arg.dtype.type, input_type):
+            if numpy.can_cast(arg.dtype, input_type):
                 return_dtype = numpy.dtype(output_type)
                 self.premap_ret = self._get_fusion_var(arg)._var
                 self.reduce_op = op
@@ -610,19 +609,15 @@ class _FusionHistory(object):
                         out_var = self._fresh_local(out_dtypes[i])
                         out_var = make_fusion_var(out_var, ndim)
                         out_vars.append(out_var)
-                        ret.append(out_var)
-                    elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
-                                        'same_kind'):
-                        out_var = out_vars[i]
-                        ret.append(out_var)
                     else:
-                        raise TypeError(
-                            'output (typecode \'{}\') could not be coerced '
-                            'to provided output parameter (typecode \'{}\') '
-                            'according to the casting rule '
-                            '"same_kind"'.format(
-                                out_dtypes[i].char, out_vars[i].dtype.char))
+                        _raise_if_invalid_cast(
+                            out_dtypes[i], out_vars[i].dtype, 'same_kind',
+                            lambda: f'output {i}')
+                        out_var = out_vars[i]
+
                     out_var._var.mutate()
+                    ret.append(out_var)
+
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))

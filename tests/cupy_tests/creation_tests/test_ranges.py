@@ -30,7 +30,6 @@ def skip_int_equality_before_numpy_1_20(names=('dtype',)):
     return decorator
 
 
-@testing.gpu
 class TestRanges(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -51,7 +50,7 @@ class TestRanges(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_arange4(self, xp, dtype):
-        return xp.arange(20, 2, -3, dtype=dtype)
+        return xp.arange(20, 2, -3).astype(dtype)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -71,11 +70,12 @@ class TestRanges(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_arange8(self, xp, dtype):
-        return xp.arange(10, 8, -1, dtype=dtype)
+        return xp.arange(10, 8, -1).astype(dtype)
 
+    @testing.with_requires('numpy>=1.24')
     def test_arange9(self):
         for xp in (numpy, cupy):
-            with pytest.raises(ValueError):
+            with pytest.raises(TypeError):
                 xp.arange(10, dtype=xp.bool_)
 
     @testing.numpy_cupy_array_equal()
@@ -301,14 +301,13 @@ class TestRanges(unittest.TestCase):
         'copy': [False, True],
     })
 )
-@testing.gpu
 class TestMeshgrid(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_meshgrid0(self, dtype):
         out = cupy.meshgrid(indexing=self.indexing, sparse=self.sparse,
                             copy=self.copy)
-        assert(out == [])
+        assert (out == [])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -335,7 +334,6 @@ class TestMeshgrid(unittest.TestCase):
                            copy=self.copy)
 
 
-@testing.gpu
 class TestMgrid(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -369,7 +367,6 @@ class TestMgrid(unittest.TestCase):
         return xp.mgrid[x:y:10j, x:y:10j]
 
 
-@testing.gpu
 class TestOgrid(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()

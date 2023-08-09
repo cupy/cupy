@@ -4,7 +4,6 @@ cimport cython  # NOQA
 
 import atexit
 import collections
-import ctypes
 import gc
 import os
 import threading
@@ -666,7 +665,6 @@ cpdef MemoryPointer malloc_async(size_t size):
     .. _Stream Ordered Memory Allocator:
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
-    cdef intptr_t stream_ptr
     mem = MemoryAsync(size, stream_module.get_current_stream())
     return MemoryPointer(mem, 0)
 
@@ -1343,12 +1341,22 @@ cdef class SingleDeviceMemoryPool:
         return None
 
     cdef BaseMemory _try_malloc(self, size_t size):
+        cdef size_t limit
+        cdef bint limit_ok
         with LockAndNoGc(self._total_bytes_lock):
-            total_bytes_limit = self._total_bytes_limit
-            total = self._total_bytes + size
-            if total_bytes_limit != 0 and total_bytes_limit < total:
-                raise OutOfMemoryError(size, total - size, total_bytes_limit)
-            self._total_bytes = total
+            limit = self._total_bytes_limit
+            if limit != 0:
+                limit_ok = (self._total_bytes + size) <= limit
+                if not limit_ok:
+                    self.free_all_blocks()
+                    limit_ok = (self._total_bytes + size) <= limit
+                if not limit_ok:
+                    gc.collect()
+                    self.free_all_blocks()
+                    limit_ok = (self._total_bytes + size) <= limit
+                if not limit_ok:
+                    raise OutOfMemoryError(size, self._total_bytes, limit)
+            self._total_bytes += size
 
         mem = None
         oom_error = False
@@ -1375,9 +1383,8 @@ cdef class SingleDeviceMemoryPool:
             if mem is None:
                 with LockAndNoGc(self._total_bytes_lock):
                     self._total_bytes -= size
-                if oom_error:
-                    raise OutOfMemoryError(
-                        size, total - size, total_bytes_limit)
+                    if oom_error:
+                        raise OutOfMemoryError(size, self._total_bytes, limit)
 
         return mem
 

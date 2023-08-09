@@ -1,6 +1,5 @@
 # distutils: language = c++
 import functools
-import sys
 
 import numpy
 
@@ -12,8 +11,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 
-from cupy._core._dtype cimport get_dtype
-from cupy._core cimport _routines_indexing as _indexing
+from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
 from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
@@ -417,7 +415,7 @@ cpdef _ndarray_base _transpose(
 
 
 cpdef array_split(_ndarray_base ary, indices_or_sections, Py_ssize_t axis):
-    cdef Py_ssize_t i, ndim, size, each_size, index, prev, offset, stride
+    cdef Py_ssize_t i, ndim, size, each_size, index, prev, stride
     cdef Py_ssize_t num_large
     cdef shape_t shape
 
@@ -476,6 +474,7 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
         :meth:`numpy.broadcast_to`
 
     """
+    shape = tuple(shape) if numpy.iterable(shape) else (shape,)
     cdef int i, j, ndim = array._shape.size(), length = len(shape)
     cdef Py_ssize_t sh, a_sh
     if ndim > length:
@@ -589,7 +588,6 @@ cpdef _ndarray_base concatenate_method(
     cdef int ndim0
     cdef int i
     cdef _ndarray_base a, a0
-    cdef shape_t shape
 
     if dtype is not None:
         dtype = get_dtype(dtype)
@@ -651,10 +649,7 @@ cpdef _ndarray_base concatenate_method(
 
     # Check casting rule
     for o in arrays:
-        if not _can_cast(o.dtype, dtype, casting):
-            msg = (f"Cannot cast array data from dtype('{o.dtype}') to "
-                   f"dtype('{dtype}') according to the rule '{casting}'")
-            raise TypeError(msg)
+        _raise_if_invalid_cast(o.dtype, dtype, casting)
 
     # Prpare the output array
     shape_t = tuple(shape0)
@@ -738,15 +733,6 @@ cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
 # private
 
 
-cdef _numpy_can_cast = numpy.can_cast
-
-
-cdef bint _can_cast(d1, d2, casting):
-    if casting == 'same_kind' and d1.kind == d2.kind:  # most cases
-        return True
-    return _numpy_can_cast(d1, d2, casting=casting)
-
-
 cdef bint _has_element(const shape_t &source, Py_ssize_t n):
     for i in range(source.size()):
         if source[i] == n:
@@ -775,8 +761,6 @@ cdef _get_strides_for_nocopy_reshape(
 
     ndim = shape.size()
     dim = 0
-    sh = shape[0]
-    st = strides[0]
     last_stride = shape[0] * strides[0]
     for i in range(newshape.size()):
         size = newshape[i]

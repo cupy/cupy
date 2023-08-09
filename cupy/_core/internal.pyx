@@ -5,7 +5,6 @@ cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
-import sys
 import warnings
 
 import numpy
@@ -350,7 +349,6 @@ cdef _broadcast_core(list arrays, shape_t& shape):
     cdef strides_t strides
     cdef vector.vector[int] index
     cdef _ndarray_base a
-    cdef list ret
 
     shape.clear()
     index.reserve(len(arrays))
@@ -498,15 +496,15 @@ cpdef int _update_order_char(
         bint is_c_contiguous, bint is_f_contiguous, int order_char):
     # update order_char based on array contiguity
     if order_char == b'A':
-        if is_f_contiguous:
+        if is_f_contiguous and not is_c_contiguous:
             order_char = b'F'
         else:
             order_char = b'C'
     elif order_char == b'K':
-        if is_f_contiguous:
-            order_char = b'F'
-        elif is_c_contiguous:
+        if is_c_contiguous:
             order_char = b'C'
+        elif is_f_contiguous:
+            order_char = b'F'
     return order_char
 
 

@@ -11,7 +11,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-import sys as _sys
+import sys as _sys  # no-cython-lint
 
 cimport cython  # NOQA
 from libcpp cimport vector
@@ -51,6 +51,11 @@ ELSE:
             _libname = 'libnvrtc.so.11.2'
         else:
             _libname = 'nvrtc64_112_0.dll'
+    ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
+        if _sys.platform == 'linux':
+            _libname = 'libnvrtc.so.12'
+        else:
+            _libname = 'nvrtc64_120_0.dll'
     ELSE:
         _libname = None
 

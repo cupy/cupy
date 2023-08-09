@@ -1,5 +1,4 @@
 from cupy._core._kernel import create_ufunc
-from cupy._core._reduction import create_reduction_func
 
 
 cdef _create_bit_op(name, op, no_bool, doc='', scatter_op=None):

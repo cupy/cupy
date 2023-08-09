@@ -21,7 +21,6 @@ class FusionTestBase(unittest.TestCase):
         return (x, y), {}
 
 
-@testing.gpu
 class TestFusionInplaceUpdate(FusionTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -47,7 +46,6 @@ class TestFusionInplaceUpdate(FusionTestBase):
         return func
 
 
-@testing.gpu
 class TestFusionTuple(FusionTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -135,7 +133,6 @@ class TestReturnNone(FusionTestBase):
         return impl
 
 
-@testing.gpu
 class TestFusionNoneParams(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -180,7 +177,6 @@ class TestSpecialValues(FusionTestBase):
         return func
 
 
-@testing.gpu
 class TestFusionDecorator(unittest.TestCase):
     def test_without_paren(self):
         @cupy.fuse
@@ -201,7 +197,6 @@ class TestFusionDecorator(unittest.TestCase):
         assert func_w_paren.__doc__ == 'Fuse with parentheses'
 
 
-@testing.gpu
 class TestFusionKernelName(unittest.TestCase):
 
     def check(self, xp, func, expected_name, is_elementwise):
@@ -331,7 +326,6 @@ class TestFusionCompile(unittest.TestCase):
         return f(x, y)
 
 
-@testing.gpu
 class TestFusionGetArrayModule(FusionTestBase):
 
     @testing.for_all_dtypes()
@@ -405,7 +399,6 @@ class TestFusionThread(unittest.TestCase):
         return xp.concatenate(out)
 
 
-@testing.gpu
 class TestFusionMultiDevice(unittest.TestCase):
 
     @testing.multi_gpu(2)

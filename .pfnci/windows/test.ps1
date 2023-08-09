@@ -56,7 +56,12 @@ function Main {
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
-    ActivateCuDNN "8.6" $cuda
+    if ($cuda -eq "10.2") {
+        ActivateCuDNN "8.6" $cuda
+    } else {
+        ActivateCuDNN "8.8" $cuda
+    }
+    ActivateNVTX1
     ActivatePython $python
 
     # Setup build environment variables
@@ -73,6 +78,7 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
+    RunOrDie python -m pip install -U "numpy<1.24" "scipy<1.10.0"
     python -m pip install ".[all,test]" -vvv > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode

@@ -8,7 +8,6 @@ from cupy.cuda import runtime
 from cupy import testing
 
 
-@testing.gpu
 class TestDims(unittest.TestCase):
 
     def check_atleast(self, func, xp):
@@ -53,6 +52,13 @@ class TestDims(unittest.TestCase):
         # Note that broadcast_to is only supported on numpy>=1.10
         a = testing.shaped_arange((3, 1, 4), xp, dtype)
         b = xp.broadcast_to(a, (2, 3, 3, 4))
+        return b
+
+    @testing.numpy_cupy_array_equal()
+    def test_broadcast_to_int(self, xp):
+        # Broadcast 0-dim array to 1-dim.
+        a = xp.array(10, dtype=xp.float32)
+        b = xp.broadcast_to(a, 10)
         return b
 
     @testing.for_all_dtypes()
@@ -283,7 +289,6 @@ class TestDims(unittest.TestCase):
     {'shapes': [(0, 1, 1, 3), (2, 1, 0, 0, 3)]},
     {'shapes': [(0, 1, 1, 0, 3), (5, 2, 0, 1, 0, 0, 3), (2, 1, 0, 0, 0, 3)]},
 )
-@testing.gpu
 class TestBroadcast(unittest.TestCase):
 
     def _broadcast(self, xp, dtype, shapes):
@@ -322,7 +327,6 @@ class TestBroadcast(unittest.TestCase):
     {'shapes': [(3, 2), (3, 4,)]},
     {'shapes': [(0,), (2,)]},
 )
-@testing.gpu
 class TestInvalidBroadcast(unittest.TestCase):
 
     @testing.for_all_dtypes()

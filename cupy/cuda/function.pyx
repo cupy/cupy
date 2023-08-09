@@ -3,7 +3,6 @@
 import numpy
 import warnings
 
-cimport cpython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
@@ -274,11 +273,6 @@ cdef class Module:
         if isinstance(name, bytes):
             name = name.decode()
         return Function(self, name)
-
-    cpdef get_texref(self, name):
-        if isinstance(name, bytes):
-            name = name.decode()
-        return driver.moduleGetTexRef(self.ptr, name)
 
     cpdef _set_mapping(self, dict mapping):
         self.mapping = mapping

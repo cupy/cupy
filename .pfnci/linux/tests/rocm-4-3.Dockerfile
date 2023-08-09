@@ -30,10 +30,10 @@ ENV LDFLAGS "-L${ROCM_HOME}/lib"
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.7.11 && \
-    pyenv global 3.7.11 && \
-    pip install -U setuptools pip
+RUN pyenv install 3.9.6 && \
+    pyenv global 3.9.6 && \
+    pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.20.*' 'scipy==1.6.*' 'optuna==2.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check

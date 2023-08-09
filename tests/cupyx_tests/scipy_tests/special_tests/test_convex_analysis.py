@@ -8,7 +8,6 @@ from cupy import testing
 import cupyx.scipy.special
 
 
-@testing.gpu
 @testing.with_requires('scipy')
 class TestSpecialConvex(unittest.TestCase):
 

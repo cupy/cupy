@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 import numpy
 import pytest
@@ -12,6 +13,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
+import cupyx.cusparse
 from cupyx.scipy import sparse
 
 
@@ -469,6 +471,13 @@ class TestCooMatrixInit:
 }))
 @testing.with_requires('scipy')
 class TestCooMatrixScipyComparison:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
 
     @property
     def make(self):
@@ -1028,6 +1037,21 @@ class TestCooMatrixSumDuplicates:
         assert m.nnz == 0
         return m
 
+    @testing.with_requires('scipy>=1.11.0')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_compatibility(self, xp, sp):
+        m = _make_sum_dup(xp, sp, self.dtype)
+        row = m.row.copy()
+        col = m.col.copy()
+        assert not m.has_canonical_format
+        m.sum_duplicates()
+        assert m.has_canonical_format
+        testing.assert_array_equal(m.row, row)
+        testing.assert_array_equal(m.col, col)
+        assert m.has_canonical_format
+        return m
+
+    @testing.with_requires('scipy<1.11.0')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates_incompatibility(self, xp, sp):
         # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
@@ -1043,9 +1067,9 @@ class TestCooMatrixSumDuplicates:
         # Here we ensure this sorting order is not altered by future PRs...
         sorted_first.sort()
         if xp is cupy:
-            assert (m.row == sorted_first).all()
+            testing.assert_array_equal(m.row, sorted_first)
         else:
-            assert (m.col == sorted_first).all()
+            testing.assert_array_equal(m.col, sorted_first)
         assert m.has_canonical_format
         # ...and now we make sure the dense matrix is the same
         return m
@@ -1099,7 +1123,6 @@ class TestIsspmatrixCoo:
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
 @testing.with_requires('scipy>=1.5.0')
-@testing.gpu
 class TestCooMatrixDiagonal:
     density = 0.5
 
