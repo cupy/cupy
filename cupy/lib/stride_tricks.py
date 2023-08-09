@@ -116,7 +116,7 @@ def sliding_window_view(x, window_shape, axis=None, *,
 
     # writeable is not supported:
     if writeable:
-            raise NotImplementedError("Writeable views are not supported.")
+        raise NotImplementedError("Writeable views are not supported.")
 
     # first convert input to array, possibly keeping subclass
     x = _cupy.array(x, copy=False, subok=subok)
