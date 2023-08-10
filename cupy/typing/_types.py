@@ -1,4 +1,6 @@
-from typing import Any, Literal, TypeVar
+from collections.abc import Sequence
+
+from typing import Any, Literal, SupportsIndex, TypeVar, Union
 
 import numpy
 from cupy._core import core
@@ -6,9 +8,11 @@ from cupy._core import core
 from numpy.typing import ArrayLike  # NOQA
 from numpy.typing import DTypeLike  # NOQA
 from numpy.typing import NBitBase  # NOQA
-from numpy._typing import _DTypeLike  # NOQA
-from numpy._typing import _ShapeLike  # NOQA
 
+
+# Shapes
+_Shape = tuple[int, ...]
+_ShapeLike = Union[SupportsIndex, Sequence[SupportsIndex]]
 
 _OrderKACF = Literal[None, "K", "A", "C", "F"]
 _OrderCF = Literal[None, "C", "F"]
