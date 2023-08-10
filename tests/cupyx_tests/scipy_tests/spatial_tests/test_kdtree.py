@@ -18,11 +18,12 @@ except ImportError:
     pass
 
 
-def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10):
+def create_random_kd_tree(xp, scp, n, m, n_points=1, x_offset=0, scale=10,
+                          leafsize=100):
     data = testing.shaped_random((n, m), xp, xp.float64, scale=scale,
                                  seed=1234)
     x = testing.shaped_random((n_points, m), xp, xp.float64, scale) + x_offset
-    tree = scp.spatial.KDTree(data)
+    tree = scp.spatial.KDTree(data, leafsize=leafsize)
     return x, tree
 
 
@@ -236,9 +237,11 @@ class TestBallConsistency:
         (100, 4, 1, 0),
         (100, 4, 1, 10)
     ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', type_check=False)
     def test_in_ball(self, xp, scp, args):
         x, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
         res = tree.query_ball_point(
             x, 0.5, return_sorted=True)
+        if xp is not cupy:
+            res = [xp.asarray(r) for r in res]
         return res

@@ -347,6 +347,6 @@ class KDTree:
             x = x.astype(common_dtype)
 
         return find_nodes_in_radius(
-            x, tree, self.index, self.boxsize, self.bounds, r, p=p, eps=eps,
-            return_sorted=return_sorted, return_length=return_length,
-            adjust_to_box=self.copy_query_points)
+            x, tree, self.index, self.boxsize, self.bounds,
+            r, p=p, eps=eps, return_sorted=return_sorted,
+            return_length=return_length, adjust_to_box=self.copy_query_points)

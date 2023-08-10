@@ -225,7 +225,8 @@ template<typename T>
 __device__ double compute_distance(
         const T* __restrict__ point1, const T* __restrict__ point2,
         const double* __restrict__ box_bounds,
-        const int n_dims, const double p, const int stride) {
+        const int n_dims, const double p, const int stride,
+        const bool take_root) {
 
     if(abs(p) == CUDART_INF) {
         return compute_distance_inf<T>(
@@ -242,7 +243,9 @@ __device__ double compute_distance(
         dist += pow(diff, p);
     }
 
-    dist = pow(dist, 1.0 / p);
+    if(take_root) {
+        dist = pow(dist, 1.0 / p);
+    }
     return dist;
 }
 
@@ -314,7 +317,19 @@ __device__ void compute_knn(
 
     volatile long long prev = -1;
     volatile long long curr = 0;
-    volatile double radius = dist_bound;
+    volatile double radius = !isinf(p) ? pow(dist_bound, p) : dist_bound;
+    int visit_count = 0;
+
+    double epsfac = 1.0;
+    if(eps != 0) {
+        if(p == 2) {
+            epsfac = 1.0 / ((1 + eps) * (1 + eps));
+        } else if(isinf(p) || p == 1) {
+            epsfac = 1.0 / (1 + eps);
+        } else {
+            epsfac = 1.0 / pow(1 + eps, p);
+        }
+    }
 
     while(true) {
         const long long parent = (curr + 1) / 2 - 1;
@@ -330,12 +345,11 @@ __device__ void compute_knn(
         const bool from_child = prev >= child;
         const T* cur_point = tree + n_dims * curr;
 
-
         if(!from_child) {
             const double dist = compute_distance(
-                point, cur_point, box_bounds, n_dims, p, 1);
+                point, cur_point, box_bounds, n_dims, p, 1, false);
 
-            if(dist <= radius + eps) {
+            if(dist <= radius) {
                 radius = insort<double>(
                     index[curr], dist, k, n, distances, nodes, true);
             }
@@ -347,6 +361,7 @@ __device__ void compute_knn(
         double overflow_dist = box_bounds[cur_dim] - curr_dim_dist;
         bool overflow = curr_dim_dist > overflow_dist;
         curr_dim_dist = overflow ? overflow_dist : curr_dim_dist;
+        curr_dim_dist = !isinf(p) ? pow(curr_dim_dist, p) : curr_dim_dist;
 
         volatile long long cur_close_child = child;
         volatile long long cur_far_child = r_child;
@@ -372,11 +387,11 @@ __device__ void compute_knn(
                 double close_bound_dist = CUDART_INF;
 
                 double curr_dist = compute_distance(
-                    point, cur_point, box_bounds, n_dims, p, 1);
+                    point, cur_point, box_bounds, n_dims, p, 1, false);
 
                 if(cur_far_child < n) {
                     far_dist = compute_distance(
-                        point, far_child, box_bounds, n_dims, p, 1);
+                        point, far_child, box_bounds, n_dims, p, 1, false);
 
                     far_bound_dist = min_bound_dist(
                         far_bounds, point[cur_dim], box_bounds[cur_dim],
@@ -384,7 +399,7 @@ __device__ void compute_knn(
                 }
 
                 close_dist = compute_distance(
-                    point, close_child, box_bounds, n_dims, p, 1);
+                    point, close_child, box_bounds, n_dims, p, 1, false);
 
                 close_bound_dist = min_bound_dist(
                     close_bounds, point[cur_dim], box_bounds[cur_dim],
@@ -392,16 +407,17 @@ __device__ void compute_knn(
 
                 next
                 = ((cur_far_child < n) &&
-                   ((curr_dim_dist <= radius + eps) ||
-                    (far_bound_dist <= curr_dim_dist + eps) ||
-                    (far_dist <= close_dist + eps) ||
-                    (far_bound_dist <= close_bound_dist + eps) ||
-                    (far_bound_dist <= radius + eps)))
+                   ((curr_dim_dist <= radius * epsfac) ||
+                    (far_bound_dist <= curr_dim_dist * epsfac) ||
+                    (far_dist <= close_dist * epsfac) ||
+                    (far_bound_dist <= close_bound_dist + epsfac) ||
+                    (far_bound_dist <= radius * epsfac)))
                 ? cur_far_child
                 : parent;
             } else {
                 next
-                = ((cur_far_child < n) && (curr_dim_dist <= radius + eps))
+                = ((cur_far_child < n) &&
+                   (curr_dim_dist <= radius * epsfac))
                 ? cur_far_child
                 : parent;
             }
@@ -496,7 +512,8 @@ __device__ long long compute_query_ball(
     volatile long long prev = -1;
     volatile long long curr = 0;
     long long node_count = 0;
-    int visit_count = 0;.
+    int visit_count = 0;
+    double radius_p = !isinf(p) ? pow(radius, p) : radius;
 
     while(true) {
         const long long parent = (curr + 1) / 2 - 1;
@@ -517,9 +534,9 @@ __device__ long long compute_query_ball(
 
         if(!from_child) {
             const double dist = compute_distance(
-                point, cur_point, box_bounds, n_dims, p, 1);
+                point, cur_point, box_bounds, n_dims, p, 1, false);
 
-            if(dist <= radius + eps) {
+            if(dist <= radius_p / (1.0 + eps)) {
                 if(sort) {
                     insort<long long>(
                         index[curr], index[curr], n, n, nodes, nodes, false);
@@ -534,79 +551,38 @@ __device__ long long compute_query_ball(
         const long long cur_level = 63 - __clzll(curr + 1);
         const long long cur_dim = cur_level % n_dims;
 
+        double curr_dim_dist = abs(point[cur_dim] - cur_point[cur_dim]);
+        double overflow_dist = box_bounds[cur_dim] - curr_dim_dist;
+        bool overflow = curr_dim_dist > overflow_dist;
+        curr_dim_dist = overflow ? overflow_dist : curr_dim_dist;
+        curr_dim_dist = !isinf(p) ? pow(curr_dim_dist, p) : curr_dim_dist;
+
         volatile long long cur_close_child = child;
         volatile long long cur_far_child = r_child;
-        bool check_far = false;
 
-        const T* close_child = tree + n_dims * cur_close_child;
-        const T* close_bounds = tree_bounds + 2 * n_dims * cur_close_child;
+        if(point[cur_dim] > cur_point[cur_dim]) {
+            cur_close_child = r_child;
+            cur_far_child = child;
+        }
 
         long long next = -1;
-        next = cur_close_child;
-
-        if(!from_child) {
-            const T* close_bounds_dim = close_bounds + 2 * cur_dim;
-            if(point[cur_dim] < close_bounds_dim[0] ||
-                    point[cur_dim] > close_bounds_dim[1]) {
-                double min_close_dist = compute_distance(
-                    point, close_bounds, box_bounds, n_dims, p, 2);
-
-                if(min_close_dist > radius / (1.0 + eps)) {
-                    double max_close_dist = compute_distance(
-                        point, close_bounds + 1, box_bounds, n_dims, p, 2);
-
-                    if(max_close_dist > radius * (1.0 + eps)) {
-                        double close_dist = compute_distance(
-                            point, close_child, box_bounds, n_dims, p, 1);
-
-                        if(close_dist > radius / (1.0 + eps)) {
-                            check_far = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        if(prev == cur_far_child) {
+        if(prev == cur_close_child) {
+            next
+            = ((cur_far_child < n) && (curr_dim_dist <= radius_p * (1 + eps)))
+            ? cur_far_child
+            : parent;
+        } else if (prev == cur_far_child) {
             next = parent;
-        } else if(prev == cur_close_child || check_far) {
-            const T* far_bounds = tree_bounds + 2 * n_dims * cur_far_child;
-            const T* far_child = tree + n_dims * cur_far_child;
-            const T* far_bounds_dim = far_bounds + 2 * cur_dim;
-
-            next = cur_far_child;
-
-            if(point[cur_dim] < far_bounds_dim[0] ||
-                    point[cur_dim] > far_bounds_dim[1]) {
-                double min_far_dist = compute_distance(
-                    point, far_bounds, box_bounds, n_dims, p, 2);
-
-                if(min_far_dist > radius / (1.0 + eps)) {
-                    double max_far_dist = compute_distance(
-                        point, far_bounds + 1, box_bounds, n_dims, p, 2);
-
-                    if(max_far_dist > radius * (1.0 + eps)) {
-                        double far_dist = compute_distance(
-                            point, far_child, box_bounds, n_dims, p, 1);
-
-                        if(far_dist > radius * (1.0 + eps)) {
-                            next = parent;
-                        }
-                    }
-                }
-            }
-        }
-
-        if(next >= n) {
-            next = parent;
-        }
-
-        if(next == -1) {
-            return node_count;
+        } else {
+            next = (child < n) ? cur_close_child : parent;
         }
 
         prev = curr;
         curr = next;
+
+        if(next == -1) {
+            return node_count;
+        }
     }
 }
 
@@ -785,6 +761,8 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
         distances = cupy.squeeze(distances, -1)
         nodes = cupy.squeeze(nodes, -1)
 
+    if not cupy.isinf(p):
+        distances = distances ** (1.0 / p)
     return distances, nodes
 
 
@@ -828,9 +806,12 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
     query_ball = _get_module_func(KNN_MODULE, query_ball_fn, *fn_args)
     query_ball((n_blocks,), (block_sz,),
                (tree_length, n_points, n_dims, r, eps, p, int(return_sorted),
-                points, tree, index, boxdata, bounds, nodes, total_nodes,
-                debug_nodes))
+                points, tree, index, boxdata, bounds, nodes,
+                total_nodes, debug_nodes))
+
     if return_length:
         return total_nodes
     else:
-        return nodes
+        split_nodes = cupy.array_split(
+            nodes[nodes != tree_length], total_nodes.tolist())
+        return split_nodes[:n_points]
