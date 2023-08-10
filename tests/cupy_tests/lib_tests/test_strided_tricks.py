@@ -93,7 +93,7 @@ class TestSlidingWindowView(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_arraylike_input(self, xp):
-        x = [0, 1, 2, 3, 4]
+        x = [0., 1., 2., 3., 4.]
         arr_view = xp.lib.stride_tricks.sliding_window_view(x, 2)
         assert arr_view.strides == (8, 8)
         return arr_view
