@@ -245,3 +245,16 @@ class TestBallConsistency:
         if xp is not cupy:
             res = [xp.asarray(r) for r in res]
         return res
+
+    @pytest.mark.parametrize('args', [
+        (100, 4, 1, 0),
+        (100, 4, 1, 10)
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_approx(self, xp, scp, args):
+        eps = 0.1
+        x, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        res = tree.query_ball_point(x, 0.5, return_sorted=True, eps=eps)
+        if xp is not cupy:
+            res = [xp.asarray(r) for r in res]
+        return res

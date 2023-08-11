@@ -536,7 +536,7 @@ __device__ long long compute_query_ball(
             const double dist = compute_distance(
                 point, cur_point, box_bounds, n_dims, p, 1, false);
 
-            if(dist <= radius_p / (1.0 + eps)) {
+            if(dist <= radius_p) {
                 if(sort) {
                     insort<long long>(
                         index[curr], index[curr], n, n, nodes, nodes, false);
