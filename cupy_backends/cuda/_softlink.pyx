@@ -1,21 +1,23 @@
 import ctypes
-import warnings
 
 from libc.stdint cimport intptr_t
 cimport cython
 
 
 cdef class SoftLink:
-    def __init__(self, object libname, str prefix):
+    def __init__(self, object libname, str prefix, *, bint mandatory=False):
+        self.available = False
         self._prefix = prefix
         self._cdll = None
         if libname is not None:
             try:
                 self._cdll = ctypes.CDLL(libname)
+                self.available = True
             except Exception as e:
-                warnings.warn(
-                    f'Warning: CuPy failed to load "{libname}": '
-                    f'({type(e).__name__}: {e})')
+                if mandatory:
+                    raise RuntimeError(
+                        f'CuPy failed to load "{libname}": '
+                        f'{type(e).__name__}: {e}')
 
     cdef F_t get(self, str name):
         """
