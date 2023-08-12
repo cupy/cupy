@@ -21,21 +21,15 @@ from libcpp cimport vector
 
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
-    cpdef object _error = None
+    cdef void initialize():
+        pass
 ELSE:
     include "_cnvrtc.pxi"
-    cpdef object _error = _L.error
 
 
 ###############################################################################
 # Error handling
 ###############################################################################
-
-@cython.profile(False)
-cpdef inline check_available():
-    if _error is not None:
-        raise RuntimeError('CuPy failed to load NVRTC') from _error
-
 
 class NVRTCError(RuntimeError):
 
@@ -56,7 +50,7 @@ cpdef inline check_status(int status):
 
 
 cpdef tuple getVersion():
-    check_available()
+    initialize()
     cdef int major, minor
     with nogil:
         status = nvrtcVersion(&major, &minor)
@@ -65,7 +59,7 @@ cpdef tuple getVersion():
 
 
 cpdef tuple getSupportedArchs():
-    check_available()
+    initialize()
     cdef int status, num_archs
     cdef vector.vector[int] archs
     if runtime._is_hip_environment:
@@ -87,7 +81,7 @@ cpdef tuple getSupportedArchs():
 
 cpdef intptr_t createProgram(unicode src, unicode name, headers,
                              include_names) except? 0:
-    check_available()
+    initialize()
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
@@ -119,6 +113,7 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
 
 
 cpdef destroyProgram(intptr_t prog):
+    initialize()
     cdef Program p = <Program>prog
     with nogil:
         status = nvrtcDestroyProgram(&p)
@@ -126,6 +121,7 @@ cpdef destroyProgram(intptr_t prog):
 
 
 cpdef compileProgram(intptr_t prog, options):
+    initialize()
     cdef int option_num = len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
@@ -141,6 +137,7 @@ cpdef compileProgram(intptr_t prog, options):
 
 
 cpdef bytes getPTX(intptr_t prog):
+    initialize()
     cdef size_t ptxSizeRet
     cdef vector.vector[char] ptx
     cdef char* ptx_ptr = NULL
@@ -160,6 +157,7 @@ cpdef bytes getPTX(intptr_t prog):
 
 
 cpdef bytes getCUBIN(intptr_t prog):
+    initialize()
     cdef size_t cubinSizeRet = 0
     cdef vector.vector[char] cubin
     cdef char* cubin_ptr = NULL
@@ -186,6 +184,7 @@ cpdef bytes getCUBIN(intptr_t prog):
 
 
 cpdef bytes getNVVM(intptr_t prog):
+    initialize()
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getNVVM")
     if runtime.runtimeGetVersion() < 11040:
@@ -210,6 +209,7 @@ cpdef bytes getNVVM(intptr_t prog):
 
 
 cpdef unicode getProgramLog(intptr_t prog):
+    initialize()
     cdef size_t logSizeRet
     cdef vector.vector[char] log
     cdef char* log_ptr = NULL
@@ -229,6 +229,7 @@ cpdef unicode getProgramLog(intptr_t prog):
 
 
 cpdef addNameExpression(intptr_t prog, str name):
+    initialize()
     cdef bytes b_name = name.encode()
     cdef const char* c_name = b_name
     with nogil:
@@ -237,6 +238,7 @@ cpdef addNameExpression(intptr_t prog, str name):
 
 
 cpdef str getLoweredName(intptr_t prog, str name):
+    initialize()
     cdef bytes b_name = name.encode()
     cdef const char* c_name = b_name
     cdef const char* mangled_name
