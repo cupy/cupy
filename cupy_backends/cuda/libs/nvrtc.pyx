@@ -16,12 +16,6 @@ import sys as _sys
 cimport cython  # NOQA
 from libcpp cimport vector
 
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda._softlink cimport SoftLink, F_t
-
-
-cdef int _runtime_version = runtime.runtimeGetVersion()
-
 
 ###############################################################################
 # Extern
@@ -30,50 +24,8 @@ cdef int _runtime_version = runtime.runtimeGetVersion()
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
 ELSE:
-    _prefix = 'nvrtc'
-    _libname = None
-    if CUPY_CUDA_VERSION != 0:
-        if 11020 <= _runtime_version < 12000:
-            # CUDA 11.x (11.2+)
-            if _sys.platform == 'linux':
-                _libname = 'libnvrtc.so.11.2'
-            else:
-                _libname = 'nvrtc64_112_0.dll'
-        elif 12000 <= _runtime_version < 13000:
-            # CUDA 12.x
-            if _sys.platform == 'linux':
-                _libname = 'libnvrtc.so.12'
-            else:
-                _libname = 'nvrtc64_120_0.dll'
-    elif CUPY_HIP_VERSION != 0:
-        # ROCm 5.x
-        _prefix = 'hiprtc'
-        _libname = 'libamdhip64.so.5'
-
-    ctypedef int (*F_createProgram)(  # naming convention TBD  # noqa
-        Program* prog, const char* src, const char* name, int numHeaders,
-        const char* const *headers, const char** includeNames) nogil
-
-    cdef SoftLink _L = SoftLink(_libname, _prefix)
-    cdef F_t nvrtcGetErrorString = <F_t>_L.get('GetErrorString')
-    cdef F_t nvrtcVersion = <F_t>_L.get('Version')
-    cdef F_createProgram nvrtcCreateProgram = <F_createProgram>_L.get('CreateProgram')  # noqa
-    cdef F_t nvrtcDestroyProgram = <F_t>_L.get('DestroyProgram')
-    cdef F_t nvrtcCompileProgram = <F_t>_L.get('CompileProgram')
-    cdef F_t nvrtcGetPTXSize = <F_t>_L.get(
-        'GetPTXSize' if _prefix == 'nvrtc' else 'GetCodeSize')
-    cdef F_t nvrtcGetPTX = <F_t>_L.get(
-        'GetPTX' if _prefix == 'nvrtc' else 'GetCode')
-    cdef F_t nvrtcGetCUBINSize = <F_t>_L.get('GetCUBINSize')
-    cdef F_t nvrtcGetCUBIN = <F_t>_L.get('GetCUBIN')
-    cdef F_t nvrtcGetProgramLogSize = <F_t>_L.get('GetProgramLogSize')
-    cdef F_t nvrtcGetProgramLog = <F_t>_L.get('GetProgramLog')
-    cdef F_t nvrtcAddNameExpression = <F_t>_L.get('AddNameExpression')
-    cdef F_t nvrtcGetLoweredName = <F_t>_L.get('GetLoweredName')
-    cdef F_t nvrtcGetNumSupportedArchs = <F_t>_L.get('GetNumSupportedArchs')
-    cdef F_t nvrtcGetSupportedArchs = <F_t>_L.get('GetSupportedArchs')
-    cdef F_t nvrtcGetNVVMSize = <F_t>_L.get('GetNVVMSize')
-    cdef F_t nvrtcGetNVVM = <F_t>_L.get('GetNVVM')
+    include "_cnvrtc.pxi"
+    pass
 
 
 ###############################################################################
@@ -84,7 +36,7 @@ class NVRTCError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        cdef bytes msg = nvrtcGetErrorString(<Result>status)
+        cdef bytes msg = nvrtcGetErrorString(<nvrtcResult>status)
         super(NVRTCError, self).__init__(
             '{} ({})'.format(msg.decode(), status))
 
