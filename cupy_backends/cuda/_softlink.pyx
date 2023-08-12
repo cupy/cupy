@@ -1,23 +1,27 @@
 import ctypes
+import warnings
 
 from libc.stdint cimport intptr_t
 cimport cython
 
 
 cdef class SoftLink:
-    def __init__(self, object libname, str prefix, *, bint mandatory=False):
-        self.available = False
+    def __init__(self, object libname, str prefix):
+        self.error = None
         self._prefix = prefix
         self._cdll = None
-        if libname is not None:
+        if libname is None:
+            # Stub build or CUDA/HIP only library.
+            self.error = RuntimeError(
+                'The library is unavailable in the current platform.')
+        else:
             try:
                 self._cdll = ctypes.CDLL(libname)
-                self.available = True
             except Exception as e:
-                if mandatory:
-                    raise RuntimeError(
-                        f'CuPy failed to load "{libname}": '
-                        f'{type(e).__name__}: {e}') from e
+                self.error = e
+                warnings.warn(
+                    f'CuPy failed to load "{libname}": '
+                    f'{type(e).__name__}: {e}')
 
     cdef func_ptr get(self, str name):
         """
