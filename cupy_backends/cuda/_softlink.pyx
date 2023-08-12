@@ -17,7 +17,7 @@ cdef class SoftLink:
                 if mandatory:
                     raise RuntimeError(
                         f'CuPy failed to load "{libname}": '
-                        f'{type(e).__name__}: {e}')
+                        f'{type(e).__name__}: {e}') from e
 
     cdef F_t get(self, str name):
         """
