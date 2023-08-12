@@ -21,14 +21,21 @@ from libcpp cimport vector
 
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
+    cpdef object _error = None
 ELSE:
     include "_cnvrtc.pxi"
-    pass
+    cpdef object _error = _L.error
 
 
 ###############################################################################
 # Error handling
 ###############################################################################
+
+@cython.profile(False)
+cpdef inline check_available():
+    if _error is not None:
+        raise RuntimeError('CuPy failed to load NVRTC') from _error
+
 
 class NVRTCError(RuntimeError):
 
@@ -49,6 +56,7 @@ cpdef inline check_status(int status):
 
 
 cpdef tuple getVersion():
+    check_available()
     cdef int major, minor
     with nogil:
         status = nvrtcVersion(&major, &minor)
@@ -57,6 +65,7 @@ cpdef tuple getVersion():
 
 
 cpdef tuple getSupportedArchs():
+    check_available()
     cdef int status, num_archs
     cdef vector.vector[int] archs
     if runtime._is_hip_environment:
@@ -78,6 +87,7 @@ cpdef tuple getSupportedArchs():
 
 cpdef intptr_t createProgram(unicode src, unicode name, headers,
                              include_names) except? 0:
+    check_available()
     cdef Program prog
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src

@@ -30,8 +30,7 @@ elif CUPY_HIP_VERSION != 0:
         # ROCm 5.x
         _libname = 'libamdhip64.so.5'
 
-cdef SoftLink _L = SoftLink(_libname, _prefix, mandatory=True)
-
+cdef SoftLink _L = SoftLink(_libname, _prefix)
 
 ctypedef int nvrtcResult
 ctypedef void* nvrtcProgram
