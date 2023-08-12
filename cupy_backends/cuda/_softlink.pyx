@@ -6,9 +6,9 @@ cimport cython
 
 
 cdef class SoftLink:
-    def __init__(self, object libname, str prefix):
+    def __init__(self, object libname, str prefix, *, bint mandatory=False):
         self.error = None
-        self._prefix = prefix
+        self.prefix = prefix
         self._cdll = None
         if libname is None:
             # Stub build or CUDA/HIP only library.
@@ -19,9 +19,11 @@ cdef class SoftLink:
                 self._cdll = ctypes.CDLL(libname)
             except Exception as e:
                 self.error = e
-                warnings.warn(
-                    f'CuPy failed to load "{libname}": '
-                    f'{type(e).__name__}: {e}')
+                msg = (
+                    f'CuPy failed to load {libname}: {type(e).__name__}: {e}')
+                if mandatory:
+                    raise RuntimeError(msg) from e
+                warnings.warn(msg)
 
     cdef func_ptr get(self, str name):
         """
@@ -29,7 +31,7 @@ cdef class SoftLink:
         """
         if self._cdll is None:
             return <func_ptr>_fail_unsupported
-        cdef str funcname = f'{self._prefix}{name}'
+        cdef str funcname = f'{self.prefix}{name}'
         cdef object func = getattr(self._cdll, funcname, None)
         if func is None:
             return <func_ptr>_fail_not_found
