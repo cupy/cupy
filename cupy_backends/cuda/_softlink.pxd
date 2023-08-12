@@ -1,8 +1,8 @@
-ctypedef int (*F_t)(...) nogil  # NOQA
+ctypedef int (*func_ptr)(...) nogil  # NOQA
 
 cdef class SoftLink:
     cdef:
         bint available
         object _cdll
         str _prefix
-        F_t get(self, str name)
+        func_ptr get(self, str name)

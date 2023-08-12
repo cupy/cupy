@@ -19,18 +19,18 @@ cdef class SoftLink:
                         f'CuPy failed to load "{libname}": '
                         f'{type(e).__name__}: {e}') from e
 
-    cdef F_t get(self, str name):
+    cdef func_ptr get(self, str name):
         """
         Returns a function pointer for the API.
         """
         if self._cdll is None:
-            return <F_t>_fail_unsupported
+            return <func_ptr>_fail_unsupported
         cdef str funcname = f'{self._prefix}{name}'
         cdef object func = getattr(self._cdll, funcname, None)
         if func is None:
-            return <F_t>_fail_not_found
+            return <func_ptr>_fail_not_found
         cdef intptr_t ptr = ctypes.addressof(func)
-        return cython.operator.dereference(<F_t*>ptr)
+        return cython.operator.dereference(<func_ptr*>ptr)
 
 
 cdef int _fail_unsupported() nogil except -1:
