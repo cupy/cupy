@@ -41,6 +41,8 @@ class TestDistributedArray:
         testing.assert_array_equal(da._chunks[1], array[:4, 4:])
         testing.assert_array_equal(da._chunks[2], array[4:, :4])
         testing.assert_array_equal(da._chunks[3], array[4:, 4:])
+        for dev in range(4):
+            assert da._chunks[i] == i
 
     def test_array_creation_from_cupy(self, mem_pool):
         array = cupy.arange(64, dtype='q').reshape(8, 8)
@@ -62,6 +64,8 @@ class TestDistributedArray:
         testing.assert_array_equal(da._chunks[1], array[:4, 4:])
         testing.assert_array_equal(da._chunks[2], array[4:, :4])
         testing.assert_array_equal(da._chunks[3], array[4:, 4:])
+        for dev in range(4):
+            assert da._chunks[i] == i
 
     def test_array_creation(self, mem_pool):
         array = numpy.arange(64, dtype='q').reshape(8, 8)
@@ -82,6 +86,8 @@ class TestDistributedArray:
         testing.assert_array_equal(da._chunks[1], array[:4, 4:])
         testing.assert_array_equal(da._chunks[2], array[4:, :4])
         testing.assert_array_equal(da._chunks[3], array[4:, 4:])
+        for dev in range(4):
+            assert da._chunks[i] == i
 
     @pytest.mark.parametrize('device_mapping', [
         {0: slice(0, 4), 1: slice(4, 8)},
