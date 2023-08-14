@@ -230,6 +230,23 @@ class TestPeriodic:
         dd, ii = kdtree.query(data + off, k, p=p)
         return dd, ii
 
+    @pytest.mark.parametrize('off', [0, 1, -1])
+    @pytest.mark.parametrize('p', [1, 2, 3.0, np.inf])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_kdtree_ball(self, xp, scp, p, off):
+        # check ckdtree periodic boundary
+        n = 100
+        m = 2
+
+        data = testing.shaped_random(
+            (n, m), xp, xp.float64, scale=1, seed=1234)
+        kdtree = scp.spatial.KDTree(data, boxsize=1.0, leafsize=100)
+
+        res = kdtree.query_ball_point(data + off, 0.5, return_sorted=True)
+        if xp is not cupy:
+            res = [xp.asarray(r) for r in res]
+        return res
+
 
 @testing.with_requires('scipy')
 class TestBallConsistency:

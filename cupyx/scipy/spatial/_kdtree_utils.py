@@ -567,10 +567,54 @@ __device__ long long compute_query_ball(
 
         long long next = -1;
         if(prev == cur_close_child) {
-            next
-            = ((cur_far_child < n) && (curr_dim_dist <= radius_p * (1 + eps)))
-            ? cur_far_child
-            : parent;
+            if(periodic) {
+                const T* close_child = tree + n_dims * cur_close_child;
+                const T* far_child = tree + n_dims * cur_far_child;
+                const T* close_bounds = (
+                    tree_bounds + 2 * n_dims * cur_close_child + 2 * cur_dim);
+                const T* far_bounds = (
+                    tree_bounds + 2 * n_dims * cur_far_child + 2 * cur_dim);
+
+                double far_dist = CUDART_INF;
+                double close_dist = CUDART_INF;
+                double far_bound_dist = CUDART_INF;
+                double close_bound_dist = CUDART_INF;
+
+                double curr_dist = compute_distance(
+                    point, cur_point, box_bounds, n_dims, p, 1, false);
+
+                if(cur_far_child < n) {
+                    far_dist = compute_distance(
+                        point, far_child, box_bounds, n_dims, p, 1, false);
+
+                    far_bound_dist = min_bound_dist(
+                        far_bounds, point[cur_dim], box_bounds[cur_dim],
+                        cur_dim);
+                }
+
+                close_dist = compute_distance(
+                    point, close_child, box_bounds, n_dims, p, 1, false);
+
+                close_bound_dist = min_bound_dist(
+                    close_bounds, point[cur_dim], box_bounds[cur_dim],
+                    cur_dim);
+
+                next
+                = ((cur_far_child < n) &&
+                   ((curr_dim_dist <= radius_p * (1 + eps)) ||
+                    (far_bound_dist <= curr_dim_dist * (1 + eps)) ||
+                    (far_dist <= close_dist * (1 + eps)) ||
+                    (far_bound_dist <= close_bound_dist + (1 + eps)) ||
+                    (far_bound_dist <= radius_p * (1 + eps))))
+                ? cur_far_child
+                : parent;
+            } else {
+                next
+                = ((cur_far_child < n) &&
+                   (curr_dim_dist <= radius_p * (1 + eps)))
+                ? cur_far_child
+                : parent;
+            }
         } else if (prev == cur_far_child) {
             next = parent;
         } else {
@@ -612,6 +656,33 @@ __global__ void query_ball(
 
     node_count[idx] = count;
 }
+
+__global__ void query_ball_periodic(
+        const int n, const int points_size, const int n_dims,
+        const double radius, const double eps, const double p, const int sort,
+        double* __restrict__ points, const double* __restrict__ tree,
+        const long long* __restrict__ index,
+        const double* __restrict__ box_bounds,
+        const double* __restrict__ tree_bounds,
+        long long* all_nodes, long long* node_count,
+        long long* all_debug_nodes) {
+
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(idx >= points_size) {
+        return;
+    }
+
+    double* point = points + n_dims * idx;
+    long long* nodes = all_nodes + n * idx;
+    long long* debug_nodes = all_debug_nodes + 3 * n * idx;
+
+    adjust_to_box(point, n_dims, box_bounds);
+    long long count = compute_query_ball<double>(
+        n, n_dims, radius, eps, p, true, sort, point, tree, index, box_bounds,
+        tree_bounds, nodes, debug_nodes);
+
+    node_count[idx] = count;
+}
 '''
 
 
@@ -622,7 +693,8 @@ KD_MODULE = cupy.RawModule(
 
 KNN_MODULE = cupy.RawModule(
     code=KNN_KERNEL, options=('-std=c++11',),
-    name_expressions=['knn_periodic'] + [f'knn<{x}>' for x in TYPE_NAMES] +
+    name_expressions=['knn_periodic', 'query_ball_periodic'] +
+    [f'knn<{x}>' for x in TYPE_NAMES] +
     [f'query_ball<{x}>' for x in TYPE_NAMES])
 
 
@@ -813,5 +885,5 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
         return total_nodes
     else:
         split_nodes = cupy.array_split(
-            nodes[nodes != tree_length], total_nodes.tolist())
+            nodes[nodes != tree_length], total_nodes.cumsum().tolist())
         return split_nodes[:n_points]
