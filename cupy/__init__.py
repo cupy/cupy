@@ -62,6 +62,14 @@ from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
 from numpy import pi  # NOQA
 
+# APIs to be removed in NumPy 2.0.
+# Remove these when bumping the baseline API to NumPy 2.0.
+# https://github.com/cupy/cupy/pull/7800
+PINF = Inf = Infinity = infty = inf  # NOQA
+NINF = -inf  # NOQA
+NAN = NaN = nan  # NOQA
+PZERO = 0.0  # NOQA
+NZERO = -0.0  # NOQA
 
 # =============================================================================
 # Data types (borrowed from NumPy)
