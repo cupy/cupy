@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:11.5.0-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:11.5.2-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.11.*+cuda11.5' 'libnccl-dev=2.11.*+cuda11.5' 'libcutensor1=1.5.*' 'libcutensor-dev=1.5.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.4.*+cuda11.6' 'libcudnn8-dev=8.4.*+cuda11.6'
+            --allow-downgrades install 'libnccl2=2.16.*+cuda11.8' 'libnccl-dev=2.16.*+cuda11.8' 'libcutensor1=1.6.*' 'libcutensor-dev=1.6.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.8.*+cuda11.8' 'libcudnn8-dev=8.8.*+cuda11.8'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -24,10 +24,10 @@ RUN /update-alternatives-cutensor.sh
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.10.0 && \
-    pyenv global 3.10.0 && \
-    pip install -U setuptools pip
+RUN pyenv install 3.9.6 && \
+    pyenv global 3.9.6 && \
+    pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.23.*' 'scipy==1.8.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.10.*' 'optuna==3.*' 'mpi4py==3.*' 'cython==0.29.*'
 RUN pip uninstall -y cuda-python && \
     pip check

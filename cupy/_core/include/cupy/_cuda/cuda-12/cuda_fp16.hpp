@@ -685,8 +685,7 @@ NV_IF_ELSE_TARGET(NV_IS_DEVICE,
     return val;
 }
 
-#if defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA)
-
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 __CUDA_FP16_DECL__ __half2 __internal_device_float2_to_half2_rn(const float a, const float b) {
     __half2 val;
 NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
@@ -701,7 +700,7 @@ NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     return val;
 }
 
-#endif
+#endif /* defined(__CUDACC__) || defined(_NVHPC_CUDA) */
 
 __CUDA_HOSTDEVICE_FP16_DECL__ __half2 __floats2half2_rn(const float a, const float b)
 {

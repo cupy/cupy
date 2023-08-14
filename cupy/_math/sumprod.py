@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 
 import cupy
@@ -624,3 +626,13 @@ def trapz(y, x=None, dx=1.0, axis=-1):
     except ValueError:
         ret = cupy.add.reduce(product, axis)
     return ret
+
+
+def product(a, axis=None, dtype=None, out=None, keepdims=False):
+    warnings.warn('Please use `prod` instead.', DeprecationWarning)
+    return prod(a, axis, dtype, out, keepdims)
+
+
+def cumproduct(a, axis=None, dtype=None, out=None):
+    warnings.warn('Please use `cumprod` instead.', DeprecationWarning)
+    return cumprod(a, axis, dtype, out)

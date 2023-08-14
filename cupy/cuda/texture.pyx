@@ -57,8 +57,9 @@ cdef class ChannelFormatDescriptor:
         desc.f = <ChannelFormatKind>f
 
     def __dealloc__(self):
-        PyMem_Free(<ChannelFormatDesc*>self.ptr)
-        self.ptr = 0
+        if self.ptr != 0:
+            PyMem_Free(<ChannelFormatDesc*>self.ptr)
+            self.ptr = 0
 
     def get_channel_format(self):
         '''Returns a dict containing the input.'''
@@ -143,15 +144,15 @@ cdef class ResourceDescriptor:
         self.arr = arr
 
     def __dealloc__(self):
-        PyMem_Free(<ResourceDesc*>self.ptr)
-        self.ptr = 0
+        if self.ptr != 0:
+            PyMem_Free(<ResourceDesc*>self.ptr)
+            self.ptr = 0
 
     def get_resource_desc(self):
         '''Returns a dict containing the input.'''
         cdef dict desc = {}
         cdef intptr_t ptr
         cdef ResourceDesc* resPtr = <ResourceDesc*>(self.ptr)
-        cdef size_t size, pitch, w, h
 
         # For texture memory, print the underlying pointer address so that
         # it can be used for verification by the caller. Note that resPtr.res
@@ -230,8 +231,9 @@ cdef class TextureDescriptor:
         # TODO(leofang): support mipmap?
 
     def __dealloc__(self):
-        PyMem_Free(<TextureDesc*>self.ptr)
-        self.ptr = 0
+        if self.ptr != 0:
+            PyMem_Free(<TextureDesc*>self.ptr)
+            self.ptr = 0
 
     def get_texture_desc(self):
         '''Returns a dict containing the input.'''
@@ -305,8 +307,9 @@ cdef class CUDAarray:
         self.ndim = 3 if depth > 0 else 2 if height > 0 else 1
 
     def __dealloc__(self):
-        runtime.freeArray(self.ptr)
-        self.ptr = 0
+        if self.ptr != 0:
+            runtime.freeArray(self.ptr)
+            self.ptr = 0
 
     cdef int _get_memory_kind(self, src, dst):
         cdef int kind
@@ -530,8 +533,9 @@ cdef class TextureObject:
         self.TexDesc = TexDesc
 
     def __dealloc__(self):
-        runtime.destroyTextureObject(self.ptr)
-        self.ptr = 0
+        if self.ptr != 0:
+            runtime.destroyTextureObject(self.ptr)
+            self.ptr = 0
 
 
 cdef class SurfaceObject:
@@ -552,5 +556,6 @@ cdef class SurfaceObject:
         self.ResDesc = ResDesc
 
     def __dealloc__(self):
-        runtime.destroySurfaceObject(self.ptr)
-        self.ptr = 0
+        if self.ptr != 0:
+            runtime.destroySurfaceObject(self.ptr)
+            self.ptr = 0

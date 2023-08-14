@@ -17,6 +17,8 @@ Misc Functions
 
    polyvander
    polycompanion
+   polyval
+   polyvalfromroots
 
 
 Polyutils

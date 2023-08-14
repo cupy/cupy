@@ -1,6 +1,5 @@
-import numpy
-
 import cupy
+import numpy
 
 
 def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
@@ -61,7 +60,7 @@ def format_float_positional(x, *args, **kwargs):
 
     .. seealso:: :func:`numpy.format_float_positional`
 
-    """
+    """  # NOQA
     return numpy.format_float_positional(cupy.asnumpy(x), *args, **kwargs)
 
 
@@ -72,5 +71,5 @@ def format_float_scientific(x, *args, **kwargs):
 
     .. seealso:: :func:`numpy.format_float_scientific`
 
-    """
+    """  # NOQA
     return numpy.format_float_scientific(cupy.asnumpy(x), *args, **kwargs)
