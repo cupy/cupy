@@ -125,6 +125,7 @@ setup(
     version=__version__,  # NOQA
     description='CuPy: NumPy & SciPy for GPU',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     maintainer='CuPy Developers',
