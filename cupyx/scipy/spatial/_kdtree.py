@@ -4,6 +4,8 @@ import warnings
 import cupy
 from cupyx.scipy.spatial._kdtree_utils import (
     asm_kd_tree, compute_knn, compute_tree_bounds, find_nodes_in_radius)
+from cupyx.scipy.spatial.distance import distance_matrix
+from cupyx.scipy.sparse import coo_matrix
 
 
 def broadcast_contiguous(x, shape, dtype):
@@ -350,3 +352,252 @@ class KDTree:
             x, tree, self.index, self.boxsize, self.bounds,
             r, p=p, eps=eps, return_sorted=return_sorted,
             return_length=return_length, adjust_to_box=self.copy_query_points)
+
+    def query_ball_tree(self, other, r, p=2.0, eps=0.0):
+        """
+        Find all pairs of points between `self` and `other` whose distance
+        is at most r.
+
+        Parameters
+        ----------
+        other : KDTree instance
+            The tree containing points to search against.
+        r : float
+            The maximum distance, has to be positive.
+        p : float, optional
+            Which Minkowski norm to use.  `p` has to meet the condition
+            ``1 <= p <= infinity``.
+            A finite large p may cause a ValueError if overflow can occur.
+        eps : float, optional
+            Approximate search.  Branches of the tree are not explored
+            if their nearest points are further than ``r/(1+eps)``, and
+            branches are added in bulk if their furthest points are nearer
+            than ``r * (1+eps)``.  `eps` has to be non-negative.
+
+        Returns
+        -------
+        results : list of ndarrays
+            For each element ``self.data[i]`` of this tree, ``results[i]`` is a
+            list of the indices of its neighbors in ``other.data``.
+
+        Examples
+        --------
+        You can search all pairs of points between two kd-trees within a
+        distance:
+
+        >>> import matplotlib.pyplot as plt
+        >>> import cupy as cp
+        >>> from cupyx.scipy.spatial import KDTree
+        >>> points1 = cp.random.rand((15, 2))
+        >>> points2 = cp.random.rand((15, 2))
+        >>> plt.figure(figsize=(6, 6))
+        >>> plt.plot(points1[:, 0], points1[:, 1], "xk", markersize=14)
+        >>> plt.plot(points2[:, 0], points2[:, 1], "og", markersize=14)
+        >>> kd_tree1 = KDTree(points1)
+        >>> kd_tree2 = KDTree(points2)
+        >>> indexes = kd_tree1.query_ball_tree(kd_tree2, r=0.2)
+        >>> for i in range(len(indexes)):
+        ...     for j in indexes[i]:
+        ...         plt.plot([points1[i, 0], points2[j, 0]],
+        ...             [points1[i, 1], points2[j, 1]], "-r")
+        >>> plt.show()
+
+        """
+        return other.query_ball_point(
+            self.data, r, p=p, eps=eps, return_sorted=True)
+
+    def query_pairs(self, r, p=2.0, eps=0, output_type='ndarray'):
+        """
+        Find all pairs of points in `self` whose distance is at most r.
+
+        Parameters
+        ----------
+        r : positive float
+            The maximum distance.
+        p : float, optional
+            Which Minkowski norm to use.  ``p`` has to meet the condition
+            ``1 <= p <= infinity``.
+            A finite large p may cause a ValueError if overflow can occur.
+        eps : float, optional
+            Approximate search.  Branches of the tree are not explored
+            if their nearest points are further than ``r/(1+eps)``, and
+            branches are added in bulk if their furthest points are nearer
+            than ``r * (1+eps)``.  `eps` has to be non-negative.
+        output_type : string, optional
+            Choose the output container, 'set' or 'ndarray'. Default: 'ndarray'
+            Note: 'set' output is not supported.
+
+        Returns
+        -------
+        results : ndarray
+            An ndarray of size ``(total_pairs, 2)``, containing each pair
+            ``(i,j)``, with ``i < j``, for which the corresponding
+            positions are close.
+
+        Notes
+        -----
+        This method does not support the `set` output type.
+
+        Examples
+        --------
+        You can search all pairs of points in a kd-tree within a distance:
+
+        >>> import matplotlib.pyplot as plt
+        >>> import cupy as cp
+        >>> from cupyx.scipy.spatial import KDTree
+        >>> points = cp.random.rand((20, 2))
+        >>> plt.figure(figsize=(6, 6))
+        >>> plt.plot(points[:, 0], points[:, 1], "xk", markersize=14)
+        >>> kd_tree = KDTree(points)
+        >>> pairs = kd_tree.query_pairs(r=0.2)
+        >>> for (i, j) in pairs:
+        ...     plt.plot([points[i, 0], points[j, 0]],
+        ...             [points[i, 1], points[j, 1]], "-r")
+        >>> plt.show()
+
+        """
+        if output_type == 'set':
+            warnings.warn("output_type='set' is not supported by the GPU "
+                          "implementation of KDTree, resorting back to "
+                          "'ndarray'.")
+
+        x = self.data
+        if self.copy_query_points:
+            if x.dtype != cupy.float64:
+                raise ValueError('periodic KDTree is only available '
+                                 'on float64')
+            x = x.copy()
+
+        common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
+        tree = self.tree
+        if cupy.dtype(self.tree.dtype) is not common_dtype:
+            tree = self.tree.astype(common_dtype)
+        if cupy.dtype(x.dtype) is not common_dtype:
+            x = x.astype(common_dtype)
+
+        return find_nodes_in_radius(
+            x, tree, self.index, self.boxsize, self.bounds,
+            r, p=p, eps=eps, return_sorted=True, return_tuples=True,
+            adjust_to_box=self.copy_query_points)
+
+    def count_neighbors(self, other, r, p=2.0, weights=None, cumulative=True):
+        """
+        Count how many nearby pairs can be formed.
+
+        Count the number of pairs ``(x1,x2)`` can be formed, with ``x1`` drawn
+        from ``self`` and ``x2`` drawn from ``other``, and where
+        ``distance(x1, x2, p) <= r``.
+
+        Data points on ``self`` and ``other`` are optionally weighted by the
+        ``weights`` argument. (See below)
+
+        This is adapted from the "two-point correlation" algorithm described by
+        Gray and Moore [1]_.  See notes for further discussion.
+
+        Parameters
+        ----------
+        other : cKDTree instance
+            The other tree to draw points from, can be the same tree as self.
+        r : float or one-dimensional array of floats
+            The radius to produce a count for. Multiple radii are searched with
+            a single tree traversal.
+            If the count is non-cumulative(``cumulative=False``), ``r`` defines
+            the edges of the bins, and must be non-decreasing.
+        p : float, optional
+            1<=p<=infinity.
+            Which Minkowski p-norm to use.
+            Default 2.0.
+            A finite large p may cause a ValueError if overflow can occur.
+        weights : tuple, array_like, or None, optional
+            If None, the pair-counting is unweighted.
+            If given as a tuple, weights[0] is the weights of points in
+            ``self``, and weights[1] is the weights of points in ``other``;
+            either can be None to indicate the points are unweighted.
+            If given as an array_like, weights is the weights of points in
+            ``self`` and ``other``. For this to make sense, ``self`` and
+            ``other`` must be the same tree. If ``self`` and ``other`` are two
+            different trees, a ``ValueError`` is raised.
+            Default: None
+        cumulative : bool, optional
+            Whether the returned counts are cumulative. When cumulative is set
+            to ``False`` the algorithm is optimized to work with a large number
+            of bins (>10) specified by ``r``. When ``cumulative`` is set to
+            True, the algorithm is optimized to work with a small number of
+            ``r``. Default: True
+
+        Returns
+        -------
+        result : scalar or 1-D array
+            The number of pairs. For unweighted counts, the result is integer.
+            For weighted counts, the result is float.
+            If cumulative is False, ``result[i]`` contains the counts with
+            ``(-inf if i == 0 else r[i-1]) < R <= r[i]``
+
+        """
+        raise NotImplementedError('count_neighbors is not available on CuPy')
+
+    def sparse_distance_matrix(self, other, max_distance, p=2.0,
+                               output_type='coo_matrix'):
+        """
+        Compute a sparse distance matrix
+
+        Computes a distance matrix between two KDTrees, leaving as zero
+        any distance greater than max_distance.
+
+        Parameters
+        ----------
+        other : KDTree
+        max_distance : positive float
+        p : float, 1<=p<=infinity
+            Which Minkowski p-norm to use.
+            A finite large p may cause a ValueError if overflow can occur.
+        output_type : string, optional
+            Which container to use for output data. Options: 'dok_matrix',
+            'coo_matrix' or 'ndarray'. Default: 'dok_matrix'.
+
+        Returns
+        -------
+        result : coo_matrix or ndarray
+            Sparse matrix representing the results in "dictionary of keys"
+            format. If output_type is 'ndarray' an NxM distance matrix will be
+            returned.
+
+        Examples
+        --------
+        You can compute a sparse distance matrix between two kd-trees:
+
+        >>> import numpy as np
+        >>> from cupyx.scipy.spatial import KDTree
+        >>> points1 = cupy.random.rand((5, 2))
+        >>> points2 = cupy.random.rand((5, 2))
+        >>> kd_tree1 = KDTree(points1)
+        >>> kd_tree2 = KDTree(points2)
+        >>> sdm = kd_tree1.sparse_distance_matrix(kd_tree2, 0.3)
+        >>> sdm.toarray()
+        array([[0.        , 0.        , 0.12295571, 0.        , 0.        ],
+           [0.        , 0.        , 0.        , 0.        , 0.        ],
+           [0.28942611, 0.        , 0.        , 0.2333084 , 0.        ],
+           [0.        , 0.        , 0.        , 0.        , 0.        ],
+           [0.24617575, 0.29571802, 0.26836782, 0.        , 0.        ]])
+
+        You can check distances above the `max_distance` are zeros:
+
+        >>> from cupyx.scipy.spatial import distance_matrix
+        >>> distance_matrix(points1, points2)
+        array([[0.56906522, 0.39923701, 0.12295571, 0.8658745 , 0.79428925],
+           [0.37327919, 0.7225693 , 0.87665969, 0.32580855, 0.75679479],
+           [0.28942611, 0.30088013, 0.6395831 , 0.2333084 , 0.33630734],
+           [0.31994999, 0.72658602, 0.71124834, 0.55396483, 0.90785663],
+           [0.24617575, 0.29571802, 0.26836782, 0.57714465, 0.6473269 ]])
+        """
+        if output_type in {'dok_matrix', 'dict'}:
+            raise ValueError(
+                "sparse_distance_matrix only supports 'coo_matrix' and "
+                "'ndarray' outputs")
+
+        dist = distance_matrix(self.data, other.data, p)
+        dist[dist > max_distance] = 0
+
+        if output_type == 'coo_matrix':
+            return coo_matrix(dist)
+        return dist

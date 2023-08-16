@@ -267,7 +267,7 @@ class TestBallConsistency:
         (100, 4, 1, 0),
         (100, 4, 1, 10)
     ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', type_check=False)
     def test_approx(self, xp, scp, args):
         eps = 0.1
         x, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)

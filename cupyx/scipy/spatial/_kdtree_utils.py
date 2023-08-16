@@ -178,6 +178,29 @@ __global__ void compute_bounds(
     }
 }
 
+__global__ void tag_pairs(
+        const int n, const int n_pairs,
+        const long long* __restrict__ pair_count,
+        const long long* __restrict__ pairs,
+        const long long* __restrict__ out_off,
+        long long* out) {
+
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(idx >= n_pairs) {
+        return;
+    }
+
+    const long long cur_count = pair_count[idx];
+    const long long cur_off = out_off[idx];
+    const long long* cur_pairs = pairs + n * idx;
+    long long* cur_out = out + cur_off * 2;
+
+    for(int i = 0; i < cur_count; i++) {
+        cur_out[0] = idx;
+        cur_out[1] = cur_pairs[i];
+        cur_out += 2;
+    }
+}
 '''
 
 KNN_KERNEL = KERNEL_BASE + r'''
@@ -688,7 +711,7 @@ __global__ void query_ball_periodic(
 
 KD_MODULE = cupy.RawModule(
     code=KD_KERNEL, options=('-std=c++11',),
-    name_expressions=['update_tags'] + [
+    name_expressions=['update_tags', 'tag_pairs'] + [
         f'compute_bounds<{x}>' for x in TYPE_NAMES])
 
 KNN_MODULE = cupy.RawModule(
@@ -839,8 +862,8 @@ def compute_knn(points, tree, index, boxdata, bounds, k=1, eps=0.0, p=2.0,
 
 
 def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
-                         p=2.0, eps=0, return_sorted=None,
-                         return_length=False, adjust_to_box=False):
+                         p=2.0, eps=0, return_sorted=None, return_length=False,
+                         adjust_to_box=False, return_tuples=False):
     points_shape = points.shape
     tree_length = tree.shape[0]
 
@@ -883,7 +906,17 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
 
     if return_length:
         return total_nodes
-    else:
+    elif not return_tuples:
         split_nodes = cupy.array_split(
             nodes[nodes != tree_length], total_nodes.cumsum().tolist())
-        return split_nodes[:n_points]
+        split_nodes = split_nodes[:n_points]
+        return split_nodes
+    else:
+        cum_total = total_nodes.cumsum()
+        n_pairs = int(cum_total[-1])
+        result = cupy.empty((n_pairs, 2), dtype=cupy.int64)
+
+        tag_pairs = KD_MODULE.get_function('tag_pairs')
+        tag_pairs((n_blocks,), (block_sz,),
+                  (tree_length, n_points, total_nodes, cum_total, result))
+        return result[result[:, 0] < result[:, 1]]
