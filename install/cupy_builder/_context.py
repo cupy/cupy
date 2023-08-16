@@ -62,7 +62,7 @@ def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
         help='alternate package name')
     parser.add_argument(
         '--cupy-long-description', type=str, default=None,
-        help='path to the long description file')
+        help='path to the long description file (reST)')
     parser.add_argument(
         '--cupy-wheel-lib', type=str, action='append', default=[],
         help='shared library to copy into the wheel '
