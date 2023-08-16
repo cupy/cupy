@@ -1,10 +1,86 @@
 import enum
+from typing import Optional
 
 import cupy
 import numpy
 
 from numpy.typing import ArrayLike
+from cupy.typing import NDArray
 
+
+def _extgcd(a: int, b: int) -> tuple[int, int]:
+    """Return (g, x) with g = gcd(a, b), ax + by = g - ax.
+    a, b > 0 is assumed."""
+    # c - ax - by = 0  ...  (1)
+    # d - au - bv = 0  ...  (2)
+    c, d = a, b
+    x, u = 1, 0
+    # y, v = 0, 1
+
+    # Apply Euclid's algorithm to (c, d)
+    while d:
+        r = c // d
+        # (1), (2) = (2), (1) - (2) * r
+        c, d = d, c - d * r
+        x, u = u, x - u * r
+        # y, v = v, y - u * r
+
+    return c, x
+
+
+def _slice_intersection(a: slice, b: slice, length: int) -> Optional[slice]:
+    """Return the intersection of slice a and b. None if they are disjoint."""
+    a_start, a_stop, a_step = a.indices(length)
+    b_start, b_stop, b_step = b.indices(length)
+
+    # a_step * x + b_step * y == g  ...  (1)
+    g, x = _extgcd(a_step, b_step)
+    if (b_start - a_start) % g != 0:
+        return None
+
+    # c is the intersection of a, b
+    # c_step == lcm(a_step, b_step)
+    c_step = a_step // g * b_step
+
+    # Multiply (1) by (b_start - a_start) // g
+    # ==> a_step * a_skip - b_step * b_skip == b_start - a_start
+    #     a_start + a_step * a_skip == b_start + b_step * b_skip
+    a_skip = x * ((b_start - a_start) // g) % (c_step // a_step)
+    c_start = a_start + a_step * a_skip
+    if c_start < b_start:
+        c_start += ((b_start - c_start - 1) // c_step + 1) * c_step
+
+    c_stop = min(a_stop, b_stop)
+    if c_start < c_stop:
+        return slice(c_start, c_stop, c_step)
+    else:
+        return None
+
+
+def _subslice_index(a: slice, sub: slice, length: int) -> slice:
+    """Return slice c such that array[a][c] == array[sub].
+    sub should be contained in a."""
+    a_start, a_stop, a_step = a.indices(length)
+    sub_start, sub_stop, sub_step = sub.indices(length)
+
+    c_start = (sub_start - a_start) // a_step
+    # a_start + a_step * (c_stop - 1) < sub_stop
+    c_stop = (sub_stop - a_start - 1) // a_step + 1
+    c_step = sub_step // a_step
+
+    return slice(c_start, c_stop, c_step)
+
+
+# Temporary helper function.
+# Should be removed after implementing indexing
+def _shape_after_indexing(
+        outer_shape: tuple[int, ...],
+        key: tuple[slice, ...]) -> tuple[int, ...]:
+    shape = list(outer_shape)
+    for i in range(len(key)):
+        start, stop, step = key[i].indices(shape[i])
+        shape[i] = (stop - start - 1) // step + 1
+    return tuple(shape)
 
 class _MultiDeviceDummyMemory(cupy.cuda.Memory):
     pass
@@ -128,6 +204,60 @@ class _DistributedArray(cupy.ndarray):
         outs = self._execute_kernel(kernel, args, kwargs)
         return outs
 
+    def _write_view_to_view(
+            self, src_array: NDArray,
+            dst_array: NDArray, dst_key: tuple[slice, ...]) -> None:
+        with cupy.cuda.Device(dst_array.device.id):
+            dst_array[dst_key] = cupy.array(cupy.asnumpy(src_array))
+
+    def _send_intersection(
+            self,
+            src_array: NDArray, src_key: tuple[slice, ...],
+            dst_array: NDArray, dst_key: tuple[slice, ...]) -> None:
+        """Write the intersection of chunks src_key and dst_key to the
+        corresponding entries of dst_array. Note dst_array == self[dst_key]."""
+
+        # src_array[src_new_key] == dst_array[dst_new_key] == intersection
+        src_new_key = [None] * max(len(dst_key), len(src_key))
+        dst_new_key = [None] * max(len(dst_key), len(src_key))
+        for i in range(len(dst_new_key)):
+            if i >= len(dst_key):
+                src_new_key[i] = slice(None)
+                dst_new_key[i] = src_key[i]
+            elif i >= len(src_key):
+                src_new_key[i] = dst_key[i]
+                dst_new_key[i] = slice(None)
+            else:
+                length = self.shape[i]
+                intersection = _slice_intersection(src_key[i], dst_key[i], length)
+                if intersection is None:
+                    return  # Nothing to send
+                src_new_key[i] = _subslice_index(src_key[i], intersection, length)
+                dst_new_key[i] = _subslice_index(dst_key[i], intersection, length)
+
+        src_new_key = tuple(src_new_key)
+        dst_new_key = tuple(dst_new_key)
+        self._write_view_to_view(src_array[src_new_key], dst_array, dst_new_key)
+
+    def reshard(
+        self, device_mapping: dict[int, tuple[slice, ...]]
+    ) -> '_DistributedArray':
+        old_mapping, new_mapping = self._device_mapping, device_mapping
+
+        new_chunks = {}
+        for dst_dev, dst_key in new_mapping.items():
+            with cupy.cuda.Device(dst_dev):
+                # dst_array = cupy.zeros_like(self[dst_key])
+                dst_shape = _shape_after_indexing(self.shape, dst_key)
+                dst_array = cupy.zeros(dst_shape)
+            for src_dev, src_key in old_mapping.items():
+                src_array = self._chunks[src_dev]
+                self._send_intersection(src_array, src_key, dst_array, dst_key)
+            new_chunks[dst_dev] = dst_array
+
+        return _DistributedArray(
+            self.shape, self.dtype, new_chunks, new_mapping)
+
     def asnumpy(self):
         np_array = numpy.zeros(self.shape)
         for dev, chunk_key in self._device_mapping.items():
@@ -144,8 +274,7 @@ class Mode(enum.Enum):
 def distributed_array(
         array: ArrayLike,
         device_mapping: dict[int, tuple[slice, ...]],
-        mode: Mode = Mode.replica
-):
+        mode: Mode = Mode.replica):
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
 
@@ -157,5 +286,6 @@ def distributed_array(
             chunk = array[chunk_key]
         with cupy.cuda.Device(dev):
             cp_chunks[dev] = cupy.array(chunk)
-    return _DistributedArray(array.shape, array.dtype, cp_chunks, device_mapping)
+    return _DistributedArray(
+        array.shape, array.dtype, cp_chunks, device_mapping)
 
