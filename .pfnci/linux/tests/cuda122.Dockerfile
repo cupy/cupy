@@ -1,12 +1,6 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:10.2-devel-ubuntu18.04"
+ARG BASE_IMAGE="nvidia/cuda:12.2.0-devel-ubuntu20.04"
 FROM ${BASE_IMAGE}
-
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get -qqy update && \
-    apt-get -qqy install software-properties-common && \
-    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub && \
-    add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/ /"
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
@@ -20,17 +14,20 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.8.*+cuda10.2' 'libnccl-dev=2.8.*+cuda10.2' 'libcudnn7=7.6.*+cuda10.2' 'libcudnn7-dev=7.6.*+cuda10.2'
+            --allow-downgrades install 'libnccl2=2.18.*+cuda12.2' 'libnccl-dev=2.18.*+cuda12.2' 'libcutensor1=1.7.*' 'libcutensor-dev=1.7.*' 'libcusparselt0=0.2.0.*' 'libcusparselt-dev=0.2.0.*' 'libcudnn8=8.8.*+cuda12.0' 'libcudnn8-dev=8.8.*+cuda12.0'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
+
+COPY setup/update-alternatives-cutensor.sh /
+RUN /update-alternatives-cutensor.sh
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.8.11 && \
-    pyenv global 3.8.11 && \
+RUN pyenv install 3.11.0 && \
+    pyenv global 3.11.0 && \
     pip install -U setuptools pip wheel
 
-RUN pip install -U 'numpy==1.20.*' 'scipy==1.6.*' 'optuna==3.*' 'cython==0.29.*'
+RUN pip install -U 'numpy==1.24.*' 'scipy==1.10.*' 'optuna==3.*' 'cython==0.29.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check

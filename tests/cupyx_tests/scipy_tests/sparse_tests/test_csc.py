@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 import numpy
 import pytest
@@ -12,6 +13,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
+import cupyx.cusparse
 from cupyx.scipy import sparse
 
 
@@ -449,6 +451,10 @@ class TestCscMatrixScipyComparison:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
         if runtime.is_hip:
             if self.make_method in ('_make_empty', '_make_shape'):
                 # xcsr2coo, xcsrgemm2Nnz, csrmm2, nnz_compress, ... could raise
