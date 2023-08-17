@@ -191,14 +191,13 @@ __global__ void tag_pairs(
     }
 
     const long long cur_count = pair_count[idx];
-    const long long cur_off = out_off[idx];
+    const long long prev_off = idx == 0 ? 0 : out_off[idx - 1];
     const long long* cur_pairs = pairs + n * idx;
-    long long* cur_out = out + cur_off * 2;
+    long long* cur_out = out + prev_off * 2;
 
     for(int i = 0; i < cur_count; i++) {
-        cur_out[0] = idx;
-        cur_out[1] = cur_pairs[i];
-        cur_out += 2;
+        cur_out[2 * i] = idx;
+        cur_out[2 * i + 1] = cur_pairs[i];
     }
 }
 '''
@@ -900,7 +899,8 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
         ('query_ball_periodic', tuple()))
     query_ball = _get_module_func(KNN_MODULE, query_ball_fn, *fn_args)
     query_ball((n_blocks,), (block_sz,),
-               (tree_length, n_points, n_dims, r, eps, p, int(return_sorted),
+               (tree_length, n_points, n_dims, float(r), eps, float(p),
+                int(return_sorted),
                 points, tree, index, boxdata, bounds, nodes,
                 total_nodes, debug_nodes))
 
@@ -915,8 +915,9 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
         cum_total = total_nodes.cumsum()
         n_pairs = int(cum_total[-1])
         result = cupy.empty((n_pairs, 2), dtype=cupy.int64)
-
+        # print(debug_nodes[94], nodes[94])
         tag_pairs = KD_MODULE.get_function('tag_pairs')
         tag_pairs((n_blocks,), (block_sz,),
-                  (tree_length, n_points, total_nodes, cum_total, result))
+                  (tree_length, n_points, total_nodes, nodes,
+                   cum_total, result))
         return result[result[:, 0] < result[:, 1]]

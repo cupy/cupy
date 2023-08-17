@@ -231,9 +231,8 @@ class TestPeriodic:
         return dd, ii
 
     @pytest.mark.parametrize('off', [0, 1, -1])
-    @pytest.mark.parametrize('p', [1, 2, 3.0, np.inf])
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_kdtree_ball(self, xp, scp, p, off):
+    def test_kdtree_ball(self, xp, scp, off):
         # check ckdtree periodic boundary
         n = 100
         m = 2
@@ -243,6 +242,25 @@ class TestPeriodic:
         kdtree = scp.spatial.KDTree(data, boxsize=1.0, leafsize=100)
 
         res = kdtree.query_ball_point(data + off, 0.5, return_sorted=True)
+        if xp is not cupy:
+            res = [xp.asarray(r) for r in res]
+        return res
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_kdtree_ball_tree(self, xp, scp):
+        # check ckdtree periodic boundary
+        n = 100
+        m = 2
+
+        data1 = testing.shaped_random(
+            (n, m), xp, xp.float64, scale=1, seed=1234)
+        kdtree = scp.spatial.KDTree(data1, boxsize=1.0, leafsize=100)
+
+        data2 = testing.shaped_random(
+            (n, m), xp, xp.float64, scale=1, seed=1234)
+        kdtree2 = scp.spatial.KDTree(data2, boxsize=1.0, leafsize=100)
+
+        res = kdtree.query_ball_tree(kdtree2, 0.5)
         if xp is not cupy:
             res = [xp.asarray(r) for r in res]
         return res
@@ -274,4 +292,47 @@ class TestBallConsistency:
         res = tree.query_ball_point(x, 0.5, return_sorted=True, eps=eps)
         if xp is not cupy:
             res = [xp.asarray(r) for r in res]
+        return res
+
+
+@testing.with_requires('scipy')
+class TestBallTreeConsistency:
+    @pytest.mark.parametrize('args', [
+        (100, 4, 1, 0),
+        (100, 4, 1, 10)
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', type_check=False)
+    def test_in_ball(self, xp, scp, args):
+        _, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        _, tree2 = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        res = tree.query_ball_tree(tree2, 0.5)
+        if xp is not cupy:
+            res = [xp.asarray(r) for r in res]
+        return res
+
+    @pytest.mark.parametrize('args', [
+        (100, 4, 1, 0),
+        (100, 4, 1, 10)
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', type_check=False)
+    def test_approx(self, xp, scp, args):
+        eps = 0.1
+        _, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        _, tree2 = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        res = tree.query_ball_tree(tree2, 0.5, eps=eps)
+        if xp is not cupy:
+            res = [xp.asarray(r) for r in res]
+        return res
+
+
+@testing.with_requires('scipy')
+class TestPairs:
+    @pytest.mark.parametrize('args', [
+        (100, 4, 1, 0),
+        (100, 4, 1, 10)
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', type_check=False)
+    def test_find_pairs(self, xp, scp, args):
+        _, tree = create_random_kd_tree(xp, scp, *args, scale=1.0)
+        res = tree.query_pairs(0.5, output_type='ndarray')
         return res

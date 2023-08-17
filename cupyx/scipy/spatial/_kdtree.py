@@ -496,7 +496,7 @@ class KDTree:
 
         Parameters
         ----------
-        other : cKDTree instance
+        other : KDTree instance
             The other tree to draw points from, can be the same tree as self.
         r : float or one-dimensional array of floats
             The radius to produce a count for. Multiple radii are searched with
@@ -552,8 +552,8 @@ class KDTree:
             Which Minkowski p-norm to use.
             A finite large p may cause a ValueError if overflow can occur.
         output_type : string, optional
-            Which container to use for output data. Options: 'dok_matrix',
-            'coo_matrix' or 'ndarray'. Default: 'dok_matrix'.
+            Which container to use for output data. Options:
+            'coo_matrix' or 'ndarray'. Default: 'coo_matrix'.
 
         Returns
         -------
@@ -566,7 +566,7 @@ class KDTree:
         --------
         You can compute a sparse distance matrix between two kd-trees:
 
-        >>> import numpy as np
+        >>> import cupy
         >>> from cupyx.scipy.spatial import KDTree
         >>> points1 = cupy.random.rand((5, 2))
         >>> points2 = cupy.random.rand((5, 2))
@@ -590,7 +590,7 @@ class KDTree:
            [0.31994999, 0.72658602, 0.71124834, 0.55396483, 0.90785663],
            [0.24617575, 0.29571802, 0.26836782, 0.57714465, 0.6473269 ]])
         """
-        if output_type in {'dok_matrix', 'dict'}:
+        if output_type not in {'coo_matrix', 'ndarray'}:
             raise ValueError(
                 "sparse_distance_matrix only supports 'coo_matrix' and "
                 "'ndarray' outputs")
