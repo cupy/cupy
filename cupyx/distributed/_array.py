@@ -255,7 +255,11 @@ class _DistributedArray(cupy.ndarray):
             self, src_array: NDArray,
             dst_array: NDArray, dst_idx: tuple[slice, ...]) -> None:
         with cupy.cuda.Device(dst_array.device.id):
-            dst_array[dst_idx] = cupy.array(cupy.asnumpy(src_array))
+            if src_array.device.id == dst_array.device.id:
+                dst_array[dst_idx] = src_array
+            else:
+                # TODO: Try GPUDirect p2p access, NCCL send/recv
+                dst_array[dst_idx] = cupy.array(cupy.asnumpy(src_array))
 
     def _send_intersection(
             self,
@@ -294,6 +298,10 @@ class _DistributedArray(cupy.ndarray):
                 dst_shape = _shape_after_indexing(self.shape, dst_idx)
                 dst_array = cupy.empty(dst_shape)
             for src_dev, src_idx in old_mapping.items():
+                # TODO: In Replica mode, ideally we want to avoid data
+                # forwarding on elements that have already been forwarded from
+                # another chunk. This must take into consideration various ways
+                # chunks can overlap.
                 src_array = self._chunks[src_dev]
                 self._send_intersection(src_array, src_idx, dst_array, dst_idx)
             new_chunks[dst_dev] = dst_array
