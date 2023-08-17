@@ -109,7 +109,7 @@ def upcast(*args):
     if t is not None:
         return t
 
-    upcast = cupy.find_common_type(args, [])
+    upcast = numpy.result_type(*args)
 
     for t in supported_dtypes:
         if cupy.can_cast(upcast, t):
