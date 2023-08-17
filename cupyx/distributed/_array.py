@@ -290,9 +290,9 @@ class _DistributedArray(cupy.ndarray):
         new_chunks = {}
         for dst_dev, dst_idx in new_mapping.items():
             with cupy.cuda.Device(dst_dev):
-                # dst_array = cupy.zeros_like(self[dst_idx])
+                # dst_array = cupy.empty_like(self[dst_idx])
                 dst_shape = _shape_after_indexing(self.shape, dst_idx)
-                dst_array = cupy.zeros(dst_shape)
+                dst_array = cupy.empty(dst_shape)
             for src_dev, src_idx in old_mapping.items():
                 src_array = self._chunks[src_dev]
                 self._send_intersection(src_array, src_idx, dst_array, dst_idx)
@@ -302,7 +302,7 @@ class _DistributedArray(cupy.ndarray):
             self.shape, self.dtype, new_chunks, new_mapping)
 
     def asnumpy(self):
-        np_array = numpy.zeros(self.shape)
+        np_array = numpy.empty(self.shape)
         for dev, chunk_idx in self._device_mapping.items():
             # Multiple writes to a single element can happen
             # This is fine since we only support replica mode now
