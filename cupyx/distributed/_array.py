@@ -1,5 +1,5 @@
 import enum
-from typing import Optional
+from typing import Any, Optional
 
 import cupy
 import numpy
@@ -75,12 +75,55 @@ def _subslice_index(a: slice, sub: slice, length: int) -> slice:
 # Should be removed after implementing indexing
 def _shape_after_indexing(
         outer_shape: tuple[int, ...],
-        key: tuple[slice, ...]) -> tuple[int, ...]:
+        idx: tuple[slice, ...]) -> tuple[int, ...]:
     shape = list(outer_shape)
-    for i in range(len(key)):
-        start, stop, step = key[i].indices(shape[i])
+    for i in range(len(idx)):
+        start, stop, step = idx[i].indices(shape[i])
         shape[i] = (stop - start - 1) // step + 1
     return tuple(shape)
+
+
+def _convert_chunk_idx_to_slice(
+        shape: tuple[int, ...], idx: Any) -> tuple[slice, ...]:
+    """Convert idx to type tuple[slice, ...] with all nonnegative indices and
+    length == ndim. Raise if empty or invalid.
+
+    Negative slice steps are not allowed, because this function is for
+    representing chunks, e.g. the indices in device_mapping."""
+
+    if not isinstance(idx, tuple):
+        idx = idx,
+
+    ndim = len(shape)
+    if len(idx) > ndim:
+        raise IndexError(
+            'too many indices for array:'
+            f' array is {ndim}-dimensional, but {len(idx)} were indexed')
+    idx = idx + (slice(None),) * (ndim - len(idx))
+
+    new_idx = []
+    for i in range(ndim):
+        if isinstance(idx[i], int):
+            if idx[i] >= shape[i]:
+                raise IndexError(
+                    f'Index {idx[i]} is out of bounds'
+                    f' for axis {i} with size {shape[i]}')
+            new_idx.append(slice(idx[i], idx[i] + 1))
+        elif isinstance(idx[i], slice):
+            start, stop, step = idx[i].indices(shape[i])
+            if step == 0:
+                raise ValueError('Slice step must be nonzero')
+            if step < 0:
+                raise ValueError(
+                    'The indices for a chunk cannot have negative slice steps.')
+            if start == stop:
+                raise ValueError(f'The index is empty on axis {i}')
+            new_idx.append(slice(start, stop, step))
+        else:
+            raise ValueError(f'Invalid index on axis {i}')
+
+    return tuple(new_idx)
+
 
 class _MultiDeviceDummyMemory(cupy.cuda.Memory):
     pass
@@ -95,6 +138,10 @@ class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
 
 
 class _DistributedArray(cupy.ndarray):
+    _chunks: dict[int, NDArray]
+    # Values of _device_mapping must have lenth == ndim
+    _device_mapping: dict[int, tuple[slice, ...]]
+
     def __new__(cls, shape, dtype, chunks, device_mapping):
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
@@ -206,53 +253,49 @@ class _DistributedArray(cupy.ndarray):
 
     def _write_view_to_view(
             self, src_array: NDArray,
-            dst_array: NDArray, dst_key: tuple[slice, ...]) -> None:
+            dst_array: NDArray, dst_idx: tuple[slice, ...]) -> None:
         with cupy.cuda.Device(dst_array.device.id):
-            dst_array[dst_key] = cupy.array(cupy.asnumpy(src_array))
+            dst_array[dst_idx] = cupy.array(cupy.asnumpy(src_array))
 
     def _send_intersection(
             self,
-            src_array: NDArray, src_key: tuple[slice, ...],
-            dst_array: NDArray, dst_key: tuple[slice, ...]) -> None:
-        """Write the intersection of chunks src_key and dst_key to the
-        corresponding entries of dst_array. Note dst_array == self[dst_key]."""
+            src_array: NDArray, src_idx: tuple[slice, ...],
+            dst_array: NDArray, dst_idx: tuple[slice, ...]) -> None:
+        """Write the intersection of chunks src_idx and dst_idx to the
+        corresponding entries of dst_array. Note dst_array == self[dst_idx]."""
 
-        # src_array[src_new_key] == dst_array[dst_new_key] == intersection
-        src_new_key = [None] * max(len(dst_key), len(src_key))
-        dst_new_key = [None] * max(len(dst_key), len(src_key))
-        for i in range(len(dst_new_key)):
-            if i >= len(dst_key):
-                src_new_key[i] = slice(None)
-                dst_new_key[i] = src_key[i]
-            elif i >= len(src_key):
-                src_new_key[i] = dst_key[i]
-                dst_new_key[i] = slice(None)
-            else:
-                length = self.shape[i]
-                intersection = _slice_intersection(src_key[i], dst_key[i], length)
-                if intersection is None:
-                    return  # Nothing to send
-                src_new_key[i] = _subslice_index(src_key[i], intersection, length)
-                dst_new_key[i] = _subslice_index(dst_key[i], intersection, length)
+        # src_array[src_new_idx] == dst_array[dst_new_idx] == intersection
+        src_new_idx = [None] * self.ndim
+        dst_new_idx = [None] * self.ndim
+        for i in range(self.ndim):
+            length = self.shape[i]
+            intersection = _slice_intersection(src_idx[i], dst_idx[i], length)
+            if intersection is None:
+                return  # Nothing to send
+            src_new_idx[i] = _subslice_index(src_idx[i], intersection, length)
+            dst_new_idx[i] = _subslice_index(dst_idx[i], intersection, length)
 
-        src_new_key = tuple(src_new_key)
-        dst_new_key = tuple(dst_new_key)
-        self._write_view_to_view(src_array[src_new_key], dst_array, dst_new_key)
+        src_new_idx = tuple(src_new_idx)
+        dst_new_idx = tuple(dst_new_idx)
+        self._write_view_to_view(src_array[src_new_idx], dst_array, dst_new_idx)
 
     def reshard(
-        self, device_mapping: dict[int, tuple[slice, ...]]
+        self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
-        old_mapping, new_mapping = self._device_mapping, device_mapping
+        old_mapping = self._device_mapping
+
+        new_mapping = {dev: _convert_chunk_idx_to_slice(self.shape, idx)
+                       for dev, idx in device_mapping.items()}
 
         new_chunks = {}
-        for dst_dev, dst_key in new_mapping.items():
+        for dst_dev, dst_idx in new_mapping.items():
             with cupy.cuda.Device(dst_dev):
-                # dst_array = cupy.zeros_like(self[dst_key])
-                dst_shape = _shape_after_indexing(self.shape, dst_key)
+                # dst_array = cupy.zeros_like(self[dst_idx])
+                dst_shape = _shape_after_indexing(self.shape, dst_idx)
                 dst_array = cupy.zeros(dst_shape)
-            for src_dev, src_key in old_mapping.items():
+            for src_dev, src_idx in old_mapping.items():
                 src_array = self._chunks[src_dev]
-                self._send_intersection(src_array, src_key, dst_array, dst_key)
+                self._send_intersection(src_array, src_idx, dst_array, dst_idx)
             new_chunks[dst_dev] = dst_array
 
         return _DistributedArray(
@@ -260,10 +303,10 @@ class _DistributedArray(cupy.ndarray):
 
     def asnumpy(self):
         np_array = numpy.zeros(self.shape)
-        for dev, chunk_key in self._device_mapping.items():
+        for dev, chunk_idx in self._device_mapping.items():
             # Multiple writes to a single element can happen
             # This is fine since we only support replica mode now
-            np_array[chunk_key] = cupy.asnumpy(self._chunks[dev])
+            np_array[chunk_idx] = cupy.asnumpy(self._chunks[dev])
         return np_array
 
 
@@ -273,17 +316,20 @@ class Mode(enum.Enum):
 
 def distributed_array(
         array: ArrayLike,
-        device_mapping: dict[int, tuple[slice, ...]],
+        device_mapping: dict[int, Any],
         mode: Mode = Mode.replica):
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
 
+    device_mapping = {dev: _convert_chunk_idx_to_slice(array.shape, idx)
+                      for dev, idx in device_mapping.items()}
+
     cp_chunks = {}
-    for dev, chunk_key in device_mapping.items():
+    for dev, chunk_idx in device_mapping.items():
         if isinstance(array, cupy.ndarray):
-            chunk = cupy.ascontiguousarray(array[chunk_key])
+            chunk = cupy.ascontiguousarray(array[chunk_idx])
         else:
-            chunk = array[chunk_key]
+            chunk = array[chunk_idx]
         with cupy.cuda.Device(dev):
             cp_chunks[dev] = cupy.array(chunk)
     return _DistributedArray(
