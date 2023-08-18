@@ -128,9 +128,10 @@ class TestDistributedArray:
 
         d_a = cupyx.distributed._array._DistributedArray(
             shape, np_a.dtype, cp_chunks, mapping, Mode.SUM)
-        d_a._ensure_replica_mode()
+        d_a = d_a.to_replica_mode()
         testing.assert_array_equal(d_a.asnumpy(), np_a)
         for dev, idx in mapping.items():
+            assert d_a._chunks[dev].device.id == dev
             testing.assert_array_equal(d_a._chunks[dev], np_a[idx])
 
     @pytest.mark.parametrize(

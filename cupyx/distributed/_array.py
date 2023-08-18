@@ -247,8 +247,7 @@ class _DistributedArray(cupy.ndarray):
         regular_arrays = []
         for i, arg in enumerate(args):
             if isinstance(arg, _DistributedArray):
-                arg._ensure_replica_mode()
-                distributed_arrays.append((i, arg))
+                distributed_arrays.append((i, arg.to_replica_mode()))
             elif isinstance(arg, cupy.ndarray):
                 regular_arrays.append((i, arg))
 
@@ -299,7 +298,7 @@ class _DistributedArray(cupy.ndarray):
                 dst_array[dst_idx] = src_array
             else:
                 # TODO: Try GPUDirect p2p access, NCCL send/recv
-                dst_array[dst_idx] = cupy.array(cupy.asnumpy(src_array))
+                dst_array[dst_idx] = src_array.copy()
 
     def _apply_and_update_chunks(
             self, func, identity, shape,
@@ -325,26 +324,30 @@ class _DistributedArray(cupy.ndarray):
     def _all_reduce_intersections(
             self, func, identity, shape, chunks, device_mapping):
         """`identity` cannot be `None` if func(x, x) == x does not hold."""
-        chunks = list(chunks.items())
+        chunks_list = list(chunks.items())
 
         # TODO: Parallelize
-        for i in range(len(chunks)):
-            src_dev, src_chunk = chunks[i]
+        for i in range(len(chunks_list)):
+            src_dev, src_chunk = chunks_list[i]
             src_idx = device_mapping[src_dev]
-            for j in range(i + 1, len(chunks)):
-                dst_dev, dst_chunk = chunks[j]
+
+            for j in range(i + 1, len(chunks_list)):
+                dst_dev, dst_chunk = chunks_list[j]
                 dst_idx = device_mapping[dst_dev]
+
                 self._apply_and_update_chunks(
                     func, identity, shape,
                     src_chunk, src_idx, dst_chunk, dst_idx)
 
         # TODO: Parallelize
-        for j in range(len(chunks) - 1, -1, -1):
-            src_dev, src_chunk = chunks[j]
+        for j in range(len(chunks_list) - 1, -1, -1):
+            src_dev, src_chunk = chunks_list[j]
             src_idx = device_mapping[src_dev]
+
             for i in range(j):
-                dst_dev, dst_chunk = chunks[i]
+                dst_dev, dst_chunk = chunks_list[i]
                 dst_idx = device_mapping[dst_dev]
+
                 self._send_intersection(
                     shape, src_chunk, src_idx, dst_chunk, dst_idx)
 
@@ -392,16 +395,16 @@ class _DistributedArray(cupy.ndarray):
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
         if kernel.name == 'cupy_sum':
-            self._ensure_sum_mode()
+            arr = self.to_sum_mode()
         else:
-            self._ensure_replica_mode()
+            arr = self.to_replica_mode()
 
-        shape = self.shape[:axis] + self.shape[axis+1:]
+        shape = arr.shape[:axis] + arr.shape[axis+1:]
         chunks = {}
         device_mapping = {}
         # TODO: Parallelize this loop
-        for dev, chunk in self._chunks.items():
-            idx = self._device_mapping[dev]
+        for dev, chunk in arr._chunks.items():
+            idx = arr._device_mapping[dev]
             with cupy.cuda.Device(dev):
                 chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
@@ -416,55 +419,73 @@ class _DistributedArray(cupy.ndarray):
             return _DistributedArray(
                 shape, dtype, chunks, device_mapping, Mode.REPLICA)
 
-    def _ensure_sum_mode(self) -> None:
-        if self._mode == Mode.SUM:
-            return
-        chunks = list(self._chunks.items())
-        # TODO: Parallelize
-        for i in range(len(chunks)):
-            a_dev, a_chunk = chunks[i]
-            a_idx = self._device_mapping[a_dev]
-            for j in range(i + 1, len(chunks)):
-                b_dev, _ = chunks[j]
-                b_idx = self._device_mapping[b_dev]
-                self._set_zero_on_intersection(self.shape, a_chunk, a_idx, b_idx)
+    def _copy_chunks(self):
+        chunks = {}
+        for dev, chunk in self._chunks.items():
+            with cupy.cuda.Device(dev):
+                chunks[dev] = chunk.copy()
+        return chunks
 
-    def _ensure_replica_mode(self) -> None:
+    def to_sum_mode(self) -> '_DistributedArray':
+        if self._mode == Mode.SUM:
+            return self
+
+        chunks = self._copy_chunks()
+        chunks_list = list(chunks.items())
+        # TODO: Parallelize
+        for i in range(len(chunks_list)):
+            a_dev, a_chunk = chunks_list[i]
+            a_idx = self._device_mapping[a_dev]
+
+            for j in range(i + 1, len(chunks_list)):
+                b_dev, _ = chunks_list[j]
+                b_idx = self._device_mapping[b_dev]
+
+                self._set_zero_on_intersection(
+                    self.shape, a_chunk, a_idx, b_idx)
+
+        return _DistributedArray(
+            self.shape, self.dtype, chunks, self._device_mapping, Mode.SUM)
+
+    def to_replica_mode(self) -> '_DistributedArray':
         if self._mode == Mode.REPLICA:
-            return
+            return self
+
+        chunks = self._copy_chunks()
         self._all_reduce_intersections(
-            cupy.add, 0, self.shape, self._chunks, self._device_mapping)
-        self._mode = Mode.REPLICA
+            cupy.add, 0, self.shape, chunks, self._device_mapping)
+        return _DistributedArray(
+            self.shape, self.dtype, chunks, self._device_mapping, Mode.REPLICA)
 
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
         # TODO: implement another version that reshards within the SUM mode
-        self._ensure_replica_mode()
+        arr = self.to_replica_mode()
 
-        old_mapping = self._device_mapping
+        old_mapping = arr._device_mapping
 
-        new_mapping = {dev: _convert_chunk_idx_to_slices(self.shape, idx)
+        new_mapping = {dev: _convert_chunk_idx_to_slices(arr.shape, idx)
                        for dev, idx in device_mapping.items()}
 
         new_chunks = {}
         for dst_dev, dst_idx in new_mapping.items():
             with cupy.cuda.Device(dst_dev):
-                # dst_array = cupy.empty_like(self[dst_idx])
-                dst_shape = _shape_after_indexing(self.shape, dst_idx)
+                # dst_array = cupy.empty_like(arr[dst_idx])
+                dst_shape = _shape_after_indexing(arr.shape, dst_idx)
                 dst_array = cupy.empty(dst_shape)
             for src_dev, src_idx in old_mapping.items():
                 # TODO: In Replica mode, ideally we want to avoid data
                 # forwarding on elements that have already been forwarded from
                 # another chunk. This must take into consideration various ways
                 # chunks can overlap.
-                src_array = self._chunks[src_dev]
-                self._send_intersection(
-                    self.shape, src_array, src_idx, dst_array, dst_idx)
+                src_array = arr._chunks[src_dev]
+                arr._send_intersection(
+                    arr.shape, src_array, src_idx, dst_array, dst_idx)
             new_chunks[dst_dev] = dst_array
 
         return _DistributedArray(
-            self.shape, self.dtype, new_chunks, new_mapping, Mode.REPLICA)
+            arr.shape, arr.dtype, new_chunks, new_mapping, Mode.REPLICA)
 
     def asnumpy(self):
         if self._mode == Mode.REPLICA:
