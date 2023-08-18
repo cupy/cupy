@@ -287,19 +287,33 @@ class _DistributedArray(cupy.ndarray):
 
     def _apply_and_update_chunks(
             self, func, shape,
-            a_dev, a_chunk, a_idx, b_dev, b_chunk, b_idx):
+            a_chunk, a_idx, b_chunk, b_idx):
         intersection = _index_intersection(a_idx, b_idx, shape)
         if intersection is None:
             return
         a_new_idx = _index_for_subindex(a_idx, intersection, shape)
         b_new_idx = _index_for_subindex(b_idx, intersection, shape)
-        with cupy.cuda.Device(a_dev):
+
+        with cupy.cuda.Device(a_chunk.device.id):
             b_chunk_copied = cupy.empty_like(b_chunk[b_new_idx])
             self._write_view_to_view(
                 b_chunk[b_new_idx], b_chunk_copied, (slice(None),))
+
             result = func(a_chunk[a_new_idx], b_chunk_copied)
             a_chunk[a_new_idx] = result
+
         self._write_view_to_view(result, b_chunk, b_new_idx)
+
+    def _all_reduce_intersections(self, func, shape, chunks, device_mapping):
+        # TODO: Parallelize
+        for a_dev, a_chunk in chunks.items():
+            a_idx = device_mapping[a_dev]
+            for b_dev, b_chunk in chunks.items():
+                if a_dev >= b_dev:
+                    continue
+                b_idx = device_mapping[b_dev]
+                self._apply_and_update_chunks(
+                    func, shape, a_chunk, a_idx, b_chunk, b_idx)
 
     def _send_intersection(
             self,
@@ -340,18 +354,7 @@ class _DistributedArray(cupy.ndarray):
             func = cupy.maximum
 
         # Apply chunk src to other chunks with greater device ids
-        # TODO: Parallelize
-        for src_dev, src_chunk in chunks.items():
-            src_idx = device_mapping[src_dev]
-            for dst_dev, dst_chunk in chunks.items():
-                if src_dev >= dst_dev:
-                    continue
-                dst_idx = device_mapping[dst_dev]
-                self._apply_and_update_chunks(
-                    func, shape,
-                    src_dev, src_chunk, src_idx,
-                    dst_dev, dst_chunk, dst_idx)
-
+        self._all_reduce_intersections(func, shape, chunks, device_mapping)
         return _DistributedArray(shape, dtype, chunks, device_mapping)
 
     def reshard(
