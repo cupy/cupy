@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.distributed._array
+from cupyx.distributed._array import Mode
 
 
 @pytest.fixture
@@ -52,72 +53,106 @@ class TestDistributedArray:
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_array_creation_from_numpy(self, mem_pool, shape, mapping):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_array_creation_from_numpy(self, mem_pool, shape, mapping, mode):
         array = numpy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == 0
-        da = cupyx.distributed._array.distributed_array(array, mapping)
+        da = cupyx.distributed._array.distributed_array(array, mapping, mode)
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
         assert da.shape == shape
         assert mem_pool.used_bytes() == array.nbytes
         for dev, idx in mapping.items():
-            assert da._chunks[dev].ndim == array.ndim
-            testing.assert_array_equal(da._chunks[dev].squeeze(), array[idx])
             assert da._chunks[dev].device.id == dev
+            assert da._chunks[dev].ndim == array.ndim
+            if mode == Mode.REPLICA:
+                testing.assert_array_equal(da._chunks[dev].squeeze(), array[idx])
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_array_creation_from_cupy(self, mem_pool, shape, mapping):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_array_creation_from_cupy(self, mem_pool, shape, mapping, mode):
         array = cupy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == array.nbytes
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', cupy._util.PerformanceWarning)
-            da = cupyx.distributed._array.distributed_array(array, mapping)
+            da = cupyx.distributed._array.distributed_array(
+                array, mapping, mode)
         assert da.device.id == -1
         # Ensure no memory allocation other than chunks & original array
         assert da.data.ptr == 0
         assert da.shape == shape
         assert mem_pool.used_bytes() == 2 * array.nbytes
         for dev, idx in mapping.items():
-            assert da._chunks[dev].ndim == array.ndim
-            testing.assert_array_equal(da._chunks[dev].squeeze(), array[idx])
             assert da._chunks[dev].device.id == dev
+            assert da._chunks[dev].ndim == array.ndim
+            if mode == Mode.REPLICA:
+                testing.assert_array_equal(da._chunks[dev].squeeze(), array[idx])
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_array_creation(self, mem_pool, shape, mapping):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_array_creation(self, mem_pool, shape, mapping, mode):
         array = numpy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == 0
-        da = cupyx.distributed._array.distributed_array(array.tolist(), mapping)
+        da = cupyx.distributed._array.distributed_array(
+            array.tolist(), mapping, mode)
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
         assert da.shape == shape
         assert mem_pool.used_bytes() == array.nbytes
         for dev, idx in mapping.items():
-            assert da._chunks[dev].ndim == array.ndim
-            testing.assert_array_equal(da._chunks[dev].squeeze(), array[idx])
             assert da._chunks[dev].device.id == dev
+            assert da._chunks[dev].ndim == array.ndim
+            if mode == Mode.REPLICA:
+                testing.assert_array_equal(
+                    da._chunks[dev].squeeze(), array[idx])
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_ufuncs(self, shape, mapping):
+    def test_change_mode(self, shape, mapping):
+        np_a = numpy.zeros(shape)
+        cp_chunks = {}
+        for dev, idx in mapping.items():
+            np_a[idx] += 1 << dev
+            cp_chunks[dev] = cupy.full_like(np_a[idx], 1 << dev)
+            for dev, idx in mapping.items():
+                new_idx = cupyx.distributed._array._convert_chunk_idx_to_slices(
+                    shape, idx)
+                mapping[dev] = new_idx
+
+        d_a = cupyx.distributed._array._DistributedArray(
+            shape, np_a.dtype, cp_chunks, mapping, Mode.SUM)
+        d_a._ensure_replica_mode()
+        testing.assert_array_equal(d_a.asnumpy(), np_a)
+        for dev, idx in mapping.items():
+            testing.assert_array_equal(d_a._chunks[dev], np_a[idx])
+
+    @pytest.mark.parametrize(
+            'shape, mapping',
+            [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
+    @pytest.mark.parametrize('mode_a', [Mode.REPLICA, Mode.SUM])
+    @pytest.mark.parametrize('mode_b', [Mode.REPLICA, Mode.SUM])
+    def test_ufuncs(self, shape, mapping, mode_a, mode_b):
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
-        np_r = numpy.sin(np_a * np_b)
-        d_a = cupyx.distributed._array.distributed_array(np_a, mapping)
-        d_b = cupyx.distributed._array.distributed_array(np_b, mapping)
-        d_r = cupy.sin(d_a * d_b)
+        np_r = numpy.cos(np_a * np_b) # We do not choose sin because sin(0) == 0
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping, mode_a)
+        d_b = cupyx.distributed._array.distributed_array(np_b, mapping, mode_b)
+        d_r = cupy.cos(d_a * d_b)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_elementwise_kernel(self, shape, mapping):
+    @pytest.mark.parametrize('mode_a', [Mode.REPLICA, Mode.SUM])
+    @pytest.mark.parametrize('mode_b', [Mode.REPLICA, Mode.SUM])
+    def test_elementwise_kernel(self, shape, mapping, mode_a, mode_b):
         custom_kernel = cupy.ElementwiseKernel(
             'float32 x, float32 y',
             'float32 z',
@@ -126,8 +161,8 @@ class TestDistributedArray:
         np_a = numpy.arange(64).reshape(shape).astype(numpy.float32)
         np_b = (numpy.arange(64).reshape(shape) * 2.0).astype(numpy.float32)
         np_r = (np_a - np_b) * (np_a - np_b)
-        d_a = cupyx.distributed._array.distributed_array(np_a, mapping)
-        d_b = cupyx.distributed._array.distributed_array(np_b, mapping)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping, mode_a)
+        d_b = cupyx.distributed._array.distributed_array(np_b, mapping, mode_b)
         d_r = custom_kernel(d_a, d_b)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
@@ -135,37 +170,40 @@ class TestDistributedArray:
             'shape, mapping_a, mapping_b',
             [(shape_dim2, mapping_dim2, mapping_dim2_2),
              (shape_dim3, mapping_dim3, mapping_dim3_2)])
-    def test_incompatible_chunk_shapes(self, shape, mapping_a, mapping_b):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_incompatible_chunk_shapes(self, shape, mapping_a, mapping_b, mode):
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
-        d_a = cupyx.distributed._array.distributed_array(np_a, mapping_a)
-        d_b = cupyx.distributed._array.distributed_array(np_b, mapping_b)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping_a, mode)
+        d_b = cupyx.distributed._array.distributed_array(np_b, mapping_b, mode)
         with pytest.raises(RuntimeError, match=r'chunk sizes'):
-            cupy.sin(d_a * d_b)
+            cupy.cos(d_a * d_b)
 
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
             [(shape_dim2, mapping_dim2, mapping_dim2_2),
              (shape_dim3, mapping_dim3, mapping_dim3_2)])
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
     def test_incompatible_chunk_shapes_resharded(
-            self, shape, mapping_a, mapping_b):
+            self, shape, mapping_a, mapping_b, mode):
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
-        np_r = numpy.sin(np_a * np_b)
-        d_a = cupyx.distributed._array.distributed_array(np_a, mapping_a)
-        d_b = cupyx.distributed._array.distributed_array(np_b, mapping_b)
-        d_r = cupy.sin(d_a * d_b.reshard(mapping_a))
+        np_r = numpy.cos(np_a * np_b)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping_a, mode)
+        d_b = cupyx.distributed._array.distributed_array(np_b, mapping_b, mode)
+        d_r = cupy.cos(d_a * d_b.reshard(mapping_a))
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_incompatible_operand(self, shape, mapping):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_incompatible_operand(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
         cp_b = cupy.arange(64).reshape(shape)
-        d_a = cupyx.distributed._array.distributed_array(np_a, mapping)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping, mode)
         with pytest.raises(RuntimeError, match=r'Mix `cupy.ndarray'):
-            cupy.sin(d_a * cp_b)
+            cupy.cos(d_a * cp_b)
 
     def test_extgcd(self):
         iteration = 300
@@ -214,32 +252,33 @@ class TestDistributedArray:
             'shape, mapping_a, mapping_b',
             [(shape_dim2, mapping_dim2, mapping_dim2_2),
              (shape_dim3, mapping_dim3, mapping_dim3_2)])
-    def test_reshard(self, mem_pool, shape, mapping_a, mapping_b):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_reshard(self, mem_pool, shape, mapping_a, mapping_b, mode):
         array = numpy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == 0
-        da = cupyx.distributed._array.distributed_array(array, mapping_a)
+        da = cupyx.distributed._array.distributed_array(array, mapping_a, mode)
         assert mem_pool.used_bytes() == array.nbytes
         db = da.reshard(mapping_b)
         assert mem_pool.used_bytes() == 2 * array.nbytes
         testing.assert_array_equal(da.asnumpy(), db.asnumpy())
         for dev, idx in mapping_b.items():
-            assert db._chunks[dev].ndim == array.ndim
-            testing.assert_array_equal(db._chunks[dev].squeeze(), array[idx])
             assert db._chunks[dev].device.id == dev
+            assert db._chunks[dev].ndim == array.ndim
+            if mode == Mode.REPLICA:
+                testing.assert_array_equal(db._chunks[dev].squeeze(), array[idx])
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
-    def test_reduction(self, shape, mapping):
+    @pytest.mark.parametrize('mode', [Mode.REPLICA, Mode.SUM])
+    def test_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
         np_b = np_a.max(axis=0)
-        d_a = cupyx.distributed._array.distributed_array(np_a, mapping)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping, mode)
         d_b = d_a.max(axis=0)
         testing.assert_array_equal(d_b.asnumpy(), np_b)
 
-    @pytest.mark.parametrize(
-            'shape, mapping',
-            [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
+    @pytest.mark.parametrize('shape, mapping', [(shape_dim2, mapping_dim2)])
     def test_unsupported_reduction(self, shape, mapping):
         np_a = numpy.arange(64).reshape(shape)
         np_b = np_a.max(axis=0)

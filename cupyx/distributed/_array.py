@@ -107,7 +107,7 @@ def _shape_after_indexing(
     return tuple(shape)
 
 
-def _convert_chunk_idx_to_slice(
+def _convert_chunk_idx_to_slices(
         shape: tuple[int, ...], idx: Any) -> tuple[slice, ...]:
     """Convert idx to type tuple[slice, ...] with all nonnegative indices and
     length == ndim. Raise if empty or invalid.
@@ -161,17 +161,24 @@ class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
         return cupy.cuda.device.Device(-1)
 
 
+class Mode(enum.Enum):
+    REPLICA = 1
+    SUM = 2
+
+
 class _DistributedArray(cupy.ndarray):
     _chunks: dict[int, NDArray]
     # Values of _device_mapping must have lenth == ndim
     _device_mapping: dict[int, tuple[slice, ...]]
+    _mode: Mode
 
-    def __new__(cls, shape, dtype, chunks, device_mapping):
+    def __new__(cls, shape, dtype, chunks, device_mapping, mode):
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
         obj._chunks = chunks
         obj._device_mapping = device_mapping
+        obj._mode = mode
         obj._mem = mem
         return obj
 
@@ -232,6 +239,7 @@ class _DistributedArray(cupy.ndarray):
         regular_arrays = []
         for i, arg in enumerate(args):
             if isinstance(arg, _DistributedArray):
+                arg._ensure_replica_mode()
                 distributed_arrays.append((i, arg))
             elif isinstance(arg, cupy.ndarray):
                 regular_arrays.append((i, arg))
@@ -267,7 +275,7 @@ class _DistributedArray(cupy.ndarray):
 
         # Elementwise operations preserve device_mapping
         return _DistributedArray(
-            self.shape, dtype, dev_outs, self._device_mapping)
+            self.shape, dtype, dev_outs, self._device_mapping, Mode.REPLICA)
 
     def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
@@ -286,48 +294,65 @@ class _DistributedArray(cupy.ndarray):
                 dst_array[dst_idx] = cupy.array(cupy.asnumpy(src_array))
 
     def _apply_and_update_chunks(
-            self, func, shape,
-            a_chunk, a_idx, b_chunk, b_idx):
-        intersection = _index_intersection(a_idx, b_idx, shape)
+            self, func, identity, shape,
+            src_chunk, src_idx, dst_chunk, dst_idx):
+        intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
-        a_new_idx = _index_for_subindex(a_idx, intersection, shape)
-        b_new_idx = _index_for_subindex(b_idx, intersection, shape)
+        src_new_idx = _index_for_subindex(src_idx, intersection, shape)
+        dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
-        with cupy.cuda.Device(a_chunk.device.id):
-            b_chunk_copied = cupy.empty_like(b_chunk[b_new_idx])
+        with cupy.cuda.Device(dst_chunk.device.id):
+            src_chunk_copied = cupy.empty_like(src_chunk[src_new_idx])
             self._write_view_to_view(
-                b_chunk[b_new_idx], b_chunk_copied, (slice(None),))
+                src_chunk[src_new_idx], src_chunk_copied, (slice(None),))
 
-            result = func(a_chunk[a_new_idx], b_chunk_copied)
-            a_chunk[a_new_idx] = result
+            dst_chunk[dst_new_idx] = func(
+                src_chunk_copied, dst_chunk[dst_new_idx])
 
-        self._write_view_to_view(result, b_chunk, b_new_idx)
+        if identity is not None:
+            with cupy.cuda.Device(src_chunk.device.id):
+                src_chunk[src_new_idx] = identity
 
-    def _all_reduce_intersections(self, func, shape, chunks, device_mapping):
+    def _all_reduce_intersections(
+            self, func, identity, shape, chunks, device_mapping):
+        """`identity` cannot be `None` if func(x, x) == x does not hold."""
+        chunks = list(chunks.items())
+
         # TODO: Parallelize
-        for a_dev, a_chunk in chunks.items():
-            a_idx = device_mapping[a_dev]
-            for b_dev, b_chunk in chunks.items():
-                if a_dev >= b_dev:
-                    continue
-                b_idx = device_mapping[b_dev]
+        for i in range(len(chunks)):
+            src_dev, src_chunk = chunks[i]
+            src_idx = device_mapping[src_dev]
+            for j in range(i + 1, len(chunks)):
+                dst_dev, dst_chunk = chunks[j]
+                dst_idx = device_mapping[dst_dev]
                 self._apply_and_update_chunks(
-                    func, shape, a_chunk, a_idx, b_chunk, b_idx)
+                    func, identity, shape,
+                    src_chunk, src_idx, dst_chunk, dst_idx)
+
+        # TODO: Parallelize
+        for j in range(len(chunks) - 1, -1, -1):
+            src_dev, src_chunk = chunks[j]
+            src_idx = device_mapping[src_dev]
+            for i in range(j):
+                dst_dev, dst_chunk = chunks[i]
+                dst_idx = device_mapping[dst_dev]
+                self._send_intersection(
+                    shape, src_chunk, src_idx, dst_chunk, dst_idx)
 
     def _send_intersection(
-            self,
+            self, shape: tuple[slice, ...],
             src_array: NDArray, src_idx: tuple[slice, ...],
             dst_array: NDArray, dst_idx: tuple[slice, ...]) -> None:
         """Write the intersection of chunks src_idx and dst_idx to the
         corresponding entries of dst_array. Note dst_array == self[dst_idx]."""
 
         # intersection == src_array[src_new_idx] == dst_array[dst_new_idx]
-        intersection = _index_intersection(src_idx, dst_idx, self.shape)
+        intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
-        src_new_idx = _index_for_subindex(src_idx, intersection, self.shape)
-        dst_new_idx = _index_for_subindex(dst_idx, intersection, self.shape)
+        src_new_idx = _index_for_subindex(src_idx, intersection, shape)
+        dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
         self._write_view_to_view(src_array[src_new_idx], dst_array, dst_new_idx)
 
     def __cupy_override_reduction_kernel__(
@@ -339,6 +364,8 @@ class _DistributedArray(cupy.ndarray):
             raise RuntimeError('`keepdims` is not supported')
         if kernel.name != 'cupy_max':
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
+
+        self._ensure_replica_mode()
 
         shape = self.shape[:axis] + self.shape[axis+1:]
         chunks = {}
@@ -352,17 +379,29 @@ class _DistributedArray(cupy.ndarray):
 
         if kernel.name == 'cupy_max':
             func = cupy.maximum
+            identity = None
 
         # Apply chunk src to other chunks with greater device ids
-        self._all_reduce_intersections(func, shape, chunks, device_mapping)
-        return _DistributedArray(shape, dtype, chunks, device_mapping)
+        self._all_reduce_intersections(
+            func, identity, shape, chunks, device_mapping)
+        return _DistributedArray(
+            shape, dtype, chunks, device_mapping, Mode.REPLICA)
+
+    def _ensure_replica_mode(self) -> None:
+        if self._mode == Mode.REPLICA:
+            return
+        self._all_reduce_intersections(
+            cupy.add, 0, self.shape, self._chunks, self._device_mapping)
+        self._mode = Mode.REPLICA
 
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
+        self._ensure_replica_mode()
+
         old_mapping = self._device_mapping
 
-        new_mapping = {dev: _convert_chunk_idx_to_slice(self.shape, idx)
+        new_mapping = {dev: _convert_chunk_idx_to_slices(self.shape, idx)
                        for dev, idx in device_mapping.items()}
 
         new_chunks = {}
@@ -377,33 +416,38 @@ class _DistributedArray(cupy.ndarray):
                 # another chunk. This must take into consideration various ways
                 # chunks can overlap.
                 src_array = self._chunks[src_dev]
-                self._send_intersection(src_array, src_idx, dst_array, dst_idx)
+                self._send_intersection(
+                    self.shape, src_array, src_idx, dst_array, dst_idx)
             new_chunks[dst_dev] = dst_array
 
         return _DistributedArray(
-            self.shape, self.dtype, new_chunks, new_mapping)
+            self.shape, self.dtype, new_chunks, new_mapping, Mode.REPLICA)
 
     def asnumpy(self):
-        np_array = numpy.empty(self.shape)
+        if self._mode == Mode.REPLICA:
+            np_array = numpy.empty(self.shape)
+        else:
+            np_array = numpy.zeros(self.shape)
+
         for dev, chunk_idx in self._device_mapping.items():
-            # Multiple writes to a single element can happen
-            # This is fine since we only support replica mode now
-            np_array[chunk_idx] = cupy.asnumpy(self._chunks[dev])
+            if self._mode == Mode.REPLICA:
+                np_array[chunk_idx] = cupy.asnumpy(self._chunks[dev])
+            else:
+                np_array[chunk_idx] += cupy.asnumpy(self._chunks[dev])
+
         return np_array
-
-
-class Mode(enum.Enum):
-    replica = 1
 
 
 def distributed_array(
         array: ArrayLike,
         device_mapping: dict[int, Any],
-        mode: Mode = Mode.replica):
+        mode: Mode = Mode.REPLICA):
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
+    elif mode == Mode.SUM:
+        array = array.copy()
 
-    device_mapping = {dev: _convert_chunk_idx_to_slice(array.shape, idx)
+    device_mapping = {dev: _convert_chunk_idx_to_slices(array.shape, idx)
                       for dev, idx in device_mapping.items()}
 
     cp_chunks = {}
@@ -414,6 +458,8 @@ def distributed_array(
             chunk = array[chunk_idx]
         with cupy.cuda.Device(dev):
             cp_chunks[dev] = cupy.array(chunk)
+        if mode == Mode.SUM:
+            array[chunk_idx] = 0
     return _DistributedArray(
-        array.shape, array.dtype, cp_chunks, device_mapping)
+        array.shape, array.dtype, cp_chunks, device_mapping, mode)
 
