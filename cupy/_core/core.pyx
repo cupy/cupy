@@ -1745,7 +1745,7 @@ cdef class _ndarray_base:
     # String representations:
 
     def __repr__(self):
-        return repr(self.get())
+        return f"{repr(self.get())} on {self.device}"
 
     def __str__(self):
         return str(self.get())
