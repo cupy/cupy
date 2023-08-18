@@ -188,6 +188,14 @@ class _DistributedArray(cupy.ndarray):
         self._chunks = getattr(obj, 'chunks', None)
         self._mem = getattr(obj, 'mem', None)
 
+    @property
+    def mode(self):
+        return self._mode
+
+    @property
+    def device_mapping(self):
+        return self._device_mapping
+
     def _get_execution_devices(self, dist_args):
         devices = set()
         for _, arg in dist_args:
@@ -342,18 +350,29 @@ class _DistributedArray(cupy.ndarray):
 
     def _send_intersection(
             self, shape: tuple[slice, ...],
-            src_array: NDArray, src_idx: tuple[slice, ...],
-            dst_array: NDArray, dst_idx: tuple[slice, ...]) -> None:
+            src_chunk: NDArray, src_idx: tuple[slice, ...],
+            dst_chunk: NDArray, dst_idx: tuple[slice, ...]) -> None:
         """Write the intersection of chunks src_idx and dst_idx to the
-        corresponding entries of dst_array. Note dst_array == self[dst_idx]."""
+        corresponding entries of dst_chunk. Note dst_chunk == self[dst_idx]."""
 
-        # intersection == src_array[src_new_idx] == dst_array[dst_new_idx]
+        # intersection == src_chunk[src_new_idx] == dst_chunk[dst_new_idx]
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
         src_new_idx = _index_for_subindex(src_idx, intersection, shape)
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
-        self._write_view_to_view(src_array[src_new_idx], dst_array, dst_new_idx)
+        self._write_view_to_view(src_chunk[src_new_idx], dst_chunk, dst_new_idx)
+
+    def _set_zero_on_intersection(
+            self, shape: tuple[slice, ...],
+            a_chunk: NDArray, a_idx: tuple[slice, ...],
+            b_idx: tuple[slice, ...]) -> None:
+        intersection = _index_intersection(a_idx, b_idx, shape)
+        if intersection is None:
+            return
+        a_new_idx = _index_for_subindex(a_idx, intersection, shape)
+        with cupy.cuda.Device(a_chunk.device.id):
+            a_chunk[a_new_idx] = 0
 
     def __cupy_override_reduction_kernel__(
             self, kernel, axis, dtype, out, keepdims):
@@ -362,10 +381,20 @@ class _DistributedArray(cupy.ndarray):
             raise RuntimeError('Argument `out` is not supported')
         if keepdims:
             raise RuntimeError('`keepdims` is not supported')
-        if kernel.name != 'cupy_max':
+
+        if kernel.name == 'cupy_max':
+            func = cupy.maximum
+            identity = None
+        elif kernel.name == 'cupy_sum':
+            func = cupy.add
+            identity = 0
+        else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
-        self._ensure_replica_mode()
+        if kernel.name == 'cupy_sum':
+            self._ensure_sum_mode()
+        else:
+            self._ensure_replica_mode()
 
         shape = self.shape[:axis] + self.shape[axis+1:]
         chunks = {}
@@ -377,15 +406,28 @@ class _DistributedArray(cupy.ndarray):
                 chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
 
-        if kernel.name == 'cupy_max':
-            func = cupy.maximum
-            identity = None
+        if kernel.name == 'cupy_sum':
+            return _DistributedArray(
+                shape, dtype, chunks, device_mapping, Mode.SUM)
+        else:
+            # Apply chunk src to other chunks with greater device ids
+            self._all_reduce_intersections(
+                func, identity, shape, chunks, device_mapping)
+            return _DistributedArray(
+                shape, dtype, chunks, device_mapping, Mode.REPLICA)
 
-        # Apply chunk src to other chunks with greater device ids
-        self._all_reduce_intersections(
-            func, identity, shape, chunks, device_mapping)
-        return _DistributedArray(
-            shape, dtype, chunks, device_mapping, Mode.REPLICA)
+    def _ensure_sum_mode(self) -> None:
+        if self._mode == Mode.SUM:
+            return
+        chunks = list(self._chunks.items())
+        # TODO: Parallelize
+        for i in range(len(chunks)):
+            a_dev, a_chunk = chunks[i]
+            a_idx = self._device_mapping[a_dev]
+            for j in range(i + 1, len(chunks)):
+                b_dev, _ = chunks[j]
+                b_idx = self._device_mapping[b_dev]
+                self._set_zero_on_intersection(self.shape, a_chunk, a_idx, b_idx)
 
     def _ensure_replica_mode(self) -> None:
         if self._mode == Mode.REPLICA:
@@ -397,6 +439,7 @@ class _DistributedArray(cupy.ndarray):
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
+        # TODO: implement another version that reshards within the SUM mode
         self._ensure_replica_mode()
 
         old_mapping = self._device_mapping
