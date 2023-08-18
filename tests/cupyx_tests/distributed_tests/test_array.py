@@ -25,22 +25,22 @@ def mem_pool():
 class TestDistributedArray:
     shape_dim2 = (8, 8)
     mapping_dim2 = {
-        0: (slice(4), slice(4)),
-        1: (slice(4), slice(4, None)),
-        2: (slice(4, None), slice(None, None, 2)),
-        3: (slice(4, None), slice(1, None, 2))}
+        0: (slice(5), slice(5)),
+        1: (slice(5), slice(3, None)),
+        2: (slice(3, None), slice(None, None, 2)),
+        3: (slice(3, None), slice(1, None, 2))}
     mapping_dim2_2 = {
         0: (slice(None, None, 2), slice(None, None, 2)),
-        1: (slice(None, None, 2), slice(1, None, 4)),
-        2: (slice(None, None, 2), slice(3, None, 4)),
+        1: (slice(None, None, 2), slice(1, 5, 2)),
+        2: (slice(None, None, 2), slice(3, None, 2)),
         3: slice(1, None, 2)}
 
     shape_dim3 = (4, 4, 4)
     mapping_dim3 = {
         0: slice(2),
         1: (slice(2, None), slice(None, 3)),
-        2: (slice(2, None), 3, slice(None, 3)),
-        3: (slice(2, None), 3, 3)
+        2: (slice(2, None), 3),
+        3: (slice(2, None), slice(None), 3)
     }
     mapping_dim3_2 = {
         0: (slice(1, None, 2), 3),
@@ -206,7 +206,8 @@ class TestDistributedArray:
                 assert not (indices(a) & indices(b))
             else:
                 assert indices(c) == indices(a) & indices(b)
-                p = cupyx.distributed._array._subslice_index(a, c, max_value)
+                p = cupyx.distributed._array._index_for_subslice(
+                        a, c, max_value)
                 assert indices(c) == indices(a, p)
 
     @pytest.mark.parametrize(
@@ -225,3 +226,23 @@ class TestDistributedArray:
             assert db._chunks[dev].ndim == array.ndim
             testing.assert_array_equal(db._chunks[dev].squeeze(), array[idx])
             assert db._chunks[dev].device.id == dev
+
+    @pytest.mark.parametrize(
+            'shape, mapping',
+            [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
+    def test_reduction(self, shape, mapping):
+        np_a = numpy.arange(64).reshape(shape)
+        np_b = np_a.max(axis=0)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping)
+        d_b = d_a.max(axis=0)
+        testing.assert_array_equal(d_b.asnumpy(), np_b)
+
+    @pytest.mark.parametrize(
+            'shape, mapping',
+            [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
+    def test_unsupported_reduction(self, shape, mapping):
+        np_a = numpy.arange(64).reshape(shape)
+        np_b = np_a.max(axis=0)
+        d_a = cupyx.distributed._array.distributed_array(np_a, mapping)
+        with pytest.raises(RuntimeError, match=r'Unsupported .* cupy_sum'):
+            d_a.sum(axis=0)

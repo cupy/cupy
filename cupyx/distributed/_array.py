@@ -57,7 +57,7 @@ def _slice_intersection(a: slice, b: slice, length: int) -> Optional[slice]:
         return None
 
 
-def _subslice_index(a: slice, sub: slice, length: int) -> slice:
+def _index_for_subslice(a: slice, sub: slice, length: int) -> slice:
     """Return slice c such that array[a][c] == array[sub].
     sub should be contained in a."""
     a_start, a_stop, a_step = a.indices(length)
@@ -69,6 +69,30 @@ def _subslice_index(a: slice, sub: slice, length: int) -> slice:
     c_step = sub_step // a_step
 
     return slice(c_start, c_stop, c_step)
+
+
+def _index_intersection(
+        a_idx: tuple[slice, ...], b_idx: tuple[slice, ...],
+        shape: tuple[int, ...]) -> Optional[tuple[slice, ...]]:
+    """Return None if empty."""
+    ndim = len(shape)
+    assert len(a_idx) == len(b_idx) == ndim
+    result = tuple(_slice_intersection(a, b, length)
+                   for a, b, length in zip(a_idx, b_idx, shape))
+    if None in result:
+        return None
+    else:
+        return result
+
+
+def _index_for_subindex(
+        a_idx: tuple[slice, ...], sub_idx: tuple[slice, ...],
+        shape: tuple[int, ...]) -> tuple[slice, ...]:
+    ndim = len(shape)
+    assert len(a_idx) == len(sub_idx) == ndim
+
+    return tuple(_index_for_subslice(a, sub, length)
+                   for a, sub, length in zip(a_idx, sub_idx, shape))
 
 
 # Temporary helper function.
@@ -261,6 +285,22 @@ class _DistributedArray(cupy.ndarray):
                 # TODO: Try GPUDirect p2p access, NCCL send/recv
                 dst_array[dst_idx] = cupy.array(cupy.asnumpy(src_array))
 
+    def _apply_and_update_chunks(
+            self, func, shape,
+            a_dev, a_chunk, a_idx, b_dev, b_chunk, b_idx):
+        intersection = _index_intersection(a_idx, b_idx, shape)
+        if intersection is None:
+            return
+        a_new_idx = _index_for_subindex(a_idx, intersection, shape)
+        b_new_idx = _index_for_subindex(b_idx, intersection, shape)
+        with cupy.cuda.Device(a_dev):
+            b_chunk_copied = cupy.empty_like(b_chunk[b_new_idx])
+            self._write_view_to_view(
+                b_chunk[b_new_idx], b_chunk_copied, (slice(None),))
+            result = func(a_chunk[a_new_idx], b_chunk_copied)
+            a_chunk[a_new_idx] = result
+        self._write_view_to_view(result, b_chunk, b_new_idx)
+
     def _send_intersection(
             self,
             src_array: NDArray, src_idx: tuple[slice, ...],
@@ -268,20 +308,51 @@ class _DistributedArray(cupy.ndarray):
         """Write the intersection of chunks src_idx and dst_idx to the
         corresponding entries of dst_array. Note dst_array == self[dst_idx]."""
 
-        # src_array[src_new_idx] == dst_array[dst_new_idx] == intersection
-        src_new_idx = [None] * self.ndim
-        dst_new_idx = [None] * self.ndim
-        for i in range(self.ndim):
-            length = self.shape[i]
-            intersection = _slice_intersection(src_idx[i], dst_idx[i], length)
-            if intersection is None:
-                return  # Nothing to send
-            src_new_idx[i] = _subslice_index(src_idx[i], intersection, length)
-            dst_new_idx[i] = _subslice_index(dst_idx[i], intersection, length)
-
-        src_new_idx = tuple(src_new_idx)
-        dst_new_idx = tuple(dst_new_idx)
+        # intersection == src_array[src_new_idx] == dst_array[dst_new_idx]
+        intersection = _index_intersection(src_idx, dst_idx, self.shape)
+        if intersection is None:
+            return
+        src_new_idx = _index_for_subindex(src_idx, intersection, self.shape)
+        dst_new_idx = _index_for_subindex(dst_idx, intersection, self.shape)
         self._write_view_to_view(src_array[src_new_idx], dst_array, dst_new_idx)
+
+    def __cupy_override_reduction_kernel__(
+            self, kernel, axis, dtype, out, keepdims):
+        # Assumption: kernel(x, y) == kernel(y, x) && kernel(x, x) == x e.g. max
+        if out is not None:
+            raise RuntimeError('Argument `out` is not supported')
+        if keepdims:
+            raise RuntimeError('`keepdims` is not supported')
+        if kernel.name != 'cupy_max':
+            raise RuntimeError(f'Unsupported kernel: {kernel.name}')
+
+        shape = self.shape[:axis] + self.shape[axis+1:]
+        chunks = {}
+        device_mapping = {}
+        # TODO: Parallelize this loop
+        for dev, chunk in self._chunks.items():
+            idx = self._device_mapping[dev]
+            with cupy.cuda.Device(dev):
+                chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
+            device_mapping[dev] = idx[:axis] + idx[axis+1:]
+
+        if kernel.name == 'cupy_max':
+            func = cupy.maximum
+
+        # Apply chunk src to other chunks with greater device ids
+        # TODO: Parallelize
+        for src_dev, src_chunk in chunks.items():
+            src_idx = device_mapping[src_dev]
+            for dst_dev, dst_chunk in chunks.items():
+                if src_dev >= dst_dev:
+                    continue
+                dst_idx = device_mapping[dst_dev]
+                self._apply_and_update_chunks(
+                    func, shape,
+                    src_dev, src_chunk, src_idx,
+                    dst_dev, dst_chunk, dst_idx)
+
+        return _DistributedArray(shape, dtype, chunks, device_mapping)
 
     def reshard(
         self, device_mapping: dict[int, Any]
