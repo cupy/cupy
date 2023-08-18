@@ -340,7 +340,7 @@ class _DistributedArray(cupy.ndarray):
                     src_chunk, src_idx, dst_chunk, dst_idx)
 
         # TODO: Parallelize
-        for j in range(len(chunks_list) - 1, -1, -1):
+        for j in range(len(chunks_list)):
             src_dev, src_chunk = chunks_list[j]
             src_idx = device_mapping[src_dev]
 
@@ -366,8 +366,8 @@ class _DistributedArray(cupy.ndarray):
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
         self._write_view_to_view(src_chunk[src_new_idx], dst_chunk, dst_new_idx)
 
-    def _set_zero_on_intersection(
-            self, shape: tuple[slice, ...],
+    def _set_identity_on_intersection(
+            self, shape: tuple[slice, ...], identity,
             a_chunk: NDArray, a_idx: tuple[slice, ...],
             b_idx: tuple[slice, ...]) -> None:
         intersection = _index_intersection(a_idx, b_idx, shape)
@@ -375,7 +375,7 @@ class _DistributedArray(cupy.ndarray):
             return
         a_new_idx = _index_for_subindex(a_idx, intersection, shape)
         with cupy.cuda.Device(a_chunk.device.id):
-            a_chunk[a_new_idx] = 0
+            a_chunk[a_new_idx] = identity
 
     def __cupy_override_reduction_kernel__(
             self, kernel, axis, dtype, out, keepdims):
@@ -388,36 +388,41 @@ class _DistributedArray(cupy.ndarray):
         if kernel.name == 'cupy_max':
             func = cupy.maximum
             identity = None
+            chunks = self.to_replica_mode()._chunks
+        elif kernel.name == 'cupy_min':
+            func = cupy.minimum
+            identity = None
+            chunks = self.to_replica_mode()._chunks
         elif kernel.name == 'cupy_sum':
             func = cupy.add
             identity = 0
+            chunks = self._any_op_mode_chunks(identity)
+        elif kernel.name == 'cupy_prod':
+            func = cupy.multiply
+            identity = 1
+            chunks = self._any_op_mode_chunks(identity)
         else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
-        if kernel.name == 'cupy_sum':
-            arr = self.to_sum_mode()
-        else:
-            arr = self.to_replica_mode()
-
-        shape = arr.shape[:axis] + arr.shape[axis+1:]
-        chunks = {}
+        shape = self.shape[:axis] + self.shape[axis+1:]
+        new_chunks = {}
         device_mapping = {}
         # TODO: Parallelize this loop
-        for dev, chunk in arr._chunks.items():
-            idx = arr._device_mapping[dev]
+        for dev, chunk in chunks.items():
+            idx = self._device_mapping[dev]
             with cupy.cuda.Device(dev):
-                chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
+                new_chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
 
         if kernel.name == 'cupy_sum':
             return _DistributedArray(
-                shape, dtype, chunks, device_mapping, Mode.SUM)
+                shape, dtype, new_chunks, device_mapping, Mode.SUM)
         else:
             # Apply chunk src to other chunks with greater device ids
             self._all_reduce_intersections(
-                func, identity, shape, chunks, device_mapping)
+                func, identity, shape, new_chunks, device_mapping)
             return _DistributedArray(
-                shape, dtype, chunks, device_mapping, Mode.REPLICA)
+                shape, dtype, new_chunks, device_mapping, Mode.REPLICA)
 
     def _copy_chunks(self):
         chunks = {}
@@ -426,11 +431,9 @@ class _DistributedArray(cupy.ndarray):
                 chunks[dev] = chunk.copy()
         return chunks
 
-    def to_sum_mode(self) -> '_DistributedArray':
-        if self._mode == Mode.SUM:
-            return self
+    def _any_op_mode_chunks(self, identity) -> dict[int, NDArray]:
+        chunks = self.to_replica_mode()._copy_chunks()
 
-        chunks = self._copy_chunks()
         chunks_list = list(chunks.items())
         # TODO: Parallelize
         for i in range(len(chunks_list)):
@@ -441,9 +444,16 @@ class _DistributedArray(cupy.ndarray):
                 b_dev, _ = chunks_list[j]
                 b_idx = self._device_mapping[b_dev]
 
-                self._set_zero_on_intersection(
-                    self.shape, a_chunk, a_idx, b_idx)
+                self._set_identity_on_intersection(
+                    self.shape, identity, a_chunk, a_idx, b_idx)
 
+        return chunks
+
+    def to_sum_mode(self) -> '_DistributedArray':
+        if self._mode == Mode.SUM:
+            return self
+
+        chunks = self._undo_replication(0)
         return _DistributedArray(
             self.shape, self.dtype, chunks, self._device_mapping, Mode.SUM)
 
