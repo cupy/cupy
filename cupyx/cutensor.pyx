@@ -122,6 +122,14 @@ cdef class Mode:
     def __repr__(self):
         return 'mode(' + ', '.join([str(x) for x in self._array]) + ')'
 
+    def __eq__(self, other):
+        if not isinstance(other, Mode):
+            return False
+        return (self._array == other._array).all()
+
+    def __hash__(self):
+        return hash(bytes(self._array))
+
 
 cdef class _Scalar:
 
@@ -423,9 +431,9 @@ cdef inline ContractionDescriptor _create_contraction_descriptor(
     cdef ContractionDescriptor desc
 
     key = (handle.ptr, cutensor_compute_type,
-           desc_A.ptr, mode_A.data, alignment_req_A,
-           desc_B.ptr, mode_B.data, alignment_req_B,
-           desc_C.ptr, mode_C.data, alignment_req_C)
+           desc_A.ptr, mode_A, alignment_req_A,
+           desc_B.ptr, mode_B, alignment_req_B,
+           desc_C.ptr, mode_C, alignment_req_C)
     if key in _contraction_descriptors:
         desc = _contraction_descriptors[key]
         return desc
