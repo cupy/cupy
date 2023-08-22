@@ -468,6 +468,12 @@ class TestFreqz_zpk:
         return w, h
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_vs_freqz(self, xp, scp):
+        z, p, k = scp.signal.cheby1(4, 5, 0.5, analog=False, output='zpk')
+        w, h = scp.signal.freqz_zpk(z, p, k)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_vs_freqz_zpk(self, xp, scp):
         z, p, k = scp.signal.cheby1(4, 5, 0.5, analog=False, output='zpk')
         w2, h2 = scp.signal.freqz_zpk(z, p, k)
@@ -560,6 +566,73 @@ class TestSOSFreqz:
                                btype='bandpass', output='sos')
         w2, h2 = scp.signal.sosfreqz(sos, worN=N)
         return w2, h2
+
+    # Compare sosfreqz output against expected values for different
+    # filter types
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design_cheb2(self, xp, scp):
+        N, Wn = scp.signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 60)
+        sos = scp.signal.cheby2(N, 60, Wn, 'stop', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design_cheb2_2(self, xp, scp):
+        N, Wn = scp.signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 150)
+        sos = scp.signal.cheby2(N, 150, Wn, 'stop', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design_cheb1(self, xp, scp):
+        N, Wn = scp.signal.cheb1ord(0.2, 0.3, 3, 40)
+        sos = scp.signal.cheby1(N, 3, Wn, 'low', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design_cheb1_2(self, xp, scp):
+        N, Wn = scp.signal.cheb1ord(0.2, 0.3, 1, 150)
+        sos = scp.signal.cheby1(N, 1, Wn, 'low', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design_butter(self, xp, scp):
+        # adapted from buttord
+        N, Wn = scp.signal.buttord([0.2, 0.5], [0.14, 0.6], 3, 40)
+        sos = scp.signal.butter(N, Wn, 'band', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfrez_design_butter_2(self, xp, scp):
+        N, Wn = scp.signal.buttord([0.2, 0.5], [0.14, 0.6], 3, 100)
+        sos = scp.signal.butter(N, Wn, 'band', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfreqz_design_ellip(self, xp, scp):
+        N, Wn = scp.signal.ellipord(0.3, 0.1, 3, 60)
+        sos = scp.signal.ellip(N, 0.3, 60, Wn, 'high', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfreqz_design_ellip_2(self, xp, scp):
+        N, Wn = scp.signal.ellipord(0.3, 0.2, 3, 60)
+        sos = scp.signal.ellip(N, 0.3, 60, Wn, 'high', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_sosfreqz_design_ellip_3(self, xp, scp):
+        N, Wn = scp.signal.ellipord(0.3, 0.2, .5, 150)
+        sos = scp.signal.ellip(N, .5, 150, Wn, 'high', output='sos')
+        w, h = scp.signal.sosfreqz(sos)
+        return w, h
 
     @testing.with_requires("mpmath > 0.10")
     def test_sos_freqz_against_mp(self):

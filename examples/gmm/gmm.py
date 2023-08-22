@@ -49,7 +49,7 @@ def e_step(X, inv_cov, means, weights):
 
 def train_gmm(X, max_iter, tol, means, covariances):
     xp = cupy.get_array_module(X)
-    lower_bound = -np.infty
+    lower_bound = -np.inf
     converged = False
     weights = xp.array([0.5, 0.5], dtype=np.float32)
     inv_cov = 1 / xp.sqrt(covariances)

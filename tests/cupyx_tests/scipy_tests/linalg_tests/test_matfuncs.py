@@ -1,8 +1,16 @@
 import numpy as np
 from numpy import linalg
+
+import cupy
 from cupyx.scipy.linalg import khatri_rao
+from cupyx.scipy import linalg as cx_linalg
 import pytest
 from cupy import testing
+
+try:
+    import scipy.linalg    # noqa
+except ImportError:
+    pass
 
 
 class TestKhatriRao:
@@ -66,3 +74,32 @@ class TestKhatriRao:
                           for k in range(B.shape[1])]).T
 
         testing.assert_array_equal(res1, res2)
+
+
+class TestExpM:
+
+    def test_zero(self):
+        a = cupy.array([[0., 0], [0, 0]])
+        assert cupy.abs(cx_linalg.expm(a) - cupy.eye(2)).all() < 1e-10
+
+    def test_empty_matrix_input(self):
+        # handle gh-11082
+        A = np.zeros((0, 0))
+        result = cx_linalg.expm(A)
+        assert result.size == 0
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
+    def test_2x2_input(self, xp, scp):
+        a = xp.array([[1, 4], [1, 1]])
+        return scp.linalg.expm(a)
+
+    @pytest.mark.parametrize('a', ([[1, 4], [1, 1]],
+                                   [[1, 3], [1, -1]],
+                                   [[1, 3], [4, 5]],
+                                   [[1, 3], [5, 3]],
+                                   [[4, 5], [-3, -4]])
+                             )
+    @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
+    def test_nx2x2_input(self, xp, scp, a):
+        a = xp.asarray(a)
+        return scp.linalg.expm(a)

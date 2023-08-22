@@ -1108,25 +1108,26 @@ def cupy_binopt_csr_step2(op_name):
 def csr2dense(a, order):
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
-    cupy_csr2dense()(m, n, a.indptr, a.indices, a.data,
-                     (order == 'C'), out)
+    kern = _cupy_csr2dense(a.dtype)
+    kern(m, n, a.indptr, a.indices, a.data, (order == 'C'), out)
     return out
 
 
 @cupy._util.memoize(for_each_device=True)
-def cupy_csr2dense():
+def _cupy_csr2dense(dtype):
+    if dtype == '?':
+        op = "if (DATA) OUT[index] = true;"
+    else:
+        op = "atomicAdd(&OUT[index], DATA);"
+
     return cupy.ElementwiseKernel(
         'int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
         'raw T OUT',
         '''
         int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
         int col = INDICES;
-        if (C_ORDER) {
-            OUT[col + N * row] += DATA;
-        } else {
-            OUT[row + M * col] += DATA;
-        }
-        ''',
+        int index = C_ORDER ? col + N * row : row + M * col;
+        ''' + op,
         'cupyx_scipy_sparse_csr2dense',
         preamble=_GET_ROW_ID_
     )

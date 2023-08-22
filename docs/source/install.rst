@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 [#cuda122windows]_
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -15,6 +15,8 @@ Requirements
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
 * `Python <https://python.org/>`_: v3.9 / v3.10 / v3.11
+
+.. [#cuda122windows] CUDA 12.2 is not yet supported on Windows. See `#7776 <https://github.com/cupy/cupy/issues/7776>`_ for details.
 
 .. note::
 
@@ -101,7 +103,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Append ``--pre -f https://pip.cupy.dev/pre`` options to install pre-releases (e.g., ``pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre``).
+   Append ``--pre -U -f https://pip.cupy.dev/pre`` options to install pre-releases (e.g., ``pip install cupy-cuda11x --pre -U -f https://pip.cupy.dev/pre``).
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.

@@ -152,7 +152,7 @@ _available_hipsparse_version = {
 }
 
 
-def _get_version(x):
+def _get_avail_version_from_spec(x):
     if isinstance(x, dict):
         os_name = _platform.system()
         if os_name not in x:
@@ -175,13 +175,17 @@ def check_availability(name):
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = available_version[name]
-    version_added = _get_version(version_added)
-    version_removed = _get_version(version_removed)
+    version_added = _get_avail_version_from_spec(version_added)
+    version_removed = _get_avail_version_from_spec(version_removed)
     if version_added is not None and version < version_added:
         return False
     if version_removed is not None and version >= version_removed:
         return False
     return True
+
+
+def getVersion() -> int:
+    return _cusparse.getVersion(_device.get_cusparse_handle())
 
 
 def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):

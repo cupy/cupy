@@ -631,7 +631,8 @@ def compute_correction_factors_sos(sos, block_sz, dtype):
     return correction
 
 
-def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
+def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
+                  apply_fir=True):
     if dtype is None:
         dtype = cupy.result_type(x.dtype, sos.dtype)
 
@@ -694,9 +695,11 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
             all_carries[:, 0, :] = section_zi
             zi_out[s, :, :2] = axis_slice(out, n - 2, n)
 
-        fir_kernel((num_rows * n_blocks,), (block_sz,),
-                   (block_sz, n, carries_stride, n_blocks, starting_group,
-                    b, all_carries, out))
+        if apply_fir:
+            fir_kernel((num_rows * n_blocks,), (block_sz,),
+                       (block_sz, n, carries_stride, n_blocks, starting_group,
+                        b, all_carries, out))
+
         first_pass_kernel(
             (total_blocks,), (block_sz // 2,),
             (block_sz, n, n_blocks, correction[s], out, carries))
@@ -716,9 +719,11 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024):
                 (block_sz, n, carries_stride, blocks_to_merge,
                     starting_group, correction[s], all_carries, out))
 
-        carries_kernel((num_rows * n_blocks,), (k,),
-                       (block_sz, n, carries_stride, n_blocks, starting_group,
-                        out, all_carries))
+        if apply_fir:
+            carries_kernel(
+                (num_rows * n_blocks,), (k,),
+                (block_sz, n, carries_stride, n_blocks, starting_group,
+                 out, all_carries))
 
         if zi is not None:
             zi_out[s, :, 2:] = axis_slice(out, n - 2, n)

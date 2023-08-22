@@ -5,7 +5,6 @@ Routines for manipulating partial fraction expansions.
 import cupy
 
 
-# FIXME: remove the clone from _filter_design.py (gh-7641)
 def roots(arr):
     """np.roots replacement. XXX: calls into NumPy, then converts back.
     """
@@ -13,6 +12,30 @@ def roots(arr):
 
     arr = cupy.asarray(arr).get()
     return cupy.asarray(np.roots(arr))
+
+
+def poly(A):
+    """np.poly replacement for 2D A. Otherwise, use cupy.poly."""
+    sh = A.shape
+    if not (len(sh) == 2 and sh[0] == sh[1] and sh[0] != 0):
+        raise ValueError("input must be a non-empty square 2d array.")
+
+    import numpy as np
+
+    seq_of_zeros = np.linalg.eigvals(A.get())
+
+    dt = seq_of_zeros.dtype
+    a = np.ones((1,), dtype=dt)
+    for zero in seq_of_zeros:
+        a = np.convolve(a, np.r_[1, -zero], mode='full')
+
+    if issubclass(a.dtype.type, cupy.complexfloating):
+        # if complex roots are all complex conjugates, the roots are real.
+        roots = np.asarray(seq_of_zeros, dtype=complex)
+        if np.all(np.sort(roots) == np.sort(roots.conjugate())):
+            a = a.real.copy()
+
+    return cupy.asarray(a)
 
 
 def _cmplx_sort(p):
@@ -380,6 +403,10 @@ def residue(b, a, tol=1e-3, rtype='avg'):
     k : ndarray
         Coefficients of the direct polynomial term.
 
+    Warning
+    -------
+    This function may synchronize the device.
+
     See Also
     --------
     scipy.signal.residue
@@ -492,6 +519,10 @@ def residuez(b, a, tol=1e-3, rtype='avg'):
         Poles ordered by magnitude in ascending order.
     k : ndarray
         Coefficients of the direct polynomial term.
+
+    Warning
+    -------
+    This function may synchronize the device.
 
     See Also
     --------

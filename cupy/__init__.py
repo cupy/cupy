@@ -57,20 +57,19 @@ from cupy._core import ufunc  # NOQA
 # =============================================================================
 from numpy import e  # NOQA
 from numpy import euler_gamma  # NOQA
-from numpy import Inf  # NOQA
 from numpy import inf  # NOQA
-from numpy import Infinity  # NOQA
-from numpy import infty  # NOQA
-from numpy import NAN  # NOQA
-from numpy import NaN  # NOQA
 from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
-from numpy import NINF  # NOQA
-from numpy import NZERO  # NOQA
 from numpy import pi  # NOQA
-from numpy import PINF  # NOQA
-from numpy import PZERO  # NOQA
 
+# APIs to be removed in NumPy 2.0.
+# Remove these when bumping the baseline API to NumPy 2.0.
+# https://github.com/cupy/cupy/pull/7800
+PINF = Inf = Infinity = infty = inf  # NOQA
+NINF = -inf  # NOQA
+NAN = NaN = nan  # NOQA
+PZERO = 0.0  # NOQA
+NZERO = -0.0  # NOQA
 
 # =============================================================================
 # Data types (borrowed from NumPy)

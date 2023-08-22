@@ -39,7 +39,7 @@ extras_require = {
         'pbr==5.5.1',
         'pycodestyle==2.6.0',
 
-        'mypy==0.950',
+        'mypy==1.4.1',
         'types-setuptools==57.4.14',
     ],
     'test': [
@@ -125,6 +125,7 @@ setup(
     version=__version__,  # NOQA
     description='CuPy: NumPy & SciPy for GPU',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     maintainer='CuPy Developers',
