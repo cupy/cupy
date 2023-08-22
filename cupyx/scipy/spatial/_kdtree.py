@@ -147,15 +147,16 @@ class KDTree:
                 raise ValueError("Negative input data are outside of the "
                                  "periodic box.")
 
+        self.tree, self.index = asm_kd_tree(self.data)
+        self.bounds = cupy.empty((0,))
         if self.copy_query_points:
             if self.data.dtype != cupy.float64:
                 raise ValueError('periodic KDTree is only available '
                                  'on float64')
+            self.bounds = compute_tree_bounds(self.tree)
 
-        self.tree, self.index = asm_kd_tree(self.data)
-        self.bounds = compute_tree_bounds(self.tree)
-        self.mins = self.bounds[0, :, 0]
-        self.maxes = self.bounds[0, :, 1]
+        self.mins = cupy.min(self.tree, axis=0)
+        self.maxes = cupy.max(self.tree, axis=0)
 
     def query(self, x, k=1, eps=0.0, p=2.0, distance_upper_bound=cupy.inf):
         """
