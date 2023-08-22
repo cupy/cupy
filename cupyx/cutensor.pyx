@@ -125,7 +125,7 @@ cdef class Mode:
     def __eq__(self, other):
         if not isinstance(other, Mode):
             return False
-        return (self._array == other._array).all()
+        return (self._array == (<Mode>other)._array).all()
 
     def __hash__(self):
         return hash(bytes(self._array))
