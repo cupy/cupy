@@ -1,4 +1,4 @@
-import enum
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import cupy
@@ -161,9 +161,20 @@ class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
         return cupy.cuda.device.Device(-1)
 
 
-class Mode(enum.Enum):
-    REPLICA = 1
-    SUM = 2
+@dataclass
+class OpMode:
+    """None as Mode represents replica mode.
+    func(x, x) == x must hold if identity is None."""
+    func: cupy.ufunc
+    numpy_func: numpy.ufunc
+    identity: Any
+
+
+Mode = Optional[OpMode]
+
+
+_sum_mode = OpMode(cupy.add, numpy.add, 0)
+_replica_mode = None
 
 
 class _DistributedArray(cupy.ndarray):
@@ -282,7 +293,7 @@ class _DistributedArray(cupy.ndarray):
 
         # Elementwise operations preserve device_mapping
         return _DistributedArray(
-            self.shape, dtype, dev_outs, self._device_mapping, Mode.REPLICA)
+            self.shape, dtype, dev_outs, self._device_mapping, _replica_mode)
 
     def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
@@ -301,7 +312,7 @@ class _DistributedArray(cupy.ndarray):
                 dst_array[dst_idx] = src_array.copy()
 
     def _apply_and_update_chunks(
-            self, func, identity, shape,
+            self, op_mode, shape,
             src_chunk, src_idx, dst_chunk, dst_idx):
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
@@ -314,16 +325,15 @@ class _DistributedArray(cupy.ndarray):
             self._write_view_to_view(
                 src_chunk[src_new_idx], src_chunk_copied, (slice(None),))
 
-            dst_chunk[dst_new_idx] = func(
+            dst_chunk[dst_new_idx] = op_mode.func(
                 src_chunk_copied, dst_chunk[dst_new_idx])
 
-        if identity is not None:
+        if op_mode.identity is not None:
             with cupy.cuda.Device(src_chunk.device.id):
-                src_chunk[src_new_idx] = identity
+                src_chunk[src_new_idx] = op_mode.identity
 
     def _all_reduce_intersections(
-            self, func, identity, shape, chunks, device_mapping):
-        """`identity` cannot be `None` if func(x, x) == x does not hold."""
+            self, op_mode, shape, chunks, device_mapping):
         chunks_list = list(chunks.items())
 
         # TODO: Parallelize
@@ -336,7 +346,7 @@ class _DistributedArray(cupy.ndarray):
                 dst_idx = device_mapping[dst_dev]
 
                 self._apply_and_update_chunks(
-                    func, identity, shape,
+                    op_mode, shape,
                     src_chunk, src_idx, dst_chunk, dst_idx)
 
         # TODO: Parallelize
@@ -352,7 +362,7 @@ class _DistributedArray(cupy.ndarray):
                     shape, src_chunk, src_idx, dst_chunk, dst_idx)
 
     def _send_intersection(
-            self, shape: tuple[slice, ...],
+            self, shape: tuple[int, ...],
             src_chunk: NDArray, src_idx: tuple[slice, ...],
             dst_chunk: NDArray, dst_idx: tuple[slice, ...]) -> None:
         """Write the intersection of chunks src_idx and dst_idx to the
@@ -367,7 +377,7 @@ class _DistributedArray(cupy.ndarray):
         self._write_view_to_view(src_chunk[src_new_idx], dst_chunk, dst_new_idx)
 
     def _set_identity_on_intersection(
-            self, shape: tuple[slice, ...], identity,
+            self, shape: tuple[int, ...], identity,
             a_chunk: NDArray, a_idx: tuple[slice, ...],
             b_idx: tuple[slice, ...]) -> None:
         intersection = _index_intersection(a_idx, b_idx, shape)
@@ -387,20 +397,24 @@ class _DistributedArray(cupy.ndarray):
 
         if kernel.name == 'cupy_max':
             func = cupy.maximum
+            numpy_func = numpy.maximum
             identity = None
-            chunks = self.to_replica_mode()._chunks
+            chunks = self._replica_mode_chunks()
         elif kernel.name == 'cupy_min':
             func = cupy.minimum
+            numpy_func = numpy.minimum
             identity = None
-            chunks = self.to_replica_mode()._chunks
+            chunks = self._replica_mode_chunks()
         elif kernel.name == 'cupy_sum':
             func = cupy.add
+            numpy_func = numpy.add
             identity = 0
-            chunks = self._any_op_mode_chunks(identity)
+            chunks = self._op_mode_chunks(identity)
         elif kernel.name == 'cupy_prod':
             func = cupy.multiply
+            numpy_func = numpy.multiply
             identity = 1
-            chunks = self._any_op_mode_chunks(identity)
+            chunks = self._op_mode_chunks(identity)
         else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
@@ -414,15 +428,9 @@ class _DistributedArray(cupy.ndarray):
                 new_chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
 
-        if kernel.name == 'cupy_sum':
-            return _DistributedArray(
-                shape, dtype, new_chunks, device_mapping, Mode.SUM)
-        else:
-            # Apply chunk src to other chunks with greater device ids
-            self._all_reduce_intersections(
-                func, identity, shape, new_chunks, device_mapping)
-            return _DistributedArray(
-                shape, dtype, new_chunks, device_mapping, Mode.REPLICA)
+        mode = OpMode(func, numpy_func, identity)
+        return _DistributedArray(
+            shape, dtype, new_chunks, device_mapping, mode)
 
     def _copy_chunks(self):
         chunks = {}
@@ -431,13 +439,27 @@ class _DistributedArray(cupy.ndarray):
                 chunks[dev] = chunk.copy()
         return chunks
 
-    def _any_op_mode_chunks(self, identity) -> dict[int, NDArray]:
-        chunks = self.to_replica_mode()._copy_chunks()
+    def _replica_mode_chunks(self) -> dict[int, NDArray]:
+        """Does not recessarily copy."""
+        if self._mode is _replica_mode:
+            return self._chunks
+
+        chunks = self._copy_chunks()
+        self._all_reduce_intersections(
+            self._mode, self.shape, chunks, self._device_mapping)
+        return chunks
+
+
+    def _op_mode_chunks(self, identity) -> dict[int, NDArray]:
+        chunks = self._replica_mode_chunks()
 
         chunks_list = list(chunks.items())
+        new_chunks = {}
         # TODO: Parallelize
         for i in range(len(chunks_list)):
             a_dev, a_chunk = chunks_list[i]
+            with cupy.cuda.Device(a_dev):
+                new_a_chunk = a_chunk.copy()
             a_idx = self._device_mapping[a_dev]
 
             for j in range(i + 1, len(chunks_list)):
@@ -445,27 +467,27 @@ class _DistributedArray(cupy.ndarray):
                 b_idx = self._device_mapping[b_dev]
 
                 self._set_identity_on_intersection(
-                    self.shape, identity, a_chunk, a_idx, b_idx)
+                    self.shape, identity, new_a_chunk, a_idx, b_idx)
 
-        return chunks
+            new_chunks[a_dev] = new_a_chunk
 
-    def to_sum_mode(self) -> '_DistributedArray':
-        if self._mode == Mode.SUM:
-            return self
-
-        chunks = self._undo_replication(0)
-        return _DistributedArray(
-            self.shape, self.dtype, chunks, self._device_mapping, Mode.SUM)
+        return new_chunks
 
     def to_replica_mode(self) -> '_DistributedArray':
-        if self._mode == Mode.REPLICA:
+        """Does not recessarily copy."""
+        chunks = self._replica_mode_chunks()
+        return _DistributedArray(
+            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode)
+
+    def change_mode(self, mode) -> '_DistributedArray':
+        if self._mode is mode:
             return self
 
         chunks = self._copy_chunks()
         self._all_reduce_intersections(
-            cupy.add, 0, self.shape, chunks, self._device_mapping)
+            self._mode, self.shape, chunks, self._device_mapping)
         return _DistributedArray(
-            self.shape, self.dtype, chunks, self._device_mapping, Mode.REPLICA)
+            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode)
 
     def reshard(
         self, device_mapping: dict[int, Any]
@@ -495,19 +517,22 @@ class _DistributedArray(cupy.ndarray):
             new_chunks[dst_dev] = dst_array
 
         return _DistributedArray(
-            arr.shape, arr.dtype, new_chunks, new_mapping, Mode.REPLICA)
+            arr.shape, arr.dtype, new_chunks, new_mapping, _replica_mode)
 
     def asnumpy(self):
-        if self._mode == Mode.REPLICA:
+        if self._mode is _replica_mode or self._mode.identity is None:
             np_array = numpy.empty(self.shape)
         else:
-            np_array = numpy.zeros(self.shape)
+            np_array = numpy.full(
+                self.shape, self.mode.identity, dtype=self.dtype)
 
         for dev, chunk_idx in self._device_mapping.items():
-            if self._mode == Mode.REPLICA:
+            if self._mode is _replica_mode:
                 np_array[chunk_idx] = cupy.asnumpy(self._chunks[dev])
             else:
-                np_array[chunk_idx] += cupy.asnumpy(self._chunks[dev])
+                self._mode.numpy_func(
+                    np_array[chunk_idx], cupy.asnumpy(self._chunks[dev]),
+                    out=np_array[chunk_idx])
 
         return np_array
 
@@ -515,10 +540,10 @@ class _DistributedArray(cupy.ndarray):
 def distributed_array(
         array: ArrayLike,
         device_mapping: dict[int, Any],
-        mode: Mode = Mode.REPLICA):
+        mode: Mode = _replica_mode):
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
-    elif mode == Mode.SUM:
+    elif mode is not _replica_mode:
         array = array.copy()
 
     device_mapping = {dev: _convert_chunk_idx_to_slices(array.shape, idx)
@@ -532,8 +557,8 @@ def distributed_array(
             chunk = array[chunk_idx]
         with cupy.cuda.Device(dev):
             cp_chunks[dev] = cupy.array(chunk)
-        if mode == Mode.SUM:
-            array[chunk_idx] = 0
+        if mode is not _replica_mode and mode.identity is not None:
+            array[chunk_idx] = mode.identity
     return _DistributedArray(
         array.shape, array.dtype, cp_chunks, device_mapping, mode)
 
