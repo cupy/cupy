@@ -187,12 +187,10 @@ class TestMode:
         m1 = cutensor.create_mode(10, 11, 12)
         m2 = cutensor.create_mode(10, 11, 12)
         assert m1 == m2
-        assert hash(m1) == hash(m2)
-        assert m1.data != m2.data
+        assert m1.data == m2.data  # cached
 
         m2 = cutensor.create_mode(12, 11, 10)
         assert m1 != m2
-        assert hash(m1) != hash(m2)
         assert m1.data != m2.data
 
 
