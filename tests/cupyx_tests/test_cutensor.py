@@ -1,3 +1,5 @@
+import gc
+
 import numpy
 import pytest
 
@@ -181,6 +183,16 @@ class TestMode:
         assert m.ndim == 2
         assert repr(m) == 'mode(120, 121)'
 
+    def test_mode_compare(self):
+        m1 = cutensor.create_mode(10, 11, 12)
+        m2 = cutensor.create_mode(10, 11, 12)
+        assert m1 == m2
+        assert m1.data == m2.data  # cached
+
+        m2 = cutensor.create_mode(12, 11, 10)
+        assert m1 != m2
+        assert m1.data != m2.data
+
 
 @pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
 class TestScalar:
@@ -273,7 +285,7 @@ class TestCuTensorDescriptor:
 @testing.parameterize(*testing.product({
     'dtype_combo': ['eee', 'fff', 'ddd', 'FFF', 'DDD', 'dDD', 'DdD'],
     'compute_type_hint': [None, 'down-convert', 'TF32'],
-    'shape': [(40, 30, 20)],
+    'shape': [(40, 20, 20)],  # let last two dim be the same for testing cache
     'alpha': [1.0],
     'beta': [0.0, 1.0],
 }))
@@ -335,6 +347,20 @@ class TestCuTensorContraction:
         mode_a = cutensor.create_mode('m', 'k')
         mode_b = cutensor.create_mode('k', 'n')
         mode_c = cutensor.create_mode('m', 'n')
+        cutensor.contraction(self.alpha,
+                             self.a, desc_a, mode_a,
+                             self.b, desc_b, mode_b,
+                             self.beta,
+                             self.c, desc_c, mode_c)
+        cupy.testing.assert_allclose(self.c, self.c_ref,
+                                     rtol=self.tol, atol=self.tol)
+
+        # test the contraction descriptor cache (issues #7318, #7812)
+        del mode_b
+        gc.collect()
+        mode_b = cutensor.create_mode('n', 'k')  # flipped
+        self.c_ref = self.alpha * cupy.matmul(self.a, self.b.T)
+        self.c_ref += self.beta * self.c
         cutensor.contraction(self.alpha,
                              self.a, desc_a, mode_a,
                              self.b, desc_b, mode_b,
