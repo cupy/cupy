@@ -23,6 +23,9 @@ cpdef enum scan_op:
 cdef _ndarray_base scan(_ndarray_base a, op, dtype=*, _ndarray_base out=*,
                         incomplete=*, chunk_size=*)
 cdef object _sum_auto_dtype
+cdef object _sum_keep_dtype
+cdef object _prod_auto_dtype
+cdef object _prod_keep_dtype
 cdef object _add
 cdef object _conj
 cdef object _angle

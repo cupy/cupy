@@ -396,25 +396,17 @@ class _DistributedArray(cupy.ndarray):
             raise RuntimeError('`keepdims` is not supported')
 
         if kernel.name == 'cupy_max':
-            func = cupy.maximum
-            numpy_func = numpy.maximum
-            identity = None
+            mode = OpMode(cupy.maximum, numpy.maximum, None)
             chunks = self._replica_mode_chunks()
         elif kernel.name == 'cupy_min':
-            func = cupy.minimum
-            numpy_func = numpy.minimum
-            identity = None
+            mode = OpMode(cupy.minimum, numpy.minimum, None)
             chunks = self._replica_mode_chunks()
         elif kernel.name == 'cupy_sum':
-            func = cupy.add
-            numpy_func = numpy.add
-            identity = 0
-            chunks = self._op_mode_chunks(identity)
+            mode = OpMode(cupy.add, numpy.add, 0)
+            chunks = self._op_mode_chunks(mode.identity)
         elif kernel.name == 'cupy_prod':
-            func = cupy.multiply
-            numpy_func = numpy.multiply
-            identity = 1
-            chunks = self._op_mode_chunks(identity)
+            mode = OpMode(cupy.multiply, numpy.multiply, 1)
+            chunks = self._op_mode_chunks(mode.identity)
         else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
@@ -428,7 +420,6 @@ class _DistributedArray(cupy.ndarray):
                 new_chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
 
-        mode = OpMode(func, numpy_func, identity)
         return _DistributedArray(
             shape, dtype, new_chunks, device_mapping, mode)
 

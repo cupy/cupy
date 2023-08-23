@@ -995,6 +995,9 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.max`
 
         """
+        if hasattr(self, '__cupy_override_reduction_kernel__'):
+            return self.__cupy_override_reduction_kernel__(
+                _statistics._amax, axis, None, out, keepdims)
         return _statistics._ndarray_max(self, axis, out, None, keepdims)
 
     cpdef _ndarray_base argmax(
@@ -1024,6 +1027,9 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.min`
 
         """
+        if hasattr(self, '__cupy_override_reduction_kernel__'):
+            return self.__cupy_override_reduction_kernel__(
+                _statistics._amin, axis, None, out, keepdims)
         return _statistics._ndarray_min(self, axis, out, None, keepdims)
 
     cpdef _ndarray_base argmin(
@@ -1096,6 +1102,13 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.sum`
 
         """
+        if hasattr(self, '__cupy_override_reduction_kernel__'):
+            if dtype is None:
+                return self.__cupy_override_reduction_kernel__(
+                    _math._sum_auto_dtype, axis, dtype, out, keepdims)
+            else:
+                return self.__cupy_override_reduction_kernel__(
+                    _math._sum_keep_dtype, axis, dtype, out, keepdims)
         return _math._ndarray_sum(self, axis, dtype, out, keepdims)
 
     cpdef _ndarray_base cumsum(self, axis=None, dtype=None, out=None):
@@ -1151,6 +1164,13 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.prod`
 
         """
+        if hasattr(self, '__cupy_override_reduction_kernel__'):
+            if dtype is None:
+                return self.__cupy_override_reduction_kernel__(
+                    _math._prod_auto_dtype, axis, dtype, out, keepdims)
+            else:
+                return self.__cupy_override_reduction_kernel__(
+                    _math._prod_keep_dtype, axis, dtype, out, keepdims)
         return _math._ndarray_prod(self, axis, dtype, out, keepdims)
 
     cpdef _ndarray_base cumprod(self, axis=None, dtype=None, out=None):

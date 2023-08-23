@@ -269,33 +269,38 @@ class TestDistributedArray:
             if mode == None:
                 testing.assert_array_equal(db._chunks[dev].squeeze(), array[idx])
 
-    @pytest.mark.parametrize('shape, mapping', [(shape_dim3, mapping_dim3)])
+    @pytest.mark.parametrize(
+            'shape, mapping',
+            [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
     @pytest.mark.parametrize('mode', [None, _array._sum_mode])
     def test_max_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
-        np_b = np_a.max(axis=0)
         d_a = _array.distributed_array(np_a, mapping, mode)
-        d_b = d_a.max(axis=0)
-        testing.assert_array_equal(d_b.asnumpy(), np_b)
+        for axis in range(np_a.ndim):
+            np_b = np_a.max(axis=axis)
+            d_b = d_a.max(axis=axis)
+            testing.assert_array_equal(d_b.asnumpy(), np_b)
 
     @pytest.mark.parametrize('shape, mapping', [(shape_dim3, mapping_dim3)])
     @pytest.mark.parametrize('mode', [None, _array._sum_mode])
     def test_sum_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
-        np_b = np_a.sum(axis=0)
         d_a = _array.distributed_array(np_a, mapping, mode)
-        d_b = d_a.sum(axis=0)
-        assert d_b._mode == _array._sum_mode
-        testing.assert_array_equal(d_b.asnumpy(), np_b)
+        for axis in range(np_a.ndim):
+            np_b = np_a.sum(axis=axis)
+            d_b = d_a.sum(axis=axis)
+            assert d_b._mode == _array._sum_mode
+            testing.assert_array_equal(d_b.asnumpy(), np_b)
 
     @pytest.mark.parametrize('shape, mapping', [(shape_dim3, mapping_dim3)])
     @pytest.mark.parametrize('mode', [None, _array._sum_mode])
     def test_prod_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64, dtype=cupy.float64).reshape(shape)
-        np_b = np_a.prod(axis=0)
         d_a = _array.distributed_array(np_a, mapping, mode)
-        d_b = d_a.prod(axis=0)
-        testing.assert_array_equal(d_b.asnumpy(), np_b)
+        for axis in range(np_a.ndim):
+            np_b = np_a.prod(axis=axis)
+            d_b = d_a.prod(axis=axis)
+            testing.assert_array_equal(d_b.asnumpy(), np_b)
 
     @pytest.mark.parametrize('shape, mapping', [(shape_dim3, mapping_dim3)])
     def test_unsupported_reduction(self, shape, mapping):
