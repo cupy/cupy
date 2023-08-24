@@ -56,7 +56,7 @@ class AxisConcatenator(object):
                 raise NotImplementedError
             elif type(k) in numpy.ScalarType:
                 newobj = from_data.array(k, ndmin=ndmin)
-                scalars.append(k)
+                scalars.append(i)
             else:
                 newobj = from_data.array(k, copy=False, ndmin=ndmin)
                 if ndmin > 1:
@@ -67,9 +67,9 @@ class AxisConcatenator(object):
 
             objs.append(newobj)
 
-        final_dtype = numpy.result_type(*arrays, *scalars)
+        final_dtype = numpy.result_type(*arrays, *[objs[k] for k in scalars])
         if final_dtype is not None:
-            for k in range(len(scalars)):
+            for k in scalars:
                 objs[k] = objs[k].astype(final_dtype)
 
         return join.concatenate(tuple(objs), axis=self.axis)
