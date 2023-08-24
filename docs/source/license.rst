@@ -110,7 +110,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 cuSignal
 --------
 
-Some of CuPy's source code and documents are ported from cuSignal.
+Part of CuPy's signal processing routines and their documentation are ported from `RAPIDS cuSignal <https://github.com/rapidsai/cusignal>`_.
 
 
 Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
