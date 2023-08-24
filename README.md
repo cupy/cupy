@@ -84,7 +84,7 @@ $ docker run --gpus all -it cupy/cupy
 
 MIT License (see `LICENSE` file).
 
-CuPy is designed based on NumPy's API and SciPy's API (see `docs/LICENSE_THIRD_PARTY` file).
+CuPy is designed based on NumPy's API and SciPy's API (see `docs/source/license.rst` file).
 
 CuPy is being developed and maintained by [Preferred Networks](https://www.preferred.jp/en/) and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
 
