@@ -285,6 +285,11 @@ cdef class NcclCommunicator:
     def __dealloc__(self):
         self.destroy()
 
+    """ Return the communicator as a integer pointer so it can be used with other applications that use NCCL.
+    @property
+    def comm(self):
+        return <intptr_t>self._comm
+
     @staticmethod
     def initAll(devices):
         """ Initialize NCCL communicators for multiple devices in a single
