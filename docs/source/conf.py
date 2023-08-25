@@ -487,6 +487,7 @@ def linkcode_resolve(domain, info):
 # doc content so as to make the function signatures shorter and
 # look nicer.
 autodoc_typehints = 'description'
+autodoc_typehints_description_target = 'documented_params'
 
 
 def remove_array_api_module_docstring(app, what, name, obj, options, lines):
