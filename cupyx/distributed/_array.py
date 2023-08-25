@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from cupy.cuda import nccl
+
 import cupy
 import numpy
 
 from numpy.typing import ArrayLike
 from cupy.typing import NDArray
+from cupyx.distributed._nccl_comm import _nccl_dtypes
 
 
 def _extgcd(a: int, b: int) -> tuple[int, int]:
@@ -149,6 +152,19 @@ def _convert_chunk_idx_to_slices(
     return tuple(new_idx)
 
 
+# Copied from cupyx/distributed/_nccl_comm.py
+def _get_nccl_dtype_and_count(array, count=None):
+    dtype = array.dtype.char
+    if dtype not in _nccl_dtypes:
+        raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
+    nccl_dtype = _nccl_dtypes[dtype]
+    if count is None:
+        count = array.size
+    if dtype in 'FD':
+        return nccl_dtype, 2 * count
+    return nccl_dtype, count
+
+
 class _MultiDeviceDummyMemory(cupy.cuda.Memory):
     pass
 
@@ -185,8 +201,9 @@ class _DistributedArray(cupy.ndarray):
     # Values of _device_mapping must have lenth == ndim
     _device_mapping: dict[int, tuple[slice, ...]]
     _mode: Mode
+    _comms: dict[int, nccl.NcclCommunicator]
 
-    def __new__(cls, shape, dtype, chunks, device_mapping, mode):
+    def __new__(cls, shape, dtype, chunks, device_mapping, mode, comms=None):
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
@@ -194,6 +211,14 @@ class _DistributedArray(cupy.ndarray):
         obj._device_mapping = device_mapping
         obj._mode = mode
         obj._mem = mem
+        if comms:
+            obj._comms = comms
+        elif nccl.available:
+            comms_list = nccl.NcclCommunicator.initAll(list(device_mapping))
+            obj._comms = {dev: comm
+                        for dev, comm in zip(device_mapping, comms_list)}
+        else:
+            obj._comms = None
         return obj
 
     def __array_finalize__(self, obj):
@@ -296,7 +321,8 @@ class _DistributedArray(cupy.ndarray):
 
         # Elementwise operations preserve device_mapping
         return _DistributedArray(
-            self.shape, dtype, dev_outs, self._device_mapping, _replica_mode)
+            self.shape, dtype, dev_outs, self._device_mapping, _replica_mode,
+            self._comms)
 
     def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
@@ -306,13 +332,30 @@ class _DistributedArray(cupy.ndarray):
 
     def _write_view_to_view(
             self, src_array: NDArray,
-            dst_array: NDArray, dst_idx: tuple[slice, ...]) -> None:
-        with cupy.cuda.Device(dst_array.device.id):
-            if src_array.device.id == dst_array.device.id:
-                dst_array[dst_idx] = src_array
-            else:
-                # TODO: Try GPUDirect p2p access, NCCL send/recv
-                dst_array[dst_idx] = src_array.copy()
+            dst_array: NDArray, dst_idx: Any) -> None:
+        src_dev = src_array.device.id
+        dst_dev = dst_array.device.id
+
+        with cupy.cuda.Device(src_dev):
+            src_array = cupy.ascontiguousarray(src_array)
+        with cupy.cuda.Device(dst_dev):
+            dst_buf = cupy.empty_like(dst_array[dst_idx])
+
+        dtype, count = _get_nccl_dtype_and_count(src_array)
+        stream = cupy.cuda.Stream.ptds.ptr
+        nccl.groupStart()
+
+        with cupy.cuda.Device(src_dev):
+            self._comms[src_dev].send(
+                src_array.data.ptr, count, dtype, dst_dev, stream)
+
+        with cupy.cuda.Device(dst_dev):
+            self._comms[dst_dev].recv(
+                dst_buf.data.ptr, count, dtype, src_dev, stream)
+
+        nccl.groupEnd()
+        with cupy.cuda.Device(dst_dev):
+            dst_array[dst_idx] = dst_buf
 
     def _apply_and_update_chunks(
             self, op_mode, shape,
@@ -424,7 +467,7 @@ class _DistributedArray(cupy.ndarray):
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
 
         return _DistributedArray(
-            shape, dtype, new_chunks, device_mapping, mode)
+            shape, dtype, new_chunks, device_mapping, mode, self._comms)
 
     def _copy_chunks(self):
         chunks = {}
@@ -442,7 +485,6 @@ class _DistributedArray(cupy.ndarray):
         self._all_reduce_intersections(
             self._mode, self.shape, chunks, self._device_mapping)
         return chunks
-
 
     def _op_mode_chunks(self, op_mode) -> dict[int, NDArray]:
         if self._mode is op_mode:
@@ -474,7 +516,8 @@ class _DistributedArray(cupy.ndarray):
         """Does not recessarily copy."""
         chunks = self._replica_mode_chunks()
         return _DistributedArray(
-            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode)
+            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode,
+            self._comms)
 
     def change_mode(self, mode) -> '_DistributedArray':
         if self._mode is mode:
@@ -484,7 +527,8 @@ class _DistributedArray(cupy.ndarray):
         self._all_reduce_intersections(
             self._mode, self.shape, chunks, self._device_mapping)
         return _DistributedArray(
-            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode)
+            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode,
+            self._comms)
 
     def reshard(
         self, device_mapping: dict[int, Any]
@@ -514,7 +558,8 @@ class _DistributedArray(cupy.ndarray):
             new_chunks[dst_dev] = dst_array
 
         return _DistributedArray(
-            arr.shape, arr.dtype, new_chunks, new_mapping, _replica_mode)
+            arr.shape, arr.dtype, new_chunks, new_mapping, _replica_mode,
+            self._comms)
 
     def asnumpy(self):
         if self._mode is _replica_mode or self._mode.identity is None:
@@ -536,7 +581,8 @@ class _DistributedArray(cupy.ndarray):
 def distributed_array(
         array: ArrayLike,
         device_mapping: dict[int, Any],
-        mode: Mode = _replica_mode):
+        mode: Mode = _replica_mode,
+        comms = None):
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
     elif mode is not _replica_mode:
@@ -556,5 +602,5 @@ def distributed_array(
         if mode is not _replica_mode and mode.identity is not None:
             array[chunk_idx] = mode.identity
     return _DistributedArray(
-        array.shape, array.dtype, cp_chunks, device_mapping, mode)
+        array.shape, array.dtype, cp_chunks, device_mapping, mode, comms)
 

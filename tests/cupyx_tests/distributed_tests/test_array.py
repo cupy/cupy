@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import nccl
 from cupy import testing
 import cupyx.distributed._array as _array
 
@@ -19,6 +20,16 @@ def mem_pool():
         pool.set_limit(size=0)
         pool.free_all_blocks()
         cupy.cuda.memory.set_allocator(old_pool.malloc)
+
+
+def make_comms():
+    if not nccl.available:
+        return None
+    comms_list = nccl.NcclCommunicator.initAll(4)
+    return {dev: comm for dev, comm in zip(range(4), comms_list)}
+
+
+comms = make_comms()
 
 
 @testing.multi_gpu(4)
@@ -49,6 +60,7 @@ class TestDistributedArray:
         3: slice(None, None, 2),
     }
 
+
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
@@ -58,7 +70,7 @@ class TestDistributedArray:
     def test_array_creation_from_numpy(self, mem_pool, shape, mapping, mode):
         array = numpy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == 0
-        da = _array.distributed_array(array, mapping, mode)
+        da = _array.distributed_array(array, mapping, mode, comms)
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
@@ -80,7 +92,7 @@ class TestDistributedArray:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', cupy._util.PerformanceWarning)
             da = _array.distributed_array(
-                array, mapping, mode)
+                array, mapping, mode, comms)
         assert da.device.id == -1
         # Ensure no memory allocation other than chunks & original array
         assert da.data.ptr == 0
@@ -100,7 +112,7 @@ class TestDistributedArray:
         array = numpy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == 0
         da = _array.distributed_array(
-            array.tolist(), mapping, mode)
+            array.tolist(), mapping, mode, comms)
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
@@ -128,7 +140,7 @@ class TestDistributedArray:
                 mapping[dev] = new_idx
 
         d_a = _array._DistributedArray(
-            shape, np_a.dtype, cp_chunks, mapping, _array._sum_mode)
+            shape, np_a.dtype, cp_chunks, mapping, _array._sum_mode, comms)
         d_a = d_a.to_replica_mode()
         testing.assert_array_equal(d_a.asnumpy(), np_a)
         for dev, idx in mapping.items():
@@ -144,8 +156,8 @@ class TestDistributedArray:
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
         np_r = numpy.cos(np_a * np_b) # We do not choose sin because sin(0) == 0
-        d_a = _array.distributed_array(np_a, mapping, mode_a)
-        d_b = _array.distributed_array(np_b, mapping, mode_b)
+        d_a = _array.distributed_array(np_a, mapping, mode_a, comms)
+        d_b = _array.distributed_array(np_b, mapping, mode_b, comms)
         d_r = cupy.cos(d_a * d_b)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
@@ -163,8 +175,8 @@ class TestDistributedArray:
         np_a = numpy.arange(64).reshape(shape).astype(numpy.float32)
         np_b = (numpy.arange(64).reshape(shape) * 2.0).astype(numpy.float32)
         np_r = (np_a - np_b) * (np_a - np_b)
-        d_a = _array.distributed_array(np_a, mapping, mode_a)
-        d_b = _array.distributed_array(np_b, mapping, mode_b)
+        d_a = _array.distributed_array(np_a, mapping, mode_a, comms)
+        d_b = _array.distributed_array(np_b, mapping, mode_b, comms)
         d_r = custom_kernel(d_a, d_b)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
@@ -176,8 +188,8 @@ class TestDistributedArray:
     def test_incompatible_chunk_shapes(self, shape, mapping_a, mapping_b, mode):
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
-        d_a = _array.distributed_array(np_a, mapping_a, mode)
-        d_b = _array.distributed_array(np_b, mapping_b, mode)
+        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
+        d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
         with pytest.raises(RuntimeError, match=r'chunk sizes'):
             cupy.cos(d_a * d_b)
 
@@ -191,8 +203,8 @@ class TestDistributedArray:
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
         np_r = numpy.cos(np_a * np_b)
-        d_a = _array.distributed_array(np_a, mapping_a, mode)
-        d_b = _array.distributed_array(np_b, mapping_b, mode)
+        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
+        d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
         d_r = cupy.cos(d_a * d_b.reshard(mapping_a))
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
@@ -203,7 +215,7 @@ class TestDistributedArray:
     def test_incompatible_operand(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
         cp_b = cupy.arange(64).reshape(shape)
-        d_a = _array.distributed_array(np_a, mapping, mode)
+        d_a = _array.distributed_array(np_a, mapping, mode, comms)
         with pytest.raises(RuntimeError, match=r'Mix `cupy.ndarray'):
             cupy.cos(d_a * cp_b)
 
@@ -258,7 +270,7 @@ class TestDistributedArray:
     def test_reshard(self, mem_pool, shape, mapping_a, mapping_b, mode):
         array = numpy.arange(64, dtype='q').reshape(shape)
         assert mem_pool.used_bytes() == 0
-        da = _array.distributed_array(array, mapping_a, mode)
+        da = _array.distributed_array(array, mapping_a, mode, comms)
         assert mem_pool.used_bytes() == array.nbytes
         db = da.reshard(mapping_b)
         assert mem_pool.used_bytes() == 2 * array.nbytes
@@ -275,7 +287,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('mode', [None, _array._sum_mode])
     def test_max_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
-        d_a = _array.distributed_array(np_a, mapping, mode)
+        d_a = _array.distributed_array(np_a, mapping, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.max(axis=axis)
             d_b = d_a.max(axis=axis)
@@ -285,7 +297,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('mode', [None, _array._sum_mode, _array._prod_mode])
     def test_sum_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
-        d_a = _array.distributed_array(np_a, mapping, mode)
+        d_a = _array.distributed_array(np_a, mapping, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
@@ -296,7 +308,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('mode', [None, _array._sum_mode])
     def test_prod_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64, dtype=cupy.float64).reshape(shape)
-        d_a = _array.distributed_array(np_a, mapping, mode)
+        d_a = _array.distributed_array(np_a, mapping, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.prod(axis=axis)
             d_b = d_a.prod(axis=axis)
@@ -305,7 +317,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('shape, mapping', [(shape_dim3, mapping_dim3)])
     def test_unsupported_reduction(self, shape, mapping):
         np_a = numpy.arange(64).reshape(shape)
-        d_a = _array.distributed_array(np_a, mapping)
+        d_a = _array.distributed_array(np_a, mapping, None, comms)
         with pytest.raises(RuntimeError, match=r'Unsupported .* cupy_argmax'):
             d_a.argmax(axis=0)
 
