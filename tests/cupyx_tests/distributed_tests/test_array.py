@@ -308,3 +308,21 @@ class TestDistributedArray:
         d_a = _array.distributed_array(np_a, mapping)
         with pytest.raises(RuntimeError, match=r'Unsupported .* cupy_argmax'):
             d_a.argmax(axis=0)
+
+    @pytest.mark.parametrize(
+            'shape, mapping_a, mapping_b',
+            [(shape_dim2, mapping_dim2, mapping_dim2_2),
+             (shape_dim3, mapping_dim3, mapping_dim3_2)])
+    def test_mul_sum_mul(self, shape, mapping_a, mapping_b):
+        np_a = numpy.random.randint(0, 1 << 15, shape)
+        np_b = numpy.random.randint(0, 1 << 15, shape)
+        np_c = numpy.random.randint(0, 1 << 15, shape[1:])
+        np_d = (np_a * np_b).sum(axis=0) * np_c
+        mapping_c = {dev: idx[1:] for dev, idx in mapping_a.items()}
+        d_a = _array.distributed_array(np_a, mapping_a)
+        d_b = _array.distributed_array(np_b, mapping_b)
+        d_c = _array.distributed_array(np_c, mapping_c)
+        d_d = (
+                (d_a.reshard(mapping_b) * d_b).sum(axis=0)
+              ).reshard(mapping_c) * d_c
+        testing.assert_array_equal(np_d, d_d.asnumpy())
