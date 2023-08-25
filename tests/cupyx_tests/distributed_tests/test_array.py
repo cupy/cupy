@@ -282,7 +282,7 @@ class TestDistributedArray:
             testing.assert_array_equal(d_b.asnumpy(), np_b)
 
     @pytest.mark.parametrize('shape, mapping', [(shape_dim3, mapping_dim3)])
-    @pytest.mark.parametrize('mode', [None, _array._sum_mode])
+    @pytest.mark.parametrize('mode', [None, _array._sum_mode, _array._prod_mode])
     def test_sum_reduction(self, shape, mapping, mode):
         np_a = numpy.arange(64).reshape(shape)
         d_a = _array.distributed_array(np_a, mapping, mode)

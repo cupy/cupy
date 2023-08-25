@@ -580,6 +580,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
                  bint keepdims=False):
+
         cdef _ndarray_base arr
 
         if isinstance(a, _ndarray_base):

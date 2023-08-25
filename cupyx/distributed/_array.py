@@ -173,8 +173,11 @@ class OpMode:
 Mode = Optional[OpMode]
 
 
+_max_mode = OpMode(cupy.maximum, numpy.maximum, None)
+_min_mode = OpMode(cupy.minimum, numpy.minimum, None)
 _sum_mode = OpMode(cupy.add, numpy.add, 0)
-_replica_mode = None
+_prod_mode = OpMode(cupy.multiply, numpy.multiply, 1)
+_replica_mode: Mode = None
 
 
 class _DistributedArray(cupy.ndarray):
@@ -396,17 +399,17 @@ class _DistributedArray(cupy.ndarray):
             raise RuntimeError('`keepdims` is not supported')
 
         if kernel.name == 'cupy_max':
-            mode = OpMode(cupy.maximum, numpy.maximum, None)
+            mode = _max_mode
             chunks = self._replica_mode_chunks()
         elif kernel.name == 'cupy_min':
-            mode = OpMode(cupy.minimum, numpy.minimum, None)
+            mode = _min_mode
             chunks = self._replica_mode_chunks()
         elif kernel.name == 'cupy_sum':
-            mode = OpMode(cupy.add, numpy.add, 0)
-            chunks = self._op_mode_chunks(mode.identity)
+            mode = _sum_mode
+            chunks = self._op_mode_chunks(mode)
         elif kernel.name == 'cupy_prod':
-            mode = OpMode(cupy.multiply, numpy.multiply, 1)
-            chunks = self._op_mode_chunks(mode.identity)
+            mode = _prod_mode
+            chunks = self._op_mode_chunks(mode)
         else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
@@ -441,7 +444,10 @@ class _DistributedArray(cupy.ndarray):
         return chunks
 
 
-    def _op_mode_chunks(self, identity) -> dict[int, NDArray]:
+    def _op_mode_chunks(self, op_mode) -> dict[int, NDArray]:
+        if self._mode is op_mode:
+            return self._chunks
+
         chunks = self._replica_mode_chunks()
 
         chunks_list = list(chunks.items())
@@ -458,7 +464,7 @@ class _DistributedArray(cupy.ndarray):
                 b_idx = self._device_mapping[b_dev]
 
                 self._set_identity_on_intersection(
-                    self.shape, identity, new_a_chunk, a_idx, b_idx)
+                    self.shape, op_mode.identity, new_a_chunk, a_idx, b_idx)
 
             new_chunks[a_dev] = new_a_chunk
 
@@ -496,7 +502,7 @@ class _DistributedArray(cupy.ndarray):
             with cupy.cuda.Device(dst_dev):
                 # dst_array = cupy.empty_like(arr[dst_idx])
                 dst_shape = _shape_after_indexing(arr.shape, dst_idx)
-                dst_array = cupy.empty(dst_shape)
+                dst_array = cupy.empty(dst_shape, dtype=self.dtype)
             for src_dev, src_idx in old_mapping.items():
                 # TODO: In Replica mode, ideally we want to avoid data
                 # forwarding on elements that have already been forwarded from
@@ -512,10 +518,9 @@ class _DistributedArray(cupy.ndarray):
 
     def asnumpy(self):
         if self._mode is _replica_mode or self._mode.identity is None:
-            np_array = numpy.empty(self.shape)
+            np_array = numpy.empty(self.shape, dtype=self.dtype)
         else:
-            np_array = numpy.full(
-                self.shape, self.mode.identity, dtype=self.dtype)
+            np_array = numpy.full(self.shape, self.mode.identity, self.dtype)
 
         for dev, chunk_idx in self._device_mapping.items():
             if self._mode is _replica_mode:
