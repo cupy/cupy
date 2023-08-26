@@ -191,3 +191,12 @@ Peak finding
    find_peaks
    peak_prominences
    peak_widths
+
+
+Spectral analysis
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lombscargle
