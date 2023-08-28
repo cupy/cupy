@@ -63,7 +63,7 @@ def _new_like_order_and_strides(
 
 
 def empty_like(
-        a: NDArray[Any],
+        prototype: NDArray[Any],
         dtype: DTypeLike = None,
         order: _OrderKACF = 'K',
         subok: None = None,
@@ -96,11 +96,11 @@ def empty_like(
     if subok is not None:
         raise TypeError('subok is not supported yet')
     if dtype is None:
-        dtype = a.dtype
+        dtype = prototype.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
-                                                         shape)
-    shape = shape if shape else a.shape
+    order, strides, memptr = _new_like_order_and_strides(
+        prototype, dtype, order, shape)
+    shape = shape if shape else prototype.shape
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
