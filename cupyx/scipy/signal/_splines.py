@@ -189,15 +189,21 @@ def symiirorder1(input, c0, z1, precision=-1.0):
         raise ValueError(
             'Sum to find symmetric boundary conditions did not converge.')
 
+    a = cupy.r_[1, -z1]
+    a = a.astype(input.dtype)
+
     # Apply first the system 1 / (1 - z1 * z^-1)
     y1, _ = lfilter(
-        cupy.ones(1, dtype=input.dtype), cupy.r_[1, -z1], input[1:], zi=zi)
+        cupy.ones(1, dtype=input.dtype), a, input[1:], zi=zi)
     y1 = cupy.r_[zi, y1]
 
     # Compute backward symmetric condition and apply the system
     # c0 / (1 - z1 * z)
     zi = -c0 / (z1 - 1.0) * y1[-1]
-    out, _ = lfilter(c0, cupy.r_[1, -z1], y1[:-1][::-1], zi=zi)
+    a = cupy.r_[1, -z1]
+    a = a.astype(input.dtype)
+
+    out, _ = lfilter(c0, a, y1[:-1][::-1], zi=zi)
     return cupy.r_[out[::-1], zi]
 
 

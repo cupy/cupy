@@ -555,6 +555,7 @@ class TestLFilter:
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
         a = testing.shaped_random((iir_order,), xp, scale=0.3)
         a = xp.r_[1, a]
+        a = a.astype(x.dtype)
 
         zi = testing.shaped_random((fir_order + iir_order - 1,), xp)
         zi = scp.signal.lfiltic(b, a, zi[-iir_order:], zi[:fir_order - 1])
@@ -570,6 +571,7 @@ class TestLFilter:
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
         a = testing.shaped_random((iir_order,), xp, scale=0.3)
         a = xp.r_[1, a]
+        a = a.astype(x.dtype)
 
         zi = scp.signal.lfilter_zi(b, a)
         out, _ = scp.signal.lfilter(b, a, x, zi=zi)
