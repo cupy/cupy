@@ -14,6 +14,8 @@ There are four differences compared to the original C API.
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy_backends.cuda.api cimport runtime
+
 
 ###############################################################################
 # Extern
