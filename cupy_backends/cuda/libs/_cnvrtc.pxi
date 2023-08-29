@@ -65,7 +65,7 @@ cdef F_nvrtcGetNVVM nvrtcGetNVVM
 
 
 cdef SoftLink _L = None
-cdef void initialize():
+cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
@@ -107,7 +107,7 @@ cdef void initialize():
     nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
 
 
-cdef SoftLink _get_softlink():
+cdef SoftLink _get_softlink() except *:
     cdef int runtime_version
     cdef str prefix = 'nvrtc'
     cdef object libname = None
