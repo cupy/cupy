@@ -152,7 +152,7 @@ def _parse_function_object(func):
 
 class Generated:
 
-    def __init__(self):
+    def __init__(self) -> None:
         # list of str
         self.codes: List[str] = []
         # (function, in_types) => Optional(function_name, return_type)
