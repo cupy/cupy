@@ -69,6 +69,10 @@ cdef inline void initialize() except *:
     global _L
     if _L is not None:
         return
+    _initialize()
+
+cdef void _initialize() except *:
+    global _L
     _L = _get_softlink()
 
     global nvrtcGetErrorString
@@ -107,7 +111,7 @@ cdef inline void initialize() except *:
     nvrtcGetNVVM = <F_nvrtcGetNVVM>_L.get('GetNVVM')
 
 
-cdef SoftLink _get_softlink() except *:
+cdef SoftLink _get_softlink():
     cdef int runtime_version
     cdef str prefix = 'nvrtc'
     cdef object libname = None
