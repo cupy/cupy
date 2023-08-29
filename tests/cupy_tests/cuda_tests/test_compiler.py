@@ -2,8 +2,6 @@ import pickle
 import unittest
 from unittest import mock
 
-import pytest
-
 import cupy
 from cupy.cuda import compiler
 
@@ -130,7 +128,3 @@ class TestExceptionPicklable(unittest.TestCase):
 class TestCompileWithCache:
     def test_compile_module_with_cache(self):
         compiler._compile_module_with_cache('__device__ void func() {}')
-
-    def test_deprecated_compile_with_cache(self):
-        with pytest.warns(UserWarning):
-            compiler.compile_with_cache('__device__ void func() {}')

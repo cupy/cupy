@@ -18,7 +18,7 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver  # NOQA
-from cupy_backends.cuda.libs cimport nvrtc  # NOQA
+from cupy_backends.cuda.libs cimport nvrtc  # no-cython-lint
 
 
 ###############################################################################
@@ -76,6 +76,7 @@ IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccudart cimport *
 ELSE:
     include '_runtime_extern.pxi'
+    pass  # for cython-lint
 
 cdef extern from '../../cupy_backend_runtime.h' nogil:
     bint hip_environment
@@ -999,7 +1000,8 @@ cdef _ensure_context():
 # Texture
 ##############################################################################
 
-cpdef uintmax_t createTextureObject(intptr_t ResDescPtr, intptr_t TexDescPtr):
+cpdef uintmax_t createTextureObject(
+        intptr_t ResDescPtr, intptr_t TexDescPtr) except? 0:
     cdef uintmax_t texobj = 0
     with nogil:
         status = cudaCreateTextureObject(<TextureObject*>(&texobj),
@@ -1014,7 +1016,7 @@ cpdef destroyTextureObject(uintmax_t texObject):
         status = cudaDestroyTextureObject(<TextureObject>texObject)
     check_status(status)
 
-cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr):
+cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr) except? 0:
     cdef uintmax_t surfobj = 0
     with nogil:
         status = cudaCreateSurfaceObject(<SurfaceObject*>(&surfobj),
@@ -1027,34 +1029,35 @@ cpdef destroySurfaceObject(uintmax_t surfObject):
         status = cudaDestroySurfaceObject(<SurfaceObject>surfObject)
     check_status(status)
 
-cdef ChannelFormatDesc getChannelDesc(intptr_t array):
+cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*:
     cdef ChannelFormatDesc desc
     with nogil:
         status = cudaGetChannelDesc(&desc, <Array>array)
     check_status(status)
     return desc
 
-cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t obj):
+cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t obj) except*:
     cdef ResourceDesc desc
     with nogil:
         status = cudaGetTextureObjectResourceDesc(&desc, <TextureObject>obj)
     check_status(status)
     return desc
 
-cdef TextureDesc getTextureObjectTextureDesc(uintmax_t obj):
+cdef TextureDesc getTextureObjectTextureDesc(uintmax_t obj) except*:
     cdef TextureDesc desc
     with nogil:
         status = cudaGetTextureObjectTextureDesc(&desc, <TextureObject>obj)
     check_status(status)
     return desc
 
-cdef Extent make_Extent(size_t w, size_t h, size_t d):
+cdef Extent make_Extent(size_t w, size_t h, size_t d) except*:
     return make_cudaExtent(w, h, d)
 
-cdef Pos make_Pos(size_t x, size_t y, size_t z):
+cdef Pos make_Pos(size_t x, size_t y, size_t z) except*:
     return make_cudaPos(x, y, z)
 
-cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz):
+cdef PitchedPtr make_PitchedPtr(
+        intptr_t d, size_t p, size_t xsz, size_t ysz) except*:
     return make_cudaPitchedPtr(<void*>d, p, xsz, ysz)
 
 

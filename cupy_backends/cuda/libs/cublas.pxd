@@ -29,6 +29,9 @@ cdef extern from *:
 ###############################################################################
 
 cpdef enum:
+    # need to revisit this when cython supports C++ enums (in 3.0)
+    # https://stackoverflow.com/a/67138945
+
     CUBLAS_OP_N = 0
     CUBLAS_OP_T = 1
     CUBLAS_OP_C = 2

@@ -1,12 +1,9 @@
 # distutils: language = c++
 
 import atexit
-import collections
 import functools
 import os
 import warnings
-
-import numpy
 
 import cupy
 from cupy.cuda cimport device
@@ -198,13 +195,11 @@ def check_array(obj, *, arg_name):
                 arg_name, type(obj)))
 
 
-"""
-This code is to signal when the interpreter is in shutdown mode
-to prevent using globals that could be already deleted in
-objects `__del__` method
-
-This solution is taken from the Numba/llvmlite code
-"""
+# This code is to signal when the interpreter is in shutdown mode
+# to prevent using globals that could be already deleted in
+# objects `__del__` method
+#
+# This solution is taken from the Numba/llvmlite code
 _shutting_down = [False]
 
 

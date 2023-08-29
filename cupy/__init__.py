@@ -57,20 +57,19 @@ from cupy._core import ufunc  # NOQA
 # =============================================================================
 from numpy import e  # NOQA
 from numpy import euler_gamma  # NOQA
-from numpy import Inf  # NOQA
 from numpy import inf  # NOQA
-from numpy import Infinity  # NOQA
-from numpy import infty  # NOQA
-from numpy import NAN  # NOQA
-from numpy import NaN  # NOQA
 from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
-from numpy import NINF  # NOQA
-from numpy import NZERO  # NOQA
 from numpy import pi  # NOQA
-from numpy import PINF  # NOQA
-from numpy import PZERO  # NOQA
 
+# APIs to be removed in NumPy 2.0.
+# Remove these when bumping the baseline API to NumPy 2.0.
+# https://github.com/cupy/cupy/pull/7800
+PINF = Inf = Infinity = infty = inf  # NOQA
+NINF = -inf  # NOQA
+NAN = NaN = nan  # NOQA
+PZERO = 0.0  # NOQA
+NZERO = -0.0  # NOQA
 
 # =============================================================================
 # Data types (borrowed from NumPy)
@@ -529,9 +528,9 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import all as alltrue  # NOQA
+from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import any as sometrue  # NOQA
+from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -577,15 +576,15 @@ from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round  # NOQA
 from cupy._math.rounding import round_  # NOQA
-from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
-from cupy._math.sumprod import prod as product  # NOQA
+from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
-from cupy._math.sumprod import cumprod as cumproduct  # NOQA
+from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA

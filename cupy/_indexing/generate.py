@@ -7,7 +7,6 @@ import operator
 import numpy
 
 import cupy
-from cupy import _core
 from cupy._creation import from_data
 from cupy._manipulation import join
 
@@ -40,16 +39,14 @@ class AxisConcatenator(object):
         trans1d = self.trans1d
         ndmin = self.ndmin
         objs = []
+        arrays = []
         scalars = []
-        arraytypes = []
-        scalartypes = []
         if isinstance(key, str):
             raise NotImplementedError
         if not isinstance(key, tuple):
             key = (key,)
 
         for i, k in enumerate(key):
-            scalar = False
             if isinstance(k, slice):
                 raise NotImplementedError
             elif isinstance(k, str):
@@ -60,20 +57,17 @@ class AxisConcatenator(object):
             elif type(k) in numpy.ScalarType:
                 newobj = from_data.array(k, ndmin=ndmin)
                 scalars.append(i)
-                scalar = True
-                scalartypes.append(newobj.dtype)
             else:
                 newobj = from_data.array(k, copy=False, ndmin=ndmin)
                 if ndmin > 1:
                     ndim = from_data.array(k, copy=False).ndim
                     if trans1d != -1 and ndim < ndmin:
                         newobj = self._output_obj(newobj, ndim, ndmin, trans1d)
+                arrays.append(newobj)
 
             objs.append(newobj)
-            if not scalar and isinstance(newobj, _core.ndarray):
-                arraytypes.append(newobj.dtype)
 
-        final_dtype = numpy.find_common_type(arraytypes, scalartypes)
+        final_dtype = numpy.result_type(*arrays, *scalars)
         if final_dtype is not None:
             for k in scalars:
                 objs[k] = objs[k].astype(final_dtype)

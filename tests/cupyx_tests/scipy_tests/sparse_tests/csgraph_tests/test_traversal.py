@@ -44,16 +44,18 @@ class TestConnectedComponents(unittest.TestCase):
             n, labels = sp.csgraph.connected_components(
                 a, directed=self.directed, connection=self.connection,
                 return_labels=self.return_labels)
-            if xp == numpy and self.directed and self.connection == 'strong':
-                # Note: Label IDs are adjusted as SciPy returns un-ordered
-                # labels in strong connection case.
-                table = xp.zeros((n,), dtype=numpy.int32) - 1
-                j = 0
-                for i in range(labels.size):
-                    if table[labels[i]] < 0:
-                        table[labels[i]] = j
-                        j = j + 1
-                    labels[i] = table[labels[i]]
+            # Note: CuPy returns un-ordered results in both strong and
+            # weak connection case while SciPy returns un-ordered labels
+            # in strong connection case therefore. Since in most cases
+            # the labels returned by both cuPy and Scipy are un-ordered
+            # therefore, always adjust the labels.
+            table = xp.zeros((n,), dtype=numpy.int32) - 1
+            j = 0
+            for i in range(labels.size):
+                if table[labels[i]] < 0:
+                    table[labels[i]] = j
+                    j = j + 1
+                labels[i] = table[labels[i]]
             return n, labels
         else:
             return sp.csgraph.connected_components(

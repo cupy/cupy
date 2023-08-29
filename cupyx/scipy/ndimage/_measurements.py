@@ -1237,3 +1237,144 @@ def histogram(input, min, max, bins, labels=None, index=None):
     return labeled_comprehension(
         input, labels, index, _hist, object, None, pass_positions=False
     )
+
+
+def value_indices(arr, *, ignore_value=None, adaptive_index_dtype=False):
+    """
+    Find indices of each distinct value in given array.
+
+    Parameters
+    ----------
+    arr : ndarray of ints
+        Array containing integer values.
+    ignore_value : int, optional
+        This value will be ignored in searching the `arr` array. If not
+        given, all values found will be included in output. Default
+        is None.
+    adaptive_index_dtype : bool, optional
+        If ``True``, instead of returning the default CuPy signed integer
+        dtype, the smallest signed integer dtype capable of representing the
+        image coordinate range will be used. This can substantially reduce
+        memory usage and slightly reduce runtime. Note that this optional
+        parameter is not available in the SciPy API.
+
+    Returns
+    -------
+    indices : dictionary
+        A Python dictionary of array indices for each distinct value. The
+        dictionary is keyed by the distinct values, the entries are array
+        index tuples covering all occurrences of the value within the
+        array.
+
+        This dictionary can occupy significant memory, often several times
+        the size of the input array. To help reduce memory overhead, the
+        argument `adaptive_index_dtype` can be set to ``True``.
+
+    Notes
+    -----
+    For a small array with few distinct values, one might use
+    `numpy.unique()` to find all possible values, and ``(arr == val)`` to
+    locate each value within that array. However, for large arrays,
+    with many distinct values, this can become extremely inefficient,
+    as locating each value would require a new search through the entire
+    array. Using this function, there is essentially one search, with
+    the indices saved for all distinct values.
+
+    This is useful when matching a categorical image (e.g. a segmentation
+    or classification) to an associated image of other data, allowing
+    any per-class statistic(s) to then be calculated. Provides a
+    more flexible alternative to functions like ``scipy.ndimage.mean()``
+    and ``scipy.ndimage.variance()``.
+
+    Some other closely related functionality, with different strengths and
+    weaknesses, can also be found in ``scipy.stats.binned_statistic()`` and
+    the `scikit-image <https://scikit-image.org/>`_ function
+    ``skimage.measure.regionprops()``.
+
+    Note for IDL users: this provides functionality equivalent to IDL's
+    REVERSE_INDICES option (as per the IDL documentation for the
+    `HISTOGRAM <https://www.l3harrisgeospatial.com/docs/histogram.html>`_
+    function).
+
+    .. versionadded:: 1.10.0
+
+    See Also
+    --------
+    label, maximum, median, minimum_position, extrema, sum, mean, variance,
+    standard_deviation, cupy.where, cupy.unique
+
+    Examples
+    --------
+    >>> import cupy
+    >>> from cupyx.scipy import ndimage
+    >>> a = cupy.zeros((6, 6), dtype=int)
+    >>> a[2:4, 2:4] = 1
+    >>> a[4, 4] = 1
+    >>> a[:2, :3] = 2
+    >>> a[0, 5] = 3
+    >>> a
+    array([[2, 2, 2, 0, 0, 3],
+           [2, 2, 2, 0, 0, 0],
+           [0, 0, 1, 1, 0, 0],
+           [0, 0, 1, 1, 0, 0],
+           [0, 0, 0, 0, 1, 0],
+           [0, 0, 0, 0, 0, 0]])
+    >>> val_indices = ndimage.value_indices(a)
+
+    The dictionary `val_indices` will have an entry for each distinct
+    value in the input array.
+
+    >>> val_indices.keys()
+    dict_keys([0, 1, 2, 3])
+
+    The entry for each value is an index tuple, locating the elements
+    with that value.
+
+    >>> ndx1 = val_indices[1]
+    >>> ndx1
+    (array([2, 2, 3, 3, 4]), array([2, 3, 2, 3, 4]))
+
+    This can be used to index into the original array, or any other
+    array with the same shape.
+
+    >>> a[ndx1]
+    array([1, 1, 1, 1, 1])
+
+    If the zeros were to be ignored, then the resulting dictionary
+    would no longer have an entry for zero.
+
+    >>> val_indices = ndimage.value_indices(a, ignore_value=0)
+    >>> val_indices.keys()
+    dict_keys([1, 2, 3])
+
+    """
+    if arr.dtype.kind not in 'iu':
+        raise ValueError('Parameter \'arr\' must be an integer array')
+    if adaptive_index_dtype:
+        # determined the minimum signed integer type needed to store the
+        # index rangle
+        raveled_int_type = cupy.min_scalar_type(-(int(arr.size) + 1))
+        coord_int_type = cupy.min_scalar_type(-(max(arr.shape) + 1))
+    arr1d = arr.reshape(-1)
+    counts = cupy.bincount(arr1d)
+
+    isort = cupy.argsort(arr1d, axis=None)
+    if adaptive_index_dtype:
+        isort = isort.astype(raveled_int_type, copy=False)
+
+    coords = cupy.unravel_index(isort, arr.shape)
+    if adaptive_index_dtype:
+        coords = tuple(c.astype(coord_int_type, copy=False) for c in coords)
+
+    offset = 0
+    out = {}
+    counts = cupy.asnumpy(counts)  # need the counts on the host
+    for value, count in enumerate(counts):
+        if count == 0:
+            continue
+        elif value == ignore_value:
+            offset += count
+            continue
+        out[value] = tuple(c[offset:offset + count] for c in coords)
+        offset += count
+    return out

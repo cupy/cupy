@@ -1,42 +1,8 @@
 {
-    "cupy.linux.cuda102": [
-        "@push",
-        "full",
-        "mini",
-        "cuda102"
-    ],
-    "cupy.linux.cuda102.multi": [
-        "@push",
-        "full",
-        "mini",
-        "multi",
-        "cuda102"
-    ],
-    "cupy.linux.cuda110": [
-        "@push",
-        "full",
-        "cuda110"
-    ],
-    "cupy.linux.cuda110.multi": [
-        "@push",
-        "full",
-        "multi",
-        "cuda110"
-    ],
-    "cupy.linux.cuda111": [
-        "@push",
-        "full",
-        "cuda111"
-    ],
-    "cupy.linux.cuda111.multi": [
-        "@push",
-        "full",
-        "multi",
-        "cuda111"
-    ],
     "cupy.linux.cuda112": [
         "@push",
         "full",
+        "mini",
         "cuda112"
     ],
     "cupy.linux.cuda112.multi": [
@@ -139,6 +105,19 @@
         "multi",
         "cuda121"
     ],
+    "cupy.linux.cuda122": [
+        "@push",
+        "full",
+        "mini",
+        "cuda122"
+    ],
+    "cupy.linux.cuda122.multi": [
+        "@push",
+        "full",
+        "mini",
+        "multi",
+        "cuda122"
+    ],
     "cupy.linux.cuda-slow": [
         "slow"
     ],
@@ -157,22 +136,10 @@
         "mini",
         "cuda-python"
     ],
-    "cupy.win.cuda102": [
+    "cupy.win.cuda112": [
         "@push",
         "full",
         "mini",
-        "windows",
-        "cuda102"
-    ],
-    "cupy.win.cuda110": [
-        "windows",
-        "cuda110"
-    ],
-    "cupy.win.cuda111": [
-        "windows",
-        "cuda111"
-    ],
-    "cupy.win.cuda112": [
         "windows",
         "cuda112"
     ],
@@ -189,14 +156,10 @@
         "cuda115"
     ],
     "cupy.win.cuda116": [
-        "@push",
-        "full",
         "windows",
         "cuda116"
     ],
     "cupy.win.cuda117": [
-        "@push",
-        "full",
         "windows",
         "cuda117"
     ],
@@ -213,6 +176,20 @@
         "mini",
         "windows",
         "cuda120"
+    ],
+    "cupy.win.cuda121": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda121"
+    ],
+    "cupy.win.cuda122": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda122"
     ],
     "cupy.linux.cuda-rapids": [
         "@push",

@@ -209,21 +209,44 @@ class TestConvolveCorrelate2D:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.parametrize("mode", ["valid", "same", "full"])
+@pytest.mark.parametrize("behind", [True, False])
+@pytest.mark.parametrize("input_size", [100, 101, 1000, 1001, 10000, 10001])
+@testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+def test_correlation_lags(mode, xp, scp, behind, input_size):
+    # generate random data
+    rng = np.random.RandomState(0)
+    in1 = rng.standard_normal(input_size)
+    in1 = xp.asarray(in1)
+
+    offset = int(input_size/10)
+    # generate offset version of array to correlate with
+    if behind:
+        # y is behind x
+        in2 = xp.concatenate([xp.asarray(rng.standard_normal(offset)), in1])
+    else:
+        # y is ahead of x
+        in2 = in1[offset:]
+    # cross correlate, returning lag information
+    lags = scp.signal.correlation_lags(in1.size, in2.size, mode=mode)
+    return lags
+
+
+@testing.with_requires('scipy')
 class TestConvolve2DEdgeCase:
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.10')
     def test_convolve2d_1(self, xp, scp):
-        # see cupy/cupy#5989
-        from scipy import misc
-        ascent = misc.ascent()
-        if xp is cupy:
-            ascent = xp.asarray(ascent)
+        # Meant a gray-scale image
+        data = testing.shaped_random(
+            (512, 512), xp=xp, dtype=xp.uint8, scale=256)
         scharr = xp.array(
             [[-3-3j, 0-10j, +3-3j],
              [-10+0j, 0+0j, +10+0j],
              [-3+3j, 0+10j, +3+3j]])  # Gx + j*Gy
         return scp.signal.convolve2d(
-            ascent, scharr, boundary='symm', mode='same')
+            data, scharr, boundary='symm', mode='same')
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_convolve2d_2(self, xp, scp):
@@ -565,3 +588,434 @@ class TestDeconvolve:
         b = testing.shaped_random((order,), xp, scale=0.3)
         o = scp.signal.convolve(x, b)
         return scp.signal.deconvolve(o, b)
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
+class TestSosFilt:
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+    def test_sections(self, size, sections, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
+        sos[:, 3] = 1
+        return scp.signal.sosfilt(sos, x)
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+    def test_sections_nd(self, size, sections, axis, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((4, 5, 3, size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
+        sos[:, 3] = 1
+        return scp.signal.sosfilt(sos, x, axis=axis)
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+    def test_zi_zeros(self, size, sections, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
+        sos[:, 3] = 1
+        if xp is cupy:
+            zi = xp.zeros((sections, 4), dtype=dtype)
+        else:
+            zi = xp.zeros((sections, 2), dtype=dtype)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+    def test_zi_zeros_nd(self, size, sections, axis, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((4, 5, 3, size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
+        sos[:, 3] = 1
+        zi_size = [sections] + list(x.shape)
+        if xp is cupy:
+            zi_size[axis + 1] = 4
+        else:
+            zi_size[axis + 1] = 2
+        zi = xp.zeros(zi_size, dtype=dtype)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi, axis=axis)
+        return out
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, no_complex=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5)
+    def test_zi(self, size, sections, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
+        sos[:, 3] = 1
+        zi = testing.shaped_random((sections, 4), xp, dtype, scale=x_scale)
+        if xp is not cupy:
+            sections_zi = []
+            for s in range(sections):
+                b = sos[s, :3]
+                a = sos[s, 3:]
+                section_zi = zi[s]
+                section_zi = scp.signal.lfiltic(
+                    b, a, section_zi[2:][::-1], section_zi[:2][::-1])
+                sections_zi.append(xp.expand_dims(section_zi, 0))
+            zi = xp.concatenate(sections_zi)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-5, atol=5e-5)
+    def test_zi_nd(self, size, sections, axis, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.5 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.2 if xp.dtype(dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((4, 5, 3, size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random((sections, 6), xp, dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        zi_size = [sections] + list(x.shape)
+        zi_size[axis + 1] = 4
+        zi = testing.shaped_random(zi_size, xp, dtype, scale=x_scale)
+
+        if xp is not cupy:
+            sections_zi = []
+            for s in range(sections):
+                b = sos[s, :3]
+                a = sos[s, 3:]
+                section_zi = zi[s]
+                section_zi = xp.moveaxis(section_zi, axis, -1)
+                zi_m_shape = section_zi.shape
+                section_zi = section_zi.reshape(-1, 4).copy()
+                section_zi = xp.concatenate([
+                    scp.signal.lfiltic(
+                        b, a, z[2:][::-1], z[:2][::-1])
+                    for z in section_zi])
+                section_zi = section_zi.reshape(zi_m_shape[:-1] + (2,))
+                section_zi = xp.moveaxis(section_zi, -1, axis)
+                sections_zi.append(xp.expand_dims(section_zi, 0))
+            zi = xp.concatenate(sections_zi)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi, axis=axis)
+        return out
+
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_sosfilt_zi(self, sections, xp, scp):
+        x = xp.ones(20)
+        sos = testing.shaped_random((sections, 6), xp, xp.float64, scale=0.2)
+        sos[:, 3] = 1
+
+        zi = scp.signal.sosfilt_zi(sos)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
+
+@testing.with_requires('scipy')
+class TestDetrend:
+
+    def test_basic(self):
+        detrend = cupyx.scipy.signal.detrend
+        detrended = detrend(cupy.array([1, 2, 3]))
+        detrended_exact = cupy.array([0, 0, 0])
+        testing.assert_array_almost_equal(detrended, detrended_exact)
+
+    def test_copy(self):
+        x = cupy.array([1, 1.2, 1.5, 1.6, 2.4])
+        detrend = cupyx.scipy.signal.detrend
+
+        copy_array = detrend(x, overwrite_data=False)
+        inplace = detrend(x, overwrite_data=True)
+        testing.assert_array_almost_equal(copy_array, inplace)
+
+    @pytest.mark.parametrize('kind', ['linear', 'constant'])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=4e-13)
+    def test_axis(self, axis, kind, xp, scp):
+        detrend = scp.signal.detrend
+        data = xp.arange(5*6*7).reshape(5, 6, 7)
+        detrended = detrend(data, type=kind, axis=axis)
+        assert detrended.shape == data.shape
+        return detrended
+
+    def test_bp(self):
+        data = [0, 1, 2] + [5, 0, -5, -10]
+        detrend = cupyx.scipy.signal.detrend
+
+        detrended = detrend(data, type='linear', bp=3)
+        testing.assert_allclose(detrended, 0, atol=1e-14)
+
+        # repeat with ndim > 1 and axis
+        data = cupy.asarray(data)[None, :, None]
+
+        detrended = detrend(data, type="linear", bp=3, axis=1)
+        testing.assert_allclose(detrended, 0, atol=1e-14)
+
+        # breakpoint index > shape[axis]: raises
+        with pytest.raises(ValueError):
+            detrend(data, type="linear", bp=3)
+
+
+@testing.with_requires('scipy')
+class TestFiltFilt:
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [1, 2, 3])
+    @pytest.mark.parametrize('method', ['pad', 'gust'])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+                                 type_check=False, accept_error=True)
+    def test_filtfilt_1d(self, size, fir_order, iir_order, method, padtype,
+                         in_dtype, const_dtype, xp, scp):
+        out_dtype = xp.result_type(in_dtype, const_dtype)
+        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
+            pytest.skip()
+        if (
+            not runtime.is_hip
+            and cupy.cuda.runtime.runtimeGetVersion() == 10020
+        ):
+            # The tests fail on CUDA 10.2
+            pytest.skip()
+
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((size,), xp, in_dtype, scale=x_scale)
+        b = testing.shaped_random(
+            (fir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = testing.shaped_random(
+            (iir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = xp.r_[1, a]
+        a = a.astype(const_dtype)
+
+        res = scp.signal.filtfilt(b, a, x, method=method, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])
+    @pytest.mark.parametrize('fir_order', [1, 2, 3])
+    @pytest.mark.parametrize('iir_order', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('method', ['pad', 'gust'])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('in_dtype', 'const_dtype'))
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+    def test_filtfilt_ndim(
+            self, size, fir_order, iir_order, axis, method, padtype, in_dtype,
+            const_dtype, xp, scp):
+        out_dtype = xp.result_type(in_dtype, const_dtype)
+        if xp.dtype(out_dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        if (
+            runtime.is_hip and driver.get_build_version() < 5_00_00000
+            and iir_order > 0
+        ):
+            # ROCm 4.3 raises in Module.get_function()
+            pytest.skip()
+        if (
+            not runtime.is_hip
+            and cupy.cuda.runtime.runtimeGetVersion() == 10020
+        ):
+            # The tests fail on CUDA 10.2
+            pytest.skip()
+
+        x_scale = 0.1 if xp.dtype(in_dtype).kind not in {'i', 'u'} else 1
+        c_scale = 0.1 if xp.dtype(const_dtype).kind not in {'i', 'u'} else 1
+
+        x = testing.shaped_random((4, 5, 3, size), xp, in_dtype, scale=x_scale)
+        b = testing.shaped_random(
+            (fir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = testing.shaped_random(
+            (iir_order,), xp, dtype=const_dtype, scale=c_scale)
+        a = xp.r_[1, a]
+        a = a.astype(const_dtype)
+
+        res = scp.signal.filtfilt(b, a, x, axis=axis,
+                                  method=method, padtype=padtype)
+        return res
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
+class TestSosFiltFilt:
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+                                 type_check=False, accept_error=True)
+    def test_sosfiltfilt_1d(self, size, sections, padtype, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        x_scale = 0.1
+        c_scale = 0.1
+
+        x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random(
+            (sections, 6,), xp, dtype=dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        res = scp.signal.sosfiltfilt(sos, x, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+    def test_filtfilt_ndim(
+            self, size, sections, axis, padtype, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.1
+        c_scale = 0.1
+
+        x = testing.shaped_random((4, 5, 3, size), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random(
+            (sections, 6), xp, dtype=dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        res = scp.signal.sosfiltfilt(sos, x, axis=axis, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
+
+
+@testing.with_requires("scipy")
+class TestHilbert:
+
+    def test_bad_args(self):
+        x = cupy.array([1.0 + 0.0j])
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert(x)
+        x = cupy.arange(8.0)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert(x, N=0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_hilbert_theoretical(self, xp, scp):
+        # test cases by Ariel Rokem
+        pi = xp.pi
+        t = xp.arange(0, 2 * pi, pi / 256)
+        a0 = xp.sin(t)
+        a1 = xp.cos(t)
+        a2 = xp.sin(2 * t)
+        a3 = xp.cos(2 * t)
+        a = xp.vstack([a0, a1, a2, a3])
+
+        h = scp.signal.hilbert(a)
+        return h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_hilbert_axisN(self, xp, scp):
+        # tests for axis and N arguments
+        a = xp.arange(18).reshape(3, 6)
+        # test axis
+        aa = scp.signal.hilbert(a, axis=-1)
+        aan = scp.signal.hilbert(a, N=20, axis=-1)
+        return aa, aan
+
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires("scipy>=1.9")
+    def test_hilbert_types(self, dtype, xp, scp):
+        in_typed = xp.zeros(8, dtype=dtype)
+        return scp.signal.hilbert(in_typed)
+
+
+@testing.with_requires("scipy")
+class TestHilbert2:
+
+    def test_bad_args(self):
+        # x must be real.
+        x = cupy.array([[1.0 + 0.0j]])
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x)
+
+        # x must be rank 2.
+        x = cupy.arange(24).reshape(2, 3, 4)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x)
+
+        # Bad value for N.
+        x = cupy.arange(16).reshape(4, 4)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x, N=0)
+
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x, N=(2, 0))
+
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x, N=(2,))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    @testing.with_requires("scipy>=1.9")
+    def test_hilbert2_types(self, dtype, xp, scp):
+        in_typed = xp.zeros((2, 32), dtype=dtype)
+        return scp.signal.hilbert2(in_typed)

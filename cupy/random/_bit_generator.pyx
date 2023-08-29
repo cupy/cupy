@@ -3,10 +3,9 @@ import threading
 
 import numpy
 
-from libc.stdint cimport intptr_t, uint64_t, uint32_t
+from libc.stdint cimport uint64_t
 
 import cupy
-from cupy.cuda cimport stream
 from cupy.random._generator_api import init_curand, random_raw
 from cupy_backends.cuda.api import runtime
 
@@ -71,10 +70,12 @@ class BitGenerator:
 
 class _cuRANDGenerator(BitGenerator):
     # Size is the number of threads that will be initialized
-    def __init__(self, seed=None, *, size=1000*256):
+    def __init__(self, seed=None, *, size=-1):
         super().__init__(seed)
         # Raw kernel has problems with integers with the 64th bit set
         self._seed = self._seed_seq.generate_state(1, numpy.uint32)[0]
+        if size < 0:
+            size = 8 * 256 * cupy.cuda.runtime.cudaDevAttrMultiProcessorCount
         self._size = size
         cdef uint64_t b_size = self._type_size() * size
         self._state = cupy.zeros(b_size, dtype=numpy.int8)

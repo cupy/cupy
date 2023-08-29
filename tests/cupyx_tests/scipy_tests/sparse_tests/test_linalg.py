@@ -68,7 +68,7 @@ class TestLsqr(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -84,8 +84,10 @@ class TestMatrixNorm:
                                  accept_error=(ValueError,
                                                NotImplementedError))
     def test_matrix_norm(self, xp, sp):
-        if runtime.is_hip and self.ord in (1, -1, numpy.Inf, -numpy.Inf):
+        if runtime.is_hip and self.ord in (1, -1, numpy.inf, -numpy.inf):
             pytest.xfail('csc spmv is buggy')
+        if self.ord == 2:
+            pytest.xfail('ord=2 is not implemented in cupy')
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
@@ -93,7 +95,7 @@ class TestMatrixNorm:
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.inf, -2, -1, 0, 1, 2, numpy.inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -155,7 +157,7 @@ class TestEigsh:
             ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
             res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
             tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
-            assert(res < tol)
+            assert (res < tol)
         else:
             w = ret
         return xp.sort(w)
@@ -216,6 +218,28 @@ class TestEigsh:
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SM')
+
+    def test_starting_vector(self):
+        eigsh = cupyx.scipy.sparse.linalg.eigsh
+        n = 100
+
+        # Make symmetric matrix
+        aux = cupy.random.randn(n, n)
+        matrix = (aux + aux.T) / 2.0
+
+        # Find reference eigenvector
+        ew, ev = eigsh(matrix, k=1)
+        v = ev[:, 0]
+
+        # Obtain non-converged eigenvector from random initial guess.
+        ew_aux, ev_aux = eigsh(matrix, k=1, ncv=1, maxiter=0)
+        v_aux = cupy.copysign(ev_aux[:, 0], v)
+
+        # Obtain eigenvector using known eigenvector as initial guess.
+        ew_v0, ev_v0 = eigsh(matrix, k=1, v0=v.copy(), ncv=1, maxiter=0)
+        v_v0 = cupy.copysign(ev_v0[:, 0], v)
+
+        assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
 
 
 @testing.parameterize(*testing.product({
@@ -944,7 +968,7 @@ class TestLOBPCG:
         """Build a pair of full diagonal matrices for the generalized eigenvalue
         problem. The Mikota pair acts as a nice test since the eigenvalues are
         the squares of the integers n, n=1,2,...
-        """
+        """  # NOQA
         x = xp.arange(1, n + 1)
         B = xp.diag(1. / x)
         y = xp.arange(n - 1, 0, -1)
@@ -1157,7 +1181,7 @@ class TestLOBPCG:
         output = saved_stdout.getvalue().strip()
         return output
 
-    @testing.with_requires('scipy>=1.8.0rc1')
+    @testing.with_requires('scipy>=1.10')
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs
            and is identical to scipy's output format.
@@ -1195,6 +1219,14 @@ class TestLOBPCG:
         (driver.get_build_version() >= 5_00_00000 and
          driver.get_build_version() < 50530201),
         reason='ROCm 5.0+ may have a bug')
+    @pytest.mark.xfail(
+        cupy.cuda.cusolver._getVersion() in (
+            (11, 4, 5),  # CUDA 12.1.1
+            (11, 5, 0),  # CUDA 12.2.0
+        ),
+        reason='cuSOLVER in CUDA 12.1+ may have a bug',
+        strict=False,  # Seems only failing with Volta (V100 / T4)
+    )
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should

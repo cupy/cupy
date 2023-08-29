@@ -294,8 +294,7 @@ def block_diag(*arrs):
 
     shapes = tuple(a.shape for a in arrs)
     shape = tuple(sum(x) for x in zip(*shapes))
-    dtype = cupy.find_common_type([a.dtype for a in arrs], [])
-    out = cupy.zeros(shape, dtype=dtype)
+    out = cupy.zeros(shape, dtype=cupy.result_type(*arrs))
     r, c = 0, 0
     for arr in arrs:
         rr, cc = arr.shape

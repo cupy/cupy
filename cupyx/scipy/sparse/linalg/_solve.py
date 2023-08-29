@@ -353,7 +353,7 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         if (normA * normr) != 0:
             test2 = normar / (normA * normr)
         else:
-            test2 = numpy.infty
+            test2 = numpy.inf
         test3 = 1 / condA
         t1 = test1 / (1 + normA*normx/normb)
         rtol = btol + atol*normA*normx/normb
@@ -559,7 +559,7 @@ class SuperLU():
         Returns:
             cupy.ndarray:
                 Solution vector(s)
-        """
+        """  # NOQA
         if not isinstance(rhs, cupy.ndarray):
             raise TypeError('ojb must be cupy.ndarray')
         if rhs.ndim not in (1, 2):
@@ -656,7 +656,7 @@ def factorized(A):
         performed on the GPU.
 
     .. seealso:: :func:`scipy.sparse.linalg.factorized`
-    """
+    """  # NOQA
     return splu(A).solve
 
 

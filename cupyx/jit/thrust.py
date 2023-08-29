@@ -500,7 +500,7 @@ def reduce_by_key(
 
 @_wrap_thrust_func(['thrust/remove.h'])
 def remove(env, exec_policy, first, last, value):
-    """Removes from the range all elements that are rqual to value.
+    """Removes from the range all elements that are equal to value.
     """
     _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)
@@ -512,7 +512,7 @@ def remove(env, exec_policy, first, last, value):
 
 @_wrap_thrust_func(['thrust/remove.h'])
 def remove_copy(env, exec_policy, first, last, result, value):
-    """Removes from the range all elements that are rqual to value.
+    """Removes from the range all elements that are equal to value.
     """
     _assert_exec_policy_type(exec_policy)
     _assert_pointer_type(first)

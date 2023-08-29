@@ -1,0 +1,124 @@
+name: "Project (Pull-Request)"
+
+on:
+  workflow_run:
+    workflows: ["Pull-Request Update"]
+    types: [completed]
+
+jobs:
+  needs-attention:
+    # Brings the pull-request to attention by any activities triggered by users other than assignees.
+    # c.f. https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/automating-projects-using-actions
+    # c.f. https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+    if: |
+      github.repository_owner == 'cupy' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Generate Token
+        uses: tibdex/github-app-token@b62528385c34dbc9f38e5f4225ac829252d1ea92  # v1.8.0
+        id: token
+        with:
+          app_id: 349488
+          private_key: ${{ secrets.GH_APP_PROJECT_AUTOMATION_PEM }}
+
+      # Get the pull-request number.
+      - name: Download artifact
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const workflow_run_id = ${{ github.event.workflow_run.id }};
+            core.notice(`Triggered by: https://github.com/cupy/cupy/actions/runs/${workflow_run_id}`);
+
+            var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: workflow_run_id,
+            });
+            var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "PULL_REQUEST_NUMBER"
+            })[0];
+            var download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            var fs = require('fs');
+            fs.writeFileSync('${{github.workspace}}/PULL_REQUEST_NUMBER.zip', Buffer.from(download.data));
+      - run: unzip PULL_REQUEST_NUMBER.zip
+
+      - name: Update Status
+        shell: /usr/bin/bash -uex "{0}"
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          PULL_REQUEST="$(cat 'PULL_REQUEST_NUMBER')"
+          echo "::notice::Pull-Request: #${PULL_REQUEST}"
+
+          # https://github.com/orgs/cupy/projects/4
+          gh api graphql -F "pull_request=${PULL_REQUEST}" -f query='
+            query ($pull_request: Int!) {
+              organization(login: "cupy") {
+                projectV2(number: 4) {
+                  id
+                  field(name: "Status") {
+                    ... on ProjectV2SingleSelectField {
+                      id
+                      options {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+                repository(name: "cupy") {
+                  pullRequest(number: $pull_request) {
+                    state
+                    projectItems(first: 100, includeArchived: false) {
+                      nodes {
+                        project {
+                          id
+                        }
+                        id
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ' --jq '
+            .data.organization.projectV2 as $project |
+            .data.organization.repository as $repo |
+            {
+              "project_id": $project.id,
+              "field_id":   $project.field.id,
+              "option_id":  $project.field.options[] | select(.name == "Needs Attention") | .id,
+              "item_id":    (($repo.pullRequest.projectItems.nodes[] | select(.project.id == $project.id) | .id) // -1),
+              "state":      $repo.pullRequest.state
+            }
+          ' > params.json
+          jq . params.json
+          if [[ $(jq .item_id params.json) == -1 && $(jq .state params.json) != OPEN ]]; then
+            echo "The pull-request is already closed."
+            exit
+          fi
+
+          gh api graphql $(jq -r '[to_entries[] | "-F " + .key + "=\"" + .value + "\""] | join(" ")' params.json) -f query='
+            mutation ($project_id: ID!, $field_id: ID!, $item_id: ID!) {
+              updateProjectV2ItemFieldValue(
+                input: {projectId: $project_id, fieldId: $field_id, itemId: $item_id, value: {singleSelectOptionId: "98236657"}}
+              ) {
+                clientMutationId
+              }
+            }
+          '
+
+      - name: Revoke Token
+        uses: actions/github-script@v6
+        if: always() && steps.token.outcome == 'success'
+        with:
+          github-token: ${{ steps.token.outputs.token }}
+          script: |
+            await github.rest.apps.revokeInstallationAccessToken();
