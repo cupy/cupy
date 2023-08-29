@@ -36,11 +36,11 @@ jobs:
       run: |
         pre-commit run -a --show-diff-on-failure
 
-    - name: Typing
+    - name: Type Check
       run: |
         # TODO: Test against various NumPy/SciPy versions.
-        pip install numpy==1.25.* scipy==1.10.*
-        pip install types-setuptools==57.4.14 pytest>=7.2
+        pip install 'numpy==1.25.*' 'scipy==1.10.*'
+        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
         pytest -v tests/typing_tests
 
   build-cuda:
