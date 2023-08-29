@@ -154,7 +154,7 @@ class _RuntimeInfo:
         # NVRTC
         self.nvrtc_version = _eval_or_error(
             cupy.cuda.nvrtc.getVersion,
-            cupy.cuda.nvrtc.NVRTCError)
+            (cupy.cuda.nvrtc.NVRTCError, cupy.cuda.runtime.CUDARuntimeError))
 
         # Thrust
         try:
