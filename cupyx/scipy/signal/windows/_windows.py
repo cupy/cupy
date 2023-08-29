@@ -2117,25 +2117,25 @@ def get_window(window, Nx, fftbins=True):
     -----
     Window types:
 
-    - `~cupyx.scipy.signal.windows.windows.boxcar`
-    - `~cupyx.scipy.signal.windows.windows.triang`
-    - `~cupyx.scipy.signal.windows.windows.blackman`
-    - `~cupyx.scipy.signal.windows.windows.hamming`
-    - `~cupyx.scipy.signal.windows.windows.hann`
-    - `~cupyx.scipy.signal.windows.windows.bartlett`
-    - `~cupyx.scipy.signal.windows.windows.flattop`
-    - `~cupyx.scipy.signal.windows.windows.parzen`
-    - `~cupyx.scipy.signal.windows.windows.bohman`
-    - `~cupyx.scipy.signal.windows.windows.blackmanharris`
-    - `~cupyx.scipy.signal.windows.windows.nuttall`
-    - `~cupyx.scipy.signal.windows.windows.barthann`
-    - `~cupyx.scipy.signal.windows.windows.kaiser` (needs beta)
-    - `~cupyx.scipy.signal.windows.windows.gaussian` (needs standard deviation)
-    - `~cupyx.scipy.signal.windows.windows.general_gaussian` \
+    - `~cupyx.scipy.signal.windows.boxcar`
+    - `~cupyx.scipy.signal.windows.triang`
+    - `~cupyx.scipy.signal.windows.blackman`
+    - `~cupyx.scipy.signal.windows.hamming`
+    - `~cupyx.scipy.signal.windows.hann`
+    - `~cupyx.scipy.signal.windows.bartlett`
+    - `~cupyx.scipy.signal.windows.flattop`
+    - `~cupyx.scipy.signal.windows.parzen`
+    - `~cupyx.scipy.signal.windows.bohman`
+    - `~cupyx.scipy.signal.windows.blackmanharris`
+    - `~cupyx.scipy.signal.windows.nuttall`
+    - `~cupyx.scipy.signal.windows.barthann`
+    - `~cupyx.scipy.signal.windows.kaiser` (needs beta)
+    - `~cupyx.scipy.signal.windows.gaussian` (needs standard deviation)
+    - `~cupyx.scipy.signal.windows.general_gaussian` \
             (needs power, width)
-    - `~cupyx.scipy.signal.windows.windows.chebwin` (needs attenuation)
-    - `~cupyx.scipy.signal.windows.windows.exponential` (needs decay scale)
-    - `~cupyx.scipy.signal.windows.windows.tukey` (needs taper fraction)
+    - `~cupyx.scipy.signal.windows.chebwin` (needs attenuation)
+    - `~cupyx.scipy.signal.windows.exponential` (needs decay scale)
+    - `~cupyx.scipy.signal.windows.tukey` (needs taper fraction)
 
     If the window requires no parameters, then `window` can be a string.
 
@@ -2144,7 +2144,7 @@ def get_window(window, Nx, fftbins=True):
     arguments the needed parameters.
 
     If `window` is a floating point number, it is interpreted as the beta
-    parameter of the `~cupyx.scipy.signal.windows.windows.kaiser` window.
+    parameter of the `~cupyx.scipy.signal.windows.kaiser` window.
 
     Each of the window types listed above is also the name of
     a function that can be called directly to create a window of
