@@ -167,7 +167,6 @@ Continuous-time linear systems
 
 Discrete-time linear systems
 ----------------------------
-
 .. autosummary::
    :toctree: generated/
 
@@ -180,6 +179,19 @@ Discrete-time linear systems
    dstep
    dfreqresp
    dbode
+
+
+Window functions
+----------------
+For window functions, see the :mod:`cupyx.scipy.signal.windows` namespace.
+
+In the :mod:`cupyx.scipy.signal` namespace, there is a convenience function
+to obtain these windows by name:
+
+.. autosummary::
+   :toctree: generated/
+
+   get_window
 
 
 Peak finding
