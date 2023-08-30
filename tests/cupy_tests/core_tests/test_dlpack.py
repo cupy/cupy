@@ -91,7 +91,7 @@ class TestNewDLPackConversion(unittest.TestCase):
                         s_ptr = 1
                     else:
                         s_ptr = dst_s.ptr
-                    dltensor = orig_array.__dlpack__(s_ptr)
+                    dltensor = orig_array.__dlpack__(stream=s_ptr)
 
                 with dst_s:
                     out_array = cupy.from_dlpack(dltensor)

@@ -72,6 +72,8 @@ from cupyx.scipy.signal._iir_filter_conversions import sos2tf  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import sos2zpk  # NOQA
 
 from cupyx.scipy.signal._iir_filter_conversions import band_stop_obj  # NOQA
+from cupyx.scipy.signal.windows._windows import get_window  # NOQA
+
 from cupyx.scipy.signal._iir_filter_conversions import buttap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import cheb1ap  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import cheb2ap  # NOQA

@@ -278,7 +278,7 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(self, stream=None):
+    def __dlpack__(self, *, stream=None):
         # Note: the stream argument is supplied by the consumer, not by CuPy
         curr_stream = stream_module.get_current_stream()
         curr_stream_ptr = curr_stream.ptr
