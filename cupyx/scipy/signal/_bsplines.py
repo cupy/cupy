@@ -5,7 +5,36 @@ from cupyx.scipy.signal._iir_utils import apply_iir_sos
 from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
 from cupyx.scipy.interpolate._bspline import BSpline
 
+<<<<<<< HEAD
 import numpy as np
+=======
+"""
+Signal processing B-Splines
+
+Some of the functions defined here were ported directly from CuSignal under
+terms of the MIT license, under the following notice:
+
+Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+"""
+>>>>>>> bdec77793... Port gauss_spline from CuSignal
 
 
 def sepfir2d(input, hrow, hcol):
@@ -514,3 +543,36 @@ def spline_filter(Iin, lmbda=5.0):
     else:
         raise TypeError("Invalid data type for Iin")
     return out
+
+
+_gauss_spline_kernel = cupy.ElementwiseKernel(
+    "T x, int32 n",
+    "T output",
+    """
+    output = 1 / sqrt( 2.0 * M_PI * signsq ) * exp( -( x * x ) * r_signsq );
+    """,
+    "_gauss_spline_kernel",
+    options=("-std=c++11",),
+    loop_prep="const double signsq { ( n + 1 ) / 12.0 }; \
+               const double r_signsq { 0.5 / signsq };",
+)
+
+
+def gauss_spline(x, n):
+    """Gaussian approximation to B-spline basis function of order n.
+
+    Parameters
+    ----------
+    n : int
+        The order of the spline. Must be nonnegative, i.e. n >= 0
+
+    References
+    ----------
+    .. [1] Bouma H., Vilanova A., Bescos J.O., ter Haar Romeny B.M., Gerritsen
+       F.A. (2007) Fast and Accurate Gaussian Derivatives Based on B-Splines.
+       In: Sgallari F., Murli A., Paragios N. (eds) Scale Space and Variational
+       Methods in Computer Vision. SSVM 2007. Lecture Notes in Computer
+       Science, vol 4485. Springer, Berlin, Heidelberg
+    """
+    x = cupy.asarray(x)
+    return _gauss_spline_kernel(x, n)
