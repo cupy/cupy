@@ -36,6 +36,7 @@ repos:
     rev: v0.15.0
     hooks:
     -   id: cython-lint
+        args: ["--max-line-length", "79"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.4.1
