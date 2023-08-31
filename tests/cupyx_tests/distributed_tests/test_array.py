@@ -191,7 +191,7 @@ class TestDistributedArray:
         np_b = numpy.arange(64).reshape(shape) * 2
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
-        with pytest.raises(ValueError, match=r'same device mapping'):
+        with pytest.raises(RuntimeError, match=r'different chunk sizes'):
             cupy.cos(d_a * d_b)
 
     @pytest.mark.parametrize(
@@ -203,10 +203,11 @@ class TestDistributedArray:
             self, shape, mapping_a, mapping_b, mode):
         np_a = numpy.arange(64).reshape(shape)
         np_b = numpy.arange(64).reshape(shape) * 2
-        np_r = numpy.cos(np_a * np_b)
+        np_r = numpy.cos(np_a + np_b)
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
-        d_r = cupy.cos(d_a * d_b.reshard(mapping_a))
+        d_c = d_a + d_b.reshard(mapping_a)
+        d_r = cupy.cos(d_c.reshard(mapping_b))
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(

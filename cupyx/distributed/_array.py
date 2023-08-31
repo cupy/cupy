@@ -278,6 +278,8 @@ class _DistributedArray(cupy.ndarray):
     def _wait_all_transfer(self):
         events = []
         for dev in self.device_mapping:
+            if not self._incomings[dev]:
+                continue
             collector = self._collect_chunk(
                 self._chunks[dev], self._incomings[dev])
             self._incomings[dev].clear()
@@ -322,18 +324,28 @@ class _DistributedArray(cupy.ndarray):
 
         return args
 
-    def _execute_kernel(self, kernel, args, kwargs) -> Any:
-        # TODO handle kwargs. currently ignored
-        if kwargs:
-            raise RuntimeError('No keyword argument is supported')
+    def _prepare_incomings(self, dist_args, dev):
+        index = None
+        incomings = []
+        for i, arg in dist_args:
+            if arg._incomings[dev]:
+                if incomings:
+                    raise RuntimeError(
+                        'Operationg an element-wise kernel on distributed'
+                        ' arrays with possibly unfinished data transfer on two'
+                        ' of them is currently not supported')
+                index = i
+                incomings = arg._incomings[dev]
+        return index, incomings
 
-        distributed_arrays: list['_DistributedArray'] = []
-        regular_arrays = []
+    def _execute_kernel(self, kernel, args, kwargs) -> Any:
+        distributed_arrays: list[tuple[int | str, '_DistributedArray']] = []
+        regular_arrays: list[tuple[int | str, NDArray]] = []
         for i, arg in enumerate(args):
             if isinstance(arg, _DistributedArray):
-                distributed_arrays.append(arg.to_replica_mode())
+                distributed_arrays.append((i, arg.to_replica_mode()))
             elif isinstance(arg, cupy.ndarray):
-                regular_arrays.append(arg)
+                regular_arrays.append((i, arg))
 
         # Do it for kwargs too
         for k, arg in kwargs.items():
@@ -342,75 +354,56 @@ class _DistributedArray(cupy.ndarray):
             elif isinstance(arg, cupy.ndarray):
                 regular_arrays.append((k, arg))
 
-        if regular_arrays:
-            raise RuntimeError(
-                'Mix `cupy.ndarray` with distributed arrays is currently not'
-                'supported')
-        if len(distributed_arrays) > 2:
-            raise RuntimeError(
-                'Operating an element-wise kernel on more than 2 distributed'
-                ' arrays is currently not supported')
-        if len(distributed_arrays) < kernel.nin:
-            raise ValueError('Too few arguments are supplied')
-
-        if len(distributed_arrays) == 1:
-            a = distributed_arrays[0]
-            new_dtype = None
-            new_chunks = {}
-            new_incomings = {dev: [] for dev in a._device_mapping}
-            for dev, chunk in a._chunks.items():
-                with cupy.cuda.Device(dev):
-                    new_chunks[dev] = kernel(chunk)
-                    new_dtype = new_chunks[dev].dtype
-                    for incoming, idx in a._incomings[dev]:
-                        with incoming.stream:
-                            new_data = kernel(incoming.data)
-                        new_incomings[dev].append(
-                            (IncomingData(incoming.stream, new_data), idx))
-
-            return _DistributedArray(a.shape, new_dtype, new_chunks,
-                                     a._device_mapping, _replica_mode,
-                                     a._comms, new_incomings)
-
-        a, b = distributed_arrays
-        if a._device_mapping != b._device_mapping:
-            raise ValueError(
-                'Two distributed arrays must have the same device mapping')
-
+        args = list(args)
+        devices = self._get_execution_devices(distributed_arrays)
         new_dtype = None
         new_chunks = {}
-        new_incomings = {dev: [] for dev in a._device_mapping}
-        for dev, a_chunk in a._chunks.items():
+        new_incomings = {dev: [] for dev in self._device_mapping}
+        for dev in devices:
             with cupy.cuda.Device(dev):
-                b_chunk = b._chunks[dev]
+                array_args = self._prepare_args(
+                    distributed_arrays, regular_arrays, dev)
+                for i, arg in array_args:
+                    if isinstance(i, int):
+                        args[i] = arg
+                    else:
+                        kwargs[i] = arg
 
-                a_incomings = a._incomings[dev]
-                b_incomings = b._incomings[dev]
+                out = kernel(*args, **kwargs)
+                new_dtype = out.dtype
+                new_chunks[dev] = out
 
-                if b_incomings:
-                    a, b = b, a
-                    a_chunk, b_chunk = b_chunk, a_chunk
-                    a_incomings, b_incomings = b_incomings, a_incomings
+                incoming_index, incomings = self._prepare_incomings(
+                    distributed_arrays, dev)
+                if not incomings:
+                    continue
 
-                if b_incomings:
-                    raise RuntimeError(
-                        'Operationg an element-wise kernel on distributed'
-                        ' arrays both with possibly unfinished data transfer is'
-                        ' currently not supported')
+                args_slice = [None] * len(args)
+                kwargs_slice = {}
+                for incoming, idx in incomings:
+                    for i, arg in enumerate(args):
+                        args_slice[i] = arg[idx]
+                    for i, arg in kwargs.items():
+                        kwargs_slice[i] = arg[idx]
 
-                new_chunk = kernel(a_chunk, b_chunk)
-                new_dtype = new_chunk.dtype
-                for incoming, idx in a_incomings:
+                    if isinstance(incoming_index, int):
+                        args_slice[incoming_index] = incoming.data
+                    else:
+                        kwargs_slice[incoming_index] = incoming.data
+
                     with incoming.stream:
-                        new_data = kernel(incoming.data, b_chunk[idx])
+                        new_data = kernel(*args_slice, **kwargs_slice)
                     new_incomings[dev].append(
                         (IncomingData(incoming.stream, new_data), idx))
 
-                new_chunks[dev] = new_chunk
+        for out in new_chunks.values():
+            if not isinstance(out, cupy.ndarray):
+                raise RuntimeError(
+                    'Kernels returning other than signle array not supported')
 
         return _DistributedArray(
-            a.shape, new_dtype, new_chunks, a._device_mapping, _replica_mode,
-            a._comms, new_incomings)
+            self.shape, new_dtype, new_chunks, self._device_mapping,
+            _replica_mode, self._comms, new_incomings)
 
     def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
@@ -428,7 +421,7 @@ class _DistributedArray(cupy.ndarray):
             if src_stream is None:
                 src_stream = Stream()
         with cupy.cuda.Device(dst_dev):
-            dst_buf = cupy.empty_like(src_array)
+            dst_buf = cupy.full_like(src_array, -1)
             if dst_stream is None:
                 dst_stream = Stream()
 
@@ -552,7 +545,9 @@ class _DistributedArray(cupy.ndarray):
         src_new_idx = _index_for_subindex(src_idx, intersection, shape)
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
-        return self._transfer_async(src_chunk[src_new_idx], dst_dev), dst_new_idx
+        return (
+            self._transfer_async(src_chunk[src_new_idx], dst_dev),
+            dst_new_idx)
 
     def _set_identity_on_intersection(
             self, shape: tuple[int, ...], identity,
@@ -596,7 +591,6 @@ class _DistributedArray(cupy.ndarray):
         new_chunks = {}
         device_mapping = {}
         # TODO: Parallelize this loop
-        print('before', chunks)
 
         for dev, chunk in chunks.items():
             idx = self._device_mapping[dev]
@@ -604,8 +598,6 @@ class _DistributedArray(cupy.ndarray):
                 new_chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
                 new_dtype = new_chunks[dev].dtype
             device_mapping[dev] = idx[:axis] + idx[axis+1:]
-
-        print('after', new_chunks)
 
         return _DistributedArray(
             shape, new_dtype, new_chunks, device_mapping, mode, self._comms)
@@ -620,6 +612,7 @@ class _DistributedArray(cupy.ndarray):
 
     def _replica_mode_chunks(self) -> dict[int, NDArray]:
         """Does not recessarily copy."""
+        self._wait_all_transfer()
         if self._mode is _replica_mode:
             return self._chunks
 
@@ -678,6 +671,9 @@ class _DistributedArray(cupy.ndarray):
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
+        # TODO: make this asynchronous
+        self._wait_all_transfer()
+
         # TODO: implement another version that reshards within the SUM mode
         arr = self.to_replica_mode()
 
