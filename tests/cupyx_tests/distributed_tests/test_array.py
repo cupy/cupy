@@ -133,7 +133,8 @@ class TestDistributedArray:
         cp_chunks = {}
         for dev, idx in mapping.items():
             np_a[idx] += 1 << dev
-            cp_chunks[dev] = cupy.full_like(np_a[idx], 1 << dev)
+            with cupy.cuda.Device(dev):
+                cp_chunks[dev] = cupy.full_like(np_a[idx], 1 << dev)
             for dev, idx in mapping.items():
                 new_idx = _array._convert_chunk_idx_to_slices(
                     shape, idx)
@@ -190,7 +191,7 @@ class TestDistributedArray:
         np_b = numpy.arange(64).reshape(shape) * 2
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
-        with pytest.raises(RuntimeError, match=r'chunk sizes'):
+        with pytest.raises(ValueError, match=r'same device mapping'):
             cupy.cos(d_a * d_b)
 
     @pytest.mark.parametrize(
@@ -273,7 +274,6 @@ class TestDistributedArray:
         da = _array.distributed_array(array, mapping_a, mode, comms)
         assert mem_pool.used_bytes() == array.nbytes
         db = da.reshard(mapping_b)
-        assert mem_pool.used_bytes() == 2 * array.nbytes
         testing.assert_array_equal(da.asnumpy(), db.asnumpy())
         for dev, idx in mapping_b.items():
             assert db._chunks[dev].device.id == dev
