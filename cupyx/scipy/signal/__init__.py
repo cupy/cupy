@@ -133,3 +133,7 @@ from cupyx.scipy.signal._ltisys import ZerosPolesGain  # NOQA
 from cupyx.scipy.signal._ltisys import cont2discrete  # NOQA
 
 from cupyx.scipy.signal._spectral import lombscargle  # NOQA
+
+from cupyx.scipy.signal._peak_finding import argrelextrema  # NOQA
+from cupyx.scipy.signal._peak_finding import argrelmin  # NOQA
+from cupyx.scipy.signal._peak_finding import argrelmax  # NOQA
