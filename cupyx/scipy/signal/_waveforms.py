@@ -94,9 +94,11 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
 def sawtooth(t, width=1.0):
     """
     Return a periodic sawtooth or triangle waveform.
+
     The sawtooth waveform has a period ``2*pi``, rises from -1 to 1 on the
     interval 0 to ``width*2*pi``, then drops from 1 to -1 on the interval
     ``width*2*pi`` to ``2*pi``. `width` must be in the interval [0, 1].
+
     Note that this is not band-limited.  It produces an infinite number
     of harmonics, which are aliased back and forth across the frequency
     spectrum.
