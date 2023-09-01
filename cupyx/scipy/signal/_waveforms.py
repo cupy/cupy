@@ -120,6 +120,7 @@ def sawtooth(t, width=1.0):
     Examples
     --------
     A 5 Hz waveform sampled at 500 Hz for 1 second:
+
     >>> from cupyx.scipy import signal
     >>> import matplotlib.pyplot as plt
     >>> t = np.linspace(0, 1, 500)
