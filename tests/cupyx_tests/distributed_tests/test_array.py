@@ -195,22 +195,6 @@ class TestDistributedArray:
             cupy.cos(d_a * d_b)
 
     @pytest.mark.parametrize(
-            'shape, mapping_a, mapping_b',
-            [(shape_dim2, mapping_dim2, mapping_dim2_2),
-             (shape_dim3, mapping_dim3, mapping_dim3_2)])
-    @pytest.mark.parametrize('mode', [None, _array._sum_mode])
-    def test_incompatible_chunk_shapes_resharded(
-            self, shape, mapping_a, mapping_b, mode):
-        np_a = numpy.arange(64).reshape(shape)
-        np_b = numpy.arange(64).reshape(shape) * 2
-        np_r = numpy.cos(np_a + np_b)
-        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
-        d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
-        d_c = d_a + d_b.reshard(mapping_a)
-        d_r = cupy.cos(d_c.reshard(mapping_b))
-        testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
-
-    @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
     @pytest.mark.parametrize('mode', [None, _array._sum_mode])
@@ -281,6 +265,22 @@ class TestDistributedArray:
             assert db._chunks[dev].ndim == array.ndim
             if mode == None:
                 testing.assert_array_equal(db._chunks[dev].squeeze(), array[idx])
+
+    @pytest.mark.parametrize(
+            'shape, mapping_a, mapping_b',
+            [(shape_dim2, mapping_dim2, mapping_dim2_2),
+             (shape_dim3, mapping_dim3, mapping_dim3_2)])
+    @pytest.mark.parametrize('mode', [None, _array._sum_mode])
+    def test_incompatible_chunk_shapes_resharded(
+            self, shape, mapping_a, mapping_b, mode):
+        np_a = numpy.arange(64).reshape(shape)
+        np_b = numpy.arange(64).reshape(shape) * 2
+        np_r = numpy.cos(np_a + np_b)
+        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
+        d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
+        d_c = d_a + d_b.reshard(mapping_a)
+        d_r = cupy.cos(d_c.reshard(mapping_b))
+        testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
             'shape, mapping',

@@ -417,13 +417,15 @@ class _DistributedArray(cupy.ndarray):
         src_dev = src_array.device.id
 
         with cupy.cuda.Device(src_dev):
-            src_array = cupy.ascontiguousarray(src_array)
             if src_stream is None:
                 src_stream = Stream()
+            with src_stream:
+                src_array = cupy.ascontiguousarray(src_array)
         with cupy.cuda.Device(dst_dev):
-            dst_buf = cupy.full_like(src_array, -1)
             if dst_stream is None:
                 dst_stream = Stream()
+            with dst_stream:
+                dst_buf = cupy.full_like(src_array, -1)
 
         dtype, count = _get_nccl_dtype_and_count(src_array)
         nccl.groupStart()
@@ -531,7 +533,9 @@ class _DistributedArray(cupy.ndarray):
     def _send_intersection_async(
             self, shape: tuple[int, ...],
             src_chunk: NDArray, src_idx: tuple[slice, ...],
-            dst_chunk: NDArray, dst_idx: tuple[slice, ...]
+            dst_chunk: NDArray, dst_idx: tuple[slice, ...],
+            src_stream: Optional[Stream] = None,
+            dst_stream: Optional[Stream] = None,
         ) -> Optional[tuple[IncomingData, tuple[slice, ...]]]:
         """Write the intersection of chunks src_idx and dst_idx to the
         corresponding entries of dst_chunk. Note dst_chunk == self[dst_idx]."""
@@ -546,7 +550,8 @@ class _DistributedArray(cupy.ndarray):
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
         return (
-            self._transfer_async(src_chunk[src_new_idx], dst_dev),
+            self._transfer_async(src_chunk[src_new_idx], dst_dev,
+                                 src_stream, dst_stream),
             dst_new_idx)
 
     def _set_identity_on_intersection(
@@ -563,8 +568,6 @@ class _DistributedArray(cupy.ndarray):
     def __cupy_override_reduction_kernel__(
             self, kernel, axis, dtype, out, keepdims):
         # Assumption: kernel(x, y) == kernel(y, x) && kernel(x, x) == x e.g. max
-
-        self._wait_all_transfer()
 
         if out is not None:
             raise RuntimeError('Argument `out` is not supported')
@@ -671,8 +674,7 @@ class _DistributedArray(cupy.ndarray):
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
-        # TODO: make this asynchronous
-        self._wait_all_transfer()
+        # self._wait_all_transfer()
 
         # TODO: implement another version that reshards within the SUM mode
         arr = self.to_replica_mode()
@@ -684,19 +686,33 @@ class _DistributedArray(cupy.ndarray):
 
         new_chunks = {}
         new_incoming = {dev: [] for dev in new_mapping}
+        dst_streams = {}
         for dst_dev, dst_idx in new_mapping.items():
             with cupy.cuda.Device(dst_dev):
-                # dst_array = cupy.empty_like(arr[dst_idx])
                 dst_shape = _shape_after_indexing(arr.shape, dst_idx)
-                dst_array = cupy.empty(dst_shape, dtype=self.dtype)
-            for src_dev, src_idx in old_mapping.items():
-                src_array = arr._chunks[src_dev]
+                dst_streams[dst_dev] = Stream()
+                with dst_streams[dst_dev]:
+                    new_chunks[dst_dev] = cupy.empty(
+                        dst_shape, dtype=self.dtype)
+
+        for src_dev, src_idx in old_mapping.items():
+            src_array = arr._chunks[src_dev]
+            src_collector = arr._collect_chunk(
+                src_array, arr._incomings[src_dev])
+            with cupy.cuda.Device(src_dev):
+                src_collected = src_collector.record()
+
+            for dst_dev, dst_idx in new_mapping.items():
+                dst_array = new_chunks[dst_dev]
+                with cupy.cuda.Device(src_dev):
+                    src_stream = Stream()
+                    src_stream.wait_event(src_collected)
+
                 incoming_and_idx = arr._send_intersection_async(
-                    arr.shape, src_array, src_idx, dst_array, dst_idx)
+                    arr.shape, src_array, src_idx, dst_array, dst_idx,
+                    src_stream=src_stream, dst_stream=dst_streams[dst_dev])
                 if incoming_and_idx is not None:
                     new_incoming[dst_dev].append(incoming_and_idx)
-
-            new_chunks[dst_dev] = dst_array
 
         return _DistributedArray(
             arr.shape, arr.dtype, new_chunks, new_mapping, _replica_mode,
