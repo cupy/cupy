@@ -53,17 +53,9 @@ except ImportError:
 
 
 def __getattr__(key):
-    # `*_enabled` flags are kept for backward compatibility.
+    # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
-    if key == 'cusolver_enabled':
-        # cuSOLVER is always available in CUDA 8.0+.
-        warnings.warn('''
-cupy.cuda.cusolver_enabled has been deprecated in CuPy v8 and will be removed in the future release.
-This flag always returns True as cuSOLVER is always available in CUDA 8.0 or later.
-            ''', DeprecationWarning)  # NOQA
-        return True
-
-    for mod in [nvtx, thrust, cub]:
+    for mod in [nvtx]:
         flag = '{}_enabled'.format(mod.__name__.split('.')[-1])
         if key == flag:
             warnings.warn('''
