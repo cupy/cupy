@@ -1,10 +1,8 @@
 import numpy
 
 import cupy
-import cupyx.cusolver
 from cupy import cublas
 from cupyx import cusparse
-from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
@@ -45,6 +43,8 @@ def lsqr(A, b):
 
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
+    from cupy.cuda import cusolver
+
     if runtime.is_hip:
         raise RuntimeError('HIP does not support lsqr')
     if not sparse.isspmatrix_csr(A):
@@ -489,6 +489,8 @@ def spsolve(A, b):
         cupy.ndarray:
             Solution to the system ``A x = b``.
     """
+    import cupyx.cusolver
+
     if not cupyx.cusolver.check_availability('csrlsvqr'):
         raise NotImplementedError
     if not sparse.isspmatrix(A):

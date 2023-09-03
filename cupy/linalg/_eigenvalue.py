@@ -2,18 +2,18 @@ import numpy
 
 import cupy
 from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupy._core import _dtype
-import cupyx.cusolver
 
 
 _cuda_runtime_version = -1
 
 
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
+    from cupy_backends.cuda.libs import cusolver
+
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
@@ -130,6 +130,7 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
+    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
@@ -176,6 +177,7 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
+    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
