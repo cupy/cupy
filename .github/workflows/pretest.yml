@@ -90,6 +90,14 @@ jobs:
         SPHINXOPTS="-W --keep-going -j 4" make html
         popd
 
+    - name: Import Test
+      run: |
+        python -c 'import cupy, cupyx'
+
+        # Test lazy-imported CUDA Toolkit library.
+        rm cupy_backends/cuda/libs/cusolver.*.so
+        python -c 'import cupy, cupyx'
+
   build-rocm:
     runs-on: ubuntu-22.04
 
