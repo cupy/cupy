@@ -68,17 +68,17 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
             cusolver.xsyevd, dev_info)
     else:
         if dtype == 'f':
-            buffer_size = cupy.cuda.cusolver.ssyevd_bufferSize
-            syevd = cupy.cuda.cusolver.ssyevd
+            buffer_size = cusolver.ssyevd_bufferSize
+            syevd = cusolver.ssyevd
         elif dtype == 'd':
-            buffer_size = cupy.cuda.cusolver.dsyevd_bufferSize
-            syevd = cupy.cuda.cusolver.dsyevd
+            buffer_size = cusolver.dsyevd_bufferSize
+            syevd = cusolver.dsyevd
         elif dtype == 'F':
-            buffer_size = cupy.cuda.cusolver.cheevd_bufferSize
-            syevd = cupy.cuda.cusolver.cheevd
+            buffer_size = cusolver.cheevd_bufferSize
+            syevd = cusolver.cheevd
         elif dtype == 'D':
-            buffer_size = cupy.cuda.cusolver.zheevd_bufferSize
-            syevd = cupy.cuda.cusolver.zheevd
+            buffer_size = cusolver.zheevd_bufferSize
+            syevd = cusolver.zheevd
         else:
             raise RuntimeError('Only float32, float64, complex64, and '
                                'complex128 are supported')

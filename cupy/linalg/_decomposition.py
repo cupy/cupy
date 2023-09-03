@@ -33,7 +33,7 @@ def _lu_factor(a_t, dtype):
     .. seealso:: :func:`scipy.linalg.lu_factor`
 
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
 
     orig_shape = a_t.shape
     n = orig_shape[-2]
@@ -117,7 +117,7 @@ def _potrf_batched(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
     from cupyx.cusolver import check_availability
     if not check_availability('potrfBatched'):
         raise RuntimeError('potrfBatched is not available')
@@ -175,7 +175,7 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
 
     _util._assert_cupy_array(a)
     _util._assert_stacked_2d(a)
@@ -286,7 +286,7 @@ def qr(a, mode='reduced'):
 
     .. seealso:: :func:`numpy.linalg.qr`
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
 
     _util._assert_cupy_array(a)
 
@@ -493,7 +493,7 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
     _util._assert_cupy_array(a)
     if a.ndim > 2:
         return _svd_batched(a, full_matrices, compute_uv)

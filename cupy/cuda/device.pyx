@@ -263,7 +263,7 @@ cdef class Device:
         itself is different.
 
         """
-        from cupy.cuda import cusolver
+        from cupy_backends.cuda.libs import cusolver
         return self._get_handle(
             'cusolver_handles', cusolver.create, cusolver.destroy)
 
@@ -275,7 +275,7 @@ cdef class Device:
         itself is different.
 
         """
-        from cupy.cuda import cusolver
+        from cupy_backends.cuda.libs import cusolver
         return self._get_handle(
             'cusolver_sp_handles', cusolver.spCreate, cusolver.spDestroy)
 

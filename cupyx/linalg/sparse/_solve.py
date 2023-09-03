@@ -23,7 +23,7 @@ def lschol(A, b):
         ret (cupy.ndarray): The solution vector ``x``.
 
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
 
     if not sparse.isspmatrix_csr(A):
         A = sparse.csr_matrix(A)

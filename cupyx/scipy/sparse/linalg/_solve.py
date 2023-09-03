@@ -43,7 +43,7 @@ def lsqr(A, b):
 
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
-    from cupy.cuda import cusolver
+    from cupy_backends.cuda.libs import cusolver
 
     if runtime.is_hip:
         raise RuntimeError('HIP does not support lsqr')
