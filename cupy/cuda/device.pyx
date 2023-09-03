@@ -11,10 +11,6 @@ from cupy_backends.cuda.libs import cusparse
 from cupy import _util
 
 
-# This flag is kept for backward compatibility.
-# It is always True as cuSOLVER library is always available in CUDA 8.0+.
-cusolver_enabled = True
-
 cdef object _thread_local = threading.local()
 
 cdef dict _devices = {}
