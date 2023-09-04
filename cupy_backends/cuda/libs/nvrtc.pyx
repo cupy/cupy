@@ -27,6 +27,7 @@ IF CUPY_USE_CUDA_PYTHON:
         pass
 ELSE:
     include "_cnvrtc.pxi"
+    pass
 
 
 ###############################################################################
