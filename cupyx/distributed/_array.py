@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from typing import Any, Optional
+import dataclasses
+from typing import Any, Callable, Optional, TypeVar
 
-from cupy.cuda import nccl, Stream, Device
+from cupy.cuda import nccl, Device, Stream
 
 import cupy
 import numpy
@@ -177,56 +177,79 @@ class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
         return Device(-1)
 
 
-@dataclass
-class OpMode:
-    """None as Mode represents replica mode.
-    func(x, x) == x must hold if identity is None."""
-    func: cupy.ufunc
-    numpy_func: numpy.ufunc
-    identity: Any
-
-
-Mode = Optional[OpMode]
-
-
-_max_mode = OpMode(cupy.maximum, numpy.maximum, None)
-_min_mode = OpMode(cupy.minimum, numpy.minimum, None)
-_sum_mode = OpMode(cupy.add, numpy.add, 0)
-_prod_mode = OpMode(cupy.multiply, numpy.multiply, 1)
-_replica_mode: Mode = None
-
-
-@dataclass
-class IncomingData:
-    stream: Stream
-    data: NDArray
-
-
-def _min_value(dtype):
+def _min_value_of(dtype):
     if dtype.kind in 'biu':
         return cupy.iinfo(dtype).min
     elif dtype.kind in 'f':
         return -cupy.inf
 
 
-def _max_value(dtype):
+def _max_value_of(dtype):
     if dtype.kind in 'biu':
         return cupy.iinfo(dtype).max
     elif dtype.kind in 'f':
         return cupy.inf
 
 
+def _zero_value_of(dtype):
+    return dtype.type(0)
+
+
+def _one_value_of(dtype):
+    return dtype.type(1)
+
+
+_T = TypeVar('_T')
+
+
+@dataclasses.dataclass
+class _OpMode:
+    func: cupy.ufunc
+    numpy_func: numpy.ufunc
+    idempotent: bool
+    identity_of: Callable[[numpy.dtype], _T]
+
+
+_Mode = Optional[_OpMode]
+
+
+_REPLICA_MODE: _Mode = None
+
+
+_MODES = {
+    'replica': _REPLICA_MODE,
+    'min': _OpMode(cupy.minimum, numpy.minimum, True, _max_value_of),
+    'max': _OpMode(cupy.maximum, numpy.maximum, True, _min_value_of),
+    'sum': _OpMode(cupy.add, numpy.add, False, _zero_value_of),
+    'prod': _OpMode(cupy.multiply, numpy.multiply, False, _one_value_of),
+}
+
+
+@dataclasses.dataclass
+class _ControlledData:
+    """ND-array managed by a stream."""
+    data: NDArray
+    stream: Stream = dataclasses.field(default_factory=Stream)
+
+
+# Overwrite in replica mode, apply in op mode
+_PartialUpdate = tuple[_ControlledData, tuple[slice, ...]]
+
+
 class _DistributedArray(cupy.ndarray):
-    _chunks: dict[int, NDArray]
-    # Values of _device_mapping must have lenth == ndim
+    # Array on the devices and streams that transfer data only within their
+    # corresponding device
+    _chunks: dict[int, _ControlledData]
     _device_mapping: dict[int, tuple[slice, ...]]
-    _mode: Mode
-    _incomings: dict[int, list[tuple[IncomingData, Any]]]
+    _mode: _Mode
+    # Buffers for transfer from other devices
+    _updates: dict[int, list[_PartialUpdate]]
     _comms: dict[int, nccl.NcclCommunicator]
+    _mem: cupy.cuda.Memory
 
     def __new__(
-            cls, shape, dtype, chunks, device_mapping, mode,
-            comms=None, incomings=None):
+            cls, shape, dtype, chunks, device_mapping, mode=_REPLICA_MODE,
+            comms=None, updates=None):
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
@@ -240,19 +263,24 @@ class _DistributedArray(cupy.ndarray):
             obj._comms = {dev: comm
                         for dev, comm in zip(device_mapping, comms_list)}
         else:
-            obj._comms = None
-        if incomings:
-            obj._incomings = incomings
+            # TODO: support environments where NCCL is unavailable
+            raise RuntimeError('NCCL is unavailable')
+        if updates:
+            obj._updates = updates
         else:
-            obj._incomings = {dev: [] for dev in device_mapping}
+            obj._updates = {dev: [] for dev in device_mapping}
         obj._mem = mem
         return obj
 
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self._chunks = getattr(obj, 'chunks', None)
-        self._mem = getattr(obj, 'mem', None)
+        self._chunks = getattr(obj, '_chunks', None)
+        self._device_mapping = getattr(obj, '_device_mapping', None)
+        self._mode = getattr(obj, '_mode', None)
+        self._updates = getattr(obj, '_updates', None)
+        self._comms = getattr(obj, '_comms', None)
+        self._mem = getattr(obj, '_mem', None)
 
     @property
     def mode(self):
@@ -265,7 +293,6 @@ class _DistributedArray(cupy.ndarray):
     def _get_execution_devices(self, dist_args):
         devices = set()
         for _, arg in dist_args:
-            # The key of chunks is the device id
             for dev in arg._chunks:
                 devices.add(dev)
         return devices
@@ -273,37 +300,33 @@ class _DistributedArray(cupy.ndarray):
     def _get_chunk(self, i):
         return self._chunks[i]
 
-    def _collect_chunk(self, mode, chunk, incomings) -> Stream:
-        """Returns a stream that collects all incoming data onto `chunk`."""
-        dev = chunk.device.id
-        with Device(dev):
-            waiter = Stream()
-            copy_done = []
-            for incoming, idx in incomings:
-                with incoming.stream:
-                    if mode is _replica_mode:
-                        chunk[idx] = incoming.data
+    def _collect_chunk(self, mode: _Mode, chunk: _ControlledData,
+                       updates: list[_PartialUpdate]) -> None:
+        """Apply all updates onto `chunk` in-place."""
+        with chunk.data.device:
+            for new_data, idx in updates:
+                chunk.stream.wait_event(new_data.stream.record())
+
+                with chunk.stream:
+                    if mode is _REPLICA_MODE:
+                        chunk.data[idx] = new_data.data
                     else:
-                        mode.func(chunk[idx], incoming.data, chunk[idx])
-                copy_done.append(incoming.stream.record())
-
-            for e in copy_done:
-                waiter.wait_event(e)
-
-            return waiter
+                        mode.func(
+                            chunk.data[idx], new_data.data, chunk.data[idx])
+        updates.clear()
 
     def _wait_all_transfer(self):
-        events = []
-        for dev in self.device_mapping:
-            if not self._incomings[dev]:
-                continue
-            collector = self._collect_chunk(
-                self._mode, self._chunks[dev], self._incomings[dev])
-            self._incomings[dev].clear()
-            with Device(dev):
-                events.append(collector.record())
+        """Block until all inner updates are done."""
 
-        for e in events:
+        transfer_events = []
+
+        for dev, chunk in self._chunks.items():
+            self._collect_chunk(
+                self._mode, self._chunks[dev], self._updates[dev])
+            with Device(dev):
+                transfer_events.append(chunk.stream.record())
+
+        for e in transfer_events:
             e.synchronize()
 
     def _prepare_args(self, dist_args, regular_args, device):
@@ -318,10 +341,10 @@ class _DistributedArray(cupy.ndarray):
             chunk = arg._get_chunk(device)
             args.append((i, chunk))
             if c_shape is None:
-                c_shape = chunk.shape
+                c_shape = chunk.data.shape
             # TODO(ecastill) check if broadcastable, the array must have been
             # split in the same axis?
-            if chunk.shape != c_shape:
+            if chunk.data.shape != c_shape:
                 raise RuntimeError(
                     'Operating distributed arrays of different chunk sizes'
                     ' together is not supported')
@@ -341,19 +364,29 @@ class _DistributedArray(cupy.ndarray):
 
         return args
 
-    def _prepare_incomings(self, dist_args, dev):
+    def _prepare_updates(self, dist_args, dev):
         index = None
-        incomings = []
+        updates = []
+        at_most_one_update = True
         for i, arg in dist_args:
-            if arg._incomings[dev]:
-                if incomings:
-                    raise RuntimeError(
-                        'Operationg an element-wise kernel on distributed'
-                        ' arrays with possibly unfinished data transfer on two'
-                        ' of them is currently not supported')
+            if arg._updates[dev]:
+                if updates:
+                    at_most_one_update = False
+                    break
                 index = i
-                incomings = arg._incomings[dev]
-        return index, incomings
+                updates = arg._updates[dev]
+
+        # If there is at most one array with partial updates, we return them
+        # and apply the element-wise kernel without actually propagating
+        # those updates. Otherwise we propagate them beforehand.
+        # TODO check if it really gives any speedup
+        if at_most_one_update:
+            return index, updates
+
+        for i, arg in dist_args:
+            self._collect_chunk(
+                _REPLICA_MODE, arg._chunks[dev], arg._updates[dev])
+        return None, []
 
     def _execute_kernel(self, kernel, args, kwargs) -> Any:
         distributed_arrays: list[tuple[int | str, '_DistributedArray']] = []
@@ -375,52 +408,62 @@ class _DistributedArray(cupy.ndarray):
         devices = self._get_execution_devices(distributed_arrays)
         new_dtype = None
         new_chunks = {}
-        new_incomings = {dev: [] for dev in self._device_mapping}
+        new_updates = {dev: [] for dev in self._device_mapping}
         for dev in devices:
             with Device(dev):
                 array_args = self._prepare_args(
                     distributed_arrays, regular_arrays, dev)
+
+                apply_kernel = Stream()
                 for i, arg in array_args:
+                    apply_kernel.wait_event(arg.stream.record())
                     if isinstance(i, int):
-                        args[i] = arg
+                        args[i] = arg.data
                     else:
-                        kwargs[i] = arg
+                        kwargs[i] = arg.data
 
-                out = kernel(*args, **kwargs)
-                new_dtype = out.dtype
-                new_chunks[dev] = out
+                args_ready = apply_kernel.record()
+                with apply_kernel:
+                    chunk = kernel(*args, **kwargs)
 
-                incoming_index, incomings = self._prepare_incomings(
+                new_dtype = chunk.dtype
+                new_chunks[dev] = _ControlledData(chunk, apply_kernel)
+
+                incoming_index, updates = self._prepare_updates(
                     distributed_arrays, dev)
-                if not incomings:
+                if len(updates) == 0:
                     continue
 
                 args_slice = [None] * len(args)
                 kwargs_slice = {}
-                for incoming, idx in incomings:
+                for update, idx in updates:
+                    apply_kernel_to_update = Stream()
+                    apply_kernel_to_update.wait_event(args_ready)
                     for i, arg in enumerate(args):
                         args_slice[i] = arg[idx]
                     for i, arg in kwargs.items():
                         kwargs_slice[i] = arg[idx]
 
                     if isinstance(incoming_index, int):
-                        args_slice[incoming_index] = incoming.data
+                        args_slice[incoming_index] = update.data
                     else:
-                        kwargs_slice[incoming_index] = incoming.data
+                        kwargs_slice[incoming_index] = update.data
 
-                    with incoming.stream:
+                    with apply_kernel_to_update:
                         new_data = kernel(*args_slice, **kwargs_slice)
-                    new_incomings[dev].append(
-                        (IncomingData(incoming.stream, new_data), idx))
+
+                    new_updates[dev].append(
+                        (_ControlledData(new_data, apply_kernel_to_update),
+                         idx))
 
         for out in new_chunks.values():
-            if not isinstance(out, cupy.ndarray):
+            if not isinstance(out.data, cupy.ndarray):
                 raise RuntimeError(
                     'Kernels returning other than signle array not supported')
 
         return _DistributedArray(
             self.shape, new_dtype, new_chunks, self._device_mapping,
-            _replica_mode, self._comms, new_incomings)
+            _REPLICA_MODE, self._comms, new_updates)
 
     def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
@@ -429,20 +472,18 @@ class _DistributedArray(cupy.ndarray):
         return outs
 
     def _transfer_async(
-            self, src_array: NDArray, dst_dev: NDArray,
-            src_stream=None, dst_stream=None) -> IncomingData:
-        src_dev = src_array.device.id
+            self, src_chunk: _ControlledData, dst_dev: int) -> _ControlledData:
+        src_dev = src_chunk.data.device.id
 
         with Device(src_dev):
-            if src_stream is None:
-                src_stream = Stream()
+            src_stream = Stream()
+            src_stream.wait_event(src_chunk.stream.record())
             with src_stream:
-                src_array = cupy.ascontiguousarray(src_array)
+                src_array = cupy.ascontiguousarray(src_chunk.data)
         with Device(dst_dev):
-            if dst_stream is None:
-                dst_stream = Stream()
+            dst_stream = Stream()
             with dst_stream:
-                dst_buf = cupy.full_like(src_array, -1)
+                dst_buf = cupy.empty_like(src_array)
 
         dtype, count = _get_nccl_dtype_and_count(src_array)
         nccl.groupStart()
@@ -455,8 +496,8 @@ class _DistributedArray(cupy.ndarray):
             self._comms[dst_dev].recv(
                 dst_buf.data.ptr, count, dtype, src_dev, dst_stream.ptr)
 
-        nccl.groupEnd()
-        return IncomingData(dst_stream, dst_buf)
+            nccl.groupEnd()
+            return _ControlledData(dst_buf, dst_stream)
 
     def _copy_to(
             self, src_array: NDArray, dst_array: NDArray) -> None:
@@ -465,10 +506,15 @@ class _DistributedArray(cupy.ndarray):
             dst_array[:] = src_array.copy()
 
     def _apply_and_update_chunks(
-            self, op_mode, shape, incomings,
-            src_chunk, src_idx, dst_chunk, dst_idx):
-        src_dev = src_chunk.device.id
-        dst_dev = dst_chunk.device.id
+            self, op_mode, shape, updates,
+            src_chunk: _ControlledData, src_idx,
+            dst_chunk: _ControlledData, dst_idx):
+        """Apply `src_chunk` onto `dst_chunk` in `op_mode`.
+        There must not be any undone partial update to src_chunk."""
+        src_dev = src_chunk.data.device.id
+        dst_dev = dst_chunk.data.device.id
+
+        assert len(updates[src_dev]) == 0
 
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
@@ -476,220 +522,188 @@ class _DistributedArray(cupy.ndarray):
         src_new_idx = _index_for_subindex(src_idx, intersection, shape)
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
-        with Device(src_dev):
-            src_stream = Stream()
+        data_to_transfer = _ControlledData(
+            src_chunk.data[src_new_idx], src_chunk.stream)
 
-        incoming = self._transfer_async(
-            src_chunk[src_new_idx], dst_dev, src_stream=src_stream)
-        with Device(dst_dev):
-            with incoming.stream:
-                op_mode.func(incoming.data, dst_chunk[dst_new_idx],
-                             incoming.data)
+        update = self._transfer_async(data_to_transfer, dst_dev)
 
-        incomings[dst_dev].append((incoming, dst_new_idx))
+        updates[dst_dev].append((update, dst_new_idx))
 
-        if op_mode.identity is not None:
+        if not op_mode.idempotent:
+            dtype = src_chunk.data.dtype
             with Device(src_dev):
-                with src_stream:
-                    src_chunk[src_new_idx] = op_mode.identity
+                with src_chunk.stream:
+                    src_chunk.data[src_new_idx] = op_mode.identity_of(dtype)
 
     def _all_reduce_intersections(
-            self, op_mode, shape, chunks, device_mapping, streams):
+            self, op_mode, shape, chunks, updates, device_mapping):
         chunks_list = list(chunks.items())
-        incomings = {dev: [] for dev in device_mapping}
 
-        # TODO: Parallelize
         for i in range(len(chunks_list)):
             src_dev, src_chunk = chunks_list[i]
             src_idx = device_mapping[src_dev]
-            streams[src_dev].synchronize()
+            self._collect_chunk(op_mode, src_chunk, updates[src_dev])
 
             for j in range(i + 1, len(chunks_list)):
                 dst_dev, dst_chunk = chunks_list[j]
                 dst_idx = device_mapping[dst_dev]
 
-                with Device(src_dev):
-                    for incoming, idx in incomings[src_dev]:
-                        incoming.stream.synchronize()
-                        src_chunk[idx] = incoming.data
-
                 self._apply_and_update_chunks(
-                    op_mode, shape, incomings,
+                    op_mode, shape, updates,
                     src_chunk, src_idx, dst_chunk, dst_idx)
 
-        # TODO: Parallelize
-        for j in range(len(chunks_list)):
+        for j in range(len(chunks_list) - 1, -1, -1):
             src_dev, src_chunk = chunks_list[j]
             src_idx = device_mapping[src_dev]
-            with Device(src_dev):
-                for incoming, idx in incomings[src_dev]:
-                    incoming.stream.synchronize()
-                    src_chunk[idx] = incoming.data
+            self._collect_chunk(_REPLICA_MODE, src_chunk, updates[src_dev])
 
             for i in range(j):
                 dst_dev, dst_chunk = chunks_list[i]
                 dst_idx = device_mapping[dst_dev]
 
-                self._send_intersection(
-                    shape, src_chunk, src_idx, dst_chunk, dst_idx)
+                self._copy_on_intersection(
+                    shape, updates, src_chunk, src_idx, dst_chunk, dst_idx)
 
-    def _send_intersection(
+    def _copy_on_intersection(
             self, shape: tuple[int, ...],
-            src_chunk: NDArray, src_idx: tuple[slice, ...],
-            dst_chunk: NDArray, dst_idx: tuple[slice, ...]) -> None:
-        """Write the intersection of chunks src_idx and dst_idx to the
-        corresponding entries of dst_chunk. Note dst_chunk == self[dst_idx]."""
-
+            updates: dict[int, list[_PartialUpdate]],
+            src_chunk: _ControlledData, src_idx: tuple[slice, ...],
+            dst_chunk: _ControlledData, dst_idx: tuple[slice, ...]) -> None:
         # intersection == src_chunk[src_new_idx] == dst_chunk[dst_new_idx]
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
-        src_new_idx = _index_for_subindex(src_idx, intersection, shape)
-        dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
-        self._copy_to(src_chunk[src_new_idx], dst_chunk[dst_new_idx])
 
-    def _send_intersection_async(
-            self, shape: tuple[int, ...],
-            src_chunk: NDArray, src_idx: tuple[slice, ...],
-            dst_chunk: NDArray, dst_idx: tuple[slice, ...],
-            src_stream: Optional[Stream] = None,
-            dst_stream: Optional[Stream] = None,
-        ) -> Optional[tuple[IncomingData, tuple[slice, ...]]]:
-        """Write the intersection of chunks src_idx and dst_idx to the
-        corresponding entries of dst_chunk. Note dst_chunk == self[dst_idx]."""
-
-        # intersection == src_chunk[src_new_idx] == dst_chunk[dst_new_idx]
-        intersection = _index_intersection(src_idx, dst_idx, shape)
-        if intersection is None:
-            return None
-
-        dst_dev = dst_chunk.device.id
+        dst_dev = dst_chunk.data.device.id
         src_new_idx = _index_for_subindex(src_idx, intersection, shape)
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
-        return (
-            self._transfer_async(src_chunk[src_new_idx], dst_dev,
-                                 src_stream, dst_stream),
-            dst_new_idx)
+        src_partial_chunk = _ControlledData(
+            src_chunk.data[src_new_idx], src_chunk.stream)
+        update = self._transfer_async(src_partial_chunk, dst_dev)
+        updates[dst_dev].append((update, dst_new_idx))
 
     def _set_identity_on_intersection(
             self, shape: tuple[int, ...], identity,
-            a_chunk: NDArray, a_idx: tuple[slice, ...],
+            a_chunk: _ControlledData, a_idx: tuple[slice, ...],
             b_idx: tuple[slice, ...]) -> None:
         intersection = _index_intersection(a_idx, b_idx, shape)
         if intersection is None:
             return
         a_new_idx = _index_for_subindex(a_idx, intersection, shape)
-        with Device(a_chunk.device.id):
-            a_chunk[a_new_idx] = identity
+        with Device(a_chunk.data.device.id):
+            with a_chunk.stream:
+                a_chunk.data[a_new_idx] = identity
 
-    def _set_identity_on_incoming(
+    def _set_identity_on_ignored_entries(
             self, identity, dev,
-            chunk: NDArray, incomings: list[tuple[IncomingData, Any]],
-            stream: Optional[Stream] = None,
-        ) -> Stream:
-        if not stream:
-            stream = Stream()
-        for _, idx in incomings:
-            with Device(dev):
-                with stream:
-                    chunk[idx] = identity
-        return stream
+            chunk: _ControlledData, updates: list[_PartialUpdate]) -> None:
+        with Device(dev):
+            with chunk.stream:
+                for _, idx in updates:
+                    chunk.data[idx] = identity
 
     def __cupy_override_reduction_kernel__(
             self, kernel, axis, dtype, out, keepdims):
-        # Assumption: kernel(x, y) == kernel(y, x) && kernel(x, x) == x e.g. max
-
         if out is not None:
             raise RuntimeError('Argument `out` is not supported')
         if keepdims:
             raise RuntimeError('`keepdims` is not supported')
 
         if kernel.name == 'cupy_max':
-            mode = _max_mode
-            identity = _min_value(self.dtype)
-            chunks, chunk_streams = self._replica_mode_chunks()
+            mode = _MODES['max']
+            chunks, updates = self._replica_mode_chunks_and_updates()
         elif kernel.name == 'cupy_min':
-            mode = _min_mode
-            identity = _max_value(self.dtype)
-            chunks, chunk_streams = self._replica_mode_chunks()
-        # elif kernel.name == 'cupy_sum':
-        #     mode = _sum_mode
-        #     chunks = self._op_mode_chunks(mode)
-        # elif kernel.name == 'cupy_prod':
-        #     mode = _prod_mode
-        #     chunks = self._op_mode_chunks(mode)
+            mode = _MODES['min']
+            chunks, updates = self._replica_mode_chunks_and_updates()
+        elif kernel.name == 'cupy_sum':
+            mode = _MODES['sum']
+            chunks, updates = self._op_mode_chunks_and_updates(mode)
+        elif kernel.name == 'cupy_prod':
+            mode = _MODES['prod']
+            chunks, updates = self._op_mode_chunks_and_updates(mode)
         else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
-        for dev, stream in chunk_streams.items():
-            self._set_identity_on_incoming(
-                identity, dev, chunks[dev], self._incomings[dev], stream)
+        identity = mode.identity_of(self.dtype)
+        for dev, chunk in chunks.items():
+            self._set_identity_on_ignored_entries(
+                identity, dev, chunk, updates[dev])
 
         shape = self.shape[:axis] + self.shape[axis+1:]
         new_dtype = None
         new_chunks = {}
         new_device_mapping = {}
-        new_incomings = {dev: [] for dev in self._device_mapping}
+        new_updates = {dev: [] for dev in self._device_mapping}
 
         for dev, chunk in chunks.items():
             idx = self._device_mapping[dev]
             with Device(dev):
-                with chunk_streams[dev]:
-                    new_chunks[dev] = kernel(chunk, axis=axis, dtype=dtype)
-            new_dtype = new_chunks[dev].dtype
+                apply_kernel = Stream()
+                apply_kernel.wait_event(chunk.stream.record())
+                with apply_kernel:
+                    new_data = kernel(chunk.data, axis=axis, dtype=dtype)
+                new_chunks[dev] = _ControlledData(new_data, apply_kernel)
+
+            new_dtype = new_chunks[dev].data.dtype
             new_device_mapping[dev] = idx[:axis] + idx[axis+1:]
 
-        for dev, incomings in self._incomings.items():
+        for dev, upds in updates.items():
             with Device(dev):
-                for incoming, idx in incomings:
+                for update, idx in upds:
                     stream = Stream()
-                    stream.wait_event(incoming.stream.record())
+                    stream.wait_event(update.stream.record())
                     with stream:
-                        new_data = kernel(incoming.data, axis=axis, dtype=dtype)
+                        new_data = kernel(update.data, axis=axis, dtype=dtype)
                     new_idx = idx[:axis] + idx[axis+1:]
-                    new_incomings[dev].append(
-                        (IncomingData(stream, new_data), new_idx))
+                    new_updates[dev].append(
+                        (_ControlledData(new_data, stream), new_idx))
 
         return _DistributedArray(
             shape, new_dtype, new_chunks, new_device_mapping, mode, self._comms,
-            new_incomings)
+            new_updates)
 
-    def _copy_chunks(self) -> tuple[dict[int, NDArray], dict[int, Stream]]:
+    def _copy_chunks_and_updates(self):
         chunks = {}
-        streams = {}
         for dev, chunk in self._chunks.items():
             with Device(dev):
-                streams[dev] = Stream()
-                with streams[dev]:
-                    chunks[dev] = chunk.copy()
-        return chunks, streams
+                copy = Stream()
+                copy.wait_event(chunk.stream.record())
+                with copy:
+                    copied_data = chunk.data.copy()
+                chunks[dev] = _ControlledData(copied_data, copy)
 
-    def _replica_mode_chunks(self
-                             ) -> tuple[dict[int, NDArray], dict[int, Stream]]:
-        """Does not recessarily copy."""
-        if self._mode is _replica_mode:
-            return self._copy_chunks()
+        updates = {dev: list(upds) for dev, upds in self._updates.items()}
+        return chunks, updates
 
-        self._wait_all_transfer()
-        chunks, streams = self._copy_chunks()
+    def _replica_mode_chunks_and_updates(
+            self
+        ) -> tuple[dict[int, _ControlledData], dict[int, list[_PartialUpdate]]]:
+        """Guarantees a copy."""
+        if self._mode is _REPLICA_MODE:
+            return self._copy_chunks_and_updates()
+
+        chunks, updates = self._copy_chunks_and_updates()
         self._all_reduce_intersections(
-            self._mode, self.shape, chunks, self._device_mapping, streams)
-        return chunks, streams
+            self._mode, self.shape, chunks, updates, self._device_mapping)
+        return chunks, updates
 
-    def _op_mode_chunks(self, op_mode) -> dict[int, NDArray]:
+    def _op_mode_chunks_and_updates(
+            self, op_mode
+        ) -> tuple[dict[int, NDArray], dict[int, list[_PartialUpdate]]]:
         if self._mode is op_mode:
-            return self._chunks
+            return self._chunks, self._updates
 
-        chunks = self._replica_mode_chunks()
+        chunks, updates = self._replica_mode_chunks_and_updates()
+        for dev in chunks:
+            self._collect_chunk(_REPLICA_MODE, chunks[dev], updates[dev])
 
         chunks_list = list(chunks.items())
+        identity = op_mode.identity_of(self.dtype)
         new_chunks = {}
         # TODO: Parallelize
         for i in range(len(chunks_list)):
             a_dev, a_chunk = chunks_list[i]
-            with Device(a_dev):
-                new_a_chunk = a_chunk.copy()
             a_idx = self._device_mapping[a_dev]
 
             for j in range(i + 1, len(chunks_list)):
@@ -697,41 +711,37 @@ class _DistributedArray(cupy.ndarray):
                 b_idx = self._device_mapping[b_dev]
 
                 self._set_identity_on_intersection(
-                    self.shape, op_mode.identity, new_a_chunk, a_idx, b_idx)
+                    self.shape, identity, a_chunk, a_idx, b_idx)
 
-            new_chunks[a_dev] = new_a_chunk
+            new_chunks[a_dev] = a_chunk
 
-        return new_chunks
+        return new_chunks, updates
 
     def to_replica_mode(self) -> '_DistributedArray':
         """Does not recessarily copy."""
-        if self._mode is _replica_mode:
+        if self._mode is _REPLICA_MODE:
             return self
         else:
-            chunks, streams = self._replica_mode_chunks()
-            for s in streams.values():
-                s.synchronize()
+            chunks, updates = self._replica_mode_chunks_and_updates()
             return _DistributedArray(
                 self.shape, self.dtype, chunks, self._device_mapping,
-                _replica_mode, self._comms)
+                _REPLICA_MODE, self._comms, updates)
 
-    def change_mode(self, mode) -> '_DistributedArray':
-        if self._mode is mode:
+    def change_mode(self, mode: str) -> '_DistributedArray':
+        if _MODES[mode] is self._mode:
             return self
 
-        chunks = self._copy_chunks()
-        self._all_reduce_intersections(
-            self._mode, self.shape, chunks, self._device_mapping)
+        if mode == 'replica':
+            chunks, updates = self._replica_mode_chunks_and_updates()
+        else:
+            chunks, updates = self._op_mode_chunks_and_updates(_MODES[mode])
         return _DistributedArray(
-            self.shape, self.dtype, chunks, self._device_mapping, _replica_mode,
-            self._comms)
+            self.shape, self.dtype, chunks, self._device_mapping, _MODES[mode],
+            self._comms, updates)
 
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
-        # self._wait_all_transfer()
-
-        # TODO: implement another version that reshards within the SUM mode
         arr = self.to_replica_mode()
 
         old_mapping = arr._device_mapping
@@ -740,53 +750,48 @@ class _DistributedArray(cupy.ndarray):
                        for dev, idx in device_mapping.items()}
 
         new_chunks = {}
-        new_incoming = {dev: [] for dev in new_mapping}
-        dst_streams = {}
+        new_updates = {dev: [] for dev in new_mapping}
         for dst_dev, dst_idx in new_mapping.items():
             with Device(dst_dev):
                 dst_shape = _shape_after_indexing(arr.shape, dst_idx)
-                dst_streams[dst_dev] = Stream()
-                with dst_streams[dst_dev]:
-                    new_chunks[dst_dev] = cupy.empty(
-                        dst_shape, dtype=self.dtype)
+                stream = Stream()
+                with stream:
+                    new_chunks[dst_dev] = _ControlledData(
+                        cupy.empty(dst_shape, dtype=self.dtype), stream)
 
         for src_dev, src_idx in old_mapping.items():
-            src_array = arr._chunks[src_dev]
-            src_collector = arr._collect_chunk(
-                _replica_mode, src_array, arr._incomings[src_dev])
-            with Device(src_dev):
-                src_collected = src_collector.record()
+            src_chunk = arr._chunks[src_dev]
+            arr._collect_chunk(
+                _REPLICA_MODE, src_chunk, arr._updates[src_dev])
 
             for dst_dev, dst_idx in new_mapping.items():
-                dst_array = new_chunks[dst_dev]
-                with Device(src_dev):
-                    src_stream = Stream()
-                    src_stream.wait_event(src_collected)
+                dst_chunk = new_chunks[dst_dev]
 
-                incoming_and_idx = arr._send_intersection_async(
-                    arr.shape, src_array, src_idx, dst_array, dst_idx,
-                    src_stream=src_stream, dst_stream=dst_streams[dst_dev])
-                if incoming_and_idx is not None:
-                    new_incoming[dst_dev].append(incoming_and_idx)
+                arr._copy_on_intersection(
+                    arr.shape, new_updates,
+                    src_chunk, src_idx, dst_chunk, dst_idx)
 
         return _DistributedArray(
-            arr.shape, arr.dtype, new_chunks, new_mapping, _replica_mode,
-            self._comms, new_incoming)
+            arr.shape, arr.dtype, new_chunks, new_mapping, _REPLICA_MODE,
+            self._comms, new_updates)
 
     def asnumpy(self):
-        self._wait_all_transfer()
+        for dev, chunk in self._chunks.items():
+            self._collect_chunk(self._mode, chunk, self._updates[dev])
 
-        if self._mode is _replica_mode or self._mode.identity is None:
+        if self._mode is _REPLICA_MODE:
             np_array = numpy.empty(self.shape, dtype=self.dtype)
         else:
-            np_array = numpy.full(self.shape, self.mode.identity, self.dtype)
+            identity = self._mode.identity_of(self.dtype)
+            np_array = numpy.full(self.shape, identity, self.dtype)
 
         for dev, chunk_idx in self._device_mapping.items():
-            if self._mode is _replica_mode or self._mode.identity is None:
-                np_array[chunk_idx] = cupy.asnumpy(self._chunks[dev])
+            self._chunks[dev].stream.synchronize()
+            if self._mode is _REPLICA_MODE:
+                np_array[chunk_idx] = cupy.asnumpy(self._chunks[dev].data)
             else:
                 self._mode.numpy_func(
-                    np_array[chunk_idx], cupy.asnumpy(self._chunks[dev]),
+                    np_array[chunk_idx], cupy.asnumpy(self._chunks[dev].data),
                     out=np_array[chunk_idx])
 
         return np_array
@@ -795,15 +800,20 @@ class _DistributedArray(cupy.ndarray):
 def distributed_array(
         array: ArrayLike,
         device_mapping: dict[int, Any],
-        mode: Mode = _replica_mode,
-        comms = None):
+        mode: str = 'replica',
+        comms: Optional[dict[int, nccl.NcclCommunicator]] = None):
+    if mode not in _MODES:
+        raise RuntimeError(f'`mode` must be one of {list(_MODES)}')
+    mode_obj = _MODES[mode]
+
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
-    elif mode is not _replica_mode:
+    elif mode != 'replica':
         array = array.copy()
 
     device_mapping = {dev: _convert_chunk_idx_to_slices(array.shape, idx)
                       for dev, idx in device_mapping.items()}
+
 
     cp_chunks = {}
     for dev, chunk_idx in device_mapping.items():
@@ -812,9 +822,11 @@ def distributed_array(
         else:
             chunk = array[chunk_idx]
         with Device(dev):
-            cp_chunks[dev] = cupy.array(chunk)
-        if mode is not _replica_mode and mode.identity is not None:
-            array[chunk_idx] = mode.identity
+            stream = Stream()
+            with stream:
+                cp_chunks[dev] = _ControlledData(cupy.array(chunk), stream)
+        if mode_obj is not None and not mode_obj.idempotent:
+            array[chunk_idx] = mode_obj.identity_of(array.dtype)
     return _DistributedArray(
-        array.shape, array.dtype, cp_chunks, device_mapping, mode, comms)
+        array.shape, array.dtype, cp_chunks, device_mapping, mode_obj, comms)
 
