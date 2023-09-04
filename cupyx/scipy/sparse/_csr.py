@@ -13,7 +13,6 @@ import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import runtime
-from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
 from cupyx.scipy.sparse import _csc
@@ -81,6 +80,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         return (x, y)
 
     def _add_sparse(self, other, alpha, beta):
+        from cupyx import cusparse
+
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
@@ -146,6 +147,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         return self._comparison(other, operator.ge, '_ge_')
 
     def __mul__(self, other):
+        from cupyx import cusparse
+
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
@@ -279,6 +282,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
+        from cupyx import cusparse
+
         compress = cusparse.csr2csr_compress(self, 0)
         self.data = compress.data
         self.indices = compress.indices
@@ -372,6 +377,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             Calling this function might synchronize the device.
 
         """
+        from cupyx import cusparse
+
         if not self.has_sorted_indices:
             cusparse.csrsort(self)
             self.has_sorted_indices = True
@@ -390,6 +397,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         .. seealso:: :meth:`scipy.sparse.csr_matrix.toarray`
 
         """
+        from cupyx import cusparse
+
         order = 'C' if order is None else order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
@@ -435,6 +444,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if copy:
             data = self.data.copy()
             indices = self.indices.copy()
@@ -456,6 +467,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         # copy is ignored
         if cusparse.check_availability('csr2csc'):
             csr2csc = cusparse.csr2csc
@@ -1134,6 +1147,8 @@ def _cupy_csr2dense(dtype):
 
 
 def dense2csr(a):
+    from cupyx import cusparse
+
     if a.dtype.char in 'fdFD':
         if cusparse.check_availability('denseToSparse'):
             return cusparse.denseToSparse(a, format='csr')
