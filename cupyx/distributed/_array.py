@@ -8,6 +8,7 @@ import numpy
 
 from numpy.typing import ArrayLike
 from cupy.typing import NDArray
+from cupy.typing._types import _ScalarType_co
 from cupyx.distributed._nccl_comm import _nccl_dtypes
 
 
@@ -199,15 +200,12 @@ def _one_value_of(dtype):
     return dtype.type(1)
 
 
-_T = TypeVar('_T')
-
-
 @dataclasses.dataclass
 class _OpMode:
     func: cupy.ufunc
     numpy_func: numpy.ufunc
     idempotent: bool
-    identity_of: Callable[[numpy.dtype], _T]
+    identity_of: Callable[[numpy.dtype], _ScalarType_co]
 
 
 _Mode = Optional[_OpMode]
@@ -234,6 +232,14 @@ class _ControlledData:
 
 # Overwrite in replica mode, apply in op mode
 _PartialUpdate = tuple[_ControlledData, tuple[slice, ...]]
+
+
+def _copy_controlled_data(cdata: _ControlledData):
+    with cdata.data.device:
+        copy = Stream()
+        copy.wait_event(cdata.stream.record())
+        with copy:
+            return _ControlledData(cdata.data.copy(), copy)
 
 
 class _DistributedArray(cupy.ndarray):
@@ -506,15 +512,13 @@ class _DistributedArray(cupy.ndarray):
             dst_array[:] = src_array.copy()
 
     def _apply_and_update_chunks(
-            self, op_mode, shape, updates,
+            self, op_mode, shape, updates,  # TODO only receive updates[dst_dev]
             src_chunk: _ControlledData, src_idx,
             dst_chunk: _ControlledData, dst_idx):
         """Apply `src_chunk` onto `dst_chunk` in `op_mode`.
         There must not be any undone partial update to src_chunk."""
         src_dev = src_chunk.data.device.id
         dst_dev = dst_chunk.data.device.id
-
-        assert len(updates[src_dev]) == 0
 
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
@@ -664,22 +668,15 @@ class _DistributedArray(cupy.ndarray):
             new_updates)
 
     def _copy_chunks_and_updates(self):
-        chunks = {}
-        for dev, chunk in self._chunks.items():
-            with Device(dev):
-                copy = Stream()
-                copy.wait_event(chunk.stream.record())
-                with copy:
-                    copied_data = chunk.data.copy()
-                chunks[dev] = _ControlledData(copied_data, copy)
-
+        chunks = {dev: _copy_controlled_data(chunk)
+                  for dev, chunk in self._chunks.items()}
         updates = {dev: list(upds) for dev, upds in self._updates.items()}
         return chunks, updates
 
     def _replica_mode_chunks_and_updates(
             self
         ) -> tuple[dict[int, _ControlledData], dict[int, list[_PartialUpdate]]]:
-        """Guarantees a copy."""
+        """Make copies of the chunks and their updates into the replica mode."""
         if self._mode is _REPLICA_MODE:
             return self._copy_chunks_and_updates()
 
@@ -691,8 +688,9 @@ class _DistributedArray(cupy.ndarray):
     def _op_mode_chunks_and_updates(
             self, op_mode
         ) -> tuple[dict[int, NDArray], dict[int, list[_PartialUpdate]]]:
+        """Make copies of the chunks and their updates into the given mode."""
         if self._mode is op_mode:
-            return self._chunks, self._updates
+            return self._copy_chunks_and_updates()
 
         chunks, updates = self._replica_mode_chunks_and_updates()
         for dev in chunks:
@@ -742,37 +740,53 @@ class _DistributedArray(cupy.ndarray):
     def reshard(
         self, device_mapping: dict[int, Any]
     ) -> '_DistributedArray':
-        arr = self.to_replica_mode()
+        for dev in device_mapping:
+            if dev not in self._comms:
+                raise RuntimeError(
+                    f'A communicator for device {dev} is not prepared.')
 
-        old_mapping = arr._device_mapping
-
-        new_mapping = {dev: _convert_chunk_idx_to_slices(arr.shape, idx)
+        old_mapping = self._device_mapping
+        new_mapping = {dev: _convert_chunk_idx_to_slices(self.shape, idx)
                        for dev, idx in device_mapping.items()}
 
+        old_chunks = self._chunks
         new_chunks = {}
+
         new_updates = {dev: [] for dev in new_mapping}
+        if self._mode is not None:
+            identity = self._mode.identity_of(self.dtype)
         for dst_dev, dst_idx in new_mapping.items():
             with Device(dst_dev):
-                dst_shape = _shape_after_indexing(arr.shape, dst_idx)
+                dst_shape = _shape_after_indexing(self.shape, dst_idx)
                 stream = Stream()
                 with stream:
-                    new_chunks[dst_dev] = _ControlledData(
-                        cupy.empty(dst_shape, dtype=self.dtype), stream)
+                    if self._mode is _REPLICA_MODE:
+                        data = cupy.empty(dst_shape, self.dtype)
+                    else:
+                        data = cupy.full(dst_shape, identity, self.dtype)
+                new_chunks[dst_dev] = _ControlledData(data, stream)
 
         for src_dev, src_idx in old_mapping.items():
-            src_chunk = arr._chunks[src_dev]
-            arr._collect_chunk(
-                _REPLICA_MODE, src_chunk, arr._updates[src_dev])
+            src_chunk = self._chunks[src_dev]
+            self._collect_chunk(
+                self._mode, src_chunk, self._updates[src_dev])
+            if self._mode is not None:
+                src_chunk = _copy_controlled_data(src_chunk)
 
             for dst_dev, dst_idx in new_mapping.items():
                 dst_chunk = new_chunks[dst_dev]
 
-                arr._copy_on_intersection(
-                    arr.shape, new_updates,
-                    src_chunk, src_idx, dst_chunk, dst_idx)
+                if self._mode is _REPLICA_MODE:
+                    self._copy_on_intersection(
+                        self.shape, new_updates,
+                        src_chunk, src_idx, dst_chunk, dst_idx)
+                else:
+                    self._apply_and_update_chunks(
+                        self._mode, self.shape, new_updates,
+                        src_chunk, src_idx, dst_chunk, dst_idx)
 
         return _DistributedArray(
-            arr.shape, arr.dtype, new_chunks, new_mapping, _REPLICA_MODE,
+            self.shape, self.dtype, new_chunks, new_mapping, self._mode,
             self._comms, new_updates)
 
     def asnumpy(self):
@@ -792,7 +806,7 @@ class _DistributedArray(cupy.ndarray):
             else:
                 self._mode.numpy_func(
                     np_array[chunk_idx], cupy.asnumpy(self._chunks[dev].data),
-                    out=np_array[chunk_idx])
+                    np_array[chunk_idx])
 
         return np_array
 
