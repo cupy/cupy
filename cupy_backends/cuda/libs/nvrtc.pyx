@@ -23,7 +23,7 @@ from cupy_backends.cuda.api cimport runtime
 
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.cnvrtc cimport *
-    cdef void initialize():
+    cdef inline void initialize():
         pass
 ELSE:
     include "_cnvrtc.pxi"
