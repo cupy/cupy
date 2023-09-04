@@ -337,7 +337,12 @@ def symiirorder2(input, r, omega, precision=-1.0):
 
     # Apply the system cs / (1 - a2 * z^-1 - a3 * z^-2)
     zi = cupy.r_[y0, y1]
-    y_fwd, _ = lfilter(cs, cupy.r_[1, -a2, -a3], input[2:], zi=zi)
+    zi = zi.astype(input.dtype)
+
+    coef = cupy.r_[1, -a2, -a3]
+    coef = coef.astype(input.dtype)
+
+    y_fwd, _ = lfilter(cs, coef, input[2:], zi=zi)
     y_fwd = cupy.r_[zi, y_fwd]
 
     # Then compute the symmetric backward starting conditions
@@ -386,5 +391,5 @@ def symiirorder2(input, r, omega, precision=-1.0):
 
     # Apply the system cs / (1 - a2 * z^1 - a3 * z^2)
     zi = cupy.r_[y0, y1]
-    out, _ = lfilter(cs, cupy.r_[1, -a2, -a3], y_fwd[:-2][::-1], zi=zi)
+    out, _ = lfilter(cs, coef, y_fwd[:-2][::-1], zi=zi)
     return cupy.r_[out[::-1], zi[::-1]]
