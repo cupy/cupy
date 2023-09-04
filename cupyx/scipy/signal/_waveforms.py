@@ -454,8 +454,7 @@ _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
 )
 
 
-def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True,
-          type="real"):
+def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
     """Frequency-swept cosine generator.
 
     In the following, 'Hz' should be interpreted as 'cycles per unit';
@@ -482,8 +481,6 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True,
         This parameter is only used when `method` is 'quadratic'.
         It determines whether the vertex of the parabola that is the graph
         of the frequency is at t=0 or t=t1.
-    type : {'real', 'complex'}, optional
-        Specify output chirp type, only applicable when `method` is 'linear'.
 
     Returns
     -------
@@ -539,6 +536,7 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True,
         t = t.astype(cupy.float64)
 
     phi *= np.pi / 180
+    type = 'real'
 
     if method in ["linear", "lin", "li"]:
         if type == "real":
