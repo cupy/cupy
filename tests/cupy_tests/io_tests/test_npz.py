@@ -4,6 +4,7 @@ import unittest
 
 import cupy
 from cupy import testing
+import numpy
 
 
 class TestNpz(unittest.TestCase):
@@ -21,6 +22,21 @@ class TestNpz(unittest.TestCase):
         sio.close()
 
         testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_load_dtype(self, dtype):
+        a = testing.shaped_arange((2, 3, 4))
+        b = numpy.array(a.get(), dtype=dtype)
+        sio = io.BytesIO()
+        cupy.save(sio, a)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = io.BytesIO(s)
+        c = cupy.load(sio, dtype=dtype)
+        sio.close()
+
+        testing.assert_array_equal(b, c)
 
     def test_save_pickle(self):
         data = object()
