@@ -18,7 +18,6 @@ from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import cublas  # NOQA
 from cupy_backends.cuda.libs import curand  # NOQA
-from cupy_backends.cuda.libs import cusolver  # NOQA
 from cupy_backends.cuda.libs import cusparse  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
 from cupy_backends.cuda.libs import profiler  # NOQA
@@ -53,6 +52,10 @@ except ImportError:
 
 
 def __getattr__(key):
+    if key == 'cusolver':
+        from cupy_backends.cuda.libs import cusolver
+        return cusolver
+
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
     for mod in [nvtx]:
