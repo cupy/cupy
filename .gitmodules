@@ -1,7 +1,12 @@
-[submodule "cupy/_core/include/cupy/cub"]
-	path = cupy/_core/include/cupy/cub
-	url = https://github.com/NVIDIA/cub.git
-	branch = 1.8.0
 [submodule "cupy/_core/include/cupy/jitify"]
 	path = cupy/_core/include/cupy/jitify
 	url = https://github.com/NVIDIA/jitify.git
+[submodule "cupy/_core/include/cupy/cccl/cub"]
+	path = cupy/_core/include/cupy/cccl/cub
+	url = https://github.com/NVIDIA/cub.git
+[submodule "cupy/_core/include/cupy/cccl/thrust"]
+	path = cupy/_core/include/cupy/cccl/thrust
+	url = https://github.com/NVIDIA/thrust.git
+[submodule "cupy/_core/include/cupy/cccl/libcudacxx"]
+	path = cupy/_core/include/cupy/cccl/libcudacxx
+	url = https://github.com/NVIDIA/libcudacxx

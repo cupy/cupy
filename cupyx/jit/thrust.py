@@ -8,9 +8,9 @@ def _wrap_thrust_func(headers):
         class FuncWrapper(_internal_types.BuiltinFunc):
             def call(self, env, *args, **kwargs):
                 for header in headers:
-                    env.generated.add_code(f'#include <{header}>')
-                env.generated.add_code('#include <thrust/execution_policy.h>')
-                env.generated.add_code('#include <thrust/functional.h>')
+                    env.generated.add_code(f'#include <cupy/cccl/thrust/{header}>')
+                env.generated.add_code('#include <cupy/cccl/thrust/thrust/execution_policy.h>')
+                env.generated.add_code('#include <cupy/cccl/thrust/thrust/functional.h>')
                 env.generated.backend = 'nvcc'
                 data_args = [_Data.init(a, env) for a in args]
                 data_kwargs = {k: _Data.init(kwargs[k], env) for k in kwargs}

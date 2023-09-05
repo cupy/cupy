@@ -7,7 +7,9 @@ from cupy_builder import Context
 def preflight_check(ctx: Context) -> bool:
     source_root = ctx.source_root
     is_git = os.path.isdir(os.path.join(source_root, '.git'))
-    for submodule in ('cupy/_core/include/cupy/cub',
+    for submodule in ('cupy/_core/include/cupy/cccl/cub',
+                      'cupy/_core/include/cupy/cccl/libcudacxx',
+                      'cupy/_core/include/cupy/cccl/thrust',
                       'cupy/_core/include/cupy/jitify'):
         if 0 < len(os.listdir(os.path.join(source_root, submodule))):
             continue

@@ -266,8 +266,8 @@ cdef str _get_cub_header_include():
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cuda_workaround.h>
-#include <cupy/cub/cub/block/block_reduce.cuh>
-#include <cupy/cub/cub/block/block_load.cuh>
+#include <cupy/cccl/cub/cub/block/block_reduce.cuh>
+#include <cupy/cccl/cub/cub/block/block_load.cuh>
 '''
     elif _cub_path == '<CUDA>':
         _cub_header = '''
