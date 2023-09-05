@@ -1231,6 +1231,7 @@ class TestSTFT:
         return results
 
 
+@testing.with_requires('scipy')
 class TestVectorstrength:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_single_1dperiod(self, xp, scp):
@@ -1342,3 +1343,73 @@ class TestVectorstrength:
         period = -1
         with pytest.raises(ValueError):
             scp.signal.vectorstrength(events, period)
+
+
+@testing.with_requires('scipy')
+class TestCoherence:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_identical_input(self, xp, scp):
+        x = testing.shaped_random((20,), xp, xp.float64, scale=1.0)
+        y = xp.copy(x)  # So `y is x` -> False
+
+        f1, C1 = scp.signal.coherence(x, y, nperseg=10)
+        return f1, C1
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_phase_shifted_input(self, xp, scp):
+        x = testing.shaped_random((20,), xp, xp.float64, scale=1.0)
+        y = -x
+
+        f1, C1 = scp.signal.coherence(x, y, nperseg=10)
+        return f1, C1
+
+
+@testing.with_requires('scipy')
+class TestSpectrogram:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_average_all_segments(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+
+        fs = 1.0
+        window = ('tukey', 0.25)
+        nperseg = 16
+        noverlap = 2
+
+        f, _, P = scp.signal.spectrogram(x, fs, window, nperseg, noverlap)
+        return f, P
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_window_external(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+
+        fs = 1.0
+        win = scp.signal.get_window(('tukey', 0.25), 16)
+        fe, _, Pe = scp.signal.spectrogram(
+            x, fs, win, nperseg=None, noverlap=2)
+
+        with pytest.raises(ValueError):
+            scp.signal.spectrogram(x, fs, win, nperseg=8)
+
+        win_err = scp.signal.get_window(('tukey', 0.25), 2048)
+        with pytest.raises(ValueError):
+            scp.signal.spectrogram(x, fs, win_err, nperseg=None)
+        return fe, Pe
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_short_data(self, xp, scp):
+        x = testing.shaped_random((1024,), xp, xp.float64, scale=1.0)
+        fs = 1.0
+
+        # for string-like window, input signal length < nperseg value gives
+        # UserWarning, sets nperseg to x.shape[-1]
+        # default nperseg
+        f, _, p = scp.signal.spectrogram(x, fs, window=('tukey', 0.25))
+
+        # user-specified nperseg
+        f1, _, p1 = scp.signal.spectrogram(
+            x, fs, window=('tukey', 0.25), nperseg=1025)
+        # to compare w/default
+        f2, _, p2 = scp.signal.spectrogram(x, fs, nperseg=256)
+        # compare w/user-spec'd
+        f3, _, p3 = scp.signal.spectrogram(x, fs, nperseg=1024)
+        return f, p, f1, p1, f2, p2, f3, p3
