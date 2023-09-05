@@ -835,25 +835,6 @@ def stft(
     return freqs, time, Zxx
 
 
-_istft_kernel = cupy.ElementwiseKernel(
-    "raw T xsubs, raw T win, int32 N, int32 half_N",
-    "T x, T norm",
-    """
-    int p = static_cast<int>( i / N ) * 2;
-    x = xsubs[(p * N) + (i % N)] * win[i % N];
-    norm = win[i % N] * win[i % N];
-
-    if ( ( i >= half_N ) && ( i < ( _ind.size() - half_N ) ) ) {
-        p = static_cast<int>( ( i-half_N ) / N ) * 2 + 1;
-        x += xsubs[(p * N) + ( (i - half_N) % N )] * win[(i - half_N) % N];
-        norm += win[(i - half_N) % N] * win[(i - half_N) % N];
-    }
-    """,
-    "_istft_kernel",
-    options=("-std=c++11",),
-)
-
-
 def istft(
     Zxx,
     fs=1.0,
@@ -1116,6 +1097,8 @@ def istft(
 
     # Initialize output and normalization arrays
     outputlength = nperseg + (nseg - 1) * nstep
+    x = cupy.zeros(list(Zxx.shape[:-2]) + [outputlength], dtype=xsubs.dtype)
+    norm = cupy.zeros(outputlength, dtype=xsubs.dtype)
 
     if cupy.result_type(win, xsubs) != xsubs.dtype:
         win = win.astype(xsubs.dtype)
@@ -1127,12 +1110,10 @@ def istft(
     else:
         raise ValueError(f"Parameter {scaling=} not in ['spectrum', 'psd']!")
 
-    # Construct the output from the ifft segments
-    # Transposing makes the indexing easier
-    xsubs = cupy.transpose(xsubs)
-    x, norm = _istft_kernel(
-        xsubs, win, win.shape[0], win.shape[0] // 2, size=outputlength
-    )
+    for ii in range(nseg):
+        # Window the ifft
+        x[..., ii * nstep:ii * nstep + nperseg] += xsubs[..., ii] * win
+        norm[..., ii * nstep:ii * nstep + nperseg] += win**2
 
     # Remove extension points
     if boundary:

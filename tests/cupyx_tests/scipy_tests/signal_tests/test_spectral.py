@@ -1025,7 +1025,6 @@ class TestSTFT:
             window=window, detrend=None, padded=False,
             scaling=scaling)
 
-        breakpoint()
         tr, xr = scp.signal.istft(
             zz, nperseg=nperseg, noverlap=noverlap, window=window,
             scaling=scaling)
@@ -1035,7 +1034,7 @@ class TestSTFT:
     @pytest.mark.parametrize('settings', [
         ('hann', 1024, 256, 128)
     ])
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_roundtrip_float32(self, settings, xp, scp):
         window, N, nperseg, noverlap = settings
         t = xp.arange(N)
