@@ -175,7 +175,6 @@ def _get_cub_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not runtime.is_hip:
-        cuda_path = get_cuda_path()
         if os.path.isdir(
                 os.path.join(current_dir, '_core/include/cupy/cccl/cub')):
             _cub_path = '<bundle>'

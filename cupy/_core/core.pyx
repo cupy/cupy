@@ -2198,6 +2198,7 @@ cpdef function.Module compile_with_cache(
     if prepend_cupy_headers:
         source = _cupy_header + source
     extra_source = _get_header_source()
+
     options += ('-I%s' % _get_header_dir_path(),)
 
     # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
@@ -2235,6 +2236,13 @@ cpdef function.Module compile_with_cache(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
                 'are using CUDA versions not yet supported by CuPy.')
+
+        # make sure bundled CCCL is searched first
+        options = (
+            '-I%s/cupy/cccl/libcudacxx/include' % _get_header_dir_path(),
+            '-I%s/cupy/cccl/cub' % _get_header_dir_path(),
+            '-I%s/cupy/cccl/thrust' % _get_header_dir_path(),
+        ) + options
 
         if bundled_include is not None:
             options += ('-I' + os.path.join(
