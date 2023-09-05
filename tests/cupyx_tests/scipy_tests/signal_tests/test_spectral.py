@@ -1229,3 +1229,116 @@ class TestSTFT:
             Zp0, input_onesided=True, boundary=True, scaling='psd')[1]
         results.append(x1)
         return results
+
+
+class TestVectorstrength:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_1dperiod(self, xp, scp):
+        events = xp.array([.5])
+        period = 5.
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_2dperiod(self, xp, scp):
+        events = xp.array([.5])
+        period = [1, 2, 5.]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equal_1dperiod(self, xp, scp):
+        events = xp.array([.25, .25, .25, .25, .25, .25])
+        period = 2
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equal_2dperiod(self, xp, scp):
+        events = xp.array([.25, .25, .25, .25, .25, .25])
+        period = [1, 2, ]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spaced_1dperiod(self, xp, scp):
+        events = xp.array([.1, 1.1, 2.1, 4.1, 10.1])
+        period = 1
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_spaced_2dperiod(self, xp, scp):
+        events = xp.array([.1, 1.1, 2.1, 4.1, 10.1])
+        period = [1, .5]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_partial_1dperiod(self, xp, scp):
+        events = xp.array([.25, .5, .75])
+        period = 1
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_partial_2dperiod(self, xp, scp):
+        events = xp.array([.25, .5, .75])
+        period = [1., 1., 1., 1.]
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_opposite_1dperiod(self, xp, scp):
+        events = xp.array([0, .25, .5, .75])
+        period = 1.
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_opposite_2dperiod(self, xp, scp):
+        events = xp.array([0, .25, .5, .75])
+        period = [1.] * 10
+
+        strength, phase = scp.signal.vectorstrength(events, period)
+        return strength, phase
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_2d_events_ValueError(self, mod):
+        xp, scp = mod
+        events = xp.array([[1, 2]])
+        period = 1.
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_2d_period_ValueError(self, mod):
+        xp, scp = mod
+        events = 1.
+        period = xp.array([[1]])
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_zero_period_ValueError(self, mod):
+        _, scp = mod
+        events = 1.
+        period = 0
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
+
+    @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
+    def test_negative_period_ValueError(self, mod):
+        _, scp = mod
+        events = 1.
+        period = -1
+        with pytest.raises(ValueError):
+            scp.signal.vectorstrength(events, period)
