@@ -684,7 +684,8 @@ def fft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.fft`
     """
-    return _fft(a, (n,), (axis,), norm, cupy.cuda.cufft.CUFFT_FORWARD)
+    from cupy.cuda import cufft
+    return _fft(a, (n,), (axis,), norm, cufft.CUFFT_FORWARD)
 
 
 def ifft(a, n=None, axis=-1, norm=None):
