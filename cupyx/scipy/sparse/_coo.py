@@ -7,7 +7,6 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _csc
 from cupyx.scipy.sparse import _csr
@@ -488,6 +487,8 @@ class coo_matrix(sparse_data._data_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if self.nnz == 0:
             return _csc.csc_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both
@@ -511,6 +512,8 @@ class coo_matrix(sparse_data._data_matrix):
             cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
+        from cupyx import cusparse
+
         if self.nnz == 0:
             return _csr.csr_matrix(self.shape, dtype=self.dtype)
         # copy is silently ignored (in line with SciPy) because both

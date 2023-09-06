@@ -2,11 +2,9 @@ import numpy
 import cupy
 
 from cupy import cublas
-from cupyx import cusparse
 from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
-from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
@@ -156,6 +154,9 @@ def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
 
 
 def _lanczos_fast(A, n, ncv):
+    from cupy_backends.cuda.libs import cusparse as _cusparse
+    from cupyx import cusparse
+
     cublas_handle = device.get_cublas_handle()
     cublas_pointer_mode = _cublas.getPointerMode(cublas_handle)
     if A.dtype.char == 'f':

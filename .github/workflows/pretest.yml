@@ -96,6 +96,7 @@ jobs:
 
         # Test lazy-imported CUDA Toolkit library.
         rm cupy_backends/cuda/libs/cusolver.*.so
+        rm cupy_backends/cuda/libs/cusparse.*.so
         python -c 'import cupy, cupyx'
 
   build-rocm:

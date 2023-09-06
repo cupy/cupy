@@ -14,7 +14,6 @@ import cupyx
 from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
-from cupyx import cusparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _data as sparse_data
@@ -193,6 +192,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''', 'cupyx_scipy_sparse_has_canonical_format')
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
+        from cupyx import cusparse
+
         if shape is not None:
             if not _util.isshape(shape):
                 raise ValueError('invalid shape (must be a 2-tuple of int)')
