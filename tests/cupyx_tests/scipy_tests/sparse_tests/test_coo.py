@@ -484,7 +484,7 @@ class TestCooMatrixScipyComparison:
     def setUp(self):
         if (sys.platform == 'win32' and
                 cupyx.cusparse.getVersion() == 11301 and
-                self.dtype == cupy.complex128):
+                self.dtype == 'D'):
             pytest.xfail('Known to fail on CUDA 11.2 for Windows')
 
     @property
