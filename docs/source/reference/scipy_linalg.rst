@@ -16,6 +16,15 @@ Basics
    triu
 
 
+Matrix Functions
+----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   expm
+
+
 Decompositions
 --------------
 

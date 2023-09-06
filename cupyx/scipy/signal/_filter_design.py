@@ -55,6 +55,10 @@ def findfreqs(num, den, N, kind='ba'):
     w : (N,) ndarray
         A 1-D array of frequencies, logarithmically spaced.
 
+    Warning
+    -------
+    This function may synchronize the device.
+
     See Also
     --------
     scipy.signal.find_freqs

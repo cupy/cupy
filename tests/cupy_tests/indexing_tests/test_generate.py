@@ -74,7 +74,8 @@ class TestR_(unittest.TestCase):
         return xp.r_[a, b, c]
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_array_equal(
+        type_check=(numpy.lib.NumpyVersion(numpy.__version__) >= "1.25.0"))
     def test_r_2(self, xp, dtype):
         a = xp.array([1, 2, 3], dtype)
         return xp.r_[a, 0, 0, a]
@@ -107,6 +108,11 @@ class TestR_(unittest.TestCase):
         b = testing.shaped_reverse_arange((2, 5), cupy, dtype)
         with self.assertRaises(ValueError):
             cupy.r_[a, b]
+
+    @testing.numpy_cupy_array_equal(
+        type_check=(numpy.lib.NumpyVersion(numpy.__version__) >= "1.25.0"))
+    def test_r_scalars(self, xp):
+        return xp.r_[0, 0.5, -1, 0.3]
 
 
 class TestC_(unittest.TestCase):

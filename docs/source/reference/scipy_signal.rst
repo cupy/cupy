@@ -22,6 +22,18 @@ Convolution
    correlation_lags
 
 
+B-Splines
+---------
+
+.. autosummary::
+   :toctree: generated/
+
+   cspline1d
+   qspline1d
+   cspline1d_eval
+   qspline1d_eval
+
+
 Filtering
 ---------
 
@@ -136,12 +148,70 @@ LTI representations
    sos2zpk
 
 
+Continuous-time linear systems
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   lsim
+   impulse
+   step
+   freqresp
+   bode
+
+
+Discrete-time linear systems
+----------------------------
+.. autosummary::
+   :toctree: generated/
+
+   dlti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   dlsim
+   dimpulse
+   dstep
+   dfreqresp
+   dbode
+
+
+Window functions
+----------------
+For window functions, see the :mod:`cupyx.scipy.signal.windows` namespace.
+
+In the :mod:`cupyx.scipy.signal` namespace, there is a convenience function
+to obtain these windows by name:
+
+.. autosummary::
+   :toctree: generated/
+
+   get_window
+
+
 Peak finding
 ------------
 
 .. autosummary::
    :toctree: generated/
 
+   argrelmin
+   argrelmax
+   argrelextrema
    find_peaks
    peak_prominences
    peak_widths
+
+
+Spectral analysis
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lombscargle

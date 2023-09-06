@@ -18,8 +18,6 @@ from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import cublas  # NOQA
 from cupy_backends.cuda.libs import curand  # NOQA
-from cupy_backends.cuda.libs import cusolver  # NOQA
-from cupy_backends.cuda.libs import cusparse  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
 from cupy_backends.cuda.libs import profiler  # NOQA
 
@@ -53,17 +51,16 @@ except ImportError:
 
 
 def __getattr__(key):
-    # `*_enabled` flags are kept for backward compatibility.
-    # Note: module-level getattr only runs on Python 3.7+.
-    if key == 'cusolver_enabled':
-        # cuSOLVER is always available in CUDA 8.0+.
-        warnings.warn('''
-cupy.cuda.cusolver_enabled has been deprecated in CuPy v8 and will be removed in the future release.
-This flag always returns True as cuSOLVER is always available in CUDA 8.0 or later.
-            ''', DeprecationWarning)  # NOQA
-        return True
+    if key == 'cusolver':
+        from cupy_backends.cuda.libs import cusolver
+        return cusolver
+    elif key == 'cusparse':
+        from cupy_backends.cuda.libs import cusparse
+        return cusparse
 
-    for mod in [nvtx, thrust, cub]:
+    # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
+    # Note: module-level getattr only runs on Python 3.7+.
+    for mod in [nvtx]:
         flag = '{}_enabled'.format(mod.__name__.split('.')[-1])
         if key == flag:
             warnings.warn('''

@@ -6,14 +6,8 @@ from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
-from cupy_backends.cuda.libs import cusparse
 from cupy import _util
 
-
-# This flag is kept for backward compatibility.
-# It is always True as cuSOLVER library is always available in CUDA 8.0+.
-cusolver_enabled = True
 
 cdef object _thread_local = threading.local()
 
@@ -268,6 +262,7 @@ cdef class Device:
         itself is different.
 
         """
+        from cupy_backends.cuda.libs import cusolver
         return self._get_handle(
             'cusolver_handles', cusolver.create, cusolver.destroy)
 
@@ -279,6 +274,7 @@ cdef class Device:
         itself is different.
 
         """
+        from cupy_backends.cuda.libs import cusolver
         return self._get_handle(
             'cusolver_sp_handles', cusolver.spCreate, cusolver.spDestroy)
 
@@ -290,6 +286,7 @@ cdef class Device:
         itself is different.
 
         """
+        from cupy_backends.cuda.libs import cusparse
         return self._get_handle(
             'cusparse_sp_handles', cusparse.create, cusparse.destroy)
 

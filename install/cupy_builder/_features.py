@@ -451,7 +451,6 @@ class CUDA_cuda(Feature):
             'cufft.h',
             'curand.h',
             'cusparse.h',
-            'nvrtc.h',
         ]
         # TODO(kmaehashi): Split profiler module so that dependency to
         # `cudart` can be removed when using CUDA Python.
@@ -461,7 +460,6 @@ class CUDA_cuda(Feature):
                 'cufft',
                 'curand',
                 'cusparse',
-                'nvrtc',
             ]
         )
         self._version = self._UNDETERMINED

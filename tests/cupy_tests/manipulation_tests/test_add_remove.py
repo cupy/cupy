@@ -149,53 +149,99 @@ class TestUnique:
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique(self, xp, dtype):
+    def test_unique_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_index(self, xp, dtype):
+    def test_unique(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return xp.unique(a, axis=1)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_index_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_index=True)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_inverse(self, xp, dtype):
+    def test_unique_index(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return xp.unique(a, return_index=True, axis=0)[1]
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_inverse_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_inverse=True)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_counts(self, xp, dtype):
+    def test_unique_inverse(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return xp.unique(a, return_inverse=True, axis=1)[1]
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_counts_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True)[1]
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_counts(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return xp.unique(a, return_counts=True, axis=0)[1]
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_return_all_no_axis(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return xp.unique(
+            a, return_index=True, return_inverse=True, return_counts=True)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_return_all(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(
-            a, return_index=True, return_inverse=True, return_counts=True)
+            a, return_index=True, return_inverse=True, return_counts=True,
+            axis=1)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_empty_no_axis(self, xp, dtype):
+        a = xp.empty((0,), dtype)
+        return xp.unique(a)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_empty(self, xp, dtype):
         a = xp.empty((0,), dtype)
-        return xp.unique(a)
+        return xp.unique(a, axis=0)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_empty_return_all_no_axis(self, xp, dtype):
+        a = xp.empty((3, 0, 2), dtype)
+        return xp.unique(
+            a, return_index=True, return_inverse=True, return_counts=True)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_empty_return_all(self, xp, dtype):
         a = xp.empty((3, 0, 2), dtype)
         return xp.unique(
-            a, return_index=True, return_inverse=True, return_counts=True)
+            a, return_index=True, return_inverse=True, return_counts=True,
+            axis=2)
 
     @pytest.mark.parametrize('equal_nan', [True, False])
     @pytest.mark.parametrize('dtype', 'efdFD')
     @testing.numpy_cupy_array_equal()
     @testing.with_requires('numpy>=1.23.1')
-    def test_unique_equal_nan(self, xp, dtype, equal_nan):
+    def test_unique_equal_nan_no_axis(self, xp, dtype, equal_nan):
         if xp.dtype(dtype).kind == 'c':
             # Nan and Nan+Nan*1j are collapsed when equal_nan=True
             a = xp.array([
@@ -205,6 +251,26 @@ class TestUnique:
         else:
             a = xp.array([2, xp.nan, 2, xp.nan, 1], dtype=dtype)
         return xp.unique(a, equal_nan=equal_nan)
+
+    @pytest.mark.parametrize('equal_nan', [True, False])
+    @pytest.mark.parametrize('dtype', 'fdFD')
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.23.1')
+    def test_unique_equal_nan(self, xp, dtype, equal_nan):
+        if xp.dtype(dtype).kind == 'c':
+            # Nan and Nan+Nan*1j are collapsed when equal_nan=True
+            a = xp.array([
+                [complex(xp.nan, 3), 2, complex(7, xp.nan)],
+                [xp.nan, complex(xp.nan, xp.nan), 2],
+                [xp.nan, 1, complex(xp.nan, -1)]
+            ], dtype=dtype)
+        else:
+            a = xp.array([
+                [2, xp.nan, 2],
+                [xp.nan, 1, xp.nan],
+                [xp.nan, 1, xp.nan]
+            ], dtype=dtype)
+        return xp.unique(a, axis=0, equal_nan=equal_nan)
 
 
 @testing.parameterize(*testing.product({
