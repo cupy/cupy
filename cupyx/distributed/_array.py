@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Any, Callable, Optional
 
-from cupy.cuda import nccl, Device, Stream
+from cupy.cuda import nccl, Device, Event, Stream, get_current_stream
 
 import cupy
 import numpy
@@ -236,11 +236,18 @@ class _ManagedData:
     """ND-array managed by a stream."""
     data: NDArray
     stream: Stream = dataclasses.field(default_factory=Stream)
-    base: Optional[NDArray] = None  # prevent gc from deallocating src array
+
+
+@dataclasses.dataclass
+class _DataTransfer:
+    """ND-array managed by a stream."""
+    data: NDArray
+    ready: Event = dataclasses.field(default_factory=Event)
+    base: Any = None  # prevent gc from deallocating src array
 
 
 # Overwrite in replica mode, apply in op mode
-_PartialUpdate = tuple[_ManagedData, tuple[slice, ...]]
+_PartialUpdate = tuple[_DataTransfer, tuple[slice, ...]]
 
 
 def _copy_managed_data(managed_data: _ManagedData):
@@ -324,7 +331,7 @@ class _DistributedArray(cupy.ndarray):
         """Apply all updates onto `chunk` in-place."""
         with chunk.data.device:
             for new_data, idx in updates:
-                chunk.stream.wait_event(new_data.stream.record())
+                chunk.stream.wait_event(new_data.ready)
 
                 with chunk.stream:
                     if mode is _REPLICA_MODE:
@@ -342,7 +349,7 @@ class _DistributedArray(cupy.ndarray):
             self._collect_chunk(
                 self._mode, self._chunks[dev], self._updates[dev])
             with Device(dev):
-                transfer_events.append(chunk.stream.record())
+                transfer_events.append(chunk.ready)
 
         for e in transfer_events:
             e.synchronize()
@@ -435,20 +442,18 @@ class _DistributedArray(cupy.ndarray):
                 incoming_index, updates = self._prepare_updates(
                     distributed_arrays, dev)
 
-                apply_kernel = Stream()
+                execution_stream = get_current_stream()
                 for i, arg in array_args:
-                    apply_kernel.wait_event(arg.stream.record())
+                    execution_stream.wait_event(arg.stream.record())
                     if isinstance(i, int):
                         args[i] = arg.data
                     else:
                         kwargs[i] = arg.data
 
-                args_ready = apply_kernel.record()
-                with apply_kernel:
-                    chunk = kernel(*args, **kwargs)
+                chunk = kernel(*args, **kwargs)
 
                 new_dtype = chunk.dtype
-                new_chunks[dev] = _ManagedData(chunk, apply_kernel)
+                new_chunks[dev] = _ManagedData(chunk, execution_stream)
 
                 if len(updates) == 0:
                     continue
@@ -456,8 +461,6 @@ class _DistributedArray(cupy.ndarray):
                 args_slice = [None] * len(args)
                 kwargs_slice = {}
                 for update, idx in updates:
-                    apply_kernel_to_update = Stream()
-                    apply_kernel_to_update.wait_event(args_ready)
                     for i, arg in enumerate(args):
                         args_slice[i] = arg[idx]
                     for i, arg in kwargs.items():
@@ -468,11 +471,12 @@ class _DistributedArray(cupy.ndarray):
                     else:
                         kwargs_slice[incoming_index] = update.data
 
-                    with apply_kernel_to_update:
+                    execution_stream.wait_event(update.ready)
+                    with execution_stream:
                         new_data = kernel(*args_slice, **kwargs_slice)
 
                     new_updates[dev].append(
-                        (_ManagedData(new_data, apply_kernel_to_update),
+                        (_DataTransfer(new_data, execution_stream.record()),
                          idx))
 
         for out in new_chunks.values():
@@ -491,12 +495,12 @@ class _DistributedArray(cupy.ndarray):
         return outs
 
     def _transfer_async(
-            self, src_chunk: _ManagedData, dst_dev: int) -> _ManagedData:
+            self, src_chunk: _ManagedData, dst_dev: int) -> _DataTransfer:
         src_dev = src_chunk.data.device.id
 
         if src_dev == dst_dev:
             with Device(src_dev):
-                return _copy_managed_data(src_chunk)
+                return _DataTransfer(src_chunk.data, src_chunk.stream.record())
 
         with Device(src_dev):
             src_stream = Stream()
@@ -519,8 +523,8 @@ class _DistributedArray(cupy.ndarray):
             self._comms[dst_dev].recv(
                 dst_buf.data.ptr, count, dtype, src_dev, dst_stream.ptr)
 
-        nccl.groupEnd()
-        return _ManagedData(dst_buf, dst_stream, src_array)
+            nccl.groupEnd()
+            return _DataTransfer(dst_buf, dst_stream.record(), src_array)
 
     def _apply_and_update_chunks(
             self, op_mode, shape, dst_updates,
@@ -670,12 +674,11 @@ class _DistributedArray(cupy.ndarray):
         for dev, chunk in chunks.items():
             idx = self._device_mapping[dev]
             with Device(dev):
-                apply_kernel = Stream()
-                apply_kernel.wait_event(chunk.stream.record())
-                with apply_kernel:
-                    new_data = cupy.atleast_1d(
-                        kernel(chunk.data, axis=axis, dtype=dtype))
-                new_chunks[dev] = _ManagedData(new_data, apply_kernel)
+                execution_stream = get_current_stream()
+                execution_stream.wait_event(chunk.stream.record())
+                new_data = cupy.atleast_1d(
+                    kernel(chunk.data, axis=axis, dtype=dtype))
+                new_chunks[dev] = _ManagedData(new_data, execution_stream)
 
             new_dtype = new_chunks[dev].data.dtype
             new_device_mapping[dev] = idx[:axis] + idx[axis+1:]
@@ -683,14 +686,14 @@ class _DistributedArray(cupy.ndarray):
         for dev, upds in updates.items():
             with Device(dev):
                 for update, idx in upds:
-                    stream = Stream()
-                    stream.wait_event(update.stream.record())
-                    with stream:
-                        new_data = cupy.atleast_1d(
-                            kernel(update.data, axis=axis, dtype=dtype))
+                    execution_stream.wait_event(update.ready)
+                    new_data = cupy.atleast_1d(
+                        kernel(update.data, axis=axis, dtype=dtype))
+
+                    execution_done = execution_stream.record()
                     new_idx = idx[:axis] + idx[axis+1:]
                     new_updates[dev].append(
-                        (_ManagedData(new_data, stream), new_idx))
+                        (_DataTransfer(new_data, execution_done), new_idx))
 
         return _DistributedArray(
             shape, new_dtype, new_chunks, new_device_mapping, mode, self._comms,
