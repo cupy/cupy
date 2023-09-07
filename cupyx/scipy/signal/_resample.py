@@ -26,11 +26,18 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+import operator
 from math import gcd
 
 import cupy
+from cupyx.scipy.fft import fft, rfft, fftfreq, ifft, irfft, ifftshift
+from cupyx.scipy.signal._iir_filter_design import cheby1
 from cupyx.scipy.signal._fir_filter_design import firwin
-from cupyx.scipy.signal._upfirdn import upfirdn, _output_len, _upfirdn_modes
+from cupyx.scipy.signal._iir_filter_conversions import zpk2sos
+from cupyx.scipy.signal._ltisys import dlti
+from cupyx.scipy.signal._upfirdn import upfirdn, _output_len
+from cupyx.scipy.signal._signaltools import (
+    sosfiltfilt, filtfilt, sosfilt, lfilter)
 from cupyx.scipy.signal.windows._windows import get_window
 
 
@@ -89,24 +96,32 @@ def _design_resample_poly(up, down, window):
     return h
 
 
-def decimate(x, q, n=None, axis=-1, zero_phase=True):
+def decimate(x, q, n=None, ftype='iir', axis=-1, zero_phase=True):
     """
     Downsample the signal after applying an anti-aliasing filter.
+
+    By default, an order 8 Chebyshev type I filter is used. A 30 point FIR
+    filter with Hamming window is used if `ftype` is 'fir'.
 
     Parameters
     ----------
     x : array_like
         The signal to be downsampled, as an N-dimensional array.
     q : int
-        The downsampling factor.
-    n : int or array_like, optional
-        The order of the filter (1 less than the length for FIR) to calculate,
-        or the FIR filter coefficients to employ. Defaults to calculating the
-        coefficients for 20 times the downsampling factor.
+        The downsampling factor. When using IIR downsampling, it is recommended
+        to call `decimate` multiple times for downsampling factors higher than
+        13.
+    n : int, optional
+        The order of the filter (1 less than the length for 'fir'). Defaults to
+        8 for 'iir' and 20 times the downsampling factor for 'fir'.
+    ftype : str {'iir', 'fir'} or ``dlti`` instance, optional
+        If 'iir' or 'fir', specifies the type of lowpass filter. If an instance
+        of an `dlti` object, uses that object to filter before downsampling.
     axis : int, optional
         The axis along which to decimate.
     zero_phase : bool, optional
-        Prevent shifting the outputs back by the filter's
+        Prevent phase shift by filtering with `filtfilt` instead of `lfilter`
+        when using an IIR filter, and shifting the outputs back by the filter's
         group delay when using an FIR filter. The default value of ``True`` is
         recommended, since a phase shift is generally not desired.
 
@@ -119,33 +134,80 @@ def decimate(x, q, n=None, axis=-1, zero_phase=True):
     --------
     resample : Resample up or down using the FFT method.
     resample_poly : Resample using polyphase filtering and an FIR filter.
-
-    Notes
-    -----
-    Only FIR filter types are currently supported in cuSignal.
     """
 
     x = cupy.asarray(x)
+    q = operator.index(q)
 
-    if isinstance(n, (list, cupy.ndarray)):
-        b = cupy.asarray(n)
-    else:
+    if n is not None:
+        n = operator.index(n)
+
+    result_type = x.dtype
+    if not cupy.issubdtype(result_type, cupy.inexact) \
+       or result_type.type == cupy.float16:
+        # upcast integers and float16 to float64
+        result_type = cupy.float64
+
+    if ftype == 'fir':
         if n is None:
             half_len = 10 * q  # reasonable cutoff for our sinc-like function
             n = 2 * half_len
-
-        b = firwin(n + 1, 1.0 / q, window="hamming")
+        b, a = firwin(n+1, 1. / q, window='hamming'), 1.
+        b = cupy.asarray(b, dtype=result_type)
+        a = cupy.asarray(a, dtype=result_type)
+    elif ftype == 'iir':
+        iir_use_sos = True
+        if n is None:
+            n = 8
+        sos = cheby1(n, 0.05, 0.8 / q, output='sos')
+        sos = cupy.asarray(sos, dtype=result_type)
+    elif isinstance(ftype, dlti):
+        system = ftype._as_zpk()
+        if system.poles.shape[0] == 0:
+            # FIR
+            system = ftype._as_tf()
+            b, a = system.num, system.den
+            ftype = 'fir'
+        elif (any(cupy.iscomplex(system.poles))
+              or any(cupy.iscomplex(system.poles))
+              or cupy.iscomplex(system.gain)):
+            # sosfilt & sosfiltfilt don't handle complex coeffs
+            iir_use_sos = False
+            system = ftype._as_tf()
+            b, a = system.num, system.den
+        else:
+            iir_use_sos = True
+            sos = zpk2sos(system.zeros, system.poles, system.gain)
+            sos = cupy.asarray(sos, dtype=result_type)
+    else:
+        raise ValueError('invalid ftype')
 
     sl = [slice(None)] * x.ndim
 
-    if zero_phase:
-        y = resample_poly(x, 1, q, axis=axis, window=b)
-    else:
-        # upfirdn is generally faster than lfilter by a factor equal to the
-        # downsampling factor, since it only calculates the needed outputs
-        n_out = x.shape[axis] // q + bool(x.shape[axis] % q)
-        y = upfirdn(b, x, 1, q, axis)
-        sl[axis] = slice(None, n_out, None)
+    if ftype == 'fir':
+        b = b / a
+        if zero_phase:
+            y = resample_poly(x, 1, q, axis=axis, window=b)
+        else:
+            # upfirdn is generally faster than lfilter by a factor equal to the
+            # downsampling factor, since it only calculates the needed outputs
+            n_out = x.shape[axis] // q + bool(x.shape[axis] % q)
+            y = upfirdn(b, x, up=1, down=q, axis=axis)
+            sl[axis] = slice(None, n_out, None)
+
+    else:  # IIR case
+        if zero_phase:
+            if iir_use_sos:
+                y = sosfiltfilt(sos, x, axis=axis)
+            else:
+                y = filtfilt(b, a, x, axis=axis)
+        else:
+            if iir_use_sos:
+                y = sosfilt(sos, x, axis=axis)
+            else:
+                y = lfilter(b, a, x, axis=axis)
+
+        sl[axis] = slice(None, None, q)
 
     return y[tuple(sl)]
 
@@ -240,62 +302,100 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
     >>> plt.legend(['data', 'resampled'], loc='best')
     >>> plt.show()
     """
+    if domain not in ('time', 'freq'):
+        raise ValueError("Acceptable domain flags are 'time' or"
+                         " 'freq', not domain={}".format(domain))
+
     x = cupy.asarray(x)
     Nx = x.shape[axis]
 
-    if domain == "time":
-        X = cupy.fft.fft(x, axis=axis)
-    elif domain == "freq":
-        X = x
-    else:
-        raise NotImplementedError("domain should be 'time' or 'freq'")
+    # Check if we can use faster real FFT
+    real_input = cupy.isrealobj(x)
 
+    if domain == 'time':
+        # Forward transform
+        if real_input:
+            X = rfft(x, axis=axis)
+        else:  # Full complex FFT
+            X = fft(x, axis=axis)
+    else:  # domain == 'freq'
+        X = x
+
+    # Apply window to spectrum
     if window is not None:
         if callable(window):
-            W = window(cupy.fft.fftfreq(Nx))
+            W = window(fftfreq(Nx))
         elif isinstance(window, cupy.ndarray):
             if window.shape != (Nx,):
-                raise ValueError("window must have the same length as data")
+                raise ValueError('window must have the same length as data')
             W = window
         else:
-            W = cupy.fft.ifftshift(get_window(window, Nx))
-        newshape = [1] * x.ndim
-        newshape[axis] = len(W)
-        W.shape = newshape
-        X = X * cupy.asarray(W, dtype=X.dtype)
+            W = ifftshift(get_window(window, Nx))
 
-    sl = [slice(None)] * x.ndim
+        newshape_W = [1] * x.ndim
+        newshape_W[axis] = X.shape[axis]
+        if real_input:
+            # Fold the window back on itself to mimic complex behavior
+            W_real = W.copy()
+            W_real[1:] += W_real[-1:0:-1]
+            W_real[1:] *= 0.5
+            X *= W_real[:newshape_W[axis]].reshape(newshape_W)
+        else:
+            X *= W.reshape(newshape_W)
+
+    # Copy each half of the original spectrum to the output spectrum, either
+    # truncating high frequences (downsampling) or zero-padding them
+    # (upsampling)
+
+    # Placeholder array for output spectrum
     newshape = list(x.shape)
-    newshape[axis] = num
-    N = int(cupy.minimum(num, Nx))
-    nyq = N // 2 + 1  # Slice index that includes Nyquist
-    Y = cupy.zeros(newshape, dtype=X.dtype)
+    if real_input:
+        newshape[axis] = num // 2 + 1
+    else:
+        newshape[axis] = num
+    Y = cupy.zeros(newshape, X.dtype)
+
+    # Copy positive frequency components (and Nyquist, if present)
+    N = min(num, Nx)
+    nyq = N // 2 + 1  # Slice index that includes Nyquist if present
+    sl = [slice(None)] * x.ndim
     sl[axis] = slice(0, nyq)
     Y[tuple(sl)] = X[tuple(sl)]
-    if N > 2:  # avoid empty slice
-        sl[axis] = slice(nyq - N, None)
-        Y[tuple(sl)] = X[tuple(sl)]
+    if not real_input:
+        # Copy negative frequency components
+        if N > 2:  # (slice expression doesn't collapse to empty array)
+            sl[axis] = slice(nyq - N, None)
+            Y[tuple(sl)] = X[tuple(sl)]
 
-    # symmetrize nyquest freq bins if N is even
+    # Split/join Nyquist component(s) if present
+    # So far we have set Y[+N/2]=X[+N/2]
     if N % 2 == 0:
-        if num < Nx:
-            # select the component of Y at frequency +N/2,
-            # add the component of X at -N/2
-            sl[axis] = slice(-N // 2, -N // 2 + 1)
-            Y[tuple(sl)] += X[tuple(sl)]
-        elif Nx < num:
+        if num < Nx:  # downsampling
+            if real_input:
+                sl[axis] = slice(N//2, N//2 + 1)
+                Y[tuple(sl)] *= 2.
+            else:
+                # select the component of Y at frequency +N/2,
+                # add the component of X at -N/2
+                sl[axis] = slice(-N//2, -N//2 + 1)
+                Y[tuple(sl)] += X[tuple(sl)]
+        elif Nx < num:  # upsampling
             # select the component at frequency +N/2 and halve it
-            sl[axis] = slice(N // 2, N // 2 + 1)
+            sl[axis] = slice(N//2, N//2 + 1)
             Y[tuple(sl)] *= 0.5
-            temp = Y[tuple(sl)]
-            # set the component at -N/2 equal to the component at +N/2
-            sl[axis] = slice(num - N // 2, num - N // 2 + 1)
-            Y[tuple(sl)] = temp
+            if not real_input:
+                temp = Y[tuple(sl)]
+                # set the component at -N/2 equal to the component at +N/2
+                sl[axis] = slice(num-N//2, num-N//2 + 1)
+                Y[tuple(sl)] = temp
 
-    y = cupy.fft.ifft(Y, axis=axis) * (float(num) / float(Nx))
+    # Inverse transform
+    if real_input:
+        y = irfft(Y, num, axis=axis)
+    else:
+        y = ifft(Y, axis=axis, overwrite_x=True)
 
-    if x.dtype.char not in ["F", "D"]:
-        y = y.real
+    y *= (float(num) / float(Nx))
 
     if t is None:
         return y
@@ -402,85 +502,55 @@ def resample_poly(x, up, down, axis=0, window=("kaiser", 5.0),
     >>> plt.show()
     """
 
+    if padtype != 'constant' or cval is not None:
+        raise ValueError(
+            'padtype and cval arguments are not supported by upfirdn')
+
     x = cupy.asarray(x)
-    if up != int(up):
-        raise ValueError("up must be an integer")
-    if down != int(down):
-        raise ValueError("down must be an integer")
     up = int(up)
     down = int(down)
     if up < 1 or down < 1:
-        raise ValueError('up and down must be >= 1')
-    if cval is not None and padtype != 'constant':
-        raise ValueError('cval has no effect when padtype is ', padtype)
+        raise ValueError("up and down must be >= 1")
 
     # Determine our up and down factors
-    # Use a rational approximation to save computation time on really long
+    # Use a rational approimation to save computation time on really long
     # signals
     g_ = gcd(up, down)
     up //= g_
     down //= g_
     if up == down == 1:
         return x.copy()
-    n_in = x.shape[axis]
-    n_out = n_in * up
+    n_out = x.shape[axis] * up
     n_out = n_out // down + bool(n_out % down)
 
     if isinstance(window, (list, cupy.ndarray)):
-        window = cupy.array(window)  # use array to force a copy (we modify it)
+        window = cupy.asarray(window)
         if window.ndim > 1:
-            raise ValueError('window must be 1-D')
+            raise ValueError("window must be 1-D")
         half_len = (window.size - 1) // 2
-        h = window
+        h = up * window
     else:
-        # Design a linear-phase low-pass FIR filter
-        max_rate = max(up, down)
-        f_c = 1. / max_rate  # cutoff of FIR filter (rel. to Nyquist)
-        half_len = 10 * max_rate  # reasonable cutoff for sinc-like function
-        h = firwin(2 * half_len + 1, f_c,
-                   window=window).astype(x.dtype)  # match dtype of x
-    h *= up
+        half_len = 10 * max(up, down)
+        h = up * _design_resample_poly(up, down, window)
 
     # Zero-pad our filter to put the output samples at the center
-    n_pre_pad = (down - half_len % down)
+    n_pre_pad = down - half_len % down
     n_post_pad = 0
     n_pre_remove = (half_len + n_pre_pad) // down
     # We should rarely need to do this given our filter lengths...
-    while _output_len(len(h) + n_pre_pad + n_post_pad, n_in,
-                      up, down) < n_out + n_pre_remove:
+    while (
+        _output_len(len(h) + n_pre_pad + n_post_pad, x.shape[axis], up, down)
+        < n_out + n_pre_remove
+    ):
         n_post_pad += 1
-    h = cupy.concatenate((cupy.zeros(n_pre_pad, dtype=h.dtype), h,
-                          cupy.zeros(n_post_pad, dtype=h.dtype)))
+
+    h = cupy.concatenate(
+        (cupy.zeros(n_pre_pad, h.dtype), h, cupy.zeros(n_post_pad, h.dtype)))
     n_pre_remove_end = n_pre_remove + n_out
 
-    # Remove background depending on the padtype option
-    funcs = {'mean': cupy.mean, 'median': cupy.median,
-             'minimum': cupy.amin, 'maximum': cupy.amax}
-    upfirdn_kwargs = {'mode': 'constant', 'cval': 0}
-    if padtype in funcs:
-        background_values = funcs[padtype](x, axis=axis, keepdims=True)
-    elif padtype in _upfirdn_modes:
-        upfirdn_kwargs = {'mode': padtype}
-        if padtype == 'constant':
-            if cval is None:
-                cval = 0
-            upfirdn_kwargs['cval'] = cval
-    else:
-        raise ValueError(
-            'padtype must be one of: maximum, mean, median, minimum, ' +
-            ', '.join(_upfirdn_modes))
-
-    if padtype in funcs:
-        x = x - background_values
-
     # filter then remove excess
-    y = upfirdn(h, x, up, down, axis=axis, **upfirdn_kwargs)
-    keep = [slice(None), ]*x.ndim
+    y = upfirdn(h, x, up, down, axis)
+    keep = [slice(None)] * x.ndim
     keep[axis] = slice(n_pre_remove, n_pre_remove_end)
-    y_keep = y[tuple(keep)]
 
-    # Add background back
-    if padtype in funcs:
-        y_keep += background_values
-
-    return y_keep
+    return y[tuple(keep)]
