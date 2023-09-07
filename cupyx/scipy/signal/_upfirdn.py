@@ -29,6 +29,12 @@ DEALINGS IN THE SOFTWARE.
 from math import ceil
 import cupy
 
+_upfirdn_modes = [
+    'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
+    'antisymmetric', 'antireflect', 'line',
+]
+
+
 UPFIRDN_KERNEL = r'''
 #include <cupy/complex.cuh>
 
