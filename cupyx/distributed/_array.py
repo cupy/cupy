@@ -10,6 +10,7 @@ from numpy.typing import ArrayLike
 from cupy.typing import NDArray
 from cupy.typing._types import _ScalarType_co
 from cupyx.distributed._nccl_comm import _nccl_dtypes
+from cupyx.distributed import _linalg
 
 
 def _extgcd(a: int, b: int) -> tuple[int, int]:
@@ -385,7 +386,7 @@ class _DistributedArray(cupy.ndarray):
         if len(regular_args) > 0:
             raise RuntimeError(
                 'Mix `cupy.ndarray` with distributed arrays is currently not'
-                'supported')
+                ' supported')
 
         return args
 
@@ -820,6 +821,11 @@ class _DistributedArray(cupy.ndarray):
         return _DistributedArray(
             self.shape, self.dtype, new_chunks, new_mapping, self._mode,
             self._comms, new_updates)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc.__name__ == 'matmul' and method == '__call__':
+            return _linalg.matmul(*inputs, **kwargs)
+        return NotImplemented
 
     def asnumpy(self):
         for dev, chunk in self._chunks.items():
