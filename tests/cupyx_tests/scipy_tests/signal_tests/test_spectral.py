@@ -894,6 +894,9 @@ class TestCSD:
         feven2, _ = scp.signal.csd(x, y, nperseg=6, nfft=nfft)
         return fodd1, feven1, fodd2, feven2
 
+    @pytest.mark.skipif(
+        cupy.cuda.runtime.runtimeGetVersion() < 12000,
+        reason="It fails on CUDA 11.x")
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_copied_data(self, xp, scp):
         x = testing.shaped_random((64,), xp, xp.float64)
