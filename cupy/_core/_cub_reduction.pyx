@@ -52,11 +52,11 @@ cdef function.Function _create_cub_reduction_function(
         # confirm this is the root cause, so we work around by using nvcc.
         backend = 'nvcc'
     else:
-        # Recent CCCL is giving Jitify a hard time...
-        backend = 'nvcc'
-        # TODO(leofang): restore to jitify + nvrtc?
-        # options += ('-DCUPY_USE_JITIFY',)
-        # backend = 'nvrtc'
+        # use jitify + nvrtc
+        # TODO(leofang): how about simply specifying jitify=True when calling
+        # compile_with_cache()?
+        options += ('-DCUPY_USE_JITIFY',)
+        backend = 'nvrtc'
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -265,6 +265,19 @@ cdef str _get_cub_header_include():
     assert _cub_path is not None
     if _cub_path == '<bundle>':
         _cub_header = '''
+#include <cuda/std/type_traits>
+#include <cuda/std/limits>
+namespace std {
+    using cuda::std::conditional;
+    using cuda::std::is_same;
+    using cuda::std::is_pointer;
+    using cuda::std::is_volatile;
+    using cuda::std::remove_cv;
+    using cuda::std::enable_if;
+    using cuda::std::is_signed;
+    using cuda::std::numeric_limits;
+}
+
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''
