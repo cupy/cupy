@@ -31,8 +31,11 @@ from cupyx.scipy.signal._polyutils import residuez  # NOQA
 from cupyx.scipy.signal._bsplines import sepfir2d  # NOQA
 from cupyx.scipy.signal._bsplines import cspline1d  # NOQA
 from cupyx.scipy.signal._bsplines import qspline1d  # NOQA
+from cupyx.scipy.signal._bsplines import cspline2d  # NOQA
+from cupyx.scipy.signal._bsplines import qspline2d  # NOQA
 from cupyx.scipy.signal._bsplines import cspline1d_eval  # NOQA
 from cupyx.scipy.signal._bsplines import qspline1d_eval  # NOQA
+from cupyx.scipy.signal._bsplines import spline_filter  # NOQA
 
 from cupyx.scipy.signal._splines import symiirorder1  # NOQA
 from cupyx.scipy.signal._splines import symiirorder2  # NOQA

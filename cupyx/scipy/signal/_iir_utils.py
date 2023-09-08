@@ -632,7 +632,7 @@ def compute_correction_factors_sos(sos, block_sz, dtype):
 
 
 def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
-                  apply_fir=True):
+                  apply_fir=True, out=None):
     if dtype is None:
         dtype = cupy.result_type(x.dtype, sos.dtype)
 
@@ -655,7 +655,8 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
     if zi is not None:
         zi, zi_shape = collapse_2d_rest(zi, axis)
 
-    out = cupy.array(x, dtype=dtype, copy=True)
+    if out is None:
+        out = cupy.array(x, dtype=dtype, copy=True)
 
     num_rows = 1 if x.ndim == 1 else x.shape[0]
     n_blocks = (n + block_sz - 1) // block_sz
