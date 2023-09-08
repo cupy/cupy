@@ -360,12 +360,6 @@ cdef class RawModule:
             if backend != 'nvrtc':
                 raise ValueError('only nvrtc supports retrieving the mangled '
                                  'names for the given name expressions')
-            for option in options:
-                if '-std=c++' in option:  # both -std and --std are valid
-                    break
-            else:
-                raise ValueError('need to specify C++ standard for compiling '
-                                 'template code')
             self.name_expressions = tuple(name_expressions)  # make it hashable
         else:
             self.name_expressions = None

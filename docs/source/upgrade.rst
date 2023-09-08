@@ -5,6 +5,26 @@ Upgrade Guide
 This page covers changes introduced in each major version that users should know when migrating from older releases.
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
+
+CuPy v13
+========
+
+Modernized CCCL support and requirement
+---------------------------------------
+
+NVIDIA's new CUDA C++ Core Libraries (CCCL) is the new home for the inter-dependent C++ libraries Thrust, CUB, and libcu++ that are shipped
+with CUDA Toolkit since 11.0. To better serve our users with the latest CCCL features, improvements, and bug fixes, starting CuPy v13.0.0
+we bundle CCCL in the binary releases (pip/conda) of CuPy. The same version of CCCL is used both at build-time for building CuPy and
+at run-time when users JIT-compiling kernels. This ensures uniform behavior, avoids surprises, and allows dual CUDA support as promised
+by CCCL (currently CUDA 11 & 12), but this new expectation is distinct from the past releases, in that
+
+* the CCCL from any local CUDA installation is now ignored on purpose, either at build- or run- time,
+* adventurous users who want to experiment with local CCCL changes need to build CuPy from source.
+
+As a result of this movement, CuPy now follows the same compiler requirement as CCCL (and, in turn, CUDA Toolkit) and requires C++11 as
+the lowest C++ standard. CCCL expects to move to C++14 in the near future.
+
+
 CuPy v12
 ========
 

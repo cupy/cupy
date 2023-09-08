@@ -17,7 +17,6 @@ import string
 import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
-from cupy._core.core import _get_cccl_include_options
 from cupy.cuda import driver
 from cupy import _util
 
@@ -27,10 +26,6 @@ cdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
-    # make sure bundled CCCL is searched first
-    if not runtime._is_hip_environment:
-        options = _get_cccl_include_options() + options
-
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
     # ROCm5.3 and above requires c++14

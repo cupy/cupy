@@ -2,6 +2,8 @@
 
 """Wrapper of Jitify utilities for CuPy API."""
 
+from cython.operator cimport dereference as deref
+
 from libcpp cimport nullptr
 from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
@@ -47,6 +49,13 @@ cdef inline void init_cupy_headers():
         hdr_source = get_jitsafe_headers_map().at(hdr_name)
         cupy_headers[hdr_name] = hdr_source
 
+    # WAR
+    # Jitify's type_traits is problematic with recent CCCL. Here, we populate
+    # the cache with a dummy header source, so that Jitify's version wouldn't
+    # be used. cupy/cuda_workaround.h is the real place importing type_traits
+    # (from libcudacxx).
+    cupy_headers[b"type_traits"] = b"#include <cupy/cuda_workaround.h>\n"
+
 
 init_cupy_headers()
 
@@ -54,6 +63,11 @@ init_cupy_headers()
 cpdef _add_sources(dict sources):
     for hdr_name, hdr_source in sources.items():
         cupy_headers[hdr_name] = hdr_source
+
+
+cpdef _print_sources():
+    for itr in cupy_headers:
+        print(itr.first.decode())
 
 
 # Use Jitify's internal mechanism to search all included headers, and return

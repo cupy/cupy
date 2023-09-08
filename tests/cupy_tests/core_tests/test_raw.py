@@ -823,7 +823,6 @@ class TestRaw(unittest.TestCase):
             name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
                                 'my_sqrt<complex<double>>', 'my_func']
         mod = cupy.RawModule(code=test_cxx_template,
-                             options=('--std=c++11',),
                              name_expressions=name_expressions,
                              jitify=self.jitify)
 
@@ -855,14 +854,12 @@ class TestRaw(unittest.TestCase):
         if self.backend == 'nvcc':
             with pytest.raises(ValueError) as e:
                 cupy.RawModule(code=test_cxx_template, backend=self.backend,
-                               options=('--std=c++11',),
                                name_expressions=name_expressions)
             assert 'nvrtc' in str(e.value)
             return  # the rest of tests do not apply to nvcc
 
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template,
-                             options=('--std=c++11',),
                              jitify=self.jitify)
         # ...try to get a specialized kernel
         match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
@@ -870,15 +867,8 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.driver.CUDADriverError, match=match):
             mod.get_function('my_sqrt<int>')
 
-        # 3. compile code without specifying C++ standard
-        with pytest.raises(ValueError):
-            cupy.RawModule(code=test_cxx_template,
-                           name_expressions=name_expressions,
-                           jitify=self.jitify)
-
-        # 4. try to fetch something we didn't specialize for
+        # 3. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template,
-                             options=('--std=c++11',),
                              name_expressions=name_expressions,
                              jitify=self.jitify)
         if cupy.cuda.runtime.is_hip:
@@ -992,7 +982,6 @@ class TestRaw(unittest.TestCase):
         name = name_expressions[0]
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
-                                 options=('--std=c++11',),
                                  name_expressions=name_expressions,
                                  jitify=self.jitify)
 
@@ -1026,7 +1015,6 @@ class TestRaw(unittest.TestCase):
         name = name_expressions[0]
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
-                                 options=('--std=c++11',),
                                  name_expressions=name_expressions,
                                  jitify=self.jitify)
 
@@ -1259,9 +1247,11 @@ class TestRawJitify(unittest.TestCase):
     def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
+        print("setup:", cupy.cuda.jitify._print_sources())
 
     def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
+        print("teardown:", cupy.cuda.jitify._print_sources())
 
     def _helper(self, header, options=()):
         code = header
@@ -1282,8 +1272,7 @@ class TestRawJitify(unittest.TestCase):
     def _helper2(self, type_str):
         mod2 = cupy.RawModule(code=std_code,
                               jitify=self.jitify,
-                              name_expressions=['shift<%s>' % type_str, ],
-                              options=('--std=c++11',))
+                              name_expressions=('shift<%s>' % type_str,))
         ker = mod2.get_function('shift<%s>' % type_str)
         N = 256
         a = cupy.random.random_integers(0, 7, N).astype(cupy.int32)
@@ -1293,20 +1282,17 @@ class TestRawJitify(unittest.TestCase):
 
     def test_jitify1(self):
         # simply prepend an unused header
-        hdr = "#include <cupy/cuda_workaround.h>\n"
-        hdr += '#include <cub/block/block_reduce.cuh>\n'
-        options = cupy._core.core._get_cccl_include_options()
-        options += ("--std=c++11",)
+        hdr = '#include <cub/block/block_reduce.cuh>\n'
 
         if self.jitify:
             if sys.platform.startswith('win32'):
                 pytest.xfail('macro preprocessing in NVRTC is likely buggy')
             # Jitify will make it work
-            self._helper(hdr, options)
+            self._helper(hdr)
         else:
             # NVRTC cannot find C++ std headers without Jitify
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr, options)
+                self._helper(hdr)
             assert 'cannot open source file' in str(ex.value)
 
     def test_jitify2(self):

@@ -2204,8 +2204,22 @@ cpdef function.Module compile_with_cache(
 
     if prepend_cupy_headers:
         source = _cupy_header + source
+    if jitify:
+        source = '#include <cupy/cuda_workaround.h>\n' + source
     extra_source = _get_header_source()
-    options += ('-I%s' % _get_header_dir_path(),)
+
+    for op in options:
+        if '-std' in op:
+            if op.endswith('03'):
+                warnings.warn('CCCL requires c++11 or above')
+            break
+    else:
+        options += ('--std=c++11',)
+
+    # make sure bundled CCCL is searched first
+    options = (_get_cccl_include_options()
+        + options
+        + ('-I%s' % _get_header_dir_path(),))
 
     # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
     # but it might not have been set appropriately before coming here.
