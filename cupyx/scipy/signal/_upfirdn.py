@@ -283,7 +283,6 @@ def _output_len(len_h, in_len, up, down):
     return (((in_len - 1) * up + len_h) - 1) // down + 1
 
 
-
 # These three _get_* functions are vendored from
 # https://github.com/rapidsai/cusignal/blob/branch-23.08/python/cusignal/utils/helper_tools.py#L55
 def _get_max_gdx():

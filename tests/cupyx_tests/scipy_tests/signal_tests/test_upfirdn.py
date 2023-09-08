@@ -264,7 +264,8 @@ class TestUpfirdn:
     @pytest.mark.parametrize('case', ['2D', '2D_noncontig'])
     @pytest.mark.parametrize('axis', [0, 1, -1])
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_vs_naive_delta_2D(self, axis, x_dtype, h, up, down, case, xp, scp):
+    def test_vs_naive_delta_2D(self, axis, x_dtype, h, up, down,
+                               case, xp, scp):
         x, h = make_case_2D(up, down, h, x_dtype, case)
         x = xp.asarray(x)
         h = xp.asarray(h)
