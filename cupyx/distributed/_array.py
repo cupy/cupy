@@ -1,6 +1,6 @@
 import dataclasses
 import typing
-from typing import Any, Callable, Final, Generic, Optional, TypeVar
+from typing import Any, Callable, Final, Generic, Iterable, Optional, TypeVar
 from typing_extensions import TypeGuard
 
 from cupy.cuda import nccl
@@ -350,6 +350,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             if self._mode is mode_obj:
                 return mode_str
         raise RuntimeError(f'Unrecognized mode: {self._mode}')
+
+    @property
+    def devices(self) -> Iterable[int]:
+        return self._chunks_map.keys()
 
     @property
     def index_map(self) -> dict[int, list[tuple[slice, ...]]]:
@@ -879,8 +883,14 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             return _linalg.matmul(*inputs, **kwargs)
         return NotImplemented
 
+    def __matmul__(x, y):
+        if isinstance(y, _DistributedArray):
+            return _linalg.matmul(x, y)
+        else:
+            return NotImplemented
+
     def asnumpy(self) -> numpy.typing.NDArray:
-        for dev, chunks in self._chunks_map.items():
+        for chunks in self._chunks_map.values():
             for chunk in chunks:
                 _apply_updates(chunk, self._mode)
 
