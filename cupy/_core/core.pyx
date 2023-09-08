@@ -2218,8 +2218,8 @@ cpdef function.Module compile_with_cache(
 
     # make sure bundled CCCL is searched first
     options = (_get_cccl_include_options()
-        + options
-        + ('-I%s' % _get_header_dir_path(),))
+               + options
+               + ('-I%s' % _get_header_dir_path(),))
 
     # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
     # but it might not have been set appropriately before coming here.
