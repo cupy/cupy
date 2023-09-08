@@ -432,16 +432,6 @@ def csd(
     signal power, while not over counting any of the data. Narrower
     windows may require a larger overlap.
 
-
-    References
-    ----------
-    .. [1] P. Welch, "The use of the fast Fourier transform for the
-           estimation of power spectra: A method based on time averaging
-           over short, modified periodograms", IEEE Trans. Audio
-           Electroacoust. vol. 15, pp. 70-73, 1967.
-    .. [2] Rabiner, Lawrence R., and B. Gold. "Theory and Application of
-           Digital Signal Processing" Prentice-Hall, pp. 414-419, 1975
-
     """
     x = cupy.asarray(x)
     y = cupy.asarray(y)
