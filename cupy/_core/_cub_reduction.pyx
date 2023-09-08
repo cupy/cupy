@@ -17,6 +17,7 @@ import string
 import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
+from cupy._core.core import _get_cccl_include_options
 from cupy.cuda import driver
 from cupy import _util
 
@@ -26,6 +27,10 @@ cdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
+    # make sure bundled CCCL is searched first
+    if not runtime._is_hip_environment:
+        options = _get_cccl_include_options() + options
+
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
     # ROCm5.3 and above requires c++14
@@ -265,19 +270,7 @@ cdef str _get_cub_header_include():
     assert _cub_path is not None
     if _cub_path == '<bundle>':
         _cub_header = '''
-#include <cuda/std/type_traits>
-#include <cuda/std/limits>
-namespace std {
-    using cuda::std::conditional;
-    using cuda::std::is_same;
-    using cuda::std::is_pointer;
-    using cuda::std::is_volatile;
-    using cuda::std::remove_cv;
-    using cuda::std::enable_if;
-    using cuda::std::is_signed;
-    using cuda::std::numeric_limits;
-}
-
+#include <cupy/cuda_workaround.h>
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''

@@ -1293,17 +1293,20 @@ class TestRawJitify(unittest.TestCase):
 
     def test_jitify1(self):
         # simply prepend an unused header
-        hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'
+        hdr = "#include <cupy/cuda_workaround.h>\n"
+        hdr += '#include <cub/block/block_reduce.cuh>\n'
+        options = cupy._core.core._get_cccl_include_options()
+        options += ("--std=c++11",)
 
         if self.jitify:
             if sys.platform.startswith('win32'):
                 pytest.xfail('macro preprocessing in NVRTC is likely buggy')
             # Jitify will make it work
-            self._helper(hdr)
+            self._helper(hdr, options)
         else:
             # NVRTC cannot find C++ std headers without Jitify
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr)
+                self._helper(hdr, options)
             assert 'cannot open source file' in str(ex.value)
 
     def test_jitify2(self):
