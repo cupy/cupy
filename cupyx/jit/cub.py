@@ -21,7 +21,7 @@ def _include_cub(env):
     if _runtime.is_hip:
         env.generated.add_code('#include <hipcub/hipcub.hpp>')
     else:
-        env.generated.add_code('#include <cupy/cccl/cub/cub/cub.cuh>')
+        env.generated.add_code('#include <cub/cub.cuh>')
     env.generated.backend = 'nvcc'
 
 

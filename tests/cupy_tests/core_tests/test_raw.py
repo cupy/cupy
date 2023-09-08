@@ -1247,11 +1247,9 @@ class TestRawJitify(unittest.TestCase):
     def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
-        print("setup:", cupy.cuda.jitify._print_sources())
 
     def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
-        print("teardown:", cupy.cuda.jitify._print_sources())
 
     def _helper(self, header, options=()):
         code = header

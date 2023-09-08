@@ -169,8 +169,8 @@ def get_compiler_setting(ctx: Context, use_hip):
 
     # For CUB, we need the complex and CUB headers. The search precedence for
     # the latter is:
-    #   - for ROCm: built-in CUB
     #   - for CUDA: CuPy's CUB (and Thrust) bundle
+    #   - for ROCm: built-in CUB
     # Note that starting CuPy v8 we no longer use CUB_PATH, and starting v13
     # we no longer use Thrust/CUB bundled in CUDA.
 

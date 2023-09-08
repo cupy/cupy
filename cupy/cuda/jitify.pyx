@@ -63,11 +63,6 @@ cpdef _add_sources(dict sources):
         cupy_headers[hdr_name] = hdr_source
 
 
-cpdef _print_sources():
-    for itr in cupy_headers:
-        print(itr.first.decode())
-
-
 # Use Jitify's internal mechanism to search all included headers, and return
 # the modified options and the header mapping (as two lists). This roughly
 # follows the constructor of jitify::Program(). The found headers are cached
