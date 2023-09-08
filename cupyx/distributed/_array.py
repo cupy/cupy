@@ -207,7 +207,7 @@ def _one_value_of(dtype):
     return dtype.type(1)
 
 
-_Scalar = TypeVar("_Scalar", bound=numpy.generic, covariant=True)
+_Scalar = TypeVar("_Scalar", bound=numpy.generic)
 
 
 class _OpMode(Generic[_Scalar]):
@@ -250,7 +250,19 @@ _MODES: Final[dict[str, _Mode]] = {
 class _ManagedData:
     """ND-array managed by a stream."""
     data: NDArray
-    stream: Stream = dataclasses.field(default_factory=Stream)
+    stream: Stream
+
+    def record(self) -> Event:
+        with self.data.device:
+            return self.stream.record()
+
+    def copy(self) -> '_ManagedData':
+        with self.data.device:
+            copier = Stream()
+            copier.wait_event(self.record())
+            with copier:
+                new_data = self.data.copy()
+            return _ManagedData(new_data, copier)
 
 
 @dataclasses.dataclass
@@ -258,131 +270,123 @@ class _DataTransfer:
     """ND-array managed by a stream."""
     data: NDArray
     ready: Event = dataclasses.field(default_factory=Event)
-    base: Any = None  # prevent gc from deallocating src array
+    prevent_gc: Any = None
 
 
 # Overwrite in replica mode, apply in op mode
 _PartialUpdate = tuple[_DataTransfer, tuple[slice, ...]]
-_PartialUpdates = list[_PartialUpdate]
 
 
-def _copy_managed_data(managed_data: _ManagedData) -> _ManagedData:
-    with managed_data.data.device:
-        copy = Stream()
-        copy.wait_event(managed_data.stream.record())
-        with copy:
-            new_data = managed_data.data.copy()
-        return _ManagedData(new_data, copy)
+@dataclasses.dataclass
+class _Chunk(_ManagedData):
+    index: tuple[slice, ...]
+    updates: list[_PartialUpdate] = dataclasses.field(default_factory=list)
+
+    def copy(self) -> '_Chunk':
+        managed_data = super().copy()
+
+        return _Chunk(managed_data.data, managed_data.stream,
+                      self.index, list(self.updates))
+
+
+def _apply_updates(chunk: _Chunk, mode: _Mode) -> None:
+    """Apply all updates in-place."""
+    with chunk.data.device:
+        for new_data, idx in chunk.updates:
+            chunk.stream.wait_event(new_data.ready)
+            with chunk.stream:
+                if _is_op_mode(mode):
+                    mode.func(
+                        chunk.data[idx], new_data.data, chunk.data[idx])
+                else:
+                    chunk.data[idx] = new_data.data
+    chunk.updates.clear()
 
 
 class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     # Array on the devices and streams that transfer data only within their
     # corresponding device
-    _chunk_map: dict[int, list[_ManagedData]]
-    _device_mapping: dict[int, list[tuple[slice, ...]]]
+    _chunks_map: dict[int, list[_Chunk]]
     _mode: _Mode
     # Buffers for transfer from other devices
-    _update_map: dict[int, list[_PartialUpdates]]
     _comms: dict[int, nccl.NcclCommunicator]    # type: ignore
     _mem: cupy.cuda.Memory
 
     def __new__(
             cls, shape: tuple[int, ...], dtype: Any,
-            chunk_map: dict[int, list[_ManagedData]],
-            device_mapping: dict[int, list[tuple[slice, ...]]],
+            chunks_map: dict[int, list[_Chunk]],
             mode: _Mode = _REPLICA_MODE,
             comms: Optional[dict[int, nccl.NcclCommunicator]    # type: ignore
-                            ] = None,
-            update_map: Optional[dict[int, list[_PartialUpdates]]] = None):
+                            ] = None) -> '_DistributedArray':
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
-        obj._chunk_map = chunk_map
-        obj._device_mapping = device_mapping
+        obj._chunks_map = chunks_map
         obj._mode = mode
         if comms:
             obj._comms = comms
         elif nccl.available:
             comms_list = nccl.NcclCommunicator.initAll(     # type: ignore
-                list(device_mapping))
+                list(chunks_map.keys()))
             obj._comms = {dev: comm
-                        for dev, comm in zip(device_mapping, comms_list)}
+                          for dev, comm in zip(chunks_map.keys(), comms_list)}
         else:
             # TODO: support environments where NCCL is unavailable
             raise RuntimeError('NCCL is unavailable')
-        if update_map:
-            obj._update_map = update_map
-        else:
-            obj._update_map = {dev: [[] for _ in range(len(idxs))]
-                               for dev, idxs in device_mapping.items()}
-        obj._mem = mem
         return obj
 
     def __array_finalize__(self, obj):
+        # TODO set sensible defualts
         if obj is None:
             return
-        self._chunk_map = getattr(obj, '_chunk_map', None)
-        self._device_mapping = getattr(obj, '_device_mapping', None)
+        self._chunks_map = getattr(obj, '_chunks_map', None)
         self._mode = getattr(obj, '_mode', None)
-        self._update_map = getattr(obj, '_update_map', None)
         self._comms = getattr(obj, '_comms', None)
         self._mem = getattr(obj, '_mem', None)
 
     @property
-    def mode(self):
+    def mode(self) -> str:
         for mode_str, mode_obj in _MODES.items():
             if self._mode is mode_obj:
                 return mode_str
         raise RuntimeError(f'Unrecognized mode: {self._mode}')
 
     @property
-    def device_mapping(self):
-        return self._device_mapping
+    def index_map(self) -> dict[int, list[tuple[slice, ...]]]:
+        return {dev: [chunk.index for chunk in chunks]
+                for dev, chunks in self._chunks_map.items()}
 
     def _count_chunks_on_devices(self, dist_args) -> dict[int, int]:
         counts = {}
         for _, arg in dist_args:
-            for dev, idxs in arg._device_mapping.items():
+            for dev, chunks in arg._chunks_map.items():
                 if dev not in counts:
-                    counts[dev] = len(idxs)
-                if counts[dev] != len(idxs):
+                    counts[dev] = len(chunks)
+                if counts[dev] != len(chunks):
                     raise RuntimeError('Chunks have different shapes')
         return counts
 
-    def _get_chunk(self, dev, i=0) -> _ManagedData:
-        return self._chunk_map[dev][i]
+    def _get_chunk_data(self, dev, i=0) -> _ManagedData:
+        return self._chunks_map[dev][i].data
 
-    def _collect_chunk(self, mode: _Mode, chunk: _ManagedData,
-                       update_map: _PartialUpdates) -> None:
-        """Apply all update_map onto `chunk` in-place."""
-        with chunk.data.device:
-            for new_data, idx in update_map:
-                chunk.stream.wait_event(new_data.ready)
 
-                with chunk.stream:
-                    if _is_op_mode(mode):
-                        mode.func(
-                            chunk.data[idx], new_data.data, chunk.data[idx])
-                    else:
-                        chunk.data[idx] = new_data.data
-        update_map.clear()
-
-    def wait_all_transfer(self):
+    def wait_all_transfer(self) -> None:
         """Block until all inner update_map are done."""
         transfer_events = []
 
-        for dev, chunk in self._chunk_map.items():
-            self._collect_chunk(
-                self._mode, self._chunk_map[dev], self._update_map[dev])
+        for dev, chunks in self._chunks_map.items():
+            for chunk in chunks:
+                _apply_updates(chunk, self._mode)
             with Device(dev):
-                transfer_events.append(chunk.ready)
+                transfer_events.append(chunk.record())
 
         for e in transfer_events:
             e.synchronize()
 
     def _prepare_args(
             self, dist_args: list[tuple[int | str, '_DistributedArray']],
-            regular_args, dev: int, chunk_i: int
+            regular_args: list[tuple[int | str, NDArray]],
+            dev: int, chunk_i: int,
         ) -> list[tuple[int | str, _ManagedData]]:
         # Dist arrays must have chunk_map of compatible shapes, otherwise
         # hard error.
@@ -390,19 +394,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         # Data movement may be needed
         # Currently: Support only same shape chunk_map
         args = []
-        c_shape = None
         for i, arg in dist_args:
-            # try:
-            chunk = arg._get_chunk(dev, chunk_i)
-            # except (KeyError, IndexError):
-            #     raise RuntimeError('Unmatched device mappings')
-            args.append((i, chunk))
-            if c_shape is None:
-                c_shape = chunk.data.shape
-            # TODO check if broadcastable
-            # TODO use p2p access
-            if chunk.data.shape != c_shape:
-                raise RuntimeError('Chunks have different shapes')
+            chunk = arg._chunks_map[dev][chunk_i]
+            args.append((i, _ManagedData(chunk.data, chunk.stream)))
 
         # Case of X.T and other data movement requiring cases not supported
         # TODO(ecastill) add support for operands being non distributed arrays
@@ -422,15 +416,12 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     def _prepare_updates(
             self, dist_args: list[tuple[int | str, '_DistributedArray']],
             dev: int, chunk_i: int
-        ) -> tuple[Optional[int | str], _PartialUpdates]:
+        ) -> tuple[Optional[int | str], list[_PartialUpdate]]:
         index = None
-        updates: _PartialUpdates = []
+        updates: list[_PartialUpdate] = []
         at_most_one_update = True
         for i, arg in dist_args:
-            # try:
-            updates_now = arg._update_map[dev][chunk_i]
-            # except (KeyError, IndexError):
-            #     raise RuntimeError('Unmatched device mappings')
+            updates_now = arg._chunks_map[dev][chunk_i].updates
             if updates_now:
                 if updates:
                     at_most_one_update = False
@@ -446,24 +437,39 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             return index, updates
 
         for i, arg in dist_args:
-            for chunk, upds in zip(arg._chunk_map[dev], arg._update_map[dev]):
-                self._collect_chunk(_REPLICA_MODE, chunk, upds)
+            for chunk in arg._chunks_map[dev]:
+                _apply_updates(chunk, _REPLICA_MODE)
         return None, []
 
     def _execute_kernel(
-            self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any]
+            self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any],
         ) -> '_DistributedArray':
         distributed_arrays: list[tuple[int | str, '_DistributedArray']] = []
         regular_arrays: list[tuple[int | str, NDArray]] = []
         i: int | str
+        index_map = self.index_map
         for i, arg in enumerate(args):
+            if arg.shape != self.shape:
+                # TODO support broadcasting
+                raise RuntimeError('Mismatched shapes')
+
             if isinstance(arg, _DistributedArray):
+                if arg.index_map != index_map:
+                    # TODO enable p2p access
+                    raise RuntimeError('Mismatched index_map')
+
                 distributed_arrays.append((i, arg.to_replica_mode()))
             elif isinstance(arg, cupy.ndarray):
                 regular_arrays.append((i, arg))
 
         # Do it for kwargs too
         for k, arg in kwargs.items():
+            if arg.shape != self.shape:
+                # TODO support broadcasting
+                raise RuntimeError('Mismatched shapes')
+            if arg.index_map != index_map:
+                # TODO enable p2p access
+                raise RuntimeError('Mismatched index_map')
             if isinstance(arg, _DistributedArray):
                 distributed_arrays.append((k, arg))
             elif isinstance(arg, cupy.ndarray):
@@ -472,11 +478,11 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         args = list(args)
         chunk_counts = self._count_chunks_on_devices(distributed_arrays)
         new_dtype = None
-        new_chunk_map: dict[int, list[_ManagedData]] = {}
-        new_update_map: dict[int, list[_PartialUpdates]] = {}
+        new_chunks_map: dict[int, list[_Chunk]] = {}
+        # new_chunk_map: dict[int, list[_ManagedData]] = {}
+        # new_update_map: dict[int, list[list[_PartialUpdate]]] = {}
         for dev, chunk_count in chunk_counts.items():
-            new_chunk_map[dev] = []
-            new_update_map[dev] = [[] for _ in range(chunk_count)]
+            new_chunks_map[dev] = []
             with Device(dev):
                 execution_stream = get_current_stream()
 
@@ -488,7 +494,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         distributed_arrays, dev, chunk_i)
 
                     for i, arg in array_args:
-                        execution_stream.wait_event(arg.stream.record())
+                        execution_stream.wait_event(arg.record())
                         if isinstance(i, int):
                             args[i] = arg.data
                         else:
@@ -497,8 +503,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     chunk = kernel(*args, **kwargs)
 
                     new_dtype = chunk.dtype
-                    new_chunk_map[dev].append(_ManagedData(
-                        chunk, execution_stream))
+                    new_chunk = _Chunk(
+                        chunk, execution_stream, index_map[dev][chunk_i])
+                    new_chunks_map[dev].append(new_chunk)
 
                     if len(update_map) == 0:
                         continue
@@ -523,10 +530,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                             new_data = kernel(*args_slice, **kwargs_slice)
                         execution_done = execution_stream.record()
 
-                        new_update_map[dev][chunk_i].append(
+                        new_chunk.updates.append(
                             (_DataTransfer(new_data, execution_done), idx))
 
-        for chunks in new_chunk_map.values():
+        for chunks in new_chunks_map.values():
             for chunk in chunks:
                 if not isinstance(chunk.data, cupy.ndarray):
                     raise RuntimeError(
@@ -534,8 +541,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         ' supported')
 
         return _DistributedArray(
-            self.shape, new_dtype, new_chunk_map, self._device_mapping,
-            _REPLICA_MODE, self._comms, new_update_map)
+            self.shape, new_dtype, new_chunks_map, _REPLICA_MODE, self._comms)
 
     def __cupy_override_elementwise_kernel__(self, kernel, *args, **kwargs):
         # This defines a protocol to be called from elementwise kernel
@@ -545,15 +551,16 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _transfer_async(
             self, src_chunk: _ManagedData, dst_dev: int) -> _DataTransfer:
+
         src_dev = src_chunk.data.device.id
 
         if src_dev == dst_dev:
             with Device(src_dev):
-                return _DataTransfer(src_chunk.data, src_chunk.stream.record())
+                return _DataTransfer(src_chunk.data, src_chunk.record())
 
         with Device(src_dev):
             src_stream = Stream()
-            src_stream.wait_event(src_chunk.stream.record())
+            src_stream.wait_event(src_chunk.record())
             with src_stream:
                 src_array = cupy.ascontiguousarray(src_chunk.data)
         with Device(dst_dev):
@@ -573,16 +580,18 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 dst_buf.data.ptr, count, dtype, src_dev, dst_stream.ptr)
 
             nccl.groupEnd()     # type: ignore
-            return _DataTransfer(dst_buf, dst_stream.record(), src_array)
+            return _DataTransfer(dst_buf, dst_stream.record(),
+                                 prevent_gc=src_array)
 
     def _apply_and_update_chunks(
-            self, op_mode, shape, dst_updates,
-            src_chunk: _ManagedData, src_idx: tuple[slice, ...],
-            dst_chunk: _ManagedData, dst_idx: tuple[slice, ...]):
+            self, op_mode: _OpMode, shape: tuple[int, ...],
+            src_chunk: _Chunk, dst_chunk: _Chunk):
         """Apply `src_chunk` onto `dst_chunk` in `op_mode`.
         There must not be any undone partial update to src_chunk."""
         src_dev = src_chunk.data.device.id
         dst_dev = dst_chunk.data.device.id
+        src_idx = src_chunk.index
+        dst_idx = dst_chunk.index
 
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
@@ -594,12 +603,11 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             src_chunk.data[src_new_idx], src_chunk.stream)
 
         if not op_mode.idempotent:
-            data_to_transfer = _copy_managed_data(data_to_transfer)
-            with Device(src_dev):
-                copy_done = data_to_transfer.stream.record()
+            data_to_transfer = data_to_transfer.copy()
+            copy_done = data_to_transfer.record()
 
         update = self._transfer_async(data_to_transfer, dst_dev)
-        dst_updates.append((update, dst_new_idx))
+        dst_chunk.updates.append((update, dst_new_idx))
 
         if not op_mode.idempotent:
             dtype = src_chunk.data.dtype
@@ -610,47 +618,35 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _all_reduce_intersections(
             self, op_mode: _OpMode, shape: tuple[int, ...],
-            chunk_map: dict[int, list[_ManagedData]],
-            update_map: dict[int, list[_PartialUpdates]],
-            device_mapping: dict[int, list[tuple[slice, ...]]]) -> None:
-        chunks_list = [(dev, chunk_i, chunk)
-                       for dev, chunks in chunk_map.items()
-                       for chunk_i, chunk in enumerate(chunks)]
+            chunk_map: dict[int, list[_Chunk]]) -> None:
+        chunks_list = [chunk for chunks in chunk_map.values()
+                             for chunk in chunks]
 
         # TODO flatten this loop somehow
         for i in range(len(chunks_list)):
-            src_dev, src_chunk_i, src_chunk = chunks_list[i]
-            src_upds = update_map[src_dev][src_chunk_i]
-            src_idx = device_mapping[src_dev][src_chunk_i]
-            self._collect_chunk(op_mode, src_chunk, src_upds)
+            src_chunk = chunks_list[i]
+            _apply_updates(src_chunk, op_mode)
 
             for j in range(i + 1, len(chunks_list)):
-                dst_dev, dst_chunk_i, dst_chunk = chunks_list[j]
-                dst_upds = update_map[dst_dev][dst_chunk_i]
-                dst_idx = device_mapping[dst_dev][dst_chunk_i]
+                dst_chunk = chunks_list[j]
                 self._apply_and_update_chunks(
-                    op_mode, shape, dst_upds,
-                    src_chunk, src_idx, dst_chunk, dst_idx)
+                    op_mode, shape, src_chunk, dst_chunk)
 
         for j in range(len(chunks_list) - 1, -1, -1):
-            src_dev, src_chunk_i, src_chunk = chunks_list[j]
-            src_upds = update_map[src_dev][src_chunk_i]
-            src_idx = device_mapping[src_dev][src_chunk_i]
-            self._collect_chunk(_REPLICA_MODE, src_chunk, src_upds)
+            src_chunk = chunks_list[j]
+            _apply_updates(src_chunk, _REPLICA_MODE)
 
             for i in range(j):
-                dst_dev, dst_chunk_i, dst_chunk = chunks_list[i]
-                dst_upds = update_map[dst_dev][dst_chunk_i]
-                dst_idx = device_mapping[dst_dev][dst_chunk_i]
-                self._copy_on_intersection(
-                    shape, dst_upds, src_chunk, src_idx, dst_chunk, dst_idx)
+                dst_chunk = chunks_list[i]
+                self._copy_on_intersection(shape, src_chunk, dst_chunk)
 
     def _copy_on_intersection(
             self, shape: tuple[int, ...],
-            dst_updates: _PartialUpdates,
-            src_chunk: _ManagedData, src_idx: tuple[slice, ...],
-            dst_chunk: _ManagedData, dst_idx: tuple[slice, ...]) -> None:
-        # intersection == src_chunk[src_new_idx] == dst_chunk[dst_new_idx]
+            src_chunk: _Chunk, dst_chunk: _Chunk) -> None:
+        assert len(src_chunk.updates) == 0
+
+        src_idx = src_chunk.index
+        dst_idx = dst_chunk.index
         intersection = _index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
@@ -662,12 +658,12 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         src_partial_chunk = _ManagedData(
             src_chunk.data[src_new_idx], src_chunk.stream)
         update = self._transfer_async(src_partial_chunk, dst_dev)
-        dst_updates.append((update, dst_new_idx))
+        dst_chunk.updates.append((update, dst_new_idx))
 
     def _set_identity_on_intersection(
             self, shape: tuple[int, ...], identity,
-            a_chunk: _ManagedData, a_idx: tuple[slice, ...],
-            b_idx: tuple[slice, ...]) -> None:
+            a_chunk: _Chunk, b_idx: tuple[slice, ...]) -> None:
+        a_idx = a_chunk.index
         intersection = _index_intersection(a_idx, b_idx, shape)
         if intersection is None:
             return
@@ -677,11 +673,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 a_chunk.data[a_new_idx] = identity
 
     def _set_identity_on_ignored_entries(
-            self, identity, dev,
-            chunk: _ManagedData, update_map: _PartialUpdates) -> None:
-        with Device(dev):
+            self, identity: _Scalar, chunk: _Chunk) -> None:
+        with chunk.data.device:
             with chunk.stream:
-                for _, idx in update_map:
+                for _, idx in chunk.updates:
                     chunk.data[idx] = identity
 
     def __cupy_override_reduction_kernel__(
@@ -695,186 +690,161 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         if kernel.name == 'cupy_max':
             mode = _MODES['max']
             if self._mode is mode:
-                chunk_map, update_map = self._copy_chunks_and_updates()
+                chunks_map = self._copy_chunks_map()
             else:
-                chunk_map, update_map = self._replica_mode_chunks_and_updates()
+                chunks_map = self._replica_mode_chunks_map()
                 overwrites = True
         elif kernel.name == 'cupy_min':
             mode = _MODES['min']
             if self._mode is mode:
-                chunk_map, update_map = self._copy_chunks_and_updates()
+                chunks_map = self._copy_chunks_map()
             else:
-                chunk_map, update_map = self._replica_mode_chunks_and_updates()
+                chunks_map = self._replica_mode_chunks_map()
                 overwrites = True
         elif kernel.name == 'cupy_sum':
-            mode = _MODES['sum']
-            chunk_map, update_map = self._op_mode_chunks_and_updates(mode)
+            mode = typing.cast(_OpMode, _MODES['sum'])
+            chunks_map = self._op_mode_chunks_map(mode)
         elif kernel.name == 'cupy_prod':
-            mode = _MODES['prod']
-            chunk_map, update_map = self._op_mode_chunks_and_updates(mode)
+            mode = typing.cast(_OpMode, _MODES['prod'])
+            chunks_map = self._op_mode_chunks_map(mode)
         else:
             raise RuntimeError(f'Unsupported kernel: {kernel.name}')
 
         if overwrites:
             mode = typing.cast(_OpMode, mode)
             identity = mode.identity_of(self.dtype)
-            for dev, chunks in chunk_map.items():
-                for chunk, upds in zip(chunks, update_map[dev]):
-                    self._set_identity_on_ignored_entries(
-                        identity, dev, chunk, upds)
+            for chunks in chunks_map.values():
+                for chunk in chunks:
+                    self._set_identity_on_ignored_entries(identity, chunk)
 
         shape = self.shape[:axis] + self.shape[axis+1:]
         new_dtype = None
-        new_chunk_map: dict[int, list[_ManagedData]] = {}
-        new_device_mapping: dict[int, list[tuple[slice, ...]]] = {}
-        new_update_map: dict[int, list[_PartialUpdates]] = {}
+        new_chunks_map: dict[int, list[_Chunk]] = {}
 
-        for dev, chunks in chunk_map.items():
-            new_chunk_map[dev] = []
-            new_device_mapping[dev] = []
-            new_update_map[dev] = []
-            for chunk, idx in zip(chunks, self._device_mapping[dev]):
+        for dev, chunks in chunks_map.items():
+            new_chunks_map[dev] = []
+            for chunk in chunks:
                 with Device(dev):
                     execution_stream = get_current_stream()
-                    execution_stream.wait_event(chunk.stream.record())
+                    execution_stream.wait_event(chunk.record())
                     new_data = cupy.atleast_1d(
                         kernel(chunk.data, axis=axis, dtype=dtype))
-                    new_chunk_map[dev].append(
-                        _ManagedData(new_data, execution_stream))
 
-                new_dtype = new_chunk_map[dev][-1].data.dtype
-                new_device_mapping[dev].append(idx[:axis] + idx[axis+1:])
-                new_update_map[dev].append([])
+                    new_index = chunk.index[:axis] + chunk.index[axis+1:]
+                    new_updates: list[_PartialUpdate] = []
+                    new_chunks_map[dev].append(
+                        _Chunk(new_data, execution_stream,
+                               new_index, new_updates))
 
-        for dev, updates in update_map.items():
-            with Device(dev):
-                for upds, new_upds in zip(updates, new_update_map[dev]):
-                    for update, idx in upds:
-                        execution_stream.wait_event(update.ready)
-                        new_data = cupy.atleast_1d(
+                    if len(chunk.updates) == 0:
+                        continue
+
+                    update_stream = Stream()
+                    update_stream.wait_event(execution_stream.record())
+
+                    for update, update_index in chunk.updates:
+                        update_stream.wait_event(update.ready)
+                        new_update_data = cupy.atleast_1d(
                             kernel(update.data, axis=axis, dtype=dtype))
 
-                        execution_done = execution_stream.record()
-                        new_idx = idx[:axis] + idx[axis+1:]
-                        new_upds.append(
-                            (_DataTransfer(new_data, execution_done), new_idx))
+                        data_transfer = _DataTransfer(
+                            new_update_data, update_stream.record())
+                        new_index = update_index[:axis] + update_index[axis+1:]
+                        new_updates.append((data_transfer, new_index))
 
         return _DistributedArray(
-            shape, new_dtype, new_chunk_map, new_device_mapping, mode, self._comms,
-            new_update_map)
+            shape, new_dtype, new_chunks_map, mode, self._comms)
 
-    def _copy_chunks_and_updates(
-            self) -> tuple[dict[int, list[_ManagedData]],
-                           dict[int, list[_PartialUpdates]]]:
-        chunk_map = {dev: [_copy_managed_data(chunk) for chunk in chunks]
-                     for dev, chunks in self._chunk_map.items()}
-        update_map = {dev: [list(upds) for upds in updates]
-                      for dev, updates in self._update_map.items()}
-        return chunk_map, update_map
+    def _copy_chunks_map(self) -> dict[int, list[_Chunk]]:
+        return {dev: [chunk.copy() for chunk in chunks]
+                for dev, chunks in self._chunks_map.items()}
 
-    def _replica_mode_chunks_and_updates(
-            self
-        ) -> tuple[dict[int, list[_ManagedData]],
-                   dict[int, list[_PartialUpdates]]]:
-        """Make copies of the chunk_map and their update_map in the replica mode."""
-        chunk_map, update_map = self._copy_chunks_and_updates()
+    def _replica_mode_chunks_map(self) -> dict[int, list[_Chunk]]:
+        """Make a copy of the chunks_map in the replica mode."""
+        chunks_map = self._copy_chunks_map()
         if _is_op_mode(self._mode):
             self._all_reduce_intersections(
-                self._mode, self.shape, chunk_map, update_map, self._device_mapping)
-        return chunk_map, update_map
+                self._mode, self.shape, chunks_map)
+        return chunks_map
 
-    def _op_mode_chunks_and_updates(
-            self, op_mode
-        ) -> tuple[dict[int, list[_ManagedData]],
-                   dict[int, list[_PartialUpdates]]]:
-        """Make copies of the chunk_map and their update_map in the given mode."""
+    def _op_mode_chunks_map(self, op_mode: _OpMode) -> dict[int, list[_Chunk]]:
+        """Make a copy of the chunks_map in the given mode."""
         if self._mode is op_mode:
-            return self._copy_chunks_and_updates()
+            return self._copy_chunks_map()
 
-        chunk_map, update_map = self._replica_mode_chunks_and_updates()
-        for dev in chunk_map:
-            for chunk, upds in zip(chunk_map[dev], update_map[dev]):
-                self._collect_chunk(_REPLICA_MODE, chunk, upds)
+        chunks_map = self._replica_mode_chunks_map()
+        for chunks in chunks_map.values():
+            for chunk in chunks:
+                _apply_updates(chunk, _REPLICA_MODE)
 
-        chunks_list = list(chunk_map.items())
+        chunks_list = [(dev, chunk) for dev, chunks in chunks_map.items()
+                                    for chunk in chunks]
         identity = op_mode.identity_of(self.dtype)
-        new_chunk_map: dict[int, list[_ManagedData]] = {}
+
         # TODO: Parallelize
         for i in range(len(chunks_list)):
-            a_dev, a_chunks = chunks_list[i]
-            a_idxs = self._device_mapping[a_dev]
-            new_chunk_map[a_dev] = []
-            for a_chunk, a_idx in zip(a_chunks, a_idxs):
-                for j in range(i + 1, len(chunks_list)):
-                    b_dev, _ = chunks_list[j]
-                    b_idxs = self._device_mapping[b_dev]
-                    for b_idx in b_idxs:
-                        self._set_identity_on_intersection(
-                            self.shape, identity, a_chunk, a_idx, b_idx)
+            a_dev, a_chunk = chunks_list[i]
+            for j in range(i + 1, len(chunks_list)):
+                b_dev, b_chunk = chunks_list[j]
+                self._set_identity_on_intersection(
+                    self.shape, identity, a_chunk, b_chunk.index)
 
-                new_chunk_map[a_dev].append(a_chunk)
-
-        return new_chunk_map, update_map
+        return chunks_map
 
     def to_replica_mode(self) -> '_DistributedArray':
         """Does not recessarily copy."""
         if self._mode is _REPLICA_MODE:
             return self
         else:
-            chunk_map, update_map = self._replica_mode_chunks_and_updates()
+            chunks_map = self._replica_mode_chunks_map()
             return _DistributedArray(
-                self.shape, self.dtype, chunk_map, self._device_mapping,
-                _REPLICA_MODE, self._comms, update_map)
+                self.shape, self.dtype, chunks_map, _REPLICA_MODE, self._comms)
 
     def change_mode(self, mode: str) -> '_DistributedArray':
         if mode not in _MODES:
             raise RuntimeError(f'`mode` must be one of {list(_MODES)}')
 
-        if _MODES[mode] is self._mode:
+        mode_obj = _MODES[mode]
+        if mode_obj is self._mode:
             return self
 
-        if mode == 'replica':
-            chunk_map, update_map = self._replica_mode_chunks_and_updates()
+        if _is_op_mode(mode_obj):
+            chunks_map = self._op_mode_chunks_map(mode_obj)
         else:
-            chunk_map, update_map = self._op_mode_chunks_and_updates(_MODES[mode])
+            chunks_map = self._replica_mode_chunks_map()
         return _DistributedArray(
-            self.shape, self.dtype, chunk_map, self._device_mapping, _MODES[mode],
-            self._comms, update_map)
+            self.shape, self.dtype, chunks_map, mode_obj, self._comms)
 
     def reshard(
-        self, device_mapping: dict[int, Any]
+        self, index_map: dict[int, Any]
     ) -> '_DistributedArray':
-        for dev in device_mapping:
+        for dev in index_map:
             if dev not in self._comms:
                 raise RuntimeError(
                     f'A communicator for device {dev} is not prepared.')
 
-        old_mapping = self._device_mapping
-        new_mapping: dict[int, list[tuple[slice, ...]]] = {}
-        for dev, idxs in device_mapping.items():
+        new_index_map: dict[int, list[tuple[slice, ...]]] = {}
+        for dev, idxs in index_map.items():
             if not isinstance(idxs, list):
                 idxs = [idxs]
             for i in range(len(idxs)):
                 idxs[i] = _convert_chunk_idx_to_slices(self.shape, idxs[i])
             idxs.sort(key=lambda slices:
-                        [s.indices(l) for s, l in zip(slices, self.shape)])
-            new_mapping[dev] = idxs
+                      [s.indices(l) for s, l in zip(slices, self.shape)])
+            new_index_map[dev] = idxs
 
-        print(f'{new_mapping=}')
-
-        new_chunk_map: dict[int, list[_ManagedData]] = {}
-        new_update_map: dict[int, list[_PartialUpdates]] = {}
+        old_chunks_map = self._chunks_map
+        new_chunks_map: dict[int, list[_Chunk]] = {}
 
         if _is_op_mode(self._mode):
             identity: _Scalar = self._mode.identity_of(self.dtype)
 
-        for dst_dev, dst_idxs in new_mapping.items():
-            new_chunk_map[dst_dev] = []
-            new_update_map[dst_dev] = []
+        for dev, idxs in new_index_map.items():
+            new_chunks_map[dev] = []
 
-            for dst_idx in dst_idxs:
-                with Device(dst_dev):
-                    dst_shape = _shape_after_indexing(self.shape, dst_idx)
+            for idx in idxs:
+                with Device(dev):
+                    dst_shape = _shape_after_indexing(self.shape, idx)
                     stream = Stream()
                     with stream:
                         if self._mode is _REPLICA_MODE:
@@ -882,36 +852,27 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         else:
                             data = cupy.full(dst_shape, identity, self.dtype)
                         data = cupy.atleast_1d(data)
-                    new_chunk_map[dst_dev].append(_ManagedData(data, stream))
-                    new_update_map[dst_dev].append([])
+                    new_chunk = _Chunk(data, stream, idx)
+                    new_chunks_map[dev].append(new_chunk)
 
-        for src_dev, src_idxs in old_mapping.items():
-            src_chunks = self._chunk_map[src_dev]
-            src_updates = self._update_map[src_dev]
-            for src_chunk, src_upds, src_idx in zip(
-                    src_chunks, src_updates, src_idxs):
-                self._collect_chunk(self._mode, src_chunk, src_upds)
+        for src_chunks in old_chunks_map.values():
+            for src_chunk in src_chunks:
+                _apply_updates(src_chunk, self._mode)
 
                 if _is_op_mode(self._mode):
-                    src_chunk = _copy_managed_data(src_chunk)
+                    src_chunk = src_chunk.copy()
 
-                for dst_dev, dst_idxs in new_mapping.items():
-                    dst_chunks = new_chunk_map[dst_dev]
-                    dst_updates = new_update_map[dst_dev]
-                    for dst_chunk, dst_upds, dst_idx in zip(
-                            dst_chunks, dst_updates, dst_idxs):
+                for dst_chunks in new_chunks_map.values():
+                    for dst_chunk in dst_chunks:
                         if _is_op_mode(self._mode):
                             self._apply_and_update_chunks(
-                                self._mode, self.shape, dst_upds,
-                                src_chunk, src_idx, dst_chunk, dst_idx)
+                                self._mode, self.shape, src_chunk, dst_chunk)
                         else:
                             self._copy_on_intersection(
-                                self.shape, dst_upds,
-                                src_chunk, src_idx, dst_chunk, dst_idx)
+                                self.shape, src_chunk, dst_chunk)
 
         return _DistributedArray(
-            self.shape, self.dtype, new_chunk_map, new_mapping, self._mode,
-            self._comms, new_update_map)
+            self.shape, self.dtype, new_chunks_map, self._mode, self._comms)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if ufunc.__name__ == 'matmul' and method == '__call__':
@@ -919,9 +880,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         return NotImplemented
 
     def asnumpy(self) -> numpy.typing.NDArray:
-        for dev, chunks in self._chunk_map.items():
-            for chunk, upds in zip(chunks, self._update_map[dev]):
-                self._collect_chunk(self._mode, chunk, upds)
+        for dev, chunks in self._chunks_map.items():
+            for chunk in chunks:
+                _apply_updates(chunk, self._mode)
 
         if _is_op_mode(self._mode):
             identity = self._mode.identity_of(self.dtype)
@@ -930,9 +891,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             np_array = numpy.empty(self.shape, dtype=self.dtype)
         np_array = numpy.atleast_1d(np_array)
 
-        for dev, idxs in self._device_mapping.items():
-            for chunk, idx in zip(self._chunk_map[dev], idxs):
+        for chunks in self._chunks_map.values():
+            for chunk in chunks:
                 chunk.stream.synchronize()
+                idx = chunk.index
                 if _is_op_mode(self._mode):
                     self._mode.numpy_func(
                         np_array[idx], cupy.asnumpy(chunk.data), np_array[idx])
@@ -946,7 +908,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
 def distributed_array(
         array: ArrayLike,
-        device_mapping: dict[int, Any],
+        index_map: dict[int, Any],
         mode: str = 'replica',
         comms: Optional[dict[int, nccl.NcclCommunicator]] = None, # type: ignore
     ) -> _DistributedArray:
@@ -959,19 +921,19 @@ def distributed_array(
     elif mode != 'replica':
         array = array.copy()
 
-    new_device_mapping = {}
-    for dev, idxs in device_mapping.items():
+    new_index_map: dict[int, list[tuple[slice, ...]]] = {}
+    for dev, idxs in index_map.items():
         if not isinstance(idxs, list):
             idxs = [idxs]
         for i in range(len(idxs)):
             idxs[i] = _convert_chunk_idx_to_slices(array.shape, idxs[i])
         idxs.sort(key=lambda slices:
                     [s.indices(l) for s, l in zip(slices, array.shape)])
-        new_device_mapping[dev] = idxs
+        new_index_map[dev] = idxs
 
-    chunk_map: dict[int, list[_ManagedData]] = {}
-    for dev, idxs in new_device_mapping.items():
-        chunk_map[dev] = []
+    chunks_map: dict[int, list[_Chunk]] = {}
+    for dev, idxs in new_index_map.items():
+        chunks_map[dev] = []
 
         for i, idx in enumerate(idxs):
             if isinstance(array, cupy.ndarray):
@@ -981,10 +943,10 @@ def distributed_array(
             with Device(dev):
                 stream = Stream()
                 with stream:
-                    chunk_map[dev].append(
-                        _ManagedData(cupy.array(chunk), stream))
+                    chunk = _Chunk(cupy.array(chunk), stream, idx)
+                    chunks_map[dev].append(chunk)
             if mode_obj is not None and not mode_obj.idempotent:
                 array[idx] = mode_obj.identity_of(array.dtype)
+
     return _DistributedArray(
-        array.shape, array.dtype, chunk_map, new_device_mapping,
-        mode_obj, comms)
+        array.shape, array.dtype, chunks_map, mode_obj, comms)
