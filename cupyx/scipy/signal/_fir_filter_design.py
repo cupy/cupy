@@ -484,25 +484,19 @@ def firwin2(
     The FIR filter will have linear phase. The type of filter is determined by
     the value of 'numtaps` and `antisymmetric` flag.
     There are four possible combinations:
+
        - odd  `numtaps`, `antisymmetric` is False, type I filter is produced
        - even `numtaps`, `antisymmetric` is False, type II filter is produced
        - odd  `numtaps`, `antisymmetric` is True, type III filter is produced
        - even `numtaps`, `antisymmetric` is True, type IV filter is produced
+
     Magnitude response of all but type I filters are subjects to following
     constraints:
+
        - type II  -- zero at the Nyquist frequency
        - type III -- zero at zero and Nyquist frequencies
        - type IV  -- zero at zero frequency
-
-    References
-    ----------
-    .. [1] Oppenheim, A. V. and Schafer, R. W., "Discrete-Time Signal
-       Processing", Prentice-Hall, Englewood Cliffs, New Jersey (1989).
-       (See, for example, Section 7.4.)
-    .. [2] Smith, Steven W., "The Scientist and Engineer's Guide to Digital
-       Signal Processing", Ch. 17. http://www.dspguide.com/ch17/1.htm
     """
-
     nyq = 0.5 * fs
 
     if len(freq) != len(gain):
