@@ -40,6 +40,10 @@ cdef class RawKernel:
         jitify (bool): Whether or not to use `Jitify`_ to assist NVRTC to
             compile C++ kernels. Defaults to ``False``.
 
+    .. note::
+        Starting CuPy v13.0.0, `RawKernel` by default compiles with the C++11
+        standard (``-std=c++11``) if it's not specified in ``options``.
+
     .. _Jitify:
         https://github.com/NVIDIA/jitify
 
@@ -332,6 +336,10 @@ cdef class RawModule:
             :meth:`get_function` to retrieve the corresponding kernel.
         jitify (bool): Whether or not to use `Jitify`_ to assist NVRTC to
             compile C++ kernels. Defaults to ``False``.
+
+    .. note::
+        Starting CuPy v13.0.0, `RawModule` by default compiles with the C++11
+        standard (``-std=c++11``) if it's not specified in ``options``.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
