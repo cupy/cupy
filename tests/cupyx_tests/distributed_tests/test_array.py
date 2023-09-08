@@ -38,29 +38,34 @@ size = 262144
 
 shape_dim2 = (512, 512)
 mapping_dim2 = {
-    0: (slice(300), slice(300)),
-    1: (slice(300), slice(200, None)),
-    2: (slice(200, None), slice(None, None, 2)),
-    3: (slice(200, None), slice(1, None, 2))}
+    0: [(slice(300), slice(300)),
+        (slice(300), slice(200, None))],
+    1: [(slice(200, None), slice(None, None, 2))],
+    2: [(slice(200, None), slice(1, None, 4)),
+        (slice(200, None), slice(3, None, 4))],
+    3: [(slice(200, None, 3), slice(None, None, 3))],
+}
 mapping_dim2_2 = {
-    0: (slice(None, None, 2), slice(None, None, 2)),
-    1: (slice(None, None, 2), slice(1, 300, 2)),
-    2: (slice(None, None, 2), slice(201, None, 2)),
-    3: slice(1, None, 2)}
+    0: [(slice(None, None, 2), slice(None, None, 2))],
+    1: [(slice(None, None, 2), slice(1, 200, 2)),
+        (slice(None, None, 2), slice(101, 300, 2))],
+    2: [(slice(None, None, 2), slice(201, None, 2))],
+    3: [slice(1, None, 2)],
+}
 
 
 shape_dim3 = (64, 64, 64)
 mapping_dim3 = {
-    0: slice(32),
-    1: (slice(32, None), slice(None, 63)),
-    2: (slice(32, None), 63),
-    3: (slice(32, None), slice(None), 42)
+    0: [slice(32)],
+    1: [(slice(32, None), slice(None, 63))],
+    2: [(slice(32, None), 63)],
+    3: [(slice(32, None), slice(None), 42)],
 }
 mapping_dim3_2 = {
-    0: (slice(1, None, 2), 0),
-    1: (slice(1, None, 2), slice(1, None), 63),
-    2: (slice(1, None, 2), slice(1, None), slice(None, 63)),
-    3: slice(None, None, 2),
+    0: [(slice(1, None, 2), 0)],
+    1: [(slice(1, None, 2), slice(1, None), 63)],
+    2: [(slice(1, None, 2), slice(1, None), slice(None, 63))],
+    3: [slice(None, None, 2)],
 }
 
 
@@ -79,11 +84,13 @@ class TestDistributedArray:
         assert da.data.ptr == 0
         assert da.shape == shape
         # assert mem_pool.used_bytes() == array.nbytes
-        for dev, idx in mapping.items():
-            assert da._chunks[dev].data.device.id == dev
-            assert da._chunks[dev].data.ndim == array.ndim
-            if mode == 'replica':
-                testing.assert_array_equal(da._chunks[dev].data.squeeze(), array[idx])
+        for dev, idxs in mapping.items():
+            for i, idx in enumerate(idxs):
+                assert da._get_chunk(dev, i).data.device.id == dev
+                assert da._get_chunk(dev, i).data.ndim == array.ndim
+                if mode == 'replica':
+                    testing.assert_array_equal(
+                        da._get_chunk(dev, i).data.ravel(), array[idx].ravel())
 
     @pytest.mark.parametrize(
             'shape, mapping',
@@ -101,11 +108,13 @@ class TestDistributedArray:
         assert da.data.ptr == 0
         assert da.shape == shape
         # assert mem_pool.used_bytes() == 2 * array.nbytes
-        for dev, idx in mapping.items():
-            assert da._chunks[dev].data.device.id == dev
-            assert da._chunks[dev].data.ndim == array.ndim
-            if mode == 'replica':
-                testing.assert_array_equal(da._chunks[dev].data.squeeze(), array[idx])
+        for dev, idxs in mapping.items():
+            for i, idx in enumerate(idxs):
+                assert da._get_chunk(dev, i).data.device.id == dev
+                assert da._get_chunk(dev, i).data.ndim == array.ndim
+                if mode == 'replica':
+                    testing.assert_array_equal(
+                        da._get_chunk(dev, i).data.ravel(), array[idx].ravel())
 
     @pytest.mark.parametrize(
             'shape, mapping',
@@ -121,38 +130,46 @@ class TestDistributedArray:
         assert da.data.ptr == 0
         assert da.shape == shape
         # assert mem_pool.used_bytes() == array.nbytes
-        for dev, idx in mapping.items():
-            assert da._chunks[dev].data.device.id == dev
-            assert da._chunks[dev].data.ndim == array.ndim
-            if mode == 'replica':
-                testing.assert_array_equal(
-                    da._chunks[dev].data.squeeze(), array[idx])
+        for dev, idxs in mapping.items():
+            for i, idx in enumerate(idxs):
+                assert da._get_chunk(dev, i).data.device.id == dev
+                assert da._get_chunk(dev, i).data.ndim == array.ndim
+                if mode == 'replica':
+                    testing.assert_array_equal(
+                        da._get_chunk(dev, i).data.ravel(), array[idx].ravel())
 
     @pytest.mark.parametrize(
             'shape, mapping',
             [(shape_dim2, mapping_dim2), (shape_dim3, mapping_dim3)])
     def test_change_to_replica_mode(self, shape, mapping):
         np_a = numpy.zeros(shape)
-        cp_chunks = {}
-        for dev, idx in mapping.items():
-            np_a[idx] += 1 << dev
-            with cupy.cuda.Device(dev):
-                cp_chunks[dev] = _array._ManagedData(
-                    cupy.full_like(np_a[idx], 1 << dev))
-            for dev, idx in mapping.items():
-                new_idx = _array._convert_chunk_idx_to_slices(
-                    shape, idx)
-                mapping[dev] = new_idx
+        chunk_map = {}
+        new_mapping = {}
+        for dev, idxs in mapping.items():
+            new_mapping[dev] = []
+            chunk_map[dev] = []
+            for idx in idxs:
+                idx = _array._convert_chunk_idx_to_slices(shape, idx)
+                new_mapping[dev].append(idx)
+
+                np_a[idx] += 1 << dev
+                with cupy.cuda.Device(dev):
+                    chunk = _array._ManagedData(
+                        cupy.full_like(np_a[idx], 1 << dev))
+                    chunk_map[dev].append(chunk)
 
         d_a = _array._DistributedArray(
-            shape, np_a.dtype, cp_chunks, mapping, _array._MODES['sum'], comms)
+            shape, np_a.dtype, chunk_map, new_mapping,
+            _array._MODES['sum'], comms)
         d_b = d_a.to_replica_mode()
         assert d_b._mode is _array._REPLICA_MODE
         testing.assert_array_equal(d_b.asnumpy(), np_a)
         testing.assert_array_equal(d_a.asnumpy(), np_a)
-        for dev, idx in mapping.items():
-            assert d_b._chunks[dev].data.device.id == dev
-            testing.assert_array_equal(d_b._chunks[dev].data, np_a[idx])
+        for dev, idxs in mapping.items():
+            for i, idx in enumerate(idxs):
+                assert d_b._get_chunk(dev, i).data.device.id == dev
+                idx = _array._convert_chunk_idx_to_slices(shape, idx)
+                testing.assert_array_equal(d_b._get_chunk(dev, i).data, np_a[idx])
 
     @pytest.mark.parametrize(
             'shape, mapping',
@@ -209,7 +226,7 @@ class TestDistributedArray:
         np_b = numpy.arange(size).reshape(shape) * 2
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
-        with pytest.raises(RuntimeError, match=r'different chunk sizes'):
+        with pytest.raises(RuntimeError, match=r'different shapes'):
             cupy.cos(d_a * d_b)
 
     @pytest.mark.parametrize(
@@ -280,12 +297,13 @@ class TestDistributedArray:
         testing.assert_array_equal(d_b.asnumpy(), np_a)
         testing.assert_array_equal(d_a.asnumpy(), np_a)
         assert d_b.mode == mode
-        for dev, idx in mapping_b.items():
-            assert d_b._chunks[dev].data.device.id == dev
-            assert d_b._chunks[dev].data.ndim == np_a.ndim
-            if mode == 'replica':
-                testing.assert_array_equal(
-                    d_b._chunks[dev].data.squeeze(), np_a[idx])
+        for dev, idxs in mapping_b.items():
+            for i, idx in enumerate(idxs):
+                assert d_b._get_chunk(dev, i).data.device.id == dev
+                assert d_b._get_chunk(dev, i).data.ndim == np_a.ndim
+                if mode == 'replica':
+                    testing.assert_array_equal(
+                        d_b._get_chunk(dev, i).data.ravel(), np_a[idx].ravel())
 
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
@@ -386,7 +404,8 @@ class TestDistributedArray:
         np_d = (np_a * np_b).max(axis=0) * np_c
         d_a = _array.distributed_array(np_a, mapping_a, comms=comms)
         d_b = _array.distributed_array(np_b, mapping_b, comms=comms)
-        mapping_c = {dev: idx[1:] for dev, idx in d_a.device_mapping.items()}
+        mapping_c = {dev: [idx[1:] for idx in idxs]
+                     for dev, idxs in d_a.device_mapping.items()}
         d_c = _array.distributed_array(np_c, mapping_c, comms=comms)
         d_c2 = (d_a.reshard(mapping_b) * d_b).max(axis=0)
         d_d = d_c2.reshard(mapping_c) * d_c
