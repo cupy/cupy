@@ -19,11 +19,13 @@ function RunWithTimeout {
         [Parameter(Mandatory=$true)]
         [int]$timeout,
         [Parameter(Mandatory=$true)]
+        [string]$output,
+        [Parameter(Mandatory=$true)]
         [string]$command,
         [Parameter(Mandatory=$true, ValueFromRemainingArguments=$true)]
         [string[]]$params
     )
-    $process = Start-Process -NoNewWindow -PassThru -FilePath $command -ArgumentList $params
+    $process = Start-Process -NoNewWindow -PassThru -RedirectStandardOutput $output -FilePath $command -ArgumentList $params
 
     for ($i = 0; $i -lt $timeout; $i++) {
         if ($process.HasExited) {
