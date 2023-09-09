@@ -129,7 +129,7 @@ function Main {
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
     RunOrDie python -c "import cupy; cupy.show_config()"
-    $test_retval = RunWithTimeout -timeout 300 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {
