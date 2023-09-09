@@ -101,7 +101,7 @@ function Main {
     if ($test -eq "build") {
         return
     } elseif ($test -eq "test") {
-        $pytest_opts = "-m", "not slow"
+        $pytest_opts = "-m", '"not slow"'
     } elseif ($test -eq "slow") {
         $pytest_opts = "-m", "slow"
     } else {
