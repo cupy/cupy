@@ -2,6 +2,7 @@ import contextlib
 import io
 import os
 import pickle
+import re
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,7 @@ from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
+from cupy_backends.cuda.libs import nvrtc
 
 
 _test_source1 = r'''
@@ -397,6 +399,9 @@ def compile_in_memory(in_memory):
 )
 class TestRaw(unittest.TestCase):
 
+    _nvcc_ver = None
+    _nvrtc_ver = None
+
     def setUp(self):
         if hasattr(self, 'clean_up'):
             if cupy.cuda.runtime.is_hip:
@@ -518,6 +523,44 @@ class TestRaw(unittest.TestCase):
         if not self.jitify:
             assert 'precision not supported' in str(ex.value)
 
+    def _find_nvcc_ver(self):
+        if self._nvcc_ver:
+            return self._nvcc_ver
+
+        nvcc_ver_pattern = r'release (\d+\.\d+)'
+        cmd = cupy.cuda.get_nvcc_path().split()
+        cmd += ['--version']
+        output = compiler._run_cc(cmd, self.cache_dir, 'nvcc')
+        match = re.search(nvcc_ver_pattern, output)
+        assert match
+
+        # convert to driver ver format
+        major, minor = match.group(1).split('.')
+        self._nvcc_ver = int(major) * 1000 + int(minor) * 10
+        return self._nvcc_ver
+
+    def _find_nvrtc_ver(self):
+        if self._nvrtc_ver:
+            return self._nvrtc_ver
+
+        # convert to driver ver format
+        major, minor = nvrtc.getVersion()
+        self._nvrtc_ver = int(major) * 1000 + int(minor) * 10
+        return self._nvrtc_ver
+
+    def _check_ptx_loadable(self, compiler: str):
+        # if the PTX version is higher than the driver version, it won't
+        # be either JIT'able (CUDA_ERROR_UNSUPPORTED_PTX_VERSION) or loadable
+        # (CUDA_ERROR_NO_BINARY_FOR_GPU), see the table at
+        # https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#release-notes-ptx-release-history
+        if compiler == "nvrtc":
+            compiler_ver = self._find_nvrtc_ver()
+        elif compiler == "nvcc":
+            compiler_ver = self._find_nvcc_ver()
+        driver_ver = cupy.cuda.runtime.driverGetVersion()
+        if driver_ver < compiler_ver:
+            raise pytest.skip()
+
     def _generate_file(self, ext: str):
         # generate cubin/ptx by calling nvcc/hipcc
 
@@ -568,7 +611,8 @@ class TestRaw(unittest.TestCase):
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not ptx')
     def test_load_ptx(self):
-        # generate ptx in the temp dir
+        # use nvcc to generate ptx in the temp dir
+        self._check_ptx_loadable('nvcc')
         file_path = self._generate_file('ptx')
 
         # load ptx and test the kernel
@@ -623,6 +667,7 @@ class TestRaw(unittest.TestCase):
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
                      'ROCm/HIP does not support dynamic parallelism')
     def test_dynamical_parallelism(self):
+        self._check_ptx_loadable('nvrtc')
         ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
                              backend=self.backend, jitify=self.jitify)
         N = 169
@@ -1281,16 +1326,21 @@ class TestRawJitify(unittest.TestCase):
     def test_jitify1(self):
         # simply prepend an unused header
         hdr = '#include <cub/block/block_reduce.cuh>\n'
+        # Starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
+        # license issue we can't yet bundle bf16 headers. CUB offers us a
+        # band-aid solution to avoid including the latter (NVIDIA/cub#478,
+        # nvbugs 3641496).
+        options = ('-DCUB_DISABLE_BF16_SUPPORT',)
 
         if self.jitify:
             if sys.platform.startswith('win32'):
                 pytest.xfail('macro preprocessing in NVRTC is likely buggy')
             # Jitify will make it work
-            self._helper(hdr)
+            self._helper(hdr, options)
         else:
             # NVRTC cannot find C++ std headers without Jitify
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr)
+                self._helper(hdr, options)
             assert 'cannot open source file' in str(ex.value)
 
     def test_jitify2(self):

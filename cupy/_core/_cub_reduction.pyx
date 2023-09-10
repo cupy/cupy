@@ -32,8 +32,12 @@ cdef function.Function _create_cub_reduction_function(
     if runtime._is_hip_environment:
         options += ('--std=c++14',)
     else:
-        # static_assert needs at least C++11 in NVRTC
-        options += ('--std=c++11',)
+        # 1. static_assert needs at least C++11 in NVRTC
+        # 2. starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
+        #    license issue we can't yet bundle bf16 headers. CUB offers us a
+        #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
+        #    nvbugs 3641496).
+        options += ('--std=c++11', '-DCUB_DISABLE_BF16_SUPPORT')
 
     cdef str backend
     if runtime._is_hip_environment:
