@@ -152,8 +152,9 @@ typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> se
 
 /*
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
-   behaviors with which we must comply. Min/Max have been updated to support latest CCCL since
-   the signatures have changed.
+   behaviors with which we must comply.
+
+   CUDA/HIP have different signatures for Max/Min because of the recent changes in CCCL (for the former).
 */
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -185,6 +186,132 @@ __host__ __device__ __forceinline__ bool half_equal(const __half& l, const __hal
 #endif
 }
 #endif
+
+#ifdef CUPY_USE_HIP
+
+//
+// Max()
+//
+
+// specialization for float for handling NaNs
+template <>
+__host__ __device__ __forceinline__ float Max::operator()(const float &a, const float &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+// specialization for double for handling NaNs
+template <>
+__host__ __device__ __forceinline__ double Max::operator()(const double &a, const double &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+// specialization for complex<float> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<float> Max::operator()(const complex<float> &a, const complex<float> &b) const
+{
+    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and max() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+// specialization for complex<double> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<double> Max::operator()(const complex<double> &a, const complex<double> &b) const
+{
+    // - TODO(leofang): just call max() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and max() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? b : a;}
+}
+
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else { return half_less(a, b) ? b : a; }
+}
+#endif
+
+//
+// Min()
+//
+
+// specialization for float for handling NaNs
+template <>
+__host__ __device__ __forceinline__ float Min::operator()(const float &a, const float &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+// specialization for double for handling NaNs
+template <>
+__host__ __device__ __forceinline__ double Min::operator()(const double &a, const double &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+// specialization for complex<float> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<float> Min::operator()(const complex<float> &a, const complex<float> &b) const
+{
+    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and min() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+// specialization for complex<double> for handling NaNs
+template <>
+__host__ __device__ __forceinline__ complex<double> Min::operator()(const complex<double> &a, const complex<double> &b) const
+{
+    // - TODO(leofang): just call min() here when the bug in cupy/complex.cuh is fixed
+    // - NumPy behavior: If both a and b contain NaN, the first argument is chosen
+    // - isnan() and min() are defined in cupy/complex.cuh
+    if (isnan(a)) {return a;}
+    else if (isnan(b)) {return b;}
+    else {return a < b ? a : b;}
+}
+
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+// specialization for half for handling NaNs
+template <>
+__host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
+{
+    // NumPy behavior: NaN is always chosen!
+    if (half_isnan(a)) {return a;}
+    else if (half_isnan(b)) {return b;}
+    else { return half_less(a, b) ? a : b; }
+}
+#endif
+
+#endif  // ifdef CUPY_USE_HIP
 
 //
 // ArgMax()
@@ -363,6 +490,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 }
 #endif
 
+#ifndef CUPY_USE_HIP
+
 //
 // Max()
 //
@@ -472,6 +601,8 @@ __host__ __device__ __forceinline__ __half Min::operator()(__half &a, __half &b)
     else { return half_less((const __half)a, (const __half)b) ? a: b; }
 }
 #endif
+
+#endif  // #ifndef CUPY_USE_HIP
 
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
