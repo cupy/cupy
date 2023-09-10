@@ -102,3 +102,7 @@ function PrioritizeFlexCIDaemon() {
         throw "Failed to change priority of daemon (exit code = $LastExitCode)"
     }
 }
+
+function EnableLongPaths() {
+    Set-ItemProperty "Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" -Name LongPathsEnabled -value 1
+}
