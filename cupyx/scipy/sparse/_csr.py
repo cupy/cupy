@@ -128,6 +128,10 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             return csr_matrix(out)
         raise NotImplementedError
 
+    def __repr__(self):
+        return f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n" \
+               f"with {self.getnnz()} stored elements in Compressed Sparse Row format>"
+    
     def __eq__(self, other):
         return self._comparison(other, operator.eq, '_eq_')
 
