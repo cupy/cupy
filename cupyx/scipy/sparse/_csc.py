@@ -80,8 +80,10 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         return (y, x)
 
     def __repr__(self):
-        return f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n" \
-               f"with {self.getnnz()} stored elements in Compressed Sparse Column format>"
+        return (
+            f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n" \
+            f"with {self.getnnz()} stored elements in Compressed Sparse Column format>"
+        )
     
     def __mul__(self, other):
         from cupyx import cusparse
