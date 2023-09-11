@@ -147,7 +147,7 @@ class TestDistributedMatMul:
         with pytest.raises(RuntimeError, match=r'Inconsistent'):
             d_c = d_a @ d_b
 
-    def test_hi_dim(self):
+    def test_high_dim(self):
         def combine(
             config_1: ArrayConfig,
             config_2: ArrayConfig,

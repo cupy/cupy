@@ -24,8 +24,8 @@ class _Blocking:
 
 
 def _convert_to_tuples(
-        slices: tuple[slice, ...], shape: tuple[int, ...],
-    ) -> tuple[_SliceIndices, ...]:
+    slices: tuple[slice, ...], shape: tuple[int, ...],
+) -> tuple[_SliceIndices, ...]:
     assert len(slices) == len(shape)
     return tuple(s.indices(l) for s, l in zip(slices, shape))
 
@@ -36,10 +36,9 @@ def _convert_to_slices(
 
 
 def _find_blocking(
-        n: int, m: int, p: int,
-        location_map_a: _BlockLocationMap,
-        location_map_b: _BlockLocationMap,
-    ) -> _Blocking:
+    location_map_a: _BlockLocationMap,
+    location_map_b: _BlockLocationMap,
+) -> _Blocking:
 
     i_partitions: list[int] = []
     j_partitions: list[int] = []
@@ -97,11 +96,10 @@ def _find_blocking(
 
 
 def _make_execution_plan(
-        n: int, m: int, p: int,
-        blocking: _Blocking,
-        location_map_a: _BlockLocationMap,
-        location_map_b: _BlockLocationMap,
-    ) -> _ExecutionPlan:
+    blocking: _Blocking,
+    location_map_a: _BlockLocationMap,
+    location_map_b: _BlockLocationMap,
+) -> _ExecutionPlan:
 
     i_partitions = blocking.i_partitions
     j_partitions = blocking.j_partitions
@@ -139,8 +137,8 @@ def _make_batch_idxs(shape: _Shape, index_map: _IndexMap) -> set[_BatchIdx]:
 
 
 def _make_local_maps(
-        batch_idx: _BatchIdx, shape: _Shape, index_map: _IndexMap,
-    ) -> _BlockLocationMap:
+    batch_idx: _BatchIdx, shape: _Shape, index_map: _IndexMap,
+) -> _BlockLocationMap:
     block_locatoin_map: _BlockLocationMap = {}
 
     for dev, idxs in index_map.items():
@@ -195,9 +193,8 @@ def matmul(a, b, out=None, **kwargs) -> '_array._DistributedArray':
         location_map_a = _make_local_maps(batch_idx, a.shape, a.index_map)
         location_map_b = _make_local_maps(batch_idx, b.shape, b.index_map)
 
-        blocking = _find_blocking(n, m, p, location_map_a, location_map_b)
-        plan = _make_execution_plan(
-            n, m, p, blocking, location_map_a, location_map_b)
+        blocking = _find_blocking(location_map_a, location_map_b)
+        plan = _make_execution_plan(blocking, location_map_a, location_map_b)
 
         index_prefix = _convert_to_slices(batch_idx)
         for block_a, block_b, dev in plan:
