@@ -5,7 +5,7 @@ import numpy
 import cupy
 from cupy import testing
 from cupy.cuda import nccl
-from cupyx.distributed import _array
+from cupyx.distributed import _array, _linalg
 import math
 
 
@@ -41,24 +41,12 @@ class ArrayConfig:
 
 
 def make_2d_config(
-        i_partitions: list[int],
-        j_partitions: list[int],
-        devices: list[list[set[int]]],
+    i_partitions: list[int],
+    j_partitions: list[int],
+    devices: list[list[set[int]]],
 ) -> ArrayConfig:
     shape = (i_partitions[-1], j_partitions[-1])
-    index_map: dict[int, list[tuple[slice, ...]]] = {}
-    for i in range(len(i_partitions) - 1):
-        for j in range(len(j_partitions) - 1):
-            i_start = i_partitions[i]
-            i_stop = i_partitions[i+1]
-            j_start = j_partitions[j]
-            j_stop = j_partitions[j+1]
-
-            idx = (slice(i_start, i_stop), slice(j_start, j_stop))
-
-            for dev in devices[i][j]:
-                index_map.setdefault(dev, []).append(idx)
-
+    index_map = _linalg.make_2d_index_map(i_partitions, j_partitions, devices)
     return ArrayConfig(shape, index_map)
 
 
@@ -81,7 +69,6 @@ config_1x2_2x2 = MatMulConfig(
                    [[{0}, {1}],
                     [{2}, {3}]]))
 
-
 config_2x2_2x2 = MatMulConfig(
     make_2d_config([0, 6, 10], [0, 11, 20],
                    [[{0, 2}, {1, 3}],
@@ -90,22 +77,30 @@ config_2x2_2x2 = MatMulConfig(
                    [[{0, 2}, {2, 3}],
                     [{0, 1}, {1, 3}]]))
 
+config_1x4_4x1 = MatMulConfig(
+    make_2d_config([0, 10], [0, 3, 7, 12, 20],
+                   [[{0}, {1}, {2}, {3}]]),
+    make_2d_config([0, 3, 7, 12, 20], [0, 12],
+                   [[{0}],
+                    [{1}],
+                    [{2}],
+                    [{3}]]))
 
 config_2x3_3x2 = MatMulConfig(
     make_2d_config([0, 2, 10], [0, 3, 7, 20],
                    [[{0, 1}, {1, 3}, {0, 2}],
-                    [{0, 3}, {2, 1}, {2, 3}]]),
+                    [{0, 3}, {1, 2}, {2, 3}]]),
     make_2d_config([0, 3, 7, 20], [0, 4, 12],
-                   [[{0, 0}, {1, 3}],
-                    [{1, 2}, {3, 1}],
+                   [[{0}, {1, 3}],
+                    [{1, 2}, {1, 3}],
                     [{0, 2}, {2, 3}]]))
-
 
 
 @testing.multi_gpu(4)
 class TestDistributedMatMul:
-    @pytest.mark.parametrize('config',
-                             [config_1x2_2x2, config_2x2_2x2, config_2x3_3x2])
+    @pytest.mark.parametrize(
+            'config',
+            [config_1x2_2x2, config_2x2_2x2, config_1x4_4x1, config_2x3_3x2])
     @pytest.mark.parametrize('mode', ['replica', 'sum'])
     def test_matmul(self, config, mode):
         np_a, d_a, np_b, d_b = config.instantiate(mode)
@@ -113,8 +108,8 @@ class TestDistributedMatMul:
         d_c = d_a @ d_b
         testing.assert_array_equal(d_c.asnumpy(), np_c)
 
-    def test_matmul_incompatible(self):
-        wrong_config = MatMulConfig(config_1x2_2x2.a, config_2x2_2x2.b)
+    def test_matmul_incompatible_block_size(self):
+        wrong_config = MatMulConfig(config_1x2_2x2.a, config_2x3_3x2.b)
         np_a, d_a, np_b, d_b = wrong_config.instantiate()
         with pytest.raises(RuntimeError, match=r'Inconsistent'):
             d_c = d_a @ d_b

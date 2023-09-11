@@ -214,3 +214,24 @@ def matmul(a, b, out=None, **kwargs) -> '_array._DistributedArray':
     shape = a.shape[:-2] + (n, p)
     return _array._DistributedArray(
         shape, dtype, chunks_map, _array._MODES['sum'], a._comms)
+
+
+def make_2d_index_map(
+    i_partitions: list[int],
+    j_partitions: list[int],
+    devices: list[list[set[int]]],
+) -> dict[int, list[tuple[slice, ...]]]:
+    index_map: dict[int, list[tuple[slice, ...]]] = {}
+    for i in range(len(i_partitions) - 1):
+        for j in range(len(j_partitions) - 1):
+            i_start = i_partitions[i]
+            i_stop = i_partitions[i+1]
+            j_start = j_partitions[j]
+            j_stop = j_partitions[j+1]
+
+            idx = (slice(i_start, i_stop), slice(j_start, j_stop))
+
+            for dev in devices[i][j]:
+                index_map.setdefault(dev, []).append(idx)
+
+    return index_map
