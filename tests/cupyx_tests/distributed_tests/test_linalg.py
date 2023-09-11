@@ -1,4 +1,5 @@
 import pytest
+import dataclasses
 
 import numpy
 import cupy
@@ -18,101 +19,128 @@ def make_comms():
 comms = make_comms()
 
 
-shape_a = (100, 200)
-size_a = math.prod(shape_a)
-index_map_a = {
-    0: [(slice(60), slice(110)),
-        (slice(60, None), slice(110, None))],
-    1: [(slice(60), slice(110, None)),
-        (slice(60, None), slice(110, None))],
-    2: [(slice(60), slice(110)),
-        (slice(60, None), slice(110))],
-    3: [(slice(60), slice(110, None)),
-        (slice(60, None), slice(110))],
-}
-index_map_a_2 = {
-    3: [(slice(60), slice(110)),
-        (slice(60, None), slice(110, None))],
-    2: [(slice(60), slice(110, None)),
-        (slice(60, None), slice(110, None))],
-    1: [(slice(60), slice(110)),
-        (slice(60, None), slice(110))],
-    0: [(slice(60), slice(110, None)),
-        (slice(60, None), slice(110))],
-}
+class ArrayConfig:
+    size: int
+    shape: tuple[int, ...]
+    index_map: dict[int, list[tuple[slice, ...]]]
+
+    def __init__(
+        self, shape: tuple[int, ...],
+        index_map: dict[int, list[tuple[slice, ...]]]
+    ) -> None:
+        self.size = math.prod(shape)
+        self.shape = shape
+        self.index_map = index_map
+
+    def instantiate(
+        self, mode: str = 'replica',
+    ) -> tuple[numpy.ndarray, _array._DistributedArray]:
+        np_arr = numpy.arange(self.size).reshape(self.shape)
+        d_arr = _array.distributed_array(np_arr, self.index_map, mode, comms)
+        return np_arr, d_arr
 
 
-shape_b = (200, 120)
-size_b = math.prod(shape_b)
-index_map_b = {
-    0: [(slice(110), slice(70)),
-        (slice(110, None), slice(70))],
-    1: [(slice(110, None), slice(70)),
-        (slice(110, None), slice(70, None))],
-    2: [(slice(110), slice(70)),
-        (slice(110), slice(70, None))],
-    3: [(slice(110), slice(70, None)),
-        (slice(110, None), slice(70, None))],
-}
-index_map_b_2 = {
-    3: [(slice(110), slice(70)),
-        (slice(110, None), slice(70))],
-    2: [(slice(110, None), slice(70)),
-        (slice(110, None), slice(70, None))],
-    1: [(slice(110), slice(70)),
-        (slice(110), slice(70, None))],
-    0: [(slice(110), slice(70, None)),
-        (slice(110, None), slice(70, None))],
-}
+def make_2d_config(
+        i_partitions: list[int],
+        j_partitions: list[int],
+        devices: list[list[set[int]]],
+) -> ArrayConfig:
+    shape = (i_partitions[-1], j_partitions[-1])
+    index_map: dict[int, list[tuple[slice, ...]]] = {}
+    for i in range(len(i_partitions) - 1):
+        for j in range(len(j_partitions) - 1):
+            i_start = i_partitions[i]
+            i_stop = i_partitions[i+1]
+            j_start = j_partitions[j]
+            j_stop = j_partitions[j+1]
+
+            idx = (slice(i_start, i_stop), slice(j_start, j_stop))
+
+            for dev in devices[i][j]:
+                index_map.setdefault(dev, []).append(idx)
+
+    return ArrayConfig(shape, index_map)
+
+
+@dataclasses.dataclass
+class MatMulConfig:
+    a: ArrayConfig
+    b: ArrayConfig
+
+    def instantiate(
+        self, mode: str = 'replica',
+    ) -> tuple[numpy.ndarray, _array._DistributedArray,
+               numpy.ndarray, _array._DistributedArray]:
+        return self.a.instantiate(mode) + self.b.instantiate(mode)
+
+
+config_1x2_2x2 = MatMulConfig(
+    make_2d_config([0, 10], [0, 14, 20],
+                   [[{0, 1}, {2, 3}]]),
+    make_2d_config([0, 14, 20], [0, 8, 12],
+                   [[{0}, {1}],
+                    [{2}, {3}]]))
+
+
+config_2x2_2x2 = MatMulConfig(
+    make_2d_config([0, 6, 10], [0, 11, 20],
+                   [[{0, 2}, {1, 3}],
+                    [{2, 3}, {0, 1}]]),
+    make_2d_config([0, 11, 20], [0, 7, 12],
+                   [[{0, 2}, {2, 3}],
+                    [{0, 1}, {1, 3}]]))
+
+
+config_2x3_3x2 = MatMulConfig(
+    make_2d_config([0, 2, 10], [0, 3, 7, 20],
+                   [[{0, 1}, {1, 3}, {0, 2}],
+                    [{0, 3}, {2, 1}, {2, 3}]]),
+    make_2d_config([0, 3, 7, 20], [0, 4, 12],
+                   [[{0, 0}, {1, 3}],
+                    [{1, 2}, {3, 1}],
+                    [{0, 2}, {2, 3}]]))
+
 
 
 @testing.multi_gpu(4)
 class TestDistributedMatMul:
-    def test_matmul(self):
-        np_a = numpy.arange(size_a).reshape(shape_a)
-        np_b = numpy.arange(size_b).reshape(shape_b)
+    @pytest.mark.parametrize('config',
+                             [config_1x2_2x2, config_2x2_2x2, config_2x3_3x2])
+    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    def test_matmul(self, config, mode):
+        np_a, d_a, np_b, d_b = config.instantiate(mode)
         np_c = np_a @ np_b
-        d_a = _array.distributed_array(np_a, index_map_a, comms=comms)
-        d_b = _array.distributed_array(np_b, index_map_b, comms=comms)
         d_c = d_a @ d_b
         testing.assert_array_equal(d_c.asnumpy(), np_c)
 
     def test_matmul_incompatible(self):
-        np_a = numpy.arange(size_a).reshape(shape_a)
-        np_b = numpy.arange(size_b).reshape(shape_b)
-        index_map_b_2 = index_map_b | {0: (slice(1100), slice(600))}
-        d_a = _array.distributed_array(np_a, index_map_a, comms=comms)
-        d_b = _array.distributed_array(np_b, index_map_b_2, comms=comms)
+        wrong_config = MatMulConfig(config_1x2_2x2.a, config_2x2_2x2.b)
+        np_a, d_a, np_b, d_b = wrong_config.instantiate()
         with pytest.raises(RuntimeError, match=r'Inconsistent'):
             d_c = d_a @ d_b
 
     def test_matmul_hi_dim(self):
-        shape_dim3_a = (2, 3) + shape_a
-        shape_dim3_b = (2, 3) + shape_b
+        def combine(
+            config_1: ArrayConfig,
+            config_2: ArrayConfig,
+        ) -> ArrayConfig:
+            assert config_1.shape == config_2.shape
+            shape = (3,) + config_1.shape
 
-        size_dim3_a = 6 * size_a
-        size_dim3_b = 6 * size_b
+            index_map = {}
+            for dev, idxs in config_1.index_map.items():
+                index_map[dev] = [(slice(2),) + idx for idx in idxs]
+            for dev, idxs in config_2.index_map.items():
+                index_map[dev] += [(slice(2, 3),) + idx for idx in idxs]
 
-        np_a = numpy.arange(size_dim3_a).reshape(shape_dim3_a)
-        np_b = numpy.arange(size_dim3_b).reshape(shape_dim3_b)
+            return ArrayConfig(shape, index_map)
 
+        config_a = combine(config_1x2_2x2.a, config_2x2_2x2.a)
+        config_b = combine(config_1x2_2x2.b, config_2x2_2x2.b)
+        config = MatMulConfig(config_a, config_b)
+
+        np_a, d_a, np_b, d_b = config.instantiate()
         np_c = np_a @ np_b
-
-        index_map_dim3_a = {dev: [] for dev in index_map_a.keys()}
-        for dev, idxs in index_map_a.items():
-            index_map_dim3_a[dev] += [(0, slice(None)) + idx for idx in idxs]
-        for dev, idxs in index_map_a_2.items():
-            index_map_dim3_a[dev] += [(1, slice(None)) + idx for idx in idxs]
-
-        index_map_dim3_b = {dev: [] for dev in index_map_b.keys()}
-        for dev, idxs in index_map_b.items():
-            index_map_dim3_b[dev] += [(0, slice(None)) + idx for idx in idxs]
-        for dev, idxs in index_map_b_2.items():
-            index_map_dim3_b[dev] += [(1, slice(None)) + idx for idx in idxs]
-
-        d_a = _array.distributed_array(np_a, index_map_dim3_a, comms=comms)
-        d_b = _array.distributed_array(np_b, index_map_dim3_b, comms=comms)
-
         d_c = d_a @ d_b
 
         testing.assert_array_equal(d_c.asnumpy(), np_c)
