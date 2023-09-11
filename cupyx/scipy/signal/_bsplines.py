@@ -1,13 +1,4 @@
-import cupy
-import cupyx.scipy.ndimage
 
-from cupyx.scipy.signal._iir_utils import apply_iir_sos
-from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
-from cupyx.scipy.interpolate._bspline import BSpline
-
-<<<<<<< HEAD
-import numpy as np
-=======
 """
 Signal processing B-Splines
 
@@ -34,7 +25,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
->>>>>>> bdec77793... Port gauss_spline from CuSignal
+
+import cupy
+import cupyx.scipy.ndimage
+
+from cupyx.scipy.signal._iir_utils import apply_iir_sos
+from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
+from cupyx.scipy.interpolate._bspline import BSpline
+
+import numpy as np
 
 
 def sepfir2d(input, hrow, hcol):
