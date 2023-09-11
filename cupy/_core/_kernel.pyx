@@ -1153,14 +1153,15 @@ cdef class ufunc:
         readonly tuple _params_with_where
         readonly dict _routine_cache
         readonly dict _kernel_memo
-        readonly object __doc__
+        readonly object _doc
+        public object __doc__
         readonly object __name__
         readonly object __module__
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
             default_casting=None, *, _Ops out_ops=None, cutensor_op=None,
-            scatter_op=None, embed_signature=None):
+            scatter_op=None):
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1170,19 +1171,12 @@ cdef class ufunc:
         self._out_ops = out_ops
         self._preamble = preamble
         self._loop_prep = loop_prep
-
+        self._doc = doc
+        self.__doc__ = doc
         if default_casting is None:
             self._default_casting = 'same_kind'
         else:
             self._default_casting = default_casting
-
-        if embed_signature is None:
-            self.__doc__ = doc
-        else:
-            self.__doc__ = (
-                _ufunc_doc_signature_formatter(self, embed_signature) +
-                '\n\n' + doc
-            )
 
         if cutensor_op is not None and cuda_cutensor is not None:
             self._cutensor_op, self._cutensor_alpha, self._cutensor_gamma = (
@@ -1658,11 +1652,10 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
                    default_casting=None, loop_prep='', out_ops=None,
-                   cutensor_op=None, scatter_op=None, embed_signature=None):
+                   cutensor_op=None, scatter_op=None):
     ops_ = _Ops.from_tuples(ops, routine)
     _out_ops = None if out_ops is None else _Ops.from_tuples(out_ops, routine)
     return ufunc(
         name, ops_.nin, ops_.nout, ops_, preamble,
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
-        cutensor_op=cutensor_op, scatter_op=scatter_op,
-        embed_signature=embed_signature)
+        cutensor_op=cutensor_op, scatter_op=scatter_op)
