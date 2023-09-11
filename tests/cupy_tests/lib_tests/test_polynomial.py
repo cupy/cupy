@@ -12,7 +12,6 @@ from cupy import testing
     {'variable': None},
     {'variable': 'y'},
 )
-@testing.gpu
 class TestPoly1dInit:
 
     @testing.for_all_dtypes(no_bool=True)
@@ -98,8 +97,15 @@ class TestPoly1dInit:
         assert out.variable == (self.variable or 'x')
         return out
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
+    def test_poly1d_roots(self, xp, dtype):
+        a = testing.shaped_arange((4,), xp, dtype)
+        out = xp.poly1d(a, True, variable=self.variable)
+        assert out.variable == (self.variable or 'x')
+        return out.coeffs
 
-@testing.gpu
+
 class TestPoly1d:
 
     @testing.for_all_dtypes()
@@ -229,14 +235,69 @@ class TestPoly1d:
         return str(xp.poly1d(a))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-6})
     def test_poly1d_call(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         b = xp.poly1d(a)
         return b(a)
 
 
-@testing.gpu
+class TestPoly:
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_poly_1d(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_poly_2d_symmetric_real(self, xp, dtype):
+        a = xp.array([[6, 3, 1],
+                      [3, 0, 5],
+                      [1, 5, 6]], dtype)
+        return xp.poly(a)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_poly_2d_hermitian_complex(self, xp, dtype):
+        a = xp.array([[2, -1j], [1j, 1]], dtype)
+        return xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly_2d_square(self, dtype):
+        a = testing.shaped_arange((3, 3), cupy, dtype)
+        with pytest.raises(NotImplementedError):
+            cupy.poly(a)
+
+    @testing.for_all_dtypes()
+    def test_poly_2d_general(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly(a)
+
+    @testing.for_all_dtypes()
+    def test_poly_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((5, 4, 3), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_poly_zero_dim(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((), xp, dtype)
+            with pytest.raises(TypeError):
+                numpy.poly(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_poly_empty(self, xp, dtype):
+        a = xp.zeros((0), dtype)
+        return xp.poly(a)
+
+
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (5,)],
     'exp': [0, 4, 5, numpy.int32(5), numpy.int64(5)],
@@ -251,7 +312,6 @@ class TestPoly1dPow:
         return xp.poly1d(a) ** self.exp
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(5,), (5, 2)],
     'exp': [-10, 3.5, [1, 2, 3]],
@@ -266,7 +326,6 @@ class TestPoly1dPowInvalidValue:
                 xp.poly1d(a) ** self.exp
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'exp': [3.0, numpy.float64(5)],
 }))
@@ -282,11 +341,15 @@ class TestPoly1dPowInvalidType:
 
 class Poly1dTestBase:
 
-    def _get_input(self, xp, in_type, dtype):
-        if in_type == 'poly1d':
-            return xp.poly1d(testing.shaped_arange((10,), xp, dtype) + 1)
-        if in_type == 'ndarray':
-            return testing.shaped_arange((10,), xp, dtype)
+    def _get_input(self, xp, in_type, dtype, *, size=10):
+        if in_type in ('ndarray', 'poly1d'):
+            array = testing.shaped_arange((size,), xp, dtype)
+            if array.dtype == numpy.bool_:
+                # Avoid leading zero-coefficients.
+                array = xp.logical_not(array)
+            if in_type == 'poly1d':
+                array = xp.poly1d(array)
+            return array
         if in_type == 'python_scalar':
             return dtype(5).item()
         if in_type == 'numpy_scalar':
@@ -294,14 +357,13 @@ class Poly1dTestBase:
         assert False
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'func': [
         lambda x, y: x + y,
         lambda x, y: x - y,
         lambda x, y: x * y,
     ],
-    'type_l': ['poly1d', 'python_scalar', 'ndarray'],
+    'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
@@ -310,22 +372,21 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
+        if self.type_l == 'numpy_scalar' and self.type_r == 'poly1d':
+            pytest.skip('Avoid numpy bug.')
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
         return self.func(a1, a2)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'fname': ['add', 'subtract', 'multiply', 'divide', 'power'],
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
-    'type_r': ['poly1d'],
+    'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
-@pytest.mark.xfail(runtime.is_hip,
-                   reason='HIP/ROCm does not support cuda array interface')
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_poly1d_arithmetic(self, xp, dtype):
         func = getattr(xp, self.fname)
@@ -334,33 +395,6 @@ class TestPoly1dMathArithmetic(Poly1dTestBase):
         return func(a1, a2)
 
 
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': [
-        lambda x, y: x + y,
-        lambda x, y: x - y,
-        lambda x, y: x * y,
-    ],
-    'type_l': ['numpy_scalar'],
-    'type_r': ['poly1d'],
-}))
-class TestPoly1dArithmeticInvalid(Poly1dTestBase):
-
-    @testing.for_all_dtypes()
-    def test_poly1d_arithmetic_invalid(self, dtype):
-        # CuPy does not support them because device-to-host synchronization is
-        # needed to convert the return value to cupy.ndarray type.
-        n1 = self._get_input(numpy, self.type_l, dtype)
-        n2 = self._get_input(numpy, self.type_r, dtype)
-        assert type(self.func(n1, n2)) is numpy.ndarray
-
-        c1 = self._get_input(cupy, self.type_l, dtype)
-        c2 = self._get_input(cupy, self.type_r, dtype)
-        with pytest.raises(TypeError):
-            self.func(c1, c2)
-
-
-@testing.gpu
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul'],
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
@@ -378,7 +412,6 @@ class TestPoly1dRoutines(Poly1dTestBase):
         return func(a1, a2)
 
 
-@testing.gpu
 class TestPoly1dEquality:
 
     def make_poly1d1(self, xp, dtype):
@@ -420,7 +453,6 @@ class TestPoly1dEquality:
         return a != b
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul'],
     'shape1': [(), (0,), (3,), (5,)],
@@ -438,7 +470,6 @@ class TestPolyArithmeticShapeCombination:
         return func(a, b)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul'],
 }))
@@ -479,7 +510,6 @@ class TestPolyArithmeticDiffTypes:
             pass
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape1': [(3,)],
     'shape2': [(3,), (3, 2)],
@@ -522,7 +552,6 @@ class TestPolyfitParametersCombinations:
             assert cp_rcond == np_rcond
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(3,), (3, 2)],
     'deg': [0, 1],
@@ -548,7 +577,6 @@ class TestPolyfitCovMode:
         testing.assert_allclose(cp_cov, np_cov, rtol=1e-3)
 
 
-@testing.gpu
 class TestPolyfit:
 
     @testing.for_all_dtypes(no_float16=True)
@@ -560,7 +588,6 @@ class TestPolyfit:
                 xp.polyfit(x, y, 6)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (5, 3, 3)],
 }))
@@ -591,7 +618,6 @@ class TestPolyfitInvalidShapes:
                 xp.polyfit(x, x, 5, w=w)
 
 
-@testing.gpu
 class TestPolyfitInvalid:
 
     @testing.for_all_dtypes(no_float16=True)
@@ -641,7 +667,6 @@ class TestPolyfitInvalid:
                 xp.polyfit(x, x, 4)
 
 
-@testing.gpu
 class TestPolyfitDiffTypes:
 
     @testing.for_all_dtypes_combination(
@@ -662,22 +687,20 @@ class TestPolyfitDiffTypes:
         return xp.polyfit(x, y, 5, w=w)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'type_l': ['poly1d', 'ndarray'],
-    'type_r': ['ndarray', 'numpy_scalar', 'python_scalar'],
+    'type_r': ['poly1d', 'ndarray', 'numpy_scalar', 'python_scalar'],
 }))
 class TestPolyval(Poly1dTestBase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-3})
     def test_polyval(self, xp, dtype):
-        a1 = self._get_input(xp, self.type_l, dtype)
-        a2 = self._get_input(xp, self.type_r, dtype)
+        a1 = self._get_input(xp, self.type_l, dtype, size=5)
+        a2 = self._get_input(xp, self.type_r, dtype, size=5)
         return xp.polyval(a1, a2)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'type_l': ['numpy_scalar', 'python_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
@@ -693,7 +716,6 @@ class TestPolyvalInvalidTypes(Poly1dTestBase):
                 xp.polyval(a1, a2)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape1': [(0,), (3,), (5,)],
     'shape2': [(), (0,), (3,), (5,)]
@@ -701,14 +723,13 @@ class TestPolyvalInvalidTypes(Poly1dTestBase):
 class TestPolyvalShapeCombination:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-6})
     def test_polyval(self, xp, dtype):
         a = testing.shaped_arange(self.shape1, xp, dtype)
         b = testing.shaped_arange(self.shape2, xp, dtype)
         return xp.polyval(a, b)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (3,), (5,)]
 }))
@@ -723,44 +744,39 @@ class TestPolyvalInvalidShapeCombination:
                 xp.polyval(a, b)
 
 
-@testing.gpu
 class TestPolyvalDtypesCombination:
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-6})
     def test_polyval_diff_types_array_array(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
-        b = testing.shaped_arange((5,), xp, dtype2)
+        b = testing.shaped_arange((3,), xp, dtype2)
         return xp.polyval(a, b)
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_polyval_diff_types_array_scalar(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
-        b = dtype2(5)
+        b = dtype2(3)
         return xp.polyval(a, b)
 
 
-@testing.gpu
-class TestPolyvalNotImplemented:
+class TestPolyvalMultiDimensional:
 
     @testing.for_all_dtypes()
     def test_polyval_ndim_values(self, dtype):
-        a = testing.shaped_arange((2, ), cupy, dtype)
+        a = testing.shaped_arange((10,), cupy, dtype)
         b = testing.shaped_arange((2, 4), cupy, dtype)
-        with pytest.raises(NotImplementedError):
-            cupy.polyval(a, b)
+        return cupy.polyval(a, b)
 
     @testing.for_all_dtypes()
     def test_polyval_poly1d_values(self, dtype):
         a = testing.shaped_arange((5,), cupy, dtype)
         b = testing.shaped_arange((3,), cupy, dtype)
         b = cupy.poly1d(b)
-        with pytest.raises(NotImplementedError):
-            cupy.polyval(a, b)
+        return cupy.polyval(a, b)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'fname': ['polyadd', 'polysub', 'polymul', 'polyval'],
 }))
@@ -776,7 +792,6 @@ class TestPolyRoutinesNdim:
                 func(a, b)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'input': [[2, -1, -2], [-4, 10, 4]],
 }))
@@ -799,7 +814,6 @@ class TestRootsReal:
         return xp.sort(out)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'input': [[3j, 1.5j, -3j], [3 + 2j, 5], [3j, 0], [0, 3j]],
 }))
@@ -824,7 +838,6 @@ class TestRootsComplex:
         return xp.sort(out)
 
 
-@testing.gpu
 @testing.parameterize(*testing.product({
     'input': [[5, 10], [5, 0], [0, 5], [0, 0], [5]],
 }))
@@ -843,7 +856,6 @@ class TestRootsSpecialCases:
         return xp.roots(xp.poly1d(a))
 
 
-@testing.gpu
 class TestRoots:
 
     @testing.for_all_dtypes(no_bool=True)

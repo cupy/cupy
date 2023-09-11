@@ -1,6 +1,6 @@
 from cupy._core cimport _accelerator
 from cupy._core._accelerator cimport ACCELERATOR_CUB
-from cupy._core._scalar cimport get_typename
+from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
 
 import functools
 import string
@@ -8,13 +8,12 @@ import string
 import numpy
 
 import cupy
-from cupy._core._dtype import get_dtype
+from cupy._core._dtype import get_dtype, _raise_if_invalid_cast
 from cupy._core import _kernel
 from cupy._core import _fusion_thread_local
 from cupy._core import _reduction
 from cupy._core import core
 from cupy._core import new_fusion
-
 
 
 _is_fusing = _fusion_thread_local.is_fusing  # NOQA
@@ -114,15 +113,8 @@ class _FusionVarCUDA(object):
         if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
 
-        if isinstance(val, bool):
-            init = '= {}'.format(str(c).lower())
-        elif isinstance(val, complex):
-            init = '({}, {})'.format(c.real, c.imag)
-        elif isinstance(val, (int, float)):
-            init = '= {}'.format(c)
-        else:
-            raise TypeError('Invalid constant type: {}'.format(type(c)))
-        return 'const {} v{} {};\n'.format(ctype, self.index, init)
+        code = _get_cuda_scalar_repr(val, self.dtype)
+        return 'const {} v{} = {};\n'.format(ctype, self.index, code)
 
     def declaration_in_param(self):
         non_const = '_non_const ' if self.mutable else ''
@@ -490,7 +482,7 @@ class _FusionHistory(object):
         for op in raw._ops.ops:
             input_type, = op.in_types
             output_type, = op.out_types
-            if numpy.can_cast(arg.dtype.type, input_type):
+            if numpy.can_cast(arg.dtype, input_type):
                 return_dtype = numpy.dtype(output_type)
                 self.premap_ret = self._get_fusion_var(arg)._var
                 self.reduce_op = op
@@ -524,7 +516,7 @@ class _FusionHistory(object):
             return _FusionVarScalar(var, -1, self._has_reduction())
         raise TypeError('Unsupported type {}'.format(type(arg)))
 
-    def call_ufunc(self, ufunc, args, kwargs):
+    def call_ufunc(self, ufunc, *args, **kwargs):
         nin = ufunc.nin
         nout = ufunc.nout
 
@@ -617,19 +609,15 @@ class _FusionHistory(object):
                         out_var = self._fresh_local(out_dtypes[i])
                         out_var = make_fusion_var(out_var, ndim)
                         out_vars.append(out_var)
-                        ret.append(out_var)
-                    elif numpy.can_cast(out_dtypes[i], out_vars[i].dtype,
-                                        'same_kind'):
-                        out_var = out_vars[i]
-                        ret.append(out_var)
                     else:
-                        raise TypeError(
-                            'output (typecode \'{}\') could not be coerced '
-                            'to provided output parameter (typecode \'{}\') '
-                            'according to the casting rule '
-                            '"same_kind"'.format(
-                                out_dtypes[i].char, out_vars[i].dtype.char))
+                        _raise_if_invalid_cast(
+                            out_dtypes[i], out_vars[i].dtype, 'same_kind',
+                            lambda: f'output {i}')
+                        out_var = out_vars[i]
+
                     out_var._var.mutate()
+                    ret.append(out_var)
+
                 in_params = [(in_dtypes[i], 'in{}'.format(i))
                              for i, _ in enumerate(in_vars)]
                 out_params = [(out_dtypes[i], 'out{}'.format(i))
@@ -958,7 +946,7 @@ def fuse(*args, **kwargs):
 
 
 def _call_ufunc(fusion_op, *args, **kwargs):
-    return _thread_local.history.call_ufunc(fusion_op, args, kwargs)
+    return _thread_local.history.call_ufunc(fusion_op, *args, **kwargs)
 
 
 def _call_reduction(fusion_op, *args, **kwargs):

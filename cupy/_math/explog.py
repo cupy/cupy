@@ -70,7 +70,14 @@ log1p = ufunc.create_math_ufunc(
 logaddexp = _core.create_ufunc(
     'cupy_logaddexp',
     ('ee->e', 'ff->f', 'dd->d'),
-    'out0 = fmax(in0, in1) + log1p(exp(-fabs(in0 - in1)))',
+    '''
+    if (in0 == in1) {
+        /* Handles infinities of the same sign */
+        out0 = in0 + log(2.0);
+    } else {
+        out0 = fmax(in0, in1) + log1p(exp(-fabs(in0 - in1)));
+    }
+    ''',
     doc='''Computes ``log(exp(x1) + exp(x2))`` elementwise.
 
     .. seealso:: :data:`numpy.logaddexp`
@@ -81,7 +88,14 @@ logaddexp = _core.create_ufunc(
 logaddexp2 = _core.create_ufunc(
     'cupy_logaddexp2',
     ('ee->e', 'ff->f', 'dd->d'),
-    'out0 = fmax(in0, in1) + log2(1 + exp2(-fabs(in0 - in1)))',
+    '''
+    if (in0 == in1) {
+        /* Handles infinities of the same sign */
+        out0 = in0 + 1.0;
+    } else {
+        out0 = fmax(in0, in1) + log2(1 + exp2(-fabs(in0 - in1)));
+    }
+    ''',
     doc='''Computes ``log2(exp2(x1) + exp2(x2))`` elementwise.
 
     .. seealso:: :data:`numpy.logaddexp2`

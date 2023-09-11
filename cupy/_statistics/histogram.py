@@ -5,10 +5,6 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupy._core import _accelerator
-from cupy.cuda import cub
-from cupy.cuda import common
-from cupy.cuda import runtime
 
 
 # rename builtin range for use in functions that take a range argument
@@ -220,38 +216,10 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype=cupy.int64)
-        for accelerator in _accelerator.get_routine_accelerators():
-            # CUB uses int for bin counts
-            # TODO(leofang): support >= 2^31 elements in x?
-            if (accelerator == _accelerator.ACCELERATOR_CUB
-                    and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
-                # Need to ensure the dtype of bin_edges as it's needed for both
-                # the CUB call and the correction later
-                assert isinstance(bin_edges, cupy.ndarray)
-                if numpy.issubdtype(x.dtype, numpy.integer):
-                    bin_type = float
-                else:
-                    bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
-                    if (bin_type == numpy.float16 and
-                            not common._is_fp16_supported()):
-                        bin_type = numpy.float32
-                    x = x.astype(bin_type, copy=False)
-                acc_bin_edge = bin_edges.astype(bin_type, copy=True)
-                # CUB's upper bin boundary is exclusive for all bins, including
-                # the last bin, so we must shift it to comply with NumPy
-                if x.dtype.kind in 'ui':
-                    acc_bin_edge[-1] += 1
-                elif x.dtype.kind == 'f':
-                    last = acc_bin_edge[-1]
-                    acc_bin_edge[-1] = cupy.nextafter(last, last + 1)
-                if runtime.is_hip:
-                    y = y.astype(cupy.uint64, copy=False)
-                y = cub.device_histogram(x, acc_bin_edge, y)
-                if runtime.is_hip:
-                    y = y.astype(cupy.int64, copy=False)
-                break
-        else:
-            _histogram_kernel(x, bin_edges, bin_edges.size, y)
+        # TODO(leofang): we temporarily remove CUB histogram support for now,
+        # see cupy/cupy#7698. When it's ready, revert the commit that checked
+        # in this comment to restore the support.
+        _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
         simple_weights = (
             cupy.can_cast(weights.dtype, cupy.float64) or
@@ -545,12 +513,15 @@ def bincount(x, weights=None, minlength=None):
         if minlength < 0:
             raise ValueError('minlength must be non-negative')
 
-    size = int(cupy.max(x)) + 1
+    size = int(cupy.max(x)) + 1  # synchronize!
     if minlength is not None:
         size = max(size, minlength)
 
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
+        # TODO(leofang): we temporarily remove CUB histogram support for now,
+        # see cupy/cupy#7698. When it's ready, revert the commit that checked
+        # in this comment to restore the support.
         _bincount_kernel(x, b)
     else:
         b = cupy.zeros((size,), dtype=numpy.float64)
@@ -579,7 +550,7 @@ def digitize(x, bins, right=False):
         cupy.ndarray: Output array of indices, of same shape as ``x``.
 
     .. seealso:: :func:`numpy.digitize`
-    """
+    """  # NOQA
     # This is for NumPy compat, although it works fine
     if x.dtype.kind == 'c':
         raise TypeError('x may not be complex')

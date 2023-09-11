@@ -1,3 +1,5 @@
+import itertools
+
 import numpy
 
 from cupy import _core
@@ -25,6 +27,7 @@ def copyto(dst, src, casting='same_kind', where=None):
     .. seealso:: :func:`numpy.copyto`
 
     """
+    src_is_numpy_scalar = False
 
     src_type = type(src)
     src_is_python_scalar = src_type in (
@@ -33,6 +36,14 @@ def copyto(dst, src, casting='same_kind', where=None):
     if src_is_python_scalar:
         src_dtype = numpy.dtype(type(src))
         can_cast = numpy.can_cast(src, dst.dtype, casting)
+    elif isinstance(src, numpy.ndarray) or numpy.isscalar(src):
+        if src.size != 1:
+            raise ValueError(
+                'non-scalar numpy.ndarray cannot be used for copyto')
+        src_dtype = src.dtype
+        can_cast = numpy.can_cast(src, dst.dtype, casting)
+        src = src.item()
+        src_is_numpy_scalar = True
     else:
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
@@ -40,12 +51,35 @@ def copyto(dst, src, casting='same_kind', where=None):
     if not can_cast:
         raise TypeError('Cannot cast %s to %s in %s casting mode' %
                         (src_dtype, dst.dtype, casting))
+
     if fusion._is_fusing():
+        # TODO(kataoka): NumPy allows stripping leading unit dimensions.
+        # But fusion array proxy does not currently support
+        # `shape` and `squeeze`.
+
         if where is None:
             _core.elementwise_copy(src, dst)
         else:
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
+
+    if not src_is_python_scalar and not src_is_numpy_scalar:
+        # Check broadcast condition
+        # - for fast-paths and
+        # - for a better error message (than ufunc's).
+        # NumPy allows stripping leading unit dimensions.
+        if not all([
+            s in (d, 1)
+            for s, d in itertools.zip_longest(
+                reversed(src.shape), reversed(dst.shape), fillvalue=1)
+        ]):
+            raise ValueError(
+                "could not broadcast input array "
+                f"from shape {src.shape} into shape {dst.shape}")
+        squeeze_ndim = src.ndim - dst.ndim
+        if squeeze_ndim > 0:
+            # always succeeds because broadcast conition is checked.
+            src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if where is not None:
         _core.elementwise_copy(src, dst, _where=where)
@@ -54,8 +88,8 @@ def copyto(dst, src, casting='same_kind', where=None):
     if dst.size == 0:
         return
 
-    if src_is_python_scalar:
-        dst.fill(src)
+    if src_is_python_scalar or src_is_numpy_scalar:
+        _core.elementwise_copy(src, dst)
         return
 
     if _can_memcpy(dst, src):

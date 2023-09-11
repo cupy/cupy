@@ -8,7 +8,7 @@ import cupy
 from cupy import testing
 import cupyx.scipy.stats  # NOQA
 from cupyx.scipy import stats
-from cupyx.scipy.stats import distributions
+from cupyx.scipy.stats import _distributions
 
 try:
     import scipy.stats  # NOQA
@@ -16,7 +16,6 @@ except ImportError:
     pass
 
 
-@testing.gpu
 class TestEntropyBasic(unittest.TestCase):
     def test_entropy_positive(self):
         # See ticket SciPy's gh-497
@@ -93,7 +92,6 @@ class TestEntropyBasic(unittest.TestCase):
         'normalize': [False, True],
     })
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.4.0')
 class TestEntropy(unittest.TestCase):
 
@@ -108,9 +106,9 @@ class TestEntropy(unittest.TestCase):
         if normalize and pk.dtype.kind != 'c':
             # if we don't normalize pk and qk, entropy will do it internally
             norm_axis = 0 if axis is None else axis
-            pk = distributions._normalize(pk, norm_axis)
+            pk = _distributions._normalize(pk, norm_axis)
             if qk is not None:
-                qk = distributions._normalize(qk, norm_axis)
+                qk = _distributions._normalize(qk, norm_axis)
         res = scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
 
         float_type = xp.float32 if pk.dtype.char in 'ef' else xp.float64

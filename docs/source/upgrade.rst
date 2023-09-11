@@ -5,6 +5,97 @@ Upgrade Guide
 This page covers changes introduced in each major version that users should know when migrating from older releases.
 Please see also the :ref:`compatibility_matrix` for supported environments of each major version.
 
+CuPy v12
+========
+
+Change in :class:`cupy.cuda.Device` Behavior
+--------------------------------------------
+
+The CUDA current device (set via :meth:`cupy.cuda.Device.use()` or ``cudaSetDevice()``) will be reactivated when exiting a device context manager.
+This reverts the :ref:`change introduced in CuPy v10 <change in CuPy Device behavior>`, making the behavior identical to the one in CuPy v9 or earlier.
+
+This decision was made for better interoperability with other libraries that might mutate the current CUDA device.
+Suppose the following code:
+
+.. code-block:: py
+
+   def do_preprocess_cupy():
+       with cupy.cuda.Device(2):
+           # ...
+           pass
+
+   torch.cuda.set_device(1)
+   do_preprocess_cupy()
+   print(torch.cuda.get_device())  # -> ???
+
+In CuPy v10 and v11, the code prints ``0``, which can be surprising for users.
+In CuPy v12, the code now prints ``1``, making it easy for both users and library developers to maintain the current device where multiple devices are involved.
+
+Deprecation of ``cupy.ndarray.scatter_{add,max,min}``
+-----------------------------------------------------
+
+These APIs have been marked as deprecated as ``cupy.{add,maximum,minimum}.at`` ufunc methods have been implemented, which behave as equivalent and NumPy-compatible.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v12.
+
+* Python 3.7 or earlier
+* NumPy 1.20 or earlier
+* SciPy 1.6 or earlier
+
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.23 and SciPy 1.8 to NumPy 1.24 and SciPy 1.9.
+CuPy v12 will follow the upstream products' specifications of these baseline versions.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.8.
+
+
+CuPy v11
+========
+
+Unified Binary Package for CUDA 11.2+
+-------------------------------------
+
+CuPy v11 provides a unified binary package named ``cupy-cuda11x`` that supports all CUDA 11.2+ releases.
+This replaces per-CUDA version binary packages (``cupy-cuda112`` ~ ``cupy-cuda117``).
+
+Note that CUDA 11.1 or earlier still requires per-CUDA version binary packages.
+``cupy-cuda102``, ``cupy-cuda110``, and ``cupy-cuda111`` will be provided for CUDA 10.2, 11.0, and 11.1, respectively.
+
+Requirement Changes
+-------------------
+
+The following versions are no longer supported in CuPy v11.
+
+* ROCm 4.2 or earlier
+* NumPy 1.19 or earlier
+* SciPy 1.5 or earlier
+
+CUB Enabled by Default
+----------------------
+
+CuPy v11 accelerates the computation with CUB by default.
+In case needed, you can turn it off by setting :envvar:`CUPY_ACCELERATORS` environment variable to ``""``.
+
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.21 and SciPy 1.7 to NumPy 1.23 and SciPy 1.8.
+CuPy v11 will follow the upstream products' specifications of these baseline versions.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 11.7 and ROCm 5.0.
+
+
 CuPy v10
 ========
 
@@ -29,21 +120,33 @@ Dropping NumPy 1.17 Support
 
 NumPy 1.17 is no longer supported.
 
+.. _change in CuPy Device behavior:
+
 Change in :class:`cupy.cuda.Device` Behavior
 --------------------------------------------
 
-Current device set via ``use()`` will not be restored when exiting ``with`` block
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Current device set via :meth:`~cupy.cuda.Device.use` will not be honored by the ``with Device`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The current device set via :func:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
+.. note::
+   This change has been reverted in CuPy v12. See **CuPy v12** section above for details.
+
+The current device set via :meth:`cupy.cuda.Device.use()` will not be reactivated when exiting a device context manager. An existing code mixing ``with device:`` block and ``device.use()`` may get different results between CuPy v10 and v9.
 
 .. code-block:: py
 
-   with cupy.cuda.Device(1) as d1:
-       d2 = cupy.cuda.Device(0).use()
-       with d1:
-           pass
-       cupy.cuda.Device()  # -> CuPy v10 returns device 1 instead of device 0
+   cupy.cuda.Device(1).use()
+   with cupy.cuda.Device(0):
+       pass
+   cupy.cuda.Device()  # -> CuPy v10 returns device 0 instead of device 1
+
+This decision was made to serve CuPy *users* better, but it could lead to surprises to downstream *developers* depending on CuPy,
+as essentially CuPy's :class:`~cupy.cuda.Device` context manager no longer respects the CUDA ``cudaSetDevice()`` API. Mixing
+device management functionalities (especially using context manager) from different libraries is highly discouraged.
+
+For downstream libraries that still wish to respect the ``cudaGetDevice()``/``cudaSetDevice()`` APIs, you should avoid managing
+current devices using the ``with Device`` context manager, and instead calling these APIs explicitly, see for example
+`cupy/cupy#5963 <https://github.com/cupy/cupy/pull/5963>`_.
 
 Changes in :class:`cupy.cuda.Stream` Behavior
 ---------------------------------------------
@@ -95,27 +198,40 @@ The same :class:`cupy.cuda.Stream` instance can now safely be shared between mul
 
 To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if the stream is the current stream of any thread.
 
+Big-Endian Arrays Automatically Converted to Little-Endian
+----------------------------------------------------------
+
+:func:`cupy.array`, :func:`cupy.asarray` and its variants now always transfer the data to GPU in little-endian byte order.
+
+Previously CuPy was copying the given :class:`numpy.ndarray` to GPU as-is, regardless of the endianness.
+In CuPy v10, big-endian arrays are converted to little-endian before the transfer, which is the native byte order on GPUs.
+This change eliminates the need to manually change the array endianness before creating the CuPy array.
+
+Baseline API Update
+-------------------
+
+Baseline API has been bumped from NumPy 1.20 and SciPy 1.6 to NumPy 1.21 and SciPy 1.7.
+CuPy v10 will follow the upstream products' specifications of these baseline versions.
+
 API Changes
 -----------
 
-Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+* Device synchronize detection APIs (:func:`cupyx.allow_synchronize` and :class:`cupyx.DeviceSynchronized`), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
 
-*Internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
+* An *internal* API :func:`cupy.cuda.compile_with_cache` has been marked as deprecated as there are better alternatives (see :class:`~cupy.RawModule` added since CuPy v7 and :class:`~cupy.RawKernel` since v5). While it has a longstanding history, this API has never been meant to be public. We encourage downstream libraries and users to migrate to the aforementioned public APIs. See :doc:`./user_guide/kernel` for their tutorials.
 
-The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
+* The DLPack routine :func:`cupy.fromDlpack` is deprecated in favor of :func:`cupy.from_dlpack`, which addresses potential data race issues.
 
-A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module:
+* A new module :mod:`cupyx.profiler` is added to host all profiling related APIs in CuPy. Accordingly, the following APIs are relocated to this module as follows. The old routines are deprecated.
 
     * :func:`cupy.prof.TimeRangeDecorator` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.prof.time_range` -> :func:`cupyx.profiler.time_range`
     * :func:`cupy.cuda.profile` -> :func:`cupyx.profiler.profile`
     * :func:`cupyx.time.repeat` -> :func:`cupyx.profiler.benchmark`
 
-The old routines are deprecated.
+* :func:`cupy.ndarray.__pos__` now returns a copy (samely as :func:`cupy.positive`) instead of returning ``self``.
 
-:func:`cupy.ndarray.__pos__` now returns the copy (samely as :func:`cupy.positive`) instead of returning ``self``.
-
-Deprecated APIs may be removed in the future CuPy releases.
+Note that deprecated APIs may be removed in the future CuPy releases.
 
 Update of Docker Images
 -----------------------
@@ -163,8 +279,8 @@ cuTENSOR can now be used when installing CuPy via wheels.
 Previously ``cupy.cuda.nccl`` and ``cupy.cuda.cudnn`` modules were automatically imported.
 Since CuPy v9, these modules need to be explicitly imported (i.e., ``import cupy.cuda.nccl`` / ``import cupy.cuda.cudnn``.)
 
-Baseline API Changes
---------------------
+Baseline API Update
+-------------------
 
 Baseline API has been bumped from NumPy 1.19 and SciPy 1.5 to NumPy 1.20 and SciPy 1.6.
 CuPy v9 will follow the upstream products' specifications of these baseline versions.
@@ -383,7 +499,7 @@ Compatibility Matrix
      - SciPy
      - Baseline API Spec.
      - Docs
-   * - v11
+   * - v13
      -
      -
      -
@@ -394,19 +510,43 @@ Compatibility Matrix
      -
      -
      -
-     - `latest <https://docs.cupy.dev/en/stable/install.html>`__
-   * - v10
+     - `latest <https://docs.cupy.dev/en/latest/install.html>`__
+   * - v12
      - 3.0~
      - 10.2~
-     - 4.0~
-     - 1.3~
+     - 4.3~
+     - 1.4~
      - 2.8~
      - 7.6~
-     - 3.7~
-     - 1.18~
-     - 1.4~
-     - NumPy 1.21 & SciPy 1.7
+     - 3.8~
+     - 1.21~
+     - 1.7~
+     - NumPy 1.24 & SciPy 1.9
      - `stable <https://docs.cupy.dev/en/stable/install.html>`__
+   * - v11
+     - 3.0~9.0
+     - 10.2~12.0
+     - 4.3 & 5.0
+     - 1.4~1.6
+     - 2.8~2.16
+     - 7.6~8.7
+     - 3.7~3.11
+     - 1.20~1.24
+     - 1.6~1.9
+     - NumPy 1.23 & SciPy 1.8
+     - `v11.6.0 <https://docs.cupy.dev/en/v11.6.0/install.html>`__
+   * - v10
+     - 3.0~8.x
+     - 10.2~11.7
+     - 4.0 & 4.2 & 4.3 & 5.0
+     - 1.3~1.5
+     - 2.8~2.11
+     - 7.6~8.4
+     - 3.7~3.10
+     - 1.18~1.22
+     - 1.4~1.8
+     - NumPy 1.21 & SciPy 1.7
+     - `v10.6.0 <https://docs.cupy.dev/en/v10.6.0/install.html>`__
    * - v9
      - 3.0~8.x
      - 9.2~11.5

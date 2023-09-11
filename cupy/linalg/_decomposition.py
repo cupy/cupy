@@ -3,12 +3,8 @@ import numpy
 import cupy
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
 from cupy._core import internal
 from cupy.cuda import device
-from cupy.cusolver import check_availability
-from cupy.cusolver import _gesvdj_batched, _gesvd_batched
-from cupy.cusolver import _geqrf_orgqr_batched
 from cupy.linalg import _util
 
 
@@ -37,6 +33,8 @@ def _lu_factor(a_t, dtype):
     .. seealso:: :func:`scipy.linalg.lu_factor`
 
     """
+    from cupy_backends.cuda.libs import cusolver
+
     orig_shape = a_t.shape
     n = orig_shape[-2]
 
@@ -119,10 +117,14 @@ def _potrf_batched(a):
     Returns:
         cupy.ndarray: The lower-triangular matrix.
     """
+    from cupy_backends.cuda.libs import cusolver
+    from cupyx.cusolver import check_availability
     if not check_availability('potrfBatched'):
         raise RuntimeError('potrfBatched is not available')
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -153,12 +155,13 @@ def _potrf_batched(a):
 def cholesky(a):
     """Cholesky decomposition.
 
-    Decompose a given two-dimensional square matrix into ``L * L.T``,
-    where ``L`` is a lower-triangular matrix and ``.T`` is a conjugate
+    Decompose a given two-dimensional square matrix into ``L * L.H``,
+    where ``L`` is a lower-triangular matrix and ``.H`` is a conjugate
     transpose operator.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(..., M, M)``
+        a (cupy.ndarray): Hermitian (symmetric if all elements are real),
+            positive-definite input matrix with dimension ``(..., M, M)``.
 
     Returns:
         cupy.ndarray: The lower-triangular matrix of shape ``(..., M, M)``.
@@ -172,6 +175,8 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
+    from cupy_backends.cuda.libs import cusolver
+
     _util._assert_cupy_array(a)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
@@ -180,6 +185,8 @@ def cholesky(a):
         return _potrf_batched(a)
 
     dtype, out_dtype = _util.linalg_common_type(a)
+    if a.size == 0:
+        return cupy.empty(a.shape, out_dtype)
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
@@ -213,29 +220,29 @@ def cholesky(a):
 
 
 def _qr_batched(a, mode):
+    from cupyx.cusolver import _geqrf_orgqr_batched
+
     batch_shape = a.shape[:-2]
     batch_size = internal.prod(batch_shape)
     m, n = a.shape[-2:]
+    k = min(m, n)
 
     # first handle any 0-size inputs
-    if batch_size == 0 or m == 0 or n == 0:
+    if batch_size == 0 or k == 0:
         # support float32, float64, complex64, and complex128
         dtype, out_dtype = _util.linalg_common_type(a)
-        if mode == 'raw':
-            # compatibility with numpy.linalg.qr
-            out_dtype = numpy.promote_types(out_dtype, 'd')
 
         if mode == 'reduced':
-            return (cupy.empty(batch_shape + (m, 0), out_dtype),
-                    cupy.empty(batch_shape + (0, n), out_dtype))
+            return (cupy.empty(batch_shape + (m, k), out_dtype),
+                    cupy.empty(batch_shape + (k, n), out_dtype))
         elif mode == 'complete':
             q = _util.stacked_identity(batch_shape, m, out_dtype)
             return (q, cupy.empty(batch_shape + (m, n), out_dtype))
         elif mode == 'r':
-            return cupy.empty(batch_shape + (0, n), out_dtype)
+            return cupy.empty(batch_shape + (k, n), out_dtype)
         elif mode == 'raw':
             return (cupy.empty(batch_shape + (n, m), out_dtype),
-                    cupy.empty(batch_shape + (0,), out_dtype))
+                    cupy.empty(batch_shape + (k,), out_dtype))
 
     # ...then delegate real computation to cuSOLVER/rocSOLVER
     a = a.reshape(-1, *(a.shape[-2:]))
@@ -246,7 +253,7 @@ def _qr_batched(a, mode):
     q, r = out
     q = q.reshape(batch_shape + q.shape[-2:])
     idx = -1 if mode == 'raw' else -2
-    r.reshape(batch_shape + r.shape[idx:])
+    r = r.reshape(batch_shape + r.shape[idx:])
     return (q, r)
 
 
@@ -279,6 +286,8 @@ def qr(a, mode='reduced'):
 
     .. seealso:: :func:`numpy.linalg.qr`
     """
+    from cupy_backends.cuda.libs import cusolver
+
     _util._assert_cupy_array(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
@@ -288,18 +297,14 @@ def qr(a, mode='reduced'):
             msg = 'Unrecognized mode \'{}\''.format(mode)
         raise ValueError(msg)
     if a.ndim > 2:
-        cupy._util.experimental('cupy.linalg.qr')
         return _qr_batched(a, mode)
 
     # support float32, float64, complex64, and complex128
     dtype, out_dtype = _util.linalg_common_type(a)
-    if mode == 'raw':
-        # compatibility with numpy.linalg.qr
-        out_dtype = numpy.promote_types(out_dtype, 'd')
 
     m, n = a.shape
-    mn = min(m, n)
-    if mn == 0:
+    k = min(m, n)
+    if k == 0:
         if mode == 'reduced':
             return cupy.empty((m, 0), out_dtype), cupy.empty((0, n), out_dtype)
         elif mode == 'complete':
@@ -333,14 +338,14 @@ def qr(a, mode='reduced'):
     # compute working space of geqrf and solve R
     buffersize = geqrf_bufferSize(handle, m, n, x.data.ptr, n)
     workspace = cupy.empty(buffersize, dtype=dtype)
-    tau = cupy.empty(mn, dtype=dtype)
+    tau = cupy.empty(k, dtype=dtype)
     geqrf(handle, m, n, x.data.ptr, m,
           tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
 
     if mode == 'r':
-        r = x[:, :mn].transpose()
+        r = x[:, :k].transpose()
         return _util._triu(r).astype(out_dtype, copy=False)
 
     if mode == 'raw':
@@ -352,7 +357,7 @@ def qr(a, mode='reduced'):
         mc = m
         q = cupy.empty((m, m), dtype)
     else:
-        mc = mn
+        mc = k
         q = cupy.empty((n, m), dtype)
     q[:n] = x
 
@@ -371,10 +376,10 @@ def qr(a, mode='reduced'):
         orgqr = cusolver.zungqr
 
     buffersize = orgqr_bufferSize(
-        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr)
+        handle, m, mc, k, q.data.ptr, m, tau.data.ptr)
     workspace = cupy.empty(buffersize, dtype=dtype)
     orgqr(
-        handle, m, mc, mn, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
+        handle, m, mc, k, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
         buffersize, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         orgqr, dev_info)
@@ -387,6 +392,8 @@ def qr(a, mode='reduced'):
 
 
 def _svd_batched(a, full_matrices, compute_uv):
+    from cupyx.cusolver import _gesvdj_batched, _gesvd_batched
+
     batch_shape = a.shape[:-2]
     batch_size = internal.prod(batch_shape)
     n, m = a.shape[-2:]
@@ -486,6 +493,7 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
+    from cupy_backends.cuda.libs import cusolver
     _util._assert_cupy_array(a)
     if a.ndim > 2:
         return _svd_batched(a, full_matrices, compute_uv)

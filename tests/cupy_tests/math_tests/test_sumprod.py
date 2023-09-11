@@ -1,4 +1,5 @@
 import math
+import warnings
 
 import numpy
 import pytest
@@ -10,7 +11,6 @@ from cupy._core import _cub_reduction
 from cupy import testing
 
 
-@testing.gpu
 class TestSumprod:
 
     @pytest.fixture(autouse=True)
@@ -143,7 +143,7 @@ class TestSumprod:
         return a.sum(dtype=dst_dtype)
 
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-2, 'default': 1e-7})
     def test_sum_keepdims_and_dtype(self, xp, src_dtype, dst_dtype):
         if not xp.can_cast(src_dtype, dst_dtype):
             pytest.skip()
@@ -205,7 +205,9 @@ class TestSumprod:
     @testing.numpy_cupy_allclose()
     def test_product_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
-        return xp.product(a)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return xp.product(a)
 
 
 # This class compares CUB results against NumPy's
@@ -214,7 +216,6 @@ class TestSumprod:
     'order': ('C', 'F'),
     'backend': ('device', 'block'),
 }))
-@testing.gpu
 @pytest.mark.skipif(
     not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
 class TestCubReduction:
@@ -392,7 +393,6 @@ class TestCubReduction:
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
 }))
-@testing.gpu
 @pytest.mark.skipif(
     not cupy.cuda.cutensor.available,
     reason='The cuTENSOR routine is not enabled')
@@ -421,7 +421,7 @@ class TestCuTensorReduction:
 
         # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.cutensor._try_reduction_routine'
+        func = 'cupyx.cutensor._try_reduction_routine'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.sum(axis=axis)
         # ...then perform the actual computation
@@ -448,7 +448,6 @@ class TestCuTensorReduction:
         'func': ['nansum', 'nanprod']
     })
 )
-@testing.gpu
 class TestNansumNanprodLong:
 
     def _do_transposed_axis_test(self):
@@ -489,14 +488,13 @@ class TestNansumNanprodLong:
         'shape': [(2, 3, 4), (20, 30, 40)],
     })
 )
-@testing.gpu
 class TestNansumNanprodExtra:
 
     def test_nansum_axis_float16(self):
         # Note that the above test example overflows in float16. We use a
-        # smaller array instead, return True if array is too large.
+        # smaller array instead, just return if array is too large.
         if (numpy.prod(self.shape) > 24):
-            return True
+            return
         a = testing.shaped_arange(self.shape, dtype='e')
         a[:, 1] = cupy.nan
         sa = cupy.nansum(a, axis=1)
@@ -529,7 +527,6 @@ class TestNansumNanprodExtra:
         'axis': [(1, 3), (0, 2, 3)],
     })
 )
-@testing.gpu
 class TestNansumNanprodAxes:
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -540,7 +537,6 @@ class TestNansumNanprodAxes:
         return xp.nansum(a, axis=self.axis)
 
 
-@testing.gpu
 class TestNansumNanprodHuge:
     def _test(self, xp, nan_slice):
         a = testing.shaped_random((2048, 1, 1024), xp, 'f')
@@ -565,7 +561,6 @@ axes = [0, 1, 2]
 
 
 @testing.parameterize(*testing.product({'axis': axes}))
-@testing.gpu
 class TestCumsum:
 
     def _cumsum(self, xp, a, *args, **kwargs):
@@ -680,7 +675,6 @@ class TestCumsum:
             return cupy.cumsum(a_numpy)
 
 
-@testing.gpu
 class TestCumprod:
 
     def _cumprod(self, xp, a, *args, **kwargs):
@@ -782,7 +776,9 @@ class TestCumprod:
     @testing.numpy_cupy_allclose()
     def test_cumproduct_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
-        return xp.cumproduct(a)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return xp.cumproduct(a)
 
 
 @testing.parameterize(*testing.product({
@@ -790,7 +786,6 @@ class TestCumprod:
     'axis': [None, 0, 1, 2],
     'func': ('nancumsum', 'nancumprod'),
 }))
-@testing.gpu
 class TestNanCumSumProd:
 
     zero_density = 0.25
@@ -839,7 +834,6 @@ class TestNanCumSumProd:
         return xp.ascontiguousarray(out)
 
 
-@testing.gpu
 class TestDiff:
 
     @testing.for_all_dtypes()
@@ -926,7 +920,6 @@ class TestDiff:
         'edge_order': [1, 2],
     }),
 ))
-@testing.gpu
 class TestGradient:
 
     def _gradient(self, xp, dtype, shape, spacing, axis, edge_order):
@@ -975,7 +968,6 @@ class TestGradient:
                               self.axis, self.edge_order)
 
 
-@testing.gpu
 class TestGradientErrors:
 
     def test_gradient_invalid_spacings1(self):
@@ -1039,54 +1031,119 @@ class TestGradientErrors:
                 xp.gradient(x)
 
 
+class TestEdiff1d:
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_1dim(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_2dim(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.ediff1d(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_3dim(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.ediff1d(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_begin1(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([0], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_begin2(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([4, 4], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_begin3(self, xp, dtype):
+        a = testing.shaped_arange((4, 5), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([1, 1], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_end1(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return xp.ediff1d(a, to_end=xp.array([0], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_to_end2(self, xp, dtype):
+        a = testing.shaped_arange((4, 1), xp, dtype)
+        return xp.ediff1d(a, to_end=xp.array([1, 2], dtype=dtype))
+
+    @testing.for_dtypes('bhilqefdFD')
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_ed1(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([-1], dtype=dtype),
+                          to_end=xp.array([0], dtype=dtype))
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ediff1d_ed2(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.ediff1d(a, to_begin=xp.array([0, 4], dtype=dtype),
+                          to_end=xp.array([1, 1], dtype=dtype))
+
+
 class TestTrapz:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_x(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, x=x)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, dx=0.1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a, axis=-2)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_x_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
         return xp.trapz(a, x=x, axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_2dim_with_dx_and_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
         return xp.trapz(a, dx=0.1, axis=1)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-7})
+    @testing.numpy_cupy_allclose(rtol={numpy.float16: 1e-1, 'default': 1e-7})
     def test_trapz_1dim_with_x_and_dx(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)

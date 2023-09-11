@@ -29,6 +29,9 @@ cdef extern from *:
 ###############################################################################
 
 cpdef enum:
+    # need to revisit this when cython supports C++ enums (in 3.0)
+    # https://stackoverflow.com/a/67138945
+
     CUBLAS_OP_N = 0
     CUBLAS_OP_T = 1
     CUBLAS_OP_C = 2
@@ -168,6 +171,12 @@ cpdef zgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
             size_t y, int incy, size_t A, int lda)
 cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
             size_t y, int incy, size_t A, int lda)
+cpdef ssbmv(intptr_t handle, int uplo, int n, int k,
+            size_t alpha, size_t A, int lda,
+            size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef dsbmv(intptr_t handle, int uplo, int n, int k,
+            size_t alpha, size_t A, int lda,
+            size_t x, int incx, size_t beta, size_t y, int incy)
 
 
 ###############################################################################
@@ -234,6 +243,15 @@ cpdef ctrsm(intptr_t handle, int side, int uplo, int trans, int diag,
 cpdef ztrsm(intptr_t handle, int side, int uplo, int trans, int diag,
             int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
+cpdef ssyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+cpdef dsyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+cpdef csyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+cpdef zsyrk(intptr_t handle, int uplo, int trans, int n, int k,
+            size_t alpha, size_t A, int lda, size_t beta, size_t C, int ldc)
+
 
 ###############################################################################
 # BLAS extension
@@ -301,6 +319,14 @@ cpdef gemmEx(intptr_t handle, int transa, int transb, int m, int n, int k,
              size_t alpha, size_t A, int Atype, int lda, size_t B,
              int Btype, int ldb, size_t beta, size_t C, int Ctype,
              int ldc, int computeType, int algo)
+cpdef gemmStridedBatchedEx(
+    intptr_t handle, int transa, int transb, int m, int n, int k,
+    size_t alpha,
+    size_t A, int Atype, int lda, long long strideA,
+    size_t B, int Btype, int ldb, long long strideB,
+    size_t beta,
+    size_t C, int Ctype, int ldc, long long strideC,
+    int batchCount, int computeType, int algo)
 
 cpdef stpttr(intptr_t handle, int uplo, int n, size_t AP, size_t A, int lda)
 cpdef dtpttr(intptr_t handle, int uplo, int n, size_t AP, size_t A, int lda)

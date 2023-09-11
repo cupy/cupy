@@ -109,7 +109,6 @@ from cupy import testing
     {'shape': (2, 3, 4), 'slices': ([[1]], slice(1, 2)), 'value': 1},
     _ids=False,  # Do not generate ids from randomly generated params
 )
-@testing.gpu
 class TestScatterParametrized:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
@@ -120,10 +119,7 @@ class TestScatterParametrized:
         if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
             pytest.skip('atomicAdd does not support float16 in HIP')
         a = xp.zeros(self.shape, dtype)
-        if xp is cupy:
-            a.scatter_add(self.slices, self.value)
-        else:
-            numpy.add.at(a, self.slices, self.value)
+        xp.add.at(a, self.slices, self.value)
         return a
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
@@ -131,10 +127,7 @@ class TestScatterParametrized:
     @testing.numpy_cupy_array_equal()
     def test_scatter_max(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
-        if xp is cupy:
-            a.scatter_max(self.slices, self.value)
-        else:
-            numpy.maximum.at(a, self.slices, self.value)
+        xp.maximum.at(a, self.slices, self.value)
         return a
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
@@ -142,14 +135,10 @@ class TestScatterParametrized:
     @testing.numpy_cupy_array_equal()
     def test_scatter_min(self, xp, dtype):
         a = xp.zeros(self.shape, dtype)
-        if xp is cupy:
-            a.scatter_min(self.slices, self.value)
-        else:
-            numpy.minimum.at(a, self.slices, self.value)
+        xp.minimum.at(a, self.slices, self.value)
         return a
 
 
-@testing.gpu
 class TestScatterAdd:
 
     @testing.for_dtypes([numpy.float32, numpy.int32, numpy.uint32,
@@ -161,7 +150,7 @@ class TestScatterAdd:
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([1, 1]), slice(None))
-        a.scatter_add(slices, cupy.array(1.))
+        cupy.add.at(a, slices, cupy.array(1.))
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [2., 2., 2.]], dtype))
 
@@ -174,7 +163,7 @@ class TestScatterAdd:
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([True, False]), slice(None))
-        a.scatter_add(slices, cupy.array(1.))
+        cupy.add.at(a, slices, cupy.array(1.))
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 1.], [0., 0., 0.]], dtype))
 
@@ -192,7 +181,7 @@ class TestScatterAdd:
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
         slices = ([1, 1], slice(None))
-        a.scatter_add(slices, value)
+        cupy.add.at(a, slices, value)
 
         numpy.testing.assert_almost_equal(
             a.get(),
@@ -212,7 +201,7 @@ class TestScatterAdd:
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
         slices = (numpy.array([[True, False, False], [False, True, True]]))
-        a.scatter_add(slices, value)
+        cupy.add.at(a, slices, value)
 
         numpy.testing.assert_almost_equal(
             a.get(),
@@ -227,12 +216,12 @@ class TestScatterMinMax:
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([1, 1]), slice(None))
-        a.scatter_max(slices, cupy.array(1.))
+        cupy.maximum.at(a, slices, cupy.array(1.))
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [1., 1., 1.]], dtype))
 
         a = cupy.ones(shape, dtype)
-        a.scatter_min(slices, cupy.array(0.))
+        cupy.minimum.at(a, slices, cupy.array(0.))
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 1.], [0., 0., 0.]], dtype))
 
@@ -242,12 +231,12 @@ class TestScatterMinMax:
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([True, False]), slice(None))
-        a.scatter_max(slices, cupy.array(1.))
+        cupy.maximum.at(a, slices, cupy.array(1.))
         testing.assert_array_equal(
             a, cupy.array([[1., 1., 1.], [0., 0., 0.]], dtype))
 
         a = cupy.ones(shape, dtype)
-        a.scatter_min(slices, cupy.array(0.))
+        cupy.minimum.at(a, slices, cupy.array(0.))
         testing.assert_array_equal(
             a, cupy.array([[0., 0., 0.], [1., 1., 1.]], dtype))
 
@@ -260,14 +249,14 @@ class TestScatterMinMax:
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
         slices = ([1, 1], slice(None))
-        a.scatter_max(slices, value)
+        cupy.maximum.at(a, slices, value)
         numpy.testing.assert_almost_equal(
             a.get(),
             numpy.array([[0, 0, 0], [1, 1, 1]], dtype=src_dtype))
 
         a = cupy.ones(shape, dtype=src_dtype)
         value = cupy.array(0, dtype=dst_dtype)
-        a.scatter_min(slices, value)
+        cupy.minimum.at(a, slices, value)
         numpy.testing.assert_almost_equal(
             a.get(),
             numpy.array([[1, 1, 1], [0, 0, 0]], dtype=src_dtype))
@@ -281,14 +270,14 @@ class TestScatterMinMax:
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
         slices = (numpy.array([[True, False, False], [False, True, True]]))
-        a.scatter_max(slices, value)
+        cupy.maximum.at(a, slices, value)
         numpy.testing.assert_almost_equal(
             a.get(),
             numpy.array([[1, 0, 0], [0, 1, 1]], dtype=src_dtype))
 
         a = cupy.ones(shape, dtype=src_dtype)
         value = cupy.array(0, dtype=dst_dtype)
-        a.scatter_min(slices, value)
+        cupy.minimum.at(a, slices, value)
         numpy.testing.assert_almost_equal(
             a.get(),
             numpy.array([[0, 1, 1], [1, 0, 0]], dtype=src_dtype))

@@ -2,6 +2,7 @@ import inspect
 import io
 import os
 import platform
+import warnings
 
 import numpy
 
@@ -153,7 +154,7 @@ class _RuntimeInfo:
         # NVRTC
         self.nvrtc_version = _eval_or_error(
             cupy.cuda.nvrtc.getVersion,
-            cupy.cuda.nvrtc.NVRTCError)
+            (cupy.cuda.nvrtc.NVRTCError, cupy.cuda.runtime.CUDARuntimeError))
 
         # Thrust
         try:
@@ -275,7 +276,7 @@ class _RuntimeInfo:
             device_count = cupy.cuda.runtime.getDeviceCount()
         except cupy.cuda.runtime.CUDARuntimeError as e:
             if 'ErrorNoDevice' not in e.args[0]:
-                raise
+                warnings.warn(f'Failed to detect number of GPUs: {e}')
             # No GPU devices available.
         for device_id in range(device_count):
             with cupy.cuda.Device(device_id) as device:

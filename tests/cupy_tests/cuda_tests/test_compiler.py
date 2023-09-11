@@ -4,7 +4,6 @@ from unittest import mock
 
 import cupy
 from cupy.cuda import compiler
-from cupy import testing
 
 
 def cuda_version():
@@ -79,7 +78,6 @@ class TestNvrtcArch(unittest.TestCase):
             compiler.CompileException, self._compile, '83')
 
 
-@testing.gpu
 class TestNvrtcStderr(unittest.TestCase):
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
@@ -125,3 +123,8 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+class TestCompileWithCache:
+    def test_compile_module_with_cache(self):
+        compiler._compile_module_with_cache('__device__ void func() {}')

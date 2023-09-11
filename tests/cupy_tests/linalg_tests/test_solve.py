@@ -14,7 +14,6 @@ from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
     'batched_gesv_limit': [None, 0],
     'order': ['C', 'F'],
 }))
-@testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
 
@@ -49,6 +48,10 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 5, 5), (2, 5, 2))
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
+        self.check_x((0, 0), (0,))
+        self.check_x((0, 0), (0, 2))
+        self.check_x((0, 2, 2), (0, 2,))
+        self.check_x((0, 2, 2), (0, 2, 3))
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):
@@ -57,12 +60,21 @@ class TestSolve(unittest.TestCase):
             with pytest.raises(error_type):
                 xp.linalg.solve(a, b)
 
+    @testing.numpy_cupy_allclose()
+    def test_solve_singular_empty(self, xp):
+        a = xp.zeros((3, 3))  # singular
+        b = xp.empty((3, 0))  # nrhs = 0
+        # LinAlgError("Singular matrix") is not raised
+        return xp.linalg.solve(a, b)
+
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
         self.check_shape((3, 3), (2,), ValueError)
         self.check_shape((3, 3), (2, 2), ValueError)
         self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
         self.check_shape((2, 3, 3), (3,), ValueError)
+        self.check_shape((3, 3), (0,), ValueError)
+        self.check_shape((0, 3, 4), (3,), numpy.linalg.LinAlgError)
 
 
 @testing.parameterize(*testing.product({
@@ -70,7 +82,6 @@ class TestSolve(unittest.TestCase):
     'axes': [None, (0, 2)],
 }))
 @testing.fix_random()
-@testing.gpu
 class TestTensorSolve(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -86,7 +97,6 @@ class TestTensorSolve(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'order': ['C', 'F'],
 }))
-@testing.gpu
 class TestInv(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -114,15 +124,19 @@ class TestInv(unittest.TestCase):
         self.check_x((2, 5, 5))
         self.check_x((3, 4, 4))
         self.check_x((4, 2, 3, 3))
+        self.check_x((0, 0))
+        self.check_x((3, 0, 0))
+        self.check_x((2, 0, 3, 4, 4))
 
     def test_invalid_shape(self):
         self.check_shape((2, 3))
         self.check_shape((4, 1))
         self.check_shape((4, 3, 2))
         self.check_shape((2, 4, 3))
+        self.check_shape((2, 0))
+        self.check_shape((0, 2, 3))
 
 
-@testing.gpu
 class TestInvInvalid(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -143,7 +157,6 @@ class TestInvInvalid(unittest.TestCase):
                     xp.linalg.inv(a)
 
 
-@testing.gpu
 class TestPinv(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')
@@ -190,7 +203,6 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 0, 3), rcond=1e-15)
 
 
-@testing.gpu
 class TestLstsq:
 
     @testing.for_dtypes('ifdFD')
@@ -278,7 +290,6 @@ class TestLstsq:
             return xp.linalg.lstsq(a, b)
 
 
-@testing.gpu
 class TestTensorInv(unittest.TestCase):
 
     @testing.for_dtypes('ifdFD')

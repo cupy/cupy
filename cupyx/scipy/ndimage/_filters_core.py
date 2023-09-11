@@ -3,6 +3,8 @@ import warnings
 import numpy
 import cupy
 
+from cupy_backends.cuda.api import runtime
+from cupy import _core
 from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 
@@ -76,7 +78,6 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     The args is a list of values that are passed for the arg value to the
     filter. Individual filters can be None causing that axis to be skipped.
     """
-    output_orig = output
     output = _util._get_output(output, input)
     modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
                                     _util._check_mode)
@@ -85,21 +86,29 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
-        output[...] = input
+        _core.elementwise_copy(input, output)
         return output
     # We can't operate in-place efficiently, so use a 2-buffer system
     temp = _util._get_output(output.dtype, input) if n_filters > 1 else None
-    first = True
     iterator = zip(filters, args, modes, origins)
+    # skip any axes where the filter is None
     for axis, (fltr, arg, mode, origin) in enumerate(iterator):
+        if fltr is not None:
+            break
+    # To avoid need for any additional copies, we have to start with a
+    # different output array depending on whether the total number of filters
+    # is odd or even.
+    if n_filters % 2 == 0:
+        fltr(input, arg, axis, temp, mode, cval, origin)
+        input = temp
+    else:
+        fltr(input, arg, axis, output, mode, cval, origin)
+        input, output = output, temp
+    for axis, (fltr, arg, mode, origin) in enumerate(iterator, start=axis + 1):
         if fltr is None:
             continue
         fltr(input, arg, axis, output, mode, cval, origin)
-        input, output = output, temp if first else input
-        first = False
-    if isinstance(output_orig, cupy.ndarray) and input is not output_orig:
-        output_orig[...] = input
-        input = output_orig
+        input, output = output, input
     return input
 
 
@@ -140,25 +149,30 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     args.append(output)
     kernel(*args)
     if needs_temp:
-        temp[...] = output[...]
+        _core.elementwise_copy(temp, output)
         output = temp
     return output
 
 
-includes = r'''
+if runtime.is_hip:
+    includes = r'''
 // workaround for HIP: line begins with #include
+#include <cupy/math_constants.h>\n
+'''
+else:
+    includes = r'''
 #include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
+
+template<> struct std::is_floating_point<float16> : std::true_type {};
+template<> struct std::is_signed<float16> : std::true_type {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 '''
 
 
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
-template<> struct std::is_floating_point<float16> : std::true_type {};
-template<> struct std::is_signed<float16> : std::true_type {};
-template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
-
 template <class B, class A>
 __device__ __forceinline__
 typename std::enable_if<(!std::is_floating_point<A>::value
@@ -225,7 +239,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                          format(j=j, type=int_type))
         else:
             boundary = _util._generate_boundary_condition_ops(
-                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j))
+                mode, 'ix_{}'.format(j), 'xsize_{}'.format(j), int_type)
             # CArray: last line of string becomes inds[{j}] = ix_{j};
             loops.append('''
     for (int iw_{j} = 0; iw_{j} < {wsize}; iw_{j}++)

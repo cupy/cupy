@@ -1,4 +1,4 @@
-from numpy.testing import assert_raises
+from numpy.testing import assert_raises, assert_equal
 import cupy as cp
 # due to the module structure we can't import it from cupy.array_api._typing
 from cupy.cuda import Device
@@ -52,6 +52,11 @@ def test_asarray_copy():
     # a[0] = 0
     # assert all(b[0] == 0)
     assert_raises(NotImplementedError, lambda: asarray(a, copy=False))
+
+
+def test_asarray_nested():
+    a = asarray([[ones(5), ones(5)], [ones(5), ones(5)]])
+    assert_equal(a.shape, (2, 2, 5))
 
 
 def test_arange_errors():

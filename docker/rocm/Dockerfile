@@ -1,21 +1,18 @@
-FROM rocm/rocm-terminal:4.3.1
+FROM rocm/dev-ubuntu-20.04:5.0.1
 LABEL maintainer="CuPy Team"
 
-USER root
 RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends \
-    hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3.9 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends python3.7 python3.7-distutils && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 2 && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 
-RUN curl https://bootstrap.pypa.io/get-pip.py | sudo python3.7
+RUN python3 -m pip install --no-cache-dir -U install setuptools pip
+RUN python3 -m pip install --no-cache-dir -f https://pip.cupy.dev/pre/ "cupy-rocm-5-0[all]==13.0.0b1"
 
-RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir -f https://github.com/cupy/cupy/releases/v10.0.0rc1 "cupy-rocm-4-3[all]==10.0.0rc1"
-
-USER rocm-user
+ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
+RUN python3 -c "import cupy; cupy.show_config()"

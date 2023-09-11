@@ -1,3 +1,4 @@
+import operator
 import os
 import shutil
 import subprocess
@@ -7,9 +8,9 @@ import unittest
 from unittest import mock
 
 import numpy
+import pytest
 
 import cupy
-from cupy import testing
 import cupyx
 
 
@@ -61,7 +62,6 @@ else:
 
 class TestAvailable(unittest.TestCase):
 
-    @testing.gpu
     def test_available(self):
         available = _test_cupy_available(self)
         assert available
@@ -130,6 +130,20 @@ class TestAliases(unittest.TestCase):
     def test_bitwise_not_is_invert(self):
         for xp in (numpy, cupy):
             assert xp.bitwise_not is xp.invert
+
+
+@pytest.mark.parametrize('name', [
+    'AxisError',
+    'ComplexWarning',
+    'ModuleDeprecationWarning',
+    'RankWarning',
+    'TooHardError',
+    'VisibleDeprecationWarning',
+    'linalg.LinAlgError'
+])
+def test_error_classes(name):
+    get = operator.attrgetter(name)
+    assert issubclass(get(cupy), get(numpy))
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in

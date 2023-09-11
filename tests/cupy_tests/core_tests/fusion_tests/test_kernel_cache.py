@@ -40,7 +40,6 @@ def mock_fusion_history():
     return wrapper
 
 
-@testing.gpu
 class TestFusionCache(unittest.TestCase):
 
     @mock_fusion_history()

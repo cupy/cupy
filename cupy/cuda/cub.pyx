@@ -3,16 +3,19 @@
 """Wrapper of CUB functions for CuPy API."""
 
 from cpython cimport sequence
+from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.core cimport _internal_asfortranarray
-from cupy._core.internal cimport _contig_axes
+from cupy._core.internal cimport _contig_axes, is_in
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream
 
+import cupy
+import cupy._core as _core
+from cupy.cuda import memory as _memory
 import numpy
 
 
@@ -57,6 +60,8 @@ cdef extern from 'cupy_cub.h' nogil:
     void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
     void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
                                     size_t, Stream_t, int)
+    void cub_device_histogram_even(void*, size_t&, void*, void*, int, int, int,
+                                   size_t, Stream_t, int)
     size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
@@ -67,6 +72,8 @@ cdef extern from 'cupy_cub.h' nogil:
         void*, void*, int, Stream_t, int, int)
     size_t cub_device_histogram_range_get_workspace_size(
         void*, void*, int, void*, size_t, Stream_t, int)
+    size_t cub_device_histogram_even_get_workspace_size(
+        void*, void*, int, int, int, size_t, Stream_t, int)
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
@@ -94,7 +101,7 @@ cpdef _get_cuda_build_version():
         return 0
 
 
-cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
+cdef tuple _get_output_shape(_ndarray_base arr, tuple out_axis, bint keepdims):
     cdef tuple out_shape
 
     if not keepdims:
@@ -111,7 +118,7 @@ cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
     This function more or less follows the logic of _get_permuted_args() in
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
     '''
-    cdef tuple axis_permutes, out_shape
+    cdef tuple axis_permutes
     cdef Py_ssize_t contiguous_size = 1
 
     # one more sanity check?
@@ -119,6 +126,8 @@ cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
         axis_permutes = out_axis + reduce_axis
     elif order == 'F':
         axis_permutes = reduce_axis + out_axis
+    elif order == 'CF':
+        axis_permutes = tuple(set(out_axis + reduce_axis))
     assert axis_permutes == tuple(range(len(arr_shape)))
 
     for axis in reduce_axis:
@@ -126,9 +135,9 @@ cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
     return contiguous_size
 
 
-def device_reduce(ndarray x, op, tuple out_axis, out=None,
-                  bint keepdims=False):
-    cdef ndarray y
+def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
+                  out=None, bint keepdims=False):
+    cdef _ndarray_base y
     cdef memory.MemoryPointer ws
     cdef int dtype_id, ndim_out, kv_bytes, x_size, op_code
     cdef size_t ws_size
@@ -143,6 +152,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
         ndim_out = len(out_shape)
     else:
         ndim_out = 0
+    reduce_shape = _get_output_shape(x, reduce_axis, False)
 
     if out is not None and out.ndim != ndim_out:
         raise ValueError(
@@ -153,17 +163,17 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
         raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
                          'CUPY_CUB_MAX, CUPY_CUB_ARGMIN, and CUPY_CUB_ARGMAX '
                          'are supported.')
-    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD) and is_in(reduce_shape, 0):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     x = _internal_ascontiguousarray(x)
 
     if op in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
-        y = ndarray((), x.dtype)
+        y = _core.ndarray((), x.dtype)
     else:  # argmin and argmax
         # cub::KeyValuePair has 1 int + 1 arbitrary type
         kv_bytes = (4 + x.dtype.itemsize)
-        y = ndarray((kv_bytes,), numpy.int8)
+        y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = common._get_dtype_id(x.dtype)
@@ -186,21 +196,20 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     if keepdims:
         y = y.reshape(out_shape)
     if out is not None:
-        out[...] = y
+        cupy._core.elementwise_copy(y, out)
         y = out
     return y
 
 
-def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
+def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
                             tuple out_axis, out=None, bint keepdims=False,
                             Py_ssize_t contiguous_size=0):
-    cdef ndarray y, offset
+    cdef _ndarray_base y
     cdef str order
     cdef memory.MemoryPointer ws
     cdef void* x_ptr
     cdef void* y_ptr
     cdef void* ws_ptr
-    cdef void* offset_start_ptr
     cdef int dtype_id, n_segments, op_code
     cdef size_t ws_size
     cdef tuple out_shape
@@ -209,7 +218,8 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
         raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
                          'and CUPY_CUB_MAX are supported.')
-    if x.size == 0 and op not in (CUPY_CUB_SUM, CUPY_CUB_PROD):
+    reduce_shape = _get_output_shape(x, reduce_axis, False)
+    if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD) and is_in(reduce_shape, 0):
         raise ValueError('zero-size array to reduction operation {} which has '
                          'no identity'.format(op.name))
     if x.flags.c_contiguous:
@@ -222,7 +232,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     # prepare input
     out_shape = _get_output_shape(x, out_axis, keepdims)
     x_ptr = <void*>x.data.ptr
-    y = ndarray(out_shape, dtype=x.dtype, order=order)
+    y = _core.ndarray(out_shape, dtype=x.dtype, order=order)
     y_ptr = <void*>y.data.ptr
     if out is not None and out.shape != out_shape:
         raise ValueError(
@@ -231,9 +241,9 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
         if out is not None:
             y = out
         if op == CUPY_CUB_SUM:
-            y[...] = 0
+            y.fill(0)
         elif op == CUPY_CUB_PROD:
-            y[...] = 1
+            y.fill(1)
         return y
     n_segments = x.size//contiguous_size
     s = <Stream_t>stream.get_current_stream_ptr()
@@ -250,14 +260,14 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
                                     contiguous_size, s, op_code, dtype_id)
 
     if out is not None:
-        out[...] = y
+        cupy._core.elementwise_copy(y, out)
         y = out
     return y
 
 
-def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
-                 ndarray indptr, ndarray indices, ndarray x):
-    cdef ndarray y
+def device_csrmv(int n_rows, int n_cols, int nnz, _ndarray_base values,
+                 _ndarray_base indptr, _ndarray_base indices, _ndarray_base x):
+    cdef _ndarray_base y
     cdef memory.MemoryPointer ws
     cdef void* values_ptr
     cdef void* row_offsets_ptr
@@ -291,7 +301,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     x_ptr = <void*>x.data.ptr
 
     # prepare output array
-    y = ndarray((n_rows,), dtype=dtype)
+    y = _core.ndarray((n_rows,), dtype=dtype)
     y_ptr = <void*>y.data.ptr
 
     s = <Stream_t>stream.get_current_stream_ptr()
@@ -311,7 +321,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     return y
 
 
-def device_scan(ndarray x, op):
+def device_scan(_ndarray_base x, op):
     cdef memory.MemoryPointer ws
     cdef int dtype_id, x_size, op_code
     cdef size_t ws_size
@@ -344,7 +354,7 @@ def device_scan(ndarray x, op):
     return x
 
 
-def device_histogram(ndarray x, ndarray bins, ndarray y):
+def device_histogram(_ndarray_base x, _ndarray_base y, bins):
     cdef memory.MemoryPointer ws
     cdef size_t ws_size, n_samples
     cdef int dtype_id, n_bins
@@ -353,28 +363,49 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     cdef void* y_ptr
     cdef void* ws_ptr
     cdef Stream_t s
+    cdef bint is_even
 
     # TODO(leofang): perhaps not needed?
     # y is guaranteed contiguous
     x = _internal_ascontiguousarray(x)
-    bins = _internal_ascontiguousarray(bins)
+    if isinstance(bins, _ndarray_base):
+        bins = _internal_ascontiguousarray(bins)
+        bins_ptr = <void*><intptr_t>bins.data.ptr
+        n_bins = bins.size
+        is_even = False
+    else:
+        n_bins = bins
+        is_even = True
+        if runtime._is_hip_environment:
+            raise RuntimeError("not supported yet")
+        if x.dtype.kind not in 'bui':
+            raise ValueError("only integer input is supported")
+    assert y.size == n_bins - 1
 
     x_ptr = <void*>x.data.ptr
     y_ptr = <void*>y.data.ptr
-    n_bins = bins.size
-    bins_ptr = <void*>bins.data.ptr
     n_samples = x.size
     s = <Stream_t>stream.get_current_stream_ptr()
     dtype_id = common._get_dtype_id(x.dtype)
-    assert y.size == n_bins - 1
-    ws_size = cub_device_histogram_range_get_workspace_size(
-        x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
 
+    if is_even:
+        ws_size = cub_device_histogram_even_get_workspace_size(
+            x_ptr, y_ptr, n_bins, 0, n_bins-1, n_samples, s, dtype_id)
+    else:
+        ws_size = cub_device_histogram_range_get_workspace_size(
+            x_ptr, y_ptr, n_bins, bins_ptr, n_samples, s, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
+
     with nogil:
-        cub_device_histogram_range(ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
-                                   bins_ptr, n_samples, s, dtype_id)
+        if is_even:
+            cub_device_histogram_even(
+                ws_ptr, ws_size, x_ptr, y_ptr, n_bins, 0, n_bins-1,
+                n_samples, s, dtype_id)
+        else:
+            cub_device_histogram_range(
+                ws_ptr, ws_size, x_ptr, y_ptr, n_bins,
+                bins_ptr, n_samples, s, dtype_id)
     return y
 
 
@@ -390,7 +421,7 @@ cpdef bint _cub_device_segmented_reduce_axis_compatible(
 
 
 cdef bint can_use_device_reduce(
-        ndarray x, int op, tuple out_axis, dtype=None) except*:
+        _ndarray_base x, int op, tuple out_axis, dtype=None) except*:
     return (
         out_axis is ()
         and _cub_reduce_dtype_compatible(x.dtype, op, dtype)
@@ -398,13 +429,17 @@ cdef bint can_use_device_reduce(
 
 
 cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
-        ndarray x, int op, tuple reduce_axis, tuple out_axis,
+        _ndarray_base x, int op, tuple reduce_axis, tuple out_axis,
         dtype=None, str order='C') except*:
     if not _cub_reduce_dtype_compatible(x.dtype, op, dtype):
         return (False, 0)
-    if not _cub_device_segmented_reduce_axis_compatible(
-            reduce_axis, x.ndim, order):
-        return (False, 0)
+    # NumPy/CuPy quirk: zero-size arrays are both C- & F- contig...
+    if x.size != 0:
+        if not _cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, x.ndim, order):
+            return (False, 0)
+    else:
+        order = 'CF'  # for computing the contig size
     # until we resolve cupy/cupy#3309
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
@@ -455,8 +490,8 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
 
 
 cpdef cub_reduction(
-        ndarray arr, op,
-        axis=None, dtype=None, ndarray out=None, keepdims=False):
+        _ndarray_base arr, op,
+        axis=None, dtype=None, _ndarray_base out=None, keepdims=False):
     """Perform a reduction using CUB.
 
     If the specified reduction is not possible, None is returned.
@@ -503,7 +538,7 @@ cpdef cub_reduction(
 
     reduce_axis, out_axis = _get_axis(axis, arr.ndim)
     if can_use_device_reduce(arr, op, out_axis, dtype):
-        return device_reduce(arr, op, out_axis, out, keepdims)
+        return device_reduce(arr, op, reduce_axis, out_axis, out, keepdims)
 
     if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
         # segmented reduction not currently implemented for argmax, argmin
@@ -517,7 +552,7 @@ cpdef cub_reduction(
     return None
 
 
-cpdef cub_scan(ndarray arr, op):
+cpdef cub_scan(_ndarray_base arr, op):
     """Perform an (in-place) prefix scan using CUB.
 
     If the specified scan is not possible, None is returned.
@@ -536,3 +571,15 @@ cpdef cub_scan(ndarray arr, op):
         return device_scan(arr, op)
 
     return None
+
+
+cpdef cub_histogram(_ndarray_base x, _ndarray_base y, bins):
+    """Check if the required workspace size is too much, if not then proceed
+    to compute the histogram, otherwise return None. This is a workaround for
+    NVIDIA/cub#613.
+    """
+    try:
+        out = device_histogram(x, y, bins)
+    except _memory.OutOfMemoryError:
+        return None
+    return out

@@ -21,7 +21,6 @@ class FusionTestBase(unittest.TestCase):
         return (x, y), {}
 
 
-@testing.gpu
 class TestFusionInplaceUpdate(FusionTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
@@ -47,7 +46,6 @@ class TestFusionInplaceUpdate(FusionTestBase):
         return func
 
 
-@testing.gpu
 class TestFusionTuple(FusionTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -135,7 +133,6 @@ class TestReturnNone(FusionTestBase):
         return impl
 
 
-@testing.gpu
 class TestFusionNoneParams(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -153,7 +150,33 @@ class TestFusionNoneParams(unittest.TestCase):
         return f(x, None, z) + f(x, y, z)
 
 
-@testing.gpu
+class TestSpecialValues(FusionTestBase):
+
+    @testing.for_float_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_nan(self, xp, dtype):
+        def func(x):
+            x[:] = cupy.nan
+            return x
+        return func
+
+    @testing.for_float_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_inf(self, xp, dtype):
+        def func(x):
+            x[:] = cupy.inf
+            return x
+        return func
+
+    @testing.for_float_dtypes()
+    @fusion_utils.check_fusion(generate_inputs_args=(1,))
+    def test_neginf(self, xp, dtype):
+        def func(x):
+            x[:] = -cupy.inf
+            return x
+        return func
+
+
 class TestFusionDecorator(unittest.TestCase):
     def test_without_paren(self):
         @cupy.fuse
@@ -174,7 +197,6 @@ class TestFusionDecorator(unittest.TestCase):
         assert func_w_paren.__doc__ == 'Fuse with parentheses'
 
 
-@testing.gpu
 class TestFusionKernelName(unittest.TestCase):
 
     def check(self, xp, func, expected_name, is_elementwise):
@@ -304,7 +326,6 @@ class TestFusionCompile(unittest.TestCase):
         return f(x, y)
 
 
-@testing.gpu
 class TestFusionGetArrayModule(FusionTestBase):
 
     @testing.for_all_dtypes()
@@ -378,7 +399,6 @@ class TestFusionThread(unittest.TestCase):
         return xp.concatenate(out)
 
 
-@testing.gpu
 class TestFusionMultiDevice(unittest.TestCase):
 
     @testing.multi_gpu(2)

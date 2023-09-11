@@ -8,7 +8,6 @@ from cupy import testing
 import cupyx
 
 
-@testing.gpu
 class TestTrace(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -26,27 +25,26 @@ class TestTrace(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(1,), (2,)],
-    'ord': [-numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf],
+    'ord': [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
     'axis': [0, None],
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(1, 2), (2, 2)],
-    'ord': [-numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro', 'nuc'],
+    'ord': [-numpy.inf, -2, -1, 1, 2, numpy.inf, 'fro', 'nuc'],
     'axis': [(0, 1), None],
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(2, 2, 2)],
-    'ord': [-numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf],
+    'ord': [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
     'axis': [0, 1, 2],
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(2, 2, 2)],
-    'ord': [-numpy.Inf, -1, 1, numpy.Inf, 'fro'],
+    'ord': [-numpy.inf, -1, 1, numpy.inf, 'fro'],
     'axis': [(0, 1), (0, 2), (1, 2)],
     'keepdims': [True, False],
 })
 )
-@testing.gpu
 class TestNorm(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
@@ -73,7 +71,6 @@ class TestNorm(unittest.TestCase):
     ],
     'tol': [None, 1]
 }))
-@testing.gpu
 class TestMatrixRank(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)
@@ -90,7 +87,6 @@ class TestMatrixRank(unittest.TestCase):
         return y
 
 
-@testing.gpu
 class TestDet(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
@@ -164,7 +160,6 @@ class TestDet(unittest.TestCase):
         return xp.linalg.det(a)
 
 
-@testing.gpu
 class TestSlogdet(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')

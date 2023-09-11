@@ -17,6 +17,8 @@ Misc Functions
 
    polyvander
    polycompanion
+   polyval
+   polyvalfromroots
 
 
 Polyutils
@@ -50,6 +52,7 @@ Basics
    :toctree: generated/
 
    poly1d
+   cupy.poly
    polyval
    roots
 

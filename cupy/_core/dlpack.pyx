@@ -3,6 +3,7 @@ cimport cpython  # NOQA
 from libc cimport stdlib
 from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
+from libc.stdint cimport int32_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport uint64_t
 from libc.stdint cimport intptr_t
@@ -10,13 +11,13 @@ from libcpp.vector cimport vector
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
-from cupy._core.core cimport ndarray
-from cupy.cuda cimport device
+from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport memory
 
 import warnings
 
 import cupy
+import cupy._core.core as core
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
@@ -26,17 +27,21 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         kDLCPU
         kDLCUDA
         kDLCUDAHost
-        kDLCUDAManaged
-        kDLROCM
-        kDLROCMHost
         kDLOpenCL
         kDLVulkan
         kDLMetal
         kDLVPI
+        kDLROCM
+        kDLROCMHost
+        kDLExtDev
+        kDLCUDAManaged
+        kDLOneAPI
+        kDLWebGPU
+        kDLHexagon
 
     ctypedef struct DLDevice:
         DLDeviceType device_type
-        int device_id
+        int32_t device_id
 
     cdef enum DLDataTypeCode:
         kDLInt
@@ -44,6 +49,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         kDLFloat
         kDLBfloat
         kDLComplex
+        kDLBool
 
     ctypedef struct DLDataType:
         uint8_t code
@@ -53,7 +59,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
     ctypedef struct DLTensor:
         void* data
         DLDevice device
-        int ndim
+        int32_t ndim
         DLDataType dtype
         int64_t* shape
         int64_t* strides
@@ -82,14 +88,14 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     if tensor.manager_ctx is NULL:
         return
     stdlib.free(tensor.dl_tensor.shape)
-    cpython.Py_DECREF(<ndarray>tensor.manager_ctx)
+    cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
     tensor.manager_ctx = NULL
     stdlib.free(tensor)
 
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef object toDlpack(ndarray array) except +:
+cpdef object toDlpack(_ndarray_base array) except +:
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
 
@@ -134,6 +140,8 @@ cpdef object toDlpack(ndarray array) except +:
         dtype.code = <uint8_t>kDLFloat
     elif array.dtype.kind == 'c':
         dtype.code = <uint8_t>kDLComplex
+    elif array.dtype.kind == 'b':
+        dtype.code = <uint8_t>kDLBool
     else:
         raise ValueError('Unknown dtype')
     dtype.lanes = <uint16_t>1
@@ -206,7 +214,7 @@ cdef class DLPackMemory(memory.BaseMemory):
 
 # The name of this function is following the framework integration guide of
 # TensorComprehensions.
-cpdef ndarray fromDlpack(object dltensor) except +:
+cpdef _ndarray_base fromDlpack(object dltensor) except +:
     """Zero-copy conversion from a DLPack tensor to a :class:`~cupy.ndarray`.
 
     DLPack is a open in memory tensor structure proposed in this repository:
@@ -256,7 +264,7 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     return _dlpack_to_cupy_array(dltensor)
 
 
-cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
+cdef inline _ndarray_base _dlpack_to_cupy_array(dltensor) except +:
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
@@ -302,6 +310,11 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
             cp_dtype = cupy.complex128
         else:
             raise TypeError('complex{} is not supported.'.format(bits))
+    elif dtype.code == kDLBool:
+        if bits == 8:
+            cp_dtype = cupy.bool_
+        else:
+            raise TypeError(f'{bits}-bit bool is not supported')
     elif dtype.code == kDLBfloat:
         raise NotImplementedError('CuPy does not support bfloat16 yet')
     else:
@@ -317,7 +330,7 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
     if mem.dlm_tensor.dl_tensor.strides is NULL:
         # Make sure this capsule will never be used again.
         cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
-        return ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
+        return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
@@ -325,13 +338,9 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
 
     # Make sure this capsule will never be used again.
     cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
-    return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
+    return core.ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
-# TODO(leofang): this function is exposed to the cupy namespace, so it returns
-# a cupy.ndarray which is not compliant with the Python array API. When we have
-# a compliant object living in, say, cupy.array_api, we will expose another
-# function cupy.array_api.from_dlpack().
 cpdef from_dlpack(array):
     """Zero-copy conversion between array objects compliant with the DLPack
     data exchange protocol.
@@ -354,8 +363,12 @@ cpdef from_dlpack(array):
         are responsible to ensure data safety.
 
     .. seealso::
+        :func:`numpy.from_dlpack`,
+        `Python Specification for DLPack`_,
         `Data interchange mechanisms`_
 
+    .. _Python Specification for DLPack:
+        https://dmlc.github.io/dlpack/latest/python_spec.html
     .. _Data interchange mechanisms:
         https://data-apis.org/array-api/latest/design_topics/data_interchange.html
     """
@@ -388,12 +401,12 @@ cpdef from_dlpack(array):
         finally:
             cupy.cuda.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLCPU:
-        # TODO(kmaehashi): Call `np.from_dlpack` when DLPack support is in:
-        # https://github.com/numpy/numpy/pull/19083
-        raise ValueError('CPU arrays cannot be imported to CuPy.')
+        raise TypeError(
+            'CPU arrays cannot be directly imported to CuPy. '
+            'Use `cupy.array(numpy.from_dlpack(input))` instead.')
     else:
         # TODO(leofang): support kDLCUDAPinned etc
         dltensor = None
-        raise ValueError(f'Unsupported array type: {dev_type}')
+        raise TypeError(f'Unsupported array type: {dev_type}')
 
     return _dlpack_to_cupy_array(dltensor)

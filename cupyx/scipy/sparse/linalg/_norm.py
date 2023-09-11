@@ -3,8 +3,6 @@ import numpy
 import cupy
 import cupyx.scipy.sparse
 
-__all__ = ['norm']
-
 
 def _sparse_frobenius_norm(x):
     if cupy.issubdtype(x.dtype, cupy.complexfloating):
@@ -74,11 +72,11 @@ def norm(x, ord=None, axis=None):
             # return _multi_svd_norm(x, row_axis, col_axis, amin)
         elif ord == 1:
             return abs(x).sum(axis=row_axis).max()
-        elif ord == numpy.Inf:
+        elif ord == numpy.inf:
             return abs(x).sum(axis=col_axis).max()
         elif ord == -1:
             return abs(x).sum(axis=row_axis).min()
-        elif ord == -numpy.Inf:
+        elif ord == -numpy.inf:
             return abs(x).sum(axis=col_axis).min()
         elif ord in (None, 'f', 'fro'):
             # The axis order does not matter for this norm.
@@ -90,9 +88,9 @@ def norm(x, ord=None, axis=None):
         if not (-nd <= a < nd):
             raise ValueError('Invalid axis %r for an array with shape %r' %
                              (axis, x.shape))
-        if ord == numpy.Inf:
+        if ord == numpy.inf:
             return abs(x).max(axis=a).A.ravel()
-        elif ord == -numpy.Inf:
+        elif ord == -numpy.inf:
             return abs(x).min(axis=a).A.ravel()
         elif ord == 0:
             # Zero norm

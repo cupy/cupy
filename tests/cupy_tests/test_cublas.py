@@ -4,7 +4,6 @@ import pytest
 import cupy
 from cupy import cublas
 from cupy import testing
-from cupy.testing import _attr
 
 
 @testing.parameterize(*testing.product({
@@ -13,7 +12,6 @@ from cupy.testing import _attr
     'bs': [None, 1, 10],
     'nrhs': [None, 1, 10],
 }))
-@_attr.gpu
 class TestBatchedGesv:
     _tol = {'f': 5e-5, 'd': 1e-12}
 
@@ -70,7 +68,6 @@ class TestBatchedGesv:
     'n': [10, 100],
     'mode': [None, numpy, cupy],
 }))
-@_attr.gpu
 class TestLevel1Functions:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -194,7 +191,6 @@ class TestLevel1Functions:
     'order': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@_attr.gpu
 class TestGemv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -231,12 +227,61 @@ class TestGemv:
 
 
 @testing.parameterize(*testing.product({
+    'rank': [5, 9],
+    'band': [0, 1, 3],
+    'lower': [0, 1],
+    'order': ['C', 'F'],
+    'mode': [None, numpy, cupy],
+}))
+class TestSbmv:
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _gen2band(self, A, ku=0, kl=0, order='C'):
+        assert A.ndim == 2
+        n, m = A.shape
+        ldm, lda = n, 1 + ku + kl
+        B = numpy.zeros((lda, ldm), dtype=A.dtype, order=order)
+        for j in range(n):
+            k = ku - j
+            for i in range(max(0, j-ku), min(m, j + kl + 1)):
+                B[(k + i), j] = A[i, j]
+        return B
+
+    @testing.for_dtypes('fd')
+    def test_sbmv(self, dtype):
+        dtype = numpy.dtype(dtype)
+        alpha, beta = 3.0, 2.0
+        n, k = self.rank, self.band
+        a = numpy.eye(n, n, 0, dtype, self.order)
+        a *= numpy.random.randint(20)
+        for i in range(1, k+1):
+            band = numpy.random.randint(20, size=n-i)
+            a += numpy.diag(band, k=+i)
+            a += numpy.diag(band, k=-i)
+        x = numpy.random.randint(20, size=n).astype(a.dtype)
+        y = numpy.random.randint(20, size=n).astype(a.dtype)
+        ku, kl = k, 0
+        if self.lower == 1:
+            ku, kl = kl, ku
+        b = self._gen2band(a, ku, kl)
+        a, b = cupy.asarray(a), cupy.asarray(b)
+        x, y = cupy.asarray(x), cupy.asarray(y)
+        ref = alpha * a.dot(x) + beta * y
+        if self.mode is not None:
+            alpha = self.mode.array(alpha)
+            beta = self.mode.array(beta)
+        y_ret = cupy.cublas.sbmv(k, alpha, b, x, beta, y, lower=self.lower)
+        tol = self._tol[dtype.char.lower()]
+        cupy.testing.assert_allclose(y, ref, rtol=tol, atol=tol)
+        cupy.testing.assert_allclose(y_ret, ref, rtol=tol, atol=tol)
+
+
+@testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'shape': [(10, 9), (9, 10)],
     'order': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@_attr.gpu
 class TestGer:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -281,6 +326,87 @@ class TestGer:
 
 
 @testing.parameterize(*testing.product({
+    'nk': [(5, 9), (9, 5)],
+    'transa': ['N', 'T'],
+    'ordera': ['F', 'C'],
+    'orderc': ['F', 'C'],
+    'lower': [0, 1],
+    'mode': [None, numpy, cupy]
+}))
+class TestSyrk:
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, m, n, trans, order, dtype):
+        if trans == 'N':
+            shape = (m, n)
+        else:
+            shape = (n, m)
+        return testing.shaped_random(shape, cupy, dtype=dtype, order=order,
+                                     scale=1.0)
+
+    def _trans_matrix(self, a, trans):
+        if trans == 'N':
+            return a
+        return a.T
+
+    @testing.for_dtypes('fdFD')
+    def test_syrk(self, dtype):
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        alpha, beta = 3.0, 2.0
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 2.0
+            beta = beta + 1j * 5.0
+        n, k = self.nk
+        a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
+        aa = self._trans_matrix(a, self.transa)
+        ref = alpha * aa.dot(aa.T)  # beta is used as a placeholder only
+        c = cublas.syrk(self.transa, a, alpha=alpha, beta=beta,
+                        lower=self.lower)
+        rr, cc = cupy.asnumpy(ref), cupy.asnumpy(c)
+        if self.lower:
+            rr[numpy.triu_indices_from(rr,  1)] = 0
+        else:
+            rr[numpy.tril_indices_from(rr, -1)] = 0
+        rru = rr[numpy.triu_indices_from(rr)]
+        ccu = cc[numpy.triu_indices_from(cc)]
+        rrl = rr[numpy.tril_indices_from(rr)]
+        ccl = cc[numpy.tril_indices_from(cc)]
+        cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
+        cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_syrk_out(self, dtype):
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        alpha, beta = 2.3, 1.7
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 0.7
+            beta = beta + 1j * 2.3
+        n, k = self.nk
+        a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
+        aa = self._trans_matrix(a, self.transa)
+        m = aa.shape[0]
+        c = self._make_matrix(m, m, 'N', self.orderc, dtype)
+        c0 = cupy.array(c)
+        ref = alpha * aa.dot(aa.T) + beta * c
+        cublas.syrk(self.transa, a, out=c, alpha=alpha, beta=beta,
+                    lower=self.lower)
+        rr, c0, cc = cupy.asnumpy(ref), cupy.asnumpy(c0), cupy.asnumpy(c)
+        if self.lower:
+            trii = numpy.triu_indices_from(rr,  1)
+        else:
+            trii = numpy.tril_indices_from(rr, -1)
+        rr[trii] = c0[trii]
+        rru = rr[numpy.triu_indices_from(rr)]
+        ccu = cc[numpy.triu_indices_from(cc)]
+        rrl = rr[numpy.tril_indices_from(rr)]
+        ccl = cc[numpy.tril_indices_from(cc)]
+        cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
+        cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
+
+
+@testing.parameterize(*testing.product({
     'mnk': [(8, 9, 10), (10, 9, 8)],
     'transa': ['N', 'T', 'H'],
     'transb': ['N', 'T', 'H'],
@@ -289,7 +415,6 @@ class TestGer:
     'orderc': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@_attr.gpu
 class TestGemmAndGeam:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -398,7 +523,6 @@ class TestGemmAndGeam:
     'ordera': ['C', 'F'],
     'orderc': ['C', 'F'],
 }))
-@_attr.gpu
 class TestDgmm:
     _tol = {'f': 1e-5, 'd': 1e-12}
 

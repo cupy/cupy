@@ -1,3 +1,4 @@
+from typing import Any, Mapping
 import warnings
 
 import cupy
@@ -5,6 +6,7 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupyx.jit import _cuda_types
+from cupyx.jit import _cuda_typerules
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
@@ -16,7 +18,36 @@ from functools import reduce
 
 class RangeFunc(BuiltinFunc):
 
-    def call(self, env, *args, **kwargs):
+    def __call__(self, *args, unroll=None):
+        """Range with loop unrolling support.
+
+        Args:
+            start (int):
+                Same as that of built-in :obj:`range`.
+            stop (int):
+                Same as that of built-in :obj:`range`.
+            step (int):
+                Same as that of built-in :obj:`range`.
+            unroll (int or bool or None):
+
+                - If `True`, add ``#pragma unroll`` directive before the
+                  loop.
+                - If `False`, add ``#pragma unroll(1)`` directive before
+                  the loop to disable unrolling.
+                - If an `int`, add ``#pragma unroll(n)`` directive before
+                  the loop, where the integer ``n`` means the number of
+                  iterations to unroll.
+                - If `None` (default), leave the control of loop unrolling
+                  to the compiler (no ``#pragma``).
+
+        .. seealso:: `#pragma unroll`_
+
+        .. _#pragma unroll:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#pragma-unroll
+        """
+        super().__call__()
+
+    def call(self, env, *args, unroll=None):
         if len(args) == 0:
             raise TypeError('range expected at least 1 argument, got 0')
         elif len(args) == 1:
@@ -28,6 +59,24 @@ class RangeFunc(BuiltinFunc):
         else:
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
+
+        if unroll is not None:
+            if not all(isinstance(x, Constant)
+                       for x in (start, stop, step, unroll)):
+                raise TypeError(
+                    'loop unrolling requires constant start, stop, step and '
+                    'unroll value')
+            unroll = unroll.obj
+            if not (isinstance(unroll, int) or isinstance(unroll, bool)):
+                raise TypeError(
+                    'unroll value expected to be of type int, '
+                    f'got {type(unroll).__name__}')
+            if unroll is False:
+                unroll = 1
+            if not (unroll is True or 0 < unroll < 1 << 31):
+                warnings.warn(
+                    'loop unrolling is ignored as the unroll value is '
+                    'non-positive or greater than INT_MAX')
 
         if isinstance(step, Constant):
             step_is_positive = step.obj >= 0
@@ -54,10 +103,11 @@ class RangeFunc(BuiltinFunc):
         else:
             assert False
 
-        return Range(start, stop, step, ctype, step_is_positive)
+        return Range(start, stop, step, ctype, step_is_positive, unroll=unroll)
 
 
 class LenFunc(BuiltinFunc):
+
     def call(self, env, *args, **kwds):
         if len(args) != 1:
             raise TypeError(f'len() expects only 1 argument, got {len(args)}')
@@ -73,6 +123,7 @@ class LenFunc(BuiltinFunc):
 
 
 class MinFunc(BuiltinFunc):
+
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
@@ -84,6 +135,7 @@ class MinFunc(BuiltinFunc):
 
 
 class MaxFunc(BuiltinFunc):
+
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
@@ -146,8 +198,8 @@ class SyncWarp(BuiltinFunc):
 
 class SharedMemory(BuiltinFunc):
 
-    def __call__(self, dtype, size):
-        """Allocates shared memory and returns the 1-dim array.
+    def __call__(self, dtype, size, alignment=None):
+        """Allocates shared memory and returns it as a 1-D array.
 
         Args:
             dtype (dtype):
@@ -155,16 +207,17 @@ class SharedMemory(BuiltinFunc):
             size (int or None):
                 If ``int`` type, the size of static shared memory.
                 If ``None``, declares the shared memory with extern specifier.
+            alignment (int or None): Enforce the alignment via __align__(N).
         """
         super().__call__()
 
-    def call_const(self, env, dtype, size):
+    def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_smem')
-        child_type = _cuda_types.Scalar(dtype)
-        while env[name] is not None:
-            name = env.get_fresh_variable_name(prefix='_smem')  # retry
-        env[name] = Data(name, _cuda_types.SharedMem(child_type, size))
-        return Data(name, _cuda_types.Ptr(child_type))
+        ctype = _cuda_typerules.to_ctype(dtype)
+        var = Data(name, _cuda_types.SharedMem(ctype, size, alignment))
+        env.decls[name] = var
+        env.locals[name] = var
+        return Data(name, _cuda_types.Ptr(ctype))
 
 
 class AtomicOp(BuiltinFunc):
@@ -270,11 +323,8 @@ class GridFunc(BuiltinFunc):
                 If ``ndim`` is 1, an integer is returned, otherwise a tuple.
 
         .. note::
-            This function follows the convention of Numba's `{self._link}`_.
-
-        .. _{self._link}:
-            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#{self._link}
-
+            This function follows the convention of Numba's
+            :func:`{self._link}`.
         """
         self.__doc__ = doc
 
@@ -298,7 +348,10 @@ class GridFunc(BuiltinFunc):
 
         elts_code = ', '.join(self._code.format(n=n) for n in dims)
         ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
-        return Data(f'thrust::make_tuple({elts_code})', ctype)
+        if ndim == 2:
+            return Data(f'thrust::make_pair({elts_code})', ctype)
+        else:
+            return Data(f'thrust::make_tuple({elts_code})', ctype)
 
 
 class WarpShuffleOp(BuiltinFunc):
@@ -365,11 +418,8 @@ class LaneID(BuiltinFunc):
         ``[0, jit.warpsize)``.
 
         .. note::
-            Unlike `numba.cuda.laneid`_, this is a callable function instead
-            of a property.
-
-        .. _numba.cuda.laneid:
-            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.laneid
+            Unlike :obj:`numba.cuda.laneid`, this is a callable function
+            instead of a property.
         """
         super().__call__()
 
@@ -390,17 +440,18 @@ class LaneID(BuiltinFunc):
         return preamble
 
     def call_const(self, env):
-        env.preambles.add(self._get_preamble())
+        env.generated.add_code(self._get_preamble())
         return Data('LaneId()', _cuda_types.uint32)
 
 
-builtin_functions_dict = {
+builtin_functions_dict: Mapping[Any, BuiltinFunc] = {
     range: RangeFunc(),
     len: LenFunc(),
     min: MinFunc(),
     max: MaxFunc(),
 }
 
+range_ = RangeFunc()
 syncthreads = SyncThreads()
 syncwarp = SyncWarp()
 shared_memory = SharedMemory()

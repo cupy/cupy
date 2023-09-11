@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import numpy
 import pytest
@@ -8,7 +9,6 @@ from cupy import cuda
 from cupy import testing
 
 
-@testing.gpu
 class TestBasic:
 
     @testing.for_all_dtypes()
@@ -16,6 +16,14 @@ class TestBasic:
     def test_copyto(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = xp.empty((2, 3, 4), dtype=dtype)
+        xp.copyto(b, a)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_different_contiguity(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 2), xp, dtype).T
+        b = xp.empty((2, 3, 2), dtype=dtype)
         xp.copyto(b, a)
         return b
 
@@ -35,12 +43,58 @@ class TestBasic:
         xp.copyto(b, a)
         return b
 
+    @pytest.mark.parametrize(('dst_shape', 'src_shape'), [
+        ((), (2,)),
+        ((2, 0, 5, 4), (2, 0, 3, 4)),
+        ((6,), (2, 3)),
+        ((2, 3), (6,)),
+    ])
+    def test_copyto_raises_shape(self, dst_shape, src_shape):
+        for xp in (numpy, cupy):
+            dst = xp.zeros(dst_shape, int)
+            src = xp.zeros(src_shape, int)
+            with pytest.raises(ValueError):
+                xp.copyto(dst, src)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_squeeze(self, xp, dtype):
+        a = testing.shaped_arange((1, 1, 3, 4), xp, dtype)
+        b = xp.empty((3, 4), dtype=dtype)
+        xp.copyto(b, a)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_squeeze_different_contiguity(self, xp, dtype):
+        a = testing.shaped_arange((1, 1, 3, 4), xp, dtype)
+        b = xp.empty((4, 3), dtype=dtype).T
+        xp.copyto(b, a)
+        return b
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_squeeze_broadcast(self, xp, dtype):
+        a = testing.shaped_arange((1, 2, 1, 4), xp, dtype)
+        b = xp.empty((2, 3, 4), dtype=dtype)
+        xp.copyto(b, a)
+        return b
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_copyto_where(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 4), xp, dtype)
         c = testing.shaped_arange((2, 3, 4), xp, '?')
+        xp.copyto(a, b, where=c)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_where_squeeze_broadcast(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((1, 2, 1, 4), xp, dtype)
+        c = testing.shaped_arange((3, 4), xp, '?')
         xp.copyto(a, b, where=c)
         return a
 
@@ -133,7 +187,6 @@ class TestBasic:
     *testing.product(
         {'src': [float(3.2), int(0), int(4), int(-4), True, False, 1 + 1j],
          'dst_shape': [(), (0,), (1,), (1, 1), (2, 2)]}))
-@testing.gpu
 class TestCopytoFromScalar:
 
     @testing.for_all_dtypes()
@@ -150,6 +203,46 @@ class TestCopytoFromScalar:
         mask = (testing.shaped_arange(
             self.dst_shape, xp, dtype) % 2).astype(xp.bool_)
         xp.copyto(dst, self.src, where=mask)
+        return dst
+
+
+@pytest.mark.parametrize(
+    'casting', ['no', 'equiv', 'safe', 'same_kind', 'unsafe'])
+class TestCopytoFromNumpyScalar:
+
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto(self, xp, dtype1, dtype2, casting):
+        dst = xp.zeros((2, 3, 4), dtype=dtype1)
+        src = numpy.array(1, dtype=dtype2)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting)
+        return dst
+
+    @testing.for_all_dtypes()
+    @pytest.mark.parametrize('make_src',
+                             [lambda dtype: numpy.array([1], dtype=dtype),
+                              lambda dtype: dtype(1)])
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto2(self, xp, make_src, dtype, casting):
+        dst = xp.zeros((2, 3, 4), dtype=dtype)
+        src = make_src(dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting)
+        return dst
+
+    @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    def test_copyto_where(self, xp, dtype1, dtype2, casting):
+        shape = (2, 3, 4)
+        dst = xp.ones(shape, dtype=dtype1)
+        src = numpy.array(1, dtype=dtype2)
+        mask = (testing.shaped_arange(shape, xp, dtype1) % 2).astype(xp.bool_)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            xp.copyto(dst, src, casting=casting, where=mask)
         return dst
 
 

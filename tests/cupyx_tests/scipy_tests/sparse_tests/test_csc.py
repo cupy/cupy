@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 import numpy
 import pytest
@@ -12,6 +13,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import driver
 from cupy.cuda import runtime
+import cupyx.cusparse
 from cupyx.scipy import sparse
 
 
@@ -449,6 +451,10 @@ class TestCscMatrixScipyComparison:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if (sys.platform == 'win32' and
+                cupyx.cusparse.getVersion() == 11301 and
+                self.dtype == cupy.complex128):
+            pytest.xfail('Known to fail on CUDA 11.2 for Windows')
         if runtime.is_hip:
             if self.make_method in ('_make_empty', '_make_shape'):
                 # xcsr2coo, xcsrgemm2Nnz, csrmm2, nnz_compress, ... could raise
@@ -546,14 +552,16 @@ class TestCscMatrixScipyComparison:
         return n
 
     # dot
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_scalar(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
+        m = _make(xp, sp, self.dtype)
         return m.dot(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.with_requires('scipy!=1.8.0')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_numpy_scalar(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
+        m = _make(xp, sp, self.dtype)
         return m.dot(numpy.dtype(self.dtype).type(2.0))
 
     @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
@@ -589,11 +597,13 @@ class TestCscMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_dot_zero_dim(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        x = xp.array(2, dtype=self.dtype)
-        return m.dot(x)
+    @testing.with_requires('scipy>=1.8.0rc1')
+    def test_dot_zero_dim(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = xp.array(2, dtype=self.dtype)
+            with pytest.raises(ValueError):
+                m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -601,7 +611,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -614,7 +624,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -803,7 +813,7 @@ class TestCscMatrixScipyComparison:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -893,6 +903,11 @@ class TestCscMatrixScipyComparison:
                 x * m
 
     def test_rmul_unsupported(self):
+        if (
+            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
+            self.make_method not in ['_make_empty', '_make_shape']
+        ):
+            pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
             # TODO(unno): When a sparse matrix has no element, scipy.sparse
@@ -1123,7 +1138,7 @@ class TestCscMatrixSum:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1249,21 +1264,23 @@ class TestCscMatrixScipyCompressedMinMax:
         else:
             return data.max(axis=self.axis)
 
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_argmin(self, xp, sp):
-        # TODO(takagi) Fix axis=None
-        if self.axis is None:
-            pytest.skip()
         data = self._make_data_min(xp, sp, dense=self.dense)
-        return data.argmin(axis=self.axis)
-
-    @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_argmax(self, xp, sp):
-        # TODO(takagi) Fix axis=None
-        if self.axis is None:
+        # Due to a SciPy bug, the argmin output is different from the expected
+        # one
+        if self.axis is None and self.dense:
             pytest.skip()
+        return xp.array(data.argmin(axis=self.axis))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_argmax(self, xp, sp):
         data = self._make_data_max(xp, sp, dense=self.dense)
-        return data.argmax(axis=self.axis)
+        # Due to a SciPy bug, the argmin output is different from the expected
+        # one
+        if self.axis is None and self.dense:
+            pytest.skip()
+        return xp.array(data.argmax(axis=self.axis))
 
 
 @testing.parameterize(*testing.product({
@@ -1320,7 +1337,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1338,7 +1355,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1351,7 +1368,7 @@ class TestCscMatrixData:
             HIP_version = driver.get_build_version()
             if HIP_version < 400:
                 pytest.skip('no working implementation')
-            elif HIP_version < 40400000:
+            elif HIP_version < 5_00_00000:
                 # I got HIPSPARSE_STATUS_INTERNAL_ERROR...
                 pytest.xfail('spmv is buggy (trans=True)')
 
@@ -1485,6 +1502,7 @@ class TestCsrMatrixGetitem:
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.with_requires('scipy>=1.9.3')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy's CSC tests
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]

@@ -2,176 +2,307 @@
 # CUDA (Linux)
 ###############################################################################
 
-# CUDA 10.2 | Linux
-# The lowest CUDA version matrix is intended to cover the lowest supported combination.
-- project: "cupy.linux.cuda102"
-  target: "cuda102"
-  system: "linux"
-  os: "ubuntu:18.04"
-  cuda: "10.2"
-  rocm: null
-  nccl: "2.8"
-  cutensor: null
-  cusparselt: null
-  cudnn: "7.6"
-  python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
-  optuna: "2"
-  cython: "0.29"
-  env:CUPY_ACCELERATORS: null
-  test: "unit"
-
-# CUDA 10.2 (Multi-GPU) | Linux
-- project: "cupy.linux.cuda102.multi"
-  _inherits: "cupy.linux.cuda102"
-  target: "cuda102.multi"
-  test: "unit-multi"
-
-# CUDA 11.0 | Linux
-- project: "cupy.linux.cuda110"
-  target: "cuda110"
-  system: "linux"
-  os: "ubuntu:20.04"
-  cuda: "11.0"
-  rocm: null
-  nccl: "2.9"
-  cutensor: "1.3"
-  cusparselt: null
-  cudnn: "8.2"
-  python: "3.9"
-  numpy: "1.20"
-  scipy: "1.7"
-  optuna: "2"
-  cython: "0.29"
-  env:CUPY_ACCELERATORS: "cub,cutensor"
-  test: "unit"
-
-# CUDA 11.0 (Multi-GPU) | Linux
-- project: "cupy.linux.cuda110.multi"
-  _inherits: "cupy.linux.cuda110"
-  target: "cuda110.multi"
-  test: "unit-multi"
-
-# CUDA 11.1 | Linux
-- project: "cupy.linux.cuda111"
-  target: "cuda111"
-  system: "linux"
-  os: "centos:7"
-  cuda: "11.1"
-  rocm: null
-  nccl: "2.8"
-  cutensor: "1.3"
-  cusparselt: null
-  cudnn: "8.0"
-  python: "3.7"
-  numpy: "1.19"
-  scipy: null
-  optuna: "2"
-  cython: "0.29"
-  env:CUPY_ACCELERATORS: "cutensor,cub"
-  test: "unit"
-
-# CUDA 11.1 (Multi-GPU) | Linux
-- project: "cupy.linux.cuda111.multi"
-  _inherits: "cupy.linux.cuda111"
-  target: "cuda111.multi"
-  test: "unit-multi"
-
 # CUDA 11.2 | Linux
+# The lowest CUDA version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.cuda112"
+  tags: ["@push", "full", "mini", "cuda112"]
   target: "cuda112"
   system: "linux"
-  os: "centos:8"
+  os: "centos:7"
   cuda: "11.2"
   rocm: null
-  nccl: "2.8"
-  cutensor: "1.3"
+  nccl: "2.16"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.1"
-  python: "3.7"
-  numpy: "1.18"
-  scipy: "1.5"
-  optuna: "2"
+  cudnn: "8.8"
+  python: "3.9"
+  numpy: "1.22"
+  scipy: "1.7"
+  optuna: "3"
+  mpi4py: null
   cython: "0.29"
-  env:CUPY_ACCELERATORS: null
+  cuda-python: null
+  env:CUPY_ACCELERATORS: ""
   test: "unit"
 
 # CUDA 11.2 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda112.multi"
   _inherits: "cupy.linux.cuda112"
+  tags: ["@push", "full", "multi", "cuda112"]
   target: "cuda112.multi"
+  mpi4py: null  # CentOS
   test: "unit-multi"
 
 # CUDA 11.3 | Linux
 - project: "cupy.linux.cuda113"
+  tags: ["@push", "full", "cuda113"]
   target: "cuda113"
   system: "linux"
-  os: "ubuntu:18.04"
+  os: "ubuntu:20.04"
   cuda: "11.3"
   rocm: null
-  nccl: "2.9"
-  cutensor: "1.3"
+  nccl: "2.16"
+  cutensor: "1.6"
   cusparselt: null
-  cudnn: "8.2"
-  python: "3.8"
-  numpy: "1.18"
-  scipy: "1.6"
-  optuna: "2"
+  cudnn: "8.8"
+  python: "3.10"
+  numpy: "1.23"
+  scipy: "1.8"
+  optuna: "3"
+  mpi4py: null
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
 # CUDA 11.3 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda113.multi"
   _inherits: "cupy.linux.cuda113"
+  tags: ["@push", "full", "multi", "cuda113"]
   target: "cuda113.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.4 | Linux
 - project: "cupy.linux.cuda114"
+  tags: ["@push", "full", "cuda114"]
   target: "cuda114"
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "11.4"
   rocm: null
-  nccl: "2.11"
-  cutensor: "1.3"
+  nccl: "2.16"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.2"
-  python: "3.10"
-  numpy: "1.21"
-  scipy: "1.7"
-  optuna: "2"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.24"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 11.4 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda114.multi"
   _inherits: "cupy.linux.cuda114"
+  tags: ["@push", "full", "multi", "cuda114"]
   target: "cuda114.multi"
+  mpi4py: "3"
   test: "unit-multi"
 
 # CUDA 11.5 | Linux
+- project: "cupy.linux.cuda115"
+  tags: ["@push", "full", "cuda115"]
+  target: "cuda115"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.5"
+  rocm: null
+  nccl: "2.16"
+  cutensor: "1.6"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.9"
+  numpy: "1.22"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.5 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda115.multi"
+  _inherits: "cupy.linux.cuda115"
+  tags: ["@push", "full", "multi", "cuda115"]
+  target: "cuda115.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 11.6 | Linux
+- project: "cupy.linux.cuda116"
+  target: "cuda116"
+  tags: ["@push", "full", "cuda116"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.6"
+  rocm: null
+  nccl: "2.16"
+  cutensor: "1.6"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.10"
+  numpy: "1.23"
+  scipy: "1.8"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.6 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda116.multi"
+  _inherits: "cupy.linux.cuda116"
+  tags: ["@push", "full", "multi", "cuda116"]
+  target: "cuda116.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 11.7 | Linux
+- project: "cupy.linux.cuda117"
+  target: "cuda117"
+  tags: ["@push", "full", "cuda117"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.7"
+  rocm: null
+  nccl: "2.16"
+  cutensor: "1.6"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.9"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.7 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda117.multi"
+  _inherits: "cupy.linux.cuda117"
+  tags: ["@push", "full", "multi", "cuda117"]
+  target: "cuda117.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 11.8 | Linux
+- project: "cupy.linux.cuda118"
+  target: "cuda118"
+  tags: ["@push", "full", "mini", "cuda118"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.8"
+  rocm: null
+  nccl: "2.16"
+  cutensor: "1.7"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.24"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 11.8 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda118.multi"
+  _inherits: "cupy.linux.cuda118"
+  tags: ["@push", "full", "mini", "multi", "cuda118"]
+  target: "cuda118.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 12.0 | Linux
+- project: "cupy.linux.cuda120"
+  target: "cuda120"
+  tags: ["@push", "full", "mini", "cuda120"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.0"
+  rocm: null
+  nccl: "2.17"
+  cutensor: "1.7"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.9"
+  numpy: "1.23"
+  scipy: "1.9"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.0 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda120.multi"
+  _inherits: "cupy.linux.cuda120"
+  tags: ["@push", "full", "mini", "multi", "cuda120"]
+  target: "cuda120.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 12.1 | Linux
+- project: "cupy.linux.cuda121"
+  target: "cuda121"
+  tags: ["@push", "full", "mini", "cuda121"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.1"
+  rocm: null
+  nccl: "2.17"
+  cutensor: "1.7"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.24"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.1 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda121.multi"
+  _inherits: "cupy.linux.cuda121"
+  tags: ["@push", "full", "mini", "multi", "cuda121"]
+  target: "cuda121.multi"
+  mpi4py: "3"
+  test: "unit-multi"
+
+# CUDA 12.2 | Linux
 # The latest CUDA version matrix is intended to cover the highest supported combination.
-# - project: "cupy.linux.cuda115"
-#   target: "cuda115"
-#   system: "linux"
-#   os: "ubuntu:20.04"
-#   cuda: "11.5"
-#   rocm: null
-#   nccl: "2.11"
-#   cutensor: "1.3"
-#   cusparselt: "0.2.0"
-#   cudnn: "8.2"
-#   python: "3.9"
-#   numpy: "1.21"
-#   scipy: "1.7"
-#   optuna: "2"
-#   cython: "0.29"
-#   env:CUPY_ACCELERATORS: "cutensor,cub"
-#   test: "unit"
+- project: "cupy.linux.cuda122"
+  target: "cuda122"
+  tags: ["@push", "full", "mini", "cuda122"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "12.2"
+  rocm: null
+  nccl: "2.18"
+  cutensor: "1.7"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.24"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 12.2 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda122.multi"
+  _inherits: "cupy.linux.cuda122"
+  tags: ["@push", "full", "mini", "multi", "cuda122"]
+  target: "cuda122.multi"
+  mpi4py: "3"
+  test: "unit-multi"
 
 ###############################################################################
 # CUDA (Windows)
@@ -183,48 +314,11 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 4.0 | Linux
-# The lowest ROCm version matrix is intended to cover the lowest supported combination.
-- project: "cupy.linux.rocm-4-0"
-  target: "rocm-4-0"
-  system: "linux"
-  os: "ubuntu:20.04"
-  cuda: null
-  rocm: "4.0"
-  nccl: null
-  cutensor: null
-  cusparselt: null
-  cudnn: null
-  python: "3.7"
-  numpy: "1.18"
-  scipy: "1.4"
-  optuna: "2"
-  cython: "0.29"
-  env:CUPY_ACCELERATORS: null
-  test: "unit"
-
-# ROCm 4.2 | Linux
-- project: "cupy.linux.rocm-4-2"
-  target: "rocm-4-2"
-  system: "linux"
-  os: "ubuntu:20.04"
-  cuda: null
-  rocm: '4.2'
-  nccl: null
-  cutensor: null
-  cusparselt: null
-  cudnn: null
-  python: "3.8"
-  numpy: "1.20"
-  scipy: "1.6"
-  optuna: "2"
-  cython: "0.29"
-  env:CUPY_ACCELERATORS: null
-  test: "unit"
-
 # ROCm 4.3 | Linux
-# The latest ROCm version matrix is intended to cover the highest supported combination.
+# The lowest ROCm version matrix is intended to cover the lowest supported combination.
 - project: "cupy.linux.rocm-4-3"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-4-3,label=mnj-mi50/"
+  tags: null  # Jenkins
   target: "rocm-4-3"
   system: "linux"
   os: "ubuntu:20.04"
@@ -235,13 +329,61 @@
   cusparselt: null
   cudnn: null
   python: "3.9"
-  numpy: "1.21"
+  numpy: "1.22"
   scipy: "1.7"
-  optuna: "2"
+  optuna: "3"
+  mpi4py: null
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
+# ROCm 5.0 | Linux
+- project: "cupy.linux.rocm-5-0"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-0,label=mnj-mi50/"
+  tags: null  # Jenkins
+  target: "rocm-5-0"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: null
+  rocm: '5.0'
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.10"
+  numpy: "1.23"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
+
+# ROCm 5.3 | Linux
+# The latest ROCm version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.rocm-5-3"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-5-3,label=mnj-mi50/"
+  tags: null  # Jenkins
+  target: "rocm-5-3"
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: null
+  rocm: '5.3'
+  nccl: null
+  cutensor: null
+  cusparselt: null
+  cudnn: null
+  python: "3.11"
+  numpy: "1.24"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: null
+  env:CUPY_ACCELERATORS: null
+  test: "unit"
 
 ###############################################################################
 # Slow Tests
@@ -250,19 +392,22 @@
 # Slow | Linux
 - project: "cupy.linux.cuda-slow"
   target: "cuda-slow"
+  tags: ["slow"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.4"
+  cuda: "11.8"
   rocm: null
-  nccl: "2.10"
-  cutensor: "1.3"
+  nccl: "2.16"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.2"
-  python: "3.9"
-  numpy: "1.21"
-  scipy: "1.7"
-  optuna: "2"
+  cudnn: "8.8"
+  python: "3.11"
+  numpy: "1.23"
+  scipy: "1.10"
+  optuna: "3"
+  mpi4py: null
   cython: "0.29"
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit-slow"
 
@@ -273,25 +418,27 @@
 # Example (with Doctest) | Linux
 # Notes:
 # - Examples and Doctests are tested against the minimum supported Python version.
-#   (Uses Python 3.8 instead of 3.7 to test Array API support.)
 # - Libraries versions for doctests will be overridden by docs/requirements.txt
 # - Accelerators are disabled as doctests expect it (#5891)
 - project: "cupy.linux.cuda-example"
   target: "cuda-example"
+  tags: ["@push", "full", "mini", "example"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.4"
+  cuda: "11.8"
   rocm: null
-  nccl: "2.10"
-  cutensor: "1.3"
+  nccl: "2.16"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.2"
-  python: "3.8"
-  numpy: "1.20"
+  cudnn: "8.8"
+  python: "3.9"
+  numpy: "1.22"
   scipy: "1.7"
-  optuna: "2"
+  optuna: "3"
+  mpi4py: null
   cython: "0.29"
-  env:CUPY_ACCELERATORS: null
+  cuda-python: null
+  env:CUPY_ACCELERATORS: ""
   test: "example"
 
 ###############################################################################
@@ -302,18 +449,138 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
+  tags: ["head"]
   system: "linux"
   os: "ubuntu:20.04"
-  cuda: "11.4"
+  cuda: "11.8"
   rocm: null
-  nccl: "2.10"
-  cutensor: "1.3"
+  nccl: "2.16"
+  cutensor: "1.6"
   cusparselt: "0.2.0"
-  cudnn: "8.2"
-  python: "3.9"
+  cudnn: "8.8"
+  python: "3.11"
   numpy: "pre"
   scipy: "pre"
   optuna: "pre"
+  mpi4py: null
   cython: "0.29"  # TODO: support Cython 3
+  cuda-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
+
+###############################################################################
+# CUDA Python Test
+###############################################################################
+
+# CUDA 11.x / CUDA Python | Linux
+- project: "cupy.linux.cuda11x-cuda-python"
+  target: "cuda11x-cuda-python"
+  tags: ["@push", "full", "mini", "cuda-python"]
+  system: "linux"
+  os: "ubuntu:20.04"
+  cuda: "11.6"
+  rocm: null
+  nccl: "2.16"
+  cutensor: "1.6"
+  cusparselt: "0.2.0"
+  cudnn: "8.8"
+  python: "3.10"
+  numpy: "1.22"
+  scipy: "1.7"
+  optuna: "3"
+  mpi4py: null
+  cython: "0.29"
+  cuda-python: "11"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_USE_CUDA_PYTHON: "1"
+  test: "unit"
+
+###############################################################################
+# Tests in hand-crafted environment (not managed by generate.py)
+###############################################################################
+
+- project: "cupy.win.cuda112"
+  _extern: true
+  target: "cuda112"
+  tags: ["@push", "full", "mini", "windows", "cuda112"]
+  system: "windows"
+
+- project: "cupy.win.cuda113"
+  _extern: true
+  target: "cuda113"
+  tags: ["windows", "cuda113"]
+  system: "windows"
+
+- project: "cupy.win.cuda114"
+  _extern: true
+  target: "cuda114"
+  tags: ["windows", "cuda114"]
+  system: "windows"
+
+- project: "cupy.win.cuda115"
+  _extern: true
+  target: "cuda115"
+  tags: ["windows", "cuda115"]
+  system: "windows"
+
+- project: "cupy.win.cuda116"
+  _extern: true
+  target: "cuda116"
+  tags: ["windows", "cuda116"]
+  system: "windows"
+
+- project: "cupy.win.cuda117"
+  _extern: true
+  target: "cuda117"
+  tags: ["windows", "cuda117"]
+  system: "windows"
+
+- project: "cupy.win.cuda118"
+  _extern: true
+  target: "cuda118"
+  tags: ["@push", "full", "mini", "windows", "cuda118"]
+  system: "windows"
+
+- project: "cupy.win.cuda120"
+  _extern: true
+  target: "cuda120"
+  tags: ["@push", "full", "mini", "windows", "cuda120"]
+  system: "windows"
+
+- project: "cupy.win.cuda121"
+  _extern: true
+  target: "cuda121"
+  tags: ["@push", "full", "mini", "windows", "cuda121"]
+  system: "windows"
+
+- project: "cupy.win.cuda122"
+  _extern: true
+  target: "cuda122"
+  tags: ["@push", "full", "mini", "windows", "cuda122"]
+  system: "windows"
+
+- project: "cupy.linux.cuda-rapids"
+  _extern: true
+  target: "cuda-rapids"
+  tags: ["@push", "full", "rapids"]
+  system: "linux"
+
+- project: "cupy.linux.array-api"
+  _extern: true
+  target: "array-api"
+  tags: ["array-api"]
+  system: "linux"
+
+- project: "cupy.linux.benchmark.head"
+  _inherits: "cupy.linux.cuda118"
+  target: "benchmark.head"
+  tags: ["benchmark"]
+  system: "linux"
+  test: "benchmark"
+
+- project: "cupy.linux.benchmark.pr"
+  _inherits: "cupy.linux.cuda118"
+  target: "benchmark"
+  tags: ["benchmark"]
+  system: "linux"
+  test: "benchmark"

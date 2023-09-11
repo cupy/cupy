@@ -1,5 +1,5 @@
 """Thin wrapper of CUSOLVER."""
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, int64_t
 
 cpdef _get_cuda_build_version()
 
@@ -7,10 +7,14 @@ cpdef _get_cuda_build_version()
 # Types
 ###############################################################################
 cdef extern from *:
+    ctypedef int DataType 'cudaDataType'
+
     ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
 
     ctypedef void* Handle 'cusolverDnHandle_t'
     ctypedef void* SpHandle 'cusolverSpHandle_t'
+
+    ctypedef void* Params 'cusolverDnParams_t'
 
     ctypedef int Operation 'cublasOperation_t'
     ctypedef int SideMode 'cublasSideMode_t'
@@ -660,6 +664,18 @@ cpdef zheevjBatched(
     intptr_t handle, int jobz, int uplo, int n, size_t A, int lda,
     size_t W, size_t work, int lwork, size_t info, intptr_t params,
     int batchSize)
+
+# dense eigenvalue solver (64bit)
+cpdef (size_t, size_t) xsyevd_bufferSize(  # noqa
+    intptr_t handle, intptr_t params, int jobz, int uplo,
+    int64_t n, int dataTypeA, intptr_t A, int64_t lda,
+    int dataTypeW, intptr_t W, int computeType) except *
+cpdef xsyevd(
+    intptr_t handle, intptr_t params, int jobz, int uplo,
+    int64_t n, int dataTypeA, intptr_t A, int64_t lda,
+    int dataTypeW, intptr_t W, int computeType, intptr_t bufferOnDevice,
+    size_t workspaceInBytesOnDevice, intptr_t bufferOnHost,
+    size_t workspaceInBytesOnHost, intptr_t info)
 
 ###############################################################################
 # Sparse LAPACK Functions

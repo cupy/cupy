@@ -18,6 +18,15 @@ class TestVectorizeOps(unittest.TestCase):
         ]
         return f(*args)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_vectorize_reciprocal(self, xp, dtype):
+        def my_reciprocal(x):
+            scalar = xp.dtype(dtype).type(10)
+            return xp.reciprocal(x + scalar)
+
+        return self._run(my_reciprocal, xp, [dtype])
+
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal()
     def test_vectorize_add(self, xp, dtype1, dtype2):
@@ -26,13 +35,13 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_add, xp, [dtype1, dtype2])
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
-    def test_vectorize_sub(self, xp, dtype1, dtype2):
+    @testing.for_dtypes('bhilqefdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_sub(self, xp, dtype):
         def my_sub(x, y):
             return x - y
 
-        return self._run(my_sub, xp, [dtype1, dtype2])
+        return self._run(my_sub, xp, [dtype, dtype])
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -42,13 +51,26 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_mul, xp, [dtype1, dtype2])
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_dtypes('qQefdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5)
-    def test_vectorize_pow(self, xp, dtype1, dtype2):
+    def test_vectorize_pow(self, xp, dtype):
         def my_pow(x, y):
             return x ** y
 
         f = xp.vectorize(my_pow)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=0)
+        x2 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x1[x1 == 0] = 1
+        return f(x1, x2)
+
+    @testing.for_all_dtypes_combination(
+        names=('dtype1', 'dtype2'), no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_vectorize_minmax(self, xp, dtype1, dtype2):
+        def my_minmax(x, y):
+            return max(x, y) - min(x, y)
+
+        f = xp.vectorize(my_minmax)
         x1 = testing.shaped_random((20, 30), xp, dtype1, seed=0)
         x2 = testing.shaped_random((20, 30), xp, dtype2, seed=1)
         x1[x1 == 0] = 1
@@ -64,6 +86,7 @@ class TestVectorizeOps(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.with_requires('numpy>=1.23', 'numpy!=1.24.0', 'numpy!=1.24.1')
     def test_vectorize_div(self, xp, dtype1, dtype2):
         def my_div(x, y):
             return x / y
@@ -79,20 +102,21 @@ class TestVectorizeOps(unittest.TestCase):
         return self.run_div(my_floor_div, xp, [dtype1, dtype2])
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(
+        rtol=1e-6, atol=1e-6, accept_error=TypeError)
     def test_vectorize_mod(self, xp, dtype1, dtype2):
         def my_mod(x, y):
             return x % y
 
         return self.run_div(my_mod, xp, [dtype1, dtype2])
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
-    def test_vectorize_lshift(self, xp, dtype1, dtype2):
+    @testing.for_dtypes('iIlLqQ')
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_lshift(self, xp, dtype):
         def my_lshift(x, y):
             return x << y
 
-        return self._run(my_lshift, xp, [dtype1, dtype2])
+        return self._run(my_lshift, xp, [dtype, dtype])
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
@@ -126,13 +150,12 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_bit_xor, xp, [dtype1, dtype2])
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
-    def test_vectorize_bit_invert(self, xp, dtype):
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_bit_invert(self, xp):
         def my_bit_invert(x):
             return ~x
 
-        return self._run(my_bit_invert, xp, [dtype])
+        return self._run(my_bit_invert, xp, [numpy.int64])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
@@ -190,7 +213,7 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_ge, xp, [dtype1, dtype2])
 
-    @testing.for_all_dtypes()
+    @testing.for_dtypes('bhilqefdFD')
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
     def test_vectorize_usub(self, xp, dtype):
         def my_usub(x):
@@ -423,7 +446,7 @@ class TestVectorizeStmts(unittest.TestCase):
             res = 0
             for i in range(x, y, z):
                 res += i * i
-            return x
+            return res
 
         f = xp.vectorize(func_for)
         start = xp.array([0, 1, 2, 3, 4, 5])
@@ -611,7 +634,35 @@ class TestVectorize(unittest.TestCase):
             return x1 + x2 + x3
 
         f = xp.vectorize(my_func)
-        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1, scale=5)
-        x2 = testing.shaped_random((20, 30), xp, dtype, seed=2)
-        x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1, scale=4)
+        x2 = testing.shaped_random((20, 30), xp, dtype, seed=2, scale=4)
+        x3 = testing.shaped_random((20, 30), xp, dtype, seed=3, scale=4)
         return f(x1, x2, x3)
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_lambda(self, xp):
+        f = xp.vectorize(lambda a, b, c: a + b * c)
+        x1 = testing.shaped_random((20, 30), xp, numpy.int64, seed=1)
+        x2 = testing.shaped_random((20, 30), xp, numpy.int64, seed=2)
+        x3 = testing.shaped_random((20, 30), xp, numpy.int64, seed=3)
+        return f(x1, x2, x3)
+
+    def test_vectorize_lambda_xfail(self):
+        functions = [lambda a, b: a + b, lambda a, b: a * b]
+        f = cupy.vectorize(functions[0])
+        x1 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=1)
+        x2 = testing.shaped_random((20, 30), cupy, numpy.int64, seed=2)
+        with pytest.raises(ValueError, match='Multiple callables are found'):
+            return f(x1, x2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_relu(self, xp):
+        f = xp.vectorize(lambda x: x if x > 0.0 else 0.0)
+        a = xp.array([0.4, -0.2, 1.8, -1.2], dtype=xp.float32)
+        return f(a)  # float32
+
+    def test_relu_type_error(self):
+        f = cupy.vectorize(lambda x: x if x > 0.0 else cupy.float64(0.0))
+        a = cupy.array([0.4, -0.2, 1.8, -1.2], dtype=cupy.float32)
+        with pytest.raises(TypeError):
+            return f(a)

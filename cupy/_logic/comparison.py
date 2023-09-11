@@ -130,25 +130,45 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
         return _is_close(a, b, rtol, atol, equal_nan)
 
 
-# TODO(okuta): Implement array_equal
+def array_equiv(a1, a2):
+    """
+    Returns ``True`` if all elements are equal or shape consistent,
+    i.e., one input array can be broadcasted to create the same
+    shape as the other.
+
+    Args:
+        a1 (cupy.ndarray): Input array.
+        a2 (cupy.ndarray): Input array.
+
+    Returns:
+        cupy.ndarray: A boolean 0-dim array.
+            ``True`` if equivalent, otherwise ``False``.
+
+    .. seealso:: :func:`numpy.array_equiv`
+
+    """
+
+    try:
+        cupy.broadcast(a1, a2)
+    except Exception:
+        return cupy.array(False)
+
+    return (a1 == a2).all()
 
 
-# TODO(okuta): Implement array_equiv
+greater: _core.ufunc = _core.greater
 
 
-greater = _core.greater
+greater_equal: _core.ufunc = _core.greater_equal
 
 
-greater_equal = _core.greater_equal
+less: _core.ufunc = _core.less
 
 
-less = _core.less
+less_equal: _core.ufunc = _core.less_equal
 
 
-less_equal = _core.less_equal
+equal: _core.ufunc = _core.equal
 
 
-equal = _core.equal
-
-
-not_equal = _core.not_equal
+not_equal: _core.ufunc = _core.not_equal

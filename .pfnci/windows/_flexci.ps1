@@ -9,6 +9,10 @@ function ActivatePython($version) {
         $pydir = "Python38"
     } elseif ($version -eq "3.9") {
         $pydir = "Python39"
+    } elseif ($version -eq "3.10") {
+        $pydir = "Python310"
+    } elseif ($version -eq "3.11") {
+        $pydir = "Python311"
     } else {
         throw "Unsupported Python version: $version"
     }
@@ -16,19 +20,7 @@ function ActivatePython($version) {
 }
 
 function ActivateCUDA($version) {
-    if ($version -eq "8.0") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V8_0
-    } elseif ($version -eq "9.0") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V9_0
-    } elseif ($version -eq "9.1") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V9_1
-    } elseif ($version -eq "9.2") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V9_2
-    } elseif ($version -eq "10.0") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V10_0
-    } elseif ($version -eq "10.1") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V10_1
-    } elseif ($version -eq "10.2") {
+    if ($version -eq "10.2") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V10_2
     } elseif ($version -eq "11.0") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_0
@@ -40,10 +32,63 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_3
     } elseif ($version -eq "11.4") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_4
+    } elseif ($version -eq "11.5") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_5
+    } elseif ($version -eq "11.6") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_6
+    } elseif ($version -eq "11.7") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_7
+    } elseif ($version -eq "11.8") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
+    } elseif ($version -eq "11.x") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
+    } elseif ($version -eq "12.0") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_0
+    } elseif ($version -eq "12.1") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
+    } elseif ($version -eq "12.2") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_2
+    } elseif ($version -eq "12.x") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V12_2
     } else {
         throw "Unsupported CUDA version: $version"
     }
-    $Env:PATH = "$Env:CUDA_PATH\bin;$Env:ProgramFiles\NVIDIA Corporation\NvToolsExt\bin\x64;" + $Env:PATH
+    $Env:PATH = "$Env:CUDA_PATH\bin;" + $Env:PATH
+}
+
+function ActivateCuDNN($cudnn_version, $cuda_version) {
+    if ($cudnn_version -eq "8.6") {
+        $cudnn = "v8.6.0"
+    } elseif ($cudnn_version -eq "8.8") {
+        $cudnn = "v8.8.1"
+    } elseif ($cudnn_version -eq "8.9") {
+        $cudnn = "v8.9.3"
+    } else {
+        throw "Unsupported cuDNN version: $cudnn_version"
+    }
+
+    if ($cuda_version -eq "10.2") {
+        $cuda = "10"
+    } elseif ($cuda_version.startswith("11.")) {
+        $cuda = "11"
+    } elseif ($cuda_version.startswith("12.")) {
+        $cuda = "12"
+    } else {
+        throw "Unsupported CUDA version: $cuda_version"
+    }
+
+    $base = "C:\Development\cuDNN\$cudnn\cuda$cuda"
+    $Env:CL = "-I$base\include " + $Env:CL
+    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
+    $Env:PATH = "$base\bin;" + $Env:PATH
+}
+
+function ActivateNVTX1() {
+    $base = "C:\Development\NvToolsExt"
+    $Env:NVTOOLSEXT_PATH = "C:\Development\NvToolsExt"
+    $Env:CL = "-I$base\include " + $Env:CL
+    $Env:LINK = "/LIBPATH:$base\lib\x64 " + $Env:LINK
+    $Env:PATH = "$base\bin\x64;" + $Env:PATH
 }
 
 function IsPullRequestTest() {

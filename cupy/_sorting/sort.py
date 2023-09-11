@@ -1,10 +1,12 @@
+import warnings
+
 import cupy
 import numpy
 
 from cupy.cuda import thrust
 
 
-def sort(a, axis=-1):
+def sort(a, axis=-1, kind=None):
     """Returns a sorted copy of an array with a stable sorting algorithm.
 
     Args:
@@ -12,6 +14,8 @@ def sort(a, axis=-1):
         axis (int or None): Axis along which to sort. Default is -1, which
             means sort along the last axis. If None is supplied, the array is
             flattened before sorting.
+        kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+            NumPy any other options are not accepted here.
 
     Returns:
         cupy.ndarray: Array of the same type and shape as ``a``.
@@ -24,6 +28,8 @@ def sort(a, axis=-1):
     .. seealso:: :func:`numpy.sort`
 
     """
+    if kind is not None and kind != 'stable':
+        raise ValueError("kind can only be None or 'stable'")
     if axis is None:
         ret = a.flatten()
         axis = -1
@@ -65,7 +71,7 @@ def lexsort(keys):
         raise TypeError('need sequence of keys with len > 0 in lexsort')
 
     if keys.ndim == 1:
-        return 0
+        return cupy.array(0, dtype=numpy.intp)
 
     # TODO(takagi): Support ranks of three or more.
     if keys.ndim > 2:
@@ -84,7 +90,7 @@ def lexsort(keys):
     return idx_array
 
 
-def argsort(a, axis=-1):
+def argsort(a, axis=-1, kind=None):
     """Returns the indices that would sort an array with a stable sorting.
 
     Args:
@@ -92,6 +98,8 @@ def argsort(a, axis=-1):
         axis (int or None): Axis along which to sort. Default is -1, which
             means sort along the last axis. If None is supplied, the array is
             flattened before sorting.
+        kind: Default is `None`, which is equivalent to 'stable'. Unlike in
+            NumPy any other options are not accepted here.
 
     Returns:
         cupy.ndarray: Array of indices that sort ``a``.
@@ -103,6 +111,8 @@ def argsort(a, axis=-1):
     .. seealso:: :func:`numpy.argsort`
 
     """
+    if kind is not None and kind != 'stable':
+        raise ValueError("kind can only be None or 'stable'")
     return a.argsort(axis=axis)
 
 
@@ -122,7 +132,9 @@ def msort(a):
     .. seealso:: :func:`numpy.msort`
 
     """
-
+    warnings.warn(
+        'msort is deprecated, use cupy.sort(a, axis=0) instead',
+        DeprecationWarning)
     return sort(a, axis=0)
 
 

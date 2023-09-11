@@ -6,6 +6,8 @@ from cupy._core import _routines_math as _math
 from cupy._core import fusion
 from cupy.lib import stride_tricks
 
+import numpy
+
 
 _dot_kernel = _core.ReductionKernel(
     'T x1, T x2',
@@ -33,7 +35,7 @@ def _choose_conv_method(in1, in2, mode):
 
 def _fftconv_faster(x, h, mode):
     """
-    .. seealso:: :func: `scipy.signal.signaltools._fftconv_faster`
+    .. seealso:: :func: `scipy.signal._signaltools._fftconv_faster`
 
     """
     # TODO(Dahlia-Chehata): replace with GPU-based constants.
@@ -53,7 +55,7 @@ def convolve(a, v, mode='full'):
 
     .. seealso:: :func:`numpy.convolve`
 
-    """
+    """  # NOQA
     if a.size == 0:
         raise ValueError('a cannot be empty')
     if v.size == 0:
@@ -78,9 +80,9 @@ def convolve(a, v, mode='full'):
 def _fft_convolve(a1, a2, mode):
 
     offset = 0
-    if a1.size < a2.size:
+    if a1.shape[-1] < a2.shape[-1]:
         a1, a2 = a2, a1
-        offset = 1 - a2.size % 2
+        offset = 1 - a2.shape[-1] % 2
 
     # if either of them is complex, the dtype after multiplication will also be
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
@@ -89,7 +91,7 @@ def _fft_convolve(a1, a2, mode):
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
 
     dtype = cupy.result_type(a1, a2)
-    n1, n2 = a1.size, a2.size
+    n1, n2 = a1.shape[-1], a2.shape[-1]
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
     fa1 = fft(a1, out_size)
     fa2 = fft(a2, out_size)
@@ -106,7 +108,7 @@ def _fft_convolve(a1, a2, mode):
         raise ValueError(
             'acceptable mode flags are `valid`, `same`, or `full`.')
 
-    out = out[start:end]
+    out = out[..., start:end]
 
     if dtype.kind in 'iu':
         out = cupy.around(out)
@@ -142,7 +144,7 @@ def _dot_convolve(a1, a2, mode):
     return output
 
 
-def clip(a, a_min=None, a_max=None, out=None):
+def clip(a, a_min, a_max, out=None):
     """Clips the values of an array to a given interval.
 
     This is equivalent to ``maximum(minimum(a, a_max), a_min)``, while this
@@ -161,6 +163,10 @@ def clip(a, a_min=None, a_max=None, out=None):
 
     .. seealso:: :func:`numpy.clip`
 
+    Notes
+    -----
+    When `a_min` is greater than `a_max`, `clip` returns an
+    array in which all values are equal to `a_max`.
     """
     if fusion._is_fusing():
         return fusion._call_ufunc(_math.clip,
@@ -201,8 +207,16 @@ square = _core.create_ufunc(
 absolute = _core.absolute
 
 
-# TODO(beam2d): Implement it
-# fabs
+fabs = _core.create_ufunc(
+    'cupy_fabs',
+    ('e->e', 'f->f', 'd->d'),
+    'out0 = abs(in0)',
+    doc='''Calculates absolute values element-wise.
+    Only real values are handled.
+
+    .. seealso:: :data:`numpy.fabs`
+
+    ''')
 
 
 _unsigned_sign = 'out0 = in0 > 0'
@@ -227,6 +241,26 @@ sign = _core.create_ufunc(
     .. seealso:: :data:`numpy.sign`
 
     ''')
+
+
+heaviside = _core.create_ufunc(
+    'cupy_heaviside',
+    ('ee->e', 'ff->f', 'dd->d'),
+    '''
+    if (isnan(in0)) {
+        out0 = in0;
+    } else if (in0 == 0) {
+        out0 = in1;
+    } else {
+        out0 = (in0 > 0);
+    }
+    ''',
+    doc='''Compute the Heaviside step function.
+
+    .. seealso:: :data:`numpy.heaviside`
+
+    '''
+)
 
 
 _float_preamble = '''
@@ -254,7 +288,7 @@ maximum = _core.create_ufunc(
     .. seealso:: :data:`numpy.maximum`
 
     ''',
-    cutensor_op=('OP_MAX', 1, 1))
+    cutensor_op=('OP_MAX', 1, 1), scatter_op='max')
 
 
 _float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
@@ -277,7 +311,7 @@ minimum = _core.create_ufunc(
     .. seealso:: :data:`numpy.minimum`
 
     ''',
-    cutensor_op=('OP_MIN', 1, 1))
+    cutensor_op=('OP_MIN', 1, 1), scatter_op='min')
 
 
 fmax = _core.create_ufunc(
@@ -380,15 +414,37 @@ def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
     .. seealso:: :func:`numpy.nan_to_num`
 
     """
-    dtype = x.dtype
+    if not isinstance(x, cupy.ndarray):
+        out = cupy.full((), x)
+    else:
+        out = cupy.empty_like(x) if copy else x
+    dtype = out.dtype
     nan = _check_nan_inf(nan, dtype)
     posinf = _check_nan_inf(posinf, dtype, False)
     neginf = _check_nan_inf(neginf, dtype, True)
-    out = None if copy else x
     return _nan_to_num(x, nan, posinf, neginf, out=out)
 
 
-# TODO(okuta): Implement real_if_close
+def real_if_close(a, tol=100):
+    """If input is complex with all imaginary parts close to zero, return real
+    parts.
+    "Close to zero" is defined as `tol` * (machine epsilon of the type for
+    `a`).
+
+    .. warning::
+
+            This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.real_if_close`
+    """
+    if not issubclass(a.dtype.type, cupy.complexfloating):
+        return a
+    if tol > 1:
+        f = numpy.finfo(a.dtype.type)
+        tol = f.eps * tol
+    if cupy.all(cupy.absolute(a.imag) < tol):
+        a = a.real
+    return a
 
 
 @cupy._util.memoize(for_each_device=True)

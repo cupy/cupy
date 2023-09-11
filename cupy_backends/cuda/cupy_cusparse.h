@@ -573,39 +573,338 @@ cusparseStatus_t cusparseSpMatGetSize(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+typedef void* cusparseSpGEMMDescr_t;
+typedef enum {} cusparseSpGEMMAlg_t;
+
+cusparseStatus_t cusparseSpGEMM_createDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_destroyDescr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_workEstimation(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_compute(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_copy(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseGather(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 #endif // #if CUSPARSE_VERSION < 11100
 
 #if CUSPARSE_VERSION < 11300
-// Types, macro and functions added in cuSparse 11.3 (CUDA 11.2)
+// Types and macros added in cuSparse 11.3 (CUDA 11.1.1)
 
 typedef enum {} cusparseSparseToDenseAlg_t;
 typedef enum {} cusparseDenseToSparseAlg_t;
 
-cusparseStatus_t cusparseCreateCsc(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseSparseToDense(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_analysis(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDenseToSparse_convert(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 #endif // CUSPARSE_VERSION < 11300
 
+#if CUSPARSE_VERSION < 11500
+// API added in cuSparse 11.5 (CUDA 11.3.0)
+
+typedef enum {} cusparseSpMatAttribute_t;
+
+#endif // CUSPARSE_VERSION < 11500
+
+#if CUSPARSE_VERSION < 11600
+// Generic APIs added in cuSPARSE 11.6 (CUDA 11.3.1)
+
+typedef void* cusparseSpSMDescr_t;
+typedef enum {} cusparseSpSMAlg_t;
+
+#endif // #if CUSPARSE_VERSION < 11600
+
+#if CUSPARSE_VERSION >= 12000
+// Types and functions deleted in cuSPARSE 12.0 (CUDA 12.0)
+
+typedef enum {} cusparseAlgMode_t;
+typedef void* csrgemm2Info_t;
+typedef void* csrsm2Info_t;
+typedef void* csrsv2Info_t;
+
+cusparseStatus_t cusparseCreateCsrsv2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrsv2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCsrgemm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDestroyCsrgemm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZgthr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsrmvEx(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsv2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsm2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrgemm2Nnz(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsrgemm2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsc2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZcsr2dense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZdense2csc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseZdense2csr(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatSetStridedBatch(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseConstrainedGeMM(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCreateCooAoS(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCooAoSGet(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUSPARSE_VERSION >= 12000
 
 #endif  // INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H

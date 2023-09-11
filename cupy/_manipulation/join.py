@@ -76,7 +76,7 @@ def dstack(tup):
     return concatenate([cupy.atleast_3d(m) for m in tup], 2)
 
 
-def hstack(tup):
+def hstack(tup, *, dtype=None, casting='same_kind'):
     """Stacks arrays horizontally.
 
     If an input array has one dimension, then the array is treated as a
@@ -85,6 +85,11 @@ def hstack(tup):
 
     Args:
         tup (sequence of arrays): Arrays to be stacked.
+        dtype (str or dtype): If provided, the destination array will have this
+            dtype.
+        casting ({‘no’, ‘equiv’, ‘safe’, ‘same_kind’, ‘unsafe’}, optional):
+            Controls what kind of data casting may occur. Defaults to
+            ``'same_kind'``.
 
     Returns:
         cupy.ndarray: Stacked array.
@@ -96,10 +101,10 @@ def hstack(tup):
     axis = 1
     if arrs[0].ndim == 1:
         axis = 0
-    return concatenate(arrs, axis)
+    return concatenate(arrs, axis, dtype=dtype, casting=casting)
 
 
-def vstack(tup):
+def vstack(tup, *, dtype=None, casting='same_kind'):
     """Stacks arrays vertically.
 
     If an input array has one dimension, then the array is treated as a
@@ -109,6 +114,11 @@ def vstack(tup):
     Args:
         tup (sequence of arrays): Arrays to be stacked. Each array is converted
             by :func:`cupy.atleast_2d` before stacking.
+        dtype (str or dtype): If provided, the destination array will have this
+            dtype.
+        casting ({‘no’, ‘equiv’, ‘safe’, ‘same_kind’, ‘unsafe’}, optional):
+            Controls what kind of data casting may occur. Defaults to
+            ``'same_kind'``.
 
     Returns:
         cupy.ndarray: Stacked array.
@@ -116,20 +126,27 @@ def vstack(tup):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate([cupy.atleast_2d(m) for m in tup], 0)
+    return concatenate([cupy.atleast_2d(m) for m in tup], 0,
+                       dtype=dtype, casting=casting)
 
 
-def stack(tup, axis=0, out=None):
+def stack(tup, axis=0, out=None, *, dtype=None, casting='same_kind'):
     """Stacks arrays along a new axis.
 
     Args:
         tup (sequence of arrays): Arrays to be stacked.
         axis (int): Axis along which the arrays are stacked.
         out (cupy.ndarray): Output array.
+        dtype (str or dtype): If provided, the destination array will have this
+            dtype. Cannot be provided together with ``out``.
+        casting ({‘no’, ‘equiv’, ‘safe’, ‘same_kind’, ‘unsafe’}, optional):
+            Controls what kind of data casting may occur. Defaults to
+            ``'same_kind'``.
 
     Returns:
         cupy.ndarray: Stacked array.
 
     .. seealso:: :func:`numpy.stack`
     """
-    return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out)
+    return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out,
+                       dtype=dtype, casting=casting)

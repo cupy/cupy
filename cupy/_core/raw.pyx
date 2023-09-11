@@ -338,8 +338,8 @@ cdef class RawModule:
 
     .. note::
         Before CuPy v8.0.0, the compilation happens at initialization. Now, it
-        happens at the first time retrieving any object (kernels, pointers, or
-        texrefs) from the module.
+        happens at the first time retrieving any object (kernels or pointers)
+        from the module.
 
     .. _Jitify:
         https://github.com/NVIDIA/jitify
@@ -482,19 +482,8 @@ cdef class RawModule:
         # for lookup in case we specialize a template
         ker.name_expressions = self.name_expressions
         # register the kernel in the cache
-        func = ker.kernel  # noqa
+        func = ker.kernel  # no-cython-lint
         return ker
-
-    def get_texref(self, name):
-        '''Retrieve a texture reference by its name from the module.
-
-        Args:
-            name (str): Name of the texture reference.
-
-        Returns:
-            intptr_t: A ``CUtexref`` handle, to be passed to :class:`~cupy.cuda.texture.TextureReference`.
-        '''  # noqa
-        return self.module.get_texref(name)
 
     def get_global(self, name):
         '''Retrieve a pointer to a global symbol by its name from the module.

@@ -256,11 +256,7 @@ _hip_preamble = r'''
 '''
 
 
-_searchsorted_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int64 n_bins, bool side_is_right, '
-    'bool assume_increasing',
-    'int64 y',
-    '''
+_searchsorted_code = '''
     #ifdef __HIP_DEVICE_COMPILE__
     bool is_done = false;
     #endif
@@ -336,7 +332,62 @@ _searchsorted_kernel = _core.ElementwiseKernel(
         }
     }
     no_thread_divergence( y = right , false )
-    ''', name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
+'''
+
+
+_searchsorted_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool side_is_right, '
+    'bool assume_increasing',
+    'int64 y',
+    _searchsorted_code,
+    name='cupy_searchsorted_kernel', preamble=_preamble+_hip_preamble)
+
+
+_hip_preamble = r'''
+#ifdef __HIP_DEVICE_COMPILE__
+  #define no_thread_divergence(do_work, to_return) \
+    if (!is_done) {                                \
+      do_work;                                     \
+      is_done = true;                              \
+    }
+#else
+  #define no_thread_divergence(do_work, to_return) \
+    do_work;                                       \
+    if (to_return) {                               \
+      out = (y == n_bins ? false : bins[y] == x);  \
+      if (invert) out = !out;                      \
+      return;                                      \
+    }
+#endif
+'''
+
+
+_exists_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool invert',
+    'bool out',
+    '''
+    const bool assume_increasing = true;
+    const bool side_is_right = false;
+    long long y;
+    '''
+    + _searchsorted_code + '''
+    out = (y == n_bins ? false : bins[y] == x);
+    if (invert) out = !out;
+    ''', name='cupy_exists_kernel', preamble=_preamble+_hip_preamble)
+
+
+_exists_and_searchsorted_kernel = _core.ElementwiseKernel(
+    'S x, raw T bins, int64 n_bins, bool invert',
+    'bool out, int64 y',
+    '''
+    const bool assume_increasing = true;
+    const bool side_is_right = false;
+    '''
+    + _searchsorted_code + '''
+    out = (y == n_bins ? false : bins[y] == x);
+    if (invert) out = !out;
+    ''', name='cupy_exists_and_searchsorted_kernel',
+    preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):

@@ -14,7 +14,7 @@ import cupy
 from cupy import testing
 from cupy.cuda import runtime
 from cupyx.scipy import sparse
-from cupyx.scipy.sparse import construct
+from cupyx.scipy.sparse import _construct
 
 
 @testing.parameterize(*testing.product({
@@ -91,29 +91,29 @@ class TestVstack:
 
         A, B = self.data()
 
-        actual = construct.vstack([A, B]).todense()
+        actual = _construct.vstack([A, B]).todense()
         testing.assert_array_equal(actual, self.expected())
 
     def test_dtype(self):
 
         A, B = self.data()
 
-        actual = construct.vstack([A, B], dtype=self.dtype)
+        actual = _construct.vstack([A, B], dtype=self.dtype)
         assert actual.dtype == self.dtype
 
     def test_csr(self):
 
         A, B = self.data()
 
-        actual = construct.vstack([A.tocsr(), B.tocsr()]).todense()
+        actual = _construct.vstack([A.tocsr(), B.tocsr()]).todense()
         testing.assert_array_equal(actual, self.expected())
 
     def test_csr_with_dtype(self):
 
         A, B = self.data()
 
-        actual = construct.vstack([A.tocsr(), B.tocsr()],
-                                  dtype=self.dtype)
+        actual = _construct.vstack([A.tocsr(), B.tocsr()],
+                                   dtype=self.dtype)
         assert actual.dtype == self.dtype
         assert actual.indices.dtype == cupy.int32
         assert actual.indptr.dtype == cupy.int32
@@ -143,14 +143,14 @@ class TestHstack:
     def test_basic_hstack(self):
 
         A, B = self.data()
-        actual = construct.hstack([A, B], dtype=self.dtype).todense()
+        actual = _construct.hstack([A, B], dtype=self.dtype).todense()
         testing.assert_array_equal(actual, self.expected())
         assert actual.dtype == self.dtype
 
     def test_csc(self):
         A, B = self.data()
-        actual = construct.hstack([A.tocsc(), B.tocsc()],
-                                  dtype=self.dtype).todense()
+        actual = _construct.hstack([A.tocsc(), B.tocsc()],
+                                   dtype=self.dtype).todense()
         testing.assert_array_equal(actual, self.expected())
         assert actual.dtype == self.dtype
 
@@ -158,8 +158,8 @@ class TestHstack:
 
         A, B = self.data()
 
-        actual = construct.hstack([A.tocsc(), B.tocsc()],
-                                  dtype=self.dtype)
+        actual = _construct.hstack([A.tocsc(), B.tocsc()],
+                                   dtype=self.dtype)
         assert actual.indices.dtype == cupy.int32
         assert actual.indptr.dtype == cupy.int32
 
@@ -189,14 +189,14 @@ class TestBmat:
                                  [0, 0, 7]], dtype=self.dtype)
 
         testing.assert_array_equal(
-            construct.bmat([[A, B], [None, C]]).todense(), expected
+            _construct.bmat([[A, B], [None, C]]).todense(), expected
         )
 
         expected = cupy.asarray([[1, 2, 0],
                                  [3, 4, 0],
                                  [0, 0, 7]])
         testing.assert_array_equal(
-            construct.bmat([[A, None], [None, C]]).todense(), expected
+            _construct.bmat([[A, None], [None, C]]).todense(), expected
         )
 
         expected = cupy.asarray([[0, 5],
@@ -204,7 +204,7 @@ class TestBmat:
                                  [7, 0]])
 
         testing.assert_array_equal(
-            construct.bmat([[None, B], [C, None]]).todense(), expected
+            _construct.bmat([[None, B], [C, None]]).todense(), expected
         )
 
     def test_empty(self):
@@ -212,9 +212,9 @@ class TestBmat:
         A, B, C, D = self.data()
 
         expected = cupy.empty((0, 0), dtype=self.dtype)
-        testing.assert_array_equal(construct.bmat([[None, None]]).todense(),
+        testing.assert_array_equal(_construct.bmat([[None, None]]).todense(),
                                    expected)
-        testing.assert_array_equal(construct.bmat([[None, D], [D, None]])
+        testing.assert_array_equal(_construct.bmat([[None, D], [D, None]])
                                    .todense(), expected)
 
     def test_edge_cases(self):
@@ -223,7 +223,7 @@ class TestBmat:
         A, B, C, D = self.data()
 
         expected = cupy.asarray([[7]], dtype=self.dtype)
-        testing.assert_array_equal(construct.bmat([[None, D], [C, None]])
+        testing.assert_array_equal(_construct.bmat([[None, D], [C, None]])
                                    .todense(), expected)
 
     def test_failure_cases(self):
@@ -235,11 +235,11 @@ class TestBmat:
         # test failure cases
         message1 = re.compile(match.format('1,0', '1'))
         with pytest.raises(ValueError, match=message1):
-            construct.bmat([[A], [B]], dtype=self.dtype)
+            _construct.bmat([[A], [B]], dtype=self.dtype)
 
         message2 = re.compile(match.format('0,1', '0'))
         with pytest.raises(ValueError, match=message2):
-            construct.bmat([[A, C]], dtype=self.dtype)
+            _construct.bmat([[A, C]], dtype=self.dtype)
 
 
 @testing.parameterize(*testing.product({

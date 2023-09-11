@@ -13,6 +13,7 @@ Truth value testing
 
    all
    any
+   union1d
 
 
 Array contents
@@ -24,6 +25,8 @@ Array contents
    isfinite
    isinf
    isnan
+   isneginf
+   isposinf
 
 
 Array type testing
@@ -61,6 +64,7 @@ Comparison
    allclose
    isclose
    array_equal
+   array_equiv
    greater
    greater_equal
    less

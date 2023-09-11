@@ -1,6 +1,6 @@
 from libc.stdint cimport intptr_t, uintmax_t
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cdef class ChannelFormatDescriptor:
@@ -13,7 +13,7 @@ cdef class ResourceDescriptor:
         readonly intptr_t ptr
         readonly ChannelFormatDescriptor chDesc
         readonly CUDAarray cuArr
-        readonly ndarray arr
+        readonly _ndarray_base arr
 
 
 cdef class TextureDescriptor:
@@ -45,12 +45,3 @@ cdef class SurfaceObject:
     cdef:
         readonly uintmax_t ptr
         readonly ResourceDescriptor ResDesc
-
-
-cdef class TextureReference:
-    cdef:
-        readonly intptr_t texref
-        readonly ResourceDescriptor ResDesc
-        readonly TextureDescriptor TexDesc
-
-        _get_format(self, dict ch_format)

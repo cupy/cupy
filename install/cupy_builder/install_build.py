@@ -1,20 +1,24 @@
+# mypy: ignore-errors
+
 import contextlib
-import distutils.util
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+from typing import List, Set
 
 import cupy_builder
 import cupy_builder.install_utils as utils
+from cupy_builder import _environment
+from cupy_builder._context import Context
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 10020
 minimum_cudnn_version = 7600
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
@@ -22,8 +26,6 @@ minimum_hip_version = 305  # for ROCm 3.5.0+
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
-
-use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 
 # Using tempfile.TemporaryDirectory would cause an error during cleanup
@@ -82,10 +84,10 @@ def get_cuda_path():
     return _cuda_path
 
 
-def get_nvcc_path():
+def get_nvcc_path() -> List[str]:
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
-        return distutils.util.split_quoted(nvcc)
+        return shlex.split(nvcc)
 
     cuda_path = get_cuda_path()
     if cuda_path is None:
@@ -103,10 +105,10 @@ def get_nvcc_path():
         return None
 
 
-def get_hipcc_path():
+def get_hipcc_path() -> List[str]:
     hipcc = os.environ.get('HIPCC', None)
     if hipcc:
-        return distutils.util.split_quoted(hipcc)
+        return shlex.split(hipcc)
 
     rocm_path = get_rocm_path()
     if rocm_path is None:
@@ -124,7 +126,7 @@ def get_hipcc_path():
         return None
 
 
-def get_compiler_setting(use_hip):
+def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
 
@@ -133,8 +135,8 @@ def get_compiler_setting(use_hip):
     else:
         cuda_path = get_cuda_path()
 
-    include_dirs = []
-    library_dirs = []
+    include_dirs = ctx.include_dirs.copy()
+    library_dirs = ctx.library_dirs.copy()
     define_macros = []
     extra_compile_args = []
 
@@ -159,10 +161,9 @@ def get_compiler_setting(use_hip):
         extra_compile_args.append('-std=c++11')
 
     if PLATFORM_WIN32:
-        nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
-        if os.path.exists(nvtoolsext_path):
-            include_dirs.append(os.path.join(nvtoolsext_path, 'include'))
-            library_dirs.append(os.path.join(nvtoolsext_path, 'lib', 'x64'))
+        nvtx_path = _environment.get_nvtx_path()
+        if nvtx_path is not None and os.path.exists(nvtx_path):
+            include_dirs.append(os.path.join(nvtx_path, 'include'))
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
@@ -228,7 +229,7 @@ def _match_output_lines(output_lines, regexs):
     return None
 
 
-def get_compiler_base_options(compiler_path):
+def get_compiler_base_options(compiler_path: List[str]) -> List[str]:
     """Returns base options for nvcc compiler.
 
     """
@@ -277,7 +278,6 @@ def _get_compiler_base_options(compiler_path):
     return []
 
 
-_cuda_version = None
 _hip_version = None
 _thrust_version = None
 _cudnn_version = None
@@ -289,44 +289,6 @@ _jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
 _cusparselt_version = None
-
-
-def check_cuda_version(compiler, settings):
-    global _cuda_version
-    try:
-        out = build_and_run(compiler, '''
-        #include <cuda.h>
-        #include <stdio.h>
-        int main() {
-          printf("%d", CUDA_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-
-    except Exception as e:
-        utils.print_warning('Cannot check CUDA version', str(e))
-        return False
-
-    _cuda_version = int(out)
-
-    if _cuda_version < minimum_cuda_version:
-        utils.print_warning(
-            'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 10.2 or newer is required')
-        return False
-
-    return True
-
-
-def get_cuda_version(formatted=False):
-    """Return CUDA Toolkit version cached in check_cuda_version()."""
-    global _cuda_version
-    if _cuda_version is None:
-        msg = 'check_cuda_version() must be called first.'
-        raise RuntimeError(msg)
-    if formatted:
-        return str(_cuda_version)
-    return _cuda_version
 
 
 def check_hip_version(compiler, settings):
@@ -356,7 +318,7 @@ def check_hip_version(compiler, settings):
     return True
 
 
-def get_hip_version(formatted=False):
+def get_hip_version(formatted: bool = False) -> int:
     """Return ROCm version cached in check_hip_version()."""
     global _hip_version
     if _hip_version is None:
@@ -400,7 +362,7 @@ def check_compute_capabilities(compiler, settings):
     return True
 
 
-def get_compute_capabilities(formatted=False):
+def get_compute_capabilities(formatted: bool = False) -> Set[int]:
     return _compute_capabilities
 
 
@@ -529,20 +491,9 @@ def get_nccl_version(formatted=False):
 
 def check_nvtx(compiler, settings):
     if PLATFORM_WIN32:
-        path = os.environ.get('NVTOOLSEXT_PATH', None)
-        if path is None:
-            utils.print_warning(
-                'NVTX unavailable: NVTOOLSEXT_PATH is not set')
-        elif not os.path.exists(path):
-            utils.print_warning(
-                'NVTX unavailable: NVTOOLSEXT_PATH is set but the directory '
-                'does not exist')
-        elif utils.search_on_path(['nvToolsExt64_1.dll']) is None:
-            utils.print_warning(
-                'NVTX unavailable: nvToolsExt64_1.dll not found in PATH')
-        else:
-            return True
-        return False
+        if _environment.get_nvtx_path() is None:
+            utils.print_warning('NVTX unavailable')
+            return False
     return True
 
 
@@ -649,7 +600,7 @@ def check_jitify_version(compiler, settings):
     return True  # we always build Jitify
 
 
-def get_jitify_version(formatted=False):
+def get_jitify_version(formatted=True):
     """Return Jitify version cached in check_jitify_version()."""
     global _jitify_version
     if _jitify_version is None:

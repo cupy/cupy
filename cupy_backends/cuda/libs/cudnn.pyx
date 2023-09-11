@@ -6,6 +6,7 @@ cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
@@ -833,6 +834,13 @@ cpdef destroy(intptr_t handle):
 
 
 cpdef setStream(intptr_t handle, size_t stream):
+    # TODO(leofang): The support of stream capture is not mentioned at all in
+    # the cuDNN docs (as of CUDA 11.5), so we disable this functionality.
+    if not runtime._is_hip_environment and runtime.streamIsCapturing(stream):
+        raise NotImplementedError(
+            'calling cuDNN API during stream capture is currently '
+            'unsupported')
+
     status = cudnnSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
@@ -1122,6 +1130,7 @@ cpdef size_t getConvolutionMathType(size_t convDesc) except? 0:
     cdef MathType mathType
     status = cudnnGetConvolutionMathType(
         <ConvolutionDescriptor>convDesc, &mathType)
+    check_status(status)
     return <size_t>mathType
 
 
@@ -1135,6 +1144,7 @@ cpdef int getConvolutionGroupCount(size_t convDesc) except? -1:
     cdef int groupCount
     status = cudnnGetConvolutionGroupCount(
         <ConvolutionDescriptor>convDesc, &groupCount)
+    check_status(status)
     return groupCount
 
 

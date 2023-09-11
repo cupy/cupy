@@ -71,6 +71,24 @@ class TestUserkernel(unittest.TestCase):
         expected = in1_cpu + dtype(2)
         testing.assert_array_equal(out1, expected)
 
+    def test_cached_code(self):
+        in1 = cupy.random.uniform(-1, 1, 100).astype(cupy.float32)
+        in2 = cupy.random.uniform(-1, 1, 100).astype(cupy.float32)
+        user_kernel_1 = cupy.ElementwiseKernel(
+            'T x, T y',
+            'T z',
+            '''
+                z = x + y;
+            ''',
+            'uesr_kernel_1')
+        assert len(user_kernel_1._cached_codes) == 0
+        user_kernel_1(in1, in2)
+        assert len(user_kernel_1._cached_codes) == 1
+        user_kernel_1(in1, in2)
+        assert len(user_kernel_1._cached_codes) == 1
+        user_kernel_1(in1.astype(cupy.float64), in2.astype(cupy.float64))
+        assert len(user_kernel_1._cached_codes) == 2
+
 
 class TestElementwiseKernelSize(unittest.TestCase):
     # Tests to check whether size argument raises ValueError correctly
@@ -246,7 +264,6 @@ class TestUserkernelManualBlockSize(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 19)),
 }))
-@testing.gpu
 @pytest.mark.skipif(runtime.is_hip,
                     reason='texture support on HIP is not yet implemented')
 class TestElementwiseKernelTexture(unittest.TestCase):

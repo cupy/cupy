@@ -3,7 +3,6 @@
 import numpy
 import warnings
 
-cimport cpython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t
@@ -13,7 +12,7 @@ from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
 from cupy._core cimport _carray
-from cupy._core cimport core
+from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
@@ -108,8 +107,8 @@ cdef inline CPointer _pointer(x):
 
     if x is None:
         return CPointer()
-    if isinstance(x, core.ndarray):
-        return (<core.ndarray>x).get_pointer()
+    if isinstance(x, _ndarray_base):
+        return (<_ndarray_base>x).get_pointer()
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
     if isinstance(x, MemoryPointer):
@@ -274,11 +273,6 @@ cdef class Module:
         if isinstance(name, bytes):
             name = name.decode()
         return Function(self, name)
-
-    cpdef get_texref(self, name):
-        if isinstance(name, bytes):
-            name = name.decode()
-        return driver.moduleGetTexRef(self.ptr, name)
 
     cpdef _set_mapping(self, dict mapping):
         self.mapping = mapping

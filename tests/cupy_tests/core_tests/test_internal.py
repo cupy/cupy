@@ -1,6 +1,7 @@
 import math
 import unittest
 
+import numpy
 import pytest
 
 from cupy._core import internal
@@ -31,7 +32,7 @@ class TestProdSequence(unittest.TestCase):
         assert internal.prod_sequence((2, 3)) == 6
 
 
-class TestGetSize(unittest.TestCase):
+class TestGetSize:
 
     def test_none(self):
         with testing.assert_warns(DeprecationWarning):
@@ -49,9 +50,27 @@ class TestGetSize(unittest.TestCase):
     def test_int(self):
         assert internal.get_size(1) == (1,)
 
+    def test_numpy_int(self):
+        assert internal.get_size(numpy.int32(1)) == (1,)
+
+    def test_numpy_zero_dim_ndarray(self):
+        assert internal.get_size(numpy.array(1)) == (1,)
+
+    def test_tuple_of_numpy_scalars(self):
+        assert internal.get_size((numpy.int32(1), numpy.array(1))) == (1, 1)
+
+    @pytest.mark.parametrize(
+        'value', [True, numpy.bool_(True), numpy.array(True, dtype='?')])
+    def test_bool(self, value):
+        with pytest.raises(TypeError):
+            internal.get_size(value)
+        with pytest.raises(TypeError):
+            internal.get_size((value, value))
+
     def test_float(self):
-        with pytest.raises(ValueError):
-            internal.get_size(1.0)
+        # `internal.get_size` is not responsible to interpret values as
+        # integers.
+        assert internal.get_size(1.0) == (1.0,)
 
 
 class TestVectorEqual(unittest.TestCase):

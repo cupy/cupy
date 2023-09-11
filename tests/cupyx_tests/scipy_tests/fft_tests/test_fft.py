@@ -57,7 +57,6 @@ def _skip_forward_backward(norm):
     'axis': [-1, 0],
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
-@testing.gpu
 class TestFft:
 
     @pytest.fixture(autouse=True)
@@ -320,7 +319,6 @@ class TestFft:
         })
     )
 ))
-@testing.gpu
 class TestFft2:
 
     @pytest.fixture(autouse=True)
@@ -581,7 +579,6 @@ class TestFft2:
         })
     )
 ))
-@testing.gpu
 class TestFftn:
 
     @pytest.fixture(autouse=True)
@@ -827,7 +824,6 @@ class TestFftn:
     'axis': [-1, 0],
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
-@testing.gpu
 class TestRfft:
 
     @pytest.fixture(autouse=True)
@@ -1033,7 +1029,6 @@ def _skip_hipFFT_PlanNd_bug(axes, shape):
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestRfft2:
 
     @pytest.fixture(autouse=True)
@@ -1291,7 +1286,6 @@ class TestRfft2:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
-@testing.gpu
 class TestRfftn:
 
     @pytest.fixture(autouse=True)
@@ -1535,7 +1529,6 @@ class TestRfftn:
     'axis': [0, -1],
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
-@testing.gpu
 class TestHfft:
 
     @pytest.fixture(autouse=True)
@@ -1642,7 +1635,6 @@ class TestHfft:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.4.0')
 class TestHfft2:
 
@@ -1677,6 +1669,8 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1688,6 +1682,8 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1718,7 +1714,6 @@ class TestHfft2:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.gpu
 @testing.with_requires('scipy>=1.4.0')
 class TestHfftn:
 
@@ -1753,6 +1748,8 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1764,6 +1761,8 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
+                       reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1777,7 +1776,6 @@ class TestHfftn:
         return _correct_np_dtype(xp, dtype, out)
 
 
-@testing.gpu
 @pytest.mark.parametrize('func', [
     cp_fft.fft2, cp_fft.ifft2, cp_fft.rfft2, cp_fft.irfft2,
     cp_fft.fftn, cp_fft.ifftn, cp_fft.rfftn, cp_fft.irfftn])

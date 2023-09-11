@@ -71,6 +71,7 @@ Sums, products, differences
    nancumsum
    diff
    gradient
+   ediff1d
    cross
    trapz
 
@@ -133,6 +134,7 @@ Arithmetic operations
 
    add
    reciprocal
+   positive
    negative
    multiply
    divide
@@ -140,6 +142,7 @@ Arithmetic operations
    subtract
    true_divide
    floor_divide
+   float_power
    fmod
    mod
    modf
@@ -172,10 +175,13 @@ Miscellaneous
    cbrt
    square
    absolute
+   fabs
    sign
    maximum
    minimum
    fmax
    fmin
    nan_to_num
+   heaviside
+   real_if_close
    interp

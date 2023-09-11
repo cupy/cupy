@@ -7,10 +7,11 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 
 cpdef enum:
     # cutensorAlgo_t (values > 0 correspond to certain algorithms of GETT)
-    ALGO_GETT = -4     # NOQA, Choose the GETT algorithm
-    ALGO_TGETT = -3    # NOQA, Transpose (A or B) + GETT
-    ALGO_TTGT = -2     # NOQA, Transpose-Transpose-GEMM-Transpose (requires additional memory)
-    ALGO_DEFAULT = -1  # NOQA, Lets the internal heuristic choose
+    ALGO_DEFAULT_PATIENT = -6  # NOQA, Uses the more accurate but also more time-consuming performance model
+    ALGO_GETT = -4             # NOQA, Choose the GETT algorithm
+    ALGO_TGETT = -3            # NOQA, Transpose (A or B) + GETT
+    ALGO_TTGT = -2             # NOQA, Transpose-Transpose-GEMM-Transpose (requires additional memory)
+    ALGO_DEFAULT = -1          # NOQA, Lets the internal heuristic choose
 
     # cutensorWorksizePreference_t
     WORKSPACE_MIN = 1          # NOQA, At least one algorithm will be available
@@ -68,15 +69,15 @@ cpdef enum:
 
     # cutensorComputeType_t
     # (*) compute types added in versoin 1.2
-    COMPUTE_16F  = 1     # NOQA, half
+    COMPUTE_16F = 1     # NOQA, half
     COMPUTE_16BF = 1024  # NOQA, bfloat
     COMPUTE_TF32 = 4096  # NOQA, tensor-float-32
-    COMPUTE_32F  = 4     # NOQA, float
-    COMPUTE_64F  = 16    # NOQA, double
-    COMPUTE_8U   = 64    # NOQA, uint8
-    COMPUTE_8I   = 256   # NOQA, int8
-    COMPUTE_32U  = 128   # NOQA, uint32
-    COMPUTE_32I  = 512   # NOQA, int32
+    COMPUTE_32F = 4     # NOQA, float
+    COMPUTE_64F = 16    # NOQA, double
+    COMPUTE_8U = 64    # NOQA, uint8
+    COMPUTE_8I = 256   # NOQA, int8
+    COMPUTE_32U = 128   # NOQA, uint32
+    COMPUTE_32I = 512   # NOQA, int32
     # (*) compute types below will be deprecated in the furture release.
     R_MIN_16F = 1    # NOQA, real as a half
     C_MIN_16F = 2    # NOQA, complex as a half
@@ -84,9 +85,9 @@ cpdef enum:
     C_MIN_32F = 8    # NOQA, complex as a float
     R_MIN_64F = 16   # NOQA, real as a double
     C_MIN_64F = 32   # NOQA, complex as a double
-    R_MIN_8U  = 64   # NOQA, real as a uint8
+    R_MIN_8U = 64   # NOQA, real as a uint8
     R_MIN_32U = 128  # NOQA, real as a uint32
-    R_MIN_8I  = 256  # NOQA, real as a int8
+    R_MIN_8I = 256  # NOQA, real as a int8
     R_MIN_32I = 512  # NOQA, real as a int32
     R_MIN_16BF = 1024  # NOQA, real as a bfloat16
     R_MIN_TF32 = 2048  # NOQA, real as a tensorfloat32
@@ -169,6 +170,17 @@ cpdef elementwiseBinary(
     int opAC,
     int typeScalar)
 
+cpdef permutation(
+    Handle handle,
+    intptr_t alpha,
+    intptr_t A,
+    TensorDescriptor descA,
+    intptr_t modeA,
+    intptr_t B,
+    TensorDescriptor descB,
+    intptr_t modeB,
+    int typeScalar)
+
 cpdef initContractionDescriptor(
     Handle handle,
     ContractionDescriptor desc,
@@ -210,6 +222,12 @@ cpdef contraction(
     intptr_t workspace,
     uint64_t workspaceSize)
 
+cpdef uint64_t contractionGetWorkspaceSize(
+    Handle handle,
+    ContractionDescriptor desc,
+    ContractionFind find,
+    int pref)
+
 cpdef uint64_t contractionGetWorkspace(
     Handle handle,
     ContractionDescriptor desc,
@@ -235,6 +253,20 @@ cpdef reduction(
     int minTypeCompute,
     intptr_t workspace,
     uint64_t workspaceSize)
+
+cpdef uint64_t reductionGetWorkspaceSize(
+    Handle handle,
+    intptr_t A,
+    TensorDescriptor descA,
+    intptr_t modeA,
+    intptr_t C,
+    TensorDescriptor descC,
+    intptr_t modeC,
+    intptr_t D,
+    TensorDescriptor descD,
+    intptr_t modeD,
+    int opReduce,
+    int typeCompute)
 
 cpdef uint64_t reductionGetWorkspace(
     Handle handle,

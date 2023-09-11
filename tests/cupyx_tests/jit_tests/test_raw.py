@@ -1,17 +1,15 @@
-import unittest
 import numpy
 
 import pytest
 
 import cupy
-import cupyx
 from cupyx import jit
 from cupy import testing
 from cupy.cuda import device
 from cupy.cuda import runtime
 
 
-class TestRaw(unittest.TestCase):
+class TestRaw:
 
     def test_raw_grid_1D(self):
         @jit.rawkernel()
@@ -281,7 +279,7 @@ class TestRaw(unittest.TestCase):
             laneId = jit.threadIdx.x & 0x1f
             if laneId < m:
                 x[laneId] = 1
-                jit.syncwarp(mask=m)
+                jit.syncwarp(mask=(1 << m) - 1)
 
         for mask in (2, 4, 8, 16, 32):
             x = cupy.zeros((32,), dtype=numpy.int32)
@@ -349,7 +347,7 @@ class TestRaw(unittest.TestCase):
         f((32,), (32,), (x, index, out))
 
         expected = cupy.zeros((2,), dtype=dtype)
-        cupyx.scatter_add(expected, index, x)
+        cupy.add.at(expected, index, x)
         self._check(out, expected)
 
     @testing.for_dtypes('iI')
@@ -575,14 +573,14 @@ class TestRaw(unittest.TestCase):
         a = cupy.arange(32, dtype=dtype)
         f[1, 32](a)
         expected = [i for i in range(N)] + [i for i in range(32-N)]
-        assert(a == cupy.asarray(expected, dtype=dtype)).all()
+        assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_down(self, dtype):
         N = 5
         # __shfl_down() on HIP does not seem to have the same behavior...
-        block = 64 if runtime.is_hip else 32
+        block = cupy._core._get_warpsize()
 
         @jit.rawkernel()
         def f(a):
@@ -593,7 +591,7 @@ class TestRaw(unittest.TestCase):
         f[1, block](a)
         expected = [i for i in range(N, block)]
         expected += [(block-N+i) for i in range(N)]
-        assert(a == cupy.asarray(expected, dtype=dtype)).all()
+        assert (a == cupy.asarray(expected, dtype=dtype)).all()
 
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
@@ -618,15 +616,8 @@ class TestRaw(unittest.TestCase):
         def f(x):
             return unknown_var  # NOQA
 
-        import re
-        mes = re.escape('''Unbound name: unknown_var
-
-  @jit.rawkernel()
-  def f(x):
->     return unknown_var  # NOQA
-''')
         x = cupy.zeros((10,), dtype=numpy.float32)
-        with pytest.raises(NameError, match=mes):
+        with pytest.raises(NameError, match='Unbound name: unknown_var'):
             f((1,), (1,), (x,))
 
     def test_laneid(self):
@@ -636,7 +627,7 @@ class TestRaw(unittest.TestCase):
             if x < arr.size:
                 arr[x] = jit.laneid()
 
-        N = 64 if runtime.is_hip else 32
+        N = cupy._core._get_warpsize()
         x = cupy.zeros((N*2,), dtype=cupy.uint32)
         f((1,), (N*2,), (x,))
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
@@ -649,7 +640,131 @@ class TestRaw(unittest.TestCase):
             if x == 0:
                 arr[0] = jit.warpsize
 
-        N = 64 if runtime.is_hip else 32
+        N = cupy._core._get_warpsize()
         x = cupy.zeros((1,), dtype=cupy.uint32)
         f((1,), (1,), (x,))
         assert x == N
+
+    @testing.for_CF_orders()
+    def test_shape_strides(self, order):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            if x == 0:
+                shapes = arr.shape
+                strides = arr.strides
+                arr[0, 0, 0] = shapes[0]
+                arr[0, 0, 1] = shapes[1]
+                arr[0, 0, 2] = shapes[2]
+                arr[0, 0, 3] = strides[0]
+                arr[0, 0, 4] = strides[1]
+                arr[0, 0, 5] = strides[2]
+
+        a = cupy.zeros((3, 4, 6), order=order)
+        f[1, 1](a)
+        assert (a[0, 0, 0:3] == cupy.asarray(a.shape)).all()
+        assert (a[0, 0, 3:6] == cupy.asarray(a.strides)).all()
+
+    @testing.multi_gpu(2)
+    def test_device_cache(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+
+        with device.Device(0):
+            x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+            y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+            f((5,), (6,), (x, y))
+            assert bool((x == y).all())
+        with device.Device(1):
+            x = testing.shaped_random((30,), dtype=numpy.int32, seed=2)
+            y = testing.shaped_random((30,), dtype=numpy.int32, seed=3)
+            f((5,), (6,), (x, y))
+            assert bool((x == y).all())
+
+    def test_cached_code(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y[tid] = x[tid]
+
+        assert isinstance(f.cached_codes, dict)
+        assert len(f.cached_codes) == 0
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+        assert len(f.cached_codes) == 1
+        assert isinstance(f.cached_code, str)
+
+        x = testing.shaped_random((30,), dtype=numpy.float32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.float32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+        assert len(f.cached_codes) == 2
+
+        x = testing.shaped_random((30,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((30,), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
+        assert len(f.cached_codes) == 2
+
+    @pytest.mark.parametrize(
+        'unroll', (True, False, None, 5)
+    )
+    def test_range(self, unroll):
+
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            y = x[tid]
+            # workaround: can't use "is" here...
+            if unroll == None:  # noqa: E711
+                for i in jit.range(5):
+                    y += 2
+            else:
+                for i in jit.range(5, unroll=unroll):
+                    y += 2
+            x[tid] = y
+
+        x = testing.shaped_random((30,), dtype=numpy.float32, seed=0)
+        y = x.copy()
+        f[3, 10](x)
+        assert (x == y + 10).all()
+        if unroll is True:
+            assert '#pragma unroll\n' in f.cached_code
+        elif unroll is False:
+            assert '#pragma unroll(1)\n' in f.cached_code
+        elif unroll is None:
+            assert 'unroll' not in f.cached_code
+        elif unroll >= 0:
+            assert f'#pragma unroll({unroll})\n' in f.cached_code
+
+    @pytest.mark.parametrize('ctype', (bool, int, float, complex))
+    def test_scalar_args(self, ctype):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = y
+
+        x = cupy.zeros((30), dtype=ctype)
+        y = ctype(1)
+        f((5,), (6,), (x, y))
+        testing.assert_array_equal(x, numpy.full_like(x, 1))
+
+    @testing.for_all_dtypes()
+    def test_numpy_scalar_args(self, dtype):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            x[tid] = y
+
+        x = cupy.zeros((30), dtype=dtype)
+        y = numpy.dtype(dtype).type(1)
+        f((5,), (6,), (x, y))
+        testing.assert_array_equal(x, numpy.full_like(x, 1))

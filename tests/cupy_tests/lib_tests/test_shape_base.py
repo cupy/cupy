@@ -8,7 +8,6 @@ from cupy import testing
 
 
 @testing.parameterize(*(testing.product({'axis': [0, 1, -1]})))
-@testing.gpu
 class TestApplyAlongAxis(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -91,8 +90,15 @@ class TestApplyAlongAxis(unittest.TestCase):
                 xp.ones((10,))
             )
 
+    @testing.numpy_cupy_array_equal()
+    def test_tuple_outs(self, xp):
+        def func(x):
+            return x.sum(axis=-1), x.prod(axis=-1), x.max(axis=-1)
 
-@testing.gpu
+        a = testing.shaped_arange((2, 2, 2), xp, cupy.int64)
+        return xp.apply_along_axis(func, 1, a)
+
+
 @testing.with_requires('numpy>=1.16')
 def test_apply_along_axis_invalid_axis():
     for xp in [numpy, cupy]:

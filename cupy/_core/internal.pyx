@@ -5,12 +5,11 @@ cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
-import sys
 import warnings
 
 import numpy
 
-from cupy._core.core cimport ndarray
+from cupy._core.core cimport _ndarray_base
 
 
 cdef extern from 'halffloat.h':
@@ -44,6 +43,18 @@ cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
 
 
 @cython.profile(False)
+cpdef inline void _check_not_bool(object x) except *:
+    if isinstance(x, (bool, numpy.bool_)):
+        raise TypeError('an integer is required')
+    if (
+        isinstance(x, numpy.ndarray)
+        and x.shape == ()
+        and x.dtype == numpy.bool_
+    ):
+        raise TypeError('an integer is required')
+
+
+@cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
         warnings.warn(
@@ -53,10 +64,19 @@ cpdef inline tuple get_size(object size):
         )
         return ()
     if cpython.PySequence_Check(size):
-        return tuple(size)
-    if isinstance(size, int):
-        return size,
-    raise ValueError('size should be None, collections.abc.Sequence, or int')
+        # A numpy.ndarray unconditionally succeeds in PySequence_Check as
+        # it implements __getitem__, but zero-dim one is an unsized object
+        # and fails to make a tuple from it.
+        try:
+            ret = tuple(size)
+        except TypeError:
+            _check_not_bool(size)
+            return size,
+        for x in ret:
+            _check_not_bool(x)
+        return ret
+    _check_not_bool(size)
+    return size,
 
 
 @cython.profile(False)
@@ -109,13 +129,27 @@ cdef void get_reduced_dims(
 @cython.profile(False)
 cdef inline Py_ssize_t get_contiguous_strides_inplace(
         const shape_t& shape, strides_t& strides,
-        Py_ssize_t itemsize, bint is_c_contiguous):
+        Py_ssize_t itemsize, bint is_c_contiguous, bint zeros_for_zerosize):
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
     cdef int i, ndim = shape.size()
     cdef Py_ssize_t idx
     strides.resize(ndim, 0)
     st = 1
+
+    # For some cases, the strides are all set to zero if the shape is
+    # zero-sized since NumPy 1.23.
+    if zeros_for_zerosize:
+        for i in range(ndim):
+            sh = shape[i]
+            if sh == 0:
+                is_nonzero_size = 0
+                break
+
+        if is_nonzero_size == 0:
+            for i in range(ndim):
+                strides[i] = 0
+            return 0
 
     for i in range(ndim):
         if is_c_contiguous:
@@ -314,14 +348,13 @@ cdef _broadcast_core(list arrays, shape_t& shape):
     cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
     cdef strides_t strides
     cdef vector.vector[int] index
-    cdef ndarray a
-    cdef list ret
+    cdef _ndarray_base a
 
     shape.clear()
     index.reserve(len(arrays))
     nd = 0
     for i, x in enumerate(arrays):
-        if not isinstance(x, ndarray):
+        if not isinstance(x, _ndarray_base):
             continue
         a = x
         index.push_back(i)
@@ -347,7 +380,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
             raise ValueError(
                 'operands could not be broadcast together with shapes {}'
                 .format(
-                    ' '.join([str(x.shape) if isinstance(x, ndarray)
+                    ' '.join([str(x.shape) if isinstance(x, _ndarray_base)
                               else '()' for x in arrays])))
         shape.push_back(s)
 
@@ -364,7 +397,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
                 strides[j + nd - a_ndim] = a._strides[j]
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(shape, strides, True, True)
+        arrays[i] = a._view(type(a), shape, strides, True, True, a)
 
 
 @cython.boundscheck(False)
@@ -445,6 +478,9 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
     # x here can be either numpy.ndarray or cupy.ndarray
     cdef strides_t strides
     # strides used when order='K' for astype, empty_like, etc.
+
+    # Note that there is different semantics of order='K'.
+    # See also `_routines_manipulation._npyiter_k_order_axes`.
     stride_and_index = [
         (abs(s), -i) for i, s in enumerate(x.strides)]
     stride_and_index.sort()
@@ -460,15 +496,15 @@ cpdef int _update_order_char(
         bint is_c_contiguous, bint is_f_contiguous, int order_char):
     # update order_char based on array contiguity
     if order_char == b'A':
-        if is_f_contiguous:
+        if is_f_contiguous and not is_c_contiguous:
             order_char = b'F'
         else:
             order_char = b'C'
     elif order_char == b'K':
-        if is_f_contiguous:
-            order_char = b'F'
-        elif is_c_contiguous:
+        if is_c_contiguous:
             order_char = b'C'
+        elif is_f_contiguous:
+            order_char = b'F'
     return order_char
 
 

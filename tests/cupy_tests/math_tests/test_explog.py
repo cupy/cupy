@@ -1,12 +1,10 @@
-import unittest
-
 import numpy
+import pytest
 
 from cupy import testing
 
 
-@testing.gpu
-class TestExplog(unittest.TestCase):
+class TestExplog:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -54,5 +52,19 @@ class TestExplog(unittest.TestCase):
     def test_logaddexp(self):
         self.check_binary('logaddexp', no_complex=True)
 
+    @pytest.mark.parametrize('val', [numpy.inf, -numpy.inf])
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_logaddexp_infinities(self, xp, dtype, val):
+        a = xp.full((2, 3), val, dtype=dtype)
+        return xp.logaddexp(a, a)
+
     def test_logaddexp2(self):
         self.check_binary('logaddexp2', no_complex=True)
+
+    @pytest.mark.parametrize('val', [numpy.inf, -numpy.inf])
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_logaddexp2_infinities(self, xp, dtype, val):
+        a = xp.full((2, 3), val, dtype=dtype)
+        return xp.logaddexp2(a, a)

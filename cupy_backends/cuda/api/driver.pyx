@@ -13,7 +13,6 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
-from libcpp cimport vector
 
 
 ###############################################################################
@@ -24,6 +23,7 @@ IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccuda cimport *
 ELSE:
     include '_driver_extern.pxi'
+    pass  # for cython-lint
 
 cdef extern from '../../cupy_backend.h' nogil:
     # Build-time version
@@ -81,7 +81,7 @@ cpdef get_build_version():
 
     https://github.com/NVIDIA/cuda-python/blob/v11.4.0/cuda/ccuda.pxd#L2268
 
-    In CuPy codebase, use CUPY_CUDA_VERSION compile-time constant instead of
+    In CuPy codebase, use `runtime.runtimeGetVersion()` instead of
     this function to change the behavior based on the target CUDA version.
     """
 
@@ -135,6 +135,13 @@ cpdef ctxDestroy(intptr_t ctx):
     with nogil:
         status = cuCtxDestroy(<Context>ctx)
     check_status(status)
+
+cpdef int ctxGetDevice() except? -1:
+    cdef Device dev
+    with nogil:
+        status = cuCtxGetDevice(&dev)
+    check_status(status)
+    return dev
 
 
 ###############################################################################
@@ -231,16 +238,6 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
     return <intptr_t>var
 
 
-cpdef intptr_t moduleGetTexRef(intptr_t module, str texrefname) except? 0:
-    cdef TexRef texref
-    cdef bytes b_refname = texrefname.encode()
-    cdef char* b_refname_ptr = b_refname
-    with nogil:
-        status = cuModuleGetTexRef(&texref, <Module>module, b_refname_ptr)
-    check_status(status)
-    return <intptr_t>texref
-
-
 cpdef launchKernel(
         intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
         unsigned int grid_dim_z, unsigned int block_dim_x,
@@ -296,74 +293,6 @@ cpdef funcSetAttribute(intptr_t f, int attribute, int value):
 
 
 ###############################################################################
-# Texture reference
-###############################################################################
-
-cpdef size_t texRefSetAddress(intptr_t texref, intptr_t dptr, size_t nbytes):
-    cdef size_t ByteOffset
-    with nogil:
-        status = cuTexRefSetAddress(&ByteOffset, <TexRef>texref,
-                                    <Deviceptr>dptr, nbytes)
-    check_status(status)
-    return ByteOffset
-
-
-cpdef texRefSetAddress2D(intptr_t texref, intptr_t desc, intptr_t dptr,
-                         size_t Pitch):
-    with nogil:
-        status = cuTexRefSetAddress2D(<TexRef>texref, <const Array_desc*>desc,
-                                      <Deviceptr>dptr, Pitch)
-    check_status(status)
-
-
-cpdef texRefSetAddressMode(intptr_t texref, int dim, int am):
-    with nogil:
-        status = cuTexRefSetAddressMode(<TexRef>texref, dim, <Address_mode>am)
-    check_status(status)
-
-
-cpdef texRefSetArray(intptr_t texref, intptr_t array):
-    with nogil:
-        status = cuTexRefSetArray(<TexRef>texref, <Array>array,
-                                  CU_TRSA_OVERRIDE_FORMAT)
-    check_status(status)
-
-
-cpdef texRefSetBorderColor(intptr_t texref, pBorderColor):
-    cdef vector.vector[float] colors
-    for i in range(4):
-        colors.push_back(pBorderColor[i])
-    with nogil:
-        status = cuTexRefSetBorderColor(<TexRef>texref, colors.data())
-    check_status(status)
-
-
-cpdef texRefSetFilterMode(intptr_t texref, int fm):
-    with nogil:
-        status = cuTexRefSetFilterMode(<TexRef>texref, <Filter_mode>fm)
-    check_status(status)
-
-
-cpdef texRefSetFlags(intptr_t texref, unsigned int Flags):
-    with nogil:
-        status = cuTexRefSetFlags(<TexRef>texref, Flags)
-    check_status(status)
-
-
-cpdef texRefSetFormat(intptr_t texref, int fmt, int NumPackedComponents):
-    with nogil:
-        status = cuTexRefSetFormat(<TexRef>texref, <Array_format>fmt,
-                                   NumPackedComponents)
-    check_status(status)
-
-
-cpdef texRefSetMaxAnisotropy(intptr_t texref, unsigned int maxAniso):
-    with nogil:
-        status = cuTexRefSetMaxAnisotropy(<TexRef>texref, maxAniso)
-    check_status(status)
-
-
-###############################################################################
 # Occupancy
 ###############################################################################
 
@@ -388,3 +317,15 @@ cpdef occupancyMaxPotentialBlockSize(intptr_t func, size_t dynamicSMemSize,
             NULL, dynamicSMemSize, blockSizeLimit)
     check_status(status)
     return minGridSize, blockSize
+
+
+###############################################################################
+# Stream management
+###############################################################################
+
+cpdef intptr_t streamGetCtx(intptr_t stream) except? 0:
+    cdef Context ctx
+    with nogil:
+        status = cuStreamGetCtx(<Stream>stream, &ctx)
+    check_status(status)
+    return <intptr_t>ctx

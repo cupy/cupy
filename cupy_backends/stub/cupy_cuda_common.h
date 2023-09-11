@@ -29,6 +29,8 @@ struct CUevent_st;
 struct CUfunc_st;
 struct CUmod_st;
 struct CUstream_st;
+struct CUgraph_st;
+struct CUgraphExec_st;
 struct CUlinkState_st;
 
 
@@ -37,8 +39,9 @@ typedef struct CUevent_st* cudaEvent_t;
 typedef struct CUfunc_st* CUfunction;
 typedef struct CUmod_st* CUmodule;
 typedef struct CUstream_st* cudaStream_t;
+typedef struct CUgraph_st* cudaGraph_t;
+typedef struct CUgraphExec_st* cudaGraphExec_t;
 typedef struct CUlinkState_st* CUlinkState;
-typedef struct CUtexref_st* CUtexref;
 typedef struct CUarray_st* CUarray;
 struct CUDA_ARRAY_DESCRIPTOR {
     CUarray_format Format;

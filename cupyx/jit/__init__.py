@@ -6,6 +6,7 @@ from cupyx.jit._interface import blockIdx  # NOQA
 from cupyx.jit._interface import gridDim  # NOQA
 from cupyx.jit._interface import warpsize  # NOQA
 
+from cupyx.jit._builtin_funcs import range_ as range  # NOQA
 from cupyx.jit._builtin_funcs import syncthreads  # NOQA
 from cupyx.jit._builtin_funcs import syncwarp  # NOQA
 from cupyx.jit._builtin_funcs import shared_memory  # NOQA
@@ -28,6 +29,8 @@ from cupyx.jit._builtin_funcs import shfl_up_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_down_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_xor_sync  # NOQA
 
-import inspect as _inspect
+from cupyx.jit import cg  # NOQA
+from cupyx.jit import cub  # NOQA
+from cupyx.jit import thrust  # NOQA
 
-_getsource_func = _inspect.getsource  # NOQA
+_n_functions_upperlimit = 100

@@ -2,13 +2,18 @@ import numpy
 
 import cupy
 from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupy._core import _dtype
 
 
-def _syevd(a, UPLO, with_eigen_vector):
+_cuda_runtime_version = -1
+
+
+def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
+    from cupy_backends.cuda.libs import cusolver
+
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
@@ -18,7 +23,7 @@ def _syevd(a, UPLO, with_eigen_vector):
     w_dtype = v_dtype.char.lower()
 
     # Note that cuSolver assumes fortran array
-    v = a.astype(dtype, order='F', copy=True)
+    v = a.astype(dtype, order='F', copy=not overwrite_a)
 
     m, lda = a.shape
     w = cupy.empty(m, real_dtype)
@@ -35,30 +40,57 @@ def _syevd(a, UPLO, with_eigen_vector):
     else:  # UPLO == 'U'
         uplo = cublas.CUBLAS_FILL_MODE_UPPER
 
-    if dtype == 'f':
-        buffer_size = cupy.cuda.cusolver.ssyevd_bufferSize
-        syevd = cupy.cuda.cusolver.ssyevd
-    elif dtype == 'd':
-        buffer_size = cupy.cuda.cusolver.dsyevd_bufferSize
-        syevd = cupy.cuda.cusolver.dsyevd
-    elif dtype == 'F':
-        buffer_size = cupy.cuda.cusolver.cheevd_bufferSize
-        syevd = cupy.cuda.cusolver.cheevd
-    elif dtype == 'D':
-        buffer_size = cupy.cuda.cusolver.zheevd_bufferSize
-        syevd = cupy.cuda.cusolver.zheevd
-    else:
-        raise RuntimeError('Only float and double and cuComplex and '
-                           + 'cuDoubleComplex are supported')
+    global _cuda_runtime_version
+    if _cuda_runtime_version < 0:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    work_size = buffer_size(
-        handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
-    work = cupy.empty(work_size, dtype)
-    syevd(
-        handle, jobz, uplo, m, v.data.ptr, lda,
-        w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        syevd, dev_info)
+    if not runtime.is_hip and _cuda_runtime_version >= 11010:
+        if dtype.char not in 'fdFD':
+            raise RuntimeError('Only float32, float64, complex64, and '
+                               'complex128 are supported')
+        type_v = _dtype.to_cuda_dtype(dtype)
+        type_w = _dtype.to_cuda_dtype(real_dtype)
+        params = cusolver.createParams()
+        try:
+            work_device_size, work_host_sizse = cusolver.xsyevd_bufferSize(
+                handle, params, jobz, uplo, m, type_v, v.data.ptr, lda,
+                type_w, w.data.ptr, type_v)
+            work_device = cupy.empty(work_device_size, 'b')
+            work_host = numpy.empty(work_host_sizse, 'b')
+            cusolver.xsyevd(
+                handle, params, jobz, uplo, m, type_v, v.data.ptr, lda,
+                type_w, w.data.ptr, type_v,
+                work_device.data.ptr, work_device_size,
+                work_host.ctypes.data, work_host_sizse, dev_info.data.ptr)
+        finally:
+            cusolver.destroyParams(params)
+        cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+            cusolver.xsyevd, dev_info)
+    else:
+        if dtype == 'f':
+            buffer_size = cusolver.ssyevd_bufferSize
+            syevd = cusolver.ssyevd
+        elif dtype == 'd':
+            buffer_size = cusolver.dsyevd_bufferSize
+            syevd = cusolver.dsyevd
+        elif dtype == 'F':
+            buffer_size = cusolver.cheevd_bufferSize
+            syevd = cusolver.cheevd
+        elif dtype == 'D':
+            buffer_size = cusolver.zheevd_bufferSize
+            syevd = cusolver.zheevd
+        else:
+            raise RuntimeError('Only float32, float64, complex64, and '
+                               'complex128 are supported')
+
+        work_size = buffer_size(
+            handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
+        work = cupy.empty(work_size, dtype)
+        syevd(
+            handle, jobz, uplo, m, v.data.ptr, lda,
+            w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
+        cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+            syevd, dev_info)
 
     return w.astype(w_dtype, copy=False), v.astype(v_dtype, copy=False)
 
@@ -98,15 +130,19 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    if a.ndim < 2:
-        raise ValueError('Array must be at least two-dimensional')
+    import cupyx.cusolver
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
 
-    m, n = a.shape[-2:]
-    if m != n:
-        raise ValueError('Last 2 dimensions of the array must be square')
+    if a.size == 0:
+        _, v_dtype = _util.linalg_common_type(a)
+        w_dtype = v_dtype.char.lower()
+        w = cupy.empty(a.shape[:-1], w_dtype)
+        v = cupy.empty(a.shape, v_dtype)
+        return w, v
 
     if a.ndim > 2 or runtime.is_hip:
-        w, v = cupy.cusolver.syevj(a, UPLO, True)
+        w, v = cupyx.cusolver.syevj(a, UPLO, True)
         return w, v
     else:
         return _syevd(a, UPLO, True)
@@ -141,10 +177,16 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
+    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
+    if a.size == 0:
+        _, v_dtype = _util.linalg_common_type(a)
+        w_dtype = v_dtype.char.lower()
+        return cupy.empty(a.shape[:-1], w_dtype)
+
     if a.ndim > 2 or runtime.is_hip:
-        return cupy.cusolver.syevj(a, UPLO, False)
+        return cupyx.cusolver.syevj(a, UPLO, False)
     else:
         return _syevd(a, UPLO, False)[0]

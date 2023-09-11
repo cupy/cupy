@@ -381,7 +381,7 @@ It may be important to note that this dedicated memory bank is not shared with t
 
 For now, CuPy offers no helper routines to create user defined composite types. 
 Such composite types can however be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
-see `cupy/examples/custum_struct <https://github.com/cupy/cupy/tree/master/examples/custom_struct>`_ for examples of advanced usage.
+see `cupy/examples/custum_struct <https://github.com/cupy/cupy/tree/main/examples/custom_struct>`_ for examples of advanced usage.
 
 .. warning::
     You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.
@@ -434,7 +434,7 @@ The instruction above for using complex numbers in :class:`~cupy.RawKernel` also
 
 For CUDA kernels that need to access global symbols, such as constant memory, the :meth:`~cupy.RawModule.get_global` method can be used, see its documentation for further detail.
 
-CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
+Note that the deprecated API :meth:`cupy.RawModule.get_texref` has been removed since CuPy vX.X due to the removal of texture reference support from CUDA.
 
 To support C++ template kernels, :class:`~cupy.RawModule` additionally provide a ``name_expressions`` argument. A list of template specializations should be provided, so that the corresponding kernels can be generated and retrieved by type:
 
@@ -557,7 +557,9 @@ Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy 
    >>> elementwise_copy[128, 1024](x, y, size)  #  Numba style
    >>> assert (x == y).all()
 
-The above two kinds of styles to launch the kernel are supported, see the documentation of :class:`cupyx.jit._interface._JitRawKernel` for details.
+Both styles to launch the kernel, as shown above, are supported. The first two entries are the grid and block sizes, respectively. ``grid`` ( RawKernel style ``(128,)`` or Numba style ``[128]``) is the sizes of the grid, i.e., the numbers of blocks in each dimension; ``block`` (``(1024,)`` or ``[1024]``) is the dimensions of each thread block, please refer to :class:`cupyx.jit._interface._JitRawKernel` for details. Launching a CUDA kernel on a GPU with pre-determined grid/block sizes requires basic understanding in the `CUDA Programming Model`_.
+
+.. _CUDA Programming Model: https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/
 
 The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
@@ -576,7 +578,4 @@ The types of local variables are inferred at the first assignment in the functio
 Limitations
 ^^^^^^^^^^^
 
-CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the source code of the target function, so the compiler does not work in the following situations:
-
-* In Python REPL
-* Lambda expressions as target functions
+JIT does not work inside Python's interactive interpreter (REPL) as the compiler needs to get the source code of the target function.

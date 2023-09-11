@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 import cupy
 import cupy.linalg as linalg
@@ -69,9 +71,10 @@ def _report_nonhermitian(M, name):
     tol = 10 * cupy.finfo(M.dtype).eps
     tol *= max(1, float(linalg.norm(M, 1)))
     if nmd > tol:
-        print('matrix %s of the type %s is not sufficiently Hermitian:'
-              % (name, M.dtype))
-        print('condition: %.e < %e' % (nmd, tol))
+        warnings.warn(
+            f'Matrix {name} of the type {M.dtype} is not Hermitian: '
+            f'condition: {nmd} < {tol} fails.',
+            UserWarning, stacklevel=4)
 
 
 def _as2d(ar):
@@ -165,7 +168,7 @@ def _eigh(A, B=None):
     A(X) = lambda(B(X)) to standard eigen value problem using cholesky
     transformation
     """
-    if(B is None):  # use cupy's eigh in standard case
+    if B is None:  # use cupy's eigh in standard case
         vals, vecs = linalg.eigh(A)
         return vals, vecs
     R = _cholesky(B)
@@ -372,8 +375,6 @@ def lobpcg(A, X,
     explicitGramFlag = False
     while iterationNumber < maxiter:
         iterationNumber += 1
-        if verbosityLevel > 0:
-            print('iteration %d' % iterationNumber)
 
         if B is not None:
             aux = blockVectorBX * _lambda[cupy.newaxis, :]
@@ -389,8 +390,6 @@ def lobpcg(A, X,
 
         ii = cupy.where(residualNorms > residualTolerance, True, False)
         activeMask = activeMask & ii
-        if verbosityLevel > 2:
-            print(activeMask)
 
         currentBlockSize = int(activeMask.sum())
         if currentBlockSize != previousBlockSize:
@@ -401,9 +400,10 @@ def lobpcg(A, X,
             break
 
         if verbosityLevel > 0:
-            print('current block size:', currentBlockSize)
-            print('eigenvalue:', _lambda)
-            print('residual norms:', residualNorms)
+            print('iteration %d' % iterationNumber)
+            print(f'current block size: {currentBlockSize}')
+            print(f'eigenvalue(s):\n{_lambda}')
+            print(f'residual norm(s):\n{residualNorms}')
         if verbosityLevel > 10:
             print(eigBlockVector)
 
@@ -646,6 +646,10 @@ def lobpcg(A, X,
     aux = cupy.sum(blockVectorR.conj() * blockVectorR, 0)
     residualNorms = cupy.sqrt(aux)
 
+    if verbosityLevel > 0:
+        print(f'Final iterative eigenvalue(s):\n{_lambda}')
+        print(f'Final iterative residual norm(s):\n{residualNorms}')
+
     # Future work:
     # Generalized eigen value solver like `scipy.linalg.eigh`
     # that takes in `B` matrix as input
@@ -655,8 +659,8 @@ def lobpcg(A, X,
     # Computing the actual true residuals
 
     if verbosityLevel > 0:
-        print('final eigenvalue:', _lambda)
-        print('final residual norms:', residualNorms)
+        print(f'Final postprocessing eigenvalue(s):\n{_lambda}')
+        print(f'Final residual norm(s):\n{residualNorms}')
 
     if retLambdaHistory:
         if retResidualNormsHistory:

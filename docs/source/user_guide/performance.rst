@@ -45,6 +45,28 @@ synchronizing over the end event (see :ref:`cuda_stream_event` for detail). Belo
 Additionally, :func:`cupyx.profiler.benchmark` runs a few warm-up runs to reduce timing fluctuation and exclude the overhead in first invocations.
 
 
+One-Time Overheads
+~~~~~~~~~~~~~~~~~~
+
+Be aware of these overheads when benchmarking CuPy code.
+
+Context Initialization
+......................
+
+It may take several seconds when calling a CuPy function for the first time in a process.
+This is because the CUDA driver creates a CUDA context during the first CUDA API call in CUDA applications.
+
+Kernel Compilation
+..................
+
+CuPy uses on-the-fly kernel synthesis. When a kernel call is required, it compiles a kernel code optimized for the dimensions and dtypes of the given arguments, sends them to the GPU device, and executes the kernel.
+
+CuPy caches the kernel code sent to GPU device within the process, which reduces the kernel compilation time on further calls.
+
+The compiled code is also cached in the directory ``${HOME}/.cupy/kernel_cache`` (the path can be overwritten by setting the :envvar:`CUPY_CACHE_DIR` environment variable).
+This allows reusing the compiled kernel binary across the process.
+
+
 In-depth profiling
 ------------------
 
@@ -83,6 +105,9 @@ depending on the data layout. In particular, the CUB reduction only supports red
 contiguous axes.
 In any case, we recommend to perform some benchmarks to determine whether CUB/cuTENSOR offers
 better performance or not.
+
+.. note::
+   CuPy v11 and above uses CUB by default. To turn it off, you need to explicitly specify the environment variable ``CUPY_ACCELERATORS=""``.
 
 
 Overlapping work using streams

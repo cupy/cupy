@@ -4,7 +4,6 @@ cimport cython  # NOQA
 
 import atexit
 import collections
-import ctypes
 import gc
 import os
 import threading
@@ -110,9 +109,7 @@ cdef class Memory(BaseMemory):
 cdef inline void check_async_alloc_supported(int device_id) except*:
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    if CUPY_USE_CUDA_PYTHON and runtime.runtimeGetVersion() < 11020:
-        raise RuntimeError("memory_async is supported since CUDA 11.2")
-    if not CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION < 11020:
+    if runtime.runtimeGetVersion() < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     cdef int dev_id
     cdef list support
@@ -406,6 +403,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             device._enable_peer_access(src.device_id, self.device_id)
             runtime.memcpy(self.ptr, src.ptr, size,
@@ -445,6 +450,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpy(self.ptr, ptr, size,
@@ -465,6 +478,13 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so H2D transfers '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,
@@ -528,6 +548,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpy(ptr, self.ptr, size,
@@ -548,6 +576,13 @@ cdef class MemoryPointer:
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so D2H transfers '
+                'are disallowed')
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(ptr, self.ptr, size,
@@ -567,6 +602,14 @@ cdef class MemoryPointer:
             if you are using streams in your code, or have PTDS enabled.
 
         """
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if (
+            not runtime._is_hip_environment
+            and runtime.streamIsCapturing(stream_ptr)
+        ):
+            raise RuntimeError(
+                'the current stream is capturing, so synchronous API calls '
+                'are disallowed')
         if size > 0:
             runtime.memset(self.ptr, value, size)
 
@@ -622,7 +665,6 @@ cpdef MemoryPointer malloc_async(size_t size):
     .. _Stream Ordered Memory Allocator:
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
-    cdef intptr_t stream_ptr
     mem = MemoryAsync(size, stream_module.get_current_stream())
     return MemoryPointer(mem, 0)
 
@@ -1299,12 +1341,22 @@ cdef class SingleDeviceMemoryPool:
         return None
 
     cdef BaseMemory _try_malloc(self, size_t size):
+        cdef size_t limit
+        cdef bint limit_ok
         with LockAndNoGc(self._total_bytes_lock):
-            total_bytes_limit = self._total_bytes_limit
-            total = self._total_bytes + size
-            if total_bytes_limit != 0 and total_bytes_limit < total:
-                raise OutOfMemoryError(size, total - size, total_bytes_limit)
-            self._total_bytes = total
+            limit = self._total_bytes_limit
+            if limit != 0:
+                limit_ok = (self._total_bytes + size) <= limit
+                if not limit_ok:
+                    self.free_all_blocks()
+                    limit_ok = (self._total_bytes + size) <= limit
+                if not limit_ok:
+                    gc.collect()
+                    self.free_all_blocks()
+                    limit_ok = (self._total_bytes + size) <= limit
+                if not limit_ok:
+                    raise OutOfMemoryError(size, self._total_bytes, limit)
+            self._total_bytes += size
 
         mem = None
         oom_error = False
@@ -1331,9 +1383,8 @@ cdef class SingleDeviceMemoryPool:
             if mem is None:
                 with LockAndNoGc(self._total_bytes_lock):
                     self._total_bytes -= size
-                if oom_error:
-                    raise OutOfMemoryError(
-                        size, total - size, total_bytes_limit)
+                    if oom_error:
+                        raise OutOfMemoryError(size, self._total_bytes, limit)
 
         return mem
 
@@ -1554,33 +1605,32 @@ cdef class MemoryAsyncPool:
 
     def __init__(self, pool_handles='current'):
         _util.experimental('cupy.cuda.MemoryAsyncPool')
-        cdef int dev_id, dev_counts
+        cdef int dev_id, prev_dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
         self._pools = []
         self.memoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
+        prev_dev_id = runtime.getDevice()
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             for dev_id in range(dev_counts):
-                prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(
                         pool_handles[dev_id], dev_id))
                     self.set_limit(**limit)
                 finally:
-                    runtime.setDevice(dev_id)
+                    runtime.setDevice(prev_dev_id)
         else:
             # use the same argument for all devices
             for dev_id in range(dev_counts):
-                prev_device = runtime.getDevice()
                 try:
                     runtime.setDevice(dev_id)
                     self._pools.append(self.set_pool(pool_handles, dev_id))
                     self.set_limit(**limit)
                 finally:
-                    runtime.setDevice(dev_id)
+                    runtime.setDevice(prev_dev_id)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool

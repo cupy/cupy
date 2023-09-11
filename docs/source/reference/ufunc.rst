@@ -12,8 +12,6 @@ CuPy's ufunc supports following features of NumPy's one:
 - Output type determination
 - Casting rules
 
-CuPy's ufunc currently does not provide methods such as ``reduce``, ``accumulate``, ``reduceat``, ``outer``, and ``at``.
-
 
 ufunc
 -----
@@ -22,6 +20,21 @@ ufunc
    :toctree: generated/
 
    ufunc
+
+Methods
+~~~~~~~
+
+These methods are only available for selected ufuncs.
+
+* :meth:`ufunc.reduce <cupy.ufunc.reduce>`: :func:`~cupy.add`, :func:`~cupy.multiply`
+* :meth:`ufunc.accumulate <cupy.ufunc.accumulate>`: :func:`~cupy.add`, :func:`~cupy.multiply`
+* :meth:`ufunc.reduceat <ufunc.reduceat>`: :func:`~cupy.add`
+* :meth:`ufunc.outer <cupy.ufunc.outer>`: All ufuncs
+* :meth:`ufunc.at <cupy.ufunc.at>`: :func:`~cupy.add`, :func:`~cupy.subtract`, :func:`~cupy.maximum`, :func:`~cupy.minimum`, :func:`~cupy.bitwise_and`, :func:`~cupy.bitwise_or`, :func:`~cupy.bitwise_xor`
+
+.. hint::
+
+   In case you need support for other ufuncs, submit a feature request along with your use-case in `the tracker issue <https://github.com/cupy/cupy/issues/7082>`_.
 
 
 Available ufuncs
@@ -43,13 +56,18 @@ Math operations
    true_divide
    floor_divide
    negative
+   positive
    power
+   float_power
    remainder
    mod
    fmod
+   divmod
    absolute
+   fabs
    rint
    sign
+   heaviside
    conj
    conjugate
    exp
@@ -138,6 +156,7 @@ Floating functions
    isfinite
    isinf
    isnan
+   fabs
    signbit
    copysign
    nextafter
@@ -148,13 +167,6 @@ Floating functions
    floor
    ceil
    trunc
-
-
-ufunc.at
---------
-
-Currently, CuPy does not support ``at`` for ufuncs in general.
-However, :func:`cupyx.scatter_add` can substitute ``add.at`` as both behave identically.
 
 
 Generalized Universal Functions

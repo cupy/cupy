@@ -118,6 +118,7 @@ _dtype_rec = (
 _float_error_state = (
     'Floating point error handling depends on CPU-specific features'
     ' which is not available in GPU.')
+_byte_order = 'Not supported as GPUs only support little-endian byte-encoding.'
 
 
 def generate():
@@ -145,6 +146,9 @@ def generate():
             'mafromtxt': _deprecated,  # NumPy 1.17
             'alen': _deprecated,  # NumPy 1.18
             'asscalar': _deprecated,  # NumPy 1.16
+            'loads': _deprecated,  # NumPy 1.15
+            'ndfromtxt': _deprecated,  # NumPy 1.17
+            'set_numeric_ops': _deprecated,  # NumPy 1.16
 
             'asmatrix': _np_matrix,
             'bmat': _np_matrix,
@@ -199,7 +203,12 @@ def generate():
         })
     buf += _section(
         'Multi-Dimensional Array',
-        'numpy', 'cupy', klass='ndarray')
+        'numpy', 'cupy', klass='ndarray', footnotes={
+            'tostring': _deprecated,
+
+            'byteswap': _byte_order,
+            'newbyteorder': _byte_order,
+        })
     buf += _section(
         'Linear Algebra',
         'numpy.linalg', 'cupy.linalg', exclude=['test'])
@@ -232,6 +241,10 @@ def generate():
     buf += _section(
         'Legacy Discrete Fourier Transform',
         'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy', exclude=['test'])
+    buf += _section(
+        'Interpolation',
+        'scipy.interpolate', 'cupyx.scipy.interpolate', 'SciPy',
+        exclude=['test'])
     buf += _section(
         'Advanced Linear Algebra',
         'scipy.linalg', 'cupyx.scipy.linalg', 'SciPy',

@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.2 / v11.0 / v11.1 / v11.2 / v11.3 / v11.4 / v11.5
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 [#cuda122windows]_
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -14,24 +14,26 @@ Requirements
     * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.7.0+ / v3.8.0+ / v3.9.0+ / v3.10.0+
+* `Python <https://python.org/>`_: v3.9 / v3.10 / v3.11
+
+.. [#cuda122windows] CUDA 12.2 is not yet supported on Windows. See `#7776 <https://github.com/cupy/cupy/issues/7776>`_ for details.
 
 .. note::
 
-   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS / 20.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 / 8 (x86_64) and Windows Server 2016 (x86_64).
+   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 20.04 LTS / 22.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 / 8 (x86_64) and Windows Server 2016 (x86_64).
 
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.21 and SciPy 1.7, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v12 is based on NumPy 1.24 and SciPy 1.10, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.18 / v1.19 / v1.20 / v1.21
+* `NumPy <https://numpy.org/>`_: v1.22 / v1.23 / v1.24
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.7 / v1.8 / v1.9 / v1.10
 
-    * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
+    * Required only when coping sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v2.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v3.x
 
     * Required only when using :ref:`kernel_param_opt`.
 
@@ -50,15 +52,15 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.3
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.6 / v1.7
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.8 / v2.9 / v2.10 / v2.11
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v8.8
 
     * The library to accelerate deep neural network computations.
 
@@ -70,7 +72,10 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
-Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
+Installing CuPy from PyPI
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Wheels (precompiled binary packages) are available for Linux and Windows.
 Package names are different depending on your CUDA Toolkit version.
 
 .. list-table::
@@ -78,31 +83,27 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - v10.2
-     - ``$ pip install cupy-cuda102``
-   * - v11.0
-     - ``$ pip install cupy-cuda110``
-   * - v11.1
-     - ``$ pip install cupy-cuda111``
-   * - v11.2
-     - ``$ pip install cupy-cuda112``
-   * - v11.3
-     - ``$ pip install cupy-cuda113``
-   * - v11.4
-     - ``$ pip install cupy-cuda114``
-   * - v11.5
-     - ``$ pip install cupy-cuda115``
+   * - **v10.2** (x86_64 / aarch64)
+     - ``pip install cupy-cuda102``
+   * - **v11.0** (x86_64)
+     - ``pip install cupy-cuda110``
+   * - **v11.1** (x86_64)
+     - ``pip install cupy-cuda111``
+   * - **v11.2 ~ 11.8** (x86_64 / aarch64)
+     - ``pip install cupy-cuda11x``
+   * - **v12.x** (x86_64 / aarch64)
+     - ``pip install cupy-cuda12x``
 
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
    If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
-    $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
+    $ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
 
 .. note::
 
-   Use ``pip install cupy-cudaXXX -f https://pip.cupy.dev/pre`` to install pre-release (development) versions.
+   Append ``--pre -U -f https://pip.cupy.dev/pre`` options to install pre-releases (e.g., ``pip install cupy-cuda11x --pre -U -f https://pip.cupy.dev/pre``).
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
@@ -115,7 +116,7 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
 .. _install_cupy_from_conda_forge:
 
 Installing CuPy from Conda-Forge
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
 The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
@@ -128,17 +129,17 @@ and ``conda`` will install a pre-built CuPy binary package for you, along with t
 (``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
 
 Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
-However, if for any reason you need to force-install a particular CUDA version (say 11.0), you can do::
+However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
 
-    $ conda install -c conda-forge cupy cudatoolkit=11.0
+    $ conda install -c conda-forge cupy cuda-version=11.8
 
 .. note::
 
     cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cudnn cutensor nccl
 
-    Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.1+.
+    Each of them can also be installed separately as needed.
 
 .. note::
 
@@ -153,15 +154,11 @@ However, if for any reason you need to force-install a particular CUDA version (
     it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
     avoid surprises.
 
-.. note::
-
-   Use ``conda install -c conda-forge/label/cupy_rc cupy`` if you want to install pre-release (development) versions.
-
 
 .. _install_cupy_from_source:
 
 Installing CuPy from Source
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use of wheel packages is recommended whenever possible.
 However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
@@ -366,7 +363,7 @@ On CentOS 6 / 7::
   $ sudo yum install centos-release-scl
   $ sudo yum install devtoolset-7-gcc-c++
   $ source /opt/rh/devtoolset-7/enable
-  $ export NVCC="nvcc --compiler-bidir gcc-7"
+  $ export NVCC="nvcc --compiler-bindir gcc"
 
 
 Using CuPy on AMD GPU (experimental)
@@ -379,7 +376,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2 / v4.3
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.3 / v5.0
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -417,12 +414,10 @@ Package names are different depending on your ROCm version.
 
    * - ROCm
      - Command
-   * - v4.0
-     - ``$ pip install cupy-rocm-4-0``
-   * - v4.2
-     - ``$ pip install cupy-rocm-4-2``
    * - v4.3
      - ``$ pip install cupy-rocm-4-3``
+   * - v5.0
+     - ``$ pip install cupy-rocm-5-0``
 
 Building CuPy for ROCm From Source
 ----------------------------------
@@ -457,7 +452,6 @@ The following features are not available due to the limitation of ROCm or becaus
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
 * Per-thread default stream
-* Random generation API (``cupy.random.Generator``) for ROCm versions older than 4.3
 
 The following features are not yet supported:
 
@@ -465,6 +459,7 @@ The following features are not yet supported:
 * cuDNN (hipDNN)
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
+* Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
 
 The following features may not work in edge cases (e.g., some combinations of dtype):
 

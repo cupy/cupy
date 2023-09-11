@@ -6,7 +6,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestRational(unittest.TestCase):
 
     @testing.for_dtypes(['?', 'e', 'f', 'd', 'F', 'D'])

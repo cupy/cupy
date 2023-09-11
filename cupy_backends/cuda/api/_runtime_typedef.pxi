@@ -13,6 +13,8 @@ cdef extern from *:
     ctypedef void _StreamCallbackDef(
         driver.Stream stream, Error status, void* userData)
     ctypedef _StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
+    ctypedef void* StreamCaptureStatus 'cudaStreamCaptureStatus'
+    ctypedef void* GraphNode 'cudaGraphNode_t'
 
     ctypedef void _HostFnDef(void* userData)
     ctypedef _HostFnDef* HostFn 'cudaHostFn_t'
@@ -41,6 +43,10 @@ cdef extern from *:
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     ctypedef int Limit 'cudaLimit'
+
+    ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
+    ctypedef void* Graph 'cudaGraph_t'
+    ctypedef void* GraphExec 'cudaGraphExec_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supprted in Cython
@@ -106,6 +112,24 @@ cdef extern from *:
 
     ctypedef void* MemPool 'cudaMemPool_t'
     ctypedef int MemPoolAttr 'cudaMemPoolAttr'
+
+    ctypedef int MemAllocationType 'cudaMemAllocationType'
+    ctypedef int MemAllocationHandleType 'cudaMemAllocationHandleType'
+    ctypedef int MemLocationType 'cudaMemLocationType'
+    IF CUPY_CUDA_VERSION > 0:
+        # This is for the annoying nested struct, which is not
+        # perfectly supprted in Cython
+        ctypedef struct _MemLocation 'cudaMemLocation':
+            MemLocationType type
+            int id
+
+        ctypedef struct _MemPoolProps 'cudaMemPoolProps':
+            MemAllocationType allocType
+            MemAllocationHandleType handleTypes
+            _MemLocation location
+    ELSE:
+        ctypedef struct _MemPoolProps 'cudaMemPoolProps':
+            pass  # for HIP & RTD
 
     IF CUPY_CUDA_VERSION > 0:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
@@ -214,81 +238,6 @@ cdef extern from *:
             cudaUUID     uuid
             char         luid[8]
             unsigned int luidDeviceNodeMask
-            size_t       totalGlobalMem
-            size_t       sharedMemPerBlock
-            int          regsPerBlock
-            int          warpSize
-            size_t       memPitch
-            int          maxThreadsPerBlock
-            int          maxThreadsDim[3]
-            int          maxGridSize[3]
-            int          clockRate
-            size_t       totalConstMem
-            int          major
-            int          minor
-            size_t       textureAlignment
-            size_t       texturePitchAlignment
-            int          deviceOverlap
-            int          multiProcessorCount
-            int          kernelExecTimeoutEnabled
-            int          integrated
-            int          canMapHostMemory
-            int          computeMode
-            int          maxTexture1D
-            int          maxTexture1DMipmap
-            int          maxTexture1DLinear
-            int          maxTexture2D[2]
-            int          maxTexture2DMipmap[2]
-            int          maxTexture2DLinear[3]
-            int          maxTexture2DGather[2]
-            int          maxTexture3D[3]
-            int          maxTexture3DAlt[3]
-            int          maxTextureCubemap
-            int          maxTexture1DLayered[2]
-            int          maxTexture2DLayered[3]
-            int          maxTextureCubemapLayered[2]
-            int          maxSurface1D
-            int          maxSurface2D[2]
-            int          maxSurface3D[3]
-            int          maxSurface1DLayered[2]
-            int          maxSurface2DLayered[3]
-            int          maxSurfaceCubemap
-            int          maxSurfaceCubemapLayered[2]
-            size_t       surfaceAlignment
-            int          concurrentKernels
-            int          ECCEnabled
-            int          pciBusID
-            int          pciDeviceID
-            int          pciDomainID
-            int          tccDriver
-            int          asyncEngineCount
-            int          unifiedAddressing
-            int          memoryClockRate
-            int          memoryBusWidth
-            int          l2CacheSize
-            int          maxThreadsPerMultiProcessor
-            int          streamPrioritiesSupported
-            int          globalL1CacheSupported
-            int          localL1CacheSupported
-            size_t       sharedMemPerMultiprocessor
-            int          regsPerMultiprocessor
-            int          managedMemory
-            int          isMultiGpuBoard
-            int          multiGpuBoardGroupID
-            int          hostNativeAtomicSupported
-            int          singleToDoublePrecisionPerfRatio
-            int          pageableMemoryAccess
-            int          concurrentManagedAccess
-            int          computePreemptionSupported
-            int          canUseHostPointerForRegisteredMem
-            int          cooperativeLaunch
-            int          cooperativeMultiDeviceLaunch
-            size_t       sharedMemPerBlockOptin
-            int          pageableMemoryAccessUsesHostPageTables
-            int          directManagedMemAccessFromHost
-    ELIF CUPY_CUDA_VERSION == 9020:
-        ctypedef struct DeviceProp 'cudaDeviceProp':
-            char         name[256]
             size_t       totalGlobalMem
             size_t       sharedMemPerBlock
             int          regsPerBlock

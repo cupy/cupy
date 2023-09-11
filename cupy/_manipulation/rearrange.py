@@ -26,11 +26,7 @@ def flip(a, axis=None):
     .. seealso:: :func:`numpy.flip`
 
     """
-    a_ndim = a.ndim
-    if a_ndim < 1:
-        raise numpy.AxisError('Input must be >= 1-d')
-
-    axes = internal._normalize_axis_indices(axis, a_ndim)
+    axes = internal._normalize_axis_indices(axis, a.ndim)
     return _flip(a, axes)
 
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# AUTO GENERATED: DO NOT EDIT!
+
 set -uex
 
 ACTIONS="$(dirname $0)/actions"
@@ -7,11 +9,10 @@ ACTIONS="$(dirname $0)/actions"
 
 export NVCC="ccache nvcc"
 
+export CUPY_ACCELERATORS="cutensor,cub"
+
 export CUPY_USE_CUDA_PYTHON="1"
 
-python3 -m pip install --user Cython
-python3 -m pip install --user https://github.com/NVIDIA/cuda-python/archive/refs/heads/main.tar.gz
-
 "$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow"
+"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
 "$ACTIONS/cleanup.sh"

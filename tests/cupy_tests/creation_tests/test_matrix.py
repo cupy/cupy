@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestMatrix(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -108,7 +107,6 @@ class TestMatrix(unittest.TestCase):
     {'shape': (3, 3)},
     {'shape': (4, 3)},
 )
-@testing.gpu
 class TestTri(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -133,7 +131,6 @@ class TestTri(unittest.TestCase):
     {'shape': (4, 3)},
     {'shape': (2, 3, 4)},
 )
-@testing.gpu
 class TestTriLowerAndUpper(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
@@ -179,3 +176,45 @@ class TestTriLowerAndUpper(unittest.TestCase):
     def test_triu_posi(self, xp, dtype):
         m = testing.shaped_arange(self.shape, xp, dtype)
         return xp.triu(m, 1)
+
+
+@testing.parameterize(
+    *testing.product({
+        'N': [None, 0, 1, 2, 3],
+        'increasing': [False, True]
+    })
+)
+class TestVander(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_vander(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype=dtype)
+        return xp.vander(a, N=self.N, increasing=self.increasing)
+
+    @testing.numpy_cupy_allclose()
+    def test_vander_array_like_list(self, xp):
+        a = [0, 1, 2, 3, 4, 5, 6]
+        return xp.vander(a, N=self.N, increasing=self.increasing)
+
+    @testing.numpy_cupy_allclose()
+    def test_vander_array_like_tuple(self, xp):
+        a = (0, 1, 2, 3, 4, 5, 6)
+        return xp.vander(a, N=self.N, increasing=self.increasing)
+
+    def test_vander_scalar(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.vander(1, N=self.N, increasing=self.increasing)
+
+    def test_vander_0dim(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros(())
+            with pytest.raises(ValueError):
+                xp.vander(a, N=self.N, increasing=self.increasing)
+
+    def test_vander_2dim(self):
+        for xp in (numpy, cupy):
+            m = xp.zeros((2, 2))
+            with pytest.raises(ValueError):
+                xp.vander(m, N=self.N, increasing=self.increasing)

@@ -68,6 +68,17 @@ Streams and events
    cupy.cuda.get_elapsed_time
 
 
+.. _graph_api:
+
+Graphs
+------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupy.cuda.Graph
+
+
 Texture and surface memory
 --------------------------
 
@@ -80,7 +91,6 @@ Texture and surface memory
    cupy.cuda.texture.TextureDescriptor
    cupy.cuda.texture.TextureObject
    cupy.cuda.texture.SurfaceObject
-   cupy.cuda.texture.TextureReference
 
 
 Profiler
@@ -136,6 +146,8 @@ to use these functions.
    cupy.cuda.runtime.deviceGetDefaultMemPool
    cupy.cuda.runtime.deviceGetMemPool
    cupy.cuda.runtime.deviceSetMemPool
+   cupy.cuda.runtime.memPoolCreate
+   cupy.cuda.runtime.memPoolDestroy
    cupy.cuda.runtime.memPoolTrimTo
    cupy.cuda.runtime.getDeviceCount
    cupy.cuda.runtime.setDevice
@@ -149,6 +161,7 @@ to use these functions.
    cupy.cuda.runtime.malloc3DArray
    cupy.cuda.runtime.mallocArray
    cupy.cuda.runtime.mallocAsync
+   cupy.cuda.runtime.mallocFromPoolAsync
    cupy.cuda.runtime.hostAlloc
    cupy.cuda.runtime.hostRegister
    cupy.cuda.runtime.hostUnregister

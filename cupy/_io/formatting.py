@@ -1,6 +1,5 @@
-import numpy
-
 import cupy
+import numpy
 
 
 def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
@@ -52,3 +51,25 @@ def array2string(a, *args, **kwargs):
 
     """
     return numpy.array2string(cupy.asnumpy(a), *args, **kwargs)
+
+
+def format_float_positional(x, *args, **kwargs):
+    """Format a floating-point scalar as a decimal string in positional notation.
+
+    See :func:`numpy.format_float_positional` for the list of arguments.
+
+    .. seealso:: :func:`numpy.format_float_positional`
+
+    """  # NOQA
+    return numpy.format_float_positional(cupy.asnumpy(x), *args, **kwargs)
+
+
+def format_float_scientific(x, *args, **kwargs):
+    """Format a floating-point scalar as a decimal string in scientific notation.
+
+    See :func:`numpy.format_float_scientific` for the list of arguments.
+
+    .. seealso:: :func:`numpy.format_float_scientific`
+
+    """  # NOQA
+    return numpy.format_float_scientific(cupy.asnumpy(x), *args, **kwargs)

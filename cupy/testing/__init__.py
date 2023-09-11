@@ -5,7 +5,6 @@ from cupy.testing._array import assert_array_equal  # NOQA
 from cupy.testing._array import assert_array_less  # NOQA
 from cupy.testing._array import assert_array_list_equal  # NOQA
 from cupy.testing._array import assert_array_max_ulp  # NOQA
-from cupy.testing._attr import gpu  # NOQA
 from cupy.testing._attr import multi_gpu  # NOQA
 from cupy.testing._attr import slow  # NOQA
 from cupy.testing._helper import assert_warns  # NOQA
@@ -19,6 +18,7 @@ from cupy.testing._helper import shaped_random  # NOQA
 from cupy.testing._helper import generate_matrix  # NOQA
 from cupy.testing._helper import shaped_reverse_arange  # NOQA
 from cupy.testing._helper import with_requires  # NOQA
+from cupy.testing._helper import installed  # NOQA
 from cupy.testing._loops import for_all_dtypes  # NOQA
 from cupy.testing._loops import for_all_dtypes_combination  # NOQA
 from cupy.testing._loops import for_CF_orders  # NOQA

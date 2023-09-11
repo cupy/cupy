@@ -3,56 +3,66 @@
 Overview
 ========
 
-.. currentmodule:: cupy
+`CuPy <https://github.com/cupy/cupy>`__ is a NumPy/SciPy-compatible array library for GPU-accelerated computing with Python.
+CuPy acts as a drop-in replacement to run existing NumPy/SciPy code on `NVIDIA CUDA <https://developer.nvidia.com/cuda-toolkit>`__ or `AMD ROCm <https://www.amd.com/en/graphics/servers-solutions-rocm>`__ platforms.
 
-`CuPy <https://github.com/cupy/cupy>`_ is an implementation of NumPy-compatible multi-dimensional array on CUDA.
-CuPy consists of :class:`cupy.ndarray`, the core multi-dimensional array class,
-and many functions on it. It supports a subset of :class:`numpy.ndarray`
-interface.
+CuPy provides a ``ndarray``, sparse matrices, and the associated routines for GPU devices, all having the same API as NumPy and SciPy:
 
-The following is a brief overview of supported subset of NumPy interface:
+* **N-dimensional array** (``ndarray``): :doc:`cupy.ndarray <reference/ndarray>`
 
-- `Basic indexing <https://numpy.org/doc/stable/reference/arrays.indexing.html>`_
-  (indexing by ints, slices, newaxes, and Ellipsis)
-- Most of `Advanced indexing <https://numpy.org/doc/stable/reference/arrays.indexing.html#advanced-indexing>`_
-  (except for some indexing patterns with boolean masks)
-- Data types (dtypes): ``bool_``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``, ``float16``, ``float32``, ``float64``, ``complex64``, ``complex128``
-- Most of the `array creation routines <https://numpy.org/doc/stable/reference/routines.array-creation.html>`_ (\ ``empty``, ``ones_like``, ``diag``, etc.)
-- Most of the `array manipulation routines <https://numpy.org/doc/stable/reference/routines.array-manipulation.html>`_ (\ ``reshape``, ``rollaxis``, ``concatenate``, etc.)
-- All operators with `broadcasting <https://numpy.org/doc/stable/user/basics.broadcasting.html>`_
-- All `universal functions <https://numpy.org/doc/stable/reference/ufuncs.html>`_
-  for elementwise operations (except those for complex numbers)
-- `Linear algebra functions <https://numpy.org/doc/stable/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_ and `cuSOLVER <https://developer.nvidia.com/cusolver>`_
-- Multi-dimensional `fast Fourier transform <https://numpy.org/doc/stable/reference/routines.fft.html>`_ (FFT), accelerated by `cuFFT <https://developer.nvidia.com/cufft>`_
-- Reduction along axes (``sum``, ``max``, ``argmax``, etc.)
+  * Data types (dtypes): boolean (``bool_``), integer (``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``), float (``float16``, ``float32``, ``float64``), and complex (``complex64``, ``complex128``)
+  * Supports the semantics identical to :class:`numpy.ndarray`, including basic / advanced indexing and broadcasting
 
-CuPy additionally supports a subset of SciPy features:
+* **Sparse matrices**: :doc:`cupyx.scipy.sparse <reference/scipy_sparse>`
 
-- `Sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_ and `sparse linear algebra <https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html>`_, powered by `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
-- `Multi-dimensional image processing <https://docs.scipy.org/doc/scipy/reference/ndimage.html>`_
-- `Signal processing <https://docs.scipy.org/doc/scipy/reference/signal.html>`_
-- `Fast Fourier transform <https://docs.scipy.org/doc/scipy/reference/fft.html>`__ (FFT)
-- `Linear algebra functions <https://docs.scipy.org/doc/scipy/reference/linalg.html>`__
-- `Special functions <https://docs.scipy.org/doc/scipy/reference/special.html>`_
-- `Statistical functions <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+  * 2-D sparse matrix: ``csr_matrix``, ``coo_matrix``, ``csc_matrix``, and ``dia_matrix``
 
-CuPy also includes the following features for performance:
+* **NumPy Routines**
 
-- User-defined elementwise CUDA kernels
-- User-defined reduction CUDA kernels
-- Just-in-time compiler converting Python functions to CUDA kernels
-- Fusing CUDA kernels to optimize user-defined calculation
-- `CUB <https://github.com/NVIDIA/cub>`_/`cuTENSOR <https://developer.nvidia.com/cutensor>`_ backends for reduction and other routines
-- Customizable memory allocator and memory pool
-- `cuDNN <https://developer.nvidia.com/cudnn>`_ utilities
-- Full coverage of `NCCL <https://developer.nvidia.com/nccl>`_ APIs
+  * :doc:`Module-level Functions <reference/routines>` (``cupy.*``)
+  * :doc:`Linear Algebra Functions <reference/linalg>` (``cupy.linalg.*``)
+  * :doc:`Fast Fourier Transform <reference/fft>` (``cupy.fft.*``)
+  * :doc:`Random Number Generator <reference/random>` (``cupy.random.*``)
 
-CuPy uses on-the-fly kernel synthesis: when a kernel call is required, it
-compiles a kernel code optimized for the shapes and dtypes of given arguments,
-sends it to the GPU device, and executes the kernel. The compiled code is
-cached to ``$(HOME)/.cupy/kernel_cache`` directory (this cache path can be
-overwritten by setting the ``CUPY_CACHE_DIR`` environment variable). It may
-make things slower at the first kernel call, though this slow down will be
-resolved at the second execution. CuPy also caches the kernel code sent to GPU
-device within the process, which reduces the kernel transfer time on further
-calls.
+* **SciPy Routines**
+
+  * :doc:`Discrete Fourier Transforms <reference/scipy_fft>` (``cupyx.scipy.fft.*`` and ``cupyx.scipy.fftpack.*``)
+  * :doc:`Advanced Linear Algebra <reference/scipy_linalg>` (``cupyx.scipy.linalg.*``)
+  * :doc:`Multidimensional Image Processing <reference/scipy_ndimage>` (``cupyx.scipy.ndimage.*``)
+  * :doc:`Sparse Matrices <reference/scipy_sparse>` (``cupyx.scipy.sparse.*``)
+  * :doc:`Sparse Linear Algebra <reference/scipy_sparse_linalg>` (``cupyx.scipy.sparse.linalg.*``)
+  * :doc:`Special Functions <reference/scipy_special>` (``cupyx.scipy.special.*``)
+  * :doc:`Signal Processing <reference/scipy_signal>` (``cupyx.scipy.signal.*``)
+  * :doc:`Statistical Functions <reference/scipy_stats>` (``cupyx.scipy.stats.*``)
+
+Routines are backed by CUDA libraries (cuBLAS, cuFFT, cuSPARSE, cuSOLVER, cuRAND), Thrust, CUB, and cuTENSOR to provide the best performance.
+
+It is also possible to easily implement :doc:`custom CUDA kernels <user_guide/kernel>` that work with ``ndarray`` using:
+
+* **Kernel Templates**: Quickly define element-wise and reduction operation as a single CUDA kernel
+* **Raw Kernel**: Import existing CUDA C/C++ code
+* **Just-in-time Transpiler (JIT)**: Generate CUDA kernel from Python source code
+* **Kernel Fusion**: Fuse multiple CuPy operations into a single CUDA kernel
+
+CuPy can run in multi-GPU or cluster environments. The distributed communication package (:mod:`cupyx.distributed`) provides collective and peer-to-peer primitives for ``ndarray``, backed by NCCL.
+
+For users who need more fine-grain control for performance, accessing :doc:`low-level CUDA features <user_guide/cuda_api>` are available:
+
+* **Stream and Event**: CUDA stream and per-thread default stream are supported by all APIs
+* **Memory Pool**: Customizable memory allocator with a built-in memory pool
+* **Profiler**: Supports profiling code using CUDA Profiler and NVTX
+* **Host API Binding**: Directly call CUDA libraries, such as NCCL, cuDNN, cuTENSOR, and cuSPARSELt APIs from Python
+
+CuPy implements standard APIs for data exchange and interoperability, such as `DLPack <https://github.com/dmlc/dlpack>`__, `CUDA Array Interface <https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html>`__, ``__array_ufunc__`` (`NEP 13 <https://numpy.org/neps/nep-0013-ufunc-overrides.html>`__), ``__array_function__`` (`NEP 18 <https://numpy.org/neps/nep-0018-array-function-protocol.html>`__), and `Array API Standard <https://data-apis.org/array-api/latest/>`__.
+Thanks to these protocols, CuPy easily :doc:`integrates <user_guide/interoperability>` with NumPy, PyTorch, TensorFlow, MPI4Py, and any other libraries supporting the standard.
+
+Under AMD ROCm environment, CuPy automatically translates all CUDA API calls to ROCm HIP (hipBLAS, hipFFT, hipSPARSE, hipRAND, hipCUB, hipThrust, RCCL, etc.), allowing code written using CuPy to run on both NVIDIA and AMD GPU without any modification.
+
+Project Goal
+------------
+
+The goal of the CuPy project is to provide Python users GPU acceleration capabilities, without the in-depth knowledge of underlying GPU technologies.
+The CuPy team focuses on providing:
+
+* A complete NumPy and SciPy API coverage to become a full drop-in replacement, as well as advanced CUDA features to maximize the performance.
+* Mature and quality library as a fundamental package for all projects needing acceleration, from a lab environment to a large-scale cluster.

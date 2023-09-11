@@ -65,8 +65,8 @@ def prod(
     # Note: sum() and prod() always upcast float32 to float64 for dtype=None
     # We need to do so here before computing the product to avoid overflow
     if dtype is None and x.dtype == float32:
-        x = asarray(x, dtype=float64)
-    return Array._new(np.prod(x._array, axis=axis, keepdims=keepdims))
+        dtype = float64
+    return Array._new(np.prod(x._array, dtype=dtype, axis=axis, keepdims=keepdims))
 
 
 def std(
@@ -93,11 +93,12 @@ def sum(
 ) -> Array:
     if x.dtype not in _numeric_dtypes:
         raise TypeError("Only numeric dtypes are allowed in sum")
-    # Note: sum() and prod() always upcast float32 to float64 for dtype=None
-    # We need to do so here before summing to avoid overflow
+    # Note: sum() and prod() always upcast integers to (u)int64 and float32 to
+    # float64 for dtype=None. `np.sum` does that too for integers, but not for
+    # float32, so we need to special-case it here
     if dtype is None and x.dtype == float32:
-        x = asarray(x, dtype=float64)
-    return Array._new(np.sum(x._array, axis=axis, keepdims=keepdims))
+        dtype = float64
+    return Array._new(np.sum(x._array, axis=axis, dtype=dtype, keepdims=keepdims))
 
 
 def var(

@@ -37,6 +37,10 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
         kw = {'x': numpy.uint32}
         assert not _loops._contains_signed_and_unsigned(kw)
 
+    def test_ignore_not_dtype(self):
+        kw = {'x': numpy.int32, 'y': numpy.uint32, 'a': [0, 1]}
+        assert _loops._contains_signed_and_unsigned(kw)
+
 
 class TestCheckCupyNumpyError(unittest.TestCase):
 
@@ -243,7 +247,6 @@ def cupy_error(_, xp):
         raise ValueError()
 
 
-@testing.gpu
 class NumPyCuPyDecoratorBase2(object):
 
     def test_accept_error_numpy(self):
@@ -289,7 +292,6 @@ class TestNumPyCuPyEqual(unittest.TestCase, NumPyCuPyDecoratorBase,
 @testing.parameterize(
     {'decorator': 'numpy_cupy_array_equal'}
 )
-@testing.gpu
 class TestNumPyCuPyListEqual(unittest.TestCase, NumPyCuPyDecoratorBase):
 
     def valid_func(self, xp):
@@ -390,9 +392,9 @@ class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
         # To avoid this difference, we need to ignore dimensions whose
         # values are negative.
         if xp == numpy:
-            return xp.array(-1, dtype=dtype1)
+            return xp.array(-1).astype(dtype1)
         else:
-            return xp.array(-2, dtype=dtype1)
+            return xp.array(-2).astype(dtype1)
 
 
 @testing.parameterize(*testing.product({

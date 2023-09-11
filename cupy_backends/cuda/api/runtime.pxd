@@ -12,6 +12,14 @@ cdef class PointerAttributes:
         readonly intptr_t hostPointer
         readonly int type
 
+cdef class MemPoolProps:
+    # flatten the struct & list meaningful members
+    cdef:
+        int allocType
+        int handleType
+        int locationType
+        int devId
+
 
 ###############################################################################
 # Types and Enums
@@ -65,9 +73,21 @@ IF CUPY_USE_CUDA_PYTHON:
 
     ctypedef cudaMemPoolAttr MemPoolAttr
 
+    ctypedef cudaMemPoolProps _MemPoolProps
+
     ctypedef cudaPointerAttributes _PointerAttributes
 
     ctypedef cudaDeviceProp DeviceProp
+
+    ctypedef cudaStreamCaptureStatus StreamCaptureStatus
+    ctypedef cudaStreamCaptureMode StreamCaptureMode
+    ctypedef cudaGraph_t Graph
+    ctypedef cudaGraphExec_t GraphExec
+    ctypedef cudaGraphNode_t GraphNode
+
+    ctypedef cudaMemAllocationType MemAllocationType
+    ctypedef cudaMemAllocationHandleType MemAllocationHandleType
+    ctypedef cudaMemLocationType MemLocationType
 
 ELSE:
     include "_runtime_typedef.pxi"
@@ -100,11 +120,22 @@ cpdef enum:
     eventDisableTiming = 2
     eventInterprocess = 4
 
+    # cudaStreamCaptureMode
+    streamCaptureModeGlobal = 0
+    streamCaptureModeThreadLocal = 1
+    streamCaptureModeRelaxed = 2
+
+    # cudaStreamCaptureStatus
+    streamCaptureStatusNone = 0
+    streamCaptureStatusActive = 1
+    streamCaptureStatusInvalidated = 2
+
     # cudaMemoryType
     memoryTypeUnregistered = 0
     memoryTypeHost = 1
     memoryTypeDevice = 2
     memoryTypeManaged = 3
+
 
 ###############################################################################
 # Constants
@@ -175,6 +206,7 @@ cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
 cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
                            unsigned int flags=*) except? 0
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
+cpdef intptr_t mallocFromPoolAsync(size_t, intptr_t, intptr_t) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
@@ -219,6 +251,8 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
 cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)
+cpdef intptr_t memPoolCreate(MemPoolProps) except? 0
+cpdef memPoolDestroy(intptr_t)
 cpdef memPoolTrimTo(intptr_t, size_t)
 cpdef memPoolGetAttribute(intptr_t, int)
 cpdef memPoolSetAttribute(intptr_t, int, object)
@@ -237,6 +271,9 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
+cpdef streamBeginCapture(intptr_t stream, int mode=*)
+cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
+cpdef bint streamIsCapturing(intptr_t stream) except*
 cpdef intptr_t eventCreate() except? 0
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(intptr_t event)
@@ -257,15 +294,28 @@ cdef _ensure_context()
 # Texture
 ##############################################################################
 
-cpdef uintmax_t createTextureObject(intptr_t ResDesc, intptr_t TexDesc)
+cpdef uintmax_t createTextureObject(
+    intptr_t ResDesc, intptr_t TexDesc) except? 0
 cpdef destroyTextureObject(uintmax_t texObject)
-cdef ChannelFormatDesc getChannelDesc(intptr_t array)
-cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj)
-cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj)
-cdef Extent make_Extent(size_t w, size_t h, size_t d)
-cdef Pos make_Pos(size_t x, size_t y, size_t z)
-cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
+cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*
+cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t texobj) except*
+cdef TextureDesc getTextureObjectTextureDesc(uintmax_t texobj) except*
+cdef Extent make_Extent(size_t w, size_t h, size_t d) except*
+cdef Pos make_Pos(size_t x, size_t y, size_t z) except*
+cdef PitchedPtr make_PitchedPtr(
+    intptr_t d, size_t p, size_t xsz, size_t ysz) except*
 
-cpdef uintmax_t createSurfaceObject(intptr_t ResDesc)
+cpdef uintmax_t createSurfaceObject(intptr_t ResDesc) except? 0
 cpdef destroySurfaceObject(uintmax_t surfObject)
 # TODO(leofang): add cudaGetSurfaceObjectResourceDesc
+
+
+##############################################################################
+# Graph
+##############################################################################
+
+cpdef graphDestroy(intptr_t graph)
+cpdef graphExecDestroy(intptr_t graphExec)
+cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
+cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
+cpdef graphUpload(intptr_t graphExec, intptr_t stream)

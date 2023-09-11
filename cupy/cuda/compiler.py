@@ -2,6 +2,7 @@ import copy
 import hashlib
 import math
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -19,7 +20,7 @@ from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
 if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda.jitify import jitify
+    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -53,8 +54,8 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
             # but this is not true in general Windows environment unless
             # running inside the SDK Tools command prompt.
             # To mitigate the situation CuPy automatically adds a path to
-            # the VC++ compiler used to build Python / CuPy to the PATH, if
-            # VC++ is not available in PATH.
+            # the VC++ compiler (cl.exe) found via setuptools, if it is not
+            # on the PATH.
             extra_path = _get_extra_path_for_msvc()
             if extra_path is not None:
                 path = extra_path + os.pathsep + os.environ.get('PATH', '')
@@ -90,24 +91,24 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
 
 @_util.memoize()
 def _get_extra_path_for_msvc():
-    import distutils.spawn
-    cl_exe = distutils.spawn.find_executable('cl.exe')
+    cl_exe = shutil.which('cl.exe')
     if cl_exe:
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    from distutils import msvc9compiler
-    vcvarsall_bat = msvc9compiler.find_vcvarsall(
-        msvc9compiler.get_build_version())
-    if not vcvarsall_bat:
-        # Failed to find VC.
+    try:
+        import setuptools
+        vctools = setuptools.msvc.EnvironmentInfo(platform.machine()).VCTools
+    except Exception as e:
+        warnings.warn(f'Failed to auto-detect cl.exe path: {type(e)}: {e}')
         return None
 
-    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
-    if not distutils.spawn.find_executable('cl.exe', path):
-        # The compiler could not be found.
-        return None
-    return path
+    for path in vctools:
+        cl_exe = os.path.join(path, 'cl.exe')
+        if os.path.exists(cl_exe):
+            return path
+    warnings.warn(f'cl.exe could not be found in {vctools}')
+    return None
 
 
 def _get_nvrtc_version():
@@ -119,7 +120,7 @@ def _get_nvrtc_version():
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('53', '62', '72')
+_tegra_archs = ('32', '53', '62', '72', '87')
 
 
 @_util.memoize()
@@ -131,9 +132,14 @@ def _get_max_compute_capability():
     elif major == 11 and minor == 0:
         # CUDA 11.0
         nvrtc_max_compute_capability = '80'
-    else:
-        # CUDA 11.1 / 11.2 / 11.3 / 11.4
+    elif major == 11 and minor < 8:
+        # CUDA 11.1 - 11.7
+        # Note: 87 is for Jetson Orin
         nvrtc_max_compute_capability = '86'
+    else:
+        # CUDA 11.8+
+        nvrtc_max_compute_capability = '90'
+
     return nvrtc_max_compute_capability
 
 
@@ -228,11 +234,8 @@ def _jitify_prep(source, options, cu_path):
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
         from cupy._core import core
-        _jitify_header_source_map = core._get_header_source_map()
+        jitify._add_sources(core._get_header_source_map())
         _jitify_header_source_map_populated = True
-    else:
-        # this is already cached at the C++ level, so don't pass in anything
-        _jitify_header_source_map = None
 
     # jitify requires the 1st line to be the program name
     old_source = source
@@ -247,8 +250,7 @@ def _jitify_prep(source, options, cu_path):
     # (NVIDIA/jitify#79).
 
     try:
-        name, options, headers, include_names = jitify(
-            source, options, _jitify_header_source_map)
+        name, options, headers, include_names = jitify.jitify(source, options)
     except Exception as e:  # C++ could throw all kinds of errors
         cex = CompileException(str(e), old_source, cu_path, options, 'jitify')
         dump = _get_bool_env_variable(
@@ -286,6 +288,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 source, options, cu_path)
         else:
             headers = include_names = ()
+            major_version, minor_version = _get_nvrtc_version()
+            if major_version >= 12:
+                # Starting with CUDA 12.0, even without using jitify, some
+                # tests cause an error if the following option is not included.
+                options += ('--device-as-default-execution-space',)
 
         if not runtime.is_hip:
             arch_opt, method = _get_arch_for_options_for_nvrtc(arch)
@@ -295,7 +302,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
-
         try:
             compiled_obj, mapping = prog.compile(options, log_stream)
         except CompileException as e:
@@ -437,7 +443,10 @@ def _preprocess(source, options, arch, backend):
         raise ValueError('Invalid backend %s' % backend)
 
     assert isinstance(result, bytes)
-    return result
+
+    # Extract the part containing version information.
+    return '\n'.join(
+        x for x in result.decode().splitlines() if x.startswith('//'))
 
 
 _default_cache_dir = os.path.expanduser('~/.cupy/kernel_cache')
@@ -447,16 +456,7 @@ def get_cache_dir():
     return os.environ.get('CUPY_CACHE_DIR', _default_cache_dir)
 
 
-_empty_file_preprocess_cache = {}
-
-
-def compile_with_cache(*args, **kwargs):
-    # TODO(kmaehashi): change to visible warning in CuPy v11+.
-    warnings.warn(
-        'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
-        ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
-        ' instead.', DeprecationWarning)
-    _compile_module_with_cache(*args, **kwargs)
+_empty_file_preprocess_cache: dict = {}
 
 
 def _compile_module_with_cache(
@@ -690,6 +690,8 @@ class _NVRTCProgram(object):
                 return nvrtc.getCUBIN(self.ptr), mapping
             elif self.method == 'ptx':
                 return nvrtc.getPTX(self.ptr), mapping
+            # TODO(leofang): support JIT LTO using nvrtc.getNVVM()?
+            # need -dlto and -arch=compute_XX
             else:
                 raise RuntimeError('Unknown NVRTC compile method')
         except nvrtc.NVRTCError:
@@ -759,12 +761,20 @@ def _preprocess_hipcc(source, options):
 
 def _preprocess_hiprtc(source, options):
     # source is ignored
-    prog = _NVRTCProgram(
+    if _cuda_hip_version >= 40400000:
+        # HIP runtime headers can be no longer explicitly included on ROCm 4.5+
+        code = '''
+        // hiprtc segfaults if the input code is empty
+        __global__ void _cupy_preprocess_dummy_kernel_() { }
         '''
+    else:
+        code = '''
         // hiprtc segfaults if the input code is empty
         #include <hip/hip_runtime.h>
         __global__ void _cupy_preprocess_dummy_kernel_() { }
-        ''')
+        '''
+
+    prog = _NVRTCProgram(code)
     try:
         result, _ = prog.compile(options)
     except CompileException as e:
@@ -781,7 +791,12 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    if (not is_hiprtc) or (is_hiprtc and _cuda_hip_version >= 402):
+    if not is_hiprtc:
+        return '#include <hip/hip_runtime.h>\n' + source
+    if _cuda_hip_version >= 40400000:
+        # HIP runtime headers can be no longer explicitly included on ROCm 4.5+
+        return source
+    if _cuda_hip_version >= 402:
         # "-I" is fixed on ROCm 4.2.0+
         return '#include <hip/hip_runtime.h>\n' + source
 

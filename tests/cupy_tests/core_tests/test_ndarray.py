@@ -4,6 +4,8 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import _util
@@ -20,7 +22,6 @@ def wrap_take(array, *args, **kwargs):
     return array.take(*args, **kwargs)
 
 
-@testing.gpu
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
@@ -31,6 +32,13 @@ class TestNdarrayInit(unittest.TestCase):
     def test_shape_int(self):
         a = cupy.ndarray(3)
         assert a.shape == (3,)
+
+    def test_shape_not_integer(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(TypeError):
+                xp.ndarray(1.0)
+            with pytest.raises(TypeError):
+                xp.ndarray((1.0,))
 
     def test_shape_int_with_strides(self):
         dummy = cupy.ndarray(3)
@@ -103,7 +111,6 @@ class TestNdarrayInit(unittest.TestCase):
             numpy.uint16,  # itemsize=2
         ],
     }))
-@testing.gpu
 class TestNdarrayInitStrides(unittest.TestCase):
 
     # Check the strides given shape, itemsize and order.
@@ -117,7 +124,6 @@ class TestNdarrayInitStrides(unittest.TestCase):
             arr.flags.f_contiguous)
 
 
-@testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
     def test_unsupported_type(self):
@@ -137,7 +143,6 @@ class TestNdarrayInitRaise(unittest.TestCase):
         'shape': [(), (0,), (1,), (0, 0, 2), (2, 3)],
     })
 )
-@testing.gpu
 class TestNdarrayDeepCopy(unittest.TestCase):
 
     def _check_deepcopy(self, arr, arr2):
@@ -180,8 +185,7 @@ void wait_and_write(long long *x) {
 '''
 
 
-@testing.gpu
-class TestNdarrayCopy(unittest.TestCase):
+class TestNdarrayCopy:
 
     @testing.multi_gpu(2)
     @testing.for_orders('CFA')
@@ -197,15 +201,20 @@ class TestNdarrayCopy(unittest.TestCase):
     def test_copy_multi_device_non_contiguous_K(self):
         arr = _core.ndarray((20,))[::2]
         with cuda.Device(1):
-            with self.assertRaises(NotImplementedError):
+            with pytest.raises(NotImplementedError):
                 arr.copy('K')
 
     # See cupy/cupy#5004
     @testing.multi_gpu(2)
+    @pytest.mark.xfail(
+        runtime.is_hip,
+        reason='ROCm may work differently in async D2D copy with streams')
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
-        kern = cupy.RawKernel(
-            _test_copy_multi_device_with_stream_src, 'wait_and_write')
+        src = _test_copy_multi_device_with_stream_src
+        if runtime.is_hip and driver.get_build_version() >= 5_00_00000:
+            src = '#include <ctime>\n' + src
+        kern = cupy.RawKernel(src, 'wait_and_write')
 
         # Allocates a memory and launches the kernel on a device with its
         # stream.
@@ -225,7 +234,6 @@ class TestNdarrayCopy(unittest.TestCase):
                     b, numpy.array([0, 0], dtype=numpy.uint64))
 
 
-@testing.gpu
 class TestNdarrayShape(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -382,7 +390,6 @@ class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
         'axis': [None, 0, 1, 2, -1, -2],
     })
 )
-@testing.gpu
 class TestNdarrayTake(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -405,7 +412,6 @@ class TestNdarrayTake(unittest.TestCase):
         'axis': [None, 0, 1, -1, -2],
     })
 )
-@testing.gpu
 class TestNdarrayTakeWithInt(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -423,7 +429,6 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
         'axis': [None, 0, 1, -1, -2],
     })
 )
-@testing.gpu
 class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -445,7 +450,6 @@ class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
         'axis': [None, 0, -1],
     })
 )
-@testing.gpu
 class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
 
     shape = ()
@@ -465,7 +469,6 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2,), 'axis': 3},
     {'shape': (), 'indices': (0,), 'axis': 2}
 )
-@testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     def test_axis_overrun1(self):
@@ -484,7 +487,6 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 4)},
     {'shape': (), 'indices': (), 'out_shape': (1,)}
 )
-@testing.gpu
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
     def test_shape_mismatch(self):
@@ -500,7 +502,6 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 3)},
     {'shape': (), 'indices': (), 'out_shape': ()}
 )
-@testing.gpu
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
     def test_output_type_mismatch(self):
@@ -517,7 +518,6 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
     {'shape': (0,), 'indices': (0, 1), 'axis': None},
     {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
-@testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -531,7 +531,6 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     {'shape': (0,), 'indices': (1,)},
     {'shape': (0,), 'indices': (1, 1)},
 )
-@testing.gpu
 class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):
 
     def test_output_type_mismatch(self):
@@ -542,7 +541,6 @@ class TestZeroSizedNdarrayTakeIndexError(unittest.TestCase):
                 wrap_take(a, i)
 
 
-@testing.gpu
 class TestSize(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
@@ -584,7 +582,6 @@ class TestSize(unittest.TestCase):
                 xp.size(x, 0)
 
 
-@testing.gpu
 class TestPythonInterface(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -621,10 +618,31 @@ class TestPythonInterface(unittest.TestCase):
         return format(x, '.2f')
 
 
-@testing.gpu
 class TestNdarrayImplicitConversion(unittest.TestCase):
 
     def test_array(self):
         a = testing.shaped_arange((3, 4, 5), cupy, numpy.int64)
         with pytest.raises(TypeError):
             numpy.asarray(a)
+
+
+class C(cupy.ndarray):
+
+    def __new__(cls, *args, info=None, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.info = getattr(obj, 'info', None)
+
+
+class TestNdarraySubclass:
+
+    def test_explicit_constructor_call(self):
+        a = C([0, 1, 2, 3], info='information')
+        assert type(a) is C
+        assert issubclass(type(a), cupy.ndarray)
+        assert a.info == 'information'

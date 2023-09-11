@@ -69,6 +69,15 @@ cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* val) {
 }
 
 
+typedef enum cusolverDnParams_t {};
+
+cusolverStatus_t cusolverDnCreateParams(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDestroyParams(...) {
+    return rocblas_status_not_implemented;
+}
+
 /* ---------- potrf ---------- */
 cusolverStatus_t cusolverDnSpotrf_bufferSize(cusolverDnHandle_t handle,
                                              cublasFillMode_t uplo,
@@ -2087,6 +2096,13 @@ cusolverStatus_t cusolverDnSXgesv(...) {
     return rocblas_status_not_implemented;
 }
 cusolverStatus_t cusolverDnSHgesv(...) {
+    return rocblas_status_not_implemented;
+}
+
+cusolverStatus_t cusolverDnXsyevd_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnXsyevd(...) {
     return rocblas_status_not_implemented;
 }
 

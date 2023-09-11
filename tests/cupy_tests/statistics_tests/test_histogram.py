@@ -6,7 +6,6 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy._core import _accelerator
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -38,7 +37,6 @@ def for_all_dtypes_combination_bincount(names):
     return testing.for_dtypes_combination(_all_types, names=names)
 
 
-@testing.gpu
 class TestHistogram(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -329,77 +327,11 @@ class TestHistogram(unittest.TestCase):
                 xp.bincount(x, minlength=-1)
 
 
-# This class compares CUB results against NumPy's
-@testing.gpu
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
-class TestCubHistogram(unittest.TestCase):
-
-    def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
-
-    def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
-
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_histogram(self, xp, dtype):
-        x = testing.shaped_arange((10,), xp, dtype)
-
-        if xp is numpy:
-            return xp.histogram(x)
-
-        # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
-        with testing.AssertFunctionIsCalled(cub_func):
-            xp.histogram(x)
-        # ...then perform the actual computation
-        return xp.histogram(x)
-
-    @testing.for_all_dtypes(no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_histogram_range_float(self, xp, dtype):
-        a = testing.shaped_arange((10,), xp, dtype)
-        h, b = xp.histogram(a, testing.shaped_arange((10,), xp, numpy.float64))
-        assert int(h.sum()) == 10
-        return h, b
-
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
-                                        no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_histogram_with_bins(self, xp, dtype_a, dtype_b):
-        x = testing.shaped_arange((10,), xp, dtype_a)
-        bins = testing.shaped_arange((4,), xp, dtype_b)
-
-        if xp is numpy:
-            return xp.histogram(x, bins)[0]
-
-        # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
-        with testing.AssertFunctionIsCalled(cub_func):
-            xp.histogram(x, bins)
-        # ...then perform the actual computation
-        return xp.histogram(x, bins)[0]
-
-    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
-                                        no_bool=True, no_complex=True)
-    @testing.numpy_cupy_array_equal()
-    def test_histogram_with_bins2(self, xp, dtype_a, dtype_b):
-        x = testing.shaped_arange((10,), xp, dtype_a)
-        bins = testing.shaped_arange((4,), xp, dtype_b)
-
-        if xp is numpy:
-            return xp.histogram(x, bins)[1]
-
-        # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
-        with testing.AssertFunctionIsCalled(cub_func):
-            xp.histogram(x, bins)
-        # ...then perform the actual computation
-        return xp.histogram(x, bins)[1]
+# TODO(leofang): we temporarily remove CUB histogram support for now,
+# see cupy/cupy#7698. When it's ready, revert the commit that checked
+# in this comment to restore the support.
 
 
-@testing.gpu
 @testing.parameterize(*testing.product(
     {'bins': [
         # Test monotonically increasing with in-bounds values
@@ -427,7 +359,6 @@ class TestDigitize:
         return y,
 
 
-@testing.gpu
 @testing.parameterize(
     {'right': True},
     {'right': False})
@@ -501,7 +432,6 @@ class TestDigitizeNanInf(unittest.TestCase):
         return y,
 
 
-@testing.gpu
 class TestDigitizeInvalid(unittest.TestCase):
 
     def test_digitize_complex(self):
@@ -529,7 +459,6 @@ class TestDigitizeInvalid(unittest.TestCase):
          'range': [None, ((20, 50), (10, 100), (0, 40))]}
     )
 )
-@testing.gpu
 class TestHistogramdd:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -551,7 +480,6 @@ class TestHistogramdd:
         return [y, ] + [e for e in bin_edges]
 
 
-@testing.gpu
 class TestHistogramddErrors(unittest.TestCase):
 
     def test_histogramdd_invalid_bins(self):
@@ -605,7 +533,6 @@ class TestHistogramddErrors(unittest.TestCase):
          'range': [None, ((20, 50), (10, 100))]}
     )
 )
-@testing.gpu
 class TestHistogram2d:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
@@ -629,7 +556,6 @@ class TestHistogram2d:
         return y, edges0, edges1
 
 
-@testing.gpu
 class TestHistogram2dErrors(unittest.TestCase):
 
     def test_histogram2d_disallow_arraylike_bins(self):

@@ -7,7 +7,6 @@ using thrust::conj;
 using thrust::real;
 using thrust::imag;
 using thrust::arg;
-
 using thrust::exp;
 using thrust::log;
 using thrust::log10;

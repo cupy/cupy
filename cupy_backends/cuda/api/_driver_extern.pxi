@@ -11,6 +11,7 @@ cdef extern from '../../cupy_backend.h' nogil:
     int cuCtxSetCurrent(Context ctx)
     int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
     int cuCtxDestroy(Context ctx)
+    int cuCtxGetDevice(Device*)
 
     # Module load and kernel execution
     int cuLinkCreate(unsigned int numOptions, CUjit_option* options,
@@ -30,7 +31,6 @@ cdef extern from '../../cupy_backend.h' nogil:
                             char* name)
     int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
                           char* name)
-    int cuModuleGetTexRef(TexRef* pTexRef, Module hmod, const char* name)
     int cuLaunchKernel(
         Function f, unsigned int gridDimX, unsigned int gridDimY,
         unsigned int gridDimZ, unsigned int blockDimX,
@@ -52,26 +52,15 @@ cdef extern from '../../cupy_backend.h' nogil:
     int cuFuncSetAttribute(Function hfunc, CUfunction_attribute attrib,
                            int value)
 
-    # Texture reference
-    int cuTexRefSetAddress(size_t* ByteOffset, TexRef hTexRef, Deviceptr dptr,
-                           size_t bytes)
-    int cuTexRefSetAddress2D(TexRef hTexRef, const Array_desc* desc,
-                             Deviceptr dptr, size_t Pitch)
-    int cuTexRefSetAddressMode(TexRef hTexRef, int dim, Address_mode am)
-    int cuTexRefSetArray(TexRef hTexRef, Array hArray, unsigned int Flags)
-    int cuTexRefSetBorderColor(TexRef hTexRef, float* pBorderColor)
-    int cuTexRefSetFilterMode(TexRef hTexRef, Filter_mode fm)
-    int cuTexRefSetFlags(TexRef hTexRef, unsigned int Flags)
-    int cuTexRefSetFormat(TexRef hTexRef, Array_format fmt,
-                          int NumPackedComponents)
-    int cuTexRefSetMaxAnisotropy(TexRef hTexRef, unsigned int maxAniso)
-
     # Occupancy
     int cuOccupancyMaxActiveBlocksPerMultiprocessor(
         int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize)
     int cuOccupancyMaxPotentialBlockSize(
         int* minGridSize, int* blockSize, Function func, CUoccupancyB2DSize
         block2shmem, size_t dynamicSMemSize, int blockSizeLimit)
+
+    # Stream
+    int cuStreamGetCtx(Stream hStream, Context* pctx)
 
     # Build-time version
     enum: CUDA_VERSION

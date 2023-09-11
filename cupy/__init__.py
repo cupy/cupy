@@ -1,6 +1,5 @@
 import functools as _functools
 import sys as _sys
-import warnings as _warnings
 
 import numpy as _numpy
 
@@ -16,15 +15,15 @@ _environment._preload_library('nccl')  # NOQA
 
 try:
     from cupy import _core  # NOQA
-except ImportError as e:
+except ImportError as exc:
     raise ImportError(f'''
 ================================================================
 {_environment._diagnose_import_error()}
 
 Original error:
-  {type(e).__name__}: {e}
+  {type(exc).__name__}: {exc}
 ================================================================
-''') from e
+''') from exc
 
 
 from cupy import cuda  # NOQA
@@ -58,20 +57,19 @@ from cupy._core import ufunc  # NOQA
 # =============================================================================
 from numpy import e  # NOQA
 from numpy import euler_gamma  # NOQA
-from numpy import Inf  # NOQA
 from numpy import inf  # NOQA
-from numpy import Infinity  # NOQA
-from numpy import infty  # NOQA
-from numpy import NAN  # NOQA
-from numpy import NaN  # NOQA
 from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
-from numpy import NINF  # NOQA
-from numpy import NZERO  # NOQA
 from numpy import pi  # NOQA
-from numpy import PINF  # NOQA
-from numpy import PZERO  # NOQA
 
+# APIs to be removed in NumPy 2.0.
+# Remove these when bumping the baseline API to NumPy 2.0.
+# https://github.com/cupy/cupy/pull/7800
+PINF = Inf = Infinity = infty = inf  # NOQA
+NINF = -inf  # NOQA
+NAN = NaN = nan  # NOQA
+PZERO = 0.0  # NOQA
+NZERO = -0.0  # NOQA
 
 # =============================================================================
 # Data types (borrowed from NumPy)
@@ -100,7 +98,6 @@ from numpy import unsignedinteger  # NOQA
 # Booleans
 # -----------------------------------------------------------------------------
 from numpy import bool_  # NOQA
-from numpy import bool8  # NOQA
 
 # -----------------------------------------------------------------------------
 # Integers
@@ -111,7 +108,6 @@ from numpy import intc  # NOQA
 from numpy import int_  # NOQA
 from numpy import longlong  # NOQA
 from numpy import intp  # NOQA
-from numpy import int0  # NOQA
 from numpy import int8  # NOQA
 from numpy import int16  # NOQA
 from numpy import int32  # NOQA
@@ -126,7 +122,6 @@ from numpy import uintc  # NOQA
 from numpy import uint  # NOQA
 from numpy import ulonglong  # NOQA
 from numpy import uintp  # NOQA
-from numpy import uint0  # NOQA
 from numpy import uint8  # NOQA
 from numpy import uint16  # NOQA
 from numpy import uint32  # NOQA
@@ -224,6 +219,7 @@ from cupy._creation.matrix import diagflat  # NOQA
 from cupy._creation.matrix import tri  # NOQA
 from cupy._creation.matrix import tril  # NOQA
 from cupy._creation.matrix import triu  # NOQA
+from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
@@ -261,7 +257,10 @@ from cupy._manipulation.join import dstack  # NOQA
 from cupy._manipulation.join import hstack  # NOQA
 from cupy._manipulation.join import stack  # NOQA
 from cupy._manipulation.join import vstack  # NOQA
+from cupy._manipulation.join import vstack as row_stack  # NOQA
 
+from cupy._manipulation.kind import asarray_chkfinite  # NOQA
+from cupy._manipulation.kind import asfarray  # NOQA
 from cupy._manipulation.kind import asfortranarray  # NOQA
 from cupy._manipulation.kind import require  # NOQA
 
@@ -274,6 +273,7 @@ from cupy._manipulation.split import vsplit  # NOQA
 from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
 
+from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
 from cupy._manipulation.add_remove import unique  # NOQA
@@ -313,7 +313,7 @@ def binary_repr(num, width=None):
 
 
 # -----------------------------------------------------------------------------
-# Data type routines (borrowed from NumPy)
+# Data type routines (mostly borrowed from NumPy)
 # -----------------------------------------------------------------------------
 def can_cast(from_, to, casting='safe'):
     """Returns True if cast between data types can occur according to the
@@ -358,7 +358,8 @@ def result_type(*arrays_and_dtypes):
     return _numpy.result_type(*dtypes)
 
 
-from numpy import min_scalar_type  # NOQA
+from cupy._core.core import min_scalar_type  # NOQA
+
 from numpy import obj2sctype  # NOQA
 from numpy import promote_types  # NOQA
 
@@ -367,7 +368,6 @@ from numpy import format_parser  # NOQA
 
 from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
-from numpy import MachAr  # NOQA
 
 from numpy import find_common_type  # NOQA
 from numpy import issctype  # NOQA
@@ -395,6 +395,11 @@ from numpy import typename  # NOQA
 from cupy._indexing.generate import c_  # NOQA
 from cupy._indexing.generate import indices  # NOQA
 from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import mask_indices  # NOQA
+from cupy._indexing.generate import tril_indices  # NOQA
+from cupy._indexing.generate import tril_indices_from  # NOQA
+from cupy._indexing.generate import triu_indices  # NOQA
+from cupy._indexing.generate import triu_indices_from  # NOQA
 from cupy._indexing.generate import r_  # NOQA
 from cupy._indexing.generate import ravel_multi_index  # NOQA
 from cupy._indexing.generate import unravel_index  # NOQA
@@ -433,6 +438,8 @@ from cupy._io.npz import savez_compressed  # NOQA
 from cupy._io.formatting import array_repr  # NOQA
 from cupy._io.formatting import array_str  # NOQA
 from cupy._io.formatting import array2string  # NOQA
+from cupy._io.formatting import format_float_positional  # NOQA
+from cupy._io.formatting import format_float_scientific  # NOQA
 
 from cupy._io.text import savetxt  # NOQA
 
@@ -474,23 +481,30 @@ from cupy.linalg._norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._logic.comparison import allclose  # NOQA
 from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import array_equiv  # NOQA
 from cupy._logic.comparison import isclose  # NOQA
 
 from cupy._logic.content import isfinite  # NOQA
 from cupy._logic.content import isinf  # NOQA
 from cupy._logic.content import isnan  # NOQA
+from cupy._logic.content import isneginf  # NOQA
+from cupy._logic.content import isposinf  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
 
-from cupy._logic.type_test import iscomplex  # NOQA
-from cupy._logic.type_test import iscomplexobj  # NOQA
-from cupy._logic.type_test import isfortran  # NOQA
-from cupy._logic.type_test import isreal  # NOQA
-from cupy._logic.type_test import isrealobj  # NOQA
+from cupy._logic.type_testing import iscomplex  # NOQA
+from cupy._logic.type_testing import iscomplexobj  # NOQA
+from cupy._logic.type_testing import isfortran  # NOQA
+from cupy._logic.type_testing import isreal  # NOQA
+from cupy._logic.type_testing import isrealobj  # NOQA
 
 from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import intersect1d  # NOQA
 from cupy._logic.truth import isin  # NOQA
+from cupy._logic.truth import setdiff1d  # NOQA
+from cupy._logic.truth import setxor1d  # NOQA
+from cupy._logic.truth import union1d  # NOQA
 
 
 def isscalar(element):
@@ -514,20 +528,24 @@ from cupy._logic.comparison import less_equal  # NOQA
 from cupy._logic.comparison import not_equal  # NOQA
 
 from cupy._logic.truth import all  # NOQA
-from cupy._logic.truth import all as alltrue  # NOQA
+from cupy._logic.truth import alltrue  # NOQA
 from cupy._logic.truth import any  # NOQA
-from cupy._logic.truth import any as sometrue  # NOQA
+from cupy._logic.truth import sometrue  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
 from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import poly  # NOQA
 from cupy.lib._routines_poly import polyadd  # NOQA
 from cupy.lib._routines_poly import polysub  # NOQA
 from cupy.lib._routines_poly import polymul  # NOQA
 from cupy.lib._routines_poly import polyfit  # NOQA
 from cupy.lib._routines_poly import polyval  # NOQA
 from cupy.lib._routines_poly import roots  # NOQA
+
+# Borrowed from NumPy
+from numpy import RankWarning  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -558,16 +576,17 @@ from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round  # NOQA
 from cupy._math.rounding import round_  # NOQA
-from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
-from cupy._math.sumprod import prod as product  # NOQA
+from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
-from cupy._math.sumprod import cumprod as cumproduct  # NOQA
+from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA
 from cupy._math.sumprod import nansum  # NOQA
@@ -607,6 +626,7 @@ from cupy._math.arithmetic import add  # NOQA
 from cupy._math.arithmetic import divide  # NOQA
 from cupy._math.arithmetic import divmod  # NOQA
 from cupy._math.arithmetic import floor_divide  # NOQA
+from cupy._math.arithmetic import float_power  # NOQA
 from cupy._math.arithmetic import fmod  # NOQA
 from cupy._math.arithmetic import modf  # NOQA
 from cupy._math.arithmetic import multiply  # NOQA
@@ -629,13 +649,16 @@ from cupy._math.misc import absolute as abs  # NOQA
 from cupy._math.misc import absolute  # NOQA
 from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fabs  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
 from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
+from cupy._math.misc import real_if_close  # NOQA
 from cupy._math.misc import sign  # NOQA
+from cupy._math.misc import heaviside  # NOQA
 from cupy._math.misc import sqrt  # NOQA
 from cupy._math.misc import square  # NOQA
 from cupy._math.misc import convolve  # NOQA
@@ -643,6 +666,7 @@ from cupy._math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
+from cupy._misc.byte_bounds import byte_bounds  # NOQA
 from cupy._misc.memory_ranges import may_share_memory  # NOQA
 from cupy._misc.memory_ranges import shares_memory  # NOQA
 from cupy._misc.who import who  # NOQA
@@ -651,6 +675,7 @@ from cupy._misc.who import who  # NOQA
 from numpy import disp  # NOQA
 from numpy import iterable  # NOQA
 from numpy import safe_eval  # NOQA
+from numpy import AxisError  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -714,6 +739,15 @@ from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
 from cupy._statistics.histogram import histogram2d  # NOQA
 from cupy._statistics.histogram import histogramdd  # NOQA
+
+# -----------------------------------------------------------------------------
+# Classes without their own docs
+# -----------------------------------------------------------------------------
+from numpy import ComplexWarning  # NOQA
+from numpy import ModuleDeprecationWarning  # NOQA
+from numpy import TooHardError  # NOQA
+from numpy import VisibleDeprecationWarning  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Undocumented functions
@@ -873,30 +907,15 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
-if _sys.version_info >= (3, 7):
-    _deprecated_attrs = {
-        'int': (int, 'cupy.int_'),
-        'bool': (bool, 'cupy.bool_'),
-        'float': (float, 'cupy.float_'),
-        'complex': (complex, 'cupy.complex_'),
-    }
+_deprecated_apis = [
+    'int0',
+    'uint0',
+    'bool8',
+]
 
-    def __getattr__(name):
-        value = _deprecated_attrs.get(name)
-        if value is None:
-            raise AttributeError(
-                f"module 'cupy' has no attribute {name!r}")
-        attr, eq_attr = value
-        _warnings.warn(
-            f'`cupy.{name}` is a deprecated alias for the Python scalar type '
-            f'`{name}`. Please use the builtin `{name}` or its corresponding '
-            f'NumPy scalar type `{eq_attr}` instead.',
-            DeprecationWarning, stacklevel=2
-        )
-        return attr
-else:
-    # Does not emit warnings.
-    from builtins import int
-    from builtins import bool
-    from builtins import float
-    from builtins import complex
+
+def __getattr__(name):
+    if name in _deprecated_apis:
+        return getattr(_numpy, name)
+
+    raise AttributeError(f"module 'cupy' has no attribute {name!r}")

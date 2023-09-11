@@ -217,6 +217,14 @@ int cublasZgerc(...) {
     return 0;
 }
 
+cublasStatus_t cublasSsbmv(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDsbmv(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 // BLAS Level 3
 cublasStatus_t cublasSgemm(...) {
     return CUBLAS_STATUS_SUCCESS;
@@ -291,8 +299,32 @@ cublasStatus_t cublasZtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasSsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZsyrk(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 typedef enum{} cublasComputeType_t;
 cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGemmStridedBatchedEx(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasGemmStridedBatchedEx_v11(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

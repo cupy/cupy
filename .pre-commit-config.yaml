@@ -1,0 +1,62 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    # Git
+    -   id: check-added-large-files
+    -   id: no-commit-to-branch
+        name: "ensure no direct commit to main/vXX branch"
+        args: [--branch, "main", --pattern, "v\\d+"]
+    -   id: check-case-conflict
+    # Contents
+    -   id: mixed-line-ending
+    -   id: fix-byte-order-marker
+    -   id: check-yaml
+
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v2.0.2
+    hooks:
+    -   id: autopep8
+
+-   repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
+    hooks:
+    -   id: flake8
+        # use config from setup.cfg
+    -   id: flake8
+        name: flake8 (cython)
+        types: ["cython"]
+        args: [--config, ".flake8.cython", "--force-check"]
+        additional_dependencies: [flake8-force]
+
+-   repo: https://github.com/MarcoGorelli/cython-lint
+    rev: v0.15.0
+    hooks:
+    -   id: cython-lint
+        args: ["--max-line-length", "79"]
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.4.1
+    hooks:
+    -   id: mypy
+        # Keep in sync with the list in setup.cfg
+        files: "^(cupy|cupyx|cupy_backends|.github|.pfnci)/"
+        additional_dependencies: [numpy, types-setuptools==57.4.14, types-PyYAML]
+    -   id: mypy
+        name: "mypy (install)"
+        files: "^install/"
+        args: [--config-file, "install/mypy.ini"]
+        additional_dependencies: [numpy, types-setuptools==57.4.14, types-PyYAML]
+
+-   repo: local
+    hooks:
+    -   id: ci-generate
+        name: "check CI files are up-to-date (.pfnci/generate.py)"
+        files: .pfnci/
+        entry: .pfnci/generate.py --dry-run
+        pass_filenames: false
+        language: python
+        additional_dependencies: [PyYAML]

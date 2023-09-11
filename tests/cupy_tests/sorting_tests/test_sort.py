@@ -7,7 +7,6 @@ import cupy
 from cupy import testing
 
 
-@testing.gpu
 class TestSort(unittest.TestCase):
 
     # Test ranks
@@ -192,8 +191,15 @@ class TestSort(unittest.TestCase):
         out = xp.sort(a, axis=2)
         return out
 
+    # Large case
 
-@testing.gpu
+    @testing.slow
+    @testing.numpy_cupy_array_equal()
+    def test_large(self, xp):
+        a = testing.shaped_random((17, 1023, 1023), xp)
+        return xp.sort(a, axis=-1)
+
+
 class TestLexsort(unittest.TestCase):
 
     # Test ranks
@@ -206,12 +212,12 @@ class TestLexsort(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 return xp.lexsort(a)
 
-    @testing.numpy_cupy_array_equal
+    @testing.numpy_cupy_array_equal()
     def test_lexsort_one_dim(self, xp):
         a = testing.shaped_random((2,), xp)
         return xp.lexsort(a)
 
-    @testing.numpy_cupy_array_equal
+    @testing.numpy_cupy_array_equal()
     def test_lexsort_two_dim(self, xp):
         a = xp.array([[9, 4, 0, 4, 0, 2, 1],
                       [1, 5, 1, 4, 3, 4, 4]])  # from numpy.lexsort example
@@ -274,7 +280,6 @@ class TestLexsort(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'external': [False, True],
 }))
-@testing.gpu
 class TestArgsort(unittest.TestCase):
 
     def argsort(self, a, axis=-1):
@@ -390,7 +395,7 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a)
 
 
-@testing.gpu
+@pytest.mark.filterwarnings('ignore:.*msort.*:DeprecationWarning')
 class TestMsort(unittest.TestCase):
 
     # Test base cases
@@ -414,7 +419,6 @@ class TestMsort(unittest.TestCase):
         return xp.msort(a)
 
 
-@testing.gpu
 class TestSort_complex(unittest.TestCase):
 
     def test_sort_complex_zero_dim(self):
@@ -447,7 +451,6 @@ class TestSort_complex(unittest.TestCase):
     'external': [False, True],
     'length': [10, 20000],
 }))
-@testing.gpu
 class TestPartition(unittest.TestCase):
 
     def partition(self, a, kth, axis=-1):
@@ -597,7 +600,6 @@ class TestPartition(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'external': [False, True],
 }))
-@testing.gpu
 class TestArgpartition(unittest.TestCase):
 
     def argpartition(self, a, kth, axis=-1):
@@ -639,6 +641,27 @@ class TestArgpartition(unittest.TestCase):
         assert (a[rows, cols, idx[:, :, :kth]] <
                 a[rows, cols, idx[:, :, kth:kth + 1]]).all()
         assert (a[rows, cols, idx[:, :, kth:kth + 1]] <
+                a[rows, cols, idx[:, :, kth + 1:]]).all()
+        return idx[:, :, kth:kth + 1]
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_argpartition_multi_dim_kernel(self, xp, dtype):
+        # Use a larger scale for shaped_random to avoid duplicated numbers,
+        # which may make different indices at kth between NumPy and CuPy. Skip
+        # if int8 and uint8 not to overflow.
+        if dtype in (xp.int8, xp.uint8):
+            pytest.skip()
+        a = testing.shaped_random((3, 3, 256), xp, dtype, 10000)
+        kth = 20
+        idx = self.argpartition(a, kth, axis=-1)
+
+        rows = [[[0]], [[1]], [[2]]]
+        cols = [[[0], [1], [2]]]
+
+        assert (a[rows, cols, idx[:, :, :kth]] <=
+                a[rows, cols, idx[:, :, kth:kth + 1]]).all()
+        assert (a[rows, cols, idx[:, :, kth:kth + 1]] <=
                 a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 

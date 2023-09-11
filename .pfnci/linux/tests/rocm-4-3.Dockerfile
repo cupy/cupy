@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:4.3"
+ARG BASE_IMAGE="rocm/dev-ubuntu-20.04:4.3.1"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -13,7 +13,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        libbz2-dev libreadline-dev libsqlite3-dev wget \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
-       liblzma-dev && \
+       liblzma-dev \
+\
+       && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install rocm-dev hipblas hipfft hipsparse hipcub rocsparse rocrand rocthrust rocsolver rocfft rocprim rccl
@@ -30,6 +32,8 @@ ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv install 3.9.6 && \
     pyenv global 3.9.6 && \
-    pip install -U setuptools pip
+    pip install -U setuptools pip wheel
 
-RUN pip install -U numpy==1.21.* scipy==1.7.* optuna==2.* cython==0.29.*
+RUN pip install -U 'numpy==1.22.*' 'scipy==1.7.*' 'optuna==3.*' 'cython==0.29.*'
+RUN pip uninstall -y mpi4py cuda-python && \
+    pip check

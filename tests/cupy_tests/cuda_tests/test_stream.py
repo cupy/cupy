@@ -14,7 +14,6 @@ from cupy import testing
     *testing.product({
         'stream_name': ['null', 'ptds'],
     }))
-@testing.gpu
 class TestStream(unittest.TestCase):
 
     def setUp(self):
@@ -60,6 +59,12 @@ class TestStream(unittest.TestCase):
         assert null0 == null1
         assert null1 == null2
         assert null2 != null3
+
+    def test_hash(self):
+        hash(self.stream)
+        hash(cuda.Stream(True))
+        hash(cuda.Stream(False))
+        mapping = {cuda.Stream(): 1, cuda.Stream(): 2}  # noqa
 
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
@@ -238,7 +243,6 @@ class TestStream(unittest.TestCase):
             assert err is False
 
 
-@testing.gpu
 class TestExternalStream(unittest.TestCase):
 
     def setUp(self):

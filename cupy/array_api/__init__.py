@@ -109,9 +109,6 @@ Still TODO in this module are:
 - The spec is still in an RFC phase and may still have minor updates, which
   will need to be reflected here.
 
-- The linear algebra extension in the spec will be added in a future pull
-  request.
-
 - Complex number support in array API spec is planned but not yet finalized,
   as are the fft extension and certain linear algebra functions such as eig
   that require complex dtypes.
@@ -128,10 +125,12 @@ if sys.version_info < (3, 8):
 import warnings
 
 warnings.warn(
-    "The numpy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
+    "The cupy.array_api submodule is still experimental. See NEP 47.", stacklevel=2
 )
 
-__all__ = []
+__array_api_version__ = "2021.12"
+
+__all__ = ["__array_api_version__"]
 
 from ._constants import e, inf, nan, pi
 
@@ -341,12 +340,17 @@ __all__ += [
     "trunc",
 ]
 
-# einsum is not yet implemented in the array API spec.
+from ._indexing_functions import take
 
-# from ._linear_algebra_functions import einsum
-# __all__ += ['einsum']
+__all__ += ["take"]
 
-from ._linear_algebra_functions import matmul, tensordot, matrix_transpose, vecdot
+# linalg is an extension in the array API spec, which is a sub-namespace. Only
+# a subset of functions in it are imported into the top-level namespace.
+from . import linalg
+
+__all__ += ["linalg"]
+
+from .linalg import matmul, tensordot, matrix_transpose, vecdot
 
 __all__ += ["matmul", "tensordot", "matrix_transpose", "vecdot"]
 

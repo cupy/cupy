@@ -46,8 +46,7 @@ def piecewise(x, condlist, funclist):
         if callable(func):
             raise NotImplementedError(
                 'Callable functions are not supported currently')
-        out = cupy.empty(x.shape, x.dtype)
-        out[...] = func
+        out = cupy.full(x.shape, func, x.dtype)
     else:
         raise ValueError('with {} condition(s), either {} or {} functions'
                          ' are expected'.format(condlen, condlen, condlen + 1))

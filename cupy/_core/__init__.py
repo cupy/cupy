@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from cupy._core import core  # NOQA
 from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
@@ -16,6 +18,7 @@ from cupy._core._accelerator import get_routine_accelerators  # NOQA
 from cupy._core._kernel import create_ufunc  # NOQA
 from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
+from cupy._core._kernel import _get_warpsize  # NOQA
 from cupy._core._reduction import create_reduction_func  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy._core._routines_binary import bitwise_and  # NOQA
@@ -46,7 +49,7 @@ from cupy._core._routines_manipulation import rollaxis  # NOQA
 from cupy._core._routines_manipulation import size  # NOQA'
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
-from cupy._core._routines_math import angle  # NOQA
+from cupy._core._routines_math import angle, angle_deg  # NOQA
 from cupy._core._routines_math import conjugate  # NOQA
 from cupy._core._routines_math import divide  # NOQA
 from cupy._core._routines_math import floor_divide  # NOQA

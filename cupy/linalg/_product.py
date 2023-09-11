@@ -1,4 +1,5 @@
 import collections.abc
+import numbers
 
 import numpy
 
@@ -9,12 +10,15 @@ from cupy._core._gufuncs import _GUFunc
 from cupy.linalg import _solve
 from cupy.linalg import _util
 
-_gu_func_matmul = _GUFunc(
-    _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
 
+matmul = _GUFunc(
+    _core.matmul,
+    '(n?,k),(k,m?)->(n?,m?)',
+    supports_batched=True,
+    supports_out=True,
+    doc="""matmul(x1, x2, /, out=None, \\*\\*kwargs)
 
-def matmul(x1, x2, out=None, *, axes=None):
-    """Matrix product of two arrays.
+    Matrix product of two arrays.
 
     Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
@@ -22,24 +26,18 @@ def matmul(x1, x2, out=None, *, axes=None):
     The main difference against cupy.dot are the handling of arrays with more
     than 2 dimensions. For more information see :func:`numpy.matmul`.
 
-    .. note::
-        The out array as input is currently not supported.
-
     Args:
         x1 (cupy.ndarray): The left argument.
         x2 (cupy.ndarray): The right argument.
         out (cupy.ndarray, optional): Output array.
-        axes (List of tuples of int, optional):
-            A list of tuples with indices of axes the matrix multiplication
-            should operate on.
+        \\*\\*kwargs: ufunc keyword arguments.
 
     Returns:
         cupy.ndarray: Output array.
 
     .. seealso:: :func:`numpy.matmul`
-
     """
-    return _gu_func_matmul(x1, x2, out=out, axes=axes)
+)
 
 
 def dot(a, b, out=None):
@@ -268,20 +266,7 @@ def outer(a, b, out=None):
     .. seealso:: :func:`numpy.outer`
 
     """
-    n = a.size
-    m = b.size
-    ret_shape = (n, m)
-
-    if out is None:
-        return _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
-
-    if out.size != n * m:
-        raise ValueError('Output array has an invalid size')
-    if out.flags.c_contiguous:
-        return _core.tensordot_core(a, b, out, n, m, 1, ret_shape)
-    else:
-        out[:] = _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
-        return out
+    return cupy.multiply(a.ravel()[:, None], b.ravel()[None, :], out=out)
 
 
 def tensordot(a, b, axes=2):
@@ -407,6 +392,13 @@ def kron(a, b):
     .. seealso:: :func:`numpy.kron`
 
     """
+    a_isnumber = isinstance(a, numbers.Number)
+    b_isnumber = isinstance(b, numbers.Number)
+    if a_isnumber and b_isnumber:
+        return a * b
+    if a_isnumber or b_isnumber:
+        return cupy.multiply(a, b)
+
     a_ndim = a.ndim
     b_ndim = b.ndim
     if a_ndim == 0 or b_ndim == 0:

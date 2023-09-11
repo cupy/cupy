@@ -1,12 +1,12 @@
-import functools
 import re
 
 import numpy
 
 import cupy
 import cupy._core._routines_manipulation as _manipulation
-from cupy._core._dtype import get_dtype
+from cupy._core._dtype import get_dtype, _raise_if_invalid_cast
 from cupy._core import internal
+
 
 # Signature parsing code and dimension accessing has been borrowed
 # from dask
@@ -277,14 +277,11 @@ class _OpsRegister:
         else:
             # Convert args to the op specified in_types
             n_args = []
+            def argname(): return f'ufunc {self._name} input {i}'
             for i, (arg, in_type) in enumerate(zip(args, op.in_types)):
-                if numpy.can_cast(arg.dtype, in_type, casting=casting):
-                    n_args.append(arg.astype(in_type, copy=False))
-                else:
-                    raise TypeError(
-                        f'cannot cast ufunc {self._name} input {i} from'
-                        f' {arg.dtype} to {dtype} with casting rule'
-                        f' {casting}')
+                _raise_if_invalid_cast(arg.dtype, in_type, casting, argname)
+
+                n_args.append(arg.astype(in_type, copy=False))
             args = n_args
             ret_dtype = op.out_types[0]
             func = op.func
@@ -329,6 +326,9 @@ class _GUFunc:
         name (str, optional):
             Name for the GUFunc object. If not specified, ``func``'s name
             is used.
+        doc (str, optional):
+            Docstring for the GUFunc object. If not specified, ``func.__doc__``
+            is used.
     '''
 
     def __init__(self, func, signature, **kwargs):
@@ -336,14 +336,21 @@ class _GUFunc:
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self.__name__ = kwargs.get('name', func.__name__)
+        self.__name__ = kwargs.pop('name', func.__name__)
+        self.__doc__ = kwargs.pop('doc', func.__doc__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
         # stuff internally due to CUDA libraries requirements
-        self._supports_batched = kwargs.get('supports_batched', False)
-        self._supports_out = kwargs.get('supports_out', False)
-        signatures = kwargs.get('signatures', [])
+        self._supports_batched = kwargs.pop('supports_batched', False)
+        self._supports_out = kwargs.pop('supports_out', False)
+        signatures = kwargs.pop('signatures', [])
+
+        if kwargs:
+            raise TypeError(
+                'got unexpected keyword arguments: '
+                + ', '.join([repr(k) for k in kwargs])
+            )
 
         # Preprocess the signature here
         input_coredimss, output_coredimss = _parse_gufunc_signature(
@@ -370,7 +377,6 @@ class _GUFunc:
             if not isinstance(input_coredimss, list)
             else len(input_coredimss)
         )
-        functools.update_wrapper(self, func)
         # Determines the function that will be run depending on the datatypes
         # Pass a list of signatures that are either the types in format
         # ii->o or a tuple with the string and a function other than func to be
@@ -395,7 +401,7 @@ class _GUFunc:
                 if isinstance(fouts, cupy.ndarray):
                     fouts = (fouts,)
                 for o, fo in zip(outs, fouts):
-                    o[...] = fo
+                    cupy._core.elementwise_copy(fo, o)
         else:
             dim_size = sizes[dims[dim]][0]
             for i in range(dim_size):
@@ -670,9 +676,10 @@ class _GUFunc:
             if outs[0].shape != out_shape:
                 raise ValueError(f'Invalid shape for out {outs[0].shape}'
                                  f' needs {out_shape}')
-            if not numpy.can_cast(ret_dtype, outs[0].dtype, casting=casting):
-                raise TypeError(f'Cannot cast out dtype from {outs[0].dtype}'
-                                f' to {ret_dtype} with rule {casting}')
+
+            _raise_if_invalid_cast(
+                ret_dtype, outs[0].dtype, casting, "out dtype")
+
         self._apply_func_to_inputs(
             func, 0, dimsizess, loop_output_dims, args, outs)
 
