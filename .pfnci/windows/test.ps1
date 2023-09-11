@@ -54,6 +54,7 @@ function PublishTestResults {
 
 function Main {
     PrioritizeFlexCIDaemon
+    EnableLongPaths
 
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
