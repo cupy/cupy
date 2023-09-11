@@ -41,7 +41,7 @@ jobs:
         # TODO: Test against various NumPy/SciPy versions.
         pip install 'numpy==1.25.*' 'scipy==1.10.*'
         pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
-        pytest -v tests/typing_tests
+        pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
     runs-on: ubuntu-22.04
@@ -97,6 +97,7 @@ jobs:
 
         # Test lazy-imported CUDA Toolkit library.
         rm cupy_backends/cuda/libs/cusolver.*.so
+        rm cupy_backends/cuda/libs/cusparse.*.so
         python -c 'import cupy, cupyx'
 
   build-rocm:

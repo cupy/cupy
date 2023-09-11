@@ -2,7 +2,10 @@ import cupy
 import cupyx.scipy.ndimage
 
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
+from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
 from cupyx.scipy.interpolate._bspline import BSpline
+
+import numpy as np
 
 
 def sepfir2d(input, hrow, hcol):
@@ -216,6 +219,16 @@ def _quadratic_coeff(signal):
     return output * 8.0
 
 
+def compute_root_from_lambda(lamb):
+    tmp = np.sqrt(3 + 144 * lamb)
+    xi = 1 - 96 * lamb + 24 * lamb * tmp
+    omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
+    tmp2 = np.sqrt(xi)
+    r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
+         np.sqrt((48*lamb + 24 * lamb * tmp)) / tmp2)
+    return r, omega
+
+
 def cspline1d(signal, lamb=0.0):
     """
     Compute cubic spline coefficients for rank-1 array.
@@ -393,3 +406,111 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
         result += cj[indj] * _quadratic(newx - thisj)
     res[cond3] = result
     return res
+
+
+def cspline2d(signal, lamb=0.0, precision=-1.0):
+    """
+    Coefficients for 2-D cubic (3rd order) B-spline.
+
+    Return the third-order B-spline coefficients over a regularly spaced
+    input grid for the two-dimensional input image.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input signal.
+    lamb : float
+        Specifies the amount of smoothing in the transfer function.
+    precision : float
+        Specifies the precision for computing the infinite sum needed to apply
+        mirror-symmetric boundary conditions.
+
+    Returns
+    -------
+    output : ndarray
+        The filtered signal.
+    """
+    if lamb <= 1 / 144.0:
+        # Normal cubic spline
+        r = -2 + np.sqrt(3.0)
+        out = _symiirorder1_nd(signal, -r * 6.0, r, precision=precision,
+                               axis=-1)
+        out = _symiirorder1_nd(out, -r * 6.0, r, precision=precision,
+                               axis=0)
+        return out
+
+    r, omega = compute_root_from_lambda(lamb)
+    out = _symiirorder2_nd(signal, r, omega, precision=precision, axis=-1)
+    out = _symiirorder2_nd(out, r, omega, precision=precision, axis=0)
+    return out
+
+
+def qspline2d(signal, lamb=0.0, precision=-1.0):
+    """
+    Coefficients for 2-D quadratic (2nd order) B-spline.
+
+    Return the second-order B-spline coefficients over a regularly spaced
+    input grid for the two-dimensional input image.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input signal.
+    lamb : float
+        Specifies the amount of smoothing in the transfer function.
+    precision : float
+        Specifies the precision for computing the infinite sum needed to apply
+        mirror-symmetric boundary conditions.
+
+    Returns
+    -------
+    output : ndarray
+        The filtered signal.
+    """
+
+    if lamb > 0:
+        raise ValueError('lambda must be negative or zero')
+
+    # normal quadratic spline
+    r = -3 + 2 * np.sqrt(2.0)
+
+    out = _symiirorder1_nd(signal, -r * 8.0, r, precision=precision, axis=-1)
+    out = _symiirorder1_nd(out, -r * 8.0, r, precision=precision, axis=0)
+    return out
+
+
+def spline_filter(Iin, lmbda=5.0):
+    """Smoothing spline (cubic) filtering of a rank-2 array.
+
+    Filter an input data set, `Iin`, using a (cubic) smoothing spline of
+    fall-off `lmbda`.
+
+    Parameters
+    ----------
+    Iin : array_like
+        input data set
+    lmbda : float, optional
+        spline smooghing fall-off value, default is `5.0`.
+
+    Returns
+    -------
+    res : ndarray
+        filterd input data
+
+    """
+    intype = Iin.dtype.char
+    hcol = cupy.asarray([1.0, 4.0, 1.0], 'f') / 6.0
+    if intype in ['F', 'D']:
+        Iin = Iin.astype('F')
+        ckr = cspline2d(Iin.real, lmbda)
+        cki = cspline2d(Iin.imag, lmbda)
+        outr = sepfir2d(ckr, hcol, hcol)
+        outi = sepfir2d(cki, hcol, hcol)
+        out = (outr + 1j * outi).astype(intype)
+    elif intype in ['f', 'd']:
+        ckr = cspline2d(Iin, lmbda)
+        out = sepfir2d(ckr, hcol, hcol)
+        out = out.astype(intype)
+    else:
+        raise TypeError("Invalid data type for Iin")
+    return out

@@ -254,6 +254,25 @@ def _rpath_base():
         raise Exception('not supported on this platform')
 
 
+def _find_static_library(name: str) -> str:
+    if PLATFORM_LINUX:
+        filename = f'lib{name}.a'
+        libdir = 'lib64'
+    elif PLATFORM_WIN32:
+        filename = f'{name}.lib'
+        libdir = 'lib\\x64'
+    else:
+        raise Exception('not supported on this platform')
+
+    cuda_path = build.get_cuda_path()
+    if cuda_path is None:
+        raise Exception(f'Could not find {filename}: CUDA path unavailable')
+    path = os.path.join(cuda_path, libdir, filename)
+    if not os.path.exists(path):
+        raise Exception(f'Could not find {filename}: {path} does not exist')
+    return path
+
+
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -312,7 +331,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         s = copy.deepcopy(settings)
         if not no_cuda:
-            s['libraries'] = module['libraries']
+            s['libraries'] = module.libraries
+            s['extra_objects'] = [
+                _find_static_library(name) for name in module.static_libraries
+            ]
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])

@@ -109,6 +109,11 @@ class TestR_(unittest.TestCase):
         with self.assertRaises(ValueError):
             cupy.r_[a, b]
 
+    @testing.numpy_cupy_array_equal(
+        type_check=(numpy.lib.NumpyVersion(numpy.__version__) >= "1.25.0"))
+    def test_r_scalars(self, xp):
+        return xp.r_[0, 0.5, -1, 0.3]
+
 
 class TestC_(unittest.TestCase):
 

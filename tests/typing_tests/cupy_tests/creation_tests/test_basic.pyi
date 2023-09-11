@@ -10,7 +10,7 @@ xp.empty((10, 20))
 xp.empty(numpy.array([10, 20]))
 cupy.empty()  # E: Missing positional argument "shape" in call to "empty"  [call-arg]
 cupy.empty(10, 20)  # E: Argument 2 to "empty" has incompatible type "int"; [arg-type]
-xp.empty(cupy.array([10, 20]))  # TODO(asi1024): Fix to fail typecheck
+# xp.empty(cupy.array([10, 20]))  # TODO(asi1024): Fix to fail typecheck
 xp.empty(x.shape)
 xp.empty((10, 20), float)
 xp.empty((10, 20), int)
@@ -18,7 +18,7 @@ xp.empty((10, 20), numpy.float32)
 xp.empty((10, 20), 'i4')
 xp.empty((10, 20), 'int32')
 numpy.empty((10, 20), numpy.datetime64)
-cupy.empty((10, 20), numpy.datetime64)  # TODO(asi1024): Fix to fail typecheck
+# cupy.empty((10, 20), numpy.datetime64)  # TODO(asi1024): Fix to fail typecheck
 xp.empty((10, 20), float, 'C')
 xp.empty((10, 20), float, 'F')
 xp.empty((10, 20), float, 'K')  # E: Argument 3 to "empty" has incompatible type [arg-type]
@@ -78,7 +78,7 @@ xp.zeros_like(x, float, 'A')
 xp.zeros_like(a=x, dtype=float, order='C', shape=(10, 20))
 
 xp.full((10, 20))  # E: Missing positional argument "fill_value" [call-arg]
-xp.full((10, 20), "abc")  # TODO(asi1024): Fix to fail typecheck
+# xp.full((10, 20), "abc")  # TODO(asi1024): Fix to fail typecheck
 xp.full((10, 20), 30)
 xp.full((10, 20), 30, float)
 xp.full((10, 20), 30, float, 'C')

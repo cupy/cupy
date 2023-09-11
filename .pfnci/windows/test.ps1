@@ -46,12 +46,15 @@ function PublishTestResults {
     echo "Uploading test results..."
     $artifact_id = $Env:CI_JOB_ID
     RunOrDie gsutil -m -q cp cupy_build_log.txt cupy_test_log.txt "gs://chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/"
-    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
-    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
+    echo "Build Log:"
+    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
+    echo "Test Log:"
+    echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
 }
 
 function Main {
     PrioritizeFlexCIDaemon
+    EnableLongPaths
 
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
@@ -99,7 +102,7 @@ function Main {
     if ($test -eq "build") {
         return
     } elseif ($test -eq "test") {
-        $pytest_opts = "-m", "not slow"
+        $pytest_opts = "-m", '"not slow"'
     } elseif ($test -eq "slow") {
         $pytest_opts = "-m", "slow"
     } else {
@@ -126,20 +129,18 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    $test_retval = 0
-    python -c "import cupy; cupy.show_config()" > ../cupy_test_log.txt
-    python -m pytest -rfEX @pytest_opts . >> ../cupy_test_log.txt
-    if (-not $?) {
-        $test_retval = $LastExitCode
-    }
+    RunOrDie python -c "import cupy; cupy.show_config()"
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     if (-Not $is_pull_request) {
         UploadCache "${cache_archive}"
     }
 
+    echo "====================================================================="
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
+    echo "====================================================================="
 
     PublishTestResults
     if ($test_retval -ne 0) {

@@ -30,8 +30,11 @@ B-Splines
 
    cspline1d
    qspline1d
+   cspline2d
+   qspline2d
    cspline1d_eval
    qspline1d_eval
+   spline_filter
 
 
 Filtering
@@ -181,6 +184,19 @@ Discrete-time linear systems
    dbode
 
 
+Waveforms
+---------
+
+.. autosummary::
+   :toctree: generated/
+
+   chirp
+   gausspulse
+   sawtooth
+   square
+   unit_impulse
+
+
 Window functions
 ----------------
 For window functions, see the :mod:`cupyx.scipy.signal.windows` namespace.
@@ -188,10 +204,12 @@ For window functions, see the :mod:`cupyx.scipy.signal.windows` namespace.
 In the :mod:`cupyx.scipy.signal` namespace, there is a convenience function
 to obtain these windows by name:
 
+
 .. autosummary::
    :toctree: generated/
 
    get_window
+
 
 
 Peak finding
