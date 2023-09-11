@@ -171,9 +171,14 @@ def matmul(a, b, out=None, **kwargs) -> '_array._DistributedArray':
     a = a.to_replica_mode()
     b = b.to_replica_mode()
 
+    one_prepended = one_appended = False
+    if a.ndim == 1:
+        one_prepended = True
+        a = a._prepend_one_to_shape()
+    if b.ndim == 1:
+        one_appended = True
+        b = b._append_one_to_shape()
 
-    if a.ndim < 2 or b.ndim < 2:
-        raise RuntimeError('ndim < 2 is not supported')
     n, m = a.shape[-2:]
     m2, p = b.shape[-2:]
     if m != m2 or a.shape[:-2] != b.shape[:-2]:
@@ -212,8 +217,15 @@ def matmul(a, b, out=None, **kwargs) -> '_array._DistributedArray':
                 dtype = chunk_ab_data.dtype
 
     shape = a.shape[:-2] + (n, p)
-    return _array._DistributedArray(
+    res = _array._DistributedArray(
         shape, dtype, chunks_map, _array._MODES['sum'], a._comms)
+
+    if one_prepended:
+        res = res._pop_front_from_shape()
+    if one_appended:
+        res = res._pop_from_shape()
+
+    return res
 
 
 def make_2d_index_map(

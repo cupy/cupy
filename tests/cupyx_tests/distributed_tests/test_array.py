@@ -90,7 +90,8 @@ class TestDistributedArray:
                 assert da._get_chunk_data(dev, i).ndim == array.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel())
+                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
+                        strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -114,7 +115,8 @@ class TestDistributedArray:
                 assert da._get_chunk_data(dev, i).ndim == array.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel())
+                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
+                        strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -136,7 +138,8 @@ class TestDistributedArray:
                 assert da._get_chunk_data(dev, i).ndim == array.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel())
+                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
+                        strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -160,13 +163,14 @@ class TestDistributedArray:
             shape, np_a.dtype, chunks_map, _array._MODES['sum'], comms)
         d_b = d_a.to_replica_mode()
         assert d_b._mode is _array._REPLICA_MODE
-        testing.assert_array_equal(d_b.asnumpy(), np_a)
-        testing.assert_array_equal(d_a.asnumpy(), np_a)
+        testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
+        testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
                 assert d_b._get_chunk_data(dev, i).device.id == dev
                 idx = _array._convert_chunk_idx_to_slices(shape, idx)
-                testing.assert_array_equal(d_b._get_chunk_data(dev, i), np_a[idx])
+                testing.assert_array_equal(
+                    d_b._get_chunk_data(dev, i), np_a[idx], strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -177,8 +181,8 @@ class TestDistributedArray:
         d_a = _array.distributed_array(np_a, index_map, mode, comms)
         d_b = d_a.change_mode(mode)
         assert d_b.mode == mode
-        testing.assert_array_equal(d_b.asnumpy(), np_a)
-        testing.assert_array_equal(d_a.asnumpy(), np_a)
+        testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
+        testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -291,8 +295,8 @@ class TestDistributedArray:
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         # assert mem_pool.used_bytes() == np_a.nbytes
         d_b = d_a.reshard(mapping_b)
-        testing.assert_array_equal(d_b.asnumpy(), np_a)
-        testing.assert_array_equal(d_a.asnumpy(), np_a)
+        testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
+        testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         assert d_b.mode == mode
         for dev, idxs in mapping_b.items():
             for i, idx in enumerate(idxs):
@@ -300,7 +304,8 @@ class TestDistributedArray:
                 assert d_b._get_chunk_data(dev, i).ndim == np_a.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        d_b._get_chunk_data(dev, i).ravel(), np_a[idx].ravel())
+                        d_b._get_chunk_data(dev, i).ravel(), np_a[idx].ravel(),
+                        strict=True)
 
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
@@ -329,8 +334,8 @@ class TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.max(axis=axis)
             d_b = d_a.max(axis=axis)
-            testing.assert_array_equal(d_b.asnumpy(), np_b)
-            testing.assert_array_equal(d_a.asnumpy(), np_a)
+            testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
+            testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -343,8 +348,8 @@ class TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.min(axis=axis)
             d_b = d_a.min(axis=axis)
-            testing.assert_array_equal(d_b.asnumpy(), np_b)
-            testing.assert_array_equal(d_a.asnumpy(), np_a)
+            testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
+            testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
     @pytest.mark.parametrize('shape, index_map', [(shape_dim3, index_map_dim3)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'prod'])
@@ -355,8 +360,8 @@ class TestDistributedArray:
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
             assert d_b._mode is _array._MODES['sum']
-            testing.assert_array_equal(d_b.asnumpy(), np_b)
-            testing.assert_array_equal(d_a.asnumpy(), np_a)
+            testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
+            testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
     @pytest.mark.parametrize('shape, index_map', [(shape_dim3, index_map_dim3)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
@@ -385,8 +390,8 @@ class TestDistributedArray:
         np_b = np_a.max(axis=0)
         d_a = _array.distributed_array(np_a, mapping_a, comms=comms)
         d_b = d_a.reshard(mapping_b).max(axis=0)
-        testing.assert_array_equal(np_b, d_b.asnumpy())
-        testing.assert_array_equal(np_a, d_a.asnumpy())
+        testing.assert_array_equal(np_b, d_b.asnumpy(), strict=True)
+        testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
 
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
@@ -406,8 +411,8 @@ class TestDistributedArray:
         d_c = _array.distributed_array(np_c, mapping_c, comms=comms)
         d_c2 = (d_a.reshard(mapping_b) * d_b).max(axis=0)
         d_d = d_c2.reshard(mapping_c) * d_c
-        testing.assert_array_equal(np_d, d_d.asnumpy())
-        testing.assert_array_equal(np_c2, d_c2.asnumpy())
+        testing.assert_array_equal(np_d, d_d.asnumpy(), strict=True)
+        testing.assert_array_equal(np_c2, d_c2.asnumpy(), strict=True)
 
     def test_random_reshard_change_mode(self):
         n_iter = 5
@@ -454,9 +459,9 @@ class TestDistributedArray:
                     mode = rng.choice(modes)
                     d_a = d_a.change_mode(mode)
 
-            testing.assert_array_equal(np_a, d_a.asnumpy())
+            testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
             d_b = history[rng.choice(len(history))]
-            testing.assert_array_equal(np_a, d_b.asnumpy())
+            testing.assert_array_equal(np_a, d_b.asnumpy(), strict=True)
 
     def test_random_binary_operations(self):
         n_iter = 5
@@ -502,6 +507,9 @@ class TestDistributedArray:
             for _ in range(n_ops):
                 arrs_history.append(list(arrs))
                 op = rng.choice(ops)
+                print(arrs[0][0].shape, arrs[0][1].shape)
+                assert arrs[0][0].shape == arrs[0][1].shape
+                print(op)
                 # Cannot do rng.choice(arrs) here because numpy tries to convert
                 # arrs to a ndarray
                 arr_idx = rng.choice(len(arrs))
@@ -525,6 +533,7 @@ class TestDistributedArray:
                     if np_arr.ndim == 0:
                         continue
                     kernel = rng.choice(reduce)
+                    print(kernel)
                     axis = rng.choice(np_arr.ndim)
                     for i in range(len(arrs)):
                         np_arr, d_arr = arrs[i]
@@ -537,5 +546,5 @@ class TestDistributedArray:
 
             for i, arrs in enumerate(arrs_history):
                 (np_a, d_a), (np_b, d_b) = arrs
-                testing.assert_array_equal(np_a, d_a.asnumpy())
-                testing.assert_array_equal(np_b, d_b.asnumpy())
+                testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
+                testing.assert_array_equal(np_b, d_b.asnumpy(), strict=True)

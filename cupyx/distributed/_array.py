@@ -10,7 +10,6 @@ import cupy
 import numpy
 
 from numpy.typing import ArrayLike
-from cupy.typing import NDArray
 from cupyx.distributed._nccl_comm import _nccl_dtypes
 from cupyx.distributed import _linalg
 
@@ -80,15 +79,16 @@ def _index_for_subslice(a: slice, sub: slice, length: int) -> slice:
 
 def _index_intersection(
         a_idx: tuple[slice, ...], b_idx: tuple[slice, ...],
-        shape: tuple[int, ...]) -> Optional[tuple[slice, ...]]:
+        shape: tuple[int, ...],
+        ) -> Optional[tuple[slice, ...]]:
     """Return None if empty."""
     ndim = len(shape)
     assert len(a_idx) == len(b_idx) == ndim
     result = tuple(_slice_intersection(a, b, length)
                    for a, b, length in zip(a_idx, b_idx, shape))
 
-    def has_no_none(xs: tuple[Optional[slice], ...],
-                    ) -> TypeGuard[tuple[slice, ...]]:
+    def has_no_none(
+            xs: tuple[Optional[slice], ...]) -> TypeGuard[tuple[slice, ...]]:
         return None not in xs
 
     if has_no_none(result):
@@ -99,7 +99,8 @@ def _index_intersection(
 
 def _index_for_subindex(
         a_idx: tuple[slice, ...], sub_idx: tuple[slice, ...],
-        shape: tuple[int, ...]) -> tuple[slice, ...]:
+        shape: tuple[int, ...],
+        ) -> tuple[slice, ...]:
     ndim = len(shape)
     assert len(a_idx) == len(sub_idx) == ndim
 
@@ -111,7 +112,8 @@ def _index_for_subindex(
 # Should be removed after implementing indexing
 def _shape_after_indexing(
         outer_shape: tuple[int, ...],
-        idx: tuple[slice, ...]) -> tuple[int, ...]:
+        idx: tuple[slice, ...],
+        ) -> tuple[int, ...]:
     shape = list(outer_shape)
     for i in range(len(idx)):
         start, stop, step = idx[i].indices(shape[i])
@@ -121,10 +123,8 @@ def _shape_after_indexing(
 
 def _convert_chunk_idx_to_slices(
         shape: tuple[int, ...], idx: Any) -> tuple[slice, ...]:
-    """Convert idx to type tuple[slice, ...] with all nonnegative indices and
-    length == ndim. Raise if empty or invalid.
-
-    Negative slice steps are not allowed."""
+    """Convert idx to type tuple[slice, ...] with length == ndim. Raise if empty
+    or invalid. Negative slice steps are not allowed."""
 
     if not isinstance(idx, tuple):
         idx = idx,
@@ -153,7 +153,7 @@ def _convert_chunk_idx_to_slices(
                     'The indices for a chunk cannot have negative slice steps.')
             if start == stop:
                 raise ValueError(f'The index is empty on axis {i}')
-            new_idx.append(slice(start, stop, step))
+            new_idx.append(idx[i])
         else:
             raise ValueError(f'Invalid index on axis {i}')
 
@@ -249,7 +249,7 @@ _MODES: Final[dict[str, _Mode]] = {
 @dataclasses.dataclass
 class _ManagedData:
     """ND-array managed by a stream."""
-    data: NDArray
+    data: cupy.ndarray
     stream: Stream
 
     def record(self) -> Event:
@@ -268,7 +268,7 @@ class _ManagedData:
 @dataclasses.dataclass
 class _DataTransfer:
     """ND-array managed by a stream."""
-    data: NDArray
+    data: cupy.ndarray
     ready: Event = dataclasses.field(default_factory=Event)
     prevent_gc: Any = None
 
@@ -288,19 +288,18 @@ class _Chunk(_ManagedData):
         return _Chunk(managed_data.data, managed_data.stream,
                       self.index, list(self.updates))
 
-
-def _apply_updates(chunk: _Chunk, mode: _Mode) -> None:
-    """Apply all updates in-place."""
-    with chunk.data.device:
-        for new_data, idx in chunk.updates:
-            chunk.stream.wait_event(new_data.ready)
-            with chunk.stream:
-                if _is_op_mode(mode):
-                    mode.func(
-                        chunk.data[idx], new_data.data, chunk.data[idx])
-                else:
-                    chunk.data[idx] = new_data.data
-    chunk.updates.clear()
+    def _apply_updates(self, mode: _Mode) -> None:
+        """Apply all updates in-place."""
+        with self.data.device:
+            for new_data, idx in self.updates:
+                self.stream.wait_event(new_data.ready)
+                with self.stream:
+                    if _is_op_mode(mode):
+                        mode.func(
+                            self.data[idx], new_data.data, self.data[idx])
+                    else:
+                        self.data[idx] = new_data.data
+        self.updates.clear()
 
 
 class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
@@ -316,8 +315,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             cls, shape: tuple[int, ...], dtype: Any,
             chunks_map: dict[int, list[_Chunk]],
             mode: _Mode = _REPLICA_MODE,
-            comms: Optional[dict[int, nccl.NcclCommunicator]    # type: ignore
-                            ] = None) -> '_DistributedArray':
+            comms: Optional[dict[int, nccl.NcclCommunicator]]   # type: ignore
+                = None
+            ) -> '_DistributedArray':
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
@@ -380,7 +380,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         for dev, chunks in self._chunks_map.items():
             for chunk in chunks:
-                _apply_updates(chunk, self._mode)
+                chunk._apply_updates(self._mode)
             with Device(dev):
                 transfer_events.append(chunk.record())
 
@@ -389,9 +389,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _prepare_args(
             self, dist_args: list[tuple[int | str, '_DistributedArray']],
-            regular_args: list[tuple[int | str, NDArray]],
+            regular_args: list[tuple[int | str, cupy.ndarray]],
             dev: int, chunk_i: int,
-        ) -> list[tuple[int | str, _ManagedData]]:
+            ) -> list[tuple[int | str, _ManagedData]]:
         # Dist arrays must have chunk_map of compatible shapes, otherwise
         # hard error.
         # In case that they are of different, but broadcastable shapes
@@ -419,8 +419,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _prepare_updates(
             self, dist_args: list[tuple[int | str, '_DistributedArray']],
-            dev: int, chunk_i: int
-        ) -> tuple[Optional[int | str], list[_PartialUpdate]]:
+            dev: int, chunk_i: int,
+            ) -> tuple[Optional[int | str], list[_PartialUpdate]]:
         index = None
         updates: list[_PartialUpdate] = []
         at_most_one_update = True
@@ -442,14 +442,14 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         for i, arg in dist_args:
             for chunk in arg._chunks_map[dev]:
-                _apply_updates(chunk, _REPLICA_MODE)
+                chunk._apply_updates(_REPLICA_MODE)
         return None, []
 
     def _execute_kernel(
             self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any],
-        ) -> '_DistributedArray':
+            ) -> '_DistributedArray':
         distributed_arrays: list[tuple[int | str, '_DistributedArray']] = []
-        regular_arrays: list[tuple[int | str, NDArray]] = []
+        regular_arrays: list[tuple[int | str, cupy.ndarray]] = []
         i: int | str
         index_map = self.index_map
         for i, arg in enumerate(args):
@@ -504,11 +504,11 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         else:
                             kwargs[i] = arg.data
 
-                    chunk = kernel(*args, **kwargs)
+                    new_data = kernel(*args, **kwargs)
 
-                    new_dtype = chunk.dtype
+                    new_dtype = new_data.dtype
                     new_chunk = _Chunk(
-                        chunk, execution_stream, index_map[dev][chunk_i])
+                        new_data, execution_stream, index_map[dev][chunk_i])
                     new_chunks_map[dev].append(new_chunk)
 
                     if len(update_map) == 0:
@@ -517,7 +517,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     incoming_index = typing.cast(int | str, incoming_index)
 
                     args_slice = [None] * len(args)
-                    kwargs_slice: dict[str, NDArray] = {}
+                    kwargs_slice: dict[str, cupy.ndarray] = {}
                     for update, idx in update_map:
                         for i, arg in enumerate(args):
                             args_slice[i] = arg[idx]
@@ -589,7 +589,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _apply_and_update_chunks(
             self, op_mode: _OpMode, shape: tuple[int, ...],
-            src_chunk: _Chunk, dst_chunk: _Chunk):
+            src_chunk: _Chunk, dst_chunk: _Chunk,
+            ) -> None:
         """Apply `src_chunk` onto `dst_chunk` in `op_mode`.
         There must not be any undone partial update to src_chunk."""
         src_dev = src_chunk.data.device.id
@@ -622,14 +623,15 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _all_reduce_intersections(
             self, op_mode: _OpMode, shape: tuple[int, ...],
-            chunk_map: dict[int, list[_Chunk]]) -> None:
+            chunk_map: dict[int, list[_Chunk]],
+            ) -> None:
         chunks_list = [chunk for chunks in chunk_map.values()
                              for chunk in chunks]
 
         # TODO flatten this loop somehow
         for i in range(len(chunks_list)):
             src_chunk = chunks_list[i]
-            _apply_updates(src_chunk, op_mode)
+            src_chunk._apply_updates(op_mode)
 
             for j in range(i + 1, len(chunks_list)):
                 dst_chunk = chunks_list[j]
@@ -638,7 +640,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         for j in range(len(chunks_list) - 1, -1, -1):
             src_chunk = chunks_list[j]
-            _apply_updates(src_chunk, _REPLICA_MODE)
+            src_chunk._apply_updates(_REPLICA_MODE)
 
             for i in range(j):
                 dst_chunk = chunks_list[i]
@@ -646,7 +648,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _copy_on_intersection(
             self, shape: tuple[int, ...],
-            src_chunk: _Chunk, dst_chunk: _Chunk) -> None:
+            src_chunk: _Chunk, dst_chunk: _Chunk,
+            ) -> None:
         assert len(src_chunk.updates) == 0
 
         src_idx = src_chunk.index
@@ -666,7 +669,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _set_identity_on_intersection(
             self, shape: tuple[int, ...], identity,
-            a_chunk: _Chunk, b_idx: tuple[slice, ...]) -> None:
+            a_chunk: _Chunk, b_idx: tuple[slice, ...],
+            ) -> None:
         a_idx = a_chunk.index
         intersection = _index_intersection(a_idx, b_idx, shape)
         if intersection is None:
@@ -734,6 +738,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     new_data = cupy.atleast_1d(
                         kernel(chunk.data, axis=axis, dtype=dtype))
 
+                    new_dtype = new_data.dtype
                     new_index = chunk.index[:axis] + chunk.index[axis+1:]
                     new_updates: list[_PartialUpdate] = []
                     new_chunks_map[dev].append(
@@ -779,17 +784,17 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         chunks_map = self._replica_mode_chunks_map()
         for chunks in chunks_map.values():
             for chunk in chunks:
-                _apply_updates(chunk, _REPLICA_MODE)
+                chunk._apply_updates(_REPLICA_MODE)
 
-        chunks_list = [(dev, chunk) for dev, chunks in chunks_map.items()
-                                    for chunk in chunks]
+        chunks_list = [chunk for chunks in chunks_map.values()
+                             for chunk in chunks]
         identity = op_mode.identity_of(self.dtype)
 
         # TODO: Parallelize
         for i in range(len(chunks_list)):
-            a_dev, a_chunk = chunks_list[i]
+            a_chunk = chunks_list[i]
             for j in range(i + 1, len(chunks_list)):
-                b_dev, b_chunk = chunks_list[j]
+                b_chunk = chunks_list[j]
                 self._set_identity_on_intersection(
                     self.shape, identity, a_chunk, b_chunk.index)
 
@@ -861,7 +866,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         for src_chunks in old_chunks_map.values():
             for src_chunk in src_chunks:
-                _apply_updates(src_chunk, self._mode)
+                src_chunk._apply_updates(self._mode)
 
                 if _is_op_mode(self._mode):
                     src_chunk = src_chunk.copy()
@@ -889,16 +894,77 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         else:
             return NotImplemented
 
-    def asnumpy(self) -> numpy.typing.NDArray:
+    def _map_chunks(
+            self,
+            f: Callable[[_Chunk], _Chunk],
+            chunks_map: dict[int, list[_Chunk]],
+            ) -> dict[int, list[_Chunk]]:
+        new_chunks_map = {}
+        for dev, chunks in chunks_map.items():
+            new_chunks_map[dev] = [f(chunk) for chunk in chunks]
+        return new_chunks_map
+
+    def _change_shape(
+            self,
+            f_shape: Callable[[tuple[int, ...]], tuple[int, ...]],
+            f_idx: Callable[[tuple[slice, ...]], tuple[slice, ...]],
+            ) -> '_DistributedArray':
+        def apply_to_chunk(chunk: _Chunk) -> _Chunk:
+            data = chunk.data.reshape(f_shape(chunk.data.shape))
+            stream = chunk.stream
+            index = f_idx(chunk.index)
+            updates = [(data, f_idx(idx))
+                       for data, idx in chunk.updates]
+            return _Chunk(data, stream, index, updates)
+
+        chunks_map = self._map_chunks(apply_to_chunk, self._chunks_map)
+        return _DistributedArray(
+            f_shape(self.shape), self.dtype, chunks_map,
+            self._mode, self._comms)
+
+    def _prepend_one_to_shape(self) -> '_DistributedArray':
+        """Return a view with (1,) prepended to its shape."""
+        return self._change_shape(
+            lambda shape: (1,) + shape,
+            lambda idx: (slice(None),) + idx)
+
+    def _append_one_to_shape(self) -> '_DistributedArray':
+        """Return a view with (1,) apppended to its shape."""
+        return self._change_shape(
+            lambda shape: shape + (1,),
+            lambda idx: idx + (slice(None),))
+
+    def _pop_from_shape(self) -> '_DistributedArray':
+        """Return a view with the last element of shape popped. The last element
+        of shape must be equal to 1."""
+        assert self.shape[-1] == 1
+
+        return self._change_shape(
+            lambda shape: shape[:-1],
+            lambda idx: idx[:-1])
+
+    def _pop_front_from_shape(self) -> '_DistributedArray':
+        """Return a view with the first element of shape popped. The first
+        element of shape must be equal to 1."""
+        assert self.shape[0] == 1
+
+        return self._change_shape(
+            lambda shape: shape[1:],
+            lambda idx: idx[1:])
+
+    def asnumpy(self) -> numpy.ndarray:
         for chunks in self._chunks_map.values():
             for chunk in chunks:
-                _apply_updates(chunk, self._mode)
+                chunk._apply_updates(self._mode)
 
         if _is_op_mode(self._mode):
             identity = self._mode.identity_of(self.dtype)
             np_array = numpy.full(self.shape, identity, self.dtype)
         else:
             np_array = numpy.empty(self.shape, dtype=self.dtype)
+
+        # We expect np_array[idx] to return a view, but this is not true if
+        # np_array is 0-dimensional.
         np_array = numpy.atleast_1d(np_array)
 
         for chunks in self._chunks_map.values():
@@ -911,9 +977,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 else:
                     np_array[idx] = cupy.asnumpy(chunk.data)
 
-        # # Undo cupy.atleast_1d
-        # return np_array.reshape(self.shape)
-        return np_array
+        # Undo numpy.atleast_1d
+        return np_array.reshape(self.shape)
 
 
 def distributed_array(
@@ -921,7 +986,7 @@ def distributed_array(
         index_map: dict[int, Any],
         mode: str = 'replica',
         comms: Optional[dict[int, nccl.NcclCommunicator]] = None, # type: ignore
-    ) -> _DistributedArray:
+        ) -> _DistributedArray:
     if mode not in _MODES:
         raise RuntimeError(f'`mode` must be one of {list(_MODES)}')
     mode_obj = _MODES[mode]
