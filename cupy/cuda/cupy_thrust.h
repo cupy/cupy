@@ -2,6 +2,8 @@
 #define INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 
 #ifndef CUPY_NO_CUDA
+#include <vector>
+#include <cstdint>
 #include <thrust/version.h>  // for THRUST_VERSION
 
 void thrust_sort(int, void *, size_t *, const std::vector<ptrdiff_t>&, intptr_t, void *);
