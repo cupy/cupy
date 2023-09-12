@@ -544,62 +544,25 @@ class TestRBFInterpolatorNeighbors20(_TestRBFInterpolator):
         x = xp.asarray(seq.random(100))
         xitp = xp.asarray(seq.random(100))
 
-        y = _2d_test_function(x)
-
+        y = _2d_test_function(x, xp)
         yitp1 = self.build(scp, x, y)(xitp)
-
-        # yitp2 = []
-        # tree = scp.spatial.KDTree(x)
-        # for xi in xitp:
-        #     _, nbr = tree.query(xi, 20)
-        #     yitp2.append(RBFInterpolator(x[nbr], y[nbr])(xi[None])[0])
-
-        # assert_allclose(yitp1, yitp2, atol=1e-8)
         return yitp1
-
-
-"""
-# Disable `all neighbors not None` tests : they need KDTree
-
-class TestRBFInterpolatorNeighbors20(_TestRBFInterpolator):
-    # RBFInterpolator using 20 nearest neighbors.
-    def build(self, *args, **kwargs):
-        return RBFInterpolator(*args, **kwargs, neighbors=20)
-
-    def test_equivalent_to_rbf_interpolator(self):
-        seq = Halton(2, scramble=False, seed=_np.random.RandomState())
-
-        x = cp.asarray(seq.random(100))
-        xitp = cp.asarray(seq.random(100))
-
-        y = _2d_test_function(x)
-
-        yitp1 = self.build(x, y)(xitp)
-
-        yitp2 = []
-        tree = cKDTree(x)
-        for xi in xitp:
-            _, nbr = tree.query(xi, 20)
-            yitp2.append(RBFInterpolator(x[nbr], y[nbr])(xi[None])[0])
-
-        assert_allclose(yitp1, yitp2, atol=1e-8)
 
 
 class TestRBFInterpolatorNeighborsInf(TestRBFInterpolatorNeighborsNone):
     # RBFInterpolator using neighbors=np.inf. This should give exactly the same
     # results as neighbors=None, but it will be slower.
-    def build(self, *args, **kwargs):
-        return RBFInterpolator(*args, **kwargs, neighbors=cp.inf)
+    def build(self, scp, *args, **kwargs):
+        return scp.interpolate.RBFInterpolator(
+            *args, **kwargs, neighbors=cp.inf)
 
-    def test_equivalent_to_rbf_interpolator(self):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_equivalent_to_rbf_interpolator(self, xp, scp):
         seq = Halton(1, scramble=False, seed=_np.random.RandomState())
 
-        x = cp.asarray(3*seq.random(50))
-        xitp = cp.asarray(3*seq.random(50))
+        x = xp.asarray(3*seq.random(50))
+        xitp = xp.asarray(3*seq.random(50))
 
-        y = _1d_test_function(x)
-        yitp1 = self.build(x, y)(xitp)
-        yitp2 = RBFInterpolator(x, y)(xitp)
-
-        assert_allclose(yitp1, yitp2, atol=1e-8)
-"""
+        y = _1d_test_function(x, xp)
+        yitp1 = self.build(scp, x, y)(xitp)
+        return yitp1
