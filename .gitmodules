@@ -3,4 +3,4 @@
 	url = https://github.com/NVIDIA/jitify.git
 [submodule "cupy/_core/include/cupy/cccl"]
 	path = cupy/_core/include/cupy/cccl
-	url = https://github.com/leofang/cccl.git
+	url = https://github.com/NVIDIA/cccl.git
