@@ -769,6 +769,7 @@ def asm_kd_tree(points):
     update_tags = KD_MODULE.get_function('update_tags')
     x_tags = cupy.empty((2, length), dtype=x.dtype)
 
+    level = 0
     for level in range(n_iter):
         dim = level % dims
         x_tags[0, :] = x[:, dim]
@@ -779,7 +780,9 @@ def asm_kd_tree(points):
         track_idx = track_idx[idx]
         update_tags((n_blocks,), (block_sz,), (length, level, tags))
 
-    level += 1
+    if n_iter > 1:
+        level += 1
+
     dim = level % dims
     x_tags[0, :] = x[:, dim]
     x_tags[1, :] = tags
