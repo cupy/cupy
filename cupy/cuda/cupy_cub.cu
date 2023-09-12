@@ -19,7 +19,7 @@
 #endif
 
 #if (defined(_MSC_VER) && (defined(CUDA_VERSION) && CUDA_VERSION == 11020))
-  #define __builtin_unreachable() { __assume(false); }
+  __host__ __device__ void __builtin_unreachable(void) { __assume(false); }
 #endif
 
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
