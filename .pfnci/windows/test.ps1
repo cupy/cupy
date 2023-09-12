@@ -86,8 +86,11 @@ function Main {
     if (-not $?) {
         $build_retval = $LastExitCode
     }
+
+    echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the build output:"
     Get-Content cupy_build_log.txt -Tail 10
+    echo "------------------------------------------------------------------------------------------"
 
     if ($build_retval -ne 0) {
         echo "n/a" > cupy_test_log.txt
@@ -136,10 +139,10 @@ function Main {
         UploadCache "${cache_archive}"
     }
 
-    echo "====================================================================="
+    echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
-    echo "====================================================================="
+    echo "------------------------------------------------------------------------------------------"
 
     PublishTestResults
     if ($test_retval -ne 0) {
