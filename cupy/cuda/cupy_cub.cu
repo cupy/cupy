@@ -18,9 +18,6 @@
 #include <hipcub/iterator/transform_input_iterator.hpp>
 #endif
 
-#if (defined(_MSC_VER) && (defined(CUDA_VERSION) && CUDA_VERSION == 11020))
-  __host__ __device__ void __builtin_unreachable(void) { __assume(false); }
-#endif
 
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
 #ifndef CUPY_USE_HIP
