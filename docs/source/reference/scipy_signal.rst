@@ -223,8 +223,11 @@ Spectral analysis
    welch
    csd
    lombscargle
+   stft
+   istft
    check_COLA
    check_NOLA
+
 
 
 Chirp Z-transform and Zoom FFT
