@@ -179,6 +179,7 @@ Waveforms
 
    chirp
    gausspulse
+   max_len_seq
    sawtooth
    square
    unit_impulse
