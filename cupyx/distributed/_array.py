@@ -10,6 +10,7 @@ import cupy
 import numpy
 
 from numpy.typing import ArrayLike
+from cupy_backends.cuda.api import runtime as cuda_runtime
 from cupyx.distributed._nccl_comm import _nccl_dtypes
 from cupyx.distributed import _linalg
 
@@ -260,13 +261,12 @@ class _ManagedData:
         self.ready = ready
         self.prevent_gc = prevent_gc
 
-    def copy(self, stream: Stream) -> '_ManagedData':
+    def copy(self) -> '_ManagedData':
         with self.data.device:
-            stream.wait_event(self.ready)
-            with stream:
-                new_data = self.data.copy()
-            stream.record(self.ready)
-            return _ManagedData(new_data, stream.record(), prevent_gc=self)
+            stream = get_current_stream()
+            new_data = self.data.copy()
+            self.ready.record(stream)
+            return _ManagedData(new_data, stream.record(), self.prevent_gc)
 
 
 @dataclasses.dataclass
@@ -294,8 +294,8 @@ class _Chunk(_ManagedData):
         self.index = index
         self.updates = updates if updates is not None else []
 
-    def copy(self, stream: Stream) -> '_Chunk':
-        managed_data = super().copy(stream)
+    def copy(self) -> '_Chunk':
+        managed_data = super().copy()
 
         return _Chunk(managed_data.data, managed_data.ready,
                       self.index, list(self.updates),
@@ -303,10 +303,12 @@ class _Chunk(_ManagedData):
 
     def apply_updates(self, mode: _Mode) -> None:
         """Apply all updates in-place."""
+        if len(self.updates) == 0:
+            return
+
         with self.data.device:
             stream = cupy.cuda.get_current_stream()
             stream.wait_event(self.ready)
-            self.prevent_gc = [self.prevent_gc]
             for new_data, idx in self.updates:
                 stream.wait_event(new_data.ready)
                 with stream:
@@ -315,10 +317,49 @@ class _Chunk(_ManagedData):
                             self.data[idx], new_data.data, self.data[idx])
                     else:
                         self.data[idx] = new_data.data
-                self.prevent_gc.append(new_data.data)
 
-            stream.record(self.ready)
-            self.updates.clear()
+            self.ready.record(stream)
+            prevent_gc = self.updates
+            prevent_gc.append(self.prevent_gc)
+            self.prevent_gc = prevent_gc
+            self.updates = []
+
+
+def _transfer_async(
+        src_comm: nccl.NcclCommunicator,
+        src_stream: Stream,
+        src_data: _ManagedData,
+        dst_comm: nccl.NcclCommunicator,
+        dst_stream: Stream,
+        dst_dev: int) -> _DataTransfer:
+    src_dev = src_data.data.device.id
+
+    if src_dev == dst_dev:
+        with Device(src_dev):
+            return _DataTransfer(
+                src_data.data, src_data.ready, src_data.prevent_gc)
+
+    with Device(src_dev):
+        src_stream.wait_event(src_data.ready)
+        with src_stream:
+            src_array = cupy.ascontiguousarray(src_data.data)
+    with Device(dst_dev):
+        with dst_stream:
+            dst_buf = cupy.empty(src_array.shape, src_array.dtype)
+
+    dtype, count = _get_nccl_dtype_and_count(src_array)
+    nccl.groupStart()   # type: ignore
+
+    with Device(src_dev):
+        src_comm.send(src_array.data.ptr, count, dtype, dst_dev, src_stream.ptr)
+        src_stream.record(src_data.ready)
+
+    with Device(dst_dev):
+        dst_comm.recv(dst_buf.data.ptr, count, dtype, src_dev, dst_stream.ptr)
+
+        nccl.groupEnd()     # type: ignore
+        return _DataTransfer(dst_buf, dst_stream.record(),
+                             prevent_gc=(src_data, src_array))
 
 
 class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
@@ -406,8 +447,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         return self._streams[dev]
 
     def _copy_chunk(self, chunk: _Chunk) -> _Chunk:
-        dev = chunk.data.device.id
-        return chunk.copy(self._stream_for(dev))
+        with chunk.data.device:
+            return chunk.copy()
 
     def _apply_updates(self, chunk: _Chunk, mode: _Mode) -> None:
         chunk.apply_updates(mode)
@@ -437,7 +478,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         args = []
         for i, arg in dist_args:
             chunk = arg._chunks_map[dev][chunk_i]
-            args.append((i, _ManagedData(chunk.data, chunk.ready)))
+            args.append(
+                (i, _ManagedData(chunk.data, chunk.ready, chunk.prevent_gc)))
 
         # Case of X.T and other data movement requiring cases not supported
         # TODO(ecastill) add support for operands being non distributed arrays
@@ -523,7 +565,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         for dev, chunk_count in chunk_counts.items():
             new_chunks_map[dev] = []
             with Device(dev):
-                execution_stream = get_current_stream()
+                stream = get_current_stream()
 
                 for chunk_i in range(chunk_count):
                     array_args = self._prepare_args(
@@ -533,7 +575,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         distributed_arrays, dev, chunk_i)
 
                     for i, arg in array_args:
-                        execution_stream.wait_event(arg.ready)
+                        stream.wait_event(arg.ready)
                         if isinstance(i, int):
                             args[i] = arg.data
                         else:
@@ -543,7 +585,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
                     new_dtype = new_data.dtype
                     new_chunk = _Chunk(
-                        new_data, execution_stream.record(),
+                        new_data, stream.record(),
                         index_map[dev][chunk_i],
                         prevent_gc=(args, kwargs))
                     new_chunks_map[dev].append(new_chunk)
@@ -566,10 +608,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         else:
                             kwargs_slice[incoming_index] = update.data
 
-                        execution_stream.wait_event(update.ready)
-                        with execution_stream:
-                            new_data = kernel(*args_slice, **kwargs_slice)
-                        execution_done = execution_stream.record()
+                        stream.wait_event(update.ready)
+                        new_data = kernel(*args_slice, **kwargs_slice)
+                        execution_done = stream.record()
 
                         data_transfer = _DataTransfer(
                             new_data, execution_done,
@@ -593,38 +634,11 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         return outs
 
     def _transfer_async(
-            self, src_chunk: _ManagedData, dst_dev: int) -> _DataTransfer:
-        src_dev = src_chunk.data.device.id
-
-        if src_dev == dst_dev:
-            with Device(src_dev):
-                return _DataTransfer(src_chunk.data, src_chunk.ready)
-
-        with Device(src_dev):
-            src_stream = self._stream_for(src_dev)
-            src_stream.wait_event(src_chunk.ready)
-            with src_stream:
-                src_array = cupy.ascontiguousarray(src_chunk.data)
-        with Device(dst_dev):
-            dst_stream = self._stream_for(dst_dev)
-            with dst_stream:
-                dst_buf = cupy.empty(src_array.shape, src_array.dtype)
-
-        dtype, count = _get_nccl_dtype_and_count(src_array)
-        nccl.groupStart()   # type: ignore
-
-        with Device(src_dev):
-            self._comms[src_dev].send(
-                src_array.data.ptr, count, dtype, dst_dev, src_stream.ptr)
-            src_stream.record(src_chunk.ready)
-
-        with Device(dst_dev):
-            self._comms[dst_dev].recv(
-                dst_buf.data.ptr, count, dtype, src_dev, dst_stream.ptr)
-
-            nccl.groupEnd()     # type: ignore
-            return _DataTransfer(dst_buf, dst_stream.record(),
-                                 prevent_gc=src_array)
+            self, src_data: _ManagedData, dst_dev: int) -> _DataTransfer:
+        src_dev = src_data.data.device.id
+        return _transfer_async(
+            self._comms[src_dev], self._stream_for(src_dev), src_data,
+            self._comms[dst_dev], self._stream_for(dst_dev), dst_dev)
 
     def _apply_and_update_chunks(
         self, op_mode: _OpMode, shape: tuple[int, ...],
@@ -644,10 +658,11 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
         data_to_transfer = _ManagedData(
-            src_chunk.data[src_new_idx], src_chunk.ready)
+            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk.prevent_gc)
 
         if not op_mode.idempotent:
-            data_to_transfer = data_to_transfer.copy(self._stream_for(src_dev))
+            with cupy.cuda.Device(src_dev):
+                data_to_transfer = data_to_transfer.copy()
             copy_done = data_to_transfer.ready
 
         update = self._transfer_async(data_to_transfer, dst_dev)
@@ -655,11 +670,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         if not op_mode.idempotent:
             dtype = src_chunk.data.dtype
-            stream = self._stream_for(src_dev)
             with Device(src_dev):
+                stream = get_current_stream()
                 stream.wait_event(copy_done)
-                with stream:
-                    src_chunk.data[src_new_idx] = op_mode.identity_of(dtype)
+                src_chunk.data[src_new_idx] = op_mode.identity_of(dtype)
                 stream.record(src_chunk.ready)
 
     def _all_reduce_intersections(
@@ -704,12 +718,12 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
         src_partial_chunk = _ManagedData(
-            src_chunk.data[src_new_idx], src_chunk.ready)
+            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk.prevent_gc)
         update = self._transfer_async(src_partial_chunk, dst_dev)
         dst_chunk.updates.append((update, dst_new_idx))
 
     def _set_identity_on_intersection(
-        self, shape: tuple[int, ...], identity,
+        self, shape: tuple[int, ...], identity: _Scalar,
         a_chunk: _Chunk, b_idx: tuple[slice, ...],
     ) -> None:
         a_idx = a_chunk.index
@@ -717,21 +731,19 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         if intersection is None:
             return
         a_new_idx = _index_for_subindex(a_idx, intersection, shape)
-        stream = self._stream_for(a_chunk.data.device.id)
         with a_chunk.data.device:
+            stream = get_current_stream()
             stream.wait_event(a_chunk.ready)
-            with stream:
-                a_chunk.data[a_new_idx] = identity
+            a_chunk.data[a_new_idx] = identity
             stream.record(a_chunk.ready)
 
     def _set_identity_on_ignored_entries(
             self, identity: _Scalar, chunk: _Chunk) -> None:
         with chunk.data.device:
-            stream = self._stream_for(chunk.data.device.id)
+            stream = get_current_stream()
             stream.wait_event(chunk.ready)
-            with stream:
-                for _, idx in chunk.updates:
-                    chunk.data[idx] = identity
+            for _, idx in chunk.updates:
+                chunk.data[idx] = identity
             stream.record(chunk.ready)
 
     def __cupy_override_reduction_kernel__(
@@ -795,7 +807,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     new_updates: list[_PartialUpdate] = []
                     new_chunks_map[dev].append(
                         _Chunk(new_data, execution_stream.record(),
-                               new_index, new_updates))
+                               new_index, new_updates,
+                               prevent_gc=chunk.prevent_gc))
 
                     if len(chunk.updates) == 0:
                         continue
@@ -806,7 +819,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                             kernel(update.data, axis=axis, dtype=dtype))
 
                         data_transfer = _DataTransfer(
-                            new_update_data, execution_stream.record())
+                            new_update_data, execution_stream.record(),
+                            prevent_gc=update.prevent_gc)
                         new_index = update_index[:axis] + update_index[axis+1:]
                         new_updates.append((data_transfer, new_index))
 
@@ -927,13 +941,12 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             for idx in idxs:
                 with Device(dev):
                     dst_shape = _shape_after_indexing(self.shape, idx)
-                    stream = self._stream_for(dev)
-                    with stream:
-                        if self._mode is _REPLICA_MODE:
-                            data = cupy.empty(dst_shape, self.dtype)
-                        else:
-                            data = cupy.full(dst_shape, identity, self.dtype)
-                        data = cupy.atleast_1d(data)
+                    stream = get_current_stream()
+                    if self._mode is _REPLICA_MODE:
+                        data = cupy.empty(dst_shape, self.dtype)
+                    else:
+                        data = cupy.full(dst_shape, identity, self.dtype)
+                    data = cupy.atleast_1d(data)
                     new_chunk = _Chunk(data, stream.record(), idx)
                     new_chunks_map[dev].append(new_chunk)
 
@@ -987,7 +1000,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             index = f_idx(chunk.index)
             updates = [(data, f_idx(idx))
                        for data, idx in chunk.updates]
-            return _Chunk(data, chunk.ready, index, updates)
+            return _Chunk(data, chunk.ready, index, updates, chunk.prevent_gc)
 
         chunks_map = self._map_chunks(apply_to_chunk, self._chunks_map)
         return _DistributedArray(
@@ -1078,21 +1091,44 @@ def distributed_array(
                     [s.indices(l) for s, l in zip(slices, array.shape)])
         new_index_map[dev] = idxs
 
+    if isinstance(array, cupy.ndarray):
+        # Use NCCL to transfer data between devices
+        comms_list = nccl.NcclCommunicator.initAll(list(index_map.keys()))
+        if comms is None:
+            comms = {dev: comm
+                     for dev, comm in zip(index_map.keys(), comms_list)}
+        src_dev = array.device.id
+        src_stream = get_current_stream()
+
+        def make_chunk(dst_dev, idx, src_array):
+            with src_array.device:
+                src_array = cupy.ascontiguousarray(src_array)
+                src_data = _ManagedData(src_array, src_stream.record(),
+                                        prevent_gc=src_array)
+            with Device(dst_dev):
+                dst_stream = get_current_stream()
+                copied = _transfer_async(
+                    comms[src_dev], src_stream, src_data,
+                    comms[dst_dev], dst_stream, dst_dev)
+                return _Chunk(copied.data, copied.ready, idx,
+                              prevent_gc=src_data)
+
+    else:
+        def make_chunk(dev, idx, array):
+            with Device(dev):
+                stream = get_current_stream()
+                copied = cupy.array(array)
+                return _Chunk(copied, stream.record(), idx,
+                              prevent_gc=array)
+
     chunks_map: dict[int, list[_Chunk]] = {}
     for dev, idxs in new_index_map.items():
         chunks_map[dev] = []
 
         for i, idx in enumerate(idxs):
-            if isinstance(array, cupy.ndarray):
-                with array.device:
-                    chunk_data = cupy.ascontiguousarray(array[idx])
-            else:
-                chunk_data = array[idx]
-            with Device(dev):
-                stream = get_current_stream()
-                chunk = cupy.array(chunk_data)
-                chunk = _Chunk(chunk, stream.record(), idx, prevent_gc=array)
-                chunks_map[dev].append(chunk)
+            chunk_data = array[idx]
+            chunk = make_chunk(dev, idx, chunk_data)
+            chunks_map[dev].append(chunk)
             if mode_obj is not None and not mode_obj.idempotent:
                 array[idx] = mode_obj.identity_of(array.dtype)
 

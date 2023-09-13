@@ -14,7 +14,7 @@ def mem_pool():
     try:
         old_pool = cupy.get_default_memory_pool()
         pool = cupy.cuda.memory.MemoryPool()
-        pool.set_limit(2 ** 23)
+        pool.set_limit(16 << 20)
         cupy.cuda.memory.set_allocator(pool.malloc)
         yield pool
     finally:
