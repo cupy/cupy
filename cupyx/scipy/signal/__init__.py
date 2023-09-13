@@ -145,6 +145,8 @@ from cupyx.scipy.signal._spectral import lombscargle  # NOQA
 from cupyx.scipy.signal._spectral import periodogram  # NOQA
 from cupyx.scipy.signal._spectral import welch  # NOQA
 from cupyx.scipy.signal._spectral import csd  # NOQA
+from cupyx.scipy.signal._spectral import check_COLA  # NOQA
+from cupyx.scipy.signal._spectral import check_NOLA  # NOQA
 
 from cupyx.scipy.signal._peak_finding import argrelextrema  # NOQA
 from cupyx.scipy.signal._peak_finding import argrelmin  # NOQA
