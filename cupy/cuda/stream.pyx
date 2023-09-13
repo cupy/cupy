@@ -40,23 +40,27 @@ cdef class _ThreadLocal:
 
     cdef void push_stream(self, stream, int device_id) except*:
         assert device_id >= 0
+        assert stream.device_id == device_id or stream.device_id == -1
         self.current_stream_stack[device_id].append(stream)
         # record device_id to prevent from popping the wrong stream at exit
         self.current_device_id_stack.append(device_id)
-        self.set_current_stream(stream)
+        self._set_current_stream(stream, device_id)
 
     cdef void pop_stream(self) except*:
         cdef int device_id = self.current_device_id_stack.pop()
         self.current_stream_stack[device_id].pop()
         prev_stream = self.current_stream_stack[device_id][-1]
-        self.set_current_stream(prev_stream)
+        self._set_current_stream(prev_stream, device_id)
         assert len(self.current_stream_stack[device_id]) >= 1
 
-    cdef set_current_stream(self, stream):
+    cdef void replace_current_stream(self, stream, int device_id) except *:
+        assert device_id >= 0
+        assert stream.device_id == device_id or stream.device_id == -1
+        self.current_stream_stack[device_id][-1] = stream
+        self._set_current_stream(stream, device_id)
+
+    cdef _set_current_stream(self, stream, int device_id):
         cdef intptr_t ptr = <intptr_t>stream.ptr
-        cdef int device_id = stream.device_id
-        if device_id == -1:
-            device_id = runtime.getDevice()
         backends_stream.set_current_stream_ptr(ptr, device_id)
         self.current_stream[device_id] = stream
 
@@ -211,8 +215,6 @@ class _BaseStream:
         return False
 
     def __enter__(self):
-        # N.B. for maintainers: do not use this context manager in CuPy
-        # codebase. See #5943 and #5963.
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
         device_id = check_stream_device_match(device_id)
@@ -237,8 +239,8 @@ class _BaseStream:
         """
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
-        check_stream_device_match(device_id)
-        tls.set_current_stream(self)
+        device_id = check_stream_device_match(device_id)
+        tls.replace_current_stream(self, device_id)
         return self
 
     @property

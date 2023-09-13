@@ -20,15 +20,18 @@ class TestStream(unittest.TestCase):
         if cuda.runtime.is_hip and self.stream_name == 'ptds':
             self.skipTest('HIP does not support PTDS')
 
+        self._prev_device = cuda.Device()
         self._prev_stream = cuda.get_current_stream()
 
         if self.stream_name == 'null':
             self.stream = cuda.Stream.null
         elif self.stream_name == 'ptds':
             self.stream = cuda.Stream.ptds
+        cuda.Device(0).use()
         self.stream.use()
 
     def tearDown(self):
+        self._prev_device.use()
         self._prev_stream.use()
 
     @unittest.skipIf(cuda.runtime.is_hip, 'This test is only for CUDA')
@@ -144,8 +147,7 @@ class TestStream(unittest.TestCase):
             with stream2:
                 assert stream2 == cuda.get_current_stream()
             assert stream1 == cuda.get_current_stream()
-        # self.stream is "forgotten"!
-        assert cuda.Stream.null == cuda.get_current_stream()
+        assert self.stream == cuda.get_current_stream()
 
     def test_use(self):
         stream1 = cuda.Stream().use()
@@ -185,12 +187,32 @@ class TestStream(unittest.TestCase):
             assert cuda.get_current_stream() == s1
             s2.use()
             assert cuda.get_current_stream() == s2
+            s2_ptr = s2.ptr
             with s3:
                 assert cuda.get_current_stream() == s3
                 del s2
-            assert cuda.get_current_stream() == s1
-        # self.stream is "forgotten"!
-        assert cuda.get_current_stream() == cuda.Stream.null
+            assert cuda.get_current_stream().ptr == s2_ptr
+        assert cuda.get_current_stream() == self.stream
+
+    @testing.multi_gpu(2)
+    def test_mix_use_context_per_device(self):
+        with cuda.Device(0):
+            sD_d0 = self.stream
+            s0_d0 = cuda.Stream()
+        with cuda.Device(1):
+            sD_d1 = cuda.get_current_stream()
+            s0_d1 = cuda.Stream()
+
+        assert cuda.get_current_stream() == sD_d0
+        with s0_d0:
+            assert cuda.get_current_stream() == s0_d0
+            cuda.Device(1).use()
+            assert cuda.get_current_stream() == sD_d1
+            s0_d1.use()
+            assert cuda.get_current_stream() == s0_d1
+            cuda.Device(0).use()
+            assert cuda.get_current_stream() == s0_d0
+        assert cuda.get_current_stream() == sD_d0
 
     def test_stream_thread(self):
         s1 = None
