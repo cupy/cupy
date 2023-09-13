@@ -13,7 +13,6 @@ import atexit
 import os
 import pickle
 import tempfile
-import time
 
 
 ###############################################################################
@@ -126,7 +125,7 @@ cdef inline void init_cupy_headers() except*:
     if int(os.getenv('CUPY_DISABLE_JITIFY_CACHE', '0')) == 0:
         try:
             _init_cupy_headers_from_cache()
-        except:
+        except Exception:
             pass  # continue to the old logic below
         else:
             return
