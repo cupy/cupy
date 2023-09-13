@@ -40,17 +40,17 @@ shape_dim2 = (512, 512)
 index_map_dim2 = {
     0: [(slice(300), slice(300)),
         (slice(300), slice(200, None))],
-    1: [(slice(200, None), slice(None, None, 2))],
-    2: [(slice(200, None), slice(1, None, 4)),
+    1: [(slice(200, None), slice(None, None, 2)),
+        (slice(200, None), slice(1, None, 4)),
         (slice(200, None), slice(3, None, 4))],
     3: [(slice(200, None, 3), slice(None, None, 3))],
 }
 index_map_dim2_2 = {
     0: [(slice(None, None, 2), slice(None, None, 2))],
-    1: [(slice(None, None, 2), slice(1, 200, 2)),
+    2: [(slice(None, None, 2), slice(1, 200, 2)),
         (slice(None, None, 2), slice(101, 300, 2))],
-    2: [(slice(None, None, 2), slice(201, None, 2))],
-    3: [slice(1, None, 2)],
+    3: [(slice(None, None, 2), slice(201, None, 2)),
+        slice(1, None, 2)],
 }
 
 shape_dim3 = (64, 64, 64)
@@ -61,14 +61,14 @@ index_map_dim3 = {
     3: [(slice(32, None), slice(None), 42)],
 }
 index_map_dim3_2 = {
-    0: [(slice(1, None, 2), 0)],
-    1: [(slice(1, None, 2), slice(1, None), 63)],
+    1: [(slice(1, None, 2), 0),
+        (slice(1, None, 2), slice(1, None), 63)],
     2: [(slice(1, None, 2), slice(1, None), slice(None, 63))],
     3: [slice(None, None, 2)],
 }
 
 index_map_only_1 = {
-    0: [(slice(None),)],
+    1: [(slice(None),)],
 }
 
 
@@ -143,6 +143,24 @@ class TestDistributedArray:
                     testing.assert_array_equal(
                         da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
                         strict=True)
+
+    @pytest.mark.parametrize(
+            'shape, index_map',
+            [(shape_dim2, index_map_dim2), (shape_dim2, index_map_dim2_2),
+             (shape_dim3, index_map_dim3), (shape_dim3, index_map_dim3_2)])
+    def test_array_creation_comms(self, mem_pool, shape, index_map):
+        array = numpy.arange(size, dtype='q').reshape(shape)
+        # assert mem_pool.used_bytes() == 0
+        da = _array.distributed_array(array, index_map)
+        assert da._comms.keys() == index_map.keys()
+        da = _array.distributed_array(array, index_map, devices=set(range(4)))
+        assert da._comms.keys() == set(range(4))
+        da = _array.distributed_array(
+            array, index_map, comms=_array._create_communicators(range(4)))
+        assert da._comms.keys() == set(range(4))
+        with pytest.raises(RuntimeError, match='Only one of devices and comms'):
+            da = _array.distributed_array(
+                array, index_map, devices=set(), comms={})
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -300,7 +318,8 @@ class TestDistributedArray:
     def test_reshard(self, mem_pool, shape, mapping_a, mapping_b, mode):
         np_a = numpy.arange(size, dtype='q').reshape(shape)
         # assert mem_pool.used_bytes() == 0
-        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
+        # Initialize without comms
+        d_a = _array.distributed_array(np_a, mapping_a, mode)
         # assert mem_pool.used_bytes() == np_a.nbytes
         d_b = d_a.reshard(mapping_b)
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)

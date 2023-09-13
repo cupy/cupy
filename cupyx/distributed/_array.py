@@ -325,6 +325,13 @@ class _Chunk(_ManagedData):
             self.updates = []
 
 
+def _create_communicators(
+        devices: Iterable[int]
+    ) -> dict[int, nccl.NcclCommunicator]:  #type: ignore
+    comms_list = nccl.NcclCommunicator.initAll(list(devices))
+    return {comm.device_id(): comm for comm in comms_list}
+
+
 def _transfer_async(
         src_comm: nccl.NcclCommunicator,
         src_stream: Stream,
@@ -351,11 +358,13 @@ def _transfer_async(
     nccl.groupStart()   # type: ignore
 
     with Device(src_dev):
-        src_comm.send(src_array.data.ptr, count, dtype, dst_dev, src_stream.ptr)
+        src_comm.send(src_array.data.ptr, count, dtype,
+                      dst_comm.rank_id(), src_stream.ptr)
         src_stream.record(src_data.ready)
 
     with Device(dst_dev):
-        dst_comm.recv(dst_buf.data.ptr, count, dtype, src_dev, dst_stream.ptr)
+        dst_comm.recv(dst_buf.data.ptr, count, dtype,
+                      src_comm.rank_id(), dst_stream.ptr)
 
         nccl.groupEnd()     # type: ignore
         return _DataTransfer(dst_buf, dst_stream.record(),
@@ -363,12 +372,9 @@ def _transfer_async(
 
 
 class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
-    # Array on the devices and streams that transfer data only within their
-    # corresponding device
     _chunks_map: dict[int, list[_Chunk]]
     _streams: dict[int, Stream]
     _mode: _Mode
-    # Buffers for transfer from other devices
     _comms: dict[int, nccl.NcclCommunicator]    # type: ignore
     _mem: cupy.cuda.Memory
 
@@ -377,7 +383,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         chunks_map: dict[int, list[_Chunk]],
         mode: _Mode = _REPLICA_MODE,
         comms: Optional[dict[int, nccl.NcclCommunicator]]   # type: ignore
-            = None
+            = None,
     ) -> '_DistributedArray':
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
@@ -412,10 +418,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     @property
     def mode(self) -> str:
+        assert self._mode in _MODES.values()
         for mode_str, mode_obj in _MODES.items():
             if self._mode is mode_obj:
                 return mode_str
-        raise RuntimeError(f'Unrecognized mode: {self._mode}')
 
     @property
     def devices(self) -> Iterable[int]:
@@ -425,6 +431,12 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     def index_map(self) -> dict[int, list[tuple[slice, ...]]]:
         return {dev: [chunk.index for chunk in chunks]
                 for dev, chunks in self._chunks_map.items()}
+
+    def _prepare_comms(self, devices: Iterable[int]) -> None:
+        devices = self._chunks_map.keys() | devices
+        if devices == self._chunks_map.keys():
+            return
+        self._comms = _create_communicators(devices)
 
     def _count_chunks_on_devices(self, dist_args) -> dict[int, int]:
         counts = {}
@@ -911,10 +923,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     def reshard(
             self, index_map: dict[int, Any]) -> '_DistributedArray':
         """Return a view or a copy of self with the given index_map."""
-        for dev in index_map:
-            if dev not in self._comms:
-                raise RuntimeError(
-                    f'A communicator for device {dev} is not prepared.')
+        self._prepare_comms(index_map.keys())
 
         new_index_map: dict[int, list[tuple[slice, ...]]] = {}
         for dev, idxs in index_map.items():
@@ -1070,11 +1079,35 @@ def distributed_array(
     array: ArrayLike,
     index_map: dict[int, Any],
     mode: str = 'replica',
+    devices: Optional[int | Iterable[int]] = None,
     comms: Optional[dict[int, nccl.NcclCommunicator]] = None, # type: ignore
 ) -> _DistributedArray:
-    if mode not in _MODES:
-        raise RuntimeError(f'`mode` must be one of {list(_MODES)}')
-    mode_obj = _MODES[mode]
+    if devices is not None and comms is not None:
+        raise RuntimeError('Only one of devices and comms can be specified')
+
+    if comms is None:
+        # Initialize devices: Iterable[int]
+        if devices is None:
+            devices = index_map.keys()
+            if isinstance(array, cupy.ndarray):
+                devices |= {array.device.id}
+        elif isinstance(devices, int):
+            devices = range(devices)
+
+        comms = _create_communicators(devices)
+
+        if (isinstance(array, cupy.ndarray)
+                and array.device.id not in comms.keys()):
+            raise RuntimeError(
+                'No communicator for transfer from the given array')
+
+    if isinstance(array, _DistributedArray):
+        if array.mode != mode:
+            array = array.change_mode(mode)
+        if array.index_map != index_map:
+            array = array.reshard(index_map)
+        return _DistributedArray(
+            array.shape, array.dtype, array._chunks_map, array.mode, comms)
 
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
@@ -1092,11 +1125,6 @@ def distributed_array(
         new_index_map[dev] = idxs
 
     if isinstance(array, cupy.ndarray):
-        # Use NCCL to transfer data between devices
-        comms_list = nccl.NcclCommunicator.initAll(list(index_map.keys()))
-        if comms is None:
-            comms = {dev: comm
-                     for dev, comm in zip(index_map.keys(), comms_list)}
         src_dev = array.device.id
         src_stream = get_current_stream()
 
@@ -1121,6 +1149,7 @@ def distributed_array(
                 return _Chunk(copied, stream.record(), idx,
                               prevent_gc=array)
 
+    mode_obj = _MODES[mode]
     chunks_map: dict[int, list[_Chunk]] = {}
     for dev, idxs in new_index_map.items():
         chunks_map[dev] = []
