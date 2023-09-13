@@ -168,12 +168,6 @@ class coo_matrix(sparse_data._data_matrix):
         if not _util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
-
-    def __repr__(self):
-        return (
-            f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n" \
-            f"with {self.getnnz()} stored elements in COOrdinate format>"
-        )
             
     def _with_data(self, data, copy=True):
         """Returns a matrix with the same sparsity structure as self,
