@@ -4,6 +4,10 @@ import cupy
 from cupy import _core
 from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import _sputils
+from cupyx.scipy.sparse._coo import coo_matrix
+from cupyx.scipy.sparse._csc import csc_matrix
+from cupyx.scipy.sparse._csr import csr_matrix
+from cupyx.scipy.sparse._dia import dia_matrix
 
 
 try:
