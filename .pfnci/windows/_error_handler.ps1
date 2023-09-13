@@ -25,30 +25,18 @@ function RunWithTimeout {
         [Parameter(Mandatory=$true, ValueFromRemainingArguments=$true)]
         [string[]]$params
     )
-    $process = Start-Process -NoNewWindow -PassThru -RedirectStandardOutput $output -FilePath $command -ArgumentList $params
-
-    for ($i = 0; $i -lt $timeout; $i++) {
-        if ($process.HasExited) {
-            break
-        }
-        Start-Sleep -Seconds 1
-    }
-    if (!$process.HasExited) {
+    $process = Start-Process -PassThru -NoNewWindow -RedirectStandardOutput $output -FilePath $command -ArgumentList $params
+    try {
+        $process | Wait-Process -Timeout $timeout
+    } catch [TimeoutException] {
         Write-Warning "Command timed out: $command $params"
         $process | Stop-Process -Force
-
-        # Wait until the process exit to retrieve the exit code.
-        for ($i = 0; $i -lt 100; $i++) {
-            if ($process.HasExited) {
-                break
-            }
-            Start-Sleep -Seconds 0.3
-        }
         if (!$process.HasExited) {
-            Write-Warning "Failed to stop the process: $command $params"
+            Write-Warning "Failed to force terminate the process: $command $params"
             return 999  # ExitCode unavailable, return a dummy value
         }
     }
 
+    # Return code will be -1 when force terminated.
     return $process.ExitCode
 }
