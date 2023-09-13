@@ -7,6 +7,14 @@ from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
 from libcpp.vector cimport vector
 
+from cupy.cuda import cub
+
+import atexit
+import os
+import pickle
+import tempfile
+import time
+
 
 ###############################################################################
 # Extern
@@ -40,7 +48,66 @@ def get_build_version():
 # We cache headers found by Jitify. This is initialized with a few built-in
 # JIT-safe headers, and expands as needed to help reduce compile time.
 cdef cpp_map[cpp_str, cpp_str] cupy_headers
-cdef inline void init_cupy_headers():
+_jitify_cache_dir = None
+_jitify_cache_versions = None
+
+
+cpdef _add_sources(dict sources):
+    for hdr_name, hdr_source in sources.items():
+        cupy_headers[hdr_name] = hdr_source
+
+
+@atexit.register
+def dump_cache():
+    # Set up temp directory; it must be under the cache directory so
+    # that atomic moves within the same filesystem can be guaranteed
+    tempdir_obj = tempfile.TemporaryDirectory(dir=_jitify_cache_dir)
+    tempdir = tempdir_obj.name
+
+    # Set up a version guard for invalidating the cache. Right now,
+    # we use the build-time versions of CUB/Jitify.
+    # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
+    # start time, for enabling CCCL + CuPy developers?
+    assert _jitify_cache_versions is not None
+    data = (_jitify_cache_versions, dict(cupy_headers))
+
+    with open(f'{tempdir}/jitify.pickle', 'wb') as f:
+        pickle.dump(data, f)
+
+    # atomic move with the destination guaranteed to be overwritten
+    # (using os.replace() is also ok here)
+    os.rename(f'{tempdir}/jitify.pickle',
+              f'{_jitify_cache_dir}/jitify.pickle')
+
+    tempdir_obj.cleanup()
+
+
+cdef inline void _init_cupy_headers_from_cache() except*:
+    global _jitify_cache_dir
+    _jitify_cache_dir = os.getenv(
+        'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
+    global _jitify_cache_versions
+    versions = f"{get_build_version()}_{cub.get_build_version()}"
+    _jitify_cache_versions = versions
+
+    with open(f'{_jitify_cache_dir}/jitify.pickle', 'rb') as f:
+        data = pickle.load(f)
+
+    # Any failing sanity check here would mean the cache is invalidated.
+    assert isinstance(data, tuple)
+    assert len(data) == 2
+    cached_versions, cached_headers = data
+    assert isinstance(cached_versions, str)
+    assert isinstance(cached_headers, dict)
+    # Check the version guard for invalidating the cache (see the comment
+    # in the dump_cache() function).
+    assert cached_versions == versions
+
+    # Populate the in-memory cache with the disk/persistent cache
+    _add_sources(cached_headers)
+
+
+cdef inline void _init_cupy_headers_from_scratch() except*:
     cdef int i
     for i in range(preinclude_jitsafe_headers_count):
         hdr_name = preinclude_jitsafe_header_names[i]
@@ -55,12 +122,18 @@ cdef inline void init_cupy_headers():
     cupy_headers[b"type_traits"] = b"#include <cupy/cuda_workaround.h>\n"
 
 
+cdef inline void init_cupy_headers() except*:
+    if int(os.getenv('CUPY_DISABLE_JITIFY_CACHE', '0')) == 0:
+        try:
+            _init_cupy_headers_from_cache()
+        except:
+            pass  # continue to the old logic below
+        else:
+            return
+    _init_cupy_headers_from_scratch()
+
+
 init_cupy_headers()
-
-
-cpdef _add_sources(dict sources):
-    for hdr_name, hdr_source in sources.items():
-        cupy_headers[hdr_name] = hdr_source
 
 
 # Use Jitify's internal mechanism to search all included headers, and return
