@@ -122,19 +122,6 @@ Low-level filter design functions
    abcd_normalize
 
 
-Chirp Z-transform and Zoom FFT
-------------------------------
-
-.. autosummary::
-   :toctree: generated/
-
-   czt
-   zoom_fft
-   CZT
-   ZoomFFT
-   czt_points
-
-
 LTI representations
 -------------------
 
@@ -232,4 +219,22 @@ Spectral analysis
 .. autosummary::
    :toctree: generated/
 
+   periodogram
+   welch
+   csd
    lombscargle
+   check_COLA
+   check_NOLA
+
+
+Chirp Z-transform and Zoom FFT
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   czt
+   zoom_fft
+   CZT
+   ZoomFFT
+   czt_points
