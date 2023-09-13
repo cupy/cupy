@@ -86,8 +86,11 @@ function Main {
     if (-not $?) {
         $build_retval = $LastExitCode
     }
+
+    echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the build output:"
     Get-Content cupy_build_log.txt -Tail 10
+    echo "------------------------------------------------------------------------------------------"
 
     if ($build_retval -ne 0) {
         echo "n/a" > cupy_test_log.txt
@@ -129,7 +132,6 @@ function Main {
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
-    RunOrDie python -c "import cupy; cupy.show_config()"
     $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
@@ -137,10 +139,10 @@ function Main {
         UploadCache "${cache_archive}"
     }
 
-    echo "====================================================================="
+    echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
-    echo "====================================================================="
+    echo "------------------------------------------------------------------------------------------"
 
     PublishTestResults
     if ($test_retval -ne 0) {
