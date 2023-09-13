@@ -205,11 +205,13 @@ def matmul(a, b, out=None, **kwargs) -> '_array._DistributedArray':
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
             with cupy.cuda.Device(dev):
                 stream = cupy.cuda.get_current_stream()
-                stream.wait_event(chunk_a.stream.record())
-                stream.wait_event(chunk_b.stream.record())
+                stream.wait_event(chunk_a.ready)
+                stream.wait_event(chunk_b.ready)
                 chunk_ab_data = cupy.matmul(
                     chunk_a.data, chunk_b.data, **kwargs)
-                chunk_ab = _array._Chunk(chunk_ab_data, stream, index)
+                chunk_ab = _array._Chunk(
+                    chunk_ab_data, stream.record(), index,
+                    prevent_gc=(chunk_a, chunk_b))
                 chunks_map[dev].append(chunk_ab)
                 dtype = chunk_ab_data.dtype
 

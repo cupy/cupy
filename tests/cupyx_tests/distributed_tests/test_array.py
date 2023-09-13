@@ -53,7 +53,6 @@ index_map_dim2_2 = {
     3: [slice(1, None, 2)],
 }
 
-
 shape_dim3 = (64, 64, 64)
 index_map_dim3 = {
     0: [slice(32)],
@@ -66,6 +65,10 @@ index_map_dim3_2 = {
     1: [(slice(1, None, 2), slice(1, None), 63)],
     2: [(slice(1, None, 2), slice(1, None), slice(None, 63))],
     3: [slice(None, None, 2)],
+}
+
+index_map_only_1 = {
+    0: [(slice(None),)],
 }
 
 
@@ -143,7 +146,9 @@ class TestDistributedArray:
 
     @pytest.mark.parametrize(
             'shape, index_map',
-            [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
+            [(shape_dim2, index_map_dim2),
+             (shape_dim3, index_map_dim3),
+             (shape_dim3, index_map_only_1)])
     def test_change_to_replica_mode(self, shape, index_map):
         np_a = numpy.zeros(shape)
         chunks_map = {}
@@ -156,7 +161,7 @@ class TestDistributedArray:
                 with cupy.cuda.Device(dev):
                     chunk = _array._Chunk(
                         cupy.full_like(np_a[idx], 1 << dev),
-                        cupy.cuda.Stream(), full_idx)
+                        cupy.cuda.Event(), full_idx)
                     chunks_map[dev].append(chunk)
 
         d_a = _array._DistributedArray(
@@ -174,7 +179,9 @@ class TestDistributedArray:
 
     @pytest.mark.parametrize(
             'shape, index_map',
-            [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
+            [(shape_dim2, index_map_dim2),
+             (shape_dim3, index_map_dim3),
+             (shape_dim3, index_map_only_1)])
     @pytest.mark.parametrize('mode', ['max', 'sum'])
     def test_change_to_op_mode(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
@@ -287,7 +294,8 @@ class TestDistributedArray:
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
-             (shape_dim3, index_map_dim3, index_map_dim3_2)])
+             (shape_dim3, index_map_dim3, index_map_dim3_2),
+             (shape_dim3, index_map_only_1, index_map_dim3)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     def test_reshard(self, mem_pool, shape, mapping_a, mapping_b, mode):
         np_a = numpy.arange(size, dtype='q').reshape(shape)
@@ -325,7 +333,9 @@ class TestDistributedArray:
 
     @pytest.mark.parametrize(
             'shape, index_map',
-            [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
+            [(shape_dim2, index_map_dim2),
+             (shape_dim3, index_map_dim3),
+             (shape_dim3, index_map_only_1)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_max_reduction(self, shape, index_map, mode, dtype):
@@ -339,7 +349,9 @@ class TestDistributedArray:
 
     @pytest.mark.parametrize(
             'shape, index_map',
-            [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
+            [(shape_dim2, index_map_dim2),
+             (shape_dim3, index_map_dim3),
+             (shape_dim3, index_map_only_1)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_min_reduction(self, shape, index_map, mode, dtype):
@@ -351,7 +363,9 @@ class TestDistributedArray:
             testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
             testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
-    @pytest.mark.parametrize('shape, index_map', [(shape_dim3, index_map_dim3)])
+    @pytest.mark.parametrize('shape, index_map',
+                             [(shape_dim3, index_map_dim3),
+                              (shape_dim3, index_map_only_1)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'prod'])
     def test_sum_reduction(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
@@ -363,7 +377,9 @@ class TestDistributedArray:
             testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
             testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
-    @pytest.mark.parametrize('shape, index_map', [(shape_dim3, index_map_dim3)])
+    @pytest.mark.parametrize('shape, index_map',
+                             [(shape_dim3, index_map_dim3),
+                              (shape_dim3, index_map_only_1)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     def test_prod_reduction(self, shape, index_map, mode):
         np_a = numpy.random.default_rng().random(shape)
@@ -384,7 +400,8 @@ class TestDistributedArray:
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
-             (shape_dim3, index_map_dim3, index_map_dim3_2)])
+             (shape_dim3, index_map_dim3, index_map_dim3_2),
+             (shape_dim3, index_map_only_1, index_map_dim3)])
     def test_reshard_max(self, shape, mapping_a, mapping_b):
         np_a = numpy.arange(size).reshape(shape)
         np_b = np_a.max(axis=0)
@@ -396,7 +413,8 @@ class TestDistributedArray:
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
-             (shape_dim3, index_map_dim3, index_map_dim3_2)])
+             (shape_dim3, index_map_dim3, index_map_dim3_2),
+             (shape_dim3, index_map_only_1, index_map_dim3)])
     def test_mul_max_mul(self, shape, mapping_a, mapping_b):
         rng = numpy.random.default_rng()
         np_a = rng.integers(0, 1 << 10, shape)
@@ -432,12 +450,15 @@ class TestDistributedArray:
             1: slice(length // 15 * 5 + k, length // 15 * 10 + k),
             2: slice(length // 15 * 10 + k, length // 15 * 13 + k),
             3: slice(length // 15 * 13 + k, None)}
+        mapping_c = {0: slice(None)}
 
         mapping_a = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
                      for dev, idx in mapping_a.items()}
         mapping_b = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
                      for dev, idx in mapping_b.items()}
-        mappings = [mapping_a, mapping_b]
+        mapping_c = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+                     for dev, idx in mapping_c.items()}
+        mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode']
         modes = list(_array._MODES)
@@ -465,9 +486,9 @@ class TestDistributedArray:
 
     def test_random_binary_operations(self):
         n_iter = 5
-        n_ops = 10
+        n_ops = 4
 
-        length = 1000
+        length = 10000
         size = length * length
         shape = (length, length)
         k = length // 10
@@ -481,12 +502,15 @@ class TestDistributedArray:
             1: slice(length // 15 * 5 + k, length // 15 * 10 + k),
             2: slice(length // 15 * 10 + k, length // 15 * 13 + k),
             3: slice(length // 15 * 13 + k, None)}
+        mapping_c = {0: slice(None)}
 
         mapping_a = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
                      for dev, idx in mapping_a.items()}
         mapping_b = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
                      for dev, idx in mapping_b.items()}
-        mappings = [mapping_a, mapping_b]
+        mapping_c = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+                     for dev, idx in mapping_c.items()}
+        mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode', 'element-wise', 'reduce']
         modes = list(_array._MODES)
@@ -533,7 +557,6 @@ class TestDistributedArray:
                     if np_arr.ndim == 0:
                         continue
                     kernel = rng.choice(reduce)
-                    print(kernel)
                     axis = rng.choice(np_arr.ndim)
                     for i in range(len(arrs)):
                         np_arr, d_arr = arrs[i]
