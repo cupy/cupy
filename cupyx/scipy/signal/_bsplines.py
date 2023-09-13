@@ -558,12 +558,30 @@ _gauss_spline_kernel = cupy.ElementwiseKernel(
 
 
 def gauss_spline(x, n):
-    """Gaussian approximation to B-spline basis function of order n.
+    r"""Gaussian approximation to B-spline basis function of order n.
 
     Parameters
     ----------
+    x : array_like
+        a knot vector
     n : int
         The order of the spline. Must be nonnegative, i.e. n >= 0
+
+    Returns
+    -------
+    res : ndarray
+        B-spline basis function values approximated by a zero-mean Gaussian
+        function.
+
+    Notes
+    -----
+    The B-spline basis function can be approximated well by a zero-mean
+    Gaussian function with standard-deviation equal to :math:`\sigma=(n+1)/12`
+    for large `n` :
+
+    .. math::  \frac{1}{\sqrt {2\pi\sigma^2}}exp(-\frac{x^2}{2\sigma})
+
+    See [1]_, [2]_ for more information.
 
     References
     ----------
@@ -572,6 +590,7 @@ def gauss_spline(x, n):
        In: Sgallari F., Murli A., Paragios N. (eds) Scale Space and Variational
        Methods in Computer Vision. SSVM 2007. Lecture Notes in Computer
        Science, vol 4485. Springer, Berlin, Heidelberg
-    """
+    .. [2] http://folk.uio.no/inf3330/scripting/doc/python/SciPy/tutorial/old/node24.html
+    """  # NOQA
     x = cupy.asarray(x)
     return _gauss_spline_kernel(x, n)

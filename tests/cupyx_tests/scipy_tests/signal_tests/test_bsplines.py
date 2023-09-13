@@ -154,6 +154,7 @@ class TestSplineFilter:
         return scp.signal.spline_filter(data, 0)
 
 
+@testing.with_requires('scipy')
 class TestGaussSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_gauss_spline(self, xp, scp):
