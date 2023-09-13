@@ -4,10 +4,10 @@ import cupy
 from cupy import _core
 from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import _sputils
-from cupyx.scipy.sparse._coo import coo_matrix
-from cupyx.scipy.sparse._csc import csc_matrix
-from cupyx.scipy.sparse._csr import csr_matrix
-from cupyx.scipy.sparse._dia import dia_matrix
+from cupyx.scipy.sparse import _coo
+from cupyx.scipy.sparse import _csc
+from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _dia
 
 
 try:
@@ -39,22 +39,22 @@ class spmatrix(object):
 
     def __repr__(self):
         format_string = f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
-        if isinstance(self, coo_matrix):
+        if isinstance(self, _coo.coo_matrix):
             return (
                 format_string +
                 f"on {self.device} with {self.getnnz()} stored elements in COOrdinate format>"
             )
-        if isinstance(self, csr_matrix):
+        if isinstance(self, _csr.csr_matrix):
             return (
                 format_string +
                 f"on {self.device} with {self.getnnz()} stored elements in Compressed Sparse Row format>"
             )
-        if isinstance(self, csc_matrix):
+        if isinstance(self, _csc.csc_matrix):
             return (
                 format_string +
                 f"on {self.device} with {self.getnnz()} stored elements in Compressed Sparse Column format>"
             )
-        if isinstance(self, dia_matrix):
+        if isinstance(self, _dia.dia_matrix):
             return (
                 format_string +
                 f"on {self.device} with {self.nnz} stored elements in DIAgonal format>"
