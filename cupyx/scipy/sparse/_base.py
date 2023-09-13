@@ -34,24 +34,25 @@ class spmatrix(object):
         self.maxprint = maxprint
 
     def __repr__(self):
+        format_string = f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
         if isinstance(self, coo_matrix):
             return (
-                f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
+                format_string +
                 f"on {self.device} with {self.getnnz()} stored elements in COOrdinate format>"
             )
         if isinstance(self, csr_matrix):
             return (
-                f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
+                format_string +
                 f"on {self.device} with {self.getnnz()} stored elements in Compressed Sparse Row format>"
             )
         if isinstance(self, csc_matrix):
             return (
-                f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
+                format_string +
                 f"on {self.device} with {self.getnnz()} stored elements in Compressed Sparse Column format>"
             )
         if isinstance(self, dia_matrix):
             return (
-                f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
+                format_string +
                 f"on {self.device} with {self.nnz} stored elements in DIAgonal format>"
             )
             
