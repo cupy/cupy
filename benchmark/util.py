@@ -45,10 +45,13 @@ def repeat(f, n_dev=None):
 
 
 def bench(f, n_dev=4):
+    if 'PROFILING' in os.environ.keys():
+        return repeat(f, n_dev)
+
     for dev in devices:
         with cupy.cuda.Device(dev):
             cupy.cuda.get_current_stream().synchronize()
-    print(benchmark(f, n_warmup=100, n_repeat=100, devices=tuple(devices[:n_dev])))
+    print(benchmark(f, n_repeat=25, devices=tuple(devices[:n_dev])))
 
 
 def make_comms():

@@ -95,16 +95,17 @@ def with_reshard(n_dev=4):
     bench(lambda: cupy.add(a, b.reshard(index_map_a)), n_dev)
 
 
-# def peer_access(n_dev=2):
-#     data = cupy.arange(size).reshape(shape)
+non_distributed()
+for n_dev in range(1, 5):
+    without_reshard(n_dev)
+for n_dev in range(1, 5):
+    with_reshard(n_dev)
 
-#     index_map_a = index_map[n_dev]
-#     index_map_b = index_map_2[n_dev]
 
-#     a = distributed_array(data, index_map_a)
-#     b = distributed_array(data, index_map_b)
-
-#     bench(lambda: cupy.add(a, b), n_dev)
+print('default stream')
+for dev in devices:
+    with cupy.cuda.Device(dev):
+        streams[dev].__exit__()
 
 
 non_distributed()
@@ -113,35 +114,8 @@ for n_dev in range(1, 5):
 for n_dev in range(1, 5):
     with_reshard(n_dev)
 
-# bench = repeat
-# non_distributed()
-# without_reshard(1)
-# with_reshard(4)
 
-# bench = repeat
-# without_reshard(4)
-# with_reshard(4)
-
-
-# non_distributed
-# <lambda>    :  CPU:   28.664 us    GPU-0:   4674.621 us
-# distributed w/o resharding
-# <lambda>    :  CPU:   49.449 us    GPU-0:   4781.670 us
-# <lambda>    :  CPU:   65.232 us    GPU-0:   2400.031 us    GPU-1:   2362.061 us
-# <lambda>    :  CPU:   89.761 us    GPU-0:   1860.874 us    GPU-1:   1885.757 us    GPU-2:   1830.943 us
-# <lambda>    :  CPU:  107.593 us    GPU-0:   1619.753 us    GPU-1:   1643.807 us    GPU-2:   1597.235 us    GPU-3:   1641.900 us
-# distributed w/ resharding
-# <lambda>    :  CPU:  131.774 us    GPU-0:   8041.175 us
-# <lambda>    :  CPU:  405.713 us    GPU-0: 110798.029 us    GPU-1: 112345.754 us
-# <lambda>    :  CPU: 4874.506 us    GPU-0: 122789.171 us    GPU-1: 140067.769 us    GPU-2: 140767.151 us
-# <lambda>    :  CPU:    6696.417 us    GPU-0: 128559.319 us    GPU-1: 137364.449 us    GPU-2: 142683.874 us    GPU-3: 143071.862 us
-
-# via host memory
-# <lambda>    :  CPU: 720738.263 us    GPU-0: 722982.410 us    GPU-1: 766718.677 us
-# <lambda>    :  CPU: 906939.640 us    GPU-0: 908613.531 us    GPU-1: 908655.511 us    GPU-2: 923855.664 us
-# <lambda>    :  CPU: 1009633.326 us    GPU-0: 1011033.807 us    GPU-1: 1011078.857 us    GPU-2: 1011098.315 us    GPU-3: 1015491.211 us
-
-# distributed, peer access
-# <lambda>    :  CPU: 375.140 us   GPU-0: 76712.756 us   GPU-1: 76828.877 us
-
+for dev in devices:
+    with cupy.cuda.Device(dev):
+        streams[dev].__enter__()
 

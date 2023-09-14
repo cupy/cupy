@@ -1,6 +1,9 @@
 from .util import *
 
 
+print(__file__.split()[-1])
+
+
 length = 3000
 
 
