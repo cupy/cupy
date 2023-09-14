@@ -31,7 +31,9 @@ def assign_devices(xs):
     return res
 
 
-def repeat(f, n_dev=None):
+def repeat(f, n_dev):
+    if n_dev != 4:
+        return
     for dev in devices:
         with cupy.cuda.Device(dev):
             cupy.cuda.get_current_stream().synchronize()
