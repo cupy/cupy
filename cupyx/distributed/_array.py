@@ -935,7 +935,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                       [s.indices(l) for s, l in zip(slices, self.shape)])
             new_index_map[dev] = idxs
 
-        if index_map == self.index_map:
+        if new_index_map == self.index_map:
             return self
 
         old_chunks_map = self._chunks_map
