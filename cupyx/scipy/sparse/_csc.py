@@ -341,7 +341,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix: Transpose matrix.
+            cupyx.scipy.sparse.csr_matrix: Transpose matrix in CSR format.
 
         """
         if axes is not None:
