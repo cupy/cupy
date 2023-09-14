@@ -42,11 +42,11 @@ class spmatrix(object):
         }
         matrix_type = str(self.__class__.__name__)
         stored_elements = self.getnnz() if hasattr(self, "getnnz") \
-        else self.nnz
+            else self.nnz
         return (
             f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type"
             f"'{self.dtype}'\n"
-            f"on {self.device} with {stored_elements} stored"
+            f"on device {self.device} with {stored_elements} stored"
             f" elements in {format_strings[matrix_type]}>"
         )
 
