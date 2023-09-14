@@ -24,7 +24,6 @@ import cupy
 from cupyx.scipy.signal.windows._windows import get_window
 from cupyx.scipy.signal._spectral_impl import (
     _lombscargle, _spectral_helper, _median_bias)
-from cupyx.scipy.signal.windows._windows import get_window
 
 
 def lombscargle(x, y, freqs, precenter=False, normalize=False):
