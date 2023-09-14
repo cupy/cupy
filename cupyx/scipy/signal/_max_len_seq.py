@@ -31,18 +31,15 @@ extern "C" __global__ void max_len_seq(
 
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     for(long long i = 0; i < length; i++) {
+        signed char next_state = state[(idx + 1) % n_state];
         if(idx == n_state - 1) {
             seq[i] = state[0];
-            signed char value = state[0];
             for(int n_tap = 0; n_tap < n_taps; n_tap++) {
                 long long tap = taps[n_tap];
-                value ^= state[tap];
+                next_state ^= state[tap];
             }
-            state[idx] = value;
-        } else {
-            signed char next_state = state[idx + 1];
-            state[idx] = next_state;
         }
+        state[idx] = next_state;
     }
 }
 """
