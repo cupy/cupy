@@ -47,7 +47,7 @@ class spmatrix(object):
             f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type"
             f"'{self.dtype}'\n"
             f"on {self.device} with {stored_elements} stored"
-            f"elements in {format_strings[matrix_type]}>"
+            f" elements in {format_strings[matrix_type]}>"
         )
 
     @property
