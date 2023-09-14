@@ -46,8 +46,8 @@ __device__ long long atomicAdd(long long *address, long long val) {
 }
 #endif // __CUDA_ARCH__
 
-#if (defined(_MSC_VER) && (defined(CUDA_VERSION) && CUDA_VERSION == 11020))
-  #define __builtin_unreachable() { __assume(false); }
+#if (defined(_MSC_VER) && (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2))
+  #define __builtin_unreachable() __assume(false)
 #endif
 
 #else // CUPY_NO_CUDA
