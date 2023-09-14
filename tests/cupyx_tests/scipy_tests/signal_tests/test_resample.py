@@ -270,13 +270,15 @@ class TestDecimate:
         d1 = scp.signal.decimate(z, 2, axis=1, zero_phase=False)
         return d0, d1
 
-    # @testing.numpy_cupy_allclose(scipy_name='scp')
-    # def test_phaseshift_FIR(self, xp, scp):
-    #     return self._test_phaseshift(xp, scp, method='fir', zero_phase=False)
+    @pytest.mark.xfail(reason='Sometimes it fails depending on hardware')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_phaseshift_FIR(self, xp, scp):
+        return self._test_phaseshift(xp, scp, method='fir', zero_phase=False)
 
-    # @testing.numpy_cupy_allclose(scipy_name='scp')
-    # def test_zero_phase_FIR(self, xp, scp):
-    #     return self._test_phaseshift(xp, scp, method='fir', zero_phase=True)
+    @pytest.mark.xfail(reason='Sometimes it fails depending on hardware')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero_phase_FIR(self, xp, scp):
+        return self._test_phaseshift(xp, scp, method='fir', zero_phase=True)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_phaseshift_IIR(self, xp, scp):
