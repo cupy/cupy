@@ -34,28 +34,20 @@ class spmatrix(object):
         self.maxprint = maxprint
 
     def __repr__(self):
-        format_string = f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
-        if isinstance(self, coo_matrix):
-            return (
-                format_string +
-                f"on {self.device} with {self.getnnz()} stored elements in COOrdinate format>"
-            )
-        if isinstance(self, csr_matrix):
-            return (
-                format_string +
-                f"on {self.device} with {self.getnnz()} stored elements in Compressed Sparse Row format>"
-            )
-        if isinstance(self, csc_matrix):
-            return (
-                format_string +
-                f"on {self.device} with {self.getnnz()} stored elements in Compressed Sparse Column format>"
-            )
-        if isinstance(self, dia_matrix):
-            return (
-                format_string +
-                f"on {self.device} with {self.nnz} stored elements in DIAgonal format>"
-            )
-            
+        format_strings = {
+            "coo_matrix": "COOrdinate format",
+            "csr_matrix": "Compressed Sparse Row format",
+            "csc_matrix": "Compressed Sparse Column format",
+            "dia_matrix": "DIAgonal format",
+        }
+        matrix_type = str(self.__class__.__name__)
+        stored_elements = self.getnnz() if hasattr(self, "getnnz") else self.nnz
+        return (
+            f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type '{self.dtype}'\n"
+            f"on {self.device} with {stored_elements} stored"
+            f"elements in {format_strings[matrix_type]}>"
+        )
+
     @property
     def device(self):
         """CUDA device on which this array resides."""
