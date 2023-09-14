@@ -119,6 +119,8 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # be used. cupy/cuda_workaround.h is the real place importing type_traits
     # (from libcudacxx).
     cupy_headers[b"type_traits"] = b"#include <cupy/cuda_workaround.h>\n"
+    # Same for tuple
+    cupy_headers[b"tuple"] = b"#include <cupy/cuda_workaround.h>\n"
 
 
 cdef inline void init_cupy_headers() except*:

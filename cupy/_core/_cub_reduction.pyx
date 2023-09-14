@@ -45,22 +45,11 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-    elif sys.platform.startswith('win32'):
-        # See #4771. NVRTC on Windows seems to have problems in handling empty
-        # macros, so any usage like this:
-        #     #ifndef CUB_NS_PREFIX
-        #     #define CUB_NS_PREFIX
-        #     #endif
-        # will drive NVRTC nuts (error: this declaration has no storage class
-        # or type specifier). However, we cannot find a minimum reproducer to
-        # confirm this is the root cause, so we work around by using nvcc.
-        backend = 'nvcc'
+        jitify = False
     else:
         # use jitify + nvrtc
-        # TODO(leofang): how about simply specifying jitify=True when calling
-        # compile_with_cache()?
-        options += ('-DCUPY_USE_JITIFY',)
         backend = 'nvrtc'
+        jitify = True
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -230,11 +219,13 @@ __global__ void ${name}(${params}) {
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
-    # values for arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef
+    # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
         module_code, options, arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend=backend)
+        prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None, jitify=jitify)
     return module.get_function(name)
 
 
@@ -269,7 +260,6 @@ cdef str _get_cub_header_include():
     assert _cub_path is not None
     if _cub_path == '<bundle>':
         _cub_header = '''
-#include <cupy/cuda_workaround.h>
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''
