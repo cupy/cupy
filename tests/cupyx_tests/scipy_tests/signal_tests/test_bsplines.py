@@ -152,3 +152,15 @@ class TestSplineFilter:
             (12, 12), xp, xp.float64, scale=1, seed=12457)
         data = 10 * (1 - 2 * data)
         return scp.signal.spline_filter(data, 0)
+
+
+@testing.with_requires('scipy')
+class TestGaussSpline:
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_gauss_spline(self, xp, scp):
+        return scp.signal.gauss_spline(0.0, 0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_gauss_spline_list(self, xp, scp):
+        knots = [-1.0, 0.0, -1.0]
+        return scp.signal.gauss_spline(knots, 3)
