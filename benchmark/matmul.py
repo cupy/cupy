@@ -87,7 +87,7 @@ def distributed_reshard(n_dev=4):
     d_a = d_a.reshard(index_map_a)
     d_a.wait_all_transfer()
 
-    repeat(lambda: d_a @ d_b.reshard(index_map_b), n_dev)
+    bench(lambda: d_a @ d_b.reshard(index_map_b), n_dev)
 
 
 # def high_dim(n_dev=4):
