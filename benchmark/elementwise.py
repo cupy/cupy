@@ -4,10 +4,10 @@ from .util import *
 print(__file__.split()[-1])
 
 
-length = 30000
+length = 20000
 size = length * length
 shape = (length, length)
-offset = 300
+offset = 200
 
 
 index_map = assign_devices([

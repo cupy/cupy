@@ -4,10 +4,10 @@ from .util import *
 print(__file__.split()[-1])
 
 
-length = 70000
+length = 50000
 size = length * length // 2
 shape = (length, length // 2)
-overlap = 700
+overlap = 500
 
 
 index_map_overlaps = assign_devices([
