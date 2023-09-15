@@ -67,7 +67,7 @@ def non_distributed():
 def without_reshard(n_dev=4):
     print(f'distributed, no resharding ({n_dev=})')
 
-    data = cupy.arange(size).reshape(shape)
+    data = numpy.arange(size).reshape(shape)
 
     mapping = index_map[n_dev]
 
@@ -80,7 +80,7 @@ def without_reshard(n_dev=4):
 def with_reshard(n_dev=4):
     print(f'distributed, resharding ({n_dev=})')
 
-    data = cupy.arange(size).reshape(shape)
+    data = numpy.arange(size).reshape(shape)
 
     index_map_a = index_map[n_dev]
     index_map_b = index_map_2[n_dev]

@@ -38,9 +38,9 @@ def no_mode_change(n_dev=4):
 
     print(f'no mode change ({n_dev=})')
 
-    cp_a = cupy.arange(size).reshape(shape)
+    np_a = numpy.arange(size).reshape(shape)
     d_a = distributed_array(
-        cp_a, index_map_overlaps[n_dev], 'sum', comms)
+        np_a, index_map_overlaps[n_dev], 'sum', comms)
 
     bench(lambda: d_a.sum(0), n_dev)
 
@@ -50,9 +50,9 @@ def mode_change(n_dev=4):
         return non_distributed()
 
     print(f'mode change ({n_dev=})')
-    cp_a = cupy.arange(size).reshape(shape)
+    np_a = numpy.arange(size).reshape(shape)
     d_a = distributed_array(
-        cp_a, index_map_overlaps[n_dev], 'replica', comms)
+        np_a, index_map_overlaps[n_dev], 'replica', comms)
 
     bench(lambda: d_a.sum(0), n_dev)
 

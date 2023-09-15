@@ -73,3 +73,6 @@ for dev in devices:
     with cupy.cuda.Device(dev):
         streams[dev] = cupy.cuda.Stream()
         streams[dev].__enter__()
+
+
+cupy.cuda.Device(devices[0]).use()
