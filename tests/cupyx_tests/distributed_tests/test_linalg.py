@@ -76,6 +76,21 @@ class MatMulConfig:
         return self.a.instantiate(mode) + self.b.instantiate(mode)
 
 
+def combine_configs(
+    config_1: ArrayConfig, config_2: ArrayConfig,
+) -> ArrayConfig:
+    assert config_1.shape == config_2.shape
+    shape = (3,) + config_1.shape
+
+    index_map = {}
+    for dev, idxs in config_1.index_map.items():
+        index_map[dev] = [(slice(2),) + idx for idx in idxs]
+    for dev, idxs in config_2.index_map.items():
+        index_map[dev] += [(slice(2, 3),) + idx for idx in idxs]
+
+    return ArrayConfig(shape, index_map)
+
+
 config_1x2_2x2 = MatMulConfig(
     make_2d_config([0, 10], [0, 14, 20],
                    [[{0, 1}, {2, 3}]]),
@@ -148,23 +163,8 @@ class TestDistributedMatMul:
             d_c = d_a @ d_b
 
     def test_high_dim(self):
-        def combine(
-            config_1: ArrayConfig,
-            config_2: ArrayConfig,
-        ) -> ArrayConfig:
-            assert config_1.shape == config_2.shape
-            shape = (3,) + config_1.shape
-
-            index_map = {}
-            for dev, idxs in config_1.index_map.items():
-                index_map[dev] = [(slice(2),) + idx for idx in idxs]
-            for dev, idxs in config_2.index_map.items():
-                index_map[dev] += [(slice(2, 3),) + idx for idx in idxs]
-
-            return ArrayConfig(shape, index_map)
-
-        config_a = combine(config_1x2_2x2.a, config_2x2_2x2.a)
-        config_b = combine(config_1x2_2x2.b, config_2x2_2x2.b)
+        config_a = combine_configs(config_1x2_2x2.a, config_2x2_2x2.a)
+        config_b = combine_configs(config_1x2_2x2.b, config_2x2_2x2.b)
         config = MatMulConfig(config_a, config_b)
 
         np_a, d_a, np_b, d_b = config.instantiate()
@@ -180,4 +180,30 @@ class TestDistributedMatMul:
         np_b, d_b = config_b.instantiate()
         np_c = np_a @ np_b
         d_c = d_a @ d_b
+        testing.assert_array_equal(d_c.asnumpy(), np_c, strict=True)
+
+    @pytest.mark.parametrize('config', [config_1x2_2x2])
+    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    def test_matmul_various_ops(self, config, mode):
+        config = MatMulConfig(
+            config.a,
+            combine_configs(config.b, config.b))
+        np_a, d_a, np_b, d_b = config.instantiate(mode)
+
+        index_map_a = d_a.index_map
+        index_map_a[0] = index_map_a[0] * 2
+
+        np_a2 = np_a + 1
+        d_a2 = d_a.reshard(index_map_a) + _array.distributed_array(
+            cupy.ones_like(d_a), index_map_a, comms=d_a._comms)
+
+        np_b2 = np_b.sum(axis=0)
+        d_b2 = d_b.sum(axis=0)
+
+        index_map_b = d_b2.index_map
+        index_map_b[0], index_map_b[1] = index_map_b[1], index_map_b[0]
+        d_b3 = d_b2.reshard(index_map_b)
+
+        np_c = np_a2 @ np_b2
+        d_c = d_a2 @ d_b3
         testing.assert_array_equal(d_c.asnumpy(), np_c, strict=True)

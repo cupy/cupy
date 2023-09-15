@@ -205,6 +205,8 @@ def matmul(a, b, out=None, **kwargs) -> '_array._DistributedArray':
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
             with cupy.cuda.Device(dev):
                 stream = cupy.cuda.get_current_stream()
+                a._apply_updates(chunk_a, _array._REPLICA_MODE)
+                b._apply_updates(chunk_b, _array._REPLICA_MODE)
                 stream.wait_event(chunk_a.ready)
                 stream.wait_event(chunk_b.ready)
                 chunk_ab_data = cupy.matmul(
