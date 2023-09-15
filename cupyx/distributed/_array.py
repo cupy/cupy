@@ -1,6 +1,6 @@
 import dataclasses
 import typing
-from typing import Any, Callable, Final, Generic, Iterable, Optional, TypeVar
+from typing import Any, Callable, Final, Generic, Iterable, Optional, TypeVar, Union
 from typing_extensions import TypeGuard
 
 from cupy.cuda import nccl
@@ -478,10 +478,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             e.synchronize()
 
     def _prepare_args(
-        self, dist_args: list[tuple[int | str, '_DistributedArray']],
-        regular_args: list[tuple[int | str, cupy.ndarray]],
+        self, dist_args: list[tuple[Union[int, str], '_DistributedArray']],
+        regular_args: list[tuple[Union[int, str], cupy.ndarray]],
         dev: int, chunk_i: int,
-    ) -> list[tuple[int | str, _ManagedData]]:
+    ) -> list[tuple[Union[int, str], _ManagedData]]:
         # Dist arrays must have chunk_map of compatible shapes, otherwise
         # hard error.
         # In case that they are of different, but broadcastable shapes
@@ -509,9 +509,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         return args
 
     def _prepare_updates(
-        self, dist_args: list[tuple[int | str, '_DistributedArray']],
+        self, dist_args: list[tuple[Union[int, str], '_DistributedArray']],
         dev: int, chunk_i: int,
-    ) -> tuple[Optional[int | str], list[_PartialUpdate]]:
+    ) -> tuple[Optional[Union[int, str]], list[_PartialUpdate]]:
         index = None
         updates: list[_PartialUpdate] = []
         at_most_one_update = True
@@ -539,9 +539,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     def _execute_kernel(
         self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any],
     ) -> '_DistributedArray':
-        distributed_arrays: list[tuple[int | str, '_DistributedArray']] = []
-        regular_arrays: list[tuple[int | str, cupy.ndarray]] = []
-        i: int | str
+        distributed_arrays: list[tuple[Union[int, str], '_DistributedArray']] = []
+        regular_arrays: list[tuple[Union[int, str], cupy.ndarray]] = []
+        i: Union[int, str]
         index_map = self.index_map
         for i, arg in enumerate(args):
             if arg.shape != self.shape:
@@ -605,7 +605,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     if len(update_map) == 0:
                         continue
 
-                    incoming_index = typing.cast(int | str, incoming_index)
+                    incoming_index = typing.cast(Union[int, str], incoming_index)
 
                     args_slice = [None] * len(args)
                     kwargs_slice: dict[str, cupy.ndarray] = {}
@@ -1079,7 +1079,7 @@ def distributed_array(
     array: ArrayLike,
     index_map: dict[int, Any],
     mode: str = 'replica',
-    devices: Optional[int | Iterable[int]] = None,
+    devices: Optional[Union[int, Iterable[int]]] = None,
     comms: Optional[dict[int, nccl.NcclCommunicator]] = None, # type: ignore
 ) -> _DistributedArray:
     if devices is not None and comms is not None:
@@ -1107,7 +1107,7 @@ def distributed_array(
         if array.index_map != index_map:
             array = array.reshard(index_map)
         return _DistributedArray(
-            array.shape, array.dtype, array._chunks_map, array.mode, comms)
+            array.shape, array.dtype, array._chunks_map, array._mode, comms)
 
     if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
