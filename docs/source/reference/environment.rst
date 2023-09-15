@@ -40,7 +40,7 @@ Here are the environment variables that CuPy uses at runtime.
 
   Default: ``0``
 
-  If set to ``1``, headers loaded by Jitify would not be cached (to :envvar:`CUPY_CACHE_DIR`). The default is to
+  If set to ``1``, headers loaded by Jitify would not be cached on disk (to :envvar:`CUPY_CACHE_DIR`). The default is to
   always cache.
 
 .. envvar:: CUPY_DUMP_CUDA_SOURCE_ON_ERROR
