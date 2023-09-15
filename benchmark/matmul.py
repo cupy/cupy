@@ -25,7 +25,7 @@ configs = assign_devices([
         make_2d_config([0, length], [0, length // 2, length],
                        [[{0}, {1}]])),
     MatMulConfig(
-        make_2d_config([0, length // 2, length], [0, length],
+        make_2d_config([0, length * 2 // 3, length], [0, length],
                        [[{0, 1}],
                         [{2}]]),
         make_2d_config([0, length], [0, length // 2, length],
@@ -63,6 +63,33 @@ def distributed(n_dev=4):
     bench(lambda: d_a @ d_b, n_dev)
 
 
+def distributed_reshard(n_dev=4):
+    if n_dev == 0:
+        return non_distributed()
+
+    print(f'distributed, reshard ({n_dev=})')
+
+    _, d_a, _, d_b = configs[n_dev].instantiate()
+
+    def remap_devices(index_map):
+        new_index_map = {}
+
+        for dev in index_map.keys():
+            if dev == 0:
+                new_index_map[dev] = index_map[n_dev - 1]
+            else:
+                new_index_map[dev] = index_map[dev - 1]
+
+        return new_index_map
+
+    index_map_a = remap_devices(d_a.index_map)
+    index_map_b = remap_devices(d_b.index_map)
+    d_a = d_a.reshard(index_map_a)
+    d_a.wait_all_transfer()
+
+    repeat(lambda: d_a @ d_b.reshard(index_map_b), n_dev)
+
+
 # def high_dim(n_dev=4):
 #     print(f'high dim ({n_dev=})')
 
@@ -96,6 +123,8 @@ def distributed(n_dev=4):
 non_distributed()
 for n_dev in range(1, 5):
     distributed(n_dev)
+for n_dev in range(1, 5):
+    distributed_reshard(n_dev)
 # for n_dev in range(1, 5):
 #     high_dim(n_dev)
 
