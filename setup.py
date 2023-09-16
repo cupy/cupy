@@ -56,6 +56,8 @@ tests_require = extras_require['test']
 # Notes:
 # - Files only needed in sdist should be added to `MANIFEST.in`.
 # - The following glob (`**`) ignores items starting with `.`.
+# - libcudacxx's test files exceed the default path length limit on Windows, so
+#   we have to exclude them so as to avoid asking users to touch the registry.
 cupy_package_data = [
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
@@ -69,10 +71,16 @@ cupy_package_data = [
     'cupyx/scipy/ndimage/cuda/LICENSE',
     'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
     'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
-] + [
-    x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
-    if os.path.isfile(x)
 ]
+cupy_package_include = list(set(
+    [x for x in glob.iglob('cupy/_core/include/cupy/**', recursive=True)
+     if os.path.isfile(x)
+     ]) - set(
+    [x for x in glob.iglob(
+     'cupy/_core/include/cupy/cccl/libcudacxx/**/test/**', recursive=True)
+     if os.path.isfile(x)
+     ]))
+cupy_package_data += cupy_package_include
 
 package_data = {
     'cupy': [
