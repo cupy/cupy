@@ -34,6 +34,16 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
     const char* jitify_ver  # set at build time
 
 
+# We need an internal way to invalidate the cache (say, cuda_workaround.h is
+# updated) without having to set the env var CUPY_DISABLE_JITIFY_CACHE in the
+# CI. This should never be touched by end users.
+cdef extern from *:
+    """
+    const int build_num = 0;
+    """
+    const int build_num
+
+
 ###############################################################################
 # API
 ###############################################################################
@@ -82,7 +92,7 @@ cdef inline void _init_cupy_headers_from_cache() except*:
     _jitify_cache_dir = os.getenv(
         'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
     global _jitify_cache_versions
-    versions = f"{get_build_version()}_{cub.get_build_version()}"
+    versions = f"{get_build_version()}_{cub.get_build_version()}_{build_num}"
     _jitify_cache_versions = versions
 
     with open(f'{_jitify_cache_dir}/jitify.pickle', 'rb') as f:
