@@ -28,6 +28,7 @@ B-Splines
 .. autosummary::
    :toctree: generated/
 
+   gauss_spline
    cspline1d
    qspline1d
    cspline2d

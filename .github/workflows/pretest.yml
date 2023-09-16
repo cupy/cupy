@@ -96,6 +96,7 @@ jobs:
         python -c 'import cupy, cupyx'
 
         # Test lazy-imported CUDA Toolkit library.
+        rm cupy/cuda/cufft.*.so
         rm cupy_backends/cuda/libs/cusolver.*.so
         rm cupy_backends/cuda/libs/cusparse.*.so
         python -c 'import cupy, cupyx'
