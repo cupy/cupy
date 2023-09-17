@@ -14,7 +14,6 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
-import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
 from cupy.cuda import driver

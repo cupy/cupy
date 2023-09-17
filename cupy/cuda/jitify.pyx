@@ -34,6 +34,16 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
     const char* jitify_ver  # set at build time
 
 
+# We need an internal way to invalidate the cache (say, cuda_workaround.h is
+# updated) without having to set the env var CUPY_DISABLE_JITIFY_CACHE in the
+# CI. This should never be touched by end users.
+cdef extern from *:
+    """
+    const int build_num = 0;
+    """
+    const int build_num
+
+
 ###############################################################################
 # API
 ###############################################################################
@@ -58,11 +68,6 @@ cpdef _add_sources(dict sources):
 
 @atexit.register
 def dump_cache():
-    # Set up temp directory; it must be under the cache directory so
-    # that atomic moves within the same filesystem can be guaranteed
-    tempdir_obj = tempfile.TemporaryDirectory(dir=_jitify_cache_dir)
-    tempdir = tempdir_obj.name
-
     # Set up a version guard for invalidating the cache. Right now,
     # we use the build-time versions of CUB/Jitify.
     # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
@@ -70,15 +75,18 @@ def dump_cache():
     assert _jitify_cache_versions is not None
     data = (_jitify_cache_versions, dict(cupy_headers))
 
-    with open(f'{tempdir}/jitify.pickle', 'wb') as f:
+    # Ensure the directory exists
+    os.makedirs(_jitify_cache_dir, exist_ok=True)
+
+    # Set up a temporary file; it must be under the cache directory so
+    # that atomic moves within the same filesystem can be guaranteed
+    with tempfile.NamedTemporaryFile(
+            dir=_jitify_cache_dir, delete=False) as f:
         pickle.dump(data, f)
+        f_name = f.name
 
     # atomic move with the destination guaranteed to be overwritten
-    # (using os.replace() is also ok here)
-    os.rename(f'{tempdir}/jitify.pickle',
-              f'{_jitify_cache_dir}/jitify.pickle')
-
-    tempdir_obj.cleanup()
+    os.replace(f_name, f'{_jitify_cache_dir}/jitify.pickle')
 
 
 cdef inline void _init_cupy_headers_from_cache() except*:
@@ -86,7 +94,7 @@ cdef inline void _init_cupy_headers_from_cache() except*:
     _jitify_cache_dir = os.getenv(
         'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
     global _jitify_cache_versions
-    versions = f"{get_build_version()}_{cub.get_build_version()}"
+    versions = f"{get_build_version()}_{cub.get_build_version()}_{build_num}"
     _jitify_cache_versions = versions
 
     with open(f'{_jitify_cache_dir}/jitify.pickle', 'rb') as f:
