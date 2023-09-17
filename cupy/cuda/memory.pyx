@@ -14,6 +14,8 @@ from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
 from libc.stdint cimport UINT64_MAX
+from libc.stdlib cimport malloc as c_malloc
+from libc.stdlib cimport free as c_free
 from libcpp cimport algorithm
 
 from cupy.cuda cimport device
@@ -241,6 +243,30 @@ cdef class ManagedMemory(BaseMemory):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
             runtime.free(self.ptr)
+
+
+@cython.no_gc
+cdef class SystemMemory(BaseMemory):
+    """Memory allocation on an HMM-enabled system (such as Grace Hopper).
+
+    This class provides an RAII interface of the memory allocation.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+    """
+
+    def __init__(self, size_t size):
+        self.size = size
+        # TODO(leofang): check if this is valid
+        self.device_id = device.get_device_id()
+        self.ptr = 0
+        if size > 0:
+            self.ptr = <intptr_t>c_malloc(size)
+
+    def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
+        if self.ptr:
+            c_free(<void*>self.ptr)
 
 
 @cython.final
@@ -689,6 +715,26 @@ cpdef MemoryPointer malloc_managed(size_t size):
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
     """
     mem = ManagedMemory(size)
+    return MemoryPointer(mem, 0)
+
+
+cpdef MemoryPointer malloc_system(size_t size):
+    """Allocate memory on an HMM-enabled system.
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use system memory as the default allocator is the following code::
+
+        set_allocator(malloc_system)
+
+    Read more at: https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management  # NOQA
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+    """
+    mem = SystemMemory(size)
     return MemoryPointer(mem, 0)
 
 
