@@ -24,7 +24,10 @@ from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 
 cimport cython  # NOQA
+cimport cpython
 from libc.stdint cimport int64_t, intptr_t
+from libc cimport stdlib
+from cpython cimport Py_buffer
 
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
@@ -335,6 +338,67 @@ cdef class _ndarray_base:
         else:
             device_type = dlpack.device_ROCM
         return (device_type, self.device.id)
+
+    def __getbuffer__(self, Py_buffer* buf, int flags):
+        if int(os.environ.get('CUPY_ENABLE_HMM', '0')) == 0:
+            raise RuntimeError(
+                'Accessing a CuPy ndarry on CPU is not allowed except for HMM-'
+                'enabled systems (need to set CUPY_ENABLE_HMM=1)')
+
+        buf.buf = <void*><intptr_t>self.data.ptr
+        buf.itemsize = self.dtype.itemsize
+        buf.len = self.size
+        buf.internal = NULL
+        buf.readonly = 0
+        # TODO(leofang): move this to cupy/_core/_dtype.pyx
+        if self.dtype.char == "?":
+            buf.format = '?'
+        elif self.dtype.char == "b":
+            buf.format = 'b'
+        elif self.dtype.char == "h":
+            buf.format = 'h'
+        elif self.dtype.char == "i":
+            buf.format = 'i'
+        elif self.dtype.char == "l":
+            buf.format = 'l'
+        elif self.dtype.char == "B":
+            buf.format = 'B'
+        elif self.dtype.char == "H":
+            buf.format = 'H'
+        elif self.dtype.char == "I":
+            buf.format = 'I'
+        elif self.dtype.char == "L":
+            buf.format = 'L'
+        elif self.dtype.char == "e":
+            buf.format = 'e'
+        elif self.dtype.char == "f":
+            buf.format = 'f'
+        elif self.dtype.char == "d":
+            buf.format = 'd'
+        elif self.dtype.char == "F":
+            buf.format = 'Zf'
+        elif self.dtype.char == "D":
+            buf.format = 'Zd'
+        else:
+            raise RuntimeError
+        cdef int ndim = self.ndim
+        cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
+            sizeof(Py_ssize_t) * self.ndim * 2)
+        shape = self.shape
+        strides = self.strides
+        for n in range(ndim):
+            shape_strides[n] = shape[n]
+            shape_strides[n + ndim] = strides[n]  # in bytes
+        buf.ndim = ndim
+        buf.shape = shape_strides
+        buf.strides = shape_strides + ndim
+        buf.suboffsets = NULL
+        buf.obj = self
+        cpython.Py_INCREF(self)
+
+    def __releasebuffer__(self, Py_buffer* buf):
+        stdlib.free(buf.shape)  # frees both shape & strides
+        cpython.Py_DECREF(self)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
