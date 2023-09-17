@@ -75,6 +75,9 @@ def dump_cache():
     assert _jitify_cache_versions is not None
     data = (_jitify_cache_versions, dict(cupy_headers))
 
+    # Ensure the directory exists
+    os.makedirs(_jitify_cache_dir, exist_ok=True)
+
     # Set up a temporary file; it must be under the cache directory so
     # that atomic moves within the same filesystem can be guaranteed
     with tempfile.NamedTemporaryFile(
@@ -83,8 +86,7 @@ def dump_cache():
         f_name = f.name
 
     # atomic move with the destination guaranteed to be overwritten
-    # (using os.replace() is also ok here)
-    os.rename(f_name, f'{_jitify_cache_dir}/jitify.pickle')
+    os.replace(f_name, f'{_jitify_cache_dir}/jitify.pickle')
 
 
 cdef inline void _init_cupy_headers_from_cache() except*:
