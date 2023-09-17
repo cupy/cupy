@@ -14,7 +14,6 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
-import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
 from cupy.cuda import driver
@@ -45,16 +44,6 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-    elif sys.platform.startswith('win32'):
-        # See #4771. NVRTC on Windows seems to have problems in handling empty
-        # macros, so any usage like this:
-        #     #ifndef CUB_NS_PREFIX
-        #     #define CUB_NS_PREFIX
-        #     #endif
-        # will drive NVRTC nuts (error: this declaration has no storage class
-        # or type specifier). However, we cannot find a minimum reproducer to
-        # confirm this is the root cause, so we work around by using nvcc.
-        backend = 'nvcc'
     else:
         # use jitify + nvrtc
         # TODO(leofang): how about simply specifying jitify=True when calling
