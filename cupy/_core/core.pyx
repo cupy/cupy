@@ -361,9 +361,10 @@ cdef class _ndarray_base:
                 'using system memory (on HMM-enabled systems, need to set '
                 'CUPY_ENABLE_HMM=1) or managed memory')
 
-        self.data.mem.prefetch(
-            stream_module.get_current_stream(),
-            device_id=runtime.cudaCpuDeviceId)
+        # TODO(leofang): it seems prefetch is slow...?
+        #self.data.mem.prefetch(
+        #    stream_module.get_current_stream(),
+        #    device_id=runtime.cudaCpuDeviceId)
 
         populate_format(buf, self.dtype.char)
         buf.buf = <void*><intptr_t>self.data.ptr
@@ -371,14 +372,13 @@ cdef class _ndarray_base:
         buf.len = self.size
         buf.internal = NULL
         buf.readonly = 0  # TODO(leofang): use flags
-        cdef int ndim = self.ndim
+        cdef int n, ndim
+        ndim = self._shape.size()
         cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
-            sizeof(Py_ssize_t) * self.ndim * 2)
-        shape = self.shape
-        strides = self.strides
+            sizeof(Py_ssize_t) * ndim * 2)
         for n in range(ndim):
-            shape_strides[n] = shape[n]
-            shape_strides[n + ndim] = strides[n]  # in bytes
+            shape_strides[n] = self._shape[n]
+            shape_strides[n + ndim] = self._strides[n]  # in bytes
         buf.ndim = ndim
         buf.shape = shape_strides
         buf.strides = shape_strides + ndim
