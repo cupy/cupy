@@ -867,6 +867,8 @@ cdef class PooledMemory(BaseMemory):
 
     cdef:
         readonly object pool
+        readonly str identity
+        dict __dict__
 
     def __init__(self, _Chunk chunk, pool):
         self._init(chunk, pool)
@@ -876,6 +878,29 @@ cdef class PooledMemory(BaseMemory):
         self.size = chunk.size
         self.device_id = chunk.mem.device_id
         self.pool = pool
+
+        # we need a way to know what the underlying memory is
+        # TODO(leofang): would it be better to do this in MemoryPointer?
+        if isinstance(chunk.mem, Memory):
+            self.identity = "Memory"
+        elif isinstance(chunk.mem, MemoryAsync):
+            self.identity = "MemoryAsync"
+        elif isinstance(chunk.mem, UnownedMemory):
+            self.identity = "UnownedMemory"
+        elif isinstance(chunk.mem, SystemMemory):
+            self.identity = "SystemMemory"
+            self.prefetch = <SystemMemory>(chunk.mem).prefetch
+            self.advise = <SystemMemory>(chunk.mem).advise
+        elif isinstance(chunk.mem, ManagedMemory):
+            self.identity = "ManagedMemory"
+            self.prefetch = <ManagedMemory>(chunk.mem).prefetch
+            self.advise = <ManagedMemory>(chunk.mem).advise
+        elif isinstance(chunk.mem, CFunctionAllocatorMemory):
+            self.identity = "CFunctionAllocatorMemory"
+        elif isinstance(chunk.mem, PythonFunctionAllocatorMemory):
+            self.identity = "PythonFunctionAllocatorMemory"
+        else:
+            self.identity = "<unknown>"
 
     cpdef free(self):
         """Frees the memory buffer and returns it to the memory pool.

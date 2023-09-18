@@ -90,14 +90,15 @@ cdef tuple _HANDLED_TYPES
 
 cdef object _null_context = contextlib.nullcontext()
 
-cdef bint _is_hmm_enabled = (int(os.environ.get('CUPY_ENABLE_HMM', '0')) == 0)
+cdef bint _is_hmm_enabled = (int(os.environ.get('CUPY_ENABLE_HMM', '0')) != 0)
 
-cdef inline bint is_hmm_supported() except*:
+cdef inline bint is_hmm_supported(_ndarray_base self) except*:
     # TODO(leofang): also check cudaDevAttrPageableMemoryAccess to be sure
-    if _is_hmm_enabled:
-        return False
-    else:
+    if (_is_hmm_enabled
+            and self.data.mem.identity in ('SystemMemory', 'ManagedMemory')):
         return True
+    else:
+        return False
 
 
 class ndarray(_ndarray_base):
@@ -351,12 +352,12 @@ cdef class _ndarray_base:
 
     def __getbuffer__(self, Py_buffer* buf, int flags):
         # TODO(leofang): use flags
-        # TODO(leofang): check memory type (only support SystemMemory)
         # TODO(leofang): prefetch
-        if not is_hmm_supported():
+        if not is_hmm_supported(self):
             raise RuntimeError(
-                'Accessing a CuPy ndarry on CPU is not allowed except for HMM-'
-                'enabled systems (need to set CUPY_ENABLE_HMM=1)')
+                'Accessing a CuPy ndarry on CPU is not allowed except when '
+                'using system memory (on HMM-enabled systems, need to set '
+                'CUPY_ENABLE_HMM=1) or managed memory')
 
         populate_format(buf, self.dtype.char)
         buf.buf = <void*><intptr_t>self.data.ptr
@@ -1863,9 +1864,8 @@ cdef class _ndarray_base:
             else:
                 a_gpu = self
             a_cpu = out
-        elif is_hmm_supported():
+        elif is_hmm_supported(self):
             # return self to use the same memory and avoid copy
-            # TODO(leofang): check memory type (only support SystemMemory)
             # TODO(leofang): prefetch
             return numpy.asarray(self, order=order)
         else:
