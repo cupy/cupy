@@ -93,9 +93,12 @@ cdef object _null_context = contextlib.nullcontext()
 cdef bint _is_hmm_enabled = (int(os.environ.get('CUPY_ENABLE_HMM', '0')) != 0)
 
 cdef inline bint is_hmm_supported(_ndarray_base self) except*:
-    # TODO(leofang): also check cudaDevAttrPageableMemoryAccess to be sure
     if (_is_hmm_enabled
-            and self.data.mem.identity in ('SystemMemory', 'ManagedMemory')):
+            and self.data.mem.identity in ('SystemMemory', 'ManagedMemory')
+            # 1 for both HMM/ATS addressing modes
+            # this assumes device_id is a GPU device ordinal
+            and runtime.deviceGetAttribute(
+                runtime.cudaDevAttrPageableMemoryAccess, self.data.device_id)):
         return True
     else:
         return False
@@ -352,12 +355,15 @@ cdef class _ndarray_base:
 
     def __getbuffer__(self, Py_buffer* buf, int flags):
         # TODO(leofang): use flags
-        # TODO(leofang): prefetch
         if not is_hmm_supported(self):
             raise RuntimeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
                 'using system memory (on HMM-enabled systems, need to set '
                 'CUPY_ENABLE_HMM=1) or managed memory')
+
+        self.data.mem.prefetch(
+            stream_module.get_current_stream(),
+            device_id=runtime.cudaCpuDeviceId)
 
         populate_format(buf, self.dtype.char)
         buf.buf = <void*><intptr_t>self.data.ptr
@@ -1866,7 +1872,6 @@ cdef class _ndarray_base:
             a_cpu = out
         elif is_hmm_supported(self):
             # return self to use the same memory and avoid copy
-            # TODO(leofang): prefetch
             return numpy.asarray(self, order=order)
         else:
             if self.size == 0:

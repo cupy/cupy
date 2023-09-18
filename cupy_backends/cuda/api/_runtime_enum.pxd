@@ -12,6 +12,7 @@ cpdef enum:
     cudaMemAttachSingle = 4
 
     cudaCpuDeviceId = -1
+    cudaInvalidDeviceId = -2
 
     cudaMemAdviseSetReadMostly = 1
     cudaMemAdviseUnsetReadMostly = 2

@@ -220,14 +220,16 @@ cdef class ManagedMemory(BaseMemory):
         if size > 0:
             self.ptr = runtime.mallocManaged(size)
 
-    def prefetch(self, stream):
+    def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
         """(experimental) Prefetch memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream.
+            device_id (int): CUDA device ID (-1 for CPU).
         """
-        runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
-                                 stream.ptr)
+        if device_id == runtime.cudaInvalidDeviceId:
+            device_id = self.device_id
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
         """(experimental) Advise about the usage of this memory.
@@ -268,14 +270,16 @@ cdef class SystemMemory(BaseMemory):
         if size > 0:
             self.ptr = <intptr_t>c_malloc(size)
 
-    def prefetch(self, stream):
+    def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
         """Prefetch memory.
 
         Args:
             stream (cupy.cuda.Stream): CUDA stream.
+            device_id (int): CUDA device ID (-1 for CPU).
         """
-        runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
-                                 stream.ptr)
+        if device_id == runtime.cudaInvalidDeviceId:
+            device_id = self.device_id
+        runtime.memPrefetchAsync(self.ptr, self.size, device_id, stream.ptr)
 
     def advise(self, int advise, device.Device dev):
         """Advise about the usage of this memory.
