@@ -249,6 +249,10 @@ cdef class ManagedMemory(BaseMemory):
 cdef class SystemMemory(BaseMemory):
     """Memory allocation on an HMM-enabled system (such as Grace Hopper).
 
+    HMM stands for heterogeneous memory management. It is a kernel-level
+    feature allowing memory allocated via the system ``malloc`` to be
+    accessible by both CPU and GPU.
+
     This class provides an RAII interface of the memory allocation.
 
     Args:
@@ -257,11 +261,32 @@ cdef class SystemMemory(BaseMemory):
 
     def __init__(self, size_t size):
         self.size = size
-        # TODO(leofang): check if this is valid
+        # TODO(leofang): using the GPU id may not be ideal, but setting it
+        # to cudaCpuDeviceId (-1) would require a lot of changes
         self.device_id = device.get_device_id()
         self.ptr = 0
         if size > 0:
             self.ptr = <intptr_t>c_malloc(size)
+
+    def prefetch(self, stream):
+        """Prefetch memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream.
+        """
+        runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
+                                 stream.ptr)
+
+    def advise(self, int advise, device.Device dev):
+        """Advise about the usage of this memory.
+
+        Args:
+            advics (int): Advise to be applied for this memory.
+            dev (cupy.cuda.Device): Device to apply the advice for.
+
+        """
+        # TODO(leofang): switch to cudaMemAdvice_v2 from CUDA 12.2
+        runtime.memAdvise(self.ptr, self.size, advise, dev.id)
 
     def __dealloc__(self):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
@@ -726,7 +751,14 @@ cpdef MemoryPointer malloc_system(size_t size):
 
         set_allocator(malloc_system)
 
-    Read more at: https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management  # NOQA
+    Or, to enable the memory pool support (recommended)::
+
+        set_allocator(MemoryPool(malloc_system).malloc)
+
+    HMM stands for heterogeneous memory management. It is a kernel-level
+    feature allowing memory allocated via the system ``malloc`` to be
+    accessible by both CPU and GPU. Read more at:
+    https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management  # NOQA
 
     Args:
         size (int): Size of the memory allocation in bytes.

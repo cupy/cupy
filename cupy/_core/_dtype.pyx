@@ -1,8 +1,9 @@
 cimport cython  # NOQA
+from cpython cimport Py_buffer
+from cupy_backends.cuda.api cimport runtime
+
 import numpy
 import warnings
-
-from cupy_backends.cuda.api cimport runtime
 
 
 all_type_chars = '?bhilqBHILQefdFD'
@@ -124,3 +125,41 @@ cpdef void _raise_if_invalid_cast(
     raise TypeError(
         f'Cannot cast {argname} from {from_dt!r} to {to_dt!r} '
         f'according to the rule \'{casting}\'')
+
+
+@cython.profile(False)
+cdef void populate_format(Py_buffer* buf, str dtype) except*:
+    if dtype == "?":
+        buf.format = '?'
+    elif dtype == "b":
+        buf.format = 'b'
+    elif dtype == "h":
+        buf.format = 'h'
+    elif dtype == "i":
+        buf.format = 'i'
+    elif dtype == "l":
+        buf.format = 'l'
+    elif dtype == "q":
+        buf.format = 'q'
+    elif dtype == "B":
+        buf.format = 'B'
+    elif dtype == "H":
+        buf.format = 'H'
+    elif dtype == "I":
+        buf.format = 'I'
+    elif dtype == "L":
+        buf.format = 'L'
+    elif dtype == "Q":
+        buf.format = 'Q'
+    elif dtype == "e":
+        buf.format = 'e'
+    elif dtype == "f":
+        buf.format = 'f'
+    elif dtype == "d":
+        buf.format = 'd'
+    elif dtype == "F":
+        buf.format = 'Zf'
+    elif dtype == "D":
+        buf.format = 'Zd'
+    else:
+        raise RuntimeError

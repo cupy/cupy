@@ -8,3 +8,5 @@ cpdef void _raise_if_invalid_cast(
     str casting,
     argname=*
 ) except *
+
+cdef void populate_format(Py_buffer* buf, str dtype) except*

@@ -32,6 +32,7 @@ from cpython cimport Py_buffer
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
+from cupy._core._dtype cimport populate_format
 from cupy._core._kernel cimport create_ufunc
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -345,42 +346,12 @@ cdef class _ndarray_base:
                 'Accessing a CuPy ndarry on CPU is not allowed except for HMM-'
                 'enabled systems (need to set CUPY_ENABLE_HMM=1)')
 
+        populate_format(buf, self.dtype.char)
         buf.buf = <void*><intptr_t>self.data.ptr
         buf.itemsize = self.dtype.itemsize
         buf.len = self.size
         buf.internal = NULL
-        buf.readonly = 0
-        # TODO(leofang): move this to cupy/_core/_dtype.pyx
-        if self.dtype.char == "?":
-            buf.format = '?'
-        elif self.dtype.char == "b":
-            buf.format = 'b'
-        elif self.dtype.char == "h":
-            buf.format = 'h'
-        elif self.dtype.char == "i":
-            buf.format = 'i'
-        elif self.dtype.char == "l":
-            buf.format = 'l'
-        elif self.dtype.char == "B":
-            buf.format = 'B'
-        elif self.dtype.char == "H":
-            buf.format = 'H'
-        elif self.dtype.char == "I":
-            buf.format = 'I'
-        elif self.dtype.char == "L":
-            buf.format = 'L'
-        elif self.dtype.char == "e":
-            buf.format = 'e'
-        elif self.dtype.char == "f":
-            buf.format = 'f'
-        elif self.dtype.char == "d":
-            buf.format = 'd'
-        elif self.dtype.char == "F":
-            buf.format = 'Zf'
-        elif self.dtype.char == "D":
-            buf.format = 'Zd'
-        else:
-            raise RuntimeError
+        buf.readonly = 0  # TODO(leofang): use flags
         cdef int ndim = self.ndim
         cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
             sizeof(Py_ssize_t) * self.ndim * 2)
