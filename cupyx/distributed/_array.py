@@ -9,7 +9,7 @@ from cupy.cuda import Device, Event, Stream, get_current_stream
 import cupy
 import numpy
 
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, DTypeLike
 from cupy_backends.cuda.api import runtime as cuda_runtime
 from cupyx.distributed._nccl_comm import _nccl_dtypes
 from cupyx.distributed import _linalg
@@ -144,17 +144,14 @@ def _convert_chunk_idx_to_slices(
                 raise IndexError(
                     f'Index {idx[i]} is out of bounds'
                     f' for axis {i} with size {shape[i]}')
-            new_idx.append(slice(idx[i], idx[i] + 1))
+            new_idx.append(slice(idx[i], idx[i] + 1, 1))
         elif isinstance(idx[i], slice):
             start, stop, step = idx[i].indices(shape[i])
-            if step == 0:
-                raise ValueError('Slice step must be nonzero')
-            if step < 0:
-                raise ValueError(
-                    'The indices for a chunk cannot have negative slice steps.')
+            if step <= 0:
+                raise ValueError('Slice step must be positive.')
             if start == stop:
                 raise ValueError(f'The index is empty on axis {i}')
-            new_idx.append(idx[i])
+            new_idx.append(slice(start, stop, step))
         else:
             raise ValueError(f'Invalid index on axis {i}')
 
@@ -472,7 +469,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         for chunks in self._chunks_map.values():
             for chunk in chunks:
                 self._apply_updates(chunk, self._mode)
-            transfer_events.append(chunk.ready)
+                transfer_events.append(chunk.ready)
 
         for e in transfer_events:
             e.synchronize()

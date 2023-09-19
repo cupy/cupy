@@ -14,6 +14,7 @@ from tests.cupyx_tests.distributed_tests.test_linalg import make_2d_config
 
 cuda_visible_devices = os.environ.get('BENCHMARK_DEVICES', '0,1,2,3')
 devices = [int(dev) for dev in cuda_visible_devices.split(',')]
+devices = devices[3:] + devices[:3]
 
 
 def assign_devices(xs):

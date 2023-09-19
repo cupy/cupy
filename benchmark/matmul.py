@@ -72,15 +72,9 @@ def distributed_reshard(n_dev=4):
     _, d_a, _, d_b = configs[n_dev].instantiate()
 
     def remap_devices(index_map):
-        new_index_map = {}
-
-        for dev in index_map.keys():
-            if dev == 0:
-                new_index_map[dev] = index_map[n_dev - 1]
-            else:
-                new_index_map[dev] = index_map[dev - 1]
-
-        return new_index_map
+        mapping = [2, 0, 3, 1]
+        mapping = [devices[dev] for dev in mapping]
+        return {mapping[dev]: idx for dev, idx in index_map.items()}
 
     index_map_a = remap_devices(d_a.index_map)
     index_map_b = remap_devices(d_b.index_map)
