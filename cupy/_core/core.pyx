@@ -1840,6 +1840,7 @@ cdef class _ndarray_base:
             numpy.ndarray: Copy of the array on host memory.
 
         """
+        a_cpu = None
         if out is not None:
             if not isinstance(out, numpy.ndarray):
                 raise TypeError('Only numpy.ndarray can be obtained from'
@@ -1870,10 +1871,21 @@ cdef class _ndarray_base:
             else:
                 a_gpu = self
             a_cpu = out
-        elif is_hmm_supported(self):
-            # return self to use the same memory and avoid copy
-            return numpy.asarray(self, order=order)
-        else:
+
+        if a_cpu is None:
+            # we don't check is_hmm_supported() here because it'd be called
+            # later
+            if _is_hmm_enabled:
+                try:
+                    # return self to use the same memory and avoid copy
+                    a_cpu = numpy.asarray(self, order=order)
+                except TypeError:
+                    pass
+                else:
+                    return a_cpu
+
+        # out is None, and no HMM support, so we allocate explicitly
+        if a_cpu is None:
             if self.size == 0:
                 return numpy.ndarray(self._shape, dtype=self.dtype)
 
