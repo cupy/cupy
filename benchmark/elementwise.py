@@ -95,6 +95,24 @@ def with_reshard(n_dev=4):
     bench(lambda: cupy.add(a, b.reshard(index_map_a)), n_dev)
 
 
+def peer_access(n_dev=4):
+    print(f'distributed, peer access ({n_dev=})')
+
+    data = numpy.arange(size).reshape(shape)
+
+    index_map_a = index_map[n_dev]
+    index_map_b = index_map_2[n_dev]
+    # index_map_b = index_map_3[n_dev]
+
+
+    a = distributed_array(data, index_map_a)
+    b = distributed_array(data, index_map_b)
+
+    # assert_array_equal((a + b.reshard(index_map_a)).asnumpy(), data * 2)
+
+    bench(lambda: cupy.add(a, b), n_dev)
+
+
 non_distributed()
 print()
 for n_dev in range(1, 5):
@@ -102,6 +120,9 @@ for n_dev in range(1, 5):
 print()
 for n_dev in range(1, 5):
     with_reshard(n_dev)
+print()
+for n_dev in range(1, 5):
+    peer_access(n_dev)
 print()
 
 

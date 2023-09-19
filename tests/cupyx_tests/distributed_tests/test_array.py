@@ -243,17 +243,24 @@ class TestDistributedArray:
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
-            'shape, mapping_a, mapping_b',
-            [(shape_dim2, index_map_dim2, index_map_dim2_2),
-             (shape_dim3, index_map_dim3, index_map_dim3_2)])
+            'shape, mapping',
+            [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
-    def test_incompatible_chunk_shapes(self, shape, mapping_a, mapping_b, mode):
+    def test_incompatible_chunk_shapes(self, shape, mapping, mode):
+        mapping_a = {}
+        for dev, idxs in mapping.items():
+            mapping_a.setdefault(dev % 2, []).extend(idxs)
+        mapping_b = {0: mapping_a[1],
+                     1: mapping_a[0]}
+
         np_a = numpy.arange(size).reshape(shape)
         np_b = numpy.arange(size).reshape(shape) * 2
+        np_r = numpy.cos(np_a * np_b)
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
-        with pytest.raises(RuntimeError, match=r'Mismatched index_map'):
-            cupy.cos(d_a * d_b)
+        with pytest.warns(cupy._util.PerformanceWarning, match=r'Peer access'):
+            d_r = cupy.cos(d_a * d_b)
+        testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
             'shape, index_map',

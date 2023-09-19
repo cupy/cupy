@@ -6,8 +6,9 @@ from typing_extensions import TypeGuard
 from cupy.cuda import nccl
 from cupy.cuda import Device, Event, Stream, get_current_stream
 
-import cupy
 import numpy
+import cupy
+from cupy import _core
 
 from numpy.typing import ArrayLike, DTypeLike
 from cupy_backends.cuda.api import runtime as cuda_runtime
@@ -477,7 +478,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     def _prepare_args(
         self, dist_args: list[tuple[Union[int, str], '_DistributedArray']],
         regular_args: list[tuple[Union[int, str], cupy.ndarray]],
-        dev: int, chunk_i: int,
+        dev: int, chunk_i: int, idx: tuple[slice, ...],
     ) -> list[tuple[Union[int, str], _ManagedData]]:
         # Dist arrays must have chunk_map of compatible shapes, otherwise
         # hard error.
@@ -528,16 +529,114 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         if at_most_one_update:
             return index, updates
 
+        # TODO leave one chunk with updates
         for i, arg in dist_args:
             for chunk in arg._chunks_map[dev]:
                 self._apply_updates(chunk, _REPLICA_MODE)
         return None, []
 
+    def _is_peer_access_needed(
+        self, dist_args: list[tuple[Union[int, str], '_DistributedArray']],
+    ) -> bool:
+        index_map = self.index_map
+        for _, arg in dist_args:
+            if arg.index_map != index_map:
+                return True
+
+        return False
+
+    def _execute_kernel_peer_access(
+        self, kernel,
+        dist_args: list[tuple[Union[int, str], '_DistributedArray']],
+        regular_args: list[tuple[Union[int, str], cupy.ndarray]],
+    ) -> '_DistributedArray':
+        if len(regular_args) > 0:
+            raise RuntimeError(
+                'Mix `cupy.ndarray` with distributed arrays is currently not'
+                ' supported')
+        if len(dist_args) > 2:
+            raise RuntimeError(
+                'Element-wise operation over more than two distributed arrays'
+                ' is not supported unless they share the same index_map.')
+        args = [None, None]
+        for i, arg in dist_args:
+            if isinstance(i, str):
+                raise RuntimeError(
+                    'Keyword argument is not supported when peer access is'
+                    ' necessary in executing an element-wise operation.')
+            args[i] = arg
+
+        args = typing.cast(list['_DistributedArray'], args)
+
+        for arg in args:
+            for chunks in arg._chunks_map.values():
+                for chunk in chunks:
+                    self._apply_updates(chunk, _REPLICA_MODE)
+
+        a, b = args
+
+        if isinstance(kernel, _core.ufunc):
+            op = kernel._ops._guess_routine_from_in_types((a.dtype, b.dtype))
+            if op is None:
+                raise RuntimeError(
+                    f'Could not guess the return type of {kernel.name}'
+                    f' with arguments of type {(a.dtype.type, b.dtype.type)}')
+            out_dtypes = op.out_types
+        else:
+            assert isinstance(kernel, _core._kernel.ElementwiseKernel)
+            out_dtypes = kernel._decide_params_type(
+                (a.dtype.type, b.dtype.type), ([],))
+
+        if len(out_dtypes) != 1:
+            raise RuntimeError(
+                'Kernels returning other than signle array are not'
+                ' supported')
+        dtype = out_dtypes[0]
+
+        chunks_map = {}
+
+        for a_dev, a_chunks in a._chunks_map.items():
+            chunks_map[a_dev] = []
+            with cupy.cuda.Device(a_dev):
+                stream = get_current_stream()
+
+                for a_chunk in a_chunks:
+                    new_chunk_data = cupy.empty(a_chunk.data.shape, dtype)
+                    stream.wait_event(a_chunk.ready)
+
+                    for b_dev, b_chunks in b._chunks_map.items():
+                        for b_chunk in b_chunks:
+                            intersection = _index_intersection(
+                                a_chunk.index, b_chunk.index, self.shape)
+                            if intersection is None:
+                                continue
+
+                            _core._kernel._check_peer_access(
+                                b_chunk.data, a_dev)
+
+                            a_new_idx = _index_for_subindex(
+                                a_chunk.index, intersection, self.shape)
+                            b_new_idx = _index_for_subindex(
+                                b_chunk.index, intersection, self.shape)
+
+                            # TODO check kernel.nin
+                            stream.wait_event(b_chunk.ready)
+                            kernel(a_chunk.data[a_new_idx],
+                                   b_chunk.data[b_new_idx],
+                                   new_chunk_data[a_new_idx])
+
+                    chunks_map[a_dev].append(_Chunk(
+                        new_chunk_data, stream.record(), a_chunk.index,
+                        updates=[], prevent_gc=b._chunks_map))
+
+        return _DistributedArray(
+            self.shape, dtype, chunks_map, _REPLICA_MODE, self._comms)
+
     def _execute_kernel(
         self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any],
     ) -> '_DistributedArray':
-        distributed_arrays: list[tuple[Union[int, str], '_DistributedArray']] = []
-        regular_arrays: list[tuple[Union[int, str], cupy.ndarray]] = []
+        dist_args: list[tuple[Union[int, str], '_DistributedArray']] = []
+        regular_args: list[tuple[Union[int, str], cupy.ndarray]] = []
         i: Union[int, str]
         index_map = self.index_map
         for i, arg in enumerate(args):
@@ -546,13 +645,13 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 raise RuntimeError('Mismatched shapes')
 
             if isinstance(arg, _DistributedArray):
-                if arg.index_map != index_map:
-                    # TODO enable p2p access
-                    raise RuntimeError('Mismatched index_map')
+                # if arg.index_map != index_map:
+                #     # TODO enable p2p access
+                #     raise RuntimeError('Mismatched index_map')
 
-                distributed_arrays.append((i, arg.to_replica_mode()))
+                dist_args.append((i, arg.to_replica_mode()))
             elif isinstance(arg, cupy.ndarray):
-                regular_arrays.append((i, arg))
+                regular_args.append((i, arg))
 
         # Do it for kwargs too
         for k, arg in kwargs.items():
@@ -563,25 +662,29 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 # TODO enable p2p access
                 raise RuntimeError('Mismatched index_map')
             if isinstance(arg, _DistributedArray):
-                distributed_arrays.append((k, arg))
+                dist_args.append((k, arg))
             elif isinstance(arg, cupy.ndarray):
-                regular_arrays.append((k, arg))
+                regular_args.append((k, arg))
+
+        peer_access = self._is_peer_access_needed(dist_args)
+        if peer_access:
+            return self._execute_kernel_peer_access(
+                kernel, dist_args, regular_args)
 
         args = list(args)
-        chunk_counts = self._count_chunks_on_devices(distributed_arrays)
         new_dtype = None
         new_chunks_map: dict[int, list[_Chunk]] = {}
-        for dev, chunk_count in chunk_counts.items():
+        for dev, idxs in index_map.items():
             new_chunks_map[dev] = []
             with Device(dev):
                 stream = get_current_stream()
 
-                for chunk_i in range(chunk_count):
+                for chunk_i, idx in enumerate(idxs):
                     array_args = self._prepare_args(
-                        distributed_arrays, regular_arrays, dev, chunk_i)
+                        dist_args, regular_args, dev, chunk_i, idx)
 
                     incoming_index, update_map = self._prepare_updates(
-                        distributed_arrays, dev, chunk_i)
+                        dist_args, dev, chunk_i)
 
                     for i, arg in array_args:
                         stream.wait_event(arg.ready)
@@ -602,7 +705,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     if len(update_map) == 0:
                         continue
 
-                    incoming_index = typing.cast(Union[int, str], incoming_index)
+                    incoming_index = typing.cast(
+                        Union[int, str], incoming_index)
 
                     args_slice = [None] * len(args)
                     kwargs_slice: dict[str, cupy.ndarray] = {}
