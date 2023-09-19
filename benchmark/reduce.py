@@ -10,6 +10,21 @@ shape = (length, length // 2)
 overlap = 250
 
 
+index_map_no_overlap = assign_devices([
+    None,
+    {0: slice(None)},
+    {0: slice(length // 2),
+     1: slice(length // 2, None)},
+    {0: slice(length // 3),
+     1: slice(length // 3, length * 2 // 3),
+     2: slice(length * 2 // 3, None)},
+    {0: slice(length // 4),
+     1: slice(length * 3 // 4, None),
+     2: slice(length // 4, length // 2),
+     3: slice(length // 2, length * 3 // 4)},
+])
+
+
 index_map_overlaps = assign_devices([
     None,
     {0: slice(None)},
@@ -18,10 +33,10 @@ index_map_overlaps = assign_devices([
     {0: slice(length // 3 + overlap // 2),
      1: slice(length // 3, length * 2 // 3 + overlap // 2),
      2: slice(length * 2 // 3, None)},
-    {0: slice(length // 4, length // 2 + overlap // 3),
-     1: slice(length // 2, length * 3 // 4 + overlap // 3),
-     2: slice(length * 3 // 4, None),
-     3: slice(length // 4 + overlap // 3)},
+    {0: slice(length // 4 + overlap // 3),
+     1: slice(length * 3 // 4, None),
+     2: slice(length // 4, length // 2 + overlap // 3),
+     3: slice(length // 2, length * 3 // 4 + overlap // 3)},
 ])
 
 
@@ -40,10 +55,22 @@ def no_mode_change(n_dev=4):
 
     np_a = numpy.arange(size).reshape(shape)
     d_a = distributed_array(
-        np_a, index_map_overlaps[n_dev], 'sum', comms)
+        np_a, index_map_no_overlap[n_dev], 'sum', comms)
 
     bench(lambda: d_a.sum(0), n_dev)
 
+
+def no_mode_change_overlap(n_dev=4):
+    if n_dev == 0:
+        return non_distributed()
+
+    print(f'no mode change, overlap ({n_dev=})')
+
+    np_a = numpy.arange(size).reshape(shape)
+    d_a = distributed_array(
+        np_a, index_map_overlaps[n_dev], 'sum', comms)
+
+    bench(lambda: d_a.sum(0), n_dev)
 
 def mode_change(n_dev=4):
     if n_dev == 0:
