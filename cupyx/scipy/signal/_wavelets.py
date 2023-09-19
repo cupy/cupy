@@ -262,8 +262,10 @@ def morlet2(M, s, w=5):
     >>> wavelet = signal.morlet2(M, s, w)
     >>> plt.plot(abs(wavelet))
     >>> plt.show()
+
     This example shows basic use of `morlet2` with `cwt` in time-frequency
     analysis:
+
     >>> from cupyx.scipy import signal
     >>> import matplotlib.pyplot as plt
     >>> t, dt = np.linspace(0, 1, 200, retstep=True)
