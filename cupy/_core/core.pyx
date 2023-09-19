@@ -92,13 +92,12 @@ cdef object _null_context = contextlib.nullcontext()
 
 cdef bint _is_hmm_enabled = (int(os.environ.get('CUPY_ENABLE_HMM', '0')) != 0)
 
-cdef inline bint is_hmm_supported(_ndarray_base self) except*:
+cdef inline bint is_hmm_supported(int device_id) except*:
     if (_is_hmm_enabled
-            and self.data.mem.identity in ('SystemMemory', 'ManagedMemory')
             # 1 for both HMM/ATS addressing modes
-            # this assumes device_id is a GPU device ordinal
+            # this assumes device_id is a GPU device ordinal (not -1)
             and runtime.deviceGetAttribute(
-                runtime.cudaDevAttrPageableMemoryAccess, self.data.device_id)):
+                runtime.cudaDevAttrPageableMemoryAccess, device_id)):
         return True
     else:
         return False
@@ -355,7 +354,8 @@ cdef class _ndarray_base:
 
     def __getbuffer__(self, Py_buffer* buf, int flags):
         # TODO(leofang): use flags
-        if not is_hmm_supported(self):
+        if (not is_hmm_supported(self.data.device_id)
+                or not self.is_host_accessible()):
             raise RuntimeError(
                 'Accessing a CuPy ndarry on CPU is not allowed except when '
                 'using system memory (on HMM-enabled systems, need to set '
@@ -389,6 +389,9 @@ cdef class _ndarray_base:
     def __releasebuffer__(self, Py_buffer* buf):
         stdlib.free(buf.shape)  # frees both shape & strides
         cpython.Py_DECREF(self)
+
+    cdef inline bint is_host_accessible(self) except*:
+        return self.data.mem.identity in ('SystemMemory', 'ManagedMemory')
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
@@ -1873,8 +1876,8 @@ cdef class _ndarray_base:
             a_cpu = out
 
         if a_cpu is None:
-            # we don't check is_hmm_supported() here because it'd be called
-            # later
+            # we don't check is_hmm_supported() etc here because it'd be
+            # done later
             if _is_hmm_enabled:
                 try:
                     # return self to use the same memory and avoid copy
@@ -2604,8 +2607,8 @@ cdef _ndarray_base _array_default(
         obj, dtype, order, Py_ssize_t ndmin, bint blocking):
     # Fast path: zero-copy a NumPy array if possible
     # TODO(leofang): perhaps better to just support buffer protocol?
-    # we don't check is_hmm_supported() here because it'd be called later
-    if  not blocking and _is_hmm_enabled and isinstance(obj, numpy.ndarray):
+    if ( not blocking and is_hmm_supported(device.get_device_id())
+            and isinstance(obj, numpy.ndarray)):
         if obj.dtype.char not in _dtype.all_type_chars:
             raise ValueError('Unsupported dtype %s' % obj.dtype)
         ext_mem = memory_module.SystemMemory.from_external(
