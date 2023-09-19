@@ -18,10 +18,10 @@ index_map = assign_devices([
     {0: slice(length//3),
      1: slice(length//3, length * 2//3),
      2: slice(length * 2//3, None)},
-    {0: slice(length//4),
-     1: slice(length//4, length//2),
-     2: slice(length//2, length * 3//4),
-     3: slice(length * 3//4, None)},
+    {0: slice(length//4, length//2),
+     1: slice(length//2, length * 3//4),
+     2: slice(length * 3//4, None),
+     3: slice(length//4)},
 ])
 
 
@@ -33,10 +33,10 @@ index_map_2 = assign_devices([
     {0: slice(length//3 - offset//2),
      1: slice(length//3 - offset//2, length * 2//3 - offset//2),
      2: slice(length * 2//3 - offset//2, None)},
-    {0: slice(length//4 - offset//3),
-     1: slice(length//4 - offset//3, length//2 - offset//3),
-     2: slice(length//2 - offset//3, length * 3//4 - offset//3),
-     3: slice(length * 3//4 - offset//3, None),}
+    {0: slice(length//4 - offset//3, length//2 - offset//3),
+     1: slice(length//2 - offset//3, length * 3//4 - offset//3),
+     2: slice(length * 3//4 - offset//3, None),
+     3: slice(length//4 - offset//3)}
 ])
 
 

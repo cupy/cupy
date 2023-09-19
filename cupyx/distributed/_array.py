@@ -415,10 +415,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     @property
     def mode(self) -> str:
-        assert self._mode in _MODES.values()
         for mode_str, mode_obj in _MODES.items():
             if self._mode is mode_obj:
                 return mode_str
+        raise RuntimeError('Unrecognized mode')
 
     @property
     def devices(self) -> Iterable[int]:
@@ -431,7 +431,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _prepare_comms(self, devices: Iterable[int]) -> None:
         devices = self._chunks_map.keys() | devices
-        if devices == self._chunks_map.keys():
+        if devices <= self._comms.keys():
             return
         self._comms = _create_communicators(devices)
 

@@ -18,10 +18,10 @@ index_map_overlaps = assign_devices([
     {0: slice(length // 3 + overlap // 2),
      1: slice(length // 3, length * 2 // 3 + overlap // 2),
      2: slice(length * 2 // 3, None)},
-    {0: slice(length // 4 + overlap // 3),
-     1: slice(length // 4, length // 2 + overlap // 3),
-     2: slice(length // 2, length * 3 // 4 + overlap // 3),
-     3: slice(length * 3 // 4, None)},
+    {0: slice(length // 4, length // 2 + overlap // 3),
+     1: slice(length // 2, length * 3 // 4 + overlap // 3),
+     2: slice(length * 3 // 4, None),
+     3: slice(length // 4 + overlap // 3)},
 ])
 
 

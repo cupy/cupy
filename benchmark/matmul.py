@@ -48,6 +48,42 @@ configs = assign_devices([
 ])
 
 
+incompatible_configs = assign_devices([
+    None,
+    MatMulConfig(
+        make_2d_config([0, length], [0, length],
+                       [[{0}]]),
+        make_2d_config([0, length], [0, length],
+                       [[{0}]])),
+    MatMulConfig(
+        make_2d_config([0, length], [0, length],
+                       [[{0}]]),
+        make_2d_config([0, length], [0, length // 2, length],
+                       [[{0}, {1}]])),
+    MatMulConfig(
+        make_2d_config([0, length * 2 // 3, length], [0, length],
+                       [[{0}],
+                        [{2}]]),
+        make_2d_config([0, length], [0, length // 2, length],
+                       [[{1}, {2}]])),
+    # MatMulConfig(
+    #     make_2d_config([0, length // 17 * 12, length],
+    #                    [0, length // 25 * 21, length],
+    #                    [[{0, 1}, {1}],
+    #                     [{2}, {3}]]),
+    #     make_2d_config([0, length // 25 * 21, length],
+    #                    [0, length // 126 * 75, length],
+    #                    [[{0, 2}, {1, 2}],
+    #                     [{1, 3}, {1, 3}]])),
+    MatMulConfig(
+        make_2d_config([0, length // 2, length], [0, length],
+                       [[{0}],
+                        [{1}]]),
+        make_2d_config([0, length], [0, length // 2, length],
+                       [[{2}, {3}]])),
+])
+
+
 def non_distributed():
     print('non-distributed')
     cp_a = cupy.arange(size).reshape(shape_a)
@@ -69,15 +105,10 @@ def distributed_reshard(n_dev=4):
 
     print(f'distributed, reshard ({n_dev=})')
 
-    _, d_a, _, d_b = configs[n_dev].instantiate()
+    _, d_a, _, d_b = incompatible_configs[n_dev].instantiate()
 
-    def remap_devices(index_map):
-        mapping = [2, 0, 3, 1]
-        mapping = [devices[dev] for dev in mapping]
-        return {mapping[dev]: idx for dev, idx in index_map.items()}
-
-    index_map_a = remap_devices(d_a.index_map)
-    index_map_b = remap_devices(d_b.index_map)
+    index_map_a = configs[n_dev].a.index_map
+    index_map_b = configs[n_dev].b.index_map
     d_a = d_a.reshard(index_map_a)
     d_a.wait_all_transfer()
 
@@ -114,9 +145,9 @@ def distributed_reshard(n_dev=4):
 #     bench(lambda: d_a @ d_b, n_dev)
 
 
-non_distributed()
-for n_dev in range(1, 5):
-    distributed(n_dev)
+# non_distributed()
+# for n_dev in range(1, 5):
+#     distributed(n_dev)
 for n_dev in range(1, 5):
     distributed_reshard(n_dev)
 # for n_dev in range(1, 5):
@@ -124,7 +155,7 @@ for n_dev in range(1, 5):
 
 
 # bench = repeat
-# distributed(4)
+# distributed_reshard(4)
 # high_dim(4)
 
 # non-distributed
