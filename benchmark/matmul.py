@@ -145,13 +145,27 @@ def distributed_reshard(n_dev=4):
 #     bench(lambda: d_a @ d_b, n_dev)
 
 
-# non_distributed()
-# for n_dev in range(1, 5):
-#     distributed(n_dev)
+non_distributed()
+for n_dev in range(1, 5):
+    distributed(n_dev)
 for n_dev in range(1, 5):
     distributed_reshard(n_dev)
-# for n_dev in range(1, 5):
-#     high_dim(n_dev)
+
+
+print('default stream')
+for dev in devices:
+    with cupy.cuda.Device(dev):
+        streams[dev].__exit__()
+
+
+for n_dev in range(1, 5):
+    distributed_reshard(n_dev)
+print()
+
+
+for dev in devices:
+    with cupy.cuda.Device(dev):
+        streams[dev].__enter__()
 
 
 # bench = repeat

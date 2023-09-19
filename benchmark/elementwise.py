@@ -7,7 +7,7 @@ print(__file__.split()[-1])
 length = 20000
 size = length * length
 shape = (length, length)
-offset = 200
+offset = 1000
 
 
 index_map = assign_devices([
@@ -96,10 +96,13 @@ def with_reshard(n_dev=4):
 
 
 non_distributed()
+print()
 for n_dev in range(1, 5):
     without_reshard(n_dev)
+print()
 for n_dev in range(1, 5):
     with_reshard(n_dev)
+print()
 
 
 print('default stream')
@@ -108,11 +111,9 @@ for dev in devices:
         streams[dev].__exit__()
 
 
-non_distributed()
-for n_dev in range(1, 5):
-    without_reshard(n_dev)
 for n_dev in range(1, 5):
     with_reshard(n_dev)
+print()
 
 
 for dev in devices:
