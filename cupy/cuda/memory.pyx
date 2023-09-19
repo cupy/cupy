@@ -261,6 +261,9 @@ cdef class SystemMemory(BaseMemory):
         size (int): Size of the memory allocation in bytes.
     """
 
+    cdef:
+        readonly object _owner
+
     def __init__(self, size_t size):
         self.size = size
         # TODO(leofang): using the GPU id may not be ideal, but setting it
@@ -269,6 +272,27 @@ cdef class SystemMemory(BaseMemory):
         self.ptr = 0
         if size > 0:
             self.ptr = <intptr_t>c_malloc(size)
+        self._owner = None
+
+    @staticmethod
+    def from_external(intptr_t ptr, size_t size, object owner):
+        """Warp externally allocated (not owned by CuPy) system memory.
+
+        Args:
+            ptr (int): Pointer to the buffer.
+            size (int): Size of the buffer.
+            owner (object): Reference to the owner object to keep the memory
+                alive.
+        """
+        cdef SystemMemory self = SystemMemory.__new__(SystemMemory)
+        self.size = size
+        # TODO(leofang): using the GPU id may not be ideal, but setting it
+        # to cudaCpuDeviceId (-1) would require a lot of changes
+        self.device_id = device.get_device_id()
+        self.ptr = ptr
+        self._owner = owner
+
+        return self
 
     def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
         """Prefetch memory.
@@ -294,7 +318,7 @@ cdef class SystemMemory(BaseMemory):
 
     def __dealloc__(self):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
-        if self.ptr:
+        if self.ptr and self._owner is None:
             c_free(<void*>self.ptr)
 
 

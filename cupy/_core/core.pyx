@@ -2541,7 +2541,7 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
         Py_ssize_t ndmin, bint blocking):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
-    if a_dtype.char not in '?bhilqBHILQefdFD':
+    if a_dtype.char not in _dtype.all_type_chars:
         raise ValueError('Unsupported dtype %s' % a_dtype)
     cdef _ndarray_base a  # allocate it after pinned memory is secured
     cdef size_t itemcount = internal.prod(shape)
@@ -2602,6 +2602,17 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(
 
 cdef _ndarray_base _array_default(
         obj, dtype, order, Py_ssize_t ndmin, bint blocking):
+    # Fast path: zero-copy a NumPy array if possible
+    # TODO(leofang): perhaps better to just support buffer protocol?
+    # we don't check is_hmm_supported() here because it'd be called later
+    if  not blocking and _is_hmm_enabled and isinstance(obj, numpy.ndarray):
+        if obj.dtype.char not in _dtype.all_type_chars:
+            raise ValueError('Unsupported dtype %s' % obj.dtype)
+        ext_mem = memory_module.SystemMemory.from_external(
+            obj.ctypes.data, obj.nbytes, obj)
+        memptr = memory.MemoryPointer(ext_mem, 0)
+        return ndarray(obj.shape, obj.dtype, memptr, obj.strides)
+
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
@@ -2609,7 +2620,7 @@ cdef _ndarray_base _array_default(
             order = 'C'
     a_cpu = numpy.array(obj, dtype=dtype, copy=False, order=order,
                         ndmin=ndmin)
-    if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
+    if a_cpu.dtype.char not in _dtype.all_type_chars:
         raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype

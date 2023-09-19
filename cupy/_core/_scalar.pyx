@@ -79,7 +79,7 @@ cdef dict _dtype_kind_size_dict = {}
 
 cdef _setup_type_dict():
     cdef char k
-    for i in _dtype_module.all_type_chars:
+    for i in _dtype.all_type_chars:
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]

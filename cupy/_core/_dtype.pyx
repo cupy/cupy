@@ -1,12 +1,11 @@
 cimport cython  # NOQA
-from cpython cimport Py_buffer
 from cupy_backends.cuda.api cimport runtime
 
 import numpy
 import warnings
 
 
-all_type_chars = '?bhilqBHILQefdFD'
+cdef str all_type_chars = '?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':
 #    print('#', c, '...', np.dtype(c).name)
 # ? ... bool
