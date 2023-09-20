@@ -575,6 +575,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         a, b = args
 
+        # TODO: use numpy.result_type and compare
         if isinstance(kernel, _core.ufunc):
             op = kernel._ops._guess_routine_from_in_types((a.dtype, b.dtype))
             if op is None:
