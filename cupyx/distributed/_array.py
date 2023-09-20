@@ -340,6 +340,7 @@ def _transfer_async(
     src_dev = src_data.data.device.id
 
     if src_dev == dst_dev:
+        # TODO write to dst array directly on the current stream
         with Device(src_dev):
             return _DataTransfer(
                 src_data.data, src_data.ready, src_data.prevent_gc)
@@ -779,8 +780,16 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 data_to_transfer = data_to_transfer.copy()
             copy_done = data_to_transfer.ready
 
-        update = self._transfer_async(data_to_transfer, dst_dev)
-        dst_chunk.updates.append((update, dst_new_idx))
+        if src_dev == dst_dev:
+            with Device(src_dev):
+                stream = get_current_stream()
+                stream.wait_event(src_chunk.ready)
+                op_mode.func(dst_chunk.data[dst_new_idx],
+                             src_chunk.data[src_new_idx],
+                             dst_chunk.data[dst_new_idx])
+        else:
+            update = self._transfer_async(data_to_transfer, dst_dev)
+            dst_chunk.updates.append((update, dst_new_idx))
 
         if not op_mode.idempotent:
             dtype = src_chunk.data.dtype
@@ -831,10 +840,19 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         src_new_idx = _index_for_subindex(src_idx, intersection, shape)
         dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
 
-        src_partial_chunk = _ManagedData(
-            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk.prevent_gc)
-        update = self._transfer_async(src_partial_chunk, dst_dev)
-        dst_chunk.updates.append((update, dst_new_idx))
+
+        src_dev = src_chunk.data.device.id
+        if src_dev == dst_dev:
+            with Device(src_dev):
+                stream = get_current_stream()
+                stream.wait_event(src_chunk.ready)
+                dst_chunk.data[dst_new_idx] = src_chunk.data[src_new_idx]
+        else:
+            src_partial_chunk = _ManagedData(
+                src_chunk.data[src_new_idx], src_chunk.ready,
+                src_chunk.prevent_gc)
+            update = self._transfer_async(src_partial_chunk, dst_dev)
+            dst_chunk.updates.append((update, dst_new_idx))
 
     def _set_identity_on_intersection(
         self, shape: tuple[int, ...], identity: _Scalar,
@@ -1237,6 +1255,10 @@ def distributed_array(
                                         prevent_gc=src_array)
             with Device(dst_dev):
                 dst_stream = get_current_stream()
+                if src_array.device.id == dst_dev:
+                    return _Chunk(
+                        src_data.data, src_data.ready, idx,
+                        prevent_gc=src_data.prevent_gc)
                 copied = _transfer_async(
                     comms[src_dev], src_stream, src_data,
                     comms[dst_dev], dst_stream, dst_dev)
