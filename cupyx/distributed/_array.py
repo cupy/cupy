@@ -845,8 +845,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         if src_dev == dst_dev:
             with Device(src_dev):
                 stream = get_current_stream()
-                stream.wait_event(src_chunk.ready)
+                # No need to wait for src_chunk.ready;
+                # everything is in the replica mode
                 dst_chunk.data[dst_new_idx] = src_chunk.data[src_new_idx]
+                stream.record(src_chunk.ready)
         else:
             src_partial_chunk = _ManagedData(
                 src_chunk.data[src_new_idx], src_chunk.ready,
