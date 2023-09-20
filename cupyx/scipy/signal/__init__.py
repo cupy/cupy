@@ -168,3 +168,4 @@ from cupyx.scipy.signal._spectral import istft  # NOQA
 from cupyx.scipy.signal._peak_finding import argrelextrema  # NOQA
 from cupyx.scipy.signal._peak_finding import argrelmin  # NOQA
 from cupyx.scipy.signal._peak_finding import argrelmax  # NOQA
+from cupyx.scipy.signal._peak_finding import find_peaks_cwt  # NOQA
