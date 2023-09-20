@@ -90,6 +90,9 @@ for n_dev in range(1, 5):
     no_mode_change(n_dev)
 print()
 for n_dev in range(1, 5):
+    no_mode_change_overlap(n_dev)
+print()
+for n_dev in range(1, 5):
     mode_change(n_dev)
 print()
 
@@ -104,6 +107,9 @@ non_distributed()
 print()
 for n_dev in range(1, 5):
     no_mode_change(n_dev)
+print()
+for n_dev in range(1, 5):
+    no_mode_change_overlap(n_dev)
 print()
 for n_dev in range(1, 5):
     mode_change(n_dev)
