@@ -67,8 +67,6 @@ class TestFirwin:
         hs = fw(N, cutoff, scale=True, pass_zero=pass_zero, window='ones')
         return h, hs
 
-# class TestFirWinMore:
-
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_lowpass(self, xp, scp):
         width = 0.04
