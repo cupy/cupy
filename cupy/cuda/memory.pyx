@@ -190,6 +190,9 @@ cdef class UnownedMemory(BaseMemory):
             runtime._ensure_context()
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
+            if device_id == runtime.cudaInvalidDeviceId:
+                # this happens with SystemMemory...
+                device_id = device.get_device_id()
         self.size = size
         self.device_id = device_id
         self.ptr = ptr
