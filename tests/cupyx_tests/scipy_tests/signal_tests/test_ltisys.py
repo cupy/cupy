@@ -6,6 +6,11 @@ import pytest
 from pytest import raises as assert_raises
 from cupy import testing
 
+try:
+    import scipy.signal   # NOQA
+except ImportError:
+    pass
+
 
 def assert_equal(actual, desired):
     try:
@@ -597,6 +602,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
+    @testing.with_requires("scipy >= 1.9")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
     def test_complex_2(self, xp, scp):
         # Try to reach the specific case in _YT_complex where two singular
@@ -639,7 +645,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @pytest.mark.xfail(reason="numerical stability: scipy QR vs numpy QR")
+    @pytest.mark.skip(reason="numerical stability: scipy QR vs numpy QR")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_complex_4(self, xp, scp):
         # Use a lot of poles to go through all cases for update_order
