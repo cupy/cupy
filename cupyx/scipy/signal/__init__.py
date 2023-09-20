@@ -114,6 +114,7 @@ from cupyx.scipy.signal._waveforms import gausspulse  # NOQA
 from cupyx.scipy.signal._waveforms import sawtooth  # NOQA
 from cupyx.scipy.signal._waveforms import square  # NOQA
 from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
+from cupyx.scipy.signal._waveforms import sweep_poly  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
 

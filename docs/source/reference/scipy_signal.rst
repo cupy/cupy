@@ -183,6 +183,7 @@ Waveforms
    sawtooth
    square
    unit_impulse
+   sweep_poly
 
 
 Window functions
