@@ -196,13 +196,9 @@ cdef class _ndarray_base:
         cdef tuple s = internal.get_size(shape)
         del shape
 
+        # this would raise if order is not recognized
         cdef int order_char = (
             b'C' if order is None else internal._normalize_order(order))
-
-        # `strides` is prioritized over `order`, but invalid `order` should be
-        # checked even if `strides` is given.
-        if order_char != b'C' and order_char != b'F':
-            raise ValueError('order not understood. order=%s' % order)
 
         # Check for erroneous shape
         if len(s) > _carray.MAX_NDIM:
@@ -219,10 +215,13 @@ cdef class _ndarray_base:
         # dtype
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
 
-        # Store shape and strides
+        # Store strides
         if strides is not None:
+            # TODO(leofang): this should be removed (cupy/cupy#7818)
             if memptr is None:
                 raise ValueError('memptr is required if strides is given.')
+            # NumPy (undocumented) behavior: when strides is set, order is
+            # ignored...
             self._set_shape_and_strides(self._shape, strides, True, True)
         elif order_char == b'C':
             self._set_contiguous_strides(itemsize, True)
@@ -2014,12 +2013,12 @@ cdef class _ndarray_base:
             self._shape, self._strides, self.dtype.itemsize)
 
     cpdef _update_f_contiguity(self):
-        cdef Py_ssize_t i, count
-        cdef shape_t rev_shape
-        cdef strides_t rev_strides
         if self.size == 0:
             self._f_contiguous = True
             return
+        cdef Py_ssize_t i, count
+        cdef shape_t rev_shape
+        cdef strides_t rev_strides
         if self._c_contiguous:
             count = 0
             for i in self._shape:
@@ -2603,12 +2602,35 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(
     return a
 
 
+# TODO(leofang): move this to internal.pyx
+cdef inline bint _is_layout_expected(
+        const bint c_contiguous, const bint f_contiguous,
+        expected_order) except*:
+    cdef int order_char = internal._normalize_order(expected_order)
+    order_char = internal._update_order_char(
+        c_contiguous, f_contiguous, order_char)
+    # order_char is either C or F from now on
+    if c_contiguous and f_contiguous:
+        return True
+    if c_contiguous and order_char == b'C':
+        return True
+    elif f_contiguous and order_char == b'F':
+        return True
+    else:
+        return False
+
+
+# Fast path: zero-copy a NumPy array if possible
 cdef _ndarray_base _array_default(
         obj, dtype, order, Py_ssize_t ndmin, bint blocking):
     # Fast path: zero-copy a NumPy array if possible
     # TODO(leofang): perhaps better to just support buffer protocol?
     if ( not blocking and is_hmm_supported(device.get_device_id())
             and isinstance(obj, numpy.ndarray)):
+            # strides and the requested order could mismatch, in this case the
+            # expected behavior is to copy
+            and _is_layout_expected(
+                obj.flags.c_contiguous, obj.flags.f_contiguous, order)):
         if obj.dtype.char not in _dtype.all_type_chars:
             raise ValueError('Unsupported dtype %s' % obj.dtype)
         ext_mem = memory_module.SystemMemory.from_external(
