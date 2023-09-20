@@ -16,6 +16,16 @@ Summary statistics
    entropy
 
 
+Masked statistics functions
+---------------------------
+
+.. For masked functions, see the :mod:`cupyx.scipy.stats.mstats` namespace.
+.. toctree::
+   :maxdepth: 2
+
+   scipy_stats_mstats
+
+
 Other statistical functionality
 -------------------------------
 

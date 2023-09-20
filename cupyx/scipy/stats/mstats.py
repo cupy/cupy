@@ -1,16 +1,5 @@
 
 import cupy
-from cupy._core.internal import _normalize_axis_index
-
-
-_quantiles_1d_map = cupy.RawKernel(r'''
-
-extern "C" {
-   __global__ void mask_k_quantiles() {
-
-   }
-}
-''')
 
 
 def mquantiles(a, prob=list([.25, .5, .75]), alphap=.4, betap=.4, axis=None,
@@ -23,8 +12,8 @@ def mquantiles(a, prob=list([.25, .5, .75]), alphap=.4, betap=.4, axis=None,
     ``j = floor(n*p + m)``, ``m = alphap + p*(1 - alphap - betap)`` and
     ``g = n*p + m - j``.
 
-    Reinterpreting the above equations to compare to **R** lead to the
-    equation: ``p(k) = (k - alphap)/(n + 1 - alphap - betap)``
+    Reinterpreting the above equations to compare to **R** [1]_, [2]_ lead
+    to the equation: ``p(k) = (k - alphap)/(n + 1 - alphap - betap)``
 
     Typical values of (alphap,betap) are:
         - (0,1)    : ``p(k) = k/n`` : linear interpolation of cdf
@@ -74,6 +63,10 @@ def mquantiles(a, prob=list([.25, .5, .75]), alphap=.4, betap=.4, axis=None,
     ``m`` from ``alphap`` and ``betap``, where in **R** ``m`` is defined
     with each type.
 
+    This function differs from SciPy since it does not make use of masked
+    arrays (which are not available in CuPy), instead masked values will
+    be marked with NaNs.
+
     References
     ----------
     .. [1] *R* statistical software: https://www.r-project.org/
@@ -82,15 +75,15 @@ def mquantiles(a, prob=list([.25, .5, .75]), alphap=.4, betap=.4, axis=None,
 
     Examples
     --------
-    >>> import numpy as np
-    >>> from scipy.stats.mstats import mquantiles
-    >>> a = np.array([6., 47., 49., 15., 42., 41., 7., 39., 43., 40., 36.])
+    >>> import cupy as cp
+    >>> from cupyx.scipy.stats.mstats import mquantiles
+    >>> a = cp.array([6., 47., 49., 15., 42., 41., 7., 39., 43., 40., 36.])
     >>> mquantiles(a)
     array([ 19.2,  40. ,  42.8])
 
     Using a 2D array, specifying axis and limit.
 
-    >>> data = np.array([[   6.,    7.,    1.],
+    >>> data = cp.array([[   6.,    7.,    1.],
     ...                  [  47.,   15.,    2.],
     ...                  [  49.,   36.,    3.],
     ...                  [  15.,   39.,    4.],
@@ -108,51 +101,68 @@ def mquantiles(a, prob=list([.25, .5, .75]), alphap=.4, betap=.4, axis=None,
 
     >>> data[:, 2] = -999.
     >>> print(mquantiles(data, axis=0, limit=(0, 50)))
-    [[19.200000000000003 14.6 --]
-     [40.0 37.5 --]
-     [42.800000000000004 40.05 --]]
+    [[19.2  14.6    nan]
+     [40.   37.5    nan]
+     [42.8  40.05   nan]]
 
     """
     def _quantiles1D(data, mask, m, p, axis=-1):
-        x_ind = cupy.argsort(data, axis=axis)
-        x = cupy.take_along_axis(data, x_ind, axis=axis)
+        x = cupy.sort(data, axis=axis)
         n = cupy.sum(mask, axis=axis).reshape(-1, 1)
-        mask_ind = cupy.take_along_axis(mask, x_ind, axis=axis)
-        _, col = cupy.where(mask_ind)
-        # if n == 0:
-        #     return cupy.empty(len(p), dtype=float)
-        # elif n == 1:
-        #     return cupy.resize(x, p.shape)
         aleph = (n * p + m)
         k = cupy.floor(aleph.clip(1, n - 1)).astype(int)
         gamma = (aleph - k).clip(0, 1)
-        return (1. - gamma) * x[(k - 1).tolist()] + gamma * x[k.tolist()]
+        indexed_x = cupy.take_along_axis(x, k - 1, axis=axis)
+        indexed_x1 = cupy.take_along_axis(x, k, axis=axis)
+        return (1. - gamma) * indexed_x + gamma * indexed_x1
 
-    data = a
+    data = a.copy()
+
     if data.ndim > 2:
         raise TypeError("Array should be 2D at most !")
-
-    if axis is not None:
-        axis = _normalize_axis_index(axis, data.ndim)
 
     mask = cupy.full_like(a, True, dtype=cupy.bool_)
 
     if limit:
         condition = (data <= limit[0]) | (data >= limit[1])
+        data[condition] = cupy.nan
         mask[condition] = False
 
     p = cupy.array(prob, copy=False, ndmin=1)
     m = alphap + p * (1. - alphap - betap)
 
-    if axis == 0 and data.ndim == 2:
-        data = data.T
-        mask = mask.T
-
     # Computes quantiles along axis (or globally)
     if (axis is None):
-        data = data.flatten(-1)
-        mask = mask.flatten(-1)
+        data = data.reshape(1, -1)
+        mask = mask.reshape(1, -1)
+        axis = -1
 
-    return _quantiles1D(data, mask, m, p)
+    transpose = False
+    if axis == 0:
+        transpose = True
+        data = cupy.atleast_2d(data.T)
+        mask = cupy.atleast_2d(mask.T)
+        axis = -1
 
-    # return ma.apply_along_axis(_quantiles1D, axis, data, m, p)
+    out = _quantiles1D(data, mask, m, p, axis)
+    if transpose:
+        out = out.T
+
+    if not out.flags.c_contiguous:
+        out = out.copy()
+    return out
+
+
+def scoreatpercentile(data, per, limit=(), alphap=.4, betap=.4):
+    """Calculate the score at the given 'per' percentile of the
+    sequence a.  For example, the score at per=50 is the median.
+
+    This function is a shortcut to mquantiles
+
+    """
+    if (per < 0) or (per > 100.):
+        raise ValueError("The percentile should be between 0. and 100. !"
+                         " (got %s)" % per)
+
+    return mquantiles(data, prob=[per/100.], alphap=alphap, betap=betap,
+                      limit=limit, axis=0).squeeze()
