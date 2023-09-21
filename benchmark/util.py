@@ -39,9 +39,9 @@ def repeat(f, n_dev):
             cupy.cuda.get_current_stream().synchronize()
     from time import sleep
     for i in range(5):
-        sleep(0.5)
+        sleep(0.2)
         f()
-        sleep(0.5)
+        sleep(0.2)
         print(f'{i+1}/5')
         gc.collect()
 
