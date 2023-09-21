@@ -10,7 +10,7 @@ from cupyx.scipy.sparse.linalg import _interface
 
 
 def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
-       atol=None):
+       atol=None, residual_interval = 50):
     """Uses Conjugate Gradient iteration to solve ``Ax = b``.
 
     Args:
@@ -33,6 +33,8 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
             iteration. It is called as ``callback(xk)``, where ``xk`` is the
             current solution vector.
         atol (float): Tolerance for convergence.
+        residual_interval (int): Iterations after which residual must be
+            recomputed.
 
     Returns:
         tuple:
@@ -78,6 +80,8 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         iters += 1
         if callback is not None:
             callback(x)
+        if iters % residual_interval == 0:
+               r = b - matvec(x)
         resid = cublas.nrm2(r)
         if resid <= atol:
             break
