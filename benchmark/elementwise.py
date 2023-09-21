@@ -7,7 +7,7 @@ print(__file__.split()[-1])
 length = 20000
 size = length * length
 shape = (length, length)
-offset = 400
+offset = 1000
 
 
 index_map = assign_devices([
