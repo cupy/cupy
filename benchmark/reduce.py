@@ -7,7 +7,7 @@ print(__file__.split()[-1])
 length = 50000
 size = length * length // 2
 shape = (length, length // 2)
-overlap = 250
+overlap = 2500
 
 
 index_map_no_overlap = assign_devices([
@@ -96,30 +96,3 @@ for n_dev in range(1, 5):
     mode_change(n_dev)
 print()
 
-
-print('default stream')
-for dev in devices:
-    with cupy.cuda.Device(dev):
-        streams[dev].__exit__()
-
-
-non_distributed()
-print()
-for n_dev in range(1, 5):
-    no_mode_change(n_dev)
-print()
-for n_dev in range(1, 5):
-    no_mode_change_overlap(n_dev)
-print()
-for n_dev in range(1, 5):
-    mode_change(n_dev)
-print()
-
-
-for dev in devices:
-    with cupy.cuda.Device(dev):
-        streams[dev].__enter__()
-
-
-# bench = repeat
-# mode_change(4)
