@@ -6,7 +6,7 @@ import pytest
 import cupy
 from cupy.cuda import nccl
 from cupy import testing
-import cupyx.distributed._array as _array
+from cupyx.distributed import _array, _index_arith
 
 
 @pytest.fixture
@@ -175,7 +175,7 @@ class TestDistributedArray:
             for idx in idxs:
                 np_a[idx] += 1 << dev
 
-                full_idx = _array._convert_chunk_idx_to_slices(shape, idx)
+                full_idx = _index_arith.normalize_index(shape, idx)
                 with cupy.cuda.Device(dev):
                     chunk = _array._Chunk(
                         cupy.full_like(np_a[idx], 1 << dev),
@@ -191,7 +191,7 @@ class TestDistributedArray:
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
                 assert d_b._get_chunk_data(dev, i).device.id == dev
-                idx = _array._convert_chunk_idx_to_slices(shape, idx)
+                idx = _index_arith.normalize_index(shape, idx)
                 testing.assert_array_equal(
                     d_b._get_chunk_data(dev, i), np_a[idx], strict=True)
 
@@ -272,49 +272,6 @@ class TestDistributedArray:
         d_a = _array.distributed_array(np_a, index_map, mode, comms)
         with pytest.raises(RuntimeError, match=r'Mix `cupy.ndarray'):
             cupy.cos(d_a * cp_b)
-
-    def test_extgcd(self):
-        iteration = 300
-        max_value = 100
-
-        import random
-        import math
-        for _ in range(iteration):
-            a = random.randint(1, max_value)
-            b = random.randint(1, max_value)
-            g, x = _array._extgcd(a, b)
-            assert g == math.gcd(a, b)
-            assert (g - a * x) % b == 0
-
-    def test_slice_intersection(self):
-        iteration = 300
-        max_value = 100
-
-        import random
-        for _ in range(iteration):
-            a_start = random.randint(0, max_value - 1)
-            b_start = random.randint(0, max_value - 1)
-            a_stop = random.randint(a_start + 1, max_value)
-            b_stop = random.randint(b_start + 1, max_value)
-            a_step = random.randint(1, max_value)
-            b_step = random.randint(1, max_value)
-            a = slice(a_start, a_stop, a_step)
-            b = slice(b_start, b_stop, b_step)
-
-            def indices(s0: slice, s1: slice = slice(None)) -> set[int]:
-                """Return indices for the elements of array[s0][s1]."""
-                all_indices = list(range(max_value))
-                return set(all_indices[s0][s1])
-
-            c = _array._slice_intersection(
-                a, b, max_value)
-            if c is None:
-                assert not (indices(a) & indices(b))
-            else:
-                assert indices(c) == indices(a) & indices(b)
-                p = _array._index_for_subslice(
-                        a, c, max_value)
-                assert indices(c) == indices(a, p)
 
     @pytest.mark.parametrize(
             'shape, mapping_a, mapping_b',
@@ -478,11 +435,11 @@ class TestDistributedArray:
             3: slice(length // 15 * 13 + k, None)}
         mapping_c = {0: slice(None)}
 
-        mapping_a = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+        mapping_a = {dev: _index_arith.normalize_index(shape, idx)
                      for dev, idx in mapping_a.items()}
-        mapping_b = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+        mapping_b = {dev: _index_arith.normalize_index(shape, idx)
                      for dev, idx in mapping_b.items()}
-        mapping_c = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+        mapping_c = {dev: _index_arith.normalize_index(shape, idx)
                      for dev, idx in mapping_c.items()}
         mappings = [mapping_a, mapping_b, mapping_c]
 
@@ -530,11 +487,11 @@ class TestDistributedArray:
             3: slice(length // 15 * 13 + k, None)}
         mapping_c = {0: slice(None)}
 
-        mapping_a = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+        mapping_a = {dev: _index_arith.normalize_index(shape, idx)
                      for dev, idx in mapping_a.items()}
-        mapping_b = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+        mapping_b = {dev: _index_arith.normalize_index(shape, idx)
                      for dev, idx in mapping_b.items()}
-        mapping_c = {dev: _array._convert_chunk_idx_to_slices(shape, idx)
+        mapping_c = {dev: _index_arith.normalize_index(shape, idx)
                      for dev, idx in mapping_c.items()}
         mappings = [mapping_a, mapping_b, mapping_c]
 

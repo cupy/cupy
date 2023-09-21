@@ -14,149 +14,7 @@ from numpy.typing import ArrayLike, DTypeLike
 from cupy_backends.cuda.api import runtime as cuda_runtime
 from cupyx.distributed._nccl_comm import _nccl_dtypes
 from cupyx.distributed import _linalg
-
-
-def _extgcd(a: int, b: int) -> tuple[int, int]:
-    """Return (g, x) with g = gcd(a, b), ax + by = g - ax.
-    a, b > 0 is assumed."""
-    # c - ax - by = 0  ...  (1)
-    # d - au - bv = 0  ...  (2)
-    c, d = a, b
-    x, u = 1, 0
-    # y, v = 0, 1
-
-    # Apply Euclid's algorithm to (c, d)
-    while d:
-        r = c // d
-        # (1), (2) = (2), (1) - (2) * r
-        c, d = d, c - d * r
-        x, u = u, x - u * r
-        # y, v = v, y - u * r
-
-    return c, x
-
-
-def _slice_intersection(a: slice, b: slice, length: int) -> Optional[slice]:
-    """Return the intersection of slice a and b. None if they are disjoint."""
-    a_start, a_stop, a_step = a.indices(length)
-    b_start, b_stop, b_step = b.indices(length)
-
-    # a_step * x + b_step * y == g  ...  (1)
-    g, x = _extgcd(a_step, b_step)
-    if (b_start - a_start) % g != 0:
-        return None
-
-    # c is the intersection of a, b
-    # c_step == lcm(a_step, b_step)
-    c_step = a_step // g * b_step
-
-    # Multiply (1) by (b_start - a_start) // g
-    # ==> a_step * a_skip - b_step * b_skip == b_start - a_start
-    #     a_start + a_step * a_skip == b_start + b_step * b_skip
-    a_skip = x * ((b_start - a_start) // g) % (c_step // a_step)
-    c_start = a_start + a_step * a_skip
-    if c_start < b_start:
-        c_start += ((b_start - c_start - 1) // c_step + 1) * c_step
-
-    c_stop = min(a_stop, b_stop)
-    if c_start < c_stop:
-        return slice(c_start, c_stop, c_step)
-    else:
-        return None
-
-
-def _index_for_subslice(a: slice, sub: slice, length: int) -> slice:
-    """Return slice c such that array[a][c] == array[sub].
-    sub should be contained in a."""
-    a_start, a_stop, a_step = a.indices(length)
-    sub_start, sub_stop, sub_step = sub.indices(length)
-
-    c_start = (sub_start - a_start) // a_step
-    # a_start + a_step * (c_stop - 1) < sub_stop
-    c_stop = (sub_stop - a_start - 1) // a_step + 1
-    c_step = sub_step // a_step
-
-    return slice(c_start, c_stop, c_step)
-
-
-def _index_intersection(
-    a_idx: tuple[slice, ...], b_idx: tuple[slice, ...],
-    shape: tuple[int, ...],
-) -> Optional[tuple[slice, ...]]:
-    """Return None if empty."""
-    ndim = len(shape)
-    assert len(a_idx) == len(b_idx) == ndim
-    result = tuple(_slice_intersection(a, b, length)
-                   for a, b, length in zip(a_idx, b_idx, shape))
-
-    def has_no_none(
-            xs: tuple[Optional[slice], ...]) -> TypeGuard[tuple[slice, ...]]:
-        return None not in xs
-
-    if has_no_none(result):
-        return result
-    else:
-        return None
-
-
-def _index_for_subindex(
-    a_idx: tuple[slice, ...], sub_idx: tuple[slice, ...],
-    shape: tuple[int, ...],
-) -> tuple[slice, ...]:
-    ndim = len(shape)
-    assert len(a_idx) == len(sub_idx) == ndim
-
-    return tuple(_index_for_subslice(a, sub, length)
-                   for a, sub, length in zip(a_idx, sub_idx, shape))
-
-
-# Temporary helper function.
-# Should be removed after implementing indexing
-def _shape_after_indexing(
-    outer_shape: tuple[int, ...],
-    idx: tuple[slice, ...],
-) -> tuple[int, ...]:
-    shape = list(outer_shape)
-    for i in range(len(idx)):
-        start, stop, step = idx[i].indices(shape[i])
-        shape[i] = (stop - start - 1) // step + 1
-    return tuple(shape)
-
-
-def _convert_chunk_idx_to_slices(
-        shape: tuple[int, ...], idx: Any) -> tuple[slice, ...]:
-    """Convert idx to type tuple[slice, ...] with length == ndim. Raise if empty
-    or invalid. Negative slice steps are not allowed."""
-
-    if not isinstance(idx, tuple):
-        idx = idx,
-
-    ndim = len(shape)
-    if len(idx) > ndim:
-        raise IndexError(
-            'too many indices for array:'
-            f' array is {ndim}-dimensional, but {len(idx)} were indexed')
-    idx = idx + (slice(None),) * (ndim - len(idx))
-
-    new_idx = []
-    for i in range(ndim):
-        if isinstance(idx[i], int):
-            if idx[i] >= shape[i]:
-                raise IndexError(
-                    f'Index {idx[i]} is out of bounds'
-                    f' for axis {i} with size {shape[i]}')
-            new_idx.append(slice(idx[i], idx[i] + 1, 1))
-        elif isinstance(idx[i], slice):
-            start, stop, step = idx[i].indices(shape[i])
-            if step <= 0:
-                raise ValueError('Slice step must be positive.')
-            if start == stop:
-                raise ValueError(f'The index is empty on axis {i}')
-            new_idx.append(slice(start, stop, step))
-        else:
-            raise ValueError(f'Invalid index on axis {i}')
-
-    return tuple(new_idx)
+from cupyx.distributed import _index_arith
 
 
 # Copied from cupyx/distributed/_nccl_comm.py
@@ -339,11 +197,8 @@ def _transfer_async(
         dst_dev: int) -> _DataTransfer:
     src_dev = src_data.data.device.id
 
-    if src_dev == dst_dev:
-        # TODO write to dst array directly on the current stream
-        with Device(src_dev):
-            return _DataTransfer(
-                src_data.data, src_data.ready, src_data.prevent_gc)
+    # If src_dev == dst_dev, should be writing into dst array directly instead
+    assert src_dev != dst_dev
 
     with Device(src_dev):
         src_stream.wait_event(src_data.ready)
@@ -608,7 +463,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
                     for b_dev, b_chunks in b._chunks_map.items():
                         for b_chunk in b_chunks:
-                            intersection = _index_intersection(
+                            intersection = _index_arith.index_intersection(
                                 a_chunk.index, b_chunk.index, self.shape)
                             if intersection is None:
                                 continue
@@ -616,9 +471,9 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                             _core._kernel._check_peer_access(
                                 b_chunk.data, a_dev)
 
-                            a_new_idx = _index_for_subindex(
+                            a_new_idx = _index_arith.index_for_subindex(
                                 a_chunk.index, intersection, self.shape)
-                            b_new_idx = _index_for_subindex(
+                            b_new_idx = _index_arith.index_for_subindex(
                                 b_chunk.index, intersection, self.shape)
 
                             # TODO check kernel.nin
@@ -766,11 +621,11 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         src_idx = src_chunk.index
         dst_idx = dst_chunk.index
 
-        intersection = _index_intersection(src_idx, dst_idx, shape)
+        intersection = _index_arith.index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
-        src_new_idx = _index_for_subindex(src_idx, intersection, shape)
-        dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
+        src_new_idx = _index_arith.index_for_subindex(src_idx, intersection, shape)
+        dst_new_idx = _index_arith.index_for_subindex(dst_idx, intersection, shape)
 
         data_to_transfer = _ManagedData(
             src_chunk.data[src_new_idx], src_chunk.ready, src_chunk.prevent_gc)
@@ -832,13 +687,13 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         src_idx = src_chunk.index
         dst_idx = dst_chunk.index
-        intersection = _index_intersection(src_idx, dst_idx, shape)
+        intersection = _index_arith.index_intersection(src_idx, dst_idx, shape)
         if intersection is None:
             return
 
         dst_dev = dst_chunk.data.device.id
-        src_new_idx = _index_for_subindex(src_idx, intersection, shape)
-        dst_new_idx = _index_for_subindex(dst_idx, intersection, shape)
+        src_new_idx = _index_arith.index_for_subindex(src_idx, intersection, shape)
+        dst_new_idx = _index_arith.index_for_subindex(dst_idx, intersection, shape)
 
 
         src_dev = src_chunk.data.device.id
@@ -861,10 +716,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         a_chunk: _Chunk, b_idx: tuple[slice, ...],
     ) -> None:
         a_idx = a_chunk.index
-        intersection = _index_intersection(a_idx, b_idx, shape)
+        intersection = _index_arith.index_intersection(a_idx, b_idx, shape)
         if intersection is None:
             return
-        a_new_idx = _index_for_subindex(a_idx, intersection, shape)
+        a_new_idx = _index_arith.index_for_subindex(a_idx, intersection, shape)
         with a_chunk.data.device:
             stream = get_current_stream()
             stream.wait_event(a_chunk.ready)
@@ -1052,7 +907,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
             if not isinstance(idxs, list):
                 idxs = [idxs]
             for i in range(len(idxs)):
-                idxs[i] = _convert_chunk_idx_to_slices(self.shape, idxs[i])
+                idxs[i] = _index_arith.normalize_index(self.shape, idxs[i])
             idxs.sort(key=lambda slices:
                       [s.indices(l) for s, l in zip(slices, self.shape)])
             new_index_map[dev] = idxs
@@ -1071,7 +926,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
             for idx in idxs:
                 with Device(dev):
-                    dst_shape = _shape_after_indexing(self.shape, idx)
+                    dst_shape = _index_arith.shape_after_indexing(
+                        self.shape, idx)
                     stream = get_current_stream()
                     if self._mode is _REPLICA_MODE:
                         data = cupy.empty(dst_shape, self.dtype)
@@ -1241,7 +1097,7 @@ def distributed_array(
         if not isinstance(idxs, list):
             idxs = [idxs]
         for i in range(len(idxs)):
-            idxs[i] = _convert_chunk_idx_to_slices(array.shape, idxs[i])
+            idxs[i] = _index_arith.normalize_index(array.shape, idxs[i])
         idxs.sort(key=lambda slices:
                     [s.indices(l) for s, l in zip(slices, array.shape)])
         new_index_map[dev] = idxs
