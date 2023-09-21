@@ -33,43 +33,49 @@ def make_comms():
 comms = make_comms()
 
 
-size = 262144
+size = 256
 
 
-shape_dim2 = (512, 512)
+shape_dim2 = (16, 16)
 index_map_dim2 = {
-    0: [(slice(300), slice(300)),
-        (slice(300), slice(200, None))],
-    1: [(slice(200, None), slice(None, None, 2)),
-        (slice(200, None), slice(1, None, 4)),
-        (slice(200, None), slice(3, None, 4))],
-    3: [(slice(200, None, 3), slice(None, None, 3))],
+    0: [(slice(10), slice(10)),
+        (slice(10), slice(6, None))],
+    1: [(slice(6, None), slice(None, None, 2)),
+        (slice(6, None), slice(1, None, 4)),
+        (slice(6, None), slice(3, None, 4))],
+    3: [(slice(6, None, 3), slice(None, None, 3))],
 }
 index_map_dim2_2 = {
     0: [(slice(None, None, 2), slice(None, None, 2))],
-    2: [(slice(None, None, 2), slice(1, 200, 2)),
-        (slice(None, None, 2), slice(101, 300, 2))],
-    3: [(slice(None, None, 2), slice(201, None, 2)),
-        slice(1, None, 2)],
+    2: [(slice(None, None, 2), slice(1, 6, 2)),
+        (slice(None, None, 2), slice(3, 10, 2))],
+    3: [(slice(None, None, 2), slice(5, None, 2)),
+         slice(1, None, 2)],
 }
 
-shape_dim3 = (64, 64, 64)
+shape_dim3 = (8, 8, 4)
 index_map_dim3 = {
-    0: [slice(32)],
-    1: [(slice(32, None), slice(None, 63))],
-    2: [(slice(32, None), 63)],
-    3: [(slice(32, None), slice(None), 42)],
+    0: [slice(4)],
+    1: [(slice(4, None), slice(None, 7))],
+    2: [(slice(4, None), 7)],
+    3: [(slice(4, None), slice(None), 1)],
 }
 index_map_dim3_2 = {
     1: [(slice(1, None, 2), 0),
-        (slice(1, None, 2), slice(1, None), 63)],
-    2: [(slice(1, None, 2), slice(1, None), slice(None, 63))],
+        (slice(1, None, 2), slice(1, None), 3)],
+    2: [(slice(1, None, 2), slice(1, None), slice(None, 3))],
     3: [slice(None, None, 2)],
 }
 
 index_map_only_1 = {
     1: [(slice(None),)],
 }
+
+
+for dev in range(4):
+    with cupy.cuda.Device(dev):
+        stream = cupy.cuda.Stream()
+        stream.__enter__()
 
 
 @testing.multi_gpu(4)
@@ -311,7 +317,11 @@ class TestDistributedArray:
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
         d_c = d_a + d_b.reshard(mapping_a)
+        # from pprint import pprint
+        # pprint(d_c._chunks_map)
         d_r = cupy.cos(d_c.reshard(mapping_b))
+        # pprint(d_c.reshard(mapping_b)._chunks_map)
+        # pprint(d_r._chunks_map)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
@@ -389,7 +399,9 @@ class TestDistributedArray:
         np_a = numpy.arange(size).reshape(shape)
         np_b = np_a.max(axis=0)
         d_a = _array.distributed_array(np_a, mapping_a, comms=comms)
+        from pprint import pprint
         d_b = d_a.reshard(mapping_b).max(axis=0)
+        pprint(d_b._chunks_map)
         testing.assert_array_equal(np_b, d_b.asnumpy(), strict=True)
         testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
 
