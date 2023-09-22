@@ -1486,6 +1486,87 @@ def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     return cupy.nonzero(results)
 
 
+RIGDE_KERNEL = r"""
+#include <cupy/math_constants.h>
+
+extern "C" {
+    __global__ void reduce_ridges(
+            int n_blocks, int n_wavelets,
+            long long* peak_ridges, long long* ridge_rows,
+            long long* ridge_cols, long long* ridge_gap,
+            double* max_distances) {
+
+        __shared__ bool ridge_vote[32 * 32];
+        __shared__ int total_votes[32];
+        __shared__ long long ridges[32];
+        __shared__ long long ridge_row_sh[32];
+        __shared__ long long ridge_col_sh[32];
+        __shared__ long long max_ridge_col[32];
+
+        int idx = blockDim.x * blockIdx.x + threadIdx.x;
+        if(idx >= n_wavelets) {
+            return;
+        }
+
+        int valid_block_wavelets = 32;
+        if(blockDim.x == n_blocks - 1) {
+            int complete_blocks = n_wavelets / 32;
+            valid_block_wavelets = n_wavelets - 32 * complete_blocks;
+        }
+
+        ridge_row_sh[threadIdx.x] = ridge_rows[idx];
+        ridge_col_sh[threadIdx.x] = ridge_cols[idx];
+        max_ridge_col[threadIdx.x] = ridge_cols[idx];
+        ridges[threadIdx.x] = threadIdx.x;
+        double max_distance = max_distances[ridge_row_sh[threadIdx.x]];
+
+        __syncthreads();
+
+        double min_dist = CUDART_INF;
+        int min_pos = threadIdx.x;
+        for(int i = 0; i < valid_block_wavelets; i++) {
+            ridge_vote[32 * i + threadIdx.x] = false;
+
+            if(i == threadIdx.x) {
+                continue;
+            }
+
+            long long other_ridge = peak_ridges[blockDim.x * blockIdx.x + i];
+            if(other_ridge != blockDim.x * blockIdx.x + i) {
+                continue;
+            }
+
+            long long other_col = max_ridge_col[i];
+            long long diff = abs(other_col - ridge_col_sh[threadIdx.x]);
+            if(diff <= max_distance) {
+                if(diff < min_dist) {
+                    min_dist = diff;
+                    min_pos = i;
+                }
+            }
+        }
+
+        if(min_pos != threadIdx.x) {
+            ridge_vote[32 * min_pos + threadIdx.x] = true;
+            ridges[threadIdx.x] = min_pos;
+        }
+        __syncthreads();
+
+        // Check for parent votes
+        if(min_pos != threadIdx.x) {
+            if(ridges[min_pos] != min_pos) {
+                min_pos = ridges[min_pos];
+                ridges[threadIdx.x] = min_pos;
+            }
+        }
+
+    }
+}
+"""
+
+_ridge_kernel = cupy.RawKernel(RIGDE_KERNEL)
+
+
 def _identify_ridge_lines(matr, max_distances, gap_thresh):
     """
     Identify ridges in the 2-D matrix.
@@ -1522,8 +1603,8 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
 
     Examples
     --------
-    >>> import numpy as np
-    >>> from scipy.signal._peak_finding import _identify_ridge_lines
+    >>> import cupy
+    >>> from cupyx.scipy.signal._peak_finding import _identify_ridge_lines
     >>> rng = cupy.random.default_rng()
     >>> data = rng.random((5,5))
     >>> max_dist = 3
@@ -1541,10 +1622,25 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
                          'as matr')
 
     all_max_cols = _boolrelextrema(matr, cupy.greater, axis=1, order=1)
+    breakpoint()
+
     # Highest row for which there are any relative maxima
     has_relmax = cupy.nonzero(all_max_cols.any(axis=1))[0]
     if len(has_relmax) == 0:
         return []
+
+    # relmax_per_wavelet = cupy.sum(all_max_cols, axis=1)
+    # max_relmax_count = cupy.max(relmax_per_wavelet)
+    ridge_rows, ridge_cols = cupy.where(all_max_cols)
+    peak_ridge = cupy.arange(ridge_rows.shape[0], dtype=cupy.int64)  # NOQA
+    # ridge_rows = cupy.c_[peak_row_col[:, 0], peak_row_col[:, 0]]
+    # ridge_cols = cupy.c_[peak_row_col[:, 1], peak_row_col[:, 1]]
+    ridge_gap = cupy.zeros_like(peak_ridge)  # NOQA
+    max_distances = cupy.asarray(max_distances, dtype=cupy.float64)  # NOQA
+
+    block_sz = 32
+    n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz  # NOQA
+
     start_row = has_relmax[-1]
     # Each ridge line is a 3-tuple:
     # rows, cols,Gap number
@@ -1552,8 +1648,10 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
                    [col],
                    0] for col in cupy.nonzero(all_max_cols[start_row])[0]]
     final_lines = []
-    rows = cupy.arange(start_row - 1, -1, -1)
+
+    rows = cupy.arange(start_row.item() - 1, -1, -1)
     cols = cupy.arange(0, matr.shape[1])
+
     for row in rows:
         this_max_cols = cols[all_max_cols[row]]
 
@@ -1759,8 +1857,8 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
 
     Examples
     --------
-    >>> import numpy as np
-    >>> from scipy import signal
+    >>> import cupy
+    >>> from cupyx.scipy import signal
     >>> xs = cupy.arange(0, cupy.pi, 0.05)
     >>> data = cupy.sin(xs)
     >>> peakind = signal.find_peaks_cwt(data, cupy.arange(1,10))
