@@ -1,20 +1,25 @@
 import dataclasses
 import typing
-from typing import Any, Callable, Final, Generic, Iterable, Optional, TypeVar, Union
+from typing import Any, Callable, Final, Iterable, Optional, TypeVar, Union
 from typing_extensions import TypeGuard
 
 from cupy.cuda import nccl
+from cupy.cuda.nccl import NcclCommunicator     # type: ignore
 from cupy.cuda import Device, Event, Stream, get_current_stream
 
 import numpy
 import cupy
 from cupy import _core
 
-from numpy.typing import ArrayLike, DTypeLike
-from cupy_backends.cuda.api import runtime as cuda_runtime
+from numpy.typing import ArrayLike
+from cupy.typing import NDArray
+
 from cupyx.distributed._nccl_comm import _nccl_dtypes
 from cupyx.distributed import _linalg
 from cupyx.distributed import _index_arith
+
+
+_Scalar = TypeVar("_Scalar", bound=numpy.generic)
 
 
 # Copied from cupyx/distributed/_nccl_comm.py
@@ -36,7 +41,7 @@ class _MultiDeviceDummyMemory(cupy.cuda.Memory):
 
 class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
     @property
-    def device(self):
+    def device(self) -> Device:
         # This override is needed to assign an invalid device id
         # Since the array is not residing in a single device now
         return Device(-1)
@@ -44,16 +49,20 @@ class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
 
 def _min_value_of(dtype):
     if dtype.kind in 'biu':
-        return cupy.iinfo(dtype).min
+        return dtype.type(cupy.iinfo(dtype).min)
     elif dtype.kind in 'f':
-        return -cupy.inf
+        return dtype.type(-cupy.inf)
+    else:
+        raise RuntimeError(f'Unsupported type: {dtype}')
 
 
 def _max_value_of(dtype):
     if dtype.kind in 'biu':
-        return cupy.iinfo(dtype).max
+        return dtype.type(cupy.iinfo(dtype).max)
     elif dtype.kind in 'f':
-        return cupy.inf
+        return dtype.type(cupy.inf)
+    else:
+        raise RuntimeError(f'Unsupported type: {dtype}')
 
 
 def _zero_value_of(dtype):
@@ -64,16 +73,16 @@ def _one_value_of(dtype):
     return dtype.type(1)
 
 
-_Scalar = TypeVar("_Scalar", bound=numpy.generic)
-
-
-class _OpMode(Generic[_Scalar]):
-    func: cupy.ufunc
+class _OpMode:
+    func: cupy.ufunc    # TODO mypy does not recognize this type
     numpy_func: numpy.ufunc
     idempotent: bool
-    identity_of: Callable[[numpy.dtype], _Scalar]
+    identity_of: Callable
 
-    def __init__(self, func_name: str, idempotent, identity_of):
+    _T = TypeVar('_T', bound=numpy.generic)
+    def __init__(
+        self, func_name: str, idempotent: bool, identity_of: Callable,
+    ) -> None:
         try:
             self.func = getattr(cupy, func_name)
             self.numpy_func = getattr(numpy, func_name)
@@ -84,7 +93,7 @@ class _OpMode(Generic[_Scalar]):
         self.identity_of = identity_of
 
 
-_Mode = Optional[_OpMode[_Scalar]]
+_Mode = Optional[_OpMode]
 
 
 _REPLICA_MODE: Final[_Mode] = None
@@ -96,22 +105,23 @@ def _is_op_mode(mode: _Mode) -> TypeGuard[_OpMode]:
 
 _MODES: Final[dict[str, _Mode]] = {
     'replica': _REPLICA_MODE,
-    'min': _OpMode('minimum', True, _max_value_of),
-    'max': _OpMode('maximum', True, _min_value_of),
-    'sum': _OpMode('add', False, _zero_value_of),
+    #       _OpMode(func_name, idempotent, identity_of)
+    'min':  _OpMode('minimum',  True,  _max_value_of),
+    'max':  _OpMode('maximum',  True,  _min_value_of),
+    'sum':  _OpMode('add',      False, _zero_value_of),
     'prod': _OpMode('multiply', False, _one_value_of),
 }
 
 
 @dataclasses.dataclass
 class _ManagedData:
-    data: cupy.ndarray
+    data: NDArray
     ready: Event
     prevent_gc: Any
 
     def __init__(
-            self, data: cupy.ndarray, ready: Event, prevent_gc: Any = None,
-        ) -> None:
+        self, data: NDArray, ready: Event, prevent_gc: Any = None,
+    ) -> None:
         self.data = data
         self.ready = ready
         self.prevent_gc = prevent_gc
@@ -127,7 +137,7 @@ class _ManagedData:
 
 @dataclasses.dataclass
 class _DataTransfer:
-    data: cupy.ndarray
+    data: NDArray
     ready: Event
     prevent_gc: Any = None
 
@@ -144,17 +154,20 @@ class _DataPlaceholder:
     def copy(self) -> '_DataPlaceholder':
         return self
 
+    def reshape(self, new_shape: tuple[int, ...]) -> '_DataPlaceholder':
+        return _DataPlaceholder(new_shape, self.device)
+
 
 @dataclasses.dataclass
-class _Chunk(_ManagedData):
-    data: Union[cupy.ndarray, _DataPlaceholder]
+class _Chunk:
+    data: Union[NDArray, _DataPlaceholder]
     ready: Event
     index: tuple[slice, ...]
     updates: list[_PartialUpdate]
     prevent_gc: Any
 
     def __init__(
-            self, data: Union[cupy.ndarray, _DataPlaceholder],
+            self, data: Union[NDArray, _DataPlaceholder],
             ready: Event, index: tuple[slice, ...],
             updates: Optional[list[_PartialUpdate]] = None,
             prevent_gc: Any = None) -> None:
@@ -212,17 +225,17 @@ class _Chunk(_ManagedData):
         self.ready.synchronize()
 
 def _create_communicators(
-        devices: Iterable[int]
-    ) -> dict[int, nccl.NcclCommunicator]:  #type: ignore
-    comms_list = nccl.NcclCommunicator.initAll(list(devices))
+        devices: Iterable[int],
+    ) -> dict[int, NcclCommunicator]:
+    comms_list = NcclCommunicator.initAll(list(devices))
     return {comm.device_id(): comm for comm in comms_list}
 
 
 def _transfer_async(
-        src_comm: nccl.NcclCommunicator,
+        src_comm: NcclCommunicator,
         src_stream: Stream,
         src_data: _ManagedData,
-        dst_comm: nccl.NcclCommunicator,
+        dst_comm: NcclCommunicator,
         dst_stream: Stream,
         dst_dev: int) -> _DataTransfer:
     src_dev = src_data.data.device.id
@@ -255,18 +268,18 @@ def _transfer_async(
                              prevent_gc=(src_data, src_array))
 
 
-class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
+class _DistributedArray(NDArray):
     _chunks_map: dict[int, list[_Chunk]]
     _streams: dict[int, Stream]
     _mode: _Mode
-    _comms: dict[int, nccl.NcclCommunicator]    # type: ignore
+    _comms: dict[int, NcclCommunicator]    # type: ignore
     _mem: cupy.cuda.Memory
 
     def __new__(
         cls, shape: tuple[int, ...], dtype: Any,
         chunks_map: dict[int, list[_Chunk]],
         mode: _Mode = _REPLICA_MODE,
-        comms: Optional[dict[int, nccl.NcclCommunicator]]   # type: ignore
+        comms: Optional[dict[int, NcclCommunicator]]   # type: ignore
             = None,
     ) -> '_DistributedArray':
         mem = _MultiDeviceDummyMemory(0)
@@ -281,7 +294,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         if comms:
             obj._comms = comms
         elif nccl.available:
-            comms_list = nccl.NcclCommunicator.initAll(     # type: ignore
+            comms_list = NcclCommunicator.initAll(     # type: ignore
                 list(chunks_map.keys()))
             obj._comms = {dev: comm
                           for dev, comm in zip(chunks_map.keys(), comms_list)}
@@ -363,7 +376,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
     def _prepare_args(
         self, dist_args: list[tuple[Union[int, str], '_DistributedArray']],
-        regular_args: list[tuple[Union[int, str], cupy.ndarray]],
+        regular_args: list[tuple[Union[int, str], NDArray]],
         dev: int, chunk_i: int, idx: tuple[slice, ...],
     ) -> list[tuple[Union[int, str], Union[_ManagedData, _DataPlaceholder]]]:
         # Dist arrays must have chunk_map of compatible shapes, otherwise
@@ -371,7 +384,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         # In case that they are of different, but broadcastable shapes
         # Data movement may be needed
         # Currently: Support only same shape chunk_map
-        args = []
+        args: list[tuple[Union[int, str],
+                         Union[_ManagedData, _DataPlaceholder]]] = []
         for i, arg in dist_args:
             chunk = arg._chunks_map[dev][chunk_i]
             if isinstance(chunk.data, _DataPlaceholder):
@@ -391,7 +405,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         #    so that the chunk_map in the distributed operate with the right slice
         if len(regular_args) > 0:
             raise RuntimeError(
-                'Mix `cupy.ndarray` with distributed arrays is currently not'
+                'Mix `NDArray` with distributed arrays is currently not'
                 ' supported')
 
         return args
@@ -438,17 +452,17 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     def _execute_kernel_peer_access(
         self, kernel,
         dist_args: list[tuple[Union[int, str], '_DistributedArray']],
-        regular_args: list[tuple[Union[int, str], cupy.ndarray]],
+        regular_args: list[tuple[Union[int, str], NDArray]],
     ) -> '_DistributedArray':
         if len(regular_args) > 0:
             raise RuntimeError(
-                'Mix `cupy.ndarray` with distributed arrays is currently not'
+                'Mix `NDArray` with distributed arrays is currently not'
                 ' supported')
         if len(dist_args) > 2:
             raise RuntimeError(
                 'Element-wise operation over more than two distributed arrays'
                 ' is not supported unless they share the same index_map.')
-        args = [None, None]
+        args: list[Optional['_DistributedArray']] = [None, None]
         for i, arg in dist_args:
             if isinstance(i, str):
                 raise RuntimeError(
@@ -484,7 +498,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 ' supported')
         dtype = out_dtypes[0]
 
-        chunks_map = {}
+        chunks_map: dict[int, list[_Chunk]] = {}
 
         for a_dev, a_chunks in a._chunks_map.items():
             chunks_map[a_dev] = []
@@ -492,11 +506,15 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 stream = get_current_stream()
 
                 for a_chunk in a_chunks:
+                    assert isinstance(a_chunk.data, cupy.ndarray)
+
                     new_chunk_data = cupy.empty(a_chunk.data.shape, dtype)
                     stream.wait_event(a_chunk.ready)
 
                     for b_dev, b_chunks in b._chunks_map.items():
                         for b_chunk in b_chunks:
+                            assert isinstance(b_chunk.data, cupy.ndarray)
+
                             intersection = _index_arith.index_intersection(
                                 a_chunk.index, b_chunk.index, self.shape)
                             if intersection is None:
@@ -527,7 +545,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any],
     ) -> '_DistributedArray':
         dist_args: list[tuple[Union[int, str], '_DistributedArray']] = []
-        regular_args: list[tuple[Union[int, str], cupy.ndarray]] = []
+        regular_args: list[tuple[Union[int, str], NDArray]] = []
         i: Union[int, str]
         index_map = self.index_map
         for i, arg in enumerate(args):
@@ -537,7 +555,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
             if isinstance(arg, _DistributedArray):
                 dist_args.append((i, arg.to_replica_mode()))
-            elif isinstance(arg, cupy.ndarray):
+            elif isinstance(arg, NDArray):
                 regular_args.append((i, arg))
             else:
                 raise RuntimeError('Unsupported argument type')
@@ -552,7 +570,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                 raise RuntimeError('Mismatched index_map')
             if isinstance(arg, _DistributedArray):
                 dist_args.append((k, arg))
-            elif isinstance(arg, cupy.ndarray):
+            elif isinstance(arg, NDArray):
                 regular_args.append((k, arg))
             else:
                 raise RuntimeError('Unsupported argument type')
@@ -584,7 +602,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                     for i, arg in array_args:
                         if isinstance(arg, _DataPlaceholder):
                             placeholder_found = arg
-                            args[i] = None
+                            if isinstance(i, int):
+                                args[i] = None
+                            else:
+                                kwargs[i] = None
                             continue
                         stream.wait_event(arg.ready)
                         if isinstance(i, int):
@@ -614,7 +635,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
                         Union[int, str], incoming_index)
 
                     args_slice = [None] * len(args)
-                    kwargs_slice: dict[str, cupy.ndarray] = {}
+                    kwargs_slice: dict[str, NDArray] = {}
                     for update, idx in update_map:
                         for i, arg in enumerate(args):
                             if arg is not None:
@@ -639,7 +660,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
 
         for chunks in new_chunks_map.values():
             for chunk in chunks:
-                if not isinstance(chunk.data, cupy.ndarray) and not isinstance(chunk.data, _DataPlaceholder):
+                if not isinstance(chunk.data, NDArray) and not isinstance(chunk.data, _DataPlaceholder):
                     raise RuntimeError(
                         'Kernels returning other than signle array are not'
                         ' supported')
@@ -666,6 +687,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
     ) -> None:
         """Apply `src_chunk` onto `dst_chunk` in `op_mode`.
         There must not be any undone partial update to src_chunk."""
+        assert isinstance(src_chunk.data, cupy.ndarray)
+
         src_dev = src_chunk.data.device.id
         dst_dev = dst_chunk.data.device.id
         src_idx = src_chunk.index
@@ -725,7 +748,10 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         self, shape: tuple[int, ...],
         src_chunk: _Chunk, dst_chunk: _Chunk,
     ) -> None:
+        """There must not be any undone partial update to src_chunk."""
+
         assert len(src_chunk.updates) == 0
+        assert isinstance(src_chunk.data, cupy.ndarray)
 
         src_idx = src_chunk.index
         dst_idx = dst_chunk.index
@@ -749,6 +775,8 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         self, shape: tuple[int, ...], identity: _Scalar,
         a_chunk: _Chunk, b_idx: tuple[slice, ...],
     ) -> None:
+        assert isinstance(a_chunk.data, cupy.ndarray)
+
         a_idx = a_chunk.index
         intersection = _index_arith.index_intersection(a_idx, b_idx, shape)
         if intersection is None:
@@ -967,7 +995,7 @@ class _DistributedArray(cupy.ndarray, Generic[_Scalar]):
         new_chunks_map: dict[int, list[_Chunk]] = {}
 
         if _is_op_mode(self._mode):
-            identity: _Scalar = self._mode.identity_of(self.dtype)
+            identity = self._mode.identity_of(self.dtype)
 
         for dev, idxs in new_index_map.items():
             new_chunks_map[dev] = []
@@ -1102,7 +1130,7 @@ def distributed_array(
     index_map: dict[int, Any],
     mode: str = 'replica',
     devices: Optional[Union[int, Iterable[int]]] = None,
-    comms: Optional[dict[int, nccl.NcclCommunicator]] = None, # type: ignore
+    comms: Optional[dict[int, NcclCommunicator]] = None, # type: ignore
 ) -> _DistributedArray:
     if devices is not None and comms is not None:
         raise RuntimeError('Only one of devices and comms can be specified')
@@ -1111,14 +1139,14 @@ def distributed_array(
         # Initialize devices: Iterable[int]
         if devices is None:
             devices = index_map.keys()
-            if isinstance(array, cupy.ndarray):
+            if isinstance(array, NDArray):
                 devices |= {array.device.id}
         elif isinstance(devices, int):
             devices = range(devices)
 
         comms = _create_communicators(devices)
 
-        if (isinstance(array, cupy.ndarray)
+        if (isinstance(array, NDArray)
                 and array.device.id not in comms.keys()):
             raise RuntimeError(
                 'No communicator for transfer from the given array')
@@ -1131,7 +1159,7 @@ def distributed_array(
         return _DistributedArray(
             array.shape, array.dtype, array._chunks_map, array._mode, comms)
 
-    if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
+    if not isinstance(array, (numpy.ndarray, NDArray)):
         array = numpy.array(array)
     elif mode != 'replica':
         array = array.copy()
@@ -1146,7 +1174,7 @@ def distributed_array(
                     [s.indices(l) for s, l in zip(slices, array.shape)])
         new_index_map[dev] = idxs
 
-    if isinstance(array, cupy.ndarray):
+    if isinstance(array, NDArray):
         src_dev = array.device.id
         src_stream = get_current_stream()
 
