@@ -720,7 +720,8 @@ def contraction(
         beta, _ndarray_base C, mode_C,
         int op_A=cutensor.OP_IDENTITY, int op_B=cutensor.OP_IDENTITY,
         int op_C=cutensor.OP_IDENTITY, int algo=cutensor.ALGO_DEFAULT,
-        int compute_desc=0, int ws_pref=cutensor.WORKSPACE_RECOMMENDED):
+        int jit_mode=cutensor.JIT_MODE_NONE, int compute_desc=0,
+        int ws_pref=cutensor.WORKSPACE_RECOMMENDED):
     """General tensor contraction
 
     This routine computes the tensor contraction:
@@ -741,6 +742,7 @@ def contraction(
             Any value >= 0 selects a specific GEMM-like algorithm and
             deactivates the heuristic. If a specified algorithm is not
             supported, STATUS_NOT_SUPPORTED is returned.
+        jit_mode (cutensorJitMode_t): Specify whether and how to use JIT.
         compute_desc (cutensorComputeDescriptor_t): Compute type for the
             intermediate computation.
         ws_pref (cutensorWorksizePreference_t): User preference for the
@@ -764,10 +766,9 @@ def contraction(
     operator = create_contraction(
         desc_A, mode_A, op_A, desc_B, mode_B, op_B, desc_C, mode_C, op_C,
         compute_desc)
-    plan_pref = create_plan_preference(algo=algo)
+    plan_pref = create_plan_preference(algo=algo, jit_mode=jit_mode)
     ws_size = cutensor.estimateWorkspaceSize(
         _get_handle().ptr, operator.ptr, plan_pref.ptr, ws_pref)
-    print("# ws_size: {}".format(ws_size))
     plan = create_plan(operator, plan_pref, ws_limit=ws_size)
     ws = core._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
