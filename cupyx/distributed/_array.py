@@ -12,7 +12,6 @@ import cupy
 from cupy import _core
 
 from numpy.typing import ArrayLike
-from cupy.typing import NDArray
 
 from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
 from cupyx.distributed import _linalg
@@ -98,12 +97,12 @@ _MODES: Final[dict[str, _Mode]] = {
 
 @dataclasses.dataclass
 class _ManagedData:
-    data: NDArray
+    data: cupy.ndarray
     ready: Event
     prevent_gc: Any
 
     def __init__(
-        self, data: NDArray, ready: Event, prevent_gc: Any = None,
+        self, data: cupy.ndarray, ready: Event, prevent_gc: Any = None,
     ) -> None:
         self.data = data
         self.ready = ready
@@ -120,7 +119,7 @@ class _ManagedData:
 
 @dataclasses.dataclass
 class _DataTransfer:
-    data: NDArray
+    data: cupy.ndarray
     ready: Event
     prevent_gc: Any = None
 
@@ -143,14 +142,14 @@ class _DataPlaceholder:
 
 @dataclasses.dataclass
 class _Chunk:
-    data: Union[NDArray, _DataPlaceholder]
+    data: Union[cupy.ndarray, _DataPlaceholder]
     ready: Event
     index: tuple[slice, ...]
     updates: list[_PartialUpdate]
     prevent_gc: Any
 
     def __init__(
-        self, data: Union[NDArray, _DataPlaceholder],
+        self, data: Union[cupy.ndarray, _DataPlaceholder],
         ready: Event, index: tuple[slice, ...],
         updates: Optional[list[_PartialUpdate]] = None,
         prevent_gc: Any = None,
@@ -249,7 +248,7 @@ def _transfer_async(
                              prevent_gc=(src_data, src_array))
 
 
-class _DistributedArray(NDArray):
+class _DistributedArray(cupy.ndarray):
     _chunks_map: dict[int, list[_Chunk]]
     _streams: dict[int, Stream]
     _mode: _Mode
@@ -357,7 +356,7 @@ class _DistributedArray(NDArray):
 
     def _prepare_args(
         self, dist_args: list[tuple[Union[int, str], '_DistributedArray']],
-        regular_args: list[tuple[Union[int, str], NDArray]],
+        regular_args: list[tuple[Union[int, str], cupy.ndarray]],
         dev: int, chunk_i: int, idx: tuple[slice, ...],
     ) -> list[tuple[Union[int, str], Union[_ManagedData, _DataPlaceholder]]]:
         # Dist arrays must have chunk_map of compatible shapes, otherwise
@@ -386,7 +385,7 @@ class _DistributedArray(NDArray):
         #    so that the chunk_map in the distributed operate with the right slice
         if len(regular_args) > 0:
             raise RuntimeError(
-                'Mix `NDArray` with distributed arrays is currently not'
+                'Mix `cupy.ndarray` with distributed arrays is currently not'
                 ' supported')
 
         return args
@@ -433,11 +432,11 @@ class _DistributedArray(NDArray):
     def _execute_kernel_peer_access(
         self, kernel,
         dist_args: list[tuple[Union[int, str], '_DistributedArray']],
-        regular_args: list[tuple[Union[int, str], NDArray]],
+        regular_args: list[tuple[Union[int, str], cupy.ndarray]],
     ) -> '_DistributedArray':
         if len(regular_args) > 0:
             raise RuntimeError(
-                'Mix `NDArray` with distributed arrays is currently not'
+                'Mix `cupy.ndarray` with distributed arrays is currently not'
                 ' supported')
         if len(dist_args) > 2:
             raise RuntimeError(
@@ -526,7 +525,7 @@ class _DistributedArray(NDArray):
         self, kernel, args: tuple[Any, ...], kwargs: dict[str, Any],
     ) -> '_DistributedArray':
         dist_args: list[tuple[Union[int, str], '_DistributedArray']] = []
-        regular_args: list[tuple[Union[int, str], NDArray]] = []
+        regular_args: list[tuple[Union[int, str], cupy.ndarray]] = []
         i: Union[int, str]
         index_map = self.index_map
         for i, arg in enumerate(args):
@@ -536,7 +535,7 @@ class _DistributedArray(NDArray):
 
             if isinstance(arg, _DistributedArray):
                 dist_args.append((i, arg.to_replica_mode()))
-            elif isinstance(arg, NDArray):
+            elif isinstance(arg, cupy.ndarray):
                 regular_args.append((i, arg))
             else:
                 raise RuntimeError('Unsupported argument type')
@@ -551,7 +550,7 @@ class _DistributedArray(NDArray):
                 raise RuntimeError('Mismatched index_map')
             if isinstance(arg, _DistributedArray):
                 dist_args.append((k, arg))
-            elif isinstance(arg, NDArray):
+            elif isinstance(arg, cupy.ndarray):
                 regular_args.append((k, arg))
             else:
                 raise RuntimeError('Unsupported argument type')
@@ -616,7 +615,7 @@ class _DistributedArray(NDArray):
                         Union[int, str], incoming_index)
 
                     args_slice = [None] * len(args)
-                    kwargs_slice: dict[str, NDArray] = {}
+                    kwargs_slice: dict[str, cupy.ndarray] = {}
                     for update, idx in update_map:
                         for i, arg in enumerate(args):
                             if arg is not None:
@@ -641,7 +640,7 @@ class _DistributedArray(NDArray):
 
         for chunks in new_chunks_map.values():
             for chunk in chunks:
-                if not isinstance(chunk.data, NDArray) and not isinstance(chunk.data, _DataPlaceholder):
+                if not isinstance(chunk.data, cupy.ndarray) and not isinstance(chunk.data, _DataPlaceholder):
                     raise RuntimeError(
                         'Kernels returning other than signle array are not'
                         ' supported')
@@ -1120,14 +1119,14 @@ def distributed_array(
         # Initialize devices: Iterable[int]
         if devices is None:
             devices = index_map.keys()
-            if isinstance(array, NDArray):
+            if isinstance(array, cupy.ndarray):
                 devices |= {array.device.id}
         elif isinstance(devices, int):
             devices = range(devices)
 
         comms = _create_communicators(devices)
 
-        if (isinstance(array, NDArray)
+        if (isinstance(array, cupy.ndarray)
                 and array.device.id not in comms.keys()):
             raise RuntimeError(
                 'No communicator for transfer from the given array')
@@ -1140,7 +1139,7 @@ def distributed_array(
         return _DistributedArray(
             array.shape, array.dtype, array._chunks_map, array._mode, comms)
 
-    if not isinstance(array, (numpy.ndarray, NDArray)):
+    if not isinstance(array, (numpy.ndarray, cupy.ndarray)):
         array = numpy.array(array)
     elif mode != 'replica':
         array = array.copy()
@@ -1155,7 +1154,7 @@ def distributed_array(
                     [s.indices(l) for s, l in zip(slices, array.shape)])
         new_index_map[dev] = idxs
 
-    if isinstance(array, NDArray):
+    if isinstance(array, cupy.ndarray):
         src_dev = array.device.id
         src_stream = get_current_stream()
 
