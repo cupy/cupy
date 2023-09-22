@@ -14,25 +14,9 @@ from cupy import _core
 from numpy.typing import ArrayLike
 from cupy.typing import NDArray
 
-from cupyx.distributed._nccl_comm import _nccl_dtypes
+from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
 from cupyx.distributed import _linalg
 from cupyx.distributed import _index_arith
-
-
-_Scalar = TypeVar("_Scalar", bound=numpy.generic)
-
-
-# Copied from cupyx/distributed/_nccl_comm.py
-def _get_nccl_dtype_and_count(array, count=None):
-    dtype = array.dtype.char
-    if dtype not in _nccl_dtypes:
-        raise TypeError(f'Unknown dtype {array.dtype} for NCCL')
-    nccl_dtype = _nccl_dtypes[dtype]
-    if count is None:
-        count = array.size
-    if dtype in 'FD':
-        return nccl_dtype, 2 * count
-    return nccl_dtype, count
 
 
 class _MultiDeviceDummyMemory(cupy.cuda.Memory):
@@ -74,7 +58,7 @@ def _one_value_of(dtype):
 
 
 class _OpMode:
-    func: cupy.ufunc    # TODO mypy does not recognize this type
+    func: cupy.ufunc
     numpy_func: numpy.ufunc
     idempotent: bool
     identity_of: Callable
@@ -105,7 +89,6 @@ def _is_op_mode(mode: _Mode) -> TypeGuard[_OpMode]:
 
 _MODES: Final[dict[str, _Mode]] = {
     'replica': _REPLICA_MODE,
-    #       _OpMode(func_name, idempotent, identity_of)
     'min':  _OpMode('minimum',  True,  _max_value_of),
     'max':  _OpMode('maximum',  True,  _min_value_of),
     'sum':  _OpMode('add',      False, _zero_value_of),
@@ -167,10 +150,11 @@ class _Chunk:
     prevent_gc: Any
 
     def __init__(
-            self, data: Union[NDArray, _DataPlaceholder],
-            ready: Event, index: tuple[slice, ...],
-            updates: Optional[list[_PartialUpdate]] = None,
-            prevent_gc: Any = None) -> None:
+        self, data: Union[NDArray, _DataPlaceholder],
+        ready: Event, index: tuple[slice, ...],
+        updates: Optional[list[_PartialUpdate]] = None,
+        prevent_gc: Any = None,
+    ) -> None:
         self.data = data
         self.ready = ready
         self.index = index
@@ -232,12 +216,9 @@ def _create_communicators(
 
 
 def _transfer_async(
-        src_comm: NcclCommunicator,
-        src_stream: Stream,
-        src_data: _ManagedData,
-        dst_comm: NcclCommunicator,
-        dst_stream: Stream,
-        dst_dev: int) -> _DataTransfer:
+    src_comm: NcclCommunicator, src_stream: Stream, src_data: _ManagedData,
+    dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int
+) -> _DataTransfer:
     src_dev = src_data.data.device.id
 
     if src_dev == dst_dev:
@@ -772,7 +753,7 @@ class _DistributedArray(NDArray):
         dst_chunk.updates.append((update, dst_new_idx))
 
     def _set_identity_on_intersection(
-        self, shape: tuple[int, ...], identity: _Scalar,
+        self, shape: tuple[int, ...], identity,
         a_chunk: _Chunk, b_idx: tuple[slice, ...],
     ) -> None:
         assert isinstance(a_chunk.data, cupy.ndarray)
@@ -789,7 +770,7 @@ class _DistributedArray(NDArray):
             stream.record(a_chunk.ready)
 
     def _set_identity_on_ignored_entries(
-            self, identity: _Scalar, chunk: _Chunk) -> None:
+            self, identity, chunk: _Chunk) -> None:
         if isinstance(chunk.data, _DataPlaceholder):
             return
 
