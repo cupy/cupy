@@ -4,7 +4,12 @@ from typing import Any, Callable, Final, Iterable, Optional, TypeVar, Union
 from typing_extensions import TypeGuard
 
 from cupy.cuda import nccl
-from cupy.cuda.nccl import NcclCommunicator     # type: ignore
+if nccl.available:
+    from cupy.cuda.nccl import NcclCommunicator     # type: ignore
+else:
+    class NcclCommunicator:
+        pass
+
 from cupy.cuda import Device, Event, Stream, get_current_stream
 
 import numpy
@@ -207,45 +212,67 @@ class _Chunk:
 
         self.ready.synchronize()
 
-def _create_communicators(
+
+if nccl.available:
+    def _create_communicators(
         devices: Iterable[int],
     ) -> dict[int, NcclCommunicator]:
-    comms_list = NcclCommunicator.initAll(list(devices))
-    return {comm.device_id(): comm for comm in comms_list}
+        comms_list = NcclCommunicator.initAll(list(devices))
+        return {comm.device_id(): comm for comm in comms_list}
 
 
-def _transfer_async(
-    src_comm: NcclCommunicator, src_stream: Stream, src_data: _ManagedData,
-    dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int
-) -> _DataTransfer:
-    src_dev = src_data.data.device.id
+    def _transfer(
+        src_comm: NcclCommunicator, src_stream: Stream, src_data: _ManagedData,
+        dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int
+    ) -> _DataTransfer:
+        src_dev = src_data.data.device.id
+        if src_dev == dst_dev:
+            return _DataTransfer(src_data.data, src_data.ready)
 
-    if src_dev == dst_dev:
-        return _DataTransfer(src_data.data, src_data.ready)
+        with Device(src_dev):
+            src_stream.wait_event(src_data.ready)
+            with src_stream:
+                src_array = cupy.ascontiguousarray(src_data.data)
+        with Device(dst_dev):
+            with dst_stream:
+                dst_buf = cupy.empty(src_array.shape, src_array.dtype)
 
-    with Device(src_dev):
-        src_stream.wait_event(src_data.ready)
-        with src_stream:
-            src_array = cupy.ascontiguousarray(src_data.data)
-    with Device(dst_dev):
-        with dst_stream:
-            dst_buf = cupy.empty(src_array.shape, src_array.dtype)
+        dtype, count = _get_nccl_dtype_and_count(src_array)
+        nccl.groupStart()   # type: ignore
 
-    dtype, count = _get_nccl_dtype_and_count(src_array)
-    nccl.groupStart()   # type: ignore
+        with Device(src_dev):
+            src_comm.send(src_array.data.ptr, count, dtype,
+                        dst_comm.rank_id(), src_stream.ptr)
+            src_stream.record(src_data.ready)
 
-    with Device(src_dev):
-        src_comm.send(src_array.data.ptr, count, dtype,
-                      dst_comm.rank_id(), src_stream.ptr)
-        src_stream.record(src_data.ready)
+        with Device(dst_dev):
+            dst_comm.recv(dst_buf.data.ptr, count, dtype,
+                        src_comm.rank_id(), dst_stream.ptr)
 
-    with Device(dst_dev):
-        dst_comm.recv(dst_buf.data.ptr, count, dtype,
-                      src_comm.rank_id(), dst_stream.ptr)
+            nccl.groupEnd()     # type: ignore
+            return _DataTransfer(dst_buf, dst_stream.record(),
+                                prevent_gc=(src_data, src_array))
+else:
+    def _create_communicators(
+        devices: Iterable[int],
+    ) -> dict[int, NcclCommunicator]:
+        return {dev: NcclCommunicator() for dev in devices}
 
-        nccl.groupEnd()     # type: ignore
-        return _DataTransfer(dst_buf, dst_stream.record(),
-                             prevent_gc=(src_data, src_array))
+
+    def _transfer(
+        src_comm: NcclCommunicator, src_stream: Stream, src_data: _ManagedData,
+        dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int
+    ) -> _DataTransfer:
+        src_dev = src_data.data.device.id
+        if src_dev == dst_dev:
+            return _DataTransfer(src_data.data, src_data.ready)
+
+        with Device(dst_dev):
+            dst_stream.wait_event(src_data.ready)
+            with dst_stream:
+                dst_data = src_data.data.copy()
+            return _DataTransfer(dst_data, dst_stream.record(),
+                                 prevent_gc=src_data.data)
 
 
 class _DistributedArray(cupy.ndarray):
@@ -273,14 +300,8 @@ class _DistributedArray(cupy.ndarray):
         obj._mode = mode
         if comms:
             obj._comms = comms
-        elif nccl.available:
-            comms_list = NcclCommunicator.initAll(     # type: ignore
-                list(chunks_map.keys()))
-            obj._comms = {dev: comm
-                          for dev, comm in zip(chunks_map.keys(), comms_list)}
         else:
-            # TODO: support environments where NCCL is unavailable
-            raise RuntimeError('NCCL is unavailable')
+            obj._comms = _create_communicators(chunks_map.keys())
         return obj
 
     def __array_finalize__(self, obj):
@@ -631,6 +652,7 @@ class _DistributedArray(cupy.ndarray):
 
                         stream.wait_event(update.ready)
                         new_data = kernel(*args_slice, **kwargs_slice)
+                        new_dtype = new_data.dtype
                         execution_done = stream.record()
 
                         data_transfer = _DataTransfer(
@@ -654,10 +676,10 @@ class _DistributedArray(cupy.ndarray):
         outs = self._execute_kernel(kernel, args, kwargs)
         return outs
 
-    def _transfer_async(
+    def _transfer(
             self, src_data: _ManagedData, dst_dev: int) -> _DataTransfer:
         src_dev = src_data.data.device.id
-        return _transfer_async(
+        return _transfer(
             self._comms[src_dev], self._stream_for(src_dev), src_data,
             self._comms[dst_dev], self._stream_for(dst_dev), dst_dev)
 
@@ -688,7 +710,7 @@ class _DistributedArray(cupy.ndarray):
                 data_to_transfer = data_to_transfer.copy()
             copy_done = data_to_transfer.ready
 
-        update = self._transfer_async(data_to_transfer, dst_dev)
+        update = self._transfer(data_to_transfer, dst_dev)
         dst_chunk.updates.append((update, dst_new_idx))
 
         if not op_mode.idempotent:
@@ -748,7 +770,7 @@ class _DistributedArray(cupy.ndarray):
         src_partial_chunk = _ManagedData(
             src_chunk.data[src_new_idx], src_chunk.ready,
             src_chunk.prevent_gc)
-        update = self._transfer_async(src_partial_chunk, dst_dev)
+        update = self._transfer(src_partial_chunk, dst_dev)
         dst_chunk.updates.append((update, dst_new_idx))
 
     def _set_identity_on_intersection(
@@ -1169,7 +1191,7 @@ def distributed_array(
                     return _Chunk(
                         src_data.data, src_data.ready, idx,
                         prevent_gc=src_data.prevent_gc)
-                copied = _transfer_async(
+                copied = _transfer(
                     comms[src_dev], src_stream, src_data,
                     comms[dst_dev], dst_stream, dst_dev)
                 return _Chunk(copied.data, copied.ready, idx,

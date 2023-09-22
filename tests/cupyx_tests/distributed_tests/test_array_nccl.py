@@ -4,7 +4,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import nccl
 from cupy import testing
 from cupyx.distributed import _array, _index_arith
 
@@ -23,14 +22,7 @@ def mem_pool():
         cupy.cuda.memory.set_allocator(old_pool.malloc)
 
 
-def make_comms():
-    if not nccl.available:
-        return None
-    comms_list = nccl.NcclCommunicator.initAll(4)
-    return {dev: comm for dev, comm in zip(range(4), comms_list)}
-
-
-comms = make_comms()
+comms = _array._create_communicators(range(4))
 
 
 size = 256
@@ -317,11 +309,7 @@ class TestDistributedArray:
         d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
         d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
         d_c = d_a + d_b.reshard(mapping_a)
-        # from pprint import pprint
-        # pprint(d_c._chunks_map)
         d_r = cupy.cos(d_c.reshard(mapping_b))
-        # pprint(d_c.reshard(mapping_b)._chunks_map)
-        # pprint(d_r._chunks_map)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
@@ -399,9 +387,7 @@ class TestDistributedArray:
         np_a = numpy.arange(size).reshape(shape)
         np_b = np_a.max(axis=0)
         d_a = _array.distributed_array(np_a, mapping_a, comms=comms)
-        from pprint import pprint
         d_b = d_a.reshard(mapping_b).max(axis=0)
-        pprint(d_b._chunks_map)
         testing.assert_array_equal(np_b, d_b.asnumpy(), strict=True)
         testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
 
@@ -514,7 +500,6 @@ class TestDistributedArray:
 
         rng = numpy.random.default_rng()
         for _ in range(n_iter):
-            import random
             np_a = rng.integers(0, size, shape)
             np_b = rng.integers(0, size, shape)
             d_a = _array.distributed_array(np_a, mappings[0], comms=comms)
@@ -526,9 +511,7 @@ class TestDistributedArray:
             for _ in range(n_ops):
                 arrs_history.append(list(arrs))
                 op = rng.choice(ops)
-                print(arrs[0][0].shape, arrs[0][1].shape)
                 assert arrs[0][0].shape == arrs[0][1].shape
-                print(op)
                 # Cannot do rng.choice(arrs) here because numpy tries to convert
                 # arrs to a ndarray
                 arr_idx = rng.choice(len(arrs))
