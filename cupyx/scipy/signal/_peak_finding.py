@@ -1507,11 +1507,13 @@ extern "C" {
             double* max_distances) {
 
         __shared__ bool ridge_vote[32 * 32];
-        __shared__ int total_votes[32];
         __shared__ long long ridges[32];
         __shared__ long long ridge_row_sh[32];
         __shared__ long long ridge_col_sh[32];
         __shared__ long long max_ridge_col[32];
+
+        bool* votes = ridge_vote;
+        long long* ridges_ptr = ridges;
 
         int idx = blockDim.x * blockIdx.x + threadIdx.x;
         if(idx >= n_wavelets) {
@@ -1519,7 +1521,7 @@ extern "C" {
         }
 
         int valid_block_wavelets = 32;
-        if(blockDim.x == n_blocks - 1) {
+        if(blockIdx.x == n_blocks - 1) {
             int complete_blocks = n_wavelets / 32;
             valid_block_wavelets = n_wavelets - 32 * complete_blocks;
         }
@@ -1534,15 +1536,15 @@ extern "C" {
 
         double min_dist = CUDART_INF;
         int min_pos = threadIdx.x;
-        for(int i = 0; i < valid_block_wavelets; i++) {
+        for(int i = min_pos + 1; i < valid_block_wavelets; i++) {
             ridge_vote[32 * i + threadIdx.x] = false;
 
             if(i == threadIdx.x) {
                 continue;
             }
 
-            long long other_ridge = peak_ridges[blockDim.x * blockIdx.x + i];
-            if(other_ridge != blockDim.x * blockIdx.x + i) {
+            long long other_ridge = ridges_ptr[i];
+            if(other_ridge != i) {
                 continue;
             }
 
@@ -1552,6 +1554,8 @@ extern "C" {
                 if(diff < min_dist) {
                     min_dist = diff;
                     min_pos = i;
+                } else if(diff == min_dist) {
+                    min_pos = max(i, min_pos);
                 }
             }
         }
@@ -1563,18 +1567,17 @@ extern "C" {
         __syncthreads();
 
         // Check for parent votes
-        if(min_pos != threadIdx.x) {
-            if(ridges[min_pos] != min_pos) {
-                min_pos = ridges[min_pos];
-                ridges[threadIdx.x] = min_pos;
-            }
+        while(min_pos != ridges[min_pos]) {
+            min_pos = ridges[min_pos];
+            ridges[threadIdx.x] = min_pos;
         }
 
+        peak_ridges[idx] = blockDim.x * blockIdx.x + min_pos;
     }
 }
 """
 
-_ridge_kernel = cupy.RawKernel(RIGDE_KERNEL)
+_ridge_kernel = cupy.RawKernel(RIGDE_KERNEL, 'reduce_ridges')
 
 
 def _identify_ridge_lines(matr, max_distances, gap_thresh):
@@ -1632,7 +1635,7 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
                          'as matr')
 
     all_max_cols = _boolrelextrema(matr, cupy.greater, axis=1, order=1)
-    breakpoint()
+    # breakpoint()
 
     # Highest row for which there are any relative maxima
     has_relmax = cupy.nonzero(all_max_cols.any(axis=1))[0]
@@ -1650,6 +1653,9 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
 
     block_sz = 32
     n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz  # NOQA
+    _ridge_kernel((n_blocks,), (block_sz,),
+                  (n_blocks, ridge_rows.shape[0], peak_ridge, ridge_rows,
+                   ridge_cols, ridge_gap, max_distances))
 
     start_row = has_relmax[-1]
     # Each ridge line is a 3-tuple:
