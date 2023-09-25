@@ -12,29 +12,6 @@ from cupyx.distributed.array import _util
 from cupyx.distributed.array import _modes
 
 
-def _classify_args(args, kwargs):
-    dist_args = []
-    regular_args = []
-
-    for i, arg in enumerate(args):
-        if isinstance(arg, darray._DistributedArray):
-            dist_args.append((i, arg))
-        elif isinstance(arg, cupy.ndarray):
-            regular_args.append((i, arg))
-        else:
-            raise RuntimeError(f'Unrecognized argument type: {type(arg)}')
-
-    for key, arg in enumerate(kwargs):
-        if isinstance(arg, darray._DistributedArray):
-            dist_args.append((key, arg))
-        elif isinstance(arg, cupy.ndarray):
-            regular_args.append((key, arg))
-        else:
-            raise RuntimeError(f'Unrecognized argument type: {type(arg)}')
-
-    return dist_args, regular_args
-
-
 def _prepare_updates(
     args: Sequence['darray._DistributedArray'],
     kwargs: dict[str, 'darray._DistributedArray'],

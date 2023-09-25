@@ -64,10 +64,8 @@ def execute(
                 if isinstance(chunk.data, _chunk.DataPlaceholder):
                     old_shape = chunk.data.shape
                     new_shape = old_shape[:axis] + old_shape[axis+1:]
-                    new_chunk = Chunk(
-                        _chunk.DataPlaceholder(new_shape, chunk.data.device),
-                        chunk.ready, new_index, [],
-                        prevent_gc=chunk.prevent_gc)
+                    new_chunk = Chunk.create_placeholder(
+                        new_shape, chunk.data.device, new_index)
                 else:
                     update_data = cupy.atleast_1d(
                         kernel(chunk.data, axis=axis, dtype=dtype))

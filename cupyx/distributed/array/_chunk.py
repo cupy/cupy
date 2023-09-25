@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional, Type, TypeVar, Union
 
 import dataclasses
 
@@ -13,6 +13,7 @@ from cupyx.distributed.array import _chunk
 
 @dataclasses.dataclass
 class DataPlaceholder:
+    """Mock cupy.ndarray."""
     shape: tuple[int, ...]
     device: Device
 
@@ -28,20 +29,25 @@ class Chunk:
     data: Union[cupy.ndarray, DataPlaceholder]
     ready: Event
     index: tuple[slice, ...]
-    updates: list[_data_transfer.PartialUpdate]
-    prevent_gc: Any
+    updates: list[_data_transfer.PartialUpdate] = dataclasses.field(
+        default_factory=list)
+    prevent_gc: Any = None
 
-    def __init__(
-        self, data: Union[cupy.ndarray, DataPlaceholder],
-        ready: Event, index: tuple[slice, ...],
-        updates: Optional[list[_data_transfer.PartialUpdate]] = None,
-        prevent_gc: Any = None,
-    ) -> None:
-        self.data = data
-        self.ready = ready
-        self.index = index
-        self.updates = updates if updates is not None else []
-        self.prevent_gc = prevent_gc
+    # Rule: isinstance(data, DataPlaceholder) ==> ready is empty
+
+    @classmethod
+    def create_placeholder(
+            cls, shape: tuple[int, ...], device: Union[int, Device],
+            index: tuple[slice, ...],
+            updates: Optional[list[_data_transfer.PartialUpdate]] = None) -> 'Chunk':
+        if isinstance(device, int):
+            device = Device(device)
+        data = DataPlaceholder(shape, device)
+
+        if updates is None:
+            updates = []
+
+        return Chunk(data, Event(), index, updates)
 
     def copy(self) -> 'Chunk':
         if isinstance(self.data, DataPlaceholder):

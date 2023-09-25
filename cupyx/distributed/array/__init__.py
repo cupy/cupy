@@ -227,9 +227,7 @@ class _DistributedArray(cupy.ndarray):
                 with Device(dev):
                     dst_shape = _index_arith.shape_after_indexing(
                         self.shape, idx)
-                    stream = get_current_stream()
-                    data = _chunk.DataPlaceholder(dst_shape, Device(dev))
-                    new_chunk = Chunk(data, stream.record(), idx)
+                    new_chunk = Chunk.create_placeholder(dst_shape, dev, idx)
                     new_chunks_map[dev].append(new_chunk)
 
         for src_chunks in old_chunks_map.values():
