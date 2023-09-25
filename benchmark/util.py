@@ -5,7 +5,7 @@ import os
 import numpy, cupy
 from cupy.cuda import nccl
 from cupyx.profiler import benchmark
-from cupyx.distributed._array import distributed_array
+from cupyx.distributed.array import distributed_array
 from cupy.testing import assert_array_equal
 from tests.cupyx_tests.distributed_tests.test_linalg import ArrayConfig
 from tests.cupyx_tests.distributed_tests.test_linalg import MatMulConfig

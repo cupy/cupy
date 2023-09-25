@@ -5,7 +5,8 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupyx.distributed import _array, _index_arith
+from cupyx.distributed.array import _index_arith
+from cupyx.distributed import array as darray
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ def mem_pool():
         cupy.cuda.memory.set_allocator(old_pool.malloc)
 
 
-comms = _array._create_communicators(range(4))
+comms = darray.create_communicators(range(4))
 
 
 size = 256
@@ -79,7 +80,7 @@ class TestDistributedArray:
     def test_array_creation_from_numpy(self, mem_pool, shape, index_map, mode):
         array = numpy.arange(size, dtype='q').reshape(shape)
         # assert mem_pool.used_bytes() == 0
-        da = _array.distributed_array(array, index_map, mode, comms)
+        da = darray.distributed_array(array, index_map, mode, comms)
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
         assert da.data.ptr == 0
@@ -87,11 +88,11 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == array.nbytes
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
-                assert da._get_chunk_data(dev, i).device.id == dev
-                assert da._get_chunk_data(dev, i).ndim == array.ndim
+                assert da._chunks_map[dev][i].data.device.id == dev
+                assert da._chunks_map[dev][i].data.ndim == array.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
+                        da._chunks_map[dev][i].data.ravel(), array[idx].ravel(),
                         strict=True)
 
     @pytest.mark.parametrize(
@@ -103,7 +104,7 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == array.nbytes
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', cupy._util.PerformanceWarning)
-            da = _array.distributed_array(
+            da = darray.distributed_array(
                 array, index_map, mode, comms)
         assert da.device.id == -1
         # Ensure no memory allocation other than chunks & original array
@@ -112,11 +113,11 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == 2 * array.nbytes
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
-                assert da._get_chunk_data(dev, i).device.id == dev
-                assert da._get_chunk_data(dev, i).ndim == array.ndim
+                assert da._chunks_map[dev][i].data.device.id == dev
+                assert da._chunks_map[dev][i].data.ndim == array.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
+                        da._chunks_map[dev][i].data.ravel(), array[idx].ravel(),
                         strict=True)
 
     @pytest.mark.parametrize(
@@ -126,7 +127,7 @@ class TestDistributedArray:
     def test_array_creation(self, mem_pool, shape, index_map, mode):
         array = numpy.arange(size, dtype='q').reshape(shape)
         # assert mem_pool.used_bytes() == 0
-        da = _array.distributed_array(
+        da = darray.distributed_array(
             array.tolist(), index_map, mode, comms)
         assert da.device.id == -1
         # Ensure no memory allocation other than the chunks
@@ -135,11 +136,11 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == array.nbytes
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
-                assert da._get_chunk_data(dev, i).device.id == dev
-                assert da._get_chunk_data(dev, i).ndim == array.ndim
+                assert da._chunks_map[dev][i].data.device.id == dev
+                assert da._chunks_map[dev][i].data.ndim == array.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        da._get_chunk_data(dev, i).ravel(), array[idx].ravel(),
+                        da._chunks_map[dev][i].data.ravel(), array[idx].ravel(),
                         strict=True)
 
     @pytest.mark.parametrize(
@@ -149,15 +150,15 @@ class TestDistributedArray:
     def test_array_creation_comms(self, mem_pool, shape, index_map):
         array = numpy.arange(size, dtype='q').reshape(shape)
         # assert mem_pool.used_bytes() == 0
-        da = _array.distributed_array(array, index_map)
+        da = darray.distributed_array(array, index_map)
         assert da._comms.keys() == index_map.keys()
-        da = _array.distributed_array(array, index_map, devices=set(range(4)))
+        da = darray.distributed_array(array, index_map, devices=set(range(4)))
         assert da._comms.keys() == set(range(4))
-        da = _array.distributed_array(
-            array, index_map, comms=_array._create_communicators(range(4)))
+        da = darray.distributed_array(
+            array, index_map, comms=darray.create_communicators(range(4)))
         assert da._comms.keys() == set(range(4))
         with pytest.raises(RuntimeError, match='Only one of devices and comms'):
-            da = _array.distributed_array(
+            da = darray.distributed_array(
                 array, index_map, devices=set(), comms={})
 
     @pytest.mark.parametrize(
@@ -175,23 +176,23 @@ class TestDistributedArray:
 
                 full_idx = _index_arith.normalize_index(shape, idx)
                 with cupy.cuda.Device(dev):
-                    chunk = _array._Chunk(
+                    chunk = darray.Chunk(
                         cupy.full_like(np_a[idx], 1 << dev),
                         cupy.cuda.Event(), full_idx)
                     chunks_map[dev].append(chunk)
 
-        d_a = _array._DistributedArray(
-            shape, np_a.dtype, chunks_map, _array._MODES['sum'], comms)
+        d_a = darray._DistributedArray(
+            shape, np_a.dtype, chunks_map, darray.MODES['sum'], comms)
         d_b = d_a.to_replica_mode()
-        assert d_b._mode is _array._REPLICA_MODE
+        assert d_b._mode is darray.REPLICA_MODE
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
         testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
-                assert d_b._get_chunk_data(dev, i).device.id == dev
+                assert d_b._chunks_map[dev][i].data.device.id == dev
                 idx = _index_arith.normalize_index(shape, idx)
                 testing.assert_array_equal(
-                    d_b._get_chunk_data(dev, i), np_a[idx], strict=True)
+                    d_b._chunks_map[dev][i].data, np_a[idx], strict=True)
 
     @pytest.mark.parametrize(
             'shape, index_map',
@@ -201,7 +202,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('mode', ['max', 'sum'])
     def test_change_to_op_mode(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
-        d_a = _array.distributed_array(np_a, index_map, mode, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode, comms)
         d_b = d_a.change_mode(mode)
         assert d_b.mode == mode
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
@@ -216,9 +217,11 @@ class TestDistributedArray:
         np_a = numpy.arange(size).reshape(shape)
         np_b = numpy.arange(size).reshape(shape) * 2
         np_r = numpy.cos(np_a * np_b) # We do not choose sin because sin(0) == 0
-        d_a = _array.distributed_array(np_a, index_map, mode_a, comms)
-        d_b = _array.distributed_array(np_b, index_map, mode_b, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode_a, comms)
+        d_b = darray.distributed_array(np_b, index_map, mode_b, comms)
         d_r = cupy.cos(d_a * d_b)
+        from pprint import pprint
+        pprint(d_r._chunks_map)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
@@ -235,8 +238,8 @@ class TestDistributedArray:
         np_a = numpy.arange(size).reshape(shape).astype(numpy.float32)
         np_b = (numpy.arange(size).reshape(shape) * 2.0).astype(numpy.float32)
         np_r = (np_a - np_b) * (np_a - np_b)
-        d_a = _array.distributed_array(np_a, index_map, mode_a, comms)
-        d_b = _array.distributed_array(np_b, index_map, mode_b, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode_a, comms)
+        d_b = darray.distributed_array(np_b, index_map, mode_b, comms)
         d_r = custom_kernel(d_a, d_b)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
@@ -254,8 +257,8 @@ class TestDistributedArray:
         np_a = numpy.arange(size).reshape(shape)
         np_b = numpy.arange(size).reshape(shape) * 2
         np_r = numpy.cos(np_a * np_b)
-        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
-        d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
+        d_a = darray.distributed_array(np_a, mapping_a, mode, comms)
+        d_b = darray.distributed_array(np_b, mapping_b, mode, comms)
         with pytest.warns(cupy._util.PerformanceWarning, match=r'Peer access'):
             d_r = cupy.cos(d_a * d_b)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
@@ -267,8 +270,8 @@ class TestDistributedArray:
     def test_incompatible_operand(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
         cp_b = cupy.arange(size).reshape(shape)
-        d_a = _array.distributed_array(np_a, index_map, mode, comms)
-        with pytest.raises(RuntimeError, match=r'Mix `cupy.ndarray'):
+        d_a = darray.distributed_array(np_a, index_map, mode, comms)
+        with pytest.raises(RuntimeError, match=r'Mixing.* dist.* non-dist'):
             cupy.cos(d_a * cp_b)
 
     @pytest.mark.parametrize(
@@ -281,7 +284,7 @@ class TestDistributedArray:
         np_a = numpy.arange(size, dtype='q').reshape(shape)
         # assert mem_pool.used_bytes() == 0
         # Initialize without comms
-        d_a = _array.distributed_array(np_a, mapping_a, mode)
+        d_a = darray.distributed_array(np_a, mapping_a, mode)
         # assert mem_pool.used_bytes() == np_a.nbytes
         d_b = d_a.reshard(mapping_b)
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
@@ -289,11 +292,11 @@ class TestDistributedArray:
         assert d_b.mode == mode
         for dev, idxs in mapping_b.items():
             for i, idx in enumerate(idxs):
-                assert d_b._get_chunk_data(dev, i).device.id == dev
-                assert d_b._get_chunk_data(dev, i).ndim == np_a.ndim
+                assert d_b._chunks_map[dev][i].data.device.id == dev
+                assert d_b._chunks_map[dev][i].data.ndim == np_a.ndim
                 if mode == 'replica':
                     testing.assert_array_equal(
-                        d_b._get_chunk_data(dev, i).ravel(), np_a[idx].ravel(),
+                        d_b._chunks_map[dev][i].data.ravel(), np_a[idx].ravel(),
                         strict=True)
 
     @pytest.mark.parametrize(
@@ -306,8 +309,8 @@ class TestDistributedArray:
         np_a = numpy.arange(size).reshape(shape)
         np_b = numpy.arange(size).reshape(shape) * 2
         np_r = numpy.cos(np_a + np_b)
-        d_a = _array.distributed_array(np_a, mapping_a, mode, comms)
-        d_b = _array.distributed_array(np_b, mapping_b, mode, comms)
+        d_a = darray.distributed_array(np_a, mapping_a, mode, comms)
+        d_b = darray.distributed_array(np_b, mapping_b, mode, comms)
         d_c = d_a + d_b.reshard(mapping_a)
         d_r = cupy.cos(d_c.reshard(mapping_b))
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
@@ -321,7 +324,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_max_reduction(self, shape, index_map, mode, dtype):
         np_a = numpy.arange(size, dtype=dtype).reshape(shape)
-        d_a = _array.distributed_array(np_a, index_map, mode, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.max(axis=axis)
             d_b = d_a.max(axis=axis)
@@ -337,7 +340,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_min_reduction(self, shape, index_map, mode, dtype):
         np_a = numpy.arange(size, dtype=dtype).reshape(shape)
-        d_a = _array.distributed_array(np_a, index_map, mode, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.min(axis=axis)
             d_b = d_a.min(axis=axis)
@@ -350,11 +353,11 @@ class TestDistributedArray:
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'prod'])
     def test_sum_reduction(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
-        d_a = _array.distributed_array(np_a, index_map, mode, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
-            assert d_b._mode is _array._MODES['sum']
+            assert d_b._mode is darray.MODES['sum']
             testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
             testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
@@ -364,7 +367,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     def test_prod_reduction(self, shape, index_map, mode):
         np_a = numpy.random.default_rng().random(shape)
-        d_a = _array.distributed_array(np_a, index_map, mode, comms)
+        d_a = darray.distributed_array(np_a, index_map, mode, comms)
         for axis in range(np_a.ndim):
             np_b = np_a.prod(axis=axis)
             d_b = d_a.prod(axis=axis)
@@ -374,7 +377,7 @@ class TestDistributedArray:
     @pytest.mark.parametrize('shape, index_map', [(shape_dim3, index_map_dim3)])
     def test_unsupported_reduction(self, shape, index_map):
         np_a = numpy.arange(size).reshape(shape)
-        d_a = _array.distributed_array(np_a, index_map, 'replica', comms)
+        d_a = darray.distributed_array(np_a, index_map, 'replica', comms)
         with pytest.raises(RuntimeError, match=r'Unsupported .* cupy_argmax'):
             d_a.argmax(axis=0)
 
@@ -386,7 +389,7 @@ class TestDistributedArray:
     def test_reshard_max(self, shape, mapping_a, mapping_b):
         np_a = numpy.arange(size).reshape(shape)
         np_b = np_a.max(axis=0)
-        d_a = _array.distributed_array(np_a, mapping_a, comms=comms)
+        d_a = darray.distributed_array(np_a, mapping_a, comms=comms)
         d_b = d_a.reshard(mapping_b).max(axis=0)
         testing.assert_array_equal(np_b, d_b.asnumpy(), strict=True)
         testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
@@ -403,11 +406,11 @@ class TestDistributedArray:
         np_c = rng.integers(0, 1 << 10, shape[1:])
         np_c2 = (np_a * np_b).max(axis=0)
         np_d = (np_a * np_b).max(axis=0) * np_c
-        d_a = _array.distributed_array(np_a, mapping_a, comms=comms)
-        d_b = _array.distributed_array(np_b, mapping_b, comms=comms)
+        d_a = darray.distributed_array(np_a, mapping_a, comms=comms)
+        d_b = darray.distributed_array(np_b, mapping_b, comms=comms)
         mapping_c = {dev: [idx[1:] for idx in idxs]
                      for dev, idxs in d_a.index_map.items()}
-        d_c = _array.distributed_array(np_c, mapping_c, comms=comms)
+        d_c = darray.distributed_array(np_c, mapping_c, comms=comms)
         d_c2 = (d_a.reshard(mapping_b) * d_b).max(axis=0)
         d_d = d_c2.reshard(mapping_c) * d_c
         testing.assert_array_equal(np_d, d_d.asnumpy(), strict=True)
@@ -442,12 +445,12 @@ class TestDistributedArray:
         mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode']
-        modes = list(_array._MODES)
+        modes = list(darray.MODES)
 
         rng = numpy.random.default_rng()
         for _ in range(n_iter):
             np_a = rng.integers(0, size, shape)
-            d_a = _array.distributed_array(np_a, mappings[0], comms=comms)
+            d_a = darray.distributed_array(np_a, mappings[0], comms=comms)
             history = []
             maps = list(mappings)
 
@@ -494,7 +497,7 @@ class TestDistributedArray:
         mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode', 'element-wise', 'reduce']
-        modes = list(_array._MODES)
+        modes = list(darray.MODES)
         elementwise = ['add', 'multiply', 'maximum', 'minimum']
         reduce = ['sum', 'prod', 'max', 'min']
 
@@ -502,8 +505,8 @@ class TestDistributedArray:
         for _ in range(n_iter):
             np_a = rng.integers(0, size, shape)
             np_b = rng.integers(0, size, shape)
-            d_a = _array.distributed_array(np_a, mappings[0], comms=comms)
-            d_b = _array.distributed_array(np_b, mappings[0], comms=comms)
+            d_a = darray.distributed_array(np_a, mappings[0], comms=comms)
+            d_b = darray.distributed_array(np_b, mappings[0], comms=comms)
             arrs = [(np_a, d_a), (np_b, d_b)]
             arrs_history = []
             maps = list(mappings)

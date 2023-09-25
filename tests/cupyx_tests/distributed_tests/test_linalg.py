@@ -5,8 +5,10 @@ import numpy
 import cupy
 from cupy import testing
 from cupy.cuda import nccl
-from cupyx.distributed import _array, _linalg
+from cupyx.distributed.array import _linalg
 import math
+
+from cupyx.distributed import array
 
 
 def make_comms():
@@ -34,9 +36,9 @@ class ArrayConfig:
 
     def instantiate(
         self, mode: str = 'replica',
-    ) -> tuple[numpy.ndarray, _array._DistributedArray]:
+    ) -> tuple[numpy.ndarray, array._DistributedArray]:
         np_arr = numpy.arange(self.size).reshape(self.shape)
-        d_arr = _array.distributed_array(np_arr, self.index_map, mode, comms)
+        d_arr = array.distributed_array(np_arr, self.index_map, mode, comms)
         return np_arr, d_arr
 
 
@@ -71,8 +73,8 @@ class MatMulConfig:
 
     def instantiate(
         self, mode: str = 'replica',
-    ) -> tuple[numpy.ndarray, _array._DistributedArray,
-               numpy.ndarray, _array._DistributedArray]:
+    ) -> tuple[numpy.ndarray, array._DistributedArray,
+               numpy.ndarray, array._DistributedArray]:
         return self.a.instantiate(mode) + self.b.instantiate(mode)
 
 
@@ -194,7 +196,7 @@ class TestDistributedMatMul:
         index_map_a[0] = index_map_a[0] * 2
 
         np_a2 = np_a + 1
-        d_a2 = d_a.reshard(index_map_a) + _array.distributed_array(
+        d_a2 = d_a.reshard(index_map_a) + array.distributed_array(
             cupy.ones_like(d_a), index_map_a, comms=d_a._comms)
 
         np_b2 = np_b.sum(axis=0)

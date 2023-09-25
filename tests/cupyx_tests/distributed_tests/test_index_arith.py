@@ -1,7 +1,7 @@
 import random
 import math
 
-from cupyx.distributed import _index_arith
+from cupyx.distributed.array import _index_arith
 
 
 def test_extgcd():

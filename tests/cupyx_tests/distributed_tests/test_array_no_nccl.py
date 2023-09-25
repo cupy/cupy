@@ -1,20 +1,14 @@
-import importlib
 import os
 import sys
 
-import pytest
-
-import cupyx.distributed._array
+import cupy.cuda
 
 
-@pytest.fixture(autouse=True)
-def make_nccl_unavailable(monkeypatch):
-    class MockNcclModule:
-        available = False
+class MockUnavailableModule:
+    available = False
 
-    monkeypatch.setattr(cupy.cuda, 'nccl', MockNcclModule())
 
-    importlib.reload(cupyx.distributed._array)
+cupy.cuda.nccl = MockUnavailableModule()
 
 
 sys.path.append(os.getcwd())

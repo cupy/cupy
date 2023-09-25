@@ -110,7 +110,6 @@ def distributed_reshard(n_dev=4):
     index_map_a = configs[n_dev].a.index_map
     index_map_b = configs[n_dev].b.index_map
     d_a = d_a.reshard(index_map_a)
-    d_a.wait_all_transfer()
 
     bench(lambda: d_a @ d_b.reshard(index_map_b), n_dev)
 
