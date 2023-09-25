@@ -3,7 +3,8 @@ import typing
 from typing import Optional
 
 import cupy
-from cupyx.distributed import array
+import cupyx.distributed.array as darray
+from cupyx.distributed.array import _chunk
 
 
 _Shape = tuple[int, ...]
@@ -154,20 +155,20 @@ def _make_local_maps(
     return block_locatoin_map
 
 
-def matmul(a, b, out=None, **kwargs) -> 'array._DistributedArray':
+def matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
     if out is not None:
         raise RuntimeError('Argument `out` is not supported')
     for param in ('subok', 'axes', 'axis'):
         if param in kwargs:
             raise RuntimeError(f'Argument `{param}` is not supported')
-    if (not isinstance(a, array._DistributedArray)
-            or not isinstance(b, array._DistributedArray)):
+    if (not isinstance(a, darray.DistributedArray)
+            or not isinstance(b, darray.DistributedArray)):
         raise RuntimeError(
             'Mixing a distributed array with a non-distributed array is not'
             ' supported')
 
-    a = a.to_replica_mode()
-    b = b.to_replica_mode()
+    a = a._to_replica_mode()
+    b = b._to_replica_mode()
 
     one_prepended = one_appended = False
     if a.ndim == 1:
@@ -186,7 +187,7 @@ def matmul(a, b, out=None, **kwargs) -> 'array._DistributedArray':
     if batch_idxs != _make_batch_idxs(b.shape, b.index_map):
         raise RuntimeError('Mismatched batch shapes')
 
-    chunks_map: dict[int, list[array._Chunk]] = {dev: [] for dev in a.devices}
+    chunks_map: dict[int, list[_chunk._Chunk]] = {dev: [] for dev in a.devices}
     dtype = None
 
     for batch_idx in batch_idxs:
@@ -205,21 +206,21 @@ def matmul(a, b, out=None, **kwargs) -> 'array._DistributedArray':
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
             with cupy.cuda.Device(dev):
                 stream = cupy.cuda.get_current_stream()
-                a._apply_updates(chunk_a, array._REPLICA_MODE)
-                b._apply_updates(chunk_b, array._REPLICA_MODE)
+                chunk_a.apply_updates(darray._REPLICA_MODE)
+                chunk_b.apply_updates(darray._REPLICA_MODE)
                 stream.wait_event(chunk_a.ready)
                 stream.wait_event(chunk_b.ready)
                 chunk_ab_data = cupy.matmul(
                     chunk_a.data, chunk_b.data, **kwargs)
-                chunk_ab = array._Chunk(
+                chunk_ab = _chunk._Chunk(
                     chunk_ab_data, stream.record(), index,
                     prevent_gc=(chunk_a, chunk_b))
                 chunks_map[dev].append(chunk_ab)
                 dtype = chunk_ab_data.dtype
 
     shape = a.shape[:-2] + (n, p)
-    res = array._DistributedArray(
-        shape, dtype, chunks_map, array._MODES['sum'], a._comms)
+    res = darray.DistributedArray(
+        shape, dtype, chunks_map, darray._MODES['sum'], a._comms)
 
     if one_prepended:
         res = res._pop_front_from_shape()

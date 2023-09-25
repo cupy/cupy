@@ -66,7 +66,7 @@ def non_distributed():
 def without_reshard(n_dev=4):
     print(f'distributed, no resharding ({n_dev=})')
 
-    data = numpy.arange(size).reshape(shape)
+    data = cupy.arange(size).reshape(shape)
 
     mapping = index_map[n_dev]
 
@@ -79,7 +79,7 @@ def without_reshard(n_dev=4):
 def with_reshard(n_dev=4):
     print(f'distributed, resharding ({n_dev=})')
 
-    data = numpy.arange(size).reshape(shape)
+    data = cupy.arange(size).reshape(shape)
 
     index_map_a = index_map[n_dev]
     index_map_b = index_map_2[n_dev]
@@ -89,7 +89,7 @@ def with_reshard(n_dev=4):
     a = distributed_array(data, index_map_a)
     b = distributed_array(data, index_map_b)
 
-    # assert_array_equal((a + b.reshard(index_map_a)).asnumpy(), data * 2)
+    assert_array_equal((a + b.reshard(index_map_a)).asnumpy(), data * 2)
 
     bench(lambda: cupy.add(a, b.reshard(index_map_a)), n_dev)
 
@@ -107,9 +107,15 @@ def peer_access(n_dev=4):
     a = distributed_array(data, index_map_a)
     b = distributed_array(data, index_map_b)
 
-    # assert_array_equal((a + b.reshard(index_map_a)).asnumpy(), data * 2)
+    assert_array_equal((a + b.reshard(index_map_a)).asnumpy(), data * 2)
 
     bench(lambda: cupy.add(a, b), n_dev)
+
+
+with_reshard(4)
+peer_access(2)
+import sys
+sys.exit()
 
 
 non_distributed()

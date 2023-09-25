@@ -8,7 +8,6 @@ from cupy import testing
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array import _modes
 
 
 @pytest.fixture
@@ -25,7 +24,7 @@ def mem_pool():
         cupy.cuda.memory.set_allocator(old_pool.malloc)
 
 
-comms = _data_transfer.create_communicators(range(4))
+comms = _data_transfer._create_communicators(range(4))
 
 
 size = 256
@@ -157,7 +156,7 @@ class TestDistributedArray:
         da = darray.distributed_array(array, index_map, devices=set(range(4)))
         assert da._comms.keys() == set(range(4))
         da = darray.distributed_array(
-            array, index_map, comms=_data_transfer.create_communicators(range(4)))
+            array, index_map, comms=_data_transfer._create_communicators(range(4)))
         assert da._comms.keys() == set(range(4))
         with pytest.raises(RuntimeError, match='Only one of devices and comms'):
             da = darray.distributed_array(
@@ -176,23 +175,23 @@ class TestDistributedArray:
             for idx in idxs:
                 np_a[idx] += 1 << dev
 
-                full_idx = _index_arith.normalize_index(shape, idx)
+                full_idx = _index_arith._normalize_index(shape, idx)
                 with cupy.cuda.Device(dev):
-                    chunk = darray.Chunk(
+                    chunk = darray._Chunk(
                         cupy.full_like(np_a[idx], 1 << dev),
                         cupy.cuda.Event(), full_idx)
                     chunks_map[dev].append(chunk)
 
-        d_a = darray._DistributedArray(
-            shape, np_a.dtype, chunks_map, _modes.MODES['sum'], comms)
-        d_b = d_a.to_replica_mode()
-        assert d_b._mode is _modes.REPLICA_MODE
+        d_a = darray.DistributedArray(
+            shape, np_a.dtype, chunks_map, darray._MODES['sum'], comms)
+        d_b = d_a._to_replica_mode()
+        assert d_b._mode is darray._REPLICA_MODE
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
         testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         for dev, idxs in index_map.items():
             for i, idx in enumerate(idxs):
                 assert d_b._chunks_map[dev][i].data.device.id == dev
-                idx = _index_arith.normalize_index(shape, idx)
+                idx = _index_arith._normalize_index(shape, idx)
                 testing.assert_array_equal(
                     d_b._chunks_map[dev][i].data, np_a[idx], strict=True)
 
@@ -222,8 +221,6 @@ class TestDistributedArray:
         d_a = darray.distributed_array(np_a, index_map, mode_a, comms)
         d_b = darray.distributed_array(np_b, index_map, mode_b, comms)
         d_r = cupy.cos(d_a * d_b)
-        from pprint import pprint
-        pprint(d_r._chunks_map)
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
@@ -359,7 +356,7 @@ class TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
-            assert d_b._mode is _modes.MODES['sum']
+            assert d_b._mode is darray._MODES['sum']
             testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
             testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
@@ -438,16 +435,16 @@ class TestDistributedArray:
             3: slice(length // 15 * 13 + k, None)}
         mapping_c = {0: slice(None)}
 
-        mapping_a = {dev: _index_arith.normalize_index(shape, idx)
+        mapping_a = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_a.items()}
-        mapping_b = {dev: _index_arith.normalize_index(shape, idx)
+        mapping_b = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_b.items()}
-        mapping_c = {dev: _index_arith.normalize_index(shape, idx)
+        mapping_c = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_c.items()}
         mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode']
-        modes = list(_modes.MODES)
+        modes = list(darray._MODES)
 
         rng = numpy.random.default_rng()
         for _ in range(n_iter):
@@ -490,16 +487,16 @@ class TestDistributedArray:
             3: slice(length // 15 * 13 + k, None)}
         mapping_c = {0: slice(None)}
 
-        mapping_a = {dev: _index_arith.normalize_index(shape, idx)
+        mapping_a = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_a.items()}
-        mapping_b = {dev: _index_arith.normalize_index(shape, idx)
+        mapping_b = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_b.items()}
-        mapping_c = {dev: _index_arith.normalize_index(shape, idx)
+        mapping_c = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_c.items()}
         mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode', 'element-wise', 'reduce']
-        modes = list(_modes.MODES)
+        modes = list(darray._MODES)
         elementwise = ['add', 'multiply', 'maximum', 'minimum']
         reduce = ['sum', 'prod', 'max', 'min']
 

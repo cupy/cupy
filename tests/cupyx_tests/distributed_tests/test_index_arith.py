@@ -11,7 +11,7 @@ def test_extgcd():
     for _ in range(iteration):
         a = random.randint(1, max_value)
         b = random.randint(1, max_value)
-        g, x = _index_arith.extgcd(a, b)
+        g, x = _index_arith._extgcd(a, b)
         assert g == math.gcd(a, b)
         assert (g - a * x) % b == 0
 
@@ -35,11 +35,10 @@ def test_slice_intersection():
             all_indices = list(range(max_value))
             return set(all_indices[s0][s1])
 
-        print(a, b, max_value)
-        c = _index_arith.slice_intersection(a, b, max_value)
+        c = _index_arith._slice_intersection(a, b, max_value)
         if c is None:
             assert not (all_indices(a) & all_indices(b))
         else:
             assert all_indices(c) == all_indices(a) & all_indices(b)
-            p = _index_arith.index_for_subslice(a, c, max_value)
+            p = _index_arith._index_for_subslice(a, c, max_value)
             assert all_indices(c) == all_indices(a, p)

@@ -36,7 +36,7 @@ class ArrayConfig:
 
     def instantiate(
         self, mode: str = 'replica',
-    ) -> tuple[numpy.ndarray, array._DistributedArray]:
+    ) -> tuple[numpy.ndarray, array.DistributedArray]:
         np_arr = numpy.arange(self.size).reshape(self.shape)
         d_arr = array.distributed_array(np_arr, self.index_map, mode, comms)
         return np_arr, d_arr
@@ -73,8 +73,8 @@ class MatMulConfig:
 
     def instantiate(
         self, mode: str = 'replica',
-    ) -> tuple[numpy.ndarray, array._DistributedArray,
-               numpy.ndarray, array._DistributedArray]:
+    ) -> tuple[numpy.ndarray, array.DistributedArray,
+               numpy.ndarray, array.DistributedArray]:
         return self.a.instantiate(mode) + self.b.instantiate(mode)
 
 
