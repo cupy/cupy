@@ -5,8 +5,10 @@ import pytest
 
 import cupy
 from cupy import testing
+import cupyx.distributed.array as darray
 from cupyx.distributed.array import _index_arith
-from cupyx.distributed import array as darray
+from cupyx.distributed.array import _data_transfer
+from cupyx.distributed.array import _modes
 
 
 @pytest.fixture
@@ -23,7 +25,7 @@ def mem_pool():
         cupy.cuda.memory.set_allocator(old_pool.malloc)
 
 
-comms = darray.create_communicators(range(4))
+comms = _data_transfer.create_communicators(range(4))
 
 
 size = 256
@@ -155,7 +157,7 @@ class TestDistributedArray:
         da = darray.distributed_array(array, index_map, devices=set(range(4)))
         assert da._comms.keys() == set(range(4))
         da = darray.distributed_array(
-            array, index_map, comms=darray.create_communicators(range(4)))
+            array, index_map, comms=_data_transfer.create_communicators(range(4)))
         assert da._comms.keys() == set(range(4))
         with pytest.raises(RuntimeError, match='Only one of devices and comms'):
             da = darray.distributed_array(
@@ -182,9 +184,9 @@ class TestDistributedArray:
                     chunks_map[dev].append(chunk)
 
         d_a = darray._DistributedArray(
-            shape, np_a.dtype, chunks_map, darray.MODES['sum'], comms)
+            shape, np_a.dtype, chunks_map, _modes.MODES['sum'], comms)
         d_b = d_a.to_replica_mode()
-        assert d_b._mode is darray.REPLICA_MODE
+        assert d_b._mode is _modes.REPLICA_MODE
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
         testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         for dev, idxs in index_map.items():
@@ -357,7 +359,7 @@ class TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
-            assert d_b._mode is darray.MODES['sum']
+            assert d_b._mode is _modes.MODES['sum']
             testing.assert_array_equal(d_b.asnumpy(), np_b, strict=True)
             testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
 
@@ -445,7 +447,7 @@ class TestDistributedArray:
         mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode']
-        modes = list(darray.MODES)
+        modes = list(_modes.MODES)
 
         rng = numpy.random.default_rng()
         for _ in range(n_iter):
@@ -497,7 +499,7 @@ class TestDistributedArray:
         mappings = [mapping_a, mapping_b, mapping_c]
 
         ops = ['reshard', 'change_mode', 'element-wise', 'reduce']
-        modes = list(darray.MODES)
+        modes = list(_modes.MODES)
         elementwise = ['add', 'multiply', 'maximum', 'minimum']
         reduce = ['sum', 'prod', 'max', 'min']
 

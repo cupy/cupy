@@ -5,9 +5,11 @@ import itertools
 
 import cupy
 import cupyx.distributed.array as darray
-from cupyx.distributed.array._data_transfer import *
+from cupyx.distributed.array import _chunk
+from cupyx.distributed.array import _data_transfer
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _util
+from cupyx.distributed.array import _modes
 
 
 def _classify_args(args, kwargs):
@@ -37,9 +39,9 @@ def _prepare_updates(
     args: Sequence['darray._DistributedArray'],
     kwargs: dict[str, 'darray._DistributedArray'],
     dev: int, chunk_i: int,
-) -> tuple[Optional[Union[int, str]], list[PartialUpdate]]:
+) -> tuple[Optional[Union[int, str]], list['_data_transfer.PartialUpdate']]:
     index = None
-    updates: list[PartialUpdate] = []
+    updates: list[_data_transfer.PartialUpdate] = []
     at_most_one_update = True
 
     for i, arg in itertools.chain(enumerate(args), kwargs.items()):
@@ -65,7 +67,7 @@ def _prepare_updates(
 
 
 def _access_chunks_data(
-    stream: Stream,
+    stream: cupy.cuda.Stream,
     args: Sequence['darray._DistributedArray'],
     kwargs: dict[str, 'darray._DistributedArray'],
     dev: int, chunk_i: int, idx: tuple[slice, ...],
@@ -98,7 +100,7 @@ def execute_kernel(
     _change_all_to_replica_mode(args, kwargs)
 
     dtype = None
-    chunks_map: dict[int, list[Chunk]] = {}
+    chunks_map: dict[int, list[_chunk.Chunk]] = {}
 
     for arg in (args or kwargs.values()):
         index_map = arg.index_map
@@ -121,15 +123,15 @@ def execute_kernel(
 
                 new_chunk = None
                 for data in itertools.chain(args_data, kwargs_data.values()):
-                    if isinstance(data, DataPlaceholder):
-                        new_chunk = Chunk(data, cupy.cuda.Event(), idx)
+                    if isinstance(data, _chunk.DataPlaceholder):
+                        new_chunk = _chunk.Chunk(data, cupy.cuda.Event(), idx)
 
                 if new_chunk is None:
                     print('execution', args_data)
                     new_data = kernel(*args_data, **kwargs_data)
 
                     dtype = new_data.dtype
-                    new_chunk = Chunk(
+                    new_chunk = _chunk.Chunk(
                         new_data, stream.record(),
                         index_map[dev][chunk_i],
                         prevent_gc=(args_data, kwargs_data))
@@ -143,12 +145,12 @@ def execute_kernel(
                 kwargs_slice = {}
                 for update, idx in update_map:
                     for i, data in enumerate(args_data):
-                        if isinstance(data, DataPlaceholder):
+                        if isinstance(data, _chunk.DataPlaceholder):
                             args_slice[i] = update.data
                         else:
                             args_slice[i] = data[idx]
                     for k, data in kwargs_data.items():
-                        if isinstance(data, DataPlaceholder):
+                        if isinstance(data, _chunk.DataPlaceholder):
                             kwargs_slice[k] = update.data
                         else:
                             kwargs_slice[k] = data[idx]
@@ -158,13 +160,13 @@ def execute_kernel(
                     dtype = new_data.dtype
                     execution_done = stream.record()
 
-                    data_transfer = DataTransfer(
+                    data_transfer = _data_transfer.DataTransfer(
                         new_data, execution_done,
                         prevent_gc=(args_slice, kwargs_slice))
                     new_chunk.updates.append((data_transfer, idx))
 
     for dev, chunk in _util.all_chunks(chunks_map):
-        if not isinstance(chunk.data, cupy.ndarray) and not isinstance(chunk.data, DataPlaceholder):
+        if not isinstance(chunk.data, cupy.ndarray) and not isinstance(chunk.data, _chunk.DataPlaceholder):
             raise RuntimeError(
                 'Kernels returning other than signle array are not'
                 ' supported')
@@ -175,7 +177,7 @@ def execute_kernel(
         comms = arg._comms
 
     return darray._DistributedArray(
-        shape, dtype, chunks_map, REPLICA_MODE, comms)
+        shape, dtype, chunks_map, _modes.REPLICA_MODE, comms)
 
 
 def execute_peer_access(
@@ -218,13 +220,13 @@ def execute_peer_access(
 
     shape = a.shape
     comms = a._comms
-    chunks_map: dict[int, list[Chunk]] = {}
+    chunks_map: dict[int, list[_chunk.Chunk]] = {}
 
     for a_dev, a_chunk in _util.all_chunks(a._chunks_map):
         assert isinstance(a_chunk.data, cupy.ndarray)
 
-        with Device(a_dev):
-            stream = get_current_stream()
+        with cupy.cuda.Device(a_dev):
+            stream = cupy.cuda.get_current_stream()
             stream.wait_event(a_chunk.ready)
 
             new_chunk_data = cupy.empty(a_chunk.data.shape, dtype)
@@ -250,13 +252,13 @@ def execute_peer_access(
                        b_chunk.data[b_new_idx],
                        new_chunk_data[a_new_idx])
 
-            new_chunk = Chunk(
+            new_chunk = _chunk.Chunk(
                 new_chunk_data, stream.record(), a_chunk.index,
                 updates=[], prevent_gc=b._chunks_map)
             chunks_map.setdefault(a_dev, []).append(new_chunk)
 
     return darray._DistributedArray(
-        shape, dtype, chunks_map, REPLICA_MODE, comms)
+        shape, dtype, chunks_map, _modes.REPLICA_MODE, comms)
 
 
 def _is_peer_access_needed(

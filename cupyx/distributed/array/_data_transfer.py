@@ -3,7 +3,7 @@ import typing
 from typing import Any, Callable, Final, Iterable, Optional, TypeVar, Union
 from typing_extensions import TypeGuard
 from cupyx.distributed.array import _elementwise
-from cupyx.distributed.array._modes import *
+from cupyx.distributed.array import _modes
 
 
 from cupy.cuda import nccl
@@ -58,90 +58,6 @@ class DataTransfer:
 
 # Overwrite in replica mode, apply in op mode
 PartialUpdate = tuple[DataTransfer, tuple[slice, ...]]
-
-
-@dataclasses.dataclass
-class DataPlaceholder:
-    shape: tuple[int, ...]
-    device: Device
-
-    def copy(self) -> 'DataPlaceholder':
-        return self
-
-    def reshape(self, new_shape: tuple[int, ...]) -> 'DataPlaceholder':
-        return DataPlaceholder(new_shape, self.device)
-
-
-@dataclasses.dataclass
-class Chunk:
-    data: Union[cupy.ndarray, DataPlaceholder]
-    ready: Event
-    index: tuple[slice, ...]
-    updates: list[PartialUpdate]
-    prevent_gc: Any
-
-    def __init__(
-        self, data: Union[cupy.ndarray, DataPlaceholder],
-        ready: Event, index: tuple[slice, ...],
-        updates: Optional[list[PartialUpdate]] = None,
-        prevent_gc: Any = None,
-    ) -> None:
-        self.data = data
-        self.ready = ready
-        self.index = index
-        self.updates = updates if updates is not None else []
-        self.prevent_gc = prevent_gc
-
-    def copy(self) -> 'Chunk':
-        if isinstance(self.data, DataPlaceholder):
-            data = self.data
-            ready = self.ready
-        else:
-            with self.data.device:
-                stream = get_current_stream()
-                stream.wait_event(self.ready)
-                data = self.data.copy()
-                self.ready.record(stream)
-                ready = stream.record()
-
-        return Chunk(data, ready, self.index, list(self.updates),
-                      prevent_gc=self.prevent_gc)
-
-    def apply_updates(self, mode: Mode) -> None:
-        """Apply all updates in-place."""
-        if len(self.updates) == 0:
-            return
-
-        with self.data.device:
-            stream = cupy.cuda.get_current_stream()
-            stream.wait_event(self.ready)
-
-            if isinstance(self.data, DataPlaceholder):
-                dtype = self.updates[0][0].data.dtype
-
-                if is_op_mode(mode):
-                    value = mode.identity_of(dtype)
-                    data = cupy.full(self.data.shape, value, dtype)
-                else:
-                    data = cupy.empty(self.data.shape, dtype)
-
-                # We avoid 0D array because we expect data[idx] to return a view
-                self.data = cupy.atleast_1d(data)
-
-            for update_data, idx in self.updates:
-                stream.wait_event(update_data.ready)
-                stream.synchronize()
-                if is_op_mode(mode):
-                    self.data[idx] = mode.func(self.data[idx], update_data.data)
-                else:
-                    self.data[idx] = update_data.data
-                stream.synchronize()
-
-            self.ready.record(stream)
-            self.prevent_gc = (self.prevent_gc, self.updates)
-            self.updates = []
-
-        self.ready.synchronize()
 
 
 if nccl.available:
