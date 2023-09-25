@@ -244,8 +244,7 @@ class DistributedArray(cupy.ndarray):
         def reshape_chunk(chunk: _Chunk) -> _Chunk:
             data = chunk.data.reshape(f_shape(chunk.data.shape))
             index = f_idx(chunk.index)
-            updates = [(data, f_idx(idx))
-                       for data, idx in chunk.updates]
+            updates = [(data, f_idx(idx)) for data, idx in chunk.updates]
             return _Chunk(data, chunk.ready, index, updates, chunk._prevent_gc)
 
         chunks_map = {}

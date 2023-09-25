@@ -70,7 +70,7 @@ def _execute(
                     new_dtype = update_data.dtype
                     new_chunk = _Chunk(
                         update_data, execution_stream.record(), new_index, [],
-                        prevent_gc=chunk.prevent_gc)
+                        prevent_gc=chunk._prevent_gc)
 
                 new_chunks_map[dev].append(new_chunk)
 

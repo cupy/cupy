@@ -24,16 +24,26 @@ class _DataPlaceholder:
         return _DataPlaceholder(new_shape, self.device)
 
 
-@dataclasses.dataclass
 class _Chunk:
     data: Union[cupy.ndarray, _DataPlaceholder]
     ready: Event
     index: tuple[slice, ...]
-    updates: list[_data_transfer._PartialUpdate] = dataclasses.field(
+    _updates: list[_data_transfer._PartialUpdate] = dataclasses.field(
         default_factory=list)
-    prevent_gc: Any = None
+    _prevent_gc: Any = None
 
     # Rule: whenever data is DataPlaceholder, ready is empty
+
+    def __init__(
+            self, data: Union[cupy.ndarray, _DataPlaceholder], ready: Event,
+            index: tuple[slice, ...],
+            updates: Optional[list[_data_transfer._PartialUpdate]] = None,
+            prevent_gc: Any = None) -> None:
+        self.data = data
+        self.ready = ready
+        self.index = index
+        self._updates = updates if updates is not None else []
+        self._prevent_gc = prevent_gc
 
     @classmethod
     def create_placeholder(
@@ -49,10 +59,14 @@ class _Chunk:
 
         return _Chunk(data, Event(), index, updates)
 
+    @property
+    def updates(self) -> list[_data_transfer._PartialUpdate]:
+        return self._updates
+
     def add_update(
         self, update: _data_transfer._AsyncData, idx: tuple[slice, ...],
     ) -> None:
-        self.updates.append((update, idx))
+        self._updates.append((update, idx))
 
     def copy(self) -> '_Chunk':
         # TODO: Calling apply_updates here would reduce the amount of
@@ -67,14 +81,14 @@ class _Chunk:
                 data = self.data.copy()
                 ready = stream.record()
 
-        return _Chunk(data, ready, self.index, list(self.updates),
-                      prevent_gc=self.prevent_gc)
+        return _Chunk(data, ready, self.index, list(self._updates),
+                      prevent_gc=self._prevent_gc)
 
     def _ensure_data_initialized(self, mode: 'darray._Mode') -> None:
         if isinstance(self.data, cupy.ndarray):
             return
 
-        dtype = self.updates[0][0].data.dtype
+        dtype = self._updates[0][0].data.dtype
 
         with self.data.device:
             if darray._is_op_mode(mode):
@@ -87,8 +101,8 @@ class _Chunk:
             self.data = cupy.atleast_1d(data)
 
     def apply_updates(self, mode: 'darray._Mode') -> None:
-        """Apply all updates in-place."""
-        if len(self.updates) == 0:
+        """Apply all _updates in-place."""
+        if len(self._updates) == 0:
             return
 
         self._ensure_data_initialized(mode)
@@ -97,7 +111,7 @@ class _Chunk:
             stream = cupy.cuda.get_current_stream()
             stream.wait_event(self.ready)
 
-            for update_data, idx in self.updates:
+            for update_data, idx in self._updates:
                 stream.wait_event(update_data.ready)
                 if darray._is_op_mode(mode):
                     self.data[idx] = mode.func(self.data[idx], update_data.data)
@@ -105,8 +119,8 @@ class _Chunk:
                     self.data[idx] = update_data.data
 
             self.ready.record(stream)
-            self.prevent_gc = (self.prevent_gc, self.updates)
-            self.updates = []
+            self._prevent_gc = (self._prevent_gc, self._updates)
+            self._updates = []
 
 
     def _apply_to(
@@ -130,7 +144,7 @@ class _Chunk:
         dst_new_idx = _index_arith._index_for_subindex(dst_idx, intersection, shape)
 
         data_to_transfer = _data_transfer._AsyncData(
-            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk.prevent_gc)
+            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk._prevent_gc)
 
         if not new_op_mode.idempotent:
             with cupy.cuda.Device(src_dev):
@@ -156,7 +170,7 @@ class _Chunk:
     ) -> None:
         src_chunk = self
 
-        assert len(src_chunk.updates) == 0
+        assert len(src_chunk._updates) == 0
         assert isinstance(src_chunk.data, cupy.ndarray)
 
         src_idx = src_chunk.index
@@ -171,7 +185,7 @@ class _Chunk:
         dst_new_idx = _index_arith._index_for_subindex(dst_idx, intersection, shape)
 
         src_partial_chunk = _data_transfer._AsyncData(
-            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk.prevent_gc)
+            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk._prevent_gc)
 
         update = _data_transfer._transfer(
             comms[src_dev], streams[src_dev], src_partial_chunk,
@@ -202,7 +216,7 @@ class _Chunk:
         with self.data.device:
             stream = get_current_stream()
             stream.wait_event(self.ready)
-            for _, idx in self.updates:
+            for _, idx in self._updates:
                 self.data[idx] = identity
             stream.record(self.ready)
 
