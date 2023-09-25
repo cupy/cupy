@@ -1,4 +1,5 @@
 from typing import Any, Callable, Final, Iterable, Optional, TypeGuard, TypeVar, Union
+import functools
 
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
@@ -20,6 +21,7 @@ from cupyx.distributed.array import _linalg
 from cupyx.distributed.array import _index_arith
 
 
+@functools.lru_cache
 def _min_value_of(dtype):
     if dtype.kind in 'biu':
         return dtype.type(cupy.iinfo(dtype).min)
@@ -29,6 +31,7 @@ def _min_value_of(dtype):
         raise RuntimeError(f'Unsupported type: {dtype}')
 
 
+@functools.lru_cache
 def _max_value_of(dtype):
     if dtype.kind in 'biu':
         return dtype.type(cupy.iinfo(dtype).max)
@@ -38,11 +41,13 @@ def _max_value_of(dtype):
         raise RuntimeError(f'Unsupported type: {dtype}')
 
 
-def _zero_value_of(dtype):
+@functools.lru_cache
+def _zero_of(dtype):
     return dtype.type(0)
 
 
-def _one_value_of(dtype):
+@functools.lru_cache
+def _one_of(dtype):
     return dtype.type(1)
 
 
@@ -79,8 +84,8 @@ _MODES: Final[dict[str, _Mode]] = {
     'replica': _REPLICA_MODE,
     'min':  _OpMode('minimum',  True,  _max_value_of),
     'max':  _OpMode('maximum',  True,  _min_value_of),
-    'sum':  _OpMode('add',      False, _zero_value_of),
-    'prod': _OpMode('multiply', False, _one_value_of),
+    'sum':  _OpMode('add',      False, _zero_of),
+    'prod': _OpMode('multiply', False, _one_of),
 }
 
 
@@ -231,21 +236,21 @@ class DistributedArray(cupy.ndarray):
 
     # ------ Basic patterns of reshaping required by _linalg.matmul ------
 
-    def _change_shape(
+    def _reshape_with(
         self,
         f_shape: Callable[[tuple[int,   ...]], tuple[int,   ...]],
         f_idx:   Callable[[tuple[slice, ...]], tuple[slice, ...]],
     ) -> 'DistributedArray':
-        def apply_to_chunk(chunk: _Chunk) -> _Chunk:
+        def reshape_chunk(chunk: _Chunk) -> _Chunk:
             data = chunk.data.reshape(f_shape(chunk.data.shape))
             index = f_idx(chunk.index)
             updates = [(data, f_idx(idx))
                        for data, idx in chunk.updates]
-            return _Chunk(data, chunk.ready, index, updates, chunk.prevent_gc)
+            return _Chunk(data, chunk.ready, index, updates, chunk._prevent_gc)
 
         chunks_map = {}
         for dev, chunks in self._chunks_map.items():
-            chunks_map[dev] = [apply_to_chunk(chunk) for chunk in chunks]
+            chunks_map[dev] = [reshape_chunk(chunk) for chunk in chunks]
 
         shape = f_shape(self.shape)
         return DistributedArray(
@@ -253,13 +258,13 @@ class DistributedArray(cupy.ndarray):
 
     def _prepend_one_to_shape(self) -> 'DistributedArray':
         """Return a view with (1,) prepended to its shape."""
-        return self._change_shape(
+        return self._reshape_with(
             lambda shape: (1,) + shape,
             lambda idx: (slice(None),) + idx)
 
     def _append_one_to_shape(self) -> 'DistributedArray':
         """Return a view with (1,) apppended to its shape."""
-        return self._change_shape(
+        return self._reshape_with(
             lambda shape: shape + (1,),
             lambda idx: idx + (slice(None),))
 
@@ -268,7 +273,7 @@ class DistributedArray(cupy.ndarray):
         of shape must be equal to 1."""
         assert self.shape[-1] == 1
 
-        return self._change_shape(
+        return self._reshape_with(
             lambda shape: shape[:-1],
             lambda idx: idx[:-1])
 
@@ -277,7 +282,7 @@ class DistributedArray(cupy.ndarray):
         element of shape must be equal to 1."""
         assert self.shape[0] == 1
 
-        return self._change_shape(
+        return self._reshape_with(
             lambda shape: shape[1:],
             lambda idx: idx[1:])
 
@@ -315,8 +320,8 @@ class DistributedArray(cupy.ndarray):
             a_dev, a_chunk = chunks_list[i]
             for j in range(i + 1, len(chunks_list)):
                 b_dev, b_chunk = chunks_list[j]
-                _chunk._set_identity_on_intersection(
-                    self.shape, identity, a_chunk, b_chunk.index)
+                a_chunk._set_identity_on_intersection(
+                    b_chunk.index, self.shape, identity)
 
         return chunks_map
 
@@ -405,12 +410,12 @@ class DistributedArray(cupy.ndarray):
 
             for dst_dev, dst_chunk in _util.all_chunks(new_chunks_map):
                 if darray._is_op_mode(self._mode):
-                    _chunk._apply_chunks(
-                        self._mode, self.shape, src_chunk, dst_chunk,
+                    src_chunk._apply_to(
+                        dst_chunk, self._mode, self.shape,
                         self._comms, self._streams)
                 else:
-                    _chunk._copy_on_intersection(
-                        self.shape, src_chunk, dst_chunk,
+                    src_chunk._copy_on_intersection(
+                        dst_chunk, self.shape,
                         self._comms, self._streams)
 
         return DistributedArray(

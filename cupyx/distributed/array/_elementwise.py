@@ -19,7 +19,7 @@ def _find_updates(
     updates: list[_data_transfer._PartialUpdate] = []
     at_most_one_update = True
 
-    for i, arg in itertools.chain(enumerate(args), kwargs.items()):
+    for arg in itertools.chain(args, kwargs.values()):
         updates_now = arg._chunks_map[dev][chunk_i].updates
         if updates_now:
             if updates:
@@ -135,7 +135,7 @@ def _execute_kernel(
                     data_transfer = _data_transfer._AsyncData(
                         new_data, execution_done,
                         prevent_gc=(args_slice, kwargs_slice))
-                    new_chunk.updates.append((data_transfer, idx))
+                    new_chunk.add_update(data_transfer, idx)
 
     for dev, chunk in _util.all_chunks(chunks_map):
         if (not isinstance(chunk.data, cupy.ndarray)
@@ -226,7 +226,7 @@ def _execute_peer_access(
 
             new_chunk = _chunk._Chunk(
                 new_chunk_data, stream.record(), a_chunk.index,
-                updates=[], prevent_gc=b._chunks_map)
+                prevent_gc=b._chunks_map)
             chunks_map.setdefault(a_dev, []).append(new_chunk)
 
     return darray.DistributedArray(

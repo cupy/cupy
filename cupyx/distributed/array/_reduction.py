@@ -43,7 +43,7 @@ def _execute(
                 if len(chunks[i].updates) == 0:
                     continue
                 chunks[i] = chunks[i].copy()
-                _chunk._set_identity_on_overwritten_entries(identity, chunks[i])
+                chunks[i]._set_identity_on_overwritten_entries(identity)
 
     shape = arr.shape[:axis] + arr.shape[axis+1:]
     new_dtype = None
@@ -87,7 +87,7 @@ def _execute(
                         new_update_data, execution_stream.record(),
                         prevent_gc=update.prevent_gc)
                     new_index = update_index[:axis] + update_index[axis+1:]
-                    new_chunk.updates.append((data_transfer, new_index))
+                    new_chunk.add_update(data_transfer, new_index)
 
     return darray.DistributedArray(
         shape, new_dtype, new_chunks_map, mode, arr._comms)
