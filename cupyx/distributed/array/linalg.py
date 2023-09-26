@@ -1,39 +1,42 @@
 import dataclasses
 import typing
-from typing import Optional
+from typing import Callable
 
 import cupy
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 
 
-_Shape = tuple[int, ...]
-_IndexMap = dict[int, list[tuple[slice, ...]]]
 _SliceIndices = tuple[int, int, int]
 _BlockIdx = tuple[_SliceIndices, _SliceIndices]
-_ChunkLocations = dict[int, int]
-_BlockLocationMap = dict[_BlockIdx, _ChunkLocations]
+
+
+# Where the chunks_map holds a specific block
+# location_map[block_idx] = {dev: i if chunk_map[dev][i].index == block_idx}
+_BlockLocationMap = dict[_BlockIdx, dict[int, int]]
+
+
+# (block_a, block_b, device): device can compute block_a @ block_b
 _ExecutionPlan = list[tuple[_BlockIdx, _BlockIdx, int]]
-_BatchIdx = tuple[_SliceIndices, ...]    # len(batch_idx) == ndim - 2
+
+
+# Index within a batch pointing for a 2D matrix
+# len(batch_idx) == ndim - 2
+_BatchIdx = tuple[_SliceIndices, ...]
 
 
 @dataclasses.dataclass
 class _Blocking:
+    # Indices splitting the matrices, including outer boundaries
+    # Example: matmul(A, B) where
+    #     A.shape == (m, n), blocking: 2x3
+    #     B.shape == (n, p), blocking: 3x1
+    # ==> i_partitions == [0, x, m]
+    #     j_partitions == [0, p]
+    #     k_partitions == [0, y, z, n]
     i_partitions: list[int]
     j_partitions: list[int]
     k_partitions: list[int]
-
-
-def _convert_to_tuples(
-    slices: tuple[slice, ...], shape: tuple[int, ...],
-) -> tuple[_SliceIndices, ...]:
-    assert len(slices) == len(shape)
-    return tuple(s.indices(l) for s, l in zip(slices, shape))
-
-
-def _convert_to_slices(
-        tuples: tuple[_SliceIndices, ...]) -> tuple[slice, ...]:
-    return tuple(slice(*t) for t in tuples)
 
 
 def _find_blocking(
@@ -45,7 +48,7 @@ def _find_blocking(
     j_partitions: list[int] = []
     k_partitions: list[int] = []
 
-    def add_partitions(indices, partitions):
+    def add_to_partitions(indices, partitions):
         start, stop, step = indices
 
         if step != 1:
@@ -56,16 +59,16 @@ def _find_blocking(
 
 
     for i_indices, k_indices in location_map_a.keys():
-        add_partitions(i_indices, i_partitions)
-        add_partitions(k_indices, k_partitions)
+        add_to_partitions(i_indices, i_partitions)
+        add_to_partitions(k_indices, k_partitions)
 
     for k_indices, j_indices in location_map_b.keys():
-        add_partitions(k_indices, k_partitions)
-        add_partitions(j_indices, j_partitions)
+        add_to_partitions(k_indices, k_partitions)
+        add_to_partitions(j_indices, j_partitions)
 
     def to_unique_sorted(partitions):
         if len(partitions) == 0:
-            raise RuntimeError('An array has no chunk')
+            raise RuntimeError('Array has no chunk')
 
         partitions.sort()
 
@@ -80,18 +83,19 @@ def _find_blocking(
     j_partitions = to_unique_sorted(j_partitions)
     k_partitions = to_unique_sorted(k_partitions)
 
-    def validate_indices(indices, partitions):
+    def check_indices(indices, partitions):
         start, stop, _ = indices
         if partitions.index(start) + 1 != partitions.index(stop):
             raise RuntimeError('Inconsistent index mapping')
 
+
     for i_indices, k_indices in location_map_a.keys():
-        validate_indices(i_indices, i_partitions)
-        validate_indices(k_indices, k_partitions)
+        check_indices(i_indices, i_partitions)
+        check_indices(k_indices, k_partitions)
 
     for k_indices, j_indices in location_map_b.keys():
-        validate_indices(k_indices, k_partitions)
-        validate_indices(j_indices, j_partitions)
+        check_indices(k_indices, k_partitions)
+        check_indices(j_indices, j_partitions)
 
     return _Blocking(i_partitions, j_partitions, k_partitions)
 
@@ -119,6 +123,8 @@ def _make_execution_plan(
 
                 intersection = devices_a & devices_b
                 if intersection:
+                    # TODO: Pick an execution device that has less work
+                    # allocated so far
                     dev = intersection.pop()
                     plan.append((block_a, block_b, dev))
                 else:
@@ -129,33 +135,89 @@ def _make_execution_plan(
     return plan
 
 
-def _make_batch_idxs(shape: _Shape, index_map: _IndexMap) -> set[_BatchIdx]:
-    batch_idxs: set[_BatchIdx] = set()
-    for idxs in index_map.values():
-        for idx in idxs:
-            batch_idxs.add(_convert_to_tuples(idx[:-2], shape[:-2]))
-    return batch_idxs
+def _convert_to_tuples(
+    slices: tuple[slice, ...], shape: tuple[int, ...],
+) -> tuple[_SliceIndices, ...]:
+    assert len(slices) == len(shape)
+    return tuple(s.indices(l) for s, l in zip(slices, shape))
 
 
-def _make_local_maps(
-    batch_idx: _BatchIdx, shape: _Shape, index_map: _IndexMap,
-) -> _BlockLocationMap:
-    block_locatoin_map: _BlockLocationMap = {}
+def _convert_to_slices(
+    tuples: tuple[_SliceIndices, ...],
+) -> tuple[slice, ...]:
+    return tuple(slice(*t) for t in tuples)
+
+
+def _group_by_batch(
+    shape: tuple[int, ...], index_map: dict[int, list[tuple[slice, ...]]],
+) -> dict[_BatchIdx, _BlockLocationMap]:
+    location_maps: dict[_BatchIdx, _BlockLocationMap] = {}
 
     for dev, idxs in index_map.items():
         for chunk_i, idx in enumerate(idxs):
             idx_tuples = _convert_to_tuples(idx, shape)
-            this_batch_idx, block_idx = idx_tuples[:-2], idx_tuples[-2:]
+            batch_idx, block_idx = idx_tuples[:-2], idx_tuples[-2:]
             block_idx = typing.cast(_BlockIdx, block_idx)
 
-            if this_batch_idx == batch_idx:
-                locations = block_locatoin_map.setdefault(block_idx, {})
-                locations[dev] = chunk_i
+            location_map = location_maps.setdefault(batch_idx, {})
+            location = location_map.setdefault(block_idx, {})
+            location[dev] = chunk_i
 
-    return block_locatoin_map
+    return location_maps
 
 
-def matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
+def _reshape_array_with(
+    arr: 'darray.DistributedArray',
+    f_shape: Callable[[tuple[int,   ...]], tuple[int,   ...]],
+    f_idx:   Callable[[tuple[slice, ...]], tuple[slice, ...]],
+) -> 'darray.DistributedArray':
+    def reshape_chunk(chunk: _chunk._Chunk) -> _chunk._Chunk:
+        data = chunk.data.reshape(f_shape(chunk.data.shape))
+        index = f_idx(chunk.index)
+        updates = [(data, f_idx(idx)) for data, idx in chunk.updates]
+        return _chunk._Chunk(
+            data, chunk.ready, index, updates,chunk._prevent_gc)
+
+    chunks_map = {}
+    for dev, chunks in arr._chunks_map.items():
+        chunks_map[dev] = [reshape_chunk(chunk) for chunk in chunks]
+
+    shape = f_shape(arr.shape)
+    return darray.DistributedArray(
+        shape, arr.dtype, chunks_map, arr._mode, arr._comms)
+
+
+def _prepend_one_to_shape(arr) -> 'darray.DistributedArray':
+    return _reshape_array_with(
+        arr,
+        lambda shape: (1,) + shape,
+        lambda idx: (slice(None),) + idx)
+
+
+def _append_one_to_shape(arr) -> 'darray.DistributedArray':
+    return _reshape_array_with(
+        arr,
+        lambda shape: shape + (1,),
+        lambda idx: idx + (slice(None),))
+
+
+def _pop_from_shape(arr) -> 'darray.DistributedArray':
+    assert arr.shape[-1] == 1
+    return _reshape_array_with(
+        arr,
+        lambda shape: shape[:-1],
+        lambda idx: idx[:-1])
+
+
+def _pop_front_from_shape(arr) -> 'darray.DistributedArray':
+    assert arr.shape[0] == 1
+    return _reshape_array_with(
+        arr,
+        lambda shape: shape[1:],
+        lambda idx: idx[1:])
+
+
+def _matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
     if out is not None:
         raise RuntimeError('Argument `out` is not supported')
     for param in ('subok', 'axes', 'axis'):
@@ -173,26 +235,27 @@ def matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
     one_prepended = one_appended = False
     if a.ndim == 1:
         one_prepended = True
-        a = a._prepend_one_to_shape()
+        a = _prepend_one_to_shape(a)
     if b.ndim == 1:
         one_appended = True
-        b = b._append_one_to_shape()
+        b = _append_one_to_shape(b)
 
     n, m = a.shape[-2:]
     m2, p = b.shape[-2:]
     if m != m2 or a.shape[:-2] != b.shape[:-2]:
         raise ValueError('Shapes are incompatible')
 
-    batch_idxs = _make_batch_idxs(a.shape, a.index_map)
-    if batch_idxs != _make_batch_idxs(b.shape, b.index_map):
+    location_maps_a = _group_by_batch(a.shape, a.index_map)
+    location_maps_b = _group_by_batch(b.shape, b.index_map)
+    if location_maps_a.keys() != location_maps_b.keys():
         raise RuntimeError('Mismatched batch shapes')
 
     chunks_map: dict[int, list[_chunk._Chunk]] = {dev: [] for dev in a.devices}
     dtype = None
 
-    for batch_idx in batch_idxs:
-        location_map_a = _make_local_maps(batch_idx, a.shape, a.index_map)
-        location_map_b = _make_local_maps(batch_idx, b.shape, b.index_map)
+    for batch_idx in location_maps_a.keys():
+        location_map_a = location_maps_a[batch_idx]
+        location_map_b = location_maps_b[batch_idx]
 
         blocking = _find_blocking(location_map_a, location_map_b)
         plan = _make_execution_plan(blocking, location_map_a, location_map_b)
@@ -223,9 +286,9 @@ def matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
         shape, dtype, chunks_map, darray._MODES['sum'], a._comms)
 
     if one_prepended:
-        res = res._pop_front_from_shape()
+        res = _pop_front_from_shape(res)
     if one_appended:
-        res = res._pop_from_shape()
+        res = _pop_from_shape(res)
 
     return res
 
@@ -235,9 +298,35 @@ def make_2d_index_map(
     j_partitions: list[int],
     devices: list[list[set[int]]],
 ) -> dict[int, list[tuple[slice, ...]]]:
+    """Create an index_map for a 2D matrix with a specified blocking.
+
+    Args:
+        i_partitions (list of ints): boundaries of blocks on the `i` axis
+        j_partitions (list of ints): boundaries of blocks on the `j` axis
+        devices (2D list of sets of ints): devices owning each block
+
+    Example:
+        >>> index_map = make_2d_index_map(
+        ...     [0, 2, 4], [0, 3, 5],
+        ...     [[{0}, {1}],
+        ...      [{2}, {0, 1}]])
+        >>> pprint(index_map)
+        {0: [(slice(0, 2, None), slice(0, 3, None)),
+             (slice(2, 4, None), slice(3, 5, None))],
+         1: [(slice(0, 2, None), slice(3, 5, None)),
+             (slice(2, 4, None), slice(3, 5, None))],
+         2: [(slice(2, 4, None), slice(0, 3, None))]}
+    """
+    assert i_partitions[0] == 0
+    assert sorted(set(i_partitions)) == i_partitions
+    assert j_partitions[0] == 0
+    assert sorted(set(j_partitions)) == j_partitions
+
     index_map: dict[int, list[tuple[slice, ...]]] = {}
-    for i in range(len(i_partitions) - 1):
-        for j in range(len(j_partitions) - 1):
+    assert len(devices) == len(i_partitions) - 1
+    for i in range(len(devices)):
+        assert len(devices[i]) == len(j_partitions) - 1
+        for j in range(len(devices[i])):
             i_start = i_partitions[i]
             i_stop = i_partitions[i+1]
             j_start = j_partitions[j]

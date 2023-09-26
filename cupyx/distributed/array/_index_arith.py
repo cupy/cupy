@@ -3,8 +3,8 @@ from typing_extensions import TypeGuard
 
 
 def _extgcd(a: int, b: int) -> tuple[int, int]:
-    """Return (g, x) with g = gcd(a, b), ax + by = g - ax.
-    a, b > 0 is assumed."""
+    # Return (g, x) with g = gcd(a, b), ax + by = g - ax.
+
     # c - ax - by = 0  ...  (1)
     # d - au - bv = 0  ...  (2)
     c, d = a, b
@@ -23,9 +23,9 @@ def _extgcd(a: int, b: int) -> tuple[int, int]:
 
 
 def _crt(a1: int, n1: int, a2: int, n2: int) -> Optional[tuple[int, int]]:
-    """Return x, n with x == a1 (mod n1), x == a2 (mod n2), n == lcm(n1, n2).
-    Choose the minimum value for x with x >= max(a1, a2). Return None if no
-    solution exists."""
+    # Return x, n with x == a1 (mod n1), x == a2 (mod n2), n == lcm(n1, n2).
+    # Choose the minimum value for x with x >= max(a1, a2). Return None if no
+    # solution exists.
     # Reference: https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Existence_(constructive_proof)
 
     # m1 * n1 + m2 * n2 == g
@@ -47,7 +47,7 @@ def _crt(a1: int, n1: int, a2: int, n2: int) -> Optional[tuple[int, int]]:
 
 
 def _slice_intersection(a: slice, b: slice, length: int) -> Optional[slice]:
-    """Return the intersection of slice a and b. None if they are disjoint."""
+    # Return the intersection of slice a, b. None if they are disjoint.
     a_start, a_stop, a_step = a.indices(length)
     b_start, b_stop, b_step = b.indices(length)
 
@@ -64,8 +64,8 @@ def _slice_intersection(a: slice, b: slice, length: int) -> Optional[slice]:
 
 
 def _index_for_subslice(a: slice, sub: slice, length: int) -> slice:
-    """Return slice c such that array[a][c] == array[sub].
-    sub should be contained in a."""
+    # Return slice c such that array[a][c] == array[sub].
+    # sub should be contained in a.
     a_start, a_stop, a_step = a.indices(length)
     sub_start, sub_stop, sub_step = sub.indices(length)
 
@@ -81,7 +81,7 @@ def _index_intersection(
     a_idx: tuple[slice, ...], b_idx: tuple[slice, ...],
     shape: tuple[int, ...],
 ) -> Optional[tuple[slice, ...]]:
-    """Return None if empty."""
+    # Return None if a, b are disjoint.
     assert len(a_idx) == len(b_idx)
     result = tuple(_slice_intersection(a, b, length)
                    for a, b, length in zip(a_idx, b_idx, shape))
@@ -118,14 +118,10 @@ def _shape_after_indexing(
 
 
 def _normalize_index(shape: tuple[int, ...], idx: Any) -> tuple[slice, ...]:
-    """Convert idx to type tuple[slice, ...] with length == ndim.
-    start, stop, step of each slice are set to a non-None value.
-    Raise if empty or invalid.
-    Negative slice steps are not allowed.
-    Ellipsis is not supported."""
-
+    # Convert idx to type tuple[slice, ...] with length == ndim.
+    # start, stop, step of each slice are set to a non-None value.
     if not isinstance(idx, tuple):
-        idx = idx,
+        idx = (idx,)
 
     ndim = len(shape)
     if len(idx) > ndim:
@@ -153,3 +149,19 @@ def _normalize_index(shape: tuple[int, ...], idx: Any) -> tuple[slice, ...]:
             raise ValueError(f'Invalid index on axis {i}')
 
     return tuple(new_idx)
+
+
+def _normalize_index_map(
+    shape: tuple[int, ...], index_map: dict[int, Any],
+) -> dict[int, list[tuple[slice, ...]]]:
+    new_index_map: dict[int, list[tuple[slice, ...]]] = {}
+    for dev, idxs in index_map.items():
+        if not isinstance(idxs, list):
+            idxs = [idxs]
+
+        idxs = [_normalize_index(shape, idx) for idx in idxs]
+        idxs.sort()
+        new_index_map[dev] = idxs
+
+    return new_index_map
+

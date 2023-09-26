@@ -1,16 +1,14 @@
 import dataclasses
 from typing import Any, Iterable
 
-
 import cupy
-
 from cupy.cuda import Device, Event, Stream, get_current_stream
 
 from cupy.cuda import nccl
 if nccl.available:
-    from cupy.cuda.nccl import NcclCommunicator as _NcclCommunicator     # type: ignore
+    from cupy.cuda.nccl import NcclCommunicator     # type: ignore
 else:
-    class _NcclCommunicator:     # type: ignore
+    class NcclCommunicator:     # type: ignore
         pass
 
 from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
@@ -20,7 +18,7 @@ from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
 class _AsyncData:
     data: cupy.ndarray
     ready: Event
-    prevent_gc: Any = None
+    prevent_gc: Any = None      # TODO: Release it to avoid OOM
 
     def copy(self) -> '_AsyncData':
         with self.data.device:
@@ -38,14 +36,14 @@ _PartialUpdate = tuple[_AsyncData, tuple[slice, ...]]
 if nccl.available:
     def _create_communicators(
         devices: Iterable[int],
-    ) -> dict[int, _NcclCommunicator]:
-        comms_list = _NcclCommunicator.initAll(list(devices))
+    ) -> dict[int, NcclCommunicator]:
+        comms_list = NcclCommunicator.initAll(list(devices))
         return {comm.device_id(): comm for comm in comms_list}
 
 
     def _transfer(
-        src_comm: _NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
-        dst_comm: _NcclCommunicator, dst_stream: Stream, dst_dev: int,
+        src_comm: NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
+        dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
         src_dev = src_data.data.device.id
         if src_dev == dst_dev:
@@ -72,17 +70,17 @@ if nccl.available:
 
             nccl.groupEnd()     # type: ignore
             return _AsyncData(dst_buf, dst_stream.record(),
-                                prevent_gc=(src_data, src_array))
+                              prevent_gc=(src_data, src_array))
 else:
     def _create_communicators(
         devices: Iterable[int],
-    ) -> dict[int, _NcclCommunicator]:
-        return {dev: _NcclCommunicator() for dev in devices}
+    ) -> dict[int, NcclCommunicator]:
+        return {dev: NcclCommunicator() for dev in devices}
 
 
     def _transfer(
-        src_comm: _NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
-        dst_comm: _NcclCommunicator, dst_stream: Stream, dst_dev: int,
+        src_comm: NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
+        dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
         src_dev = src_data.data.device.id
         if src_dev == dst_dev:
@@ -92,5 +90,5 @@ else:
             dst_stream.wait_event(src_data.ready)
             with dst_stream:
                 dst_data = src_data.data.copy()
-            return _AsyncData(dst_data, dst_stream.record(),
-                                 prevent_gc=src_data.data)
+            return _AsyncData(
+                dst_data, dst_stream.record(), prevent_gc=src_data.data)

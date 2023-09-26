@@ -11,7 +11,7 @@ from cupyx.distributed.array._chunk import _Chunk
 
 
 def _execute(
-    arr: 'darray.DistributedArray', kernel, axis: int, dtype: DTypeLike
+    arr: 'darray.DistributedArray', kernel, axis: int, dtype: DTypeLike,
 ) -> Any:
     overwrites = False
     if kernel.name == 'cupy_max':
@@ -43,7 +43,7 @@ def _execute(
                 if len(chunks[i].updates) == 0:
                     continue
                 chunks[i] = chunks[i].copy()
-                chunks[i]._set_identity_on_overwritten_entries(identity)
+                chunks[i].set_identity_on_overwritten_entries(identity)
 
     shape = arr.shape[:axis] + arr.shape[axis+1:]
     new_dtype = None
@@ -64,6 +64,8 @@ def _execute(
                     new_chunk = _Chunk.create_placeholder(
                         new_shape, chunk.data.device, new_index)
                 else:
+                    # We avoid 0D array because
+                    # we expect data[idx] to return a view
                     update_data = cupy.atleast_1d(
                         kernel(chunk.data, axis=axis, dtype=dtype))
 

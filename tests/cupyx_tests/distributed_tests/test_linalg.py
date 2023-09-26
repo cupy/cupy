@@ -1,12 +1,13 @@
-import pytest
 import dataclasses
+import math
+
+import pytest
 
 import numpy
 import cupy
 from cupy import testing
 from cupy.cuda import nccl
-from cupyx.distributed.array import _linalg
-import math
+from cupyx.distributed.array import linalg
 
 from cupyx.distributed import array
 
@@ -62,7 +63,7 @@ def make_2d_config(
     devices: list[list[set[int]]],
 ) -> ArrayConfig:
     shape = (i_partitions[-1], j_partitions[-1])
-    index_map = _linalg.make_2d_index_map(i_partitions, j_partitions, devices)
+    index_map = linalg.make_2d_index_map(i_partitions, j_partitions, devices)
     return ArrayConfig(shape, index_map)
 
 

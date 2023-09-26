@@ -146,24 +146,6 @@ class TestDistributedArray:
 
     @pytest.mark.parametrize(
             'shape, index_map',
-            [(shape_dim2, index_map_dim2), (shape_dim2, index_map_dim2_2),
-             (shape_dim3, index_map_dim3), (shape_dim3, index_map_dim3_2)])
-    def test_array_creation_comms(self, mem_pool, shape, index_map):
-        array = numpy.arange(size, dtype='q').reshape(shape)
-        # assert mem_pool.used_bytes() == 0
-        da = darray.distributed_array(array, index_map)
-        assert da._comms.keys() == index_map.keys()
-        da = darray.distributed_array(array, index_map, devices=set(range(4)))
-        assert da._comms.keys() == set(range(4))
-        da = darray.distributed_array(
-            array, index_map, comms=_data_transfer._create_communicators(range(4)))
-        assert da._comms.keys() == set(range(4))
-        with pytest.raises(RuntimeError, match='Only one of devices and comms'):
-            da = darray.distributed_array(
-                array, index_map, devices=set(), comms={})
-
-    @pytest.mark.parametrize(
-            'shape, index_map',
             [(shape_dim2, index_map_dim2),
              (shape_dim3, index_map_dim3),
              (shape_dim3, index_map_only_1)])
@@ -173,13 +155,12 @@ class TestDistributedArray:
         for dev, idxs in index_map.items():
             chunks_map[dev] = []
             for idx in idxs:
+                idx = _index_arith._normalize_index(shape, idx)
                 np_a[idx] += 1 << dev
-
-                full_idx = _index_arith._normalize_index(shape, idx)
                 with cupy.cuda.Device(dev):
                     chunk = darray._Chunk(
                         cupy.full_like(np_a[idx], 1 << dev),
-                        cupy.cuda.Event(), full_idx)
+                        cupy.cuda.Event(), idx)
                     chunks_map[dev].append(chunk)
 
         d_a = darray.DistributedArray(
@@ -247,19 +228,45 @@ class TestDistributedArray:
             [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     def test_incompatible_chunk_shapes(self, shape, mapping, mode):
-        mapping_a = {}
+        index_map_a = {}
         for dev, idxs in mapping.items():
-            mapping_a.setdefault(dev % 2, []).extend(idxs)
-        mapping_b = {0: mapping_a[1],
-                     1: mapping_a[0]}
+            index_map_a.setdefault(dev % 2, []).extend(idxs)
+        index_map_b = {0: index_map_a[1],
+                     1: index_map_a[0]}
 
         np_a = numpy.arange(size).reshape(shape)
         np_b = numpy.arange(size).reshape(shape) * 2
         np_r = numpy.cos(np_a * np_b)
-        d_a = darray.distributed_array(np_a, mapping_a, mode, comms)
-        d_b = darray.distributed_array(np_b, mapping_b, mode, comms)
+        d_a = darray.distributed_array(np_a, index_map_a, mode, comms)
+        d_b = darray.distributed_array(np_b, index_map_a, mode, comms)
         with pytest.warns(cupy._util.PerformanceWarning, match=r'Peer access'):
-            d_r = cupy.cos(d_a * d_b)
+            d_r = cupy.cos(d_a * d_b.reshard(index_map_b))
+        testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
+
+    @pytest.mark.parametrize(
+            'shape, index_map',
+            [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
+    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    def test_elementwise_kernel_incompatible_chunk_shapes(
+            self, shape, index_map, mode):
+        index_map_a = {}
+        for dev, idxs in index_map.items():
+            index_map_a.setdefault(dev % 2, []).extend(idxs)
+        index_map_b = {0: index_map_a[1],
+                     1: index_map_a[0]}
+
+        custom_kernel = cupy.ElementwiseKernel(
+            'float32 x, float32 y',
+            'float32 z',
+            'z = (x - y) * (x - y)',
+            'custom')
+        np_a = numpy.arange(size).reshape(shape).astype(numpy.float32)
+        np_b = (numpy.arange(size).reshape(shape) * 2.0).astype(numpy.float32)
+        np_r = (np_a - np_b) * (np_a - np_b)
+        d_a = darray.distributed_array(np_a, index_map_a, mode, comms)
+        d_b = darray.distributed_array(np_b, index_map_a, mode, comms)
+        with pytest.warns(cupy._util.PerformanceWarning, match=r'Peer access'):
+            d_r = custom_kernel(d_a, d_b.reshard(index_map_b))
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
@@ -274,22 +281,22 @@ class TestDistributedArray:
             cupy.cos(d_a * cp_b)
 
     @pytest.mark.parametrize(
-            'shape, mapping_a, mapping_b',
+            'shape, index_map_a, index_map_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
              (shape_dim3, index_map_dim3, index_map_dim3_2),
              (shape_dim3, index_map_only_1, index_map_dim3)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
-    def test_reshard(self, mem_pool, shape, mapping_a, mapping_b, mode):
+    def test_reshard(self, mem_pool, shape, index_map_a, index_map_b, mode):
         np_a = numpy.arange(size, dtype='q').reshape(shape)
         # assert mem_pool.used_bytes() == 0
         # Initialize without comms
-        d_a = darray.distributed_array(np_a, mapping_a, mode)
+        d_a = darray.distributed_array(np_a, index_map_a, mode)
         # assert mem_pool.used_bytes() == np_a.nbytes
-        d_b = d_a.reshard(mapping_b)
+        d_b = d_a.reshard(index_map_b)
         testing.assert_array_equal(d_b.asnumpy(), np_a, strict=True)
         testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         assert d_b.mode == mode
-        for dev, idxs in mapping_b.items():
+        for dev, idxs in index_map_b.items():
             for i, idx in enumerate(idxs):
                 assert d_b._chunks_map[dev][i].data.device.id == dev
                 assert d_b._chunks_map[dev][i].data.ndim == np_a.ndim
@@ -299,19 +306,19 @@ class TestDistributedArray:
                         strict=True)
 
     @pytest.mark.parametrize(
-            'shape, mapping_a, mapping_b',
+            'shape, index_map_a, index_map_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
              (shape_dim3, index_map_dim3, index_map_dim3_2)])
     @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
     def test_incompatible_chunk_shapes_resharded(
-            self, shape, mapping_a, mapping_b, mode):
+            self, shape, index_map_a, index_map_b, mode):
         np_a = numpy.arange(size).reshape(shape)
         np_b = numpy.arange(size).reshape(shape) * 2
         np_r = numpy.cos(np_a + np_b)
-        d_a = darray.distributed_array(np_a, mapping_a, mode, comms)
-        d_b = darray.distributed_array(np_b, mapping_b, mode, comms)
-        d_c = d_a + d_b.reshard(mapping_a)
-        d_r = cupy.cos(d_c.reshard(mapping_b))
+        d_a = darray.distributed_array(np_a, index_map_a, mode, comms)
+        d_b = darray.distributed_array(np_b, index_map_b, mode, comms)
+        d_c = d_a + d_b.reshard(index_map_a)
+        d_r = cupy.cos(d_c.reshard(index_map_b))
         testing.assert_array_almost_equal(d_r.asnumpy(), np_r)
 
     @pytest.mark.parametrize(
@@ -381,36 +388,36 @@ class TestDistributedArray:
             d_a.argmax(axis=0)
 
     @pytest.mark.parametrize(
-            'shape, mapping_a, mapping_b',
+            'shape, index_map_a, index_map_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
              (shape_dim3, index_map_dim3, index_map_dim3_2),
              (shape_dim3, index_map_only_1, index_map_dim3)])
-    def test_reshard_max(self, shape, mapping_a, mapping_b):
+    def test_reshard_max(self, shape, index_map_a, index_map_b):
         np_a = numpy.arange(size).reshape(shape)
         np_b = np_a.max(axis=0)
-        d_a = darray.distributed_array(np_a, mapping_a, comms=comms)
-        d_b = d_a.reshard(mapping_b).max(axis=0)
+        d_a = darray.distributed_array(np_a, index_map_a, comms=comms)
+        d_b = d_a.reshard(index_map_b).max(axis=0)
         testing.assert_array_equal(np_b, d_b.asnumpy(), strict=True)
         testing.assert_array_equal(np_a, d_a.asnumpy(), strict=True)
 
     @pytest.mark.parametrize(
-            'shape, mapping_a, mapping_b',
+            'shape, index_map_a, index_map_b',
             [(shape_dim2, index_map_dim2, index_map_dim2_2),
              (shape_dim3, index_map_dim3, index_map_dim3_2),
              (shape_dim3, index_map_only_1, index_map_dim3)])
-    def test_mul_max_mul(self, shape, mapping_a, mapping_b):
+    def test_mul_max_mul(self, shape, index_map_a, index_map_b):
         rng = numpy.random.default_rng()
         np_a = rng.integers(0, 1 << 10, shape)
         np_b = rng.integers(0, 1 << 10, shape)
         np_c = rng.integers(0, 1 << 10, shape[1:])
         np_c2 = (np_a * np_b).max(axis=0)
         np_d = (np_a * np_b).max(axis=0) * np_c
-        d_a = darray.distributed_array(np_a, mapping_a, comms=comms)
-        d_b = darray.distributed_array(np_b, mapping_b, comms=comms)
+        d_a = darray.distributed_array(np_a, index_map_a, comms=comms)
+        d_b = darray.distributed_array(np_b, index_map_b, comms=comms)
         mapping_c = {dev: [idx[1:] for idx in idxs]
                      for dev, idxs in d_a.index_map.items()}
         d_c = darray.distributed_array(np_c, mapping_c, comms=comms)
-        d_c2 = (d_a.reshard(mapping_b) * d_b).max(axis=0)
+        d_c2 = (d_a.reshard(index_map_b) * d_b).max(axis=0)
         d_d = d_c2.reshard(mapping_c) * d_c
         testing.assert_array_equal(np_d, d_d.asnumpy(), strict=True)
         testing.assert_array_equal(np_c2, d_c2.asnumpy(), strict=True)
@@ -423,25 +430,25 @@ class TestDistributedArray:
         size = length * length
         shape = (length, length)
         k = length // 10
-        mapping_a = {
+        index_map_a = {
             0: slice(length // 15 * 5),
             1: slice(length // 15 * 5, length // 15 * 10),
             2: slice(length // 15 * 10, length // 15 * 13),
             3: slice(length // 15 * 13, None)}
-        mapping_b = {
+        index_map_b = {
             0: slice(length // 15 * 5 + k),
             1: slice(length // 15 * 5 + k, length // 15 * 10 + k),
             2: slice(length // 15 * 10 + k, length // 15 * 13 + k),
             3: slice(length // 15 * 13 + k, None)}
         mapping_c = {0: slice(None)}
 
-        mapping_a = {dev: _index_arith._normalize_index(shape, idx)
-                     for dev, idx in mapping_a.items()}
-        mapping_b = {dev: _index_arith._normalize_index(shape, idx)
-                     for dev, idx in mapping_b.items()}
+        index_map_a = {dev: _index_arith._normalize_index(shape, idx)
+                     for dev, idx in index_map_a.items()}
+        index_map_b = {dev: _index_arith._normalize_index(shape, idx)
+                     for dev, idx in index_map_b.items()}
         mapping_c = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_c.items()}
-        mappings = [mapping_a, mapping_b, mapping_c]
+        mappings = [index_map_a, index_map_b, mapping_c]
 
         ops = ['reshard', 'change_mode']
         modes = list(darray._MODES)
@@ -475,25 +482,25 @@ class TestDistributedArray:
         size = length * length
         shape = (length, length)
         k = length // 10
-        mapping_a = {
+        index_map_a = {
             0: slice(length // 15 * 5),
             1: slice(length // 15 * 5, length // 15 * 10),
             2: slice(length // 15 * 10, length // 15 * 13),
             3: slice(length // 15 * 13, None)}
-        mapping_b = {
+        index_map_b = {
             0: slice(length // 15 * 5 + k),
             1: slice(length // 15 * 5 + k, length // 15 * 10 + k),
             2: slice(length // 15 * 10 + k, length // 15 * 13 + k),
             3: slice(length // 15 * 13 + k, None)}
         mapping_c = {0: slice(None)}
 
-        mapping_a = {dev: _index_arith._normalize_index(shape, idx)
-                     for dev, idx in mapping_a.items()}
-        mapping_b = {dev: _index_arith._normalize_index(shape, idx)
-                     for dev, idx in mapping_b.items()}
+        index_map_a = {dev: _index_arith._normalize_index(shape, idx)
+                     for dev, idx in index_map_a.items()}
+        index_map_b = {dev: _index_arith._normalize_index(shape, idx)
+                     for dev, idx in index_map_b.items()}
         mapping_c = {dev: _index_arith._normalize_index(shape, idx)
                      for dev, idx in mapping_c.items()}
-        mappings = [mapping_a, mapping_b, mapping_c]
+        mappings = [index_map_a, index_map_b, mapping_c]
 
         ops = ['reshard', 'change_mode', 'element-wise', 'reduce']
         modes = list(darray._MODES)
