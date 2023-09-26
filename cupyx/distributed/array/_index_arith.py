@@ -26,7 +26,7 @@ def _crt(a1: int, n1: int, a2: int, n2: int) -> Optional[tuple[int, int]]:
     # Return x, n with x == a1 (mod n1), x == a2 (mod n2), n == lcm(n1, n2).
     # Choose the minimum value for x with x >= max(a1, a2). Return None if no
     # solution exists.
-    # Reference: https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Existence_(constructive_proof)
+    # Reference: https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Existence_(constructive_proof)  # NOQA
 
     # m1 * n1 + m2 * n2 == g
     g, m1 = _extgcd(n1, n2)
@@ -103,7 +103,7 @@ def _index_for_subindex(
     assert len(a_idx) == len(sub_idx)
 
     return tuple(_index_for_subslice(a, sub, length)
-                   for a, sub, length in zip(a_idx, sub_idx, shape))
+                 for a, sub, length in zip(a_idx, sub_idx, shape))
 
 
 def _shape_after_indexing(
@@ -164,4 +164,3 @@ def _normalize_index_map(
         new_index_map[dev] = idxs
 
     return new_index_map
-

@@ -1,4 +1,5 @@
-from typing import Any, Callable, Final, Iterable, Optional, TypeGuard, Union
+from typing import Any, Callable, Final, Iterable, Optional, Union
+from typing_extensions import TypeGuard
 import functools
 from itertools import chain
 
@@ -70,7 +71,7 @@ class _OpMode:
 _Mode = Optional[_OpMode]
 
 
-_REPLICA_MODE: Final[_Mode] = None
+_REPLICA_MODE: Final[None] = None
 
 
 def _is_op_mode(mode: _Mode) -> TypeGuard[_OpMode]:
@@ -111,8 +112,8 @@ class DistributedArray(cupy.ndarray):
 
     This class implements some elementary operations that :class:`cupy.ndarray`
     provides. The array content is split into chunks, contiguous arrays
-    corresponding to slices of the original array. Note that one device can hold
-    multiple chunks.
+    corresponding to slices of the original array. Note that one device can
+    hold multiple chunks.
     """
 
     _chunks_map: dict[int, list[_Chunk]]
@@ -157,7 +158,7 @@ class DistributedArray(cupy.ndarray):
             if mode not in _MODES.keys():
                 raise RuntimeError(
                     f'`mode` must be one of {list(_MODES)}')
-            mode = _MODES[str]
+            mode = _MODES[mode]
         obj._mode = mode
 
         obj._comms = comms if comms is not None else {}
@@ -345,7 +346,8 @@ class DistributedArray(cupy.ndarray):
 
     def reshard(self, index_map: dict[int, Any]) -> 'DistributedArray':
         """Return a view or a copy having the given index_map."""
-        new_index_map = _index_arith._normalize_index_map(self.shape, index_map)
+        new_index_map = _index_arith._normalize_index_map(
+            self.shape, index_map)
         if new_index_map == self.index_map:
             return self
 
@@ -371,8 +373,8 @@ class DistributedArray(cupy.ndarray):
 
         # The current implementation transfers the same data multiple times
         # where chunks overlap. This is particularly problematic when matrix
-        # multiplication is involved, where one block tends to be shared between
-        # multiple devices
+        # multiplication is involved, where one block tends to be shared
+        # between multiple devices
         # TODO: Avoid duplicate data transfers
         for src_chunk in chain.from_iterable(old_chunks_map.values()):
             src_chunk.apply_updates(self._mode)
@@ -423,8 +425,8 @@ def distributed_array(
 ) -> DistributedArray:
     """Creates a distributed array from the given data.
 
-    This function does not check if all elements of ``array`` are stored in some
-    of the chunks.
+    This function does not check if all elements of ``array`` are stored in
+    some of the chunks.
 
     Args:
         array: :class:`~cupyx.distributed.array.DistributedArray` object,
@@ -434,10 +436,10 @@ def distributed_array(
             that devices with designated IDs own. One device can have multiple
             chunks, which can be specified as a list of array indices.
         comms (optional): Communicator objects which a distributed array hold
-            internally. Sharing them with other distributed arrays can save time
-            because their initialization is a costly operation. For details,
-            check :meth:`~cupyx.distributed.array.DistributedArray.comms`
-            property.
+            internally. Sharing them with other distributed arrays can save
+            time because their initialization is a costly operation. For
+            details, check
+            :meth:`~cupyx.distributed.array.DistributedArray.comms` property.
 
     Example:
         >>> array = cupy.arange(9).reshape(3, 3)

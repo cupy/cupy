@@ -40,7 +40,6 @@ if nccl.available:
         comms_list = NcclCommunicator.initAll(list(devices))
         return {comm.device_id(): comm for comm in comms_list}
 
-
     def _transfer(
         src_comm: NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
         dst_comm: NcclCommunicator, dst_stream: Stream, dst_dev: int,
@@ -76,7 +75,6 @@ else:
         devices: Iterable[int],
     ) -> dict[int, NcclCommunicator]:
         return {dev: NcclCommunicator() for dev in devices}
-
 
     def _transfer(
         src_comm: NcclCommunicator, src_stream: Stream, src_data: _AsyncData,

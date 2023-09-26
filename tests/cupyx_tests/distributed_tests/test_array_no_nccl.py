@@ -12,5 +12,5 @@ cupy.cuda.nccl = MockUnavailableModule()
 
 
 sys.path.append(os.getcwd())
-from test_array_nccl import *
+from test_array_nccl import *   # NOQA
 sys.path.pop()

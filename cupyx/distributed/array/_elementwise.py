@@ -1,3 +1,5 @@
+import typing
+from typing import Sequence
 from itertools import chain
 
 import cupy
@@ -8,7 +10,7 @@ from cupyx.distributed.array import _index_arith
 
 
 def _find_updates(
-    args: list['darray.DistributedArray'],
+    args: Sequence['darray.DistributedArray'],
     kwargs: dict[str, 'darray.DistributedArray'],
     dev: int, chunk_i: int,
 ) -> list['_data_transfer._PartialUpdate']:
@@ -39,7 +41,7 @@ def _find_updates(
 
 def _prepare_chunks_data(
     stream: cupy.cuda.Stream,
-    args: list['darray.DistributedArray'],
+    args: Sequence['darray.DistributedArray'],
     kwargs: dict[str, 'darray.DistributedArray'],
     dev: int, chunk_i: int,
 ) -> tuple[list[cupy.ndarray], dict[str, cupy.ndarray]]:
@@ -63,7 +65,7 @@ def _change_all_to_replica_mode(
 
 def _execute_kernel(
     kernel,
-    args: tuple['darray.DistributedArray'],
+    args: Sequence['darray.DistributedArray'],
     kwargs: dict[str, 'darray.DistributedArray'],
 ) -> 'darray.DistributedArray':
     args = list(args)
@@ -96,9 +98,9 @@ def _execute_kernel(
                 new_chunk = None
                 for data in chain(args_data, kwargs_data.values()):
                     if isinstance(data, _chunk._DataPlaceholder):
-                        # A placeholder will be entirely overwritten anyway;
-                        # just leave it
-                        # _find_updates ensures there is at most one placeholder
+                        # A placeholder will be entirely overwritten anyway, so
+                        # we just leave it. _find_updates ensures there is
+                        # at most one placeholder
                         assert new_chunk is None
                         new_chunk = _chunk._Chunk.create_placeholder(
                             data.shape, data.device, idx)
@@ -152,13 +154,15 @@ def _execute_kernel(
         comms = arg._comms
         break
 
+    assert shape is not None
+
     return darray.DistributedArray(
         shape, dtype, chunks_map, darray._REPLICA_MODE, comms)
 
 
 def _execute_peer_access(
     kernel,
-    args: tuple['darray.DistributedArray', ...],
+    args: Sequence['darray.DistributedArray'],
     kwargs: dict[str, 'darray.DistributedArray'],
 ) -> 'darray.DistributedArray':
     """Arguments must be in the replica mode."""
@@ -227,8 +231,8 @@ def _execute_peer_access(
                     b_chunk.index, intersection, shape)
 
                 assert kernel.nin == 2
-                kernel(a_chunk.data[a_new_idx],
-                       b_chunk.data[b_new_idx],
+                kernel(typing.cast(cupy.ndarray, a_chunk.data)[a_new_idx],
+                       typing.cast(cupy.ndarray, b_chunk.data)[b_new_idx],
                        new_chunk_data[a_new_idx])
 
             new_chunk = _chunk._Chunk(
@@ -241,7 +245,7 @@ def _execute_peer_access(
 
 
 def _is_peer_access_needed(
-    args: tuple['darray.DistributedArray'],
+    args: Sequence['darray.DistributedArray'],
     kwargs: dict[str, 'darray.DistributedArray'],
 ) -> bool:
     index_map = None
@@ -254,7 +258,7 @@ def _is_peer_access_needed(
     return False
 
 
-def _execute(kernel, args, kwargs):
+def _execute(kernel, args: tuple, kwargs: dict):
     for arg in chain(args, kwargs.values()):
         if not isinstance(arg, darray.DistributedArray):
             raise RuntimeError(

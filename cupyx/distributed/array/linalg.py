@@ -57,7 +57,6 @@ def _find_blocking(
         partitions.append(start)
         partitions.append(stop)
 
-
     for i_indices, k_indices in location_map_a.keys():
         add_to_partitions(i_indices, i_partitions)
         add_to_partitions(k_indices, k_partitions)
@@ -87,7 +86,6 @@ def _find_blocking(
         start, stop, _ = indices
         if partitions.index(start) + 1 != partitions.index(stop):
             raise RuntimeError('Inconsistent index mapping')
-
 
     for i_indices, k_indices in location_map_a.keys():
         check_indices(i_indices, i_partitions)
@@ -176,7 +174,7 @@ def _reshape_array_with(
         index = f_idx(chunk.index)
         updates = [(data, f_idx(idx)) for data, idx in chunk.updates]
         return _chunk._Chunk(
-            data, chunk.ready, index, updates,chunk._prevent_gc)
+            data, chunk.ready, index, updates, chunk._prevent_gc)
 
     chunks_map = {}
     for dev, chunks in arr._chunks_map.items():

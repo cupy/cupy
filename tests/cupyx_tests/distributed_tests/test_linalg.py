@@ -150,8 +150,8 @@ configs_b = [
 @testing.multi_gpu(4)
 class TestDistributedMatMul:
     @pytest.mark.parametrize(
-            'config',
-            [config_1x2_2x2, config_2x2_2x2, config_1x4_4x1, config_2x3_3x2])
+        'config',
+        [config_1x2_2x2, config_2x2_2x2, config_1x4_4x1, config_2x3_3x2])
     @pytest.mark.parametrize('mode', ['replica', 'sum'])
     def test_matmul(self, config, mode):
         np_a, d_a, np_b, d_b = config.instantiate(mode)
@@ -163,7 +163,7 @@ class TestDistributedMatMul:
         wrong_config = MatMulConfig(config_1x2_2x2.a, config_2x3_3x2.b)
         np_a, d_a, np_b, d_b = wrong_config.instantiate()
         with pytest.raises(RuntimeError, match=r'Inconsistent'):
-            d_c = d_a @ d_b
+            d_a @ d_b
 
     def test_high_dim(self):
         config_a = combine_configs(config_1x2_2x2.a, config_2x2_2x2.a)

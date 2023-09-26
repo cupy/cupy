@@ -1,4 +1,5 @@
-from typing import Any, Optional, Type, TypeVar, Union
+from typing import Any, Optional, Union
+from typing_extensions import TypeGuard
 
 import dataclasses
 from itertools import chain
@@ -12,7 +13,6 @@ from cupyx.distributed.array import _data_transfer
 from cupyx.distributed.array._data_transfer import NcclCommunicator
 
 
-@dataclasses.dataclass
 class _DataPlaceholder:
     # Mocks cupy.ndarray
     # Eventually overwritten by PartialUpdates entirely, so
@@ -20,8 +20,24 @@ class _DataPlaceholder:
     shape: tuple[int, ...]
     device: Device
 
+    def __init__(self, shape: tuple[int, ...], device: Device) -> None:
+        self.shape = shape
+        self.device = device
+
     def reshape(self, new_shape: tuple[int, ...]) -> '_DataPlaceholder':
         return _DataPlaceholder(new_shape, self.device)
+
+    def _to_ndarray(
+            self, mode: 'darray._Mode', dtype: cupy.dtype) -> cupy.ndarray:
+        with self.device:
+            if darray._is_op_mode(mode):
+                value = mode.identity_of(dtype)
+                data = cupy.full(self.shape, value, dtype)
+            else:
+                data = cupy.empty(self.shape, dtype)
+
+            # We avoid 0D array because we expect data[idx] to return a view
+            return cupy.atleast_1d(data)
 
 
 class _Chunk:
@@ -86,28 +102,14 @@ class _Chunk:
         return _Chunk(data, ready, self.index, list(self._updates),
                       prevent_gc=self._prevent_gc)
 
-    def _ensure_data_is_array(self, mode: 'darray._Mode') -> None:
-        if isinstance(self.data, cupy.ndarray):
-            return
-
-        dtype = self._updates[0][0].data.dtype
-
-        with self.data.device:
-            if darray._is_op_mode(mode):
-                value = mode.identity_of(dtype)
-                data = cupy.full(self.data.shape, value, dtype)
-            else:
-                data = cupy.empty(self.data.shape, dtype)
-
-            # We avoid 0D array because we expect data[idx] to return a view
-            self.data = cupy.atleast_1d(data)
-
     def apply_updates(self, mode: 'darray._Mode') -> None:
         """Apply all updates in-place."""
         if len(self._updates) == 0:
             return
 
-        self._ensure_data_is_array(mode)
+        if isinstance(self.data, _DataPlaceholder):
+            dtype = self._updates[0][0].data.dtype
+            self.data = self.data._to_ndarray(mode, dtype)
 
         with self.data.device:
             stream = cupy.cuda.get_current_stream()
@@ -116,7 +118,8 @@ class _Chunk:
             for update_data, idx in self._updates:
                 stream.wait_event(update_data.ready)
                 if darray._is_op_mode(mode):
-                    self.data[idx] = mode.func(self.data[idx], update_data.data)
+                    self.data[idx] = mode.func(
+                        self.data[idx], update_data.data)
                 else:
                     self.data[idx] = update_data.data
 
@@ -132,16 +135,19 @@ class _Chunk:
     ) -> None:
         # Overwrite target with mode.func(self, target) on their overlaps
         # This is just appending part of self to target.updates in the mode
-        assert len(self._updates) == 0
-
         src_chunk = self
         dst_chunk = target
+
+        assert len(src_chunk._updates) == 0
+        assert isinstance(src_chunk.data, cupy.ndarray)
+
         src_dev = src_chunk.data.device.id
         dst_dev = dst_chunk.data.device.id
         src_idx = src_chunk.index
         dst_idx = dst_chunk.index
 
-        intersection = _index_arith._index_intersection(src_idx, dst_idx, shape)
+        intersection = _index_arith._index_intersection(
+            src_idx, dst_idx, shape)
         if intersection is None:
             return
 
@@ -151,10 +157,13 @@ class _Chunk:
             dst_idx, intersection, shape)
 
         data_to_transfer = _data_transfer._AsyncData(
-            src_chunk.data[src_new_idx], src_chunk.ready, src_chunk._prevent_gc)
+            src_chunk.data[src_new_idx], src_chunk.ready,
+            src_chunk._prevent_gc)
 
-        idempotent = mode is darray._REPLICA_MODE or mode.idempotent
-        if not idempotent:
+        def is_not_idempotent(mode: darray._Mode) -> TypeGuard[darray._OpMode]:
+            return mode is not darray._REPLICA_MODE and not mode.idempotent
+
+        if is_not_idempotent(mode):
             with cupy.cuda.Device(src_dev):
                 data_to_transfer = data_to_transfer.copy()
             copy_done = data_to_transfer.ready
@@ -164,7 +173,7 @@ class _Chunk:
             comms[dst_dev], streams[dst_dev], dst_dev)
         dst_chunk.add_update(update, dst_new_idx)
 
-        if not idempotent:
+        if is_not_idempotent(mode):
             dtype = src_chunk.data.dtype
             with Device(src_dev):
                 stream = get_current_stream()
@@ -225,4 +234,3 @@ def _all_reduce_intersections(
             dst_chunk = chunks_list[i]
             src_chunk.apply_to(
                 dst_chunk, darray._REPLICA_MODE, shape, comms, streams)
-
