@@ -385,6 +385,10 @@ cdef class _ndarray_base:
         buf.obj = self
         cpython.Py_INCREF(self)
 
+        stream = stream_module.get_current_stream()
+        stream.synchronize()
+        #runtime.deviceSynchronize()
+
     def __releasebuffer__(self, Py_buffer* buf):
         stdlib.free(buf.shape)  # frees both shape & strides
         cpython.Py_DECREF(self)
@@ -2619,29 +2623,77 @@ cdef inline bint _is_layout_expected(
     else:
         return False
 
+# TODO(leofang): move this to internal.pyx
+cdef inline bint _is_alignment_expected(intptr_t ptr, int min_size) noexcept:
+    cdef int alignment = 1
+    # TODO(leofang): use the chunk size from memory.pyx and don't hard-code?
+    while ptr % alignment == 0 and alignment < 256:
+        alignment *= 2
+    if alignment < min_size:
+        return False
+    return True
 
-# Fast path: zero-copy a NumPy array if possible
+
+cdef inline _ndarray_base _try_skip_h2d_copy(
+        obj, dtype, order, Py_ssize_t ndmin):
+    if not is_hmm_supported(device.get_device_id()):
+        return None
+
+    if not isinstance(obj, numpy.ndarray):
+        return None
+
+    # dtype should not change
+    obj_dtype = obj.dtype
+    if not (obj_dtype == get_dtype(dtype) if dtype is not None else True):
+        return None
+
+    # CuPy onlt supports numerical dtypes
+    if obj_dtype.char not in _dtype.all_type_chars:
+        return None
+
+    # WAR: not sure why this is needed...
+    # it seems complex numbers are giving us a headache
+    if obj_dtype.kind == 'c':
+        return None
+
+    # strides and the requested order could mismatch
+    obj_flags = obj.flags
+    if not _is_layout_expected(
+            obj_flags.c_contiguous, obj_flags.f_contiguous, order):
+        return None
+
+    # NumPy ndarrays do not guarantee alignment unless a custom
+    # allocator is in use
+    cdef intptr_t ptr = obj.ctypes.data
+#    if not _is_alignment_expected(ptr, obj_dtype.itemsize):
+#        return None
+
+    cdef Py_ssize_t ndim = obj.ndim
+    cdef tuple shape = obj.shape
+    if ndmin > ndim:
+        shape = (1,) * (ndmin - ndim) + shape
+
+    # FIXME: for testing only
+    #stream = stream_module.get_current_stream()
+    #stream.synchronize()
+    #runtime.deviceSynchronize()
+
+    ext_mem = memory_module.SystemMemory.from_external(
+        ptr, obj.nbytes, obj)
+    memptr = memory.MemoryPointer(ext_mem, 0)
+    return ndarray(
+        shape, obj_dtype, memptr, obj.strides)
+
+
 cdef _ndarray_base _array_default(
         obj, dtype, order, Py_ssize_t ndmin, bint blocking):
+    cdef _ndarray_base a
+
     # Fast path: zero-copy a NumPy array if possible
-    if (not blocking and is_hmm_supported(device.get_device_id())
-            and isinstance(obj, numpy.ndarray)
-            # dtype should not change
-            and (obj.dtype == get_dtype(dtype) if dtype is not None else True)
-            # strides and the requested order could mismatch
-            and _is_layout_expected(
-                obj.flags.c_contiguous, obj.flags.f_contiguous, order)
-            # FIXME(leofang): check alignment instead? this is a hack
-            # NumPy ndarrays do not guarantee alignment unless a custom
-            # allocator is in use
-            and obj.dtype.kind != 'c'
-            ):
-        if obj.dtype.char not in _dtype.all_type_chars:
-            raise ValueError('Unsupported dtype %s' % obj.dtype)
-        ext_mem = memory_module.SystemMemory.from_external(
-            obj.ctypes.data, obj.nbytes, obj)
-        memptr = memory.MemoryPointer(ext_mem, 0)
-        return ndarray(obj.shape, obj.dtype, memptr, obj.strides)
+    if not blocking:
+        a = _try_skip_h2d_copy(obj, dtype, order, ndmin)
+    if a is not None:
+        return a
 
     if order is not None and len(order) >= 1 and order[0] in 'KAka':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
@@ -2655,7 +2707,7 @@ cdef _ndarray_base _array_default(
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
-    cdef _ndarray_base a = ndarray(a_shape, dtype=a_dtype, order=order)
+    a = ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
         a.fill(a_cpu)
         return a
