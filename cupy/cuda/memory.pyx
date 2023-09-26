@@ -1980,3 +1980,28 @@ cdef class PythonFunctionAllocator:
             size, self._malloc_func,
             self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)
+
+
+cdef dict _allocations = dict()
+
+
+cdef public void* cupy_malloc_ext(
+        ssize_t size, int device_id, void* stream) with gil:
+    # TODO(ecastill) dynamically change stream & device?
+    try:
+        with device.Device(device_id):
+            with stream_module.ExternalStream(ptr=<intptr_t> stream):
+                mem = alloc(size)
+    except Exception:
+        return <void*>0  # return nullptr
+    cdef intptr_t ptr = <intptr_t> mem.ptr
+    _allocations[ptr] = mem
+    return <void*>mem.ptr
+
+
+cdef public void cupy_free_ext(
+        void* ptr, ssize_t size, int device_id, void* stream) with gil:
+    try:
+        del _allocations[<intptr_t>ptr]
+    except Exception:
+        pass   # Silently ignore non-tracked values?
