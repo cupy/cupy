@@ -2630,7 +2630,12 @@ cdef _ndarray_base _array_default(
             and (obj.dtype == get_dtype(dtype) if dtype is not None else True)
             # strides and the requested order could mismatch
             and _is_layout_expected(
-                obj.flags.c_contiguous, obj.flags.f_contiguous, order)):
+                obj.flags.c_contiguous, obj.flags.f_contiguous, order)
+            # FIXME(leofang): check alignment instead? this is a hack
+            # NumPy ndarrays do not guarantee alignment unless a custom
+            # allocator is in use
+            and obj.dtype.kind != 'c'
+            ):
         if obj.dtype.char not in _dtype.all_type_chars:
             raise ValueError('Unsupported dtype %s' % obj.dtype)
         ext_mem = memory_module.SystemMemory.from_external(
