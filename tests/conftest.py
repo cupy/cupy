@@ -72,3 +72,9 @@ class DeferPlugin:
         # With PyTest's default, the print will be shown as
         # "--- Captured stdout setup ---" on failure.
         print(f'CUDA_VISIBLE_DEVICES={devices}')
+
+
+# Make sure malloc is used in a stream-ordered fashion
+if int(os.environ.get('CUPY_ENABLE_HMM', 0)) != 0:
+    import cupy as cp
+    cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
