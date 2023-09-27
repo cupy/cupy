@@ -1,30 +1,35 @@
-from typing import Any, Callable, Final, Iterable, Optional, Union
-from typing_extensions import TypeGuard
 import functools
 from itertools import chain
+from typing import Any, Callable, Final, Iterable, Optional, Union
+from typing_extensions import TypeGuard
+
+import numpy
+from numpy.typing import ArrayLike
+from numpy.typing import DTypeLike
+
+import cupy
+from cupy._core.core import ndarray
+import cupy._creation.from_data as _creation_from_data
+from cupy.cuda.device import Device
+from cupy.cuda.stream import Stream
+from cupy.cuda.stream import get_current_stream
 
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array._chunk import _Chunk
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array._data_transfer import NcclCommunicator
+from cupyx.distributed.array._data_transfer import _NcclCommunicator
 from cupyx.distributed.array import _elementwise
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _reduction
 from cupyx.distributed.array import linalg
 
-import numpy
-from numpy.typing import ArrayLike, DTypeLike
-
-import cupy
-from cupy.cuda import Device, Stream, get_current_stream
-
 
 @functools.lru_cache
 def _min_value_of(dtype):
     if dtype.kind in 'biu':
-        return dtype.type(cupy.iinfo(dtype).min)
+        return dtype.type(numpy.iinfo(dtype).min)
     elif dtype.kind in 'f':
-        return dtype.type(-cupy.inf)
+        return dtype.type(-numpy.inf)
     else:
         raise RuntimeError(f'Unsupported type: {dtype}')
 
@@ -32,9 +37,9 @@ def _min_value_of(dtype):
 @functools.lru_cache
 def _max_value_of(dtype):
     if dtype.kind in 'biu':
-        return dtype.type(cupy.iinfo(dtype).max)
+        return dtype.type(numpy.iinfo(dtype).max)
     elif dtype.kind in 'f':
-        return dtype.type(cupy.inf)
+        return dtype.type(numpy.inf)
     else:
         raise RuntimeError(f'Unsupported type: {dtype}')
 
@@ -50,7 +55,7 @@ def _one_of(dtype):
 
 
 class _OpMode:
-    func: cupy.ufunc
+    func: cupy._core._kernel.ufunc
     numpy_func: numpy.ufunc
     idempotent: bool
     identity_of: Callable
@@ -87,11 +92,11 @@ _MODES: Final[dict[str, _Mode]] = {
 }
 
 
-class _MultiDeviceDummyMemory(cupy.cuda.Memory):
+class _MultiDeviceDummyMemory(cupy.cuda.memory.Memory):
     pass
 
 
-class _MultiDeviceDummyPointer(cupy.cuda.MemoryPointer):
+class _MultiDeviceDummyPointer(cupy.cuda.memory.MemoryPointer):
     @property
     def device(self) -> Device:
         # This override is needed to assign an invalid device id
@@ -107,10 +112,10 @@ def all_chunks(
             yield dev, chunk
 
 
-class DistributedArray(cupy.ndarray):
+class DistributedArray(ndarray):
     """Multi-dimensional array distributed across multiple CUDA devices.
 
-    This class implements some elementary operations that :class:`cupy.ndarray`
+    This class implements some elementary operations that :class:`ndarray`
     provides. The array content is split into chunks, contiguous arrays
     corresponding to slices of the original array. Note that one device can
     hold multiple chunks.
@@ -119,13 +124,13 @@ class DistributedArray(cupy.ndarray):
     _chunks_map: dict[int, list[_Chunk]]
     _streams: dict[int, Stream]
     _mode: _Mode
-    _comms: dict[int, NcclCommunicator]
+    _comms: dict[int, _NcclCommunicator]
 
     def __new__(
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
         mode: Union[str, _Mode] = _REPLICA_MODE,
-        comms: Optional[dict[int, NcclCommunicator]] = None,
+        comms: Optional[dict[int, _NcclCommunicator]] = None,
     ) -> 'DistributedArray':
         """Instantiate a distributed array using arguments for its attributes.
 
@@ -203,7 +208,7 @@ class DistributedArray(cupy.ndarray):
                 for dev, chunks in self._chunks_map.items()}
 
     @property
-    def comms(self) -> dict[int, NcclCommunicator]:
+    def comms(self) -> dict[int, _NcclCommunicator]:
         """Communicator objects for data transfer between devices using NCCL.
 
         They are initialized automatically when needed.
@@ -233,7 +238,7 @@ class DistributedArray(cupy.ndarray):
     def __cupy_override_reduction_kernel__(
             self, kernel, axis, dtype, out, keepdims) -> Any:
         # This method is called from _SimpleReductionKernel and elementary
-        # reduction methods of cupy.ndarray to dispatch reduction operations
+        # reduction methods of ndarray to dispatch reduction operations
         # TODO: Support user-defined ReductionKernel
         if axis is None:
             raise RuntimeError('axis must be specified')
@@ -421,7 +426,7 @@ def distributed_array(
     array: ArrayLike,
     index_map: dict[int, Any],
     mode: str = 'replica',
-    comms: Optional[dict[int, NcclCommunicator]] = None,
+    comms: Optional[dict[int, _NcclCommunicator]] = None,
 ) -> DistributedArray:
     """Creates a distributed array from the given data.
 
@@ -430,7 +435,7 @@ def distributed_array(
 
     Args:
         array: :class:`~cupyx.distributed.array.DistributedArray` object,
-            :class:`cupy.ndarray` object or any other object that can be passed
+            :class:`ndarray` object or any other object that can be passed
             to :func:`numpy.array`.
         index_map (dict from int to array indices): Indices for the chunks
             that devices with designated IDs own. One device can have multiple
@@ -457,7 +462,7 @@ def distributed_array(
         return DistributedArray(
             array.shape, array.dtype, array._chunks_map, array._mode, comms)
 
-    if isinstance(array, (numpy.ndarray, cupy.ndarray)):
+    if isinstance(array, (numpy.ndarray, ndarray)):
         if mode != 'replica':
             array = array.copy()
     else:
@@ -466,7 +471,7 @@ def distributed_array(
     new_index_map = _index_arith._normalize_index_map(array.shape, index_map)
 
     # Define how to create chunks from the original data
-    if isinstance(array, cupy.ndarray):
+    if isinstance(array, ndarray):
         src_dev = array.device.id
         with Device(src_dev):
             src_stream = get_current_stream()
@@ -477,7 +482,7 @@ def distributed_array(
 
         def make_chunk(dst_dev, idx, src_array):
             with src_array.device:
-                src_array = cupy.ascontiguousarray(src_array)
+                src_array = _creation_from_data.ascontiguousarray(src_array)
                 src_data = _data_transfer._AsyncData(
                     src_array, src_stream.record(), prevent_gc=src_array)
             with Device(dst_dev):
@@ -491,7 +496,7 @@ def distributed_array(
         def make_chunk(dev, idx, array):
             with Device(dev):
                 stream = get_current_stream()
-                copied = cupy.array(array)
+                copied = _creation_from_data.array(array)
                 return _Chunk(copied, stream.record(), idx,
                               prevent_gc=array)
 

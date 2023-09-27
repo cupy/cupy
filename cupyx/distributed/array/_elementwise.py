@@ -3,6 +3,11 @@ from typing import Sequence
 from itertools import chain
 
 import cupy
+import cupy._creation.basic as _creation_basic
+from cupy._core.core import ndarray
+from cupy.cuda.device import Device
+from cupy.cuda.stream import Stream
+from cupy.cuda.stream import get_current_stream
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
@@ -40,11 +45,11 @@ def _find_updates(
 
 
 def _prepare_chunks_data(
-    stream: cupy.cuda.Stream,
+    stream: Stream,
     args: Sequence['darray.DistributedArray'],
     kwargs: dict[str, 'darray.DistributedArray'],
     dev: int, chunk_i: int,
-) -> tuple[list[cupy.ndarray], dict[str, cupy.ndarray]]:
+) -> tuple[list[ndarray], dict[str, ndarray]]:
     def access_data(d_array):
         chunk = d_array._chunks_map[dev][chunk_i]
         stream.wait_event(chunk.ready)
@@ -83,8 +88,8 @@ def _execute_kernel(
 
     for dev, idxs in index_map.items():
         chunks_map[dev] = []
-        with cupy.cuda.Device(dev):
-            stream = cupy.cuda.get_current_stream()
+        with Device(dev):
+            stream = get_current_stream()
 
             for chunk_i, idx in enumerate(idxs):
                 # This must be called before _prepare_chunks_data.
@@ -144,7 +149,7 @@ def _execute_kernel(
                     new_chunk.add_update(data_transfer, idx)
 
     for chunk in chain.from_iterable(chunks_map.values()):
-        if not isinstance(chunk.data, (cupy.ndarray, _chunk._DataPlaceholder)):
+        if not isinstance(chunk.data, (ndarray, _chunk._DataPlaceholder)):
             raise RuntimeError(
                 'Kernels returning other than signle array are not supported')
 
@@ -185,7 +190,7 @@ def _execute_peer_access(
     a, b = args
 
     # TODO: Use numpy.result_type. Does it give the same result?
-    if isinstance(kernel, cupy.ufunc):
+    if isinstance(kernel, cupy._core._kernel.ufunc):
         op = kernel._ops._guess_routine_from_in_types((a.dtype, b.dtype))
         if op is None:
             raise RuntimeError(
@@ -209,11 +214,11 @@ def _execute_peer_access(
 
     for a_chunk in chain.from_iterable(a._chunks_map.values()):
         a_dev = a_chunk.data.device.id
-        with cupy.cuda.Device(a_dev):
-            stream = cupy.cuda.get_current_stream()
+        with Device(a_dev):
+            stream = get_current_stream()
             stream.wait_event(a_chunk.ready)
 
-            new_chunk_data = cupy.empty(a_chunk.data.shape, dtype)
+            new_chunk_data = _creation_basic.empty(a_chunk.data.shape, dtype)
 
             for b_chunk in chain.from_iterable(b._chunks_map.values()):
                 stream.wait_event(b_chunk.ready)
@@ -231,8 +236,8 @@ def _execute_peer_access(
                     b_chunk.index, intersection, shape)
 
                 assert kernel.nin == 2
-                kernel(typing.cast(cupy.ndarray, a_chunk.data)[a_new_idx],
-                       typing.cast(cupy.ndarray, b_chunk.data)[b_new_idx],
+                kernel(typing.cast(ndarray, a_chunk.data)[a_new_idx],
+                       typing.cast(ndarray, b_chunk.data)[b_new_idx],
                        new_chunk_data[a_new_idx])
 
             new_chunk = _chunk._Chunk(

@@ -4,17 +4,24 @@ from typing_extensions import TypeGuard
 import dataclasses
 from itertools import chain
 
-import cupy
-from cupy.cuda import Device, Event, Stream, get_current_stream
+import numpy
+
+from cupy._core.core import ndarray
+import cupy._creation.basic as _creation_basic
+import cupy._manipulation.dims as _manipulation_dims
+from cupy.cuda.device import Device
+from cupy.cuda.stream import Event
+from cupy.cuda.stream import Stream
+from cupy.cuda.stream import get_current_stream
 
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array._data_transfer import NcclCommunicator
+from cupyx.distributed.array._data_transfer import _NcclCommunicator
 
 
 class _DataPlaceholder:
-    # Mocks cupy.ndarray
+    # Mocks ndarray
     # Eventually overwritten by PartialUpdates entirely, so
     # any operation on _DataPlaceholder can be skipped
     shape: tuple[int, ...]
@@ -27,21 +34,21 @@ class _DataPlaceholder:
     def reshape(self, new_shape: tuple[int, ...]) -> '_DataPlaceholder':
         return _DataPlaceholder(new_shape, self.device)
 
-    def _to_ndarray(
-            self, mode: 'darray._Mode', dtype: cupy.dtype) -> cupy.ndarray:
+    def to_ndarray(
+            self, mode: 'darray._Mode', dtype: numpy.dtype) -> ndarray:
         with self.device:
             if darray._is_op_mode(mode):
                 value = mode.identity_of(dtype)
-                data = cupy.full(self.shape, value, dtype)
+                data = _creation_basic.full(self.shape, value, dtype)
             else:
-                data = cupy.empty(self.shape, dtype)
+                data = _creation_basic.empty(self.shape, dtype)
 
             # We avoid 0D array because we expect data[idx] to return a view
-            return cupy.atleast_1d(data)
+            return _manipulation_dims.atleast_1d(data)
 
 
 class _Chunk:
-    data: Union[cupy.ndarray, _DataPlaceholder]
+    data: Union[ndarray, _DataPlaceholder]
     ready: Event
     index: tuple[slice, ...]
     _updates: list[_data_transfer._PartialUpdate] = dataclasses.field(
@@ -51,7 +58,7 @@ class _Chunk:
     # Rule: whenever data is DataPlaceholder, ready is empty
 
     def __init__(
-        self, data: Union[cupy.ndarray, _DataPlaceholder], ready: Event,
+        self, data: Union[ndarray, _DataPlaceholder], ready: Event,
         index: tuple[slice, ...],
         updates: Optional[list[_data_transfer._PartialUpdate]] = None,
         prevent_gc: Any = None
@@ -109,10 +116,10 @@ class _Chunk:
 
         if isinstance(self.data, _DataPlaceholder):
             dtype = self._updates[0][0].data.dtype
-            self.data = self.data._to_ndarray(mode, dtype)
+            self.data = self.data.to_ndarray(mode, dtype)
 
         with self.data.device:
-            stream = cupy.cuda.get_current_stream()
+            stream = get_current_stream()
             stream.wait_event(self.ready)
 
             for update_data, idx in self._updates:
@@ -130,7 +137,7 @@ class _Chunk:
     def apply_to(
         self, target: '_Chunk', mode: 'darray._Mode',
         shape: tuple[int, ...],
-        comms: dict[int, _data_transfer.NcclCommunicator],
+        comms: dict[int, _data_transfer._NcclCommunicator],
         streams: dict[int, Stream],
     ) -> None:
         # Overwrite target with mode.func(self, target) on their overlaps
@@ -139,7 +146,7 @@ class _Chunk:
         dst_chunk = target
 
         assert len(src_chunk._updates) == 0
-        assert isinstance(src_chunk.data, cupy.ndarray)
+        assert isinstance(src_chunk.data, ndarray)
 
         src_dev = src_chunk.data.device.id
         dst_dev = dst_chunk.data.device.id
@@ -164,7 +171,7 @@ class _Chunk:
             return mode is not darray._REPLICA_MODE and not mode.idempotent
 
         if is_not_idempotent(mode):
-            with cupy.cuda.Device(src_dev):
+            with Device(src_dev):
                 data_to_transfer = data_to_transfer.copy()
             copy_done = data_to_transfer.ready
 
@@ -184,7 +191,7 @@ class _Chunk:
     def set_identity_on_intersection(
         self, idx: tuple[slice, ...], shape: tuple[int, ...], identity,
     ) -> None:
-        assert isinstance(self.data, cupy.ndarray)
+        assert isinstance(self.data, ndarray)
 
         intersection = _index_arith._index_intersection(self.index, idx, shape)
         if intersection is None:
@@ -212,7 +219,7 @@ class _Chunk:
 def _all_reduce_intersections(
     op_mode: 'darray._OpMode', shape: tuple[int, ...],
     chunk_map: dict[int, list[_Chunk]],
-    comms: dict[int, NcclCommunicator], streams: dict[int, Stream],
+    comms: dict[int, _NcclCommunicator], streams: dict[int, Stream],
 ) -> None:
     chunks_list = list(chain.from_iterable(chunk_map.values()))
 

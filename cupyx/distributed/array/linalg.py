@@ -3,6 +3,8 @@ import typing
 from typing import Callable
 
 import cupy
+from cupy.cuda.device import Device
+from cupy.cuda.stream import get_current_stream
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 
@@ -265,13 +267,13 @@ def _matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
             chunk_a = a._chunks_map[dev][loc_a[dev]]
             chunk_b = b._chunks_map[dev][loc_b[dev]]
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
-            with cupy.cuda.Device(dev):
-                stream = cupy.cuda.get_current_stream()
+            with Device(dev):
+                stream = get_current_stream()
                 chunk_a.apply_updates(darray._REPLICA_MODE)
                 chunk_b.apply_updates(darray._REPLICA_MODE)
                 stream.wait_event(chunk_a.ready)
                 stream.wait_event(chunk_b.ready)
-                chunk_ab_data = cupy.matmul(
+                chunk_ab_data = cupy.linalg._product.matmul(
                     chunk_a.data, chunk_b.data, **kwargs)
                 chunk_ab = _chunk._Chunk(
                     chunk_ab_data, stream.record(), index,

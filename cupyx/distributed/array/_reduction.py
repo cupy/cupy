@@ -3,7 +3,9 @@ from typing import Any
 
 from numpy.typing import DTypeLike
 
-import cupy
+import cupy._manipulation.dims as _manipulation_dims
+from cupy.cuda.device import Device
+from cupy.cuda.stream import get_current_stream
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
@@ -52,8 +54,8 @@ def _execute(
     for dev, chunks in chunks_map.items():
         new_chunks_map[dev] = []
         for chunk in chunks:
-            with cupy.cuda.Device(dev):
-                execution_stream = cupy.cuda.get_current_stream()
+            with Device(dev):
+                execution_stream = get_current_stream()
                 execution_stream.wait_event(chunk.ready)
 
                 new_index = chunk.index[:axis] + chunk.index[axis+1:]
@@ -66,7 +68,7 @@ def _execute(
                 else:
                     # We avoid 0D array because
                     # we expect data[idx] to return a view
-                    update_data = cupy.atleast_1d(
+                    update_data = _manipulation_dims.atleast_1d(
                         kernel(chunk.data, axis=axis, dtype=dtype))
 
                     new_dtype = update_data.dtype
@@ -81,7 +83,7 @@ def _execute(
 
                 for update, update_index in chunk.updates:
                     execution_stream.wait_event(update.ready)
-                    new_update_data = cupy.atleast_1d(
+                    new_update_data = _manipulation_dims.atleast_1d(
                         kernel(update.data, axis=axis, dtype=dtype))
                     new_dtype = new_update_data.dtype
 
