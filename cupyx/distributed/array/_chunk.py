@@ -36,11 +36,11 @@ class _ArrayPlaceholder:
     def to_ndarray(
             self, mode: '_modes._Mode', dtype: numpy.dtype) -> ndarray:
         with self.device:
-            if _modes._is_op_mode(mode):
+            if mode is _modes._REPLICA_MODE:
+                data = _creation_basic.empty(self.shape, dtype)
+            else:
                 value = mode.identity_of(dtype)
                 data = _creation_basic.full(self.shape, value, dtype)
-            else:
-                data = _creation_basic.empty(self.shape, dtype)
 
             # We avoid 0D array because we expect data[idx] to return a view
             return _manipulation_dims.atleast_1d(data)
@@ -123,11 +123,11 @@ class _Chunk:
         with self.on_ready() as stream:
             for update_data, idx in self.updates:
                 stream.wait_event(update_data.ready)
-                if _modes._is_op_mode(mode):
+                if mode is _modes._REPLICA_MODE:
+                    self.array[idx] = update_data.array
+                else:
                     self.array[idx] = mode.func(
                         self.array[idx], update_data.array)
-                else:
-                    self.array[idx] = update_data.array
 
             stream.record(self.ready)
             self.prevent_gc = (self.prevent_gc, self.updates)

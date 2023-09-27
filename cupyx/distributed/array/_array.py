@@ -184,7 +184,7 @@ class DistributedArray(ndarray):
         for dev, chunks in self._chunks_map.items():
             chunks_map[dev] = [chunk.copy() for chunk in chunks]
 
-        if _modes._is_op_mode(self._mode):
+        if self._mode is not _modes._REPLICA_MODE:
             self._prepare_comms_and_streams(self._chunks_map.keys())
             _chunk._all_reduce_intersections(
                 self._mode, self.shape, chunks_map, self._comms, self._streams)
@@ -257,10 +257,10 @@ class DistributedArray(ndarray):
 
         mode_obj = _modes._MODES[mode]
 
-        if _modes._is_op_mode(mode_obj):
-            return self._to_op_mode(mode_obj)
-        else:
+        if mode_obj is _modes._REPLICA_MODE:
             return self._to_replica_mode()
+        else:
+            return self._to_op_mode(mode_obj)
 
     def reshard(self, index_map: dict[int, Any]) -> 'DistributedArray':
         """Return a view or a copy having the given index_map."""
@@ -297,7 +297,7 @@ class DistributedArray(ndarray):
         for src_chunk in chain.from_iterable(old_chunks_map.values()):
             src_chunk.apply_updates(self._mode)
 
-            if _modes._is_op_mode(self._mode):
+            if self._mode is not _modes._REPLICA_MODE:
                 src_chunk = src_chunk.copy()
 
             for dst_chunk in chain.from_iterable(new_chunks_map.values()):
@@ -313,11 +313,11 @@ class DistributedArray(ndarray):
         for chunk in chain.from_iterable(self._chunks_map.values()):
             chunk.apply_updates(self._mode)
 
-        if _modes._is_op_mode(self._mode):
+        if self._mode is _modes._REPLICA_MODE:
+            np_array = numpy.empty(self.shape, dtype=self.dtype)
+        else:
             identity = self._mode.identity_of(self.dtype)
             np_array = numpy.full(self.shape, identity, self.dtype)
-        else:
-            np_array = numpy.empty(self.shape, dtype=self.dtype)
 
         # We avoid 0D array because we expect data[idx] to return a view
         np_array = numpy.atleast_1d(np_array)
@@ -325,11 +325,11 @@ class DistributedArray(ndarray):
         for chunk in chain.from_iterable(self._chunks_map.values()):
             chunk.ready.synchronize()
             idx = chunk.index
-            if _modes._is_op_mode(self._mode):
+            if self._mode is _modes._REPLICA_MODE:
+                np_array[idx] = cupy.asnumpy(chunk.array)
+            else:
                 self._mode.numpy_func(
                     np_array[idx], cupy.asnumpy(chunk.array), np_array[idx])
-            else:
-                np_array[idx] = cupy.asnumpy(chunk.array)
 
         # Undo numpy.atleast_1d
         return np_array.reshape(self.shape)
