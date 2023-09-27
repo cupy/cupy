@@ -15,7 +15,7 @@ from cupy.cuda.stream import get_current_stream
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array._chunk import _Chunk
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array._data_transfer import _NcclCommunicator
+from cupyx.distributed.array._data_transfer import Communicator
 from cupyx.distributed.array import _elementwise
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _modes
@@ -47,13 +47,13 @@ class DistributedArray(ndarray):
     _chunks_map: dict[int, list[_Chunk]]
     _streams: dict[int, Stream]
     _mode: _modes._Mode
-    _comms: dict[int, _NcclCommunicator]
+    _comms: dict[int, Communicator]
 
     def __new__(
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
         mode: Union[str, _modes._Mode] = _modes._REPLICA_MODE,
-        comms: Optional[dict[int, _NcclCommunicator]] = None,
+        comms: Optional[dict[int, Communicator]] = None,
     ) -> 'DistributedArray':
         """Instantiate a distributed array using arguments for its attributes.
 
@@ -131,7 +131,7 @@ class DistributedArray(ndarray):
                 for dev, chunks in self._chunks_map.items()}
 
     @property
-    def comms(self) -> dict[int, _NcclCommunicator]:
+    def comms(self) -> dict[int, Communicator]:
         """Communicator objects for data transfer between devices using NCCL.
 
         They are initialized automatically when needed.
@@ -349,7 +349,7 @@ def distributed_array(
     array: ArrayLike,
     index_map: dict[int, Any],
     mode: str = 'replica',
-    comms: Optional[dict[int, _NcclCommunicator]] = None,
+    comms: Optional[dict[int, Communicator]] = None,
 ) -> DistributedArray:
     """Creates a distributed array from the given data.
 

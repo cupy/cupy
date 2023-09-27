@@ -10,13 +10,15 @@ from cupy.cuda.stream import Stream
 from cupy.cuda.stream import get_current_stream
 
 from cupy.cuda import nccl
+from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
+
 if nccl.available:
-    import cupy.cuda.nccl.NcclCommunicator as _NcclCommunicator  # type: ignore
+    from cupy.cuda.nccl import NcclCommunicator as Communicator
 else:
-    class _NcclCommunicator:     # type: ignore
+    class MockCommunicator:
         pass
 
-from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
+    Communicator = MockCommunicator
 
 
 @dataclasses.dataclass
@@ -41,13 +43,13 @@ _PartialUpdate = tuple[_AsyncData, tuple[slice, ...]]
 if nccl.available:
     def _create_communicators(
         devices: Iterable[int],
-    ) -> dict[int, _NcclCommunicator]:
-        comms_list = _NcclCommunicator.initAll(list(devices))
+    ) -> dict[int, Communicator]:
+        comms_list = Communicator.initAll(list(devices))
         return {comm.device_id(): comm for comm in comms_list}
 
     def _transfer(
-        src_comm: _NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
-        dst_comm: _NcclCommunicator, dst_stream: Stream, dst_dev: int,
+        src_comm: Communicator, src_stream: Stream, src_data: _AsyncData,
+        dst_comm: Communicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
         src_dev = src_data.data.device.id
         if src_dev == dst_dev:
@@ -80,12 +82,12 @@ if nccl.available:
 else:
     def _create_communicators(
         devices: Iterable[int],
-    ) -> dict[int, _NcclCommunicator]:
-        return {dev: _NcclCommunicator() for dev in devices}
+    ) -> dict[int, Communicator]:
+        return {dev: Communicator() for dev in devices}
 
     def _transfer(
-        src_comm: _NcclCommunicator, src_stream: Stream, src_data: _AsyncData,
-        dst_comm: _NcclCommunicator, dst_stream: Stream, dst_dev: int,
+        src_comm: Communicator, src_stream: Stream, src_data: _AsyncData,
+        dst_comm: Communicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
         src_dev = src_data.data.device.id
         if src_dev == dst_dev:
