@@ -246,7 +246,7 @@ extern "C" __global__ void __launch_bounds__( 64 )
     _cupy_upfirdn2D<thrust::complex<double>>(
         inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
-'''
+'''  # NOQA
 
 
 UPFIRDN_MODULE = cupy.RawModule(
@@ -368,10 +368,12 @@ class _UpFIRDn(object):
             # set up the kernel launch parameters
             threadsperblock = (8, 8)
             blocks = ceil(out.shape[0] / threadsperblock[0])
-            blockspergrid_x = blocks if blocks < _get_max_gdx() else _get_max_gdx()
+            blockspergrid_x = (
+                blocks if blocks < _get_max_gdx() else _get_max_gdx())
 
             blocks = ceil(out.shape[1] / threadsperblock[1])
-            blockspergrid_y = blocks if blocks < _get_max_gdy() else _get_max_gdy()
+            blockspergrid_y = (
+                blocks if blocks < _get_max_gdy() else _get_max_gdy())
 
             blockspergrid = (blockspergrid_x, blockspergrid_y)
 
