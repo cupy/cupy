@@ -15,7 +15,7 @@ from cupy.cuda.stream import get_current_stream
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array._chunk import _Chunk
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array._data_transfer import Communicator
+from cupyx.distributed.array._data_transfer import _Communicator
 from cupyx.distributed.array import _elementwise
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _modes
@@ -47,13 +47,13 @@ class DistributedArray(ndarray):
     _chunks_map: dict[int, list[_Chunk]]
     _streams: dict[int, Stream]
     _mode: _modes._Mode
-    _comms: dict[int, Communicator]
+    _comms: dict[int, _Communicator]
 
     def __new__(
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
         mode: Union[str, _modes._Mode] = _modes._REPLICA_MODE,
-        comms: Optional[dict[int, Communicator]] = None,
+        comms: Optional[dict[int, _Communicator]] = None,
     ) -> 'DistributedArray':
         """Instantiate a distributed array using arguments for its attributes.
 
@@ -65,7 +65,7 @@ class DistributedArray(ndarray):
             dtype: Data type. It must be an argument of :class:`numpy.dtype`.
             mode (str or mode object): Mode that determines how overlaps of
                 chunks are interpreted.
-            comms (optional): Communicator objects which a distributed array
+            comms (optional): _Communicator objects which a distributed array
                 hold internally. Sharing them with other distributed arrays can
                 save time because their initialization is a costly operation.
                 For details, check
@@ -130,17 +130,6 @@ class DistributedArray(ndarray):
         return {dev: [chunk.index for chunk in chunks]
                 for dev, chunks in self._chunks_map.items()}
 
-    @property
-    def comms(self) -> dict[int, Communicator]:
-        """Communicator objects for data transfer between devices using NCCL.
-
-        They are initialized automatically when needed.
-
-        If NCCL is unavailable, they are replaced by empty mock objects.
-        """
-        # TODO: Cache in the global scope
-        return self._comms
-
     def _prepare_comms_and_streams(self, devices: Iterable[int]) -> None:
         # Ensure communicators and streams are prepared for communication
         # between `devices` and the devices currently owning chunks
@@ -196,6 +185,7 @@ class DistributedArray(ndarray):
             chunks_map[dev] = [chunk.copy() for chunk in chunks]
 
         if _modes._is_op_mode(self._mode):
+            self._prepare_comms_and_streams(self._chunks_map.keys())
             _chunk._all_reduce_intersections(
                 self._mode, self.shape, chunks_map, self._comms, self._streams)
 
@@ -349,7 +339,6 @@ def distributed_array(
     array: ArrayLike,
     index_map: dict[int, Any],
     mode: str = 'replica',
-    comms: Optional[dict[int, Communicator]] = None,
 ) -> DistributedArray:
     """Creates a distributed array from the given data.
 
@@ -363,11 +352,6 @@ def distributed_array(
         index_map (dict from int to array indices): Indices for the chunks
             that devices with designated IDs own. One device can have multiple
             chunks, which can be specified as a list of array indices.
-        comms (optional): Communicator objects which a distributed array hold
-            internally. Sharing them with other distributed arrays can save
-            time because their initialization is a costly operation. For
-            details, check
-            :meth:`~cupyx.distributed.array.DistributedArray.comms` property.
 
     Example:
         >>> array = cupy.arange(9).reshape(3, 3)
@@ -383,7 +367,8 @@ def distributed_array(
         if array.index_map != index_map:
             array = array.reshard(index_map)
         return DistributedArray(
-            array.shape, array.dtype, array._chunks_map, array._mode, comms)
+            array.shape, array.dtype, array._chunks_map, array._mode,
+            array._comms)
 
     if isinstance(array, (numpy.ndarray, ndarray)):
         if mode != 'replica':
@@ -391,7 +376,8 @@ def distributed_array(
     else:
         array = numpy.array(array)
 
-    new_index_map = _index_arith._normalize_index_map(array.shape, index_map)
+    index_map = _index_arith._normalize_index_map(array.shape, index_map)
+    comms = None
 
     # Define how to create chunks from the original data
     if isinstance(array, ndarray):
@@ -400,8 +386,7 @@ def distributed_array(
             src_stream = get_current_stream()
 
         devices = index_map.keys() | {array.device.id}
-        if comms is None or not devices.issubset(comms.keys()):
-            comms = _data_transfer._create_communicators(devices)
+        comms = _data_transfer._create_communicators(devices)
 
         def make_chunk(dst_dev, idx, src_array):
             with src_array.device:
@@ -425,7 +410,7 @@ def distributed_array(
 
     mode_obj = _modes._MODES[mode]
     chunks_map: dict[int, list[_Chunk]] = {}
-    for dev, idxs in new_index_map.items():
+    for dev, idxs in index_map.items():
         chunks_map[dev] = []
 
         for i, idx in enumerate(idxs):

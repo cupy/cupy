@@ -13,12 +13,12 @@ from cupy.cuda import nccl
 from cupyx.distributed._nccl_comm import _get_nccl_dtype_and_count
 
 if nccl.available:
-    from cupy.cuda.nccl import NcclCommunicator as Communicator
+    from cupy.cuda.nccl import NcclCommunicator as _Communicator
 else:
-    class MockCommunicator:
+    class _MockCommunicator:
         pass
 
-    Communicator = MockCommunicator
+    _Communicator = _MockCommunicator
 
 
 @dataclasses.dataclass
@@ -43,13 +43,13 @@ _PartialUpdate = tuple[_AsyncData, tuple[slice, ...]]
 if nccl.available:
     def _create_communicators(
         devices: Iterable[int],
-    ) -> dict[int, Communicator]:
-        comms_list = Communicator.initAll(list(devices))
+    ) -> dict[int, _Communicator]:
+        comms_list = _Communicator.initAll(list(devices))
         return {comm.device_id(): comm for comm in comms_list}
 
     def _transfer(
-        src_comm: Communicator, src_stream: Stream, src_data: _AsyncData,
-        dst_comm: Communicator, dst_stream: Stream, dst_dev: int,
+        src_comm: _Communicator, src_stream: Stream, src_data: _AsyncData,
+        dst_comm: _Communicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
         src_dev = src_data.data.device.id
         if src_dev == dst_dev:
@@ -82,12 +82,12 @@ if nccl.available:
 else:
     def _create_communicators(
         devices: Iterable[int],
-    ) -> dict[int, Communicator]:
-        return {dev: Communicator() for dev in devices}
+    ) -> dict[int, _Communicator]:
+        return {dev: _Communicator() for dev in devices}
 
     def _transfer(
-        src_comm: Communicator, src_stream: Stream, src_data: _AsyncData,
-        dst_comm: Communicator, dst_stream: Stream, dst_dev: int,
+        src_comm: _Communicator, src_stream: Stream, src_data: _AsyncData,
+        dst_comm: _Communicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
         src_dev = src_data.data.device.id
         if src_dev == dst_dev:

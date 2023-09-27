@@ -17,7 +17,7 @@ from cupy.cuda.stream import get_current_stream
 from cupyx.distributed.array import _modes
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array._data_transfer import Communicator
+from cupyx.distributed.array._data_transfer import _Communicator
 
 
 class _DataPlaceholder:
@@ -137,7 +137,7 @@ class _Chunk:
     def apply_to(
         self, target: '_Chunk', mode: '_modes._Mode',
         shape: tuple[int, ...],
-        comms: dict[int, _data_transfer.Communicator],
+        comms: dict[int, _data_transfer._Communicator],
         streams: dict[int, Stream],
     ) -> None:
         # Overwrite target with mode.func(self, target) on their overlaps
@@ -219,7 +219,7 @@ class _Chunk:
 def _all_reduce_intersections(
     op_mode: '_modes._OpMode', shape: tuple[int, ...],
     chunk_map: dict[int, list[_Chunk]],
-    comms: dict[int, Communicator], streams: dict[int, Stream],
+    comms: dict[int, _Communicator], streams: dict[int, Stream],
 ) -> None:
     chunks_list = list(chain.from_iterable(chunk_map.values()))
 
