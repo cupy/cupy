@@ -4,8 +4,6 @@ from typing import Any
 from numpy.typing import DTypeLike
 
 import cupy._manipulation.dims as _manipulation_dims
-from cupy.cuda.device import Device
-from cupy.cuda.stream import get_current_stream
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
@@ -48,50 +46,47 @@ def _execute(
                 chunks[i].set_identity_on_overwritten_entries(identity)
 
     shape = arr.shape[:axis] + arr.shape[axis+1:]
-    new_dtype = None
-    new_chunks_map: dict[int, list[_chunk._Chunk]] = {}
+    out_dtype = None
+    out_chunks_map: dict[int, list[_chunk._Chunk]] = {}
 
     for dev, chunks in chunks_map.items():
-        new_chunks_map[dev] = []
+        out_chunks_map[dev] = []
         for chunk in chunks:
-            with Device(dev):
-                execution_stream = get_current_stream()
-                execution_stream.wait_event(chunk.ready)
+            with chunk.on_ready() as stream:
+                out_index = chunk.index[:axis] + chunk.index[axis+1:]
 
-                new_index = chunk.index[:axis] + chunk.index[axis+1:]
-
-                if isinstance(chunk.data, _chunk._DataPlaceholder):
-                    old_shape = chunk.data.shape
-                    new_shape = old_shape[:axis] + old_shape[axis+1:]
-                    new_chunk = _chunk._Chunk.create_placeholder(
-                        new_shape, chunk.data.device, new_index)
+                if isinstance(chunk.array, _chunk._ArrayPlaceholder):
+                    old_shape = chunk.array.shape
+                    out_shape = old_shape[:axis] + old_shape[axis+1:]
+                    out_chunk = _chunk._Chunk.create_placeholder(
+                        out_shape, chunk.array.device, out_index)
                 else:
                     # We avoid 0D array because
                     # we expect data[idx] to return a view
-                    update_data = _manipulation_dims.atleast_1d(
-                        kernel(chunk.data, axis=axis, dtype=dtype))
+                    out_array = _manipulation_dims.atleast_1d(
+                        kernel(chunk.array, axis=axis, dtype=dtype))
 
-                    new_dtype = update_data.dtype
-                    new_chunk = _chunk._Chunk(
-                        update_data, execution_stream.record(), new_index, [],
-                        prevent_gc=chunk._prevent_gc)
+                    out_dtype = out_array.dtype
+                    out_chunk = _chunk._Chunk(
+                        out_array, stream.record(), out_index,
+                        prevent_gc=chunk.prevent_gc)
 
-                new_chunks_map[dev].append(new_chunk)
+                out_chunks_map[dev].append(out_chunk)
 
                 if len(chunk.updates) == 0:
                     continue
 
                 for update, update_index in chunk.updates:
-                    execution_stream.wait_event(update.ready)
-                    new_update_data = _manipulation_dims.atleast_1d(
-                        kernel(update.data, axis=axis, dtype=dtype))
-                    new_dtype = new_update_data.dtype
+                    stream.wait_event(update.ready)
+                    out_update_array = _manipulation_dims.atleast_1d(
+                        kernel(update.array, axis=axis, dtype=dtype))
+                    out_dtype = out_update_array.dtype
 
-                    data_transfer = _data_transfer._AsyncData(
-                        new_update_data, execution_stream.record(),
+                    out_update = _data_transfer._AsyncData(
+                        out_update_array, stream.record(),
                         prevent_gc=update.prevent_gc)
-                    new_index = update_index[:axis] + update_index[axis+1:]
-                    new_chunk.add_update(data_transfer, new_index)
+                    out_index = update_index[:axis] + update_index[axis+1:]
+                    out_chunk.add_update(out_update, out_index)
 
     return darray.DistributedArray(
-        shape, new_dtype, new_chunks_map, mode, arr._comms)
+        shape, out_dtype, out_chunks_map, mode, arr._comms)

@@ -1,5 +1,6 @@
+import contextlib
 import dataclasses
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 from cupy._core.core import ndarray
 import cupy._creation.from_data as _creation_from_data
@@ -23,17 +24,23 @@ else:
 
 @dataclasses.dataclass
 class _AsyncData:
-    data: ndarray
+    array: ndarray
     ready: Event
     prevent_gc: Any = None      # TODO: Release it to avoid OOM
 
     def copy(self) -> '_AsyncData':
-        with self.data.device:
+        with self.on_ready() as stream:
+            array = self.array.copy()
+            stream.record(self.ready)
+
+            return _AsyncData(array, stream.record(), self.prevent_gc)
+
+    @contextlib.contextmanager
+    def on_ready(self) -> Iterator[Stream]:
+        with self.array.device:
             stream = get_current_stream()
             stream.wait_event(self.ready)
-            update_data = self.data.copy()
-            stream.record(self.ready)
-            return _AsyncData(update_data, stream.record(), self.prevent_gc)
+            yield stream
 
 
 # Overwrite in replica mode, apply in op mode
@@ -51,34 +58,43 @@ if nccl.available:
         src_comm: _Communicator, src_stream: Stream, src_data: _AsyncData,
         dst_comm: _Communicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
-        src_dev = src_data.data.device.id
+        src_dev = src_data.array.device.id
         if src_dev == dst_dev:
-            return _AsyncData(src_data.data, src_data.ready)
+            return _AsyncData(src_data.array, src_data.ready)
 
-        with Device(src_dev):
-            src_stream.wait_event(src_data.ready)
-            with src_stream:
+        prev_src_stream = get_current_stream(src_dev)
+        prev_dst_stream = get_current_stream(dst_dev)
+        try:
+            with Device(src_dev):
+                src_stream.use()
+                src_stream.wait_event(src_data.ready)
                 src_array = _creation_from_data.ascontiguousarray(
-                    src_data.data)
-        with Device(dst_dev):
-            with dst_stream:
+                    src_data.array)
+
+            with Device(dst_dev):
+                dst_stream.use()
                 dst_buf = _creation_basic.empty(
                     src_array.shape, src_array.dtype)
 
-        dtype, count = _get_nccl_dtype_and_count(src_array)
-        nccl.groupStart()   # type: ignore
+            dtype, count = _get_nccl_dtype_and_count(src_array)
+            nccl.groupStart()
 
-        with Device(src_dev):
-            src_comm.send(src_array.data.ptr, count, dtype,
-                          dst_comm.rank_id(), src_stream.ptr)
+            with Device(src_dev):
+                src_comm.send(src_array.data.ptr, count, dtype,
+                              dst_comm.rank_id(), src_stream.ptr)
 
-        with Device(dst_dev):
-            dst_comm.recv(dst_buf.data.ptr, count, dtype,
-                          src_comm.rank_id(), dst_stream.ptr)
+            with Device(dst_dev):
+                dst_comm.recv(dst_buf.data.ptr, count, dtype,
+                              src_comm.rank_id(), dst_stream.ptr)
 
-            nccl.groupEnd()     # type: ignore
-            return _AsyncData(dst_buf, dst_stream.record(),
-                              prevent_gc=(src_data, src_array))
+                nccl.groupEnd()
+                return _AsyncData(dst_buf, dst_stream.record(),
+                                  prevent_gc=src_data)
+        finally:
+            with Device(src_dev):
+                prev_src_stream.use()
+            with Device(dst_dev):
+                prev_dst_stream.use()
 else:
     def _create_communicators(
         devices: Iterable[int],
@@ -89,13 +105,18 @@ else:
         src_comm: _Communicator, src_stream: Stream, src_data: _AsyncData,
         dst_comm: _Communicator, dst_stream: Stream, dst_dev: int,
     ) -> _AsyncData:
-        src_dev = src_data.data.device.id
+        src_dev = src_data.array.device.id
         if src_dev == dst_dev:
-            return _AsyncData(src_data.data, src_data.ready)
+            return _AsyncData(src_data.array, src_data.ready)
 
         with Device(dst_dev):
-            dst_stream.wait_event(src_data.ready)
-            with dst_stream:
-                dst_data = src_data.data.copy()
-            return _AsyncData(
-                dst_data, dst_stream.record(), prevent_gc=src_data.data)
+            prev_stream = get_current_stream()
+            try:
+                dst_stream.use()
+                dst_stream.wait_event(src_data.ready)
+
+                dst_array = src_data.array.copy()
+                return _AsyncData(
+                    dst_array, dst_stream.record(), prevent_gc=src_data.array)
+            finally:
+                prev_stream.use()

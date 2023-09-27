@@ -3,8 +3,6 @@ import typing
 from typing import Callable
 
 import cupy
-from cupy.cuda.device import Device
-from cupy.cuda.stream import get_current_stream
 from cupyx.distributed.array import _array
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _modes
@@ -175,11 +173,11 @@ def _reshape_array_with(
     f_idx:   Callable[[tuple[slice, ...]], tuple[slice, ...]],
 ) -> '_array.DistributedArray':
     def reshape_chunk(chunk: _chunk._Chunk) -> _chunk._Chunk:
-        data = chunk.data.reshape(f_shape(chunk.data.shape))
+        data = chunk.array.reshape(f_shape(chunk.array.shape))
         index = f_idx(chunk.index)
         updates = [(data, f_idx(idx)) for data, idx in chunk.updates]
         return _chunk._Chunk(
-            data, chunk.ready, index, updates, chunk._prevent_gc)
+            data, chunk.ready, index, updates, chunk.prevent_gc)
 
     chunks_map = {}
     for dev, chunks in arr._chunks_map.items():
@@ -269,20 +267,21 @@ def _matmul(a, b, out=None, **kwargs) -> '_array.DistributedArray':
             loc_b = location_map_b[block_b]
             chunk_a = a._chunks_map[dev][loc_a[dev]]
             chunk_b = b._chunks_map[dev][loc_b[dev]]
+            chunk_a.apply_updates(_modes._REPLICA_MODE)
+            chunk_b.apply_updates(_modes._REPLICA_MODE)
+
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
-            with Device(dev):
-                stream = get_current_stream()
-                chunk_a.apply_updates(_modes._REPLICA_MODE)
-                chunk_b.apply_updates(_modes._REPLICA_MODE)
-                stream.wait_event(chunk_a.ready)
+            with chunk_a.on_ready() as stream:
                 stream.wait_event(chunk_b.ready)
-                chunk_ab_data = cupy.linalg._product.matmul(
-                    chunk_a.data, chunk_b.data, **kwargs)
+
+                chunk_ab_array = cupy.linalg._product.matmul(
+                    chunk_a.array, chunk_b.array, **kwargs)
+
                 chunk_ab = _chunk._Chunk(
-                    chunk_ab_data, stream.record(), index,
+                    chunk_ab_array, stream.record(), index,
                     prevent_gc=(chunk_a, chunk_b))
                 chunks_map[dev].append(chunk_ab)
-                dtype = chunk_ab_data.dtype
+                dtype = chunk_ab_array.dtype
 
     shape = a.shape[:-2] + (n, p)
     res = _array.DistributedArray(

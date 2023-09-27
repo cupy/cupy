@@ -1,8 +1,7 @@
-from typing import Any, Optional, Union
-from typing_extensions import TypeGuard
-
+import contextlib
 import dataclasses
 from itertools import chain
+from typing import Any, Iterator, Optional, Union
 
 import numpy
 
@@ -20,7 +19,7 @@ from cupyx.distributed.array import _data_transfer
 from cupyx.distributed.array._data_transfer import _Communicator
 
 
-class _DataPlaceholder:
+class _ArrayPlaceholder:
     # Mocks ndarray
     # Eventually overwritten by PartialUpdates entirely, so
     # any operation on _DataPlaceholder can be skipped
@@ -31,8 +30,8 @@ class _DataPlaceholder:
         self.shape = shape
         self.device = device
 
-    def reshape(self, new_shape: tuple[int, ...]) -> '_DataPlaceholder':
-        return _DataPlaceholder(new_shape, self.device)
+    def reshape(self, new_shape: tuple[int, ...]) -> '_ArrayPlaceholder':
+        return _ArrayPlaceholder(new_shape, self.device)
 
     def to_ndarray(
             self, mode: '_modes._Mode', dtype: numpy.dtype) -> ndarray:
@@ -48,91 +47,91 @@ class _DataPlaceholder:
 
 
 class _Chunk:
-    data: Union[ndarray, _DataPlaceholder]
+    array: Union[ndarray, _ArrayPlaceholder]
     ready: Event
     index: tuple[slice, ...]
-    _updates: list[_data_transfer._PartialUpdate] = dataclasses.field(
+    updates: list[_data_transfer._PartialUpdate] = dataclasses.field(
         default_factory=list)
-    _prevent_gc: Any = None     # TODO: Release it to avoid OOM
+    prevent_gc: Any = None     # TODO: Release it to avoid OOM
 
     # Rule: whenever data is DataPlaceholder, ready is empty
 
     def __init__(
-        self, data: Union[ndarray, _DataPlaceholder], ready: Event,
+        self, data: Union[ndarray, _ArrayPlaceholder], ready: Event,
         index: tuple[slice, ...],
         updates: Optional[list[_data_transfer._PartialUpdate]] = None,
         prevent_gc: Any = None
     ) -> None:
-        self.data = data
+        self.array = data
         self.ready = ready
         self.index = index
-        self._updates = updates if updates is not None else []
-        self._prevent_gc = prevent_gc
+        self.updates = updates if updates is not None else []
+        self.prevent_gc = prevent_gc
 
     @classmethod
     def create_placeholder(
         cls, shape: tuple[int, ...], device: Union[int, Device],
         index: tuple[slice, ...],
-        updates: Optional[list[_data_transfer._PartialUpdate]] = None
+        updates: Optional[list[_data_transfer._PartialUpdate]] = None,
     ) -> '_Chunk':
         if isinstance(device, int):
             device = Device(device)
-        data = _DataPlaceholder(shape, device)
 
+        data = _ArrayPlaceholder(shape, device)
+        with device:
+            ready = Event()
         if updates is None:
             updates = []
 
-        return _Chunk(data, Event(), index, updates)
+        return _Chunk(data, ready, index, updates)
 
-    @property
-    def updates(self) -> list[_data_transfer._PartialUpdate]:
-        return self._updates
+    @contextlib.contextmanager
+    def on_ready(self) -> Iterator[Stream]:
+        with self.array.device:
+            stream = get_current_stream()
+            stream.wait_event(self.ready)
+            yield stream
 
     def add_update(
         self, update: _data_transfer._AsyncData, idx: tuple[slice, ...],
     ) -> None:
-        self._updates.append((update, idx))
+        self.updates.append((update, idx))
 
     def copy(self) -> '_Chunk':
         # TODO: Calling apply_updates here would reduce the amount of
         # future copying
-        if isinstance(self.data, _DataPlaceholder):
-            data = self.data
+        if isinstance(self.array, _ArrayPlaceholder):
+            data = self.array
             ready = self.ready
         else:
-            with self.data.device:
-                stream = get_current_stream()
-                stream.wait_event(self.ready)
-                data = self.data.copy()
+            with self.on_ready() as stream:
+                data = self.array.copy()
                 ready = stream.record()
 
-        return _Chunk(data, ready, self.index, list(self._updates),
-                      prevent_gc=self._prevent_gc)
+        return _Chunk(data, ready, self.index, list(self.updates),
+                      prevent_gc=self.prevent_gc)
 
     def apply_updates(self, mode: '_modes._Mode') -> None:
         """Apply all updates in-place."""
-        if len(self._updates) == 0:
+        if len(self.updates) == 0:
             return
 
-        if isinstance(self.data, _DataPlaceholder):
-            dtype = self._updates[0][0].data.dtype
-            self.data = self.data.to_ndarray(mode, dtype)
+        if isinstance(self.array, _ArrayPlaceholder):
+            dtype = self.updates[0][0].array.dtype
+            self.array = self.array.to_ndarray(mode, dtype)
 
-        with self.data.device:
-            stream = get_current_stream()
-            stream.wait_event(self.ready)
-
-            for update_data, idx in self._updates:
+        with self.on_ready() as stream:
+            for update_data, idx in self.updates:
                 stream.wait_event(update_data.ready)
                 if _modes._is_op_mode(mode):
-                    self.data[idx] = mode.func(
-                        self.data[idx], update_data.data)
+                    self.array[idx] = mode.func(
+                        self.array[idx], update_data.array)
                 else:
-                    self.data[idx] = update_data.data
+                    self.array[idx] = update_data.array
 
-            self.ready.record(stream)
-            self._prevent_gc = (self._prevent_gc, self._updates)
-            self._updates = []
+            stream.record(self.ready)
+            self.prevent_gc = (self.prevent_gc, self.updates)
+            self.updates = []
 
     def apply_to(
         self, target: '_Chunk', mode: '_modes._Mode',
@@ -145,11 +144,11 @@ class _Chunk:
         src_chunk = self
         dst_chunk = target
 
-        assert len(src_chunk._updates) == 0
-        assert isinstance(src_chunk.data, ndarray)
+        assert len(src_chunk.updates) == 0
+        assert isinstance(src_chunk.array, ndarray)
 
-        src_dev = src_chunk.data.device.id
-        dst_dev = dst_chunk.data.device.id
+        src_dev = src_chunk.array.device.id
+        dst_dev = dst_chunk.array.device.id
         src_idx = src_chunk.index
         dst_idx = dst_chunk.index
 
@@ -164,55 +163,45 @@ class _Chunk:
             dst_idx, intersection, shape)
 
         data_to_transfer = _data_transfer._AsyncData(
-            src_chunk.data[src_new_idx], src_chunk.ready,
-            src_chunk._prevent_gc)
+            src_chunk.array[src_new_idx], src_chunk.ready,
+            src_chunk.prevent_gc)
 
-        def is_not_idempotent(mode: _modes._Mode) -> TypeGuard[_modes._OpMode]:
-            return mode is not _modes._REPLICA_MODE and not mode.idempotent
-
-        if is_not_idempotent(mode):
-            with Device(src_dev):
-                data_to_transfer = data_to_transfer.copy()
-            copy_done = data_to_transfer.ready
+        if _modes._is_non_idempotent(mode):
+            data_to_transfer = data_to_transfer.copy()
 
         update = _data_transfer._transfer(
             comms[src_dev], streams[src_dev], data_to_transfer,
             comms[dst_dev], streams[dst_dev], dst_dev)
         dst_chunk.add_update(update, dst_new_idx)
 
-        if is_not_idempotent(mode):
-            dtype = src_chunk.data.dtype
-            with Device(src_dev):
-                stream = get_current_stream()
-                stream.wait_event(copy_done)
-                src_chunk.data[src_new_idx] = mode.identity_of(dtype)
+        if _modes._is_non_idempotent(mode):
+            dtype = src_chunk.array.dtype
+            with data_to_transfer.on_ready() as stream:
+                # Now src data has been copied, so we can write on src_chunk
+                src_chunk.array[src_new_idx] = mode.identity_of(dtype)
                 stream.record(src_chunk.ready)
 
     def set_identity_on_intersection(
         self, idx: tuple[slice, ...], shape: tuple[int, ...], identity,
     ) -> None:
-        assert isinstance(self.data, ndarray)
+        assert isinstance(self.array, ndarray)
 
         intersection = _index_arith._index_intersection(self.index, idx, shape)
         if intersection is None:
             return
         self_new_idx = _index_arith._index_for_subindex(
             self.index, intersection, shape)
-        with self.data.device:
-            stream = get_current_stream()
-            stream.wait_event(self.ready)
-            self.data[self_new_idx] = identity
+        with self.on_ready() as stream:
+            self.array[self_new_idx] = identity
             stream.record(self.ready)
 
     def set_identity_on_overwritten_entries(self, identity) -> None:
-        if isinstance(self.data, _DataPlaceholder):
+        if isinstance(self.array, _ArrayPlaceholder):
             return
 
-        with self.data.device:
-            stream = get_current_stream()
-            stream.wait_event(self.ready)
-            for _, idx in self._updates:
-                self.data[idx] = identity
+        with self.on_ready() as stream:
+            for _, idx in self.updates:
+                self.array[idx] = identity
             stream.record(self.ready)
 
 

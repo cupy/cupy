@@ -8,6 +8,7 @@ from cupy._core.core import ndarray
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Stream
 from cupy.cuda.stream import get_current_stream
+
 from cupyx.distributed.array import _array
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
@@ -45,21 +46,21 @@ def _find_updates(
     return []
 
 
-def _prepare_chunks_data(
+def _prepare_chunks_array(
     stream: Stream,
     args: Sequence['_array.DistributedArray'],
     kwargs: dict[str, '_array.DistributedArray'],
     dev: int, chunk_i: int,
 ) -> tuple[list[ndarray], dict[str, ndarray]]:
-    def access_data(d_array):
+    def access_array(d_array):
         chunk = d_array._chunks_map[dev][chunk_i]
         stream.wait_event(chunk.ready)
-        return chunk.data
+        return chunk.array
 
-    new_args = [access_data(arg) for arg in args]
-    new_kwargs = {key: access_data(arg) for key, arg in kwargs.items()}
+    arg_arrays = [access_array(arg) for arg in args]
+    kwarg_arrays = {key: access_array(arg) for key, arg in kwargs.items()}
 
-    return new_args, new_kwargs
+    return arg_arrays, kwarg_arrays
 
 
 def _change_all_to_replica_mode(
@@ -80,15 +81,15 @@ def _execute_kernel(
     # For example, cupy.add can be done within the sum mode
     _change_all_to_replica_mode(args, kwargs)
 
-    dtype = None
-    chunks_map: dict[int, list[_chunk._Chunk]] = {}
+    out_dtype = None
+    out_chunks_map: dict[int, list[_chunk._Chunk]] = {}
 
     for arg in (args or kwargs.values()):
         index_map = arg.index_map
         break
 
     for dev, idxs in index_map.items():
-        chunks_map[dev] = []
+        out_chunks_map[dev] = []
         with Device(dev):
             stream = get_current_stream()
 
@@ -98,59 +99,59 @@ def _execute_kernel(
                 # a placeholder with an actual chunk
                 updates = _find_updates(args, kwargs, dev, chunk_i)
 
-                args_data, kwargs_data = _prepare_chunks_data(
+                arg_arrays, kwarg_arrays = _prepare_chunks_array(
                     stream, args, kwargs, dev, chunk_i)
 
-                new_chunk = None
-                for data in chain(args_data, kwargs_data.values()):
-                    if isinstance(data, _chunk._DataPlaceholder):
+                out_chunk = None
+                for data in chain(arg_arrays, kwarg_arrays.values()):
+                    if isinstance(data, _chunk._ArrayPlaceholder):
                         # A placeholder will be entirely overwritten anyway, so
                         # we just leave it. _find_updates ensures there is
                         # at most one placeholder
-                        assert new_chunk is None
-                        new_chunk = _chunk._Chunk.create_placeholder(
+                        assert out_chunk is None
+                        out_chunk = _chunk._Chunk.create_placeholder(
                             data.shape, data.device, idx)
 
-                if new_chunk is None:
+                if out_chunk is None:
                     # No placeholder
-                    new_data = kernel(*args_data, **kwargs_data)
+                    out_array = kernel(*arg_arrays, **kwarg_arrays)
 
-                    dtype = new_data.dtype
-                    new_chunk = _chunk._Chunk(
-                        new_data, stream.record(), idx,
-                        prevent_gc=(args_data, kwargs_data))
+                    out_dtype = out_array.dtype
+                    out_chunk = _chunk._Chunk(
+                        out_array, stream.record(), idx,
+                        prevent_gc=(arg_arrays, kwarg_arrays))
 
-                chunks_map[dev].append(new_chunk)
+                out_chunks_map[dev].append(out_chunk)
 
                 if not updates:
                     continue
 
-                args_slice = [None] * len(args_data)
-                kwargs_slice = {}
+                arg_slices = [None] * len(arg_arrays)
+                kwarg_slices = {}
                 for update, idx in updates:
-                    for i, data in enumerate(args_data):
-                        if isinstance(data, _chunk._DataPlaceholder):
-                            args_slice[i] = update.data
+                    for i, data in enumerate(arg_arrays):
+                        if isinstance(data, _chunk._ArrayPlaceholder):
+                            arg_slices[i] = update.array
                         else:
-                            args_slice[i] = data[idx]
-                    for k, data in kwargs_data.items():
-                        if isinstance(data, _chunk._DataPlaceholder):
-                            kwargs_slice[k] = update.data
+                            arg_slices[i] = data[idx]
+                    for k, data in kwarg_arrays.items():
+                        if isinstance(data, _chunk._ArrayPlaceholder):
+                            kwarg_slices[k] = update.array
                         else:
-                            kwargs_slice[k] = data[idx]
+                            kwarg_slices[k] = data[idx]
 
                     stream.wait_event(update.ready)
-                    new_data = kernel(*args_slice, **kwargs_slice)
-                    dtype = new_data.dtype
-                    execution_done = stream.record()
+                    out_update_array = kernel(*arg_slices, **kwarg_slices)
+                    out_dtype = out_update_array.dtype
+                    ready = stream.record()
 
-                    data_transfer = _data_transfer._AsyncData(
-                        new_data, execution_done,
-                        prevent_gc=(args_slice, kwargs_slice))
-                    new_chunk.add_update(data_transfer, idx)
+                    out_update = _data_transfer._AsyncData(
+                        out_update_array, ready,
+                        prevent_gc=(arg_slices, kwarg_slices))
+                    out_chunk.add_update(out_update, idx)
 
-    for chunk in chain.from_iterable(chunks_map.values()):
-        if not isinstance(chunk.data, (ndarray, _chunk._DataPlaceholder)):
+    for chunk in chain.from_iterable(out_chunks_map.values()):
+        if not isinstance(chunk.array, (ndarray, _chunk._ArrayPlaceholder)):
             raise RuntimeError(
                 'Kernels returning other than signle array are not supported')
 
@@ -163,7 +164,7 @@ def _execute_kernel(
     assert shape is not None
 
     return _array.DistributedArray(
-        shape, dtype, chunks_map, _modes._REPLICA_MODE, comms)
+        shape, out_dtype, out_chunks_map, _modes._REPLICA_MODE, comms)
 
 
 def _execute_peer_access(
@@ -211,15 +212,12 @@ def _execute_peer_access(
 
     shape = a.shape
     comms = a._comms
-    chunks_map: dict[int, list[_chunk._Chunk]] = {}
+    out_chunks_map: dict[int, list[_chunk._Chunk]] = {}
 
     for a_chunk in chain.from_iterable(a._chunks_map.values()):
-        a_dev = a_chunk.data.device.id
-        with Device(a_dev):
-            stream = get_current_stream()
-            stream.wait_event(a_chunk.ready)
-
-            new_chunk_data = _creation_basic.empty(a_chunk.data.shape, dtype)
+        a_dev = a_chunk.array.device.id
+        with a_chunk.on_ready() as stream:
+            out_array = _creation_basic.empty(a_chunk.array.shape, dtype)
 
             for b_chunk in chain.from_iterable(b._chunks_map.values()):
                 stream.wait_event(b_chunk.ready)
@@ -229,7 +227,7 @@ def _execute_peer_access(
                 if intersection is None:
                     continue
 
-                cupy._core._kernel._check_peer_access(b_chunk.data, a_dev)
+                cupy._core._kernel._check_peer_access(b_chunk.array, a_dev)
 
                 a_new_idx = _index_arith._index_for_subindex(
                     a_chunk.index, intersection, shape)
@@ -237,17 +235,17 @@ def _execute_peer_access(
                     b_chunk.index, intersection, shape)
 
                 assert kernel.nin == 2
-                kernel(typing.cast(ndarray, a_chunk.data)[a_new_idx],
-                       typing.cast(ndarray, b_chunk.data)[b_new_idx],
-                       new_chunk_data[a_new_idx])
+                kernel(typing.cast(ndarray, a_chunk.array)[a_new_idx],
+                       typing.cast(ndarray, b_chunk.array)[b_new_idx],
+                       out_array[a_new_idx])
 
-            new_chunk = _chunk._Chunk(
-                new_chunk_data, stream.record(), a_chunk.index,
+            out_chunk = _chunk._Chunk(
+                out_array, stream.record(), a_chunk.index,
                 prevent_gc=b._chunks_map)
-            chunks_map.setdefault(a_dev, []).append(new_chunk)
+            out_chunks_map.setdefault(a_dev, []).append(out_chunk)
 
     return _array.DistributedArray(
-        shape, dtype, chunks_map, _modes._REPLICA_MODE, comms)
+        shape, dtype, out_chunks_map, _modes._REPLICA_MODE, comms)
 
 
 def _is_peer_access_needed(

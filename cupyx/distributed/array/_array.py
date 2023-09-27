@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
 import numpy
 from numpy.typing import ArrayLike
@@ -327,9 +327,9 @@ class DistributedArray(ndarray):
             idx = chunk.index
             if _modes._is_op_mode(self._mode):
                 self._mode.numpy_func(
-                    np_array[idx], cupy.asnumpy(chunk.data), np_array[idx])
+                    np_array[idx], cupy.asnumpy(chunk.array), np_array[idx])
             else:
-                np_array[idx] = cupy.asnumpy(chunk.data)
+                np_array[idx] = cupy.asnumpy(chunk.array)
 
         # Undo numpy.atleast_1d
         return np_array.reshape(self.shape)
@@ -379,11 +379,12 @@ def distributed_array(
     index_map = _index_arith._normalize_index_map(array.shape, index_map)
     comms = None
 
-    # Define how to create chunks from the original data
+    # Define how to form a chunk from (dev, idx, src_array)
+    make_chunk: Callable[[int, tuple[slice, ...], ndarray], _Chunk]
+
     if isinstance(array, ndarray):
         src_dev = array.device.id
-        with Device(src_dev):
-            src_stream = get_current_stream()
+        src_stream = get_current_stream(src_dev)
 
         devices = index_map.keys() | {array.device.id}
         comms = _data_transfer._create_communicators(devices)
@@ -398,26 +399,25 @@ def distributed_array(
                 copied = _data_transfer._transfer(
                     comms[src_dev], src_stream, src_data,
                     comms[dst_dev], dst_stream, dst_dev)
-                return _Chunk(copied.data, copied.ready, idx,
+                return _Chunk(copied.array, copied.ready, idx,
                               prevent_gc=src_data)
     else:
         def make_chunk(dev, idx, array):
             with Device(dev):
                 stream = get_current_stream()
                 copied = _creation_from_data.array(array)
-                return _Chunk(copied, stream.record(), idx,
-                              prevent_gc=array)
+                return _Chunk(copied, stream.record(), idx, prevent_gc=array)
 
     mode_obj = _modes._MODES[mode]
     chunks_map: dict[int, list[_Chunk]] = {}
     for dev, idxs in index_map.items():
         chunks_map[dev] = []
 
-        for i, idx in enumerate(idxs):
-            chunk_data = array[idx]
-            chunk = make_chunk(dev, idx, chunk_data)
+        for idx in idxs:
+            chunk_array = array[idx]
+            chunk = make_chunk(dev, idx, chunk_array)
             chunks_map[dev].append(chunk)
-            if _modes._is_op_mode(mode_obj) and not mode_obj.idempotent:
+            if _modes._is_non_idempotent(mode_obj):
                 array[idx] = mode_obj.identity_of(array.dtype)
 
     return DistributedArray(

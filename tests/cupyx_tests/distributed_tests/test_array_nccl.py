@@ -87,12 +87,12 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == array.nbytes
         for dev in index_map.keys():
             for chunk, idx in zip(da._chunks_map[dev], index_map[dev]):
-                assert chunk.data.device.id == dev
-                assert chunk.data.ndim == array.ndim
+                assert chunk.array.device.id == dev
+                assert chunk.array.ndim == array.ndim
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.data, array[idx], strict=True)
+                        chunk.array, array[idx], strict=True)
 
     @pytest.mark.parametrize(
         'shape, index_map',
@@ -112,12 +112,12 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == 2 * array.nbytes
         for dev in index_map.keys():
             for chunk, idx in zip(da._chunks_map[dev], index_map[dev]):
-                assert chunk.data.device.id == dev
-                assert chunk.data.ndim == array.ndim
+                assert chunk.array.device.id == dev
+                assert chunk.array.ndim == array.ndim
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.data, array[idx], strict=True)
+                        chunk.array, array[idx], strict=True)
 
     @pytest.mark.parametrize(
         'shape, index_map',
@@ -135,12 +135,12 @@ class TestDistributedArray:
         # assert mem_pool.used_bytes() == array.nbytes
         for dev in index_map.keys():
             for chunk, idx in zip(da._chunks_map[dev], index_map[dev]):
-                assert chunk.data.device.id == dev
-                assert chunk.data.ndim == array.ndim
+                assert chunk.array.device.id == dev
+                assert chunk.array.ndim == array.ndim
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.data, array[idx], strict=True)
+                        chunk.array, array[idx], strict=True)
 
     @pytest.mark.parametrize(
         'shape, index_map',
@@ -169,10 +169,10 @@ class TestDistributedArray:
         testing.assert_array_equal(d_a.asnumpy(), np_a, strict=True)
         for dev in index_map.keys():
             for chunk, idx in zip(d_b._chunks_map[dev], index_map[dev]):
-                assert chunk.data.device.id == dev
+                assert chunk.array.device.id == dev
                 idx = _index_arith._normalize_index(shape, idx)
                 testing.assert_array_equal(
-                    chunk.data, np_a[idx], strict=True)
+                    chunk.array, np_a[idx], strict=True)
 
     @pytest.mark.parametrize(
         'shape, index_map',
@@ -297,12 +297,12 @@ class TestDistributedArray:
         assert d_b.mode == mode
         for dev in index_map_b.keys():
             for chunk, idx in zip(d_b._chunks_map[dev], index_map_b[dev]):
-                assert chunk.data.device.id == dev
-                assert chunk.data.ndim == np_a.ndim
+                assert chunk.array.device.id == dev
+                assert chunk.array.ndim == np_a.ndim
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.data, np_a[idx], strict=True)
+                        chunk.array, np_a[idx], strict=True)
 
     @pytest.mark.parametrize(
         'shape, index_map_a, index_map_b',

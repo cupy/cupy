@@ -66,6 +66,10 @@ def _is_op_mode(mode: _Mode) -> TypeGuard[_OpMode]:
     return mode is not _REPLICA_MODE
 
 
+def _is_non_idempotent(mode: _Mode) -> TypeGuard[_OpMode]:
+    return mode is not _REPLICA_MODE and not mode.idempotent
+
+
 _MODES: Final[dict[str, _Mode]] = {
     'replica': _REPLICA_MODE,
     'min':  _OpMode('minimum',  True,  _max_value_of),
