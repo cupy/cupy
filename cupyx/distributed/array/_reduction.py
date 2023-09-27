@@ -9,7 +9,7 @@ from cupy.cuda.stream import get_current_stream
 import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
-from cupyx.distributed.array._chunk import _Chunk
+from cupyx.distributed.array import _modes
 
 
 def _execute(
@@ -17,20 +17,20 @@ def _execute(
 ) -> Any:
     overwrites = False
     if kernel.name == 'cupy_max':
-        mode = darray._MODES['max']
+        mode = _modes._MODES['max']
         if arr._mode is not mode:
             arr = arr._to_replica_mode()
             overwrites = True
     elif kernel.name == 'cupy_min':
-        mode = darray._MODES['min']
+        mode = _modes._MODES['min']
         if arr._mode is not mode:
             arr = arr._to_replica_mode()
             overwrites = True
     elif kernel.name == 'cupy_sum':
-        mode = typing.cast(darray._OpMode, darray._MODES['sum'])
+        mode = typing.cast(_modes._OpMode, _modes._MODES['sum'])
         arr = arr._to_op_mode(mode)
     elif kernel.name == 'cupy_prod':
-        mode = typing.cast(darray._OpMode, darray._MODES['prod'])
+        mode = typing.cast(_modes._OpMode, _modes._MODES['prod'])
         arr = arr._to_op_mode(mode)
     else:
         raise RuntimeError(f'Unsupported kernel: {kernel.name}')
@@ -38,7 +38,7 @@ def _execute(
     chunks_map = arr._chunks_map
 
     if overwrites:
-        mode = typing.cast(darray._OpMode, mode)
+        mode = typing.cast(_modes._OpMode, mode)
         identity = mode.identity_of(arr.dtype)
         for chunks in chunks_map.values():
             for i in range(len(chunks)):
@@ -49,7 +49,7 @@ def _execute(
 
     shape = arr.shape[:axis] + arr.shape[axis+1:]
     new_dtype = None
-    new_chunks_map: dict[int, list[_Chunk]] = {}
+    new_chunks_map: dict[int, list[_chunk._Chunk]] = {}
 
     for dev, chunks in chunks_map.items():
         new_chunks_map[dev] = []
@@ -63,7 +63,7 @@ def _execute(
                 if isinstance(chunk.data, _chunk._DataPlaceholder):
                     old_shape = chunk.data.shape
                     new_shape = old_shape[:axis] + old_shape[axis+1:]
-                    new_chunk = _Chunk.create_placeholder(
+                    new_chunk = _chunk._Chunk.create_placeholder(
                         new_shape, chunk.data.device, new_index)
                 else:
                     # We avoid 0D array because
@@ -72,7 +72,7 @@ def _execute(
                         kernel(chunk.data, axis=axis, dtype=dtype))
 
                     new_dtype = update_data.dtype
-                    new_chunk = _Chunk(
+                    new_chunk = _chunk._Chunk(
                         update_data, execution_stream.record(), new_index, [],
                         prevent_gc=chunk._prevent_gc)
 

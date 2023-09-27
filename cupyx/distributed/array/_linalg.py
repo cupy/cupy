@@ -5,11 +5,14 @@ from typing import Callable
 import cupy
 from cupy.cuda.device import Device
 from cupy.cuda.stream import get_current_stream
-import cupyx.distributed.array as darray
+from cupyx.distributed.array import _array
 from cupyx.distributed.array import _chunk
+from cupyx.distributed.array import _modes
 
 
 _SliceIndices = tuple[int, int, int]
+
+
 _BlockIdx = tuple[_SliceIndices, _SliceIndices]
 
 
@@ -167,10 +170,10 @@ def _group_by_batch(
 
 
 def _reshape_array_with(
-    arr: 'darray.DistributedArray',
+    arr: '_array.DistributedArray',
     f_shape: Callable[[tuple[int,   ...]], tuple[int,   ...]],
     f_idx:   Callable[[tuple[slice, ...]], tuple[slice, ...]],
-) -> 'darray.DistributedArray':
+) -> '_array.DistributedArray':
     def reshape_chunk(chunk: _chunk._Chunk) -> _chunk._Chunk:
         data = chunk.data.reshape(f_shape(chunk.data.shape))
         index = f_idx(chunk.index)
@@ -183,25 +186,25 @@ def _reshape_array_with(
         chunks_map[dev] = [reshape_chunk(chunk) for chunk in chunks]
 
     shape = f_shape(arr.shape)
-    return darray.DistributedArray(
+    return _array.DistributedArray(
         shape, arr.dtype, chunks_map, arr._mode, arr._comms)
 
 
-def _prepend_one_to_shape(arr) -> 'darray.DistributedArray':
+def _prepend_one_to_shape(arr) -> '_array.DistributedArray':
     return _reshape_array_with(
         arr,
         lambda shape: (1,) + shape,
         lambda idx: (slice(None),) + idx)
 
 
-def _append_one_to_shape(arr) -> 'darray.DistributedArray':
+def _append_one_to_shape(arr) -> '_array.DistributedArray':
     return _reshape_array_with(
         arr,
         lambda shape: shape + (1,),
         lambda idx: idx + (slice(None),))
 
 
-def _pop_from_shape(arr) -> 'darray.DistributedArray':
+def _pop_from_shape(arr) -> '_array.DistributedArray':
     assert arr.shape[-1] == 1
     return _reshape_array_with(
         arr,
@@ -209,7 +212,7 @@ def _pop_from_shape(arr) -> 'darray.DistributedArray':
         lambda idx: idx[:-1])
 
 
-def _pop_front_from_shape(arr) -> 'darray.DistributedArray':
+def _pop_front_from_shape(arr) -> '_array.DistributedArray':
     assert arr.shape[0] == 1
     return _reshape_array_with(
         arr,
@@ -217,14 +220,14 @@ def _pop_front_from_shape(arr) -> 'darray.DistributedArray':
         lambda idx: idx[1:])
 
 
-def _matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
+def _matmul(a, b, out=None, **kwargs) -> '_array.DistributedArray':
     if out is not None:
         raise RuntimeError('Argument `out` is not supported')
     for param in ('subok', 'axes', 'axis'):
         if param in kwargs:
             raise RuntimeError(f'Argument `{param}` is not supported')
-    if (not isinstance(a, darray.DistributedArray)
-            or not isinstance(b, darray.DistributedArray)):
+    if (not isinstance(a, _array.DistributedArray)
+            or not isinstance(b, _array.DistributedArray)):
         raise RuntimeError(
             'Mixing a distributed array with a non-distributed array is not'
             ' supported')
@@ -269,8 +272,8 @@ def _matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
             with Device(dev):
                 stream = get_current_stream()
-                chunk_a.apply_updates(darray._REPLICA_MODE)
-                chunk_b.apply_updates(darray._REPLICA_MODE)
+                chunk_a.apply_updates(_modes._REPLICA_MODE)
+                chunk_b.apply_updates(_modes._REPLICA_MODE)
                 stream.wait_event(chunk_a.ready)
                 stream.wait_event(chunk_b.ready)
                 chunk_ab_data = cupy.linalg._product.matmul(
@@ -282,8 +285,8 @@ def _matmul(a, b, out=None, **kwargs) -> 'darray.DistributedArray':
                 dtype = chunk_ab_data.dtype
 
     shape = a.shape[:-2] + (n, p)
-    res = darray.DistributedArray(
-        shape, dtype, chunks_map, darray._MODES['sum'], a._comms)
+    res = _array.DistributedArray(
+        shape, dtype, chunks_map, _modes._MODES['sum'], a._comms)
 
     if one_prepended:
         res = _pop_front_from_shape(res)

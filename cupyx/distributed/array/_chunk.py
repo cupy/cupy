@@ -14,7 +14,7 @@ from cupy.cuda.stream import Event
 from cupy.cuda.stream import Stream
 from cupy.cuda.stream import get_current_stream
 
-import cupyx.distributed.array as darray
+from cupyx.distributed.array import _modes
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _data_transfer
 from cupyx.distributed.array._data_transfer import _NcclCommunicator
@@ -35,9 +35,9 @@ class _DataPlaceholder:
         return _DataPlaceholder(new_shape, self.device)
 
     def to_ndarray(
-            self, mode: 'darray._Mode', dtype: numpy.dtype) -> ndarray:
+            self, mode: '_modes._Mode', dtype: numpy.dtype) -> ndarray:
         with self.device:
-            if darray._is_op_mode(mode):
+            if _modes._is_op_mode(mode):
                 value = mode.identity_of(dtype)
                 data = _creation_basic.full(self.shape, value, dtype)
             else:
@@ -109,7 +109,7 @@ class _Chunk:
         return _Chunk(data, ready, self.index, list(self._updates),
                       prevent_gc=self._prevent_gc)
 
-    def apply_updates(self, mode: 'darray._Mode') -> None:
+    def apply_updates(self, mode: '_modes._Mode') -> None:
         """Apply all updates in-place."""
         if len(self._updates) == 0:
             return
@@ -124,7 +124,7 @@ class _Chunk:
 
             for update_data, idx in self._updates:
                 stream.wait_event(update_data.ready)
-                if darray._is_op_mode(mode):
+                if _modes._is_op_mode(mode):
                     self.data[idx] = mode.func(
                         self.data[idx], update_data.data)
                 else:
@@ -135,7 +135,7 @@ class _Chunk:
             self._updates = []
 
     def apply_to(
-        self, target: '_Chunk', mode: 'darray._Mode',
+        self, target: '_Chunk', mode: '_modes._Mode',
         shape: tuple[int, ...],
         comms: dict[int, _data_transfer._NcclCommunicator],
         streams: dict[int, Stream],
@@ -167,8 +167,8 @@ class _Chunk:
             src_chunk.data[src_new_idx], src_chunk.ready,
             src_chunk._prevent_gc)
 
-        def is_not_idempotent(mode: darray._Mode) -> TypeGuard[darray._OpMode]:
-            return mode is not darray._REPLICA_MODE and not mode.idempotent
+        def is_not_idempotent(mode: _modes._Mode) -> TypeGuard[_modes._OpMode]:
+            return mode is not _modes._REPLICA_MODE and not mode.idempotent
 
         if is_not_idempotent(mode):
             with Device(src_dev):
@@ -217,7 +217,7 @@ class _Chunk:
 
 
 def _all_reduce_intersections(
-    op_mode: 'darray._OpMode', shape: tuple[int, ...],
+    op_mode: '_modes._OpMode', shape: tuple[int, ...],
     chunk_map: dict[int, list[_Chunk]],
     comms: dict[int, _NcclCommunicator], streams: dict[int, Stream],
 ) -> None:
@@ -235,9 +235,9 @@ def _all_reduce_intersections(
 
     for j in range(len(chunks_list) - 1, -1, -1):
         src_chunk = chunks_list[j]
-        src_chunk.apply_updates(darray._REPLICA_MODE)
+        src_chunk.apply_updates(_modes._REPLICA_MODE)
 
         for i in range(j):
             dst_chunk = chunks_list[i]
             src_chunk.apply_to(
-                dst_chunk, darray._REPLICA_MODE, shape, comms, streams)
+                dst_chunk, _modes._REPLICA_MODE, shape, comms, streams)

@@ -8,15 +8,16 @@ from cupy._core.core import ndarray
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Stream
 from cupy.cuda.stream import get_current_stream
-import cupyx.distributed.array as darray
+from cupyx.distributed.array import _array
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
 from cupyx.distributed.array import _index_arith
+from cupyx.distributed.array import _modes
 
 
 def _find_updates(
-    args: Sequence['darray.DistributedArray'],
-    kwargs: dict[str, 'darray.DistributedArray'],
+    args: Sequence['_array.DistributedArray'],
+    kwargs: dict[str, '_array.DistributedArray'],
     dev: int, chunk_i: int,
 ) -> list['_data_transfer._PartialUpdate']:
     # If there is at most one array with partial updates, we return them
@@ -46,8 +47,8 @@ def _find_updates(
 
 def _prepare_chunks_data(
     stream: Stream,
-    args: Sequence['darray.DistributedArray'],
-    kwargs: dict[str, 'darray.DistributedArray'],
+    args: Sequence['_array.DistributedArray'],
+    kwargs: dict[str, '_array.DistributedArray'],
     dev: int, chunk_i: int,
 ) -> tuple[list[ndarray], dict[str, ndarray]]:
     def access_data(d_array):
@@ -62,17 +63,17 @@ def _prepare_chunks_data(
 
 
 def _change_all_to_replica_mode(
-        args: list['darray.DistributedArray'],
-        kwargs: dict[str, 'darray.DistributedArray']) -> None:
+        args: list['_array.DistributedArray'],
+        kwargs: dict[str, '_array.DistributedArray']) -> None:
     args[:] = [arg._to_replica_mode() for arg in args]
     kwargs.update((k, arg._to_replica_mode()) for k, arg in kwargs.items())
 
 
 def _execute_kernel(
     kernel,
-    args: Sequence['darray.DistributedArray'],
-    kwargs: dict[str, 'darray.DistributedArray'],
-) -> 'darray.DistributedArray':
+    args: Sequence['_array.DistributedArray'],
+    kwargs: dict[str, '_array.DistributedArray'],
+) -> '_array.DistributedArray':
     args = list(args)
 
     # TODO: Skip conversion to the replica mode when mode.func == kernel
@@ -161,15 +162,15 @@ def _execute_kernel(
 
     assert shape is not None
 
-    return darray.DistributedArray(
-        shape, dtype, chunks_map, darray._REPLICA_MODE, comms)
+    return _array.DistributedArray(
+        shape, dtype, chunks_map, _modes._REPLICA_MODE, comms)
 
 
 def _execute_peer_access(
     kernel,
-    args: Sequence['darray.DistributedArray'],
-    kwargs: dict[str, 'darray.DistributedArray'],
-) -> 'darray.DistributedArray':
+    args: Sequence['_array.DistributedArray'],
+    kwargs: dict[str, '_array.DistributedArray'],
+) -> '_array.DistributedArray':
     """Arguments must be in the replica mode."""
     assert len(args) >= 2   # if len == 1, peer access should be unnecessary
     if len(args) > 2:
@@ -185,7 +186,7 @@ def _execute_peer_access(
     for i, arg in enumerate(args):
         args[i] = arg._to_replica_mode()
         for chunk in chain.from_iterable(args[i]._chunks_map.values()):
-            chunk.apply_updates(darray._REPLICA_MODE)
+            chunk.apply_updates(_modes._REPLICA_MODE)
 
     a, b = args
 
@@ -245,13 +246,13 @@ def _execute_peer_access(
                 prevent_gc=b._chunks_map)
             chunks_map.setdefault(a_dev, []).append(new_chunk)
 
-    return darray.DistributedArray(
-        shape, dtype, chunks_map, darray._REPLICA_MODE, comms)
+    return _array.DistributedArray(
+        shape, dtype, chunks_map, _modes._REPLICA_MODE, comms)
 
 
 def _is_peer_access_needed(
-    args: Sequence['darray.DistributedArray'],
-    kwargs: dict[str, 'darray.DistributedArray'],
+    args: Sequence['_array.DistributedArray'],
+    kwargs: dict[str, '_array.DistributedArray'],
 ) -> bool:
     index_map = None
     for arg in chain(args, kwargs.values()):
@@ -265,7 +266,7 @@ def _is_peer_access_needed(
 
 def _execute(kernel, args: tuple, kwargs: dict):
     for arg in chain(args, kwargs.values()):
-        if not isinstance(arg, darray.DistributedArray):
+        if not isinstance(arg, _array.DistributedArray):
             raise RuntimeError(
                 'Mixing a distributed array with a non-distributed one is'
                 ' not supported')
