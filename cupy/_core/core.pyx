@@ -2671,11 +2671,10 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if ndmin > ndim:
         shape = (1,) * (ndmin - ndim) + shape
 
-    ext_mem = memory_module.SystemMemory.from_external(
+    cdef memory.SystemMemory ext_mem = memory.SystemMemory.from_external(
         ptr, obj.nbytes, obj)
-    memptr = memory.MemoryPointer(ext_mem, 0)
-    return ndarray(
-        shape, obj_dtype, memptr, obj.strides)
+    cdef memory.MemoryPointer memptr = memory.MemoryPointer(ext_mem, 0)
+    return ndarray(shape, obj_dtype, memptr, obj.strides)
 
 
 cdef _ndarray_base _array_default(
