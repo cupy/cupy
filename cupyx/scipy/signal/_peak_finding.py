@@ -1491,10 +1491,11 @@ RIGDE_KERNEL = r"""
 
 extern "C" {
     __global__ void reduce_ridges(
-            int n_blocks, int n_wavelets,
-            long long* peak_ridges, long long* ridge_rows,
-            long long* ridge_cols, long long* ridge_gap,
-            double* max_distances) {
+            int n_blocks, int n_wavelets, int n_peaks,
+            long long* peak_ridges, const long long* __restrict__ ridge_rows,
+            const long long* __restrict__ ridge_cols, long long* ridge_gap,
+            double* max_distances, int gap_thresh,
+            long long* out_cols) {
 
         __shared__ bool ridge_vote[32 * 32];
         __shared__ long long ridges[32];
@@ -1506,14 +1507,14 @@ extern "C" {
         long long* ridges_ptr = ridges;
 
         int idx = blockDim.x * blockIdx.x + threadIdx.x;
-        if(idx >= n_wavelets) {
+        if(idx >= n_peaks) {
             return;
         }
 
         int valid_block_wavelets = 32;
         if(blockIdx.x == n_blocks - 1) {
-            int complete_blocks = n_wavelets / 32;
-            valid_block_wavelets = n_wavelets - 32 * complete_blocks;
+            int complete_blocks = n_peaks / 32;
+            valid_block_wavelets = n_peaks - 32 * complete_blocks;
         }
 
         ridge_row_sh[threadIdx.x] = ridge_rows[idx];
@@ -1526,6 +1527,8 @@ extern "C" {
 
         double min_dist = CUDART_INF;
         int min_pos = threadIdx.x;
+        int row_pos = ridge_row_sh[threadIdx.x];
+
         for(int i = min_pos + 1; i < valid_block_wavelets; i++) {
             ridge_vote[32 * i + threadIdx.x] = false;
 
@@ -1539,19 +1542,25 @@ extern "C" {
             }
 
             long long other_col = max_ridge_col[i];
+            long long other_row = ridge_row_sh[i];
             long long diff = abs(other_col - ridge_col_sh[threadIdx.x]);
-            if(diff <= max_distance) {
+            long long gap_diff = abs(other_row - row_pos);
+
+            if(diff <= max_distance && gap_diff <= gap_thresh) {
                 if(diff < min_dist) {
                     min_dist = diff;
                     min_pos = i;
+                    row_pos = other_row;
                 } else if(diff == min_dist) {
-                    min_pos = max(i, min_pos);
+                    if(i > min_pos) {
+                        min_pos = i;
+                        row_pos = other_row;
+                    }
                 }
             }
         }
 
         if(min_pos != threadIdx.x) {
-            ridge_vote[32 * min_pos + threadIdx.x] = true;
             ridges[threadIdx.x] = min_pos;
         }
         __syncthreads();
@@ -1562,7 +1571,35 @@ extern "C" {
             ridges[threadIdx.x] = min_pos;
         }
 
+        ridge_vote[32 * min_pos + threadIdx.x] = true;
         peak_ridges[idx] = blockDim.x * blockIdx.x + min_pos;
+        __syncthreads();
+
+        // Recompute gap number
+        int max_voter = threadIdx.x;
+        int min_voter = threadIdx.x;
+        int gap = n_wavelets - ridge_row_sh[threadIdx.x];
+
+        if(min_pos == threadIdx.x) {
+            for(int i = valid_block_wavelets - 1; i >= 0 ; i--) {
+                if(ridge_vote[32 * threadIdx.x + i]) {
+                    gap = n_wavelets - ridge_row_sh[i];
+                    max_voter = i;
+                    break;
+                }
+            }
+
+            for(int i = 0; i < valid_block_wavelets; i++) {
+                if(ridge_vote[32 * threadIdx.x + i]) {
+                    min_voter = i;
+                    break;
+                }
+            }
+        }
+
+        ridge_gap[idx] = gap;
+        out_cols[2 * idx] = blockDim.x * blockIdx.x + min_voter;
+        out_cols[2 * idx + 1] = blockDim.x * blockIdx.x + max_voter;
     }
 }
 """
@@ -1632,86 +1669,106 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
     if len(has_relmax) == 0:
         return []
 
-    # relmax_per_wavelet = cupy.sum(all_max_cols, axis=1)
-    # max_relmax_count = cupy.max(relmax_per_wavelet)
     ridge_rows, ridge_cols = cupy.where(all_max_cols)
-    peak_ridge = cupy.arange(ridge_rows.shape[0], dtype=cupy.int64)  # NOQA
-    # ridge_rows = cupy.c_[peak_row_col[:, 0], peak_row_col[:, 0]]
-    # ridge_cols = cupy.c_[peak_row_col[:, 1], peak_row_col[:, 1]]
-    ridge_gap = cupy.zeros_like(peak_ridge)  # NOQA
-    max_distances = cupy.asarray(max_distances, dtype=cupy.float64)  # NOQA
+    out_cols = cupy.empty((ridge_cols.shape[0], 2), dtype=cupy.int64)
+    peak_ridges = cupy.arange(ridge_rows.shape[0], dtype=cupy.int64)
+    ridge_gap = cupy.zeros_like(peak_ridges)
+    max_distances = cupy.asarray(max_distances, dtype=cupy.float64)
+    breakpoint()
 
     block_sz = 32
-    n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz  # NOQA
+    n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz
     _ridge_kernel((n_blocks,), (block_sz,),
-                  (n_blocks, ridge_rows.shape[0], peak_ridge, ridge_rows,
-                   ridge_cols, ridge_gap, max_distances))
+                  (n_blocks, matr.shape[0], ridge_rows.shape[0], peak_ridges,
+                   ridge_rows.copy(), ridge_cols.copy(), ridge_gap,
+                   max_distances, int(gap_thresh), out_cols))
+    breakpoint()
 
-    start_row = has_relmax[-1]
-    # Each ridge line is a 3-tuple:
-    # rows, cols,Gap number
-    ridge_lines = [[[start_row],
-                   [col],
-                   0] for col in cupy.nonzero(all_max_cols[start_row])[0]]
-    final_lines = []
+    unique_ridges = cupy.unique(peak_ridges)
+    if n_blocks > 1:
+        pass
 
-    rows = cupy.arange(start_row.item() - 1, -1, -1)
-    cols = cupy.arange(0, matr.shape[1])
+    unique_ridges = unique_ridges.reshape(-1, 1)
+    ridge_mask = peak_ridges == unique_ridges
+    ridge_count = ridge_mask.sum(-1)
+    ridge_offsets = cupy.cumsum(ridge_count).tolist()
 
-    for row in rows:
-        this_max_cols = cols[all_max_cols[row]]
+    expanded_cols = cupy.broadcast_to(
+        ridge_cols, (unique_ridges.shape[0], ridge_cols.shape[0]))
+    expanded_rows = cupy.broadcast_to(
+        ridge_rows, (unique_ridges.shape[0], ridge_rows.shape[0]))
 
-        # Increment gap number of each line,
-        # set it to zero later if appropriate
-        for line in ridge_lines:
-            line[2] += 1
+    all_ridge_cols = cupy.array_split(
+        expanded_cols[ridge_mask], ridge_offsets)[:-1]
+    all_ridge_rows = cupy.array_split(
+        expanded_rows[ridge_mask], ridge_offsets)[:-1]
 
-        # XXX These should always be all_max_cols[row]
-        # But the order might be different. Might be an efficiency gain
-        # to make sure the order is the same and avoid this iteration
-        prev_ridge_cols = cupy.array([line[1][-1] for line in ridge_lines])
-        # Look through every relative maximum found at current row
-        # Attempt to connect them with existing ridge lines.
-        for ind, col in enumerate(this_max_cols):
-            # If there is a previous ridge line within
-            # the max_distance to connect to, do so.
-            # Otherwise start a new one.
-            line = None
-            if len(prev_ridge_cols) > 0:
-                diffs = cupy.abs(col - prev_ridge_cols)
-                closest = cupy.argmin(diffs)
-                if diffs[closest] <= max_distances[row]:
-                    line = ridge_lines[closest]
-            if line is not None:
-                # Found a point close enough, extend current ridge line
-                line[1].append(col)
-                line[0].append(row)
-                line[2] = 0
-            else:
-                new_line = [[row],
-                            [col],
-                            0]
-                ridge_lines.append(new_line)
+    return list(zip(all_ridge_rows, all_ridge_cols))
+    # start_row = has_relmax[-1]
+    # # Each ridge line is a 3-tuple:
+    # # rows, cols,Gap number
+    # ridge_lines = [[[start_row],
+    #                [col],
+    #                0] for col in cupy.nonzero(all_max_cols[start_row])[0]]
+    # final_lines = []
 
-        # Remove the ridge lines with gap_number too high
-        # XXX Modifying a list while iterating over it.
-        # Should be safe, since we iterate backwards, but
-        # still tacky.
-        for ind in range(len(ridge_lines) - 1, -1, -1):
-            line = ridge_lines[ind]
-            if line[2] > gap_thresh:
-                final_lines.append(line)
-                del ridge_lines[ind]
+    # rows = cupy.arange(start_row.item() - 1, -1, -1)
+    # cols = cupy.arange(0, matr.shape[1])
 
-    out_lines = []
-    for line in (final_lines + ridge_lines):
-        sortargs = cupy.array(cupy.argsort(line[0]))
-        rows, cols = cupy.zeros_like(sortargs), cupy.zeros_like(sortargs)
-        rows[sortargs] = line[0]
-        cols[sortargs] = line[1]
-        out_lines.append([rows, cols])
+    # for row in rows:
+    #     this_max_cols = cols[all_max_cols[row]]
 
-    return out_lines
+    #     # Increment gap number of each line,
+    #     # set it to zero later if appropriate
+    #     for line in ridge_lines:
+    #         line[2] += 1
+
+    #     # XXX These should always be all_max_cols[row]
+    #     # But the order might be different. Might be an efficiency gain
+    #     # to make sure the order is the same and avoid this iteration
+    #     prev_ridge_cols = cupy.array([line[1][-1] for line in ridge_lines])
+    #     # Look through every relative maximum found at current row
+    #     # Attempt to connect them with existing ridge lines.
+    #     for ind, col in enumerate(this_max_cols):
+    #         # If there is a previous ridge line within
+    #         # the max_distance to connect to, do so.
+    #         # Otherwise start a new one.
+    #         line = None
+    #         if len(prev_ridge_cols) > 0:
+    #             diffs = cupy.abs(col - prev_ridge_cols)
+    #             closest = cupy.argmin(diffs)
+    #             if diffs[closest] <= max_distances[row]:
+    #                 line = ridge_lines[closest]
+    #         if line is not None:
+    #             # Found a point close enough, extend current ridge line
+    #             line[1].append(col)
+    #             line[0].append(row)
+    #             line[2] = 0
+    #         else:
+    #             new_line = [[row],
+    #                         [col],
+    #                         0]
+    #             ridge_lines.append(new_line)
+
+    #     # Remove the ridge lines with gap_number too high
+    #     # XXX Modifying a list while iterating over it.
+    #     # Should be safe, since we iterate backwards, but
+    #     # still tacky.
+    #     for ind in range(len(ridge_lines) - 1, -1, -1):
+    #         line = ridge_lines[ind]
+    #         if line[2] > gap_thresh:
+    #             final_lines.append(line)
+    #             del ridge_lines[ind]
+
+    # out_lines = []
+    # for line in (final_lines + ridge_lines):
+    #     sortargs = cupy.array(cupy.argsort(line[0]))
+    #     rows, cols = cupy.zeros_like(sortargs), cupy.zeros_like(sortargs)
+    #     rows[sortargs] = line[0]
+    #     cols[sortargs] = line[1]
+    #     out_lines.append([rows, cols])
+
+    # return out_lines
 
 
 def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
