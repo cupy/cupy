@@ -85,8 +85,11 @@ cdef intptr_t get_current_stream_ptr():
 
 
 cpdef get_current_stream(int device_id=-1):
-    """Gets current CUDA stream.
+    """Gets the current CUDA stream for the specified CUDA device.
 
+    Args:
+        device_id (int, optional): Index of the device to check for the current
+            stream. The currently active device is selected by default.
     Returns:
         cupy.cuda.Stream: The current CUDA stream.
     """
