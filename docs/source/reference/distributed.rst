@@ -2,9 +2,20 @@
 Distributed
 ----------------
 
-The following pages describe the APIs used to easily perform communication
-between different processes in CuPy.
+``ndarray`` distributed across devices
+--------------------------------------
 
+.. module:: cupyx.distributed.array
+
+.. autosummary::
+   :toctree: generated/
+
+   distributed_array
+   DistributedArray
+   make_2d_index_map
+
+Communication between processes
+-------------------------------
 
 .. module:: cupyx.distributed
 

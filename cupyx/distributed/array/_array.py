@@ -36,17 +36,36 @@ class _MultiDeviceDummyPointer(cupy.cuda.memory.MemoryPointer):
 
 
 class DistributedArray(ndarray):
-    """Multi-dimensional array distributed across multiple CUDA devices.
+    """
+    __init__(cls, shape, dtype, chunks_map, mode=_REPLICA_MODE, comms=None)
 
-    This class implements some elementary operations that :class:`ndarray`
+    Multi-dimensional array distributed across multiple CUDA devices.
+
+    This class implements some elementary operations that :class:`cupy.ndarray`
     provides. The array content is split into chunks, contiguous arrays
     corresponding to slices of the original array. Note that one device can
     hold multiple chunks.
+
+    This direct constructor is designed for internal calls. Users should create
+    distributed arrays with :func:`distributed_array`.
+
+    Args:
+        shape (tuple of ints): Shape of created array.
+        dtype (dtype_like): Any object that can be interpreted as a numpy data
+            type.
+        chunks_map (dict from int to list of chunks): Lists of chunk objects
+            associated with each device.
+        mode (str or mode object, optional): Mode that determines how overlaps
+            of the chunks are interpreted. For details, see
+            :attr:`DistributedArray.mode`.
+        comms (optional): Communicator objects which a distributed array
+            hold internally. Sharing them with other distributed arrays can
+            save time because their initialization is a costly operation.
     """
 
     _chunks_map: dict[int, list[_Chunk]]
-    _streams: dict[int, Stream]
     _mode: _modes._Mode
+    _streams: dict[int, Stream]
     _comms: dict[int, _Communicator]
 
     def __new__(
@@ -55,32 +74,10 @@ class DistributedArray(ndarray):
         mode: Union[str, _modes._Mode] = _modes._REPLICA_MODE,
         comms: Optional[dict[int, _Communicator]] = None,
     ) -> 'DistributedArray':
-        """Instantiate a distributed array using arguments for its attributes.
-
-        :func:`~cupy.distributed.array.distributed_array` provides a more user
-        friendly way of creating a distributed array from another array.
-
-        Args:
-            shape (tuple of ints): Length of axes.
-            dtype: Data type. It must be an argument of :class:`numpy.dtype`.
-            mode (str or mode object): Mode that determines how overlaps of
-                chunks are interpreted.
-            comms (optional): _Communicator objects which a distributed array
-                hold internally. Sharing them with other distributed arrays can
-                save time because their initialization is a costly operation.
-                For details, check
-                :meth:`~cupyx.distributed.array.DistributedArray.comms`
-                property.
-        """
         mem = _MultiDeviceDummyMemory(0)
         memptr = _MultiDeviceDummyPointer(mem, 0)
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
         obj._chunks_map = chunks_map
-
-        obj._streams = {}
-        for dev in chunks_map.keys():
-            with Device(dev):
-                obj._streams[dev] = Stream()
 
         if isinstance(mode, str):
             if mode not in _modes._MODES.keys():
@@ -89,9 +86,13 @@ class DistributedArray(ndarray):
             mode = _modes._MODES[mode]
         obj._mode = mode
 
+        obj._streams = {}
         obj._comms = comms if comms is not None else {}
 
         return obj
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     def __array_finalize__(self, obj):
         # TODO set sensible defualts
@@ -110,9 +111,11 @@ class DistributedArray(ndarray):
         their overlapping segments. In other modes, they are not necessarily
         identical and represent the original data as their max, sum, etc.
 
+        :class:`DistributedArray` currently supports 'replica', 'min', 'max',
+        'sum', 'prod' modes.
+
         Some operations on distributed arrays involve changing their mode
-        beforehand. For example, see
-        :meth:`cupyx.distributed.array.DistributedArray.__matmul__`.
+        beforehand. For example, see :meth:`DistributedArray.__matmul__`.
         """
         for mode_str, mode_obj in _modes._MODES.items():
             if self._mode is mode_obj:
@@ -126,7 +129,7 @@ class DistributedArray(ndarray):
 
     @property
     def index_map(self) -> dict[int, list[tuple[slice, ...]]]:
-        """Indices for the chunks that each device owns."""
+        """Indices for the chunks that devices with designated IDs own."""
         return {dev: [chunk.index for chunk in chunks]
                 for dev, chunks in self._chunks_map.items()}
 
@@ -251,7 +254,13 @@ class DistributedArray(ndarray):
             _modes._REPLICA_MODE, self._comms)
 
     def change_mode(self, mode: str) -> 'DistributedArray':
-        """Return a view or a copy in the given mode."""
+        """Return a view or a copy in the given mode.
+
+        Args:
+            mode ({'replica', 'min', 'max', 'sum', 'prod'}): How overlaps of
+                the chunks are interpreted. For details, see
+                :attr:`DistributedArray.mode`.
+        """
         if mode not in _modes._MODES:
             raise RuntimeError(f'`mode` must be one of {list(_modes._MODES)}')
 
@@ -263,7 +272,14 @@ class DistributedArray(ndarray):
             return self._to_op_mode(mode_obj)
 
     def reshard(self, index_map: dict[int, Any]) -> 'DistributedArray':
-        """Return a view or a copy having the given index_map."""
+        """Return a view or a copy having the given index_map.
+
+        Args:
+            index_map (dict from int to array indices): Indices for the chunks
+                that devices with designated IDs own. The current index_map of
+                a distributed array can be obtained from
+                :attr:`DistributedArray.index_map`.
+        """
         new_index_map = _index_arith._normalize_index_map(
             self.shape, index_map)
         if new_index_map == self.index_map:
@@ -342,16 +358,19 @@ def distributed_array(
 ) -> DistributedArray:
     """Creates a distributed array from the given data.
 
-    This function does not check if all elements of ``array`` are stored in
-    some of the chunks.
+    This function does not check if all elements of the given array are stored
+    in some of the chunks.
 
     Args:
-        array: :class:`~cupyx.distributed.array.DistributedArray` object,
-            :class:`ndarray` object or any other object that can be passed
+        array (array_like): :class:`DistributedArray` object,
+            :class:`cupy.ndarray` object or any other object that can be passed
             to :func:`numpy.array`.
         index_map (dict from int to array indices): Indices for the chunks
             that devices with designated IDs own. One device can have multiple
             chunks, which can be specified as a list of array indices.
+        mode ({'replica', 'min', 'max', 'sum', 'prod'}): How overlaps of the
+            chunks are interpreted. For details, see
+            :attr:`DistributedArray.mode`.
 
     Example:
         >>> array = cupy.arange(9).reshape(3, 3)
