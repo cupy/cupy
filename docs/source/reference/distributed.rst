@@ -2,6 +2,17 @@
 Distributed
 ----------------
 
+Communication between processes
+-------------------------------
+
+.. module:: cupyx.distributed
+
+.. autosummary::
+   :toctree: generated/
+
+   init_process_group
+   NCCLBackend
+
 ``ndarray`` distributed across devices
 --------------------------------------
 
@@ -14,14 +25,3 @@ Distributed
    DistributedArray
    make_2d_index_map
    matmul
-
-Communication between processes
--------------------------------
-
-.. module:: cupyx.distributed
-
-.. autosummary::
-   :toctree: generated/
-
-   init_process_group
-   NCCLBackend

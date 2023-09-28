@@ -9,6 +9,8 @@ from cupyx import linalg  # NOQA
 from cupyx import time  # NOQA
 from cupyx import scipy  # NOQA
 from cupyx import optimizing  # NOQA
+from cupyx import lapack  # NOQA
+from cupyx import distributed  # NOQA
 
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA
