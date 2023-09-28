@@ -13,7 +13,6 @@ from numpy.linalg import LinAlgError
 import cupy
 from cupy import _core
 from cupy import cuda
-from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
 from cupy import _util
@@ -53,12 +52,18 @@ class RandomState(object):
 
     """
 
-    def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT):
+    def __init__(self, seed=None, method=None):
+        from cupy_backends.cuda.libs import curand
+
+        if method is None:
+            method = curand.CURAND_RNG_PSEUDO_DEFAULT
         self._generator = curand.createGenerator(method)
         self.method = method
         self.seed(seed)
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
+        from cupy_backends.cuda.libs import curand
+
         # When createGenerator raises an error, _generator is not initialized
         if is_shutting_down():
             return
@@ -281,6 +286,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.lognormal`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         if any(isinstance(arg, cupy.ndarray) for arg in (mean, sigma)):
             x = self.normal(mean, sigma, size, dtype)
             cupy.exp(x, out=x)
@@ -444,6 +451,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.normal`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         dtype = _check_and_get_dtype(dtype)
         if size is None:
             size = cupy.broadcast(loc, scale).shape
@@ -596,6 +605,8 @@ class RandomState(object):
         '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
+        from cupy_backends.cuda.libs import curand
+
         dtype = _check_and_get_dtype(dtype)
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
@@ -752,6 +763,8 @@ class RandomState(object):
         return sample.reshape(size)
 
     def _curand_generate(self, num, dtype):
+        from cupy_backends.cuda.libs import curand
+
         sample = cupy.empty((num,), dtype=dtype)
         # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
         size32 = sample.view(dtype=numpy.uint32).size
@@ -784,6 +797,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.seed`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         if seed is None:
             try:
                 seed_str = binascii.hexlify(os.urandom(8))
@@ -883,6 +898,8 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.tomaxint`
 
         """
+        from cupy_backends.cuda.libs import curand
+
         if size is None:
             size = ()
         sample = cupy.empty(size, dtype=cupy.int_)
@@ -1159,6 +1176,8 @@ class RandomState(object):
 
     def _permutation(self, num):
         """Returns a permuted range."""
+        from cupy_backends.cuda.libs import curand
+
         sample = cupy.empty((num,), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, num)
         array = cupy.argsort(sample)

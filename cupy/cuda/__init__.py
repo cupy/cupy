@@ -1,6 +1,7 @@
 import contextlib
 import warnings
 
+import cupy as _cupy
 from cupy._environment import get_cuda_path  # NOQA
 from cupy._environment import get_nvcc_path  # NOQA
 from cupy._environment import get_rocm_path  # NOQA
@@ -17,7 +18,6 @@ from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import cublas  # NOQA
-from cupy_backends.cuda.libs import curand  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
 from cupy_backends.cuda.libs import profiler  # NOQA
 
@@ -53,10 +53,16 @@ except ImportError:
 def __getattr__(key):
     if key == 'cusolver':
         from cupy_backends.cuda.libs import cusolver
+        _cupy.cuda.cusolver = cusolver
         return cusolver
     elif key == 'cusparse':
         from cupy_backends.cuda.libs import cusparse
+        _cupy.cuda.cusparse = cusparse
         return cusparse
+    elif key == 'curand':
+        from cupy_backends.cuda.libs import curand
+        _cupy.cuda.curand = curand
+        return curand
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
