@@ -37,7 +37,7 @@ class _MultiDeviceDummyPointer(cupy.cuda.memory.MemoryPointer):
 
 class DistributedArray(ndarray):
     """
-    __init__(cls, shape, dtype, chunks_map, mode=_REPLICA_MODE, comms=None)
+    __init__(self, shape, dtype, chunks_map, mode=_REPLICA_MODE, comms=None)
 
     Multi-dimensional array distributed across multiple CUDA devices.
 
@@ -47,7 +47,7 @@ class DistributedArray(ndarray):
     hold multiple chunks.
 
     This direct constructor is designed for internal calls. Users should create
-    distributed arrays with :func:`distributed_array`.
+    distributed arrays using :func:`distributed_array`.
 
     Args:
         shape (tuple of ints): Shape of created array.
@@ -115,7 +115,7 @@ class DistributedArray(ndarray):
         'sum', 'prod' modes.
 
         Some operations on distributed arrays involve changing their mode
-        beforehand. For example, see :meth:`DistributedArray.__matmul__`.
+        beforehand. For example, see :func:`distributed.array.matmul`.
         """
         for mode_str, mode_obj in _modes._MODES.items():
             if self._mode is mode_obj:
@@ -166,16 +166,12 @@ class DistributedArray(ndarray):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if ufunc.__name__ == 'matmul' and method == '__call__':
-            return _linalg._matmul(*inputs, **kwargs)
+            return _linalg.matmul(*inputs, **kwargs)
         return NotImplemented
 
     def __matmul__(x, y):
-        """Matrix multiplication between distributed arrays.
-
-        This operation converts its operands into the replica mode, and compute
-        their product in the sum mode."""
         if isinstance(y, DistributedArray):
-            return _linalg._matmul(x, y)
+            return _linalg.matmul(x, y)
         else:
             return NotImplemented
 

@@ -1,6 +1,6 @@
 import dataclasses
 import typing
-from typing import Callable
+from typing import Callable, Optional
 
 import cupy
 from cupyx.distributed.array import _array
@@ -218,7 +218,27 @@ def _pop_front_from_shape(arr) -> '_array.DistributedArray':
         lambda idx: idx[1:])
 
 
-def _matmul(a, b, out=None, **kwargs) -> '_array.DistributedArray':
+def matmul(
+    a: '_array.DistributedArray', b: '_array.DistributedArray',
+    out: Optional['_array.DistributedArray'] = None, **kwargs,
+) -> '_array.DistributedArray':
+    """Matrix multiplication between distributed arrays.
+
+    The arguments must have compatible :attr:`~DistributedArray.shape` and
+    :attr:`~DistributedArray.index_map`.
+
+    This operation converts its operands into the replica mode, and compute
+    their product in the sum mode.
+
+    Args:
+        a, b: Input distributed arrays.
+        out (optional): A location into which the result is stored. This option
+            is currently not supported.
+    Returns:
+        The matrix product of the inputs.
+
+    .. seealso:: :obj:`numpy.matmul`
+    """
     if out is not None:
         raise RuntimeError('Argument `out` is not supported')
     for param in ('subok', 'axes', 'axis'):
@@ -300,12 +320,17 @@ def make_2d_index_map(
     j_partitions: list[int],
     devices: list[list[set[int]]],
 ) -> dict[int, list[tuple[slice, ...]]]:
-    """Create an index_map for a 2D matrix with a specified blocking.
+    """Create an ``index_map`` for a 2D matrix with a specified blocking.
 
     Args:
         i_partitions (list of ints): boundaries of blocks on the `i` axis
         j_partitions (list of ints): boundaries of blocks on the `j` axis
         devices (2D list of sets of ints): devices owning each block
+
+    Returns:
+        dict from int to array indices: index_map
+            Indices for the chunks that devices with designated IDs are going
+            to own.
 
     Example:
         >>> index_map = make_2d_index_map(

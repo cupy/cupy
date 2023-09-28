@@ -13,6 +13,7 @@ Distributed
    distributed_array
    DistributedArray
    make_2d_index_map
+   matmul
 
 Communication between processes
 -------------------------------
