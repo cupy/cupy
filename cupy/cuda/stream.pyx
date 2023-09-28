@@ -84,14 +84,14 @@ cdef intptr_t get_current_stream_ptr():
     return <intptr_t>tls.get_current_stream_ptr()
 
 
-cpdef get_current_stream():
+cpdef get_current_stream(int device_id=-1):
     """Gets current CUDA stream.
 
     Returns:
         cupy.cuda.Stream: The current CUDA stream.
     """
     tls = _ThreadLocal.get()
-    return tls.get_current_stream()
+    return tls.get_current_stream(device_id)
 
 
 class Event(object):
