@@ -64,10 +64,11 @@ index_map_only_1 = {
 }
 
 
+streams = {}
 for dev in range(4):
     with cupy.cuda.Device(dev):
-        stream = cupy.cuda.Stream()
-        stream.__enter__()
+        streams[dev] = cupy.cuda.Stream()
+        streams[dev].use()
 
 
 @testing.multi_gpu(4)

@@ -6,20 +6,9 @@ import pytest
 import numpy
 import cupy
 from cupy import testing
-from cupy.cuda import nccl
 from cupyx.distributed.array import _linalg
 
 from cupyx.distributed import array
-
-
-def make_comms():
-    if not nccl.available:
-        return None
-    comms_list = nccl.NcclCommunicator.initAll(4)
-    return {dev: comm for dev, comm in zip(range(4), comms_list)}
-
-
-comms = make_comms()
 
 
 class ArrayConfig:
@@ -39,7 +28,7 @@ class ArrayConfig:
         self, mode: str = 'replica',
     ) -> tuple[numpy.ndarray, array.DistributedArray]:
         np_arr = numpy.arange(self.size).reshape(self.shape)
-        d_arr = array.distributed_array(np_arr, self.index_map, mode, comms)
+        d_arr = array.distributed_array(np_arr, self.index_map, mode)
         return np_arr, d_arr
 
 
@@ -198,7 +187,7 @@ class TestDistributedMatMul:
 
         np_a2 = np_a + 1
         d_a2 = d_a.reshard(index_map_a) + array.distributed_array(
-            cupy.ones_like(d_a), index_map_a, comms=d_a._comms)
+            cupy.ones_like(d_a), index_map_a)
 
         np_b2 = np_b.sum(axis=0)
         d_b2 = d_b.sum(axis=0)
