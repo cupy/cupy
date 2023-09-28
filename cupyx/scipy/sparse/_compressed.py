@@ -543,7 +543,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if mask.all():
             # only affects existing non-zero cells
             return
-        
+
         # only insertions remain
         warnings.warn('Changing the sparsity structure of a '
                       '{}_matrix is expensive.'.format(self.format),
