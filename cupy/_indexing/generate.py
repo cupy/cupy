@@ -39,7 +39,6 @@ class AxisConcatenator(object):
         trans1d = self.trans1d
         ndmin = self.ndmin
         objs = []
-        arrays = []
         scalars = []
         if isinstance(key, str):
             raise NotImplementedError
@@ -63,11 +62,10 @@ class AxisConcatenator(object):
                     ndim = from_data.array(k, copy=False).ndim
                     if trans1d != -1 and ndim < ndmin:
                         newobj = self._output_obj(newobj, ndim, ndmin, trans1d)
-                arrays.append(newobj)
 
             objs.append(newobj)
 
-        final_dtype = numpy.result_type(*arrays, *[objs[k] for k in scalars])
+        final_dtype = numpy.result_type(*key)
         if final_dtype is not None:
             for k in scalars:
                 objs[k] = objs[k].astype(final_dtype)
