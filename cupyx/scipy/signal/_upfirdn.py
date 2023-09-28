@@ -427,6 +427,10 @@ def upfirdn(
         The axis of the input data array along which to apply the
         linear filter. The filter is applied to each subarray along
         this axis. Default is -1.
+    mode : str, optional
+        This parameter is not implemented.
+    cval : float, optional
+        This parameter is not implemented.
 
     Returns
     -------
