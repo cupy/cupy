@@ -1488,7 +1488,7 @@ def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
 
 RIDGE_MODULE = r"""
 #include <cupy/math_constants.h>
-#define BLOCK_SZ 2
+#define BLOCK_SZ 128
 
 __global__ void reduce_peaks(
         int n_blocks, int n_wavelets, int n_peaks,
@@ -1792,7 +1792,7 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
     peak_ridges = cupy.arange(ridge_rows.shape[0], dtype=cupy.int64)
     max_distances = cupy.asarray(max_distances, dtype=cupy.float64)
 
-    block_sz = 2
+    block_sz = 128
     n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz
     _reduce_peaks = _ridge_module.get_function('reduce_peaks')
     _reduce_peaks((n_blocks,), (block_sz,),
