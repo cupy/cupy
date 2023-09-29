@@ -50,15 +50,16 @@ index_map_only_1 = {
 }
 
 
-streams = {}
-for dev in range(4):
-    with cupy.cuda.Device(dev):
-        streams[dev] = cupy.cuda.Stream()
-        streams[dev].use()
-
-
 @testing.multi_gpu(4)
 class TestDistributedArray:
+    @classmethod
+    def setup_class(cls):
+        cls.streams = {}
+        for dev in range(4):
+            with cupy.cuda.Device(dev):
+                cls.streams[dev] = cupy.cuda.Stream()
+                cls.streams[dev].use()
+
     @pytest.mark.parametrize(
         'shape, index_map',
         [(shape_dim2, index_map_dim2), (shape_dim3, index_map_dim3)])
