@@ -1,5 +1,5 @@
+import typing
 from typing import Any, Optional
-from typing_extensions import TypeGuard
 
 
 def _extgcd(a: int, b: int) -> tuple[int, int]:
@@ -86,14 +86,10 @@ def _index_intersection(
     result = tuple(_slice_intersection(a, b, length)
                    for a, b, length in zip(a_idx, b_idx, shape))
 
-    def has_no_none(
-            xs: tuple[Optional[slice], ...]) -> TypeGuard[tuple[slice, ...]]:
-        return None not in xs
-
-    if has_no_none(result):
-        return result
-    else:
+    if None in result:
         return None
+    else:
+        return typing.cast(tuple[slice, ...], result)
 
 
 def _index_for_subindex(

@@ -1,5 +1,4 @@
 import contextlib
-import dataclasses
 from itertools import chain
 from typing import Any, Iterator, Optional, Union
 
@@ -50,8 +49,7 @@ class _Chunk:
     array: Union[ndarray, _ArrayPlaceholder]
     ready: Event
     index: tuple[slice, ...]
-    updates: list[_data_transfer._PartialUpdate] = dataclasses.field(
-        default_factory=list)
+    updates: list[_data_transfer._PartialUpdate]
     prevent_gc: Any = None     # TODO: Release it to avoid OOM
 
     # Rule: whenever data is DataPlaceholder, ready is empty
@@ -165,7 +163,7 @@ class _Chunk:
             src_chunk.array[src_new_idx], src_chunk.ready,
             src_chunk.prevent_gc)
 
-        if _modes._is_non_idempotent(mode):
+        if mode is not _modes._REPLICA_MODE and not mode.idempotent:
             data_to_transfer = data_to_transfer.copy()
 
         update = _data_transfer._transfer(
@@ -173,7 +171,7 @@ class _Chunk:
             comms[dst_dev], streams[dst_dev], dst_dev)
         dst_chunk.add_update(update, dst_new_idx)
 
-        if _modes._is_non_idempotent(mode):
+        if mode is not _modes._REPLICA_MODE and not mode.idempotent:
             dtype = src_chunk.array.dtype
             with data_to_transfer.on_ready() as stream:
                 # Now src data has been copied, so we can write on src_chunk

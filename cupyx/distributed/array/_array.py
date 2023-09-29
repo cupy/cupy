@@ -912,7 +912,8 @@ def distributed_array(
             chunk_array = array[idx]
             chunk = make_chunk(dev, idx, chunk_array)
             chunks_map[dev].append(chunk)
-            if _modes._is_non_idempotent(mode_obj):
+            if (mode_obj is not _modes._REPLICA_MODE
+                    and not mode_obj.idempotent):
                 array[idx] = mode_obj.identity_of(array.dtype)
 
     return DistributedArray(

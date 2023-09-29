@@ -1,6 +1,5 @@
 import functools
 from typing import Callable, Final, Optional
-from typing_extensions import TypeGuard
 
 import numpy
 
@@ -60,10 +59,6 @@ _Mode = Optional[_OpMode]
 
 
 _REPLICA_MODE: Final[None] = None
-
-
-def _is_non_idempotent(mode: _Mode) -> TypeGuard[_OpMode]:
-    return mode is not _REPLICA_MODE and not mode.idempotent
 
 
 _MODES: Final[dict[str, _Mode]] = {
