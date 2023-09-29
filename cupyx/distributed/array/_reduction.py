@@ -4,14 +4,14 @@ from typing import Any
 from numpy.typing import DTypeLike
 
 import cupy._manipulation.dims as _manipulation_dims
-import cupyx.distributed.array as darray
+from cupyx.distributed.array import _array
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _data_transfer
 from cupyx.distributed.array import _modes
 
 
 def _execute(
-    arr: 'darray.DistributedArray', kernel, axis: int, dtype: DTypeLike,
+    arr: '_array.DistributedArray', kernel, axis: int, dtype: DTypeLike,
 ) -> Any:
     overwrites = False
     if kernel.name == 'cupy_max':
@@ -88,5 +88,5 @@ def _execute(
                     out_index = update_index[:axis] + update_index[axis+1:]
                     out_chunk.add_update(out_update, out_index)
 
-    return darray.DistributedArray(
+    return _array.DistributedArray(
         shape, out_dtype, out_chunks_map, mode, arr._comms)
