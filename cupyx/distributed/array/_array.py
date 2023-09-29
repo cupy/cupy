@@ -58,11 +58,13 @@ class DistributedArray(ndarray):
         chunks_map (dict from int to list of chunks): Lists of chunk objects
             associated with each device.
         mode (str or mode object, optional): Mode that determines how overlaps
-            of the chunks are interpreted. For details, see
-            :attr:`DistributedArray.mode`.
+            of the chunks are interpreted.
         comms (optional): Communicator objects which a distributed array
             hold internally. Sharing them with other distributed arrays can
             save time because their initialization is a costly operation.
+
+    .. seealso::
+            :attr:`DistributedArray.mode` for details about modes.
     """
 
     _chunks_map: dict[int, list[_Chunk]]
@@ -116,8 +118,48 @@ class DistributedArray(ndarray):
         :class:`DistributedArray` currently supports 'replica', 'min', 'max',
         'sum', 'prod' modes.
 
-        Some operations on distributed arrays involve changing their mode
-        beforehand. For example, see :func:`distributed.array.matmul`.
+        Many operations on distributed arrays including :class:`cupy.ufunc`
+        and :func:`~cupyx.distributed.array.matmul` involve changing their mode
+        beforehand. These mode conversions are done automatically, so in most
+        cases users do not have to manage modes manually.
+
+        Example:
+            >>> A = distributed_array(
+            ...     cupy.arange(6).reshape(2, 3),
+            ...     make_2d_index_map([0, 2], [0, 1, 3],
+            ...                       [[{0}, {1, 2}]]))
+            >>> B = distributed_array(
+            ...     cupy.arange(12).reshape(3, 4),
+            ...     make_2d_index_map([0, 1, 3], [0, 2, 4],
+            ...                       [[{0}, {0}],
+            ...                        [{1}, {2}]]))
+            >>> C = A @ B
+            >>> C
+            array([[20, 23, 26, 29],
+                   [56, 68, 80, 92]])
+            >>> C.mode
+            'sum'
+            >>> C.all_chunks()
+            {0: [array([[0, 0],
+                        [0, 3]]),     # left half
+                 array([[0, 0],
+                        [6, 9]])],    # right half
+             1: [array([[20, 23],
+                        [56, 65]])],  # left half
+             2: [array([[26, 29],
+                        [74, 83]])]}  # right half
+            >>> C_replica = C.change_mode('replica')
+            >>> C_replica.mode
+            'replica'
+            >>> C_replica.all_chunks()
+            {0: [array([[20, 23],
+                        [56, 68]]),   # left half
+                 array([[26, 29],
+                        [80, 92]])],  # right half
+             1: [array([[20, 23],
+                        [56, 68]])],  # left half
+             2: [array([[26, 29],
+                        [80, 92]])]}  # right half
         """
         for mode_str, mode_obj in _modes._MODES.items():
             if self._mode is mode_obj:
@@ -134,6 +176,20 @@ class DistributedArray(ndarray):
         """Indices for the chunks that devices with designated IDs own."""
         return {dev: [chunk.index for chunk in chunks]
                 for dev, chunks in self._chunks_map.items()}
+
+    def all_chunks(self) -> dict[int, list[ndarray]]:
+        """Return the chunks with all buffered data flushed.
+
+        Buffered data are created in situations such as resharding and mode
+        changing.
+        """
+        chunks_map: dict[int, list[ndarray]] = {}
+        for dev, chunks in self._chunks_map.items():
+            chunks_map[dev] = []
+            for chunk in chunks:
+                chunk.flush(self._mode)
+                chunks_map[dev].append(chunk.array)
+        return chunks_map
 
     def _prepare_comms_and_streams(self, devices: Iterable[int]) -> None:
         # Ensure communicators and streams are prepared for communication
@@ -196,7 +252,7 @@ class DistributedArray(ndarray):
         chunks_map = self._copy_chunks_map_in_replica_mode()
 
         for chunk in chain.from_iterable(chunks_map.values()):
-            chunk.apply_updates(_modes._REPLICA_MODE)
+            chunk.flush(_modes._REPLICA_MODE)
 
         chunks_list = list(chain.from_iterable(chunks_map.values()))
         identity = op_mode.identity_of(self.dtype)
@@ -222,7 +278,7 @@ class DistributedArray(ndarray):
         if len(self._chunks_map) == 1:
             chunks, = self._chunks_map.values()
             if len(chunks) == 1:
-                chunks[0].apply_updates(self._mode)
+                chunks[0].flush(self._mode)
                 return DistributedArray(
                     self.shape, self.dtype, self._chunks_map,
                     op_mode, self._comms)
@@ -239,7 +295,7 @@ class DistributedArray(ndarray):
         if len(self._chunks_map) == 1:
             chunks, = self._chunks_map.values()
             if len(chunks) == 1:
-                chunks[0].apply_updates(self._mode)
+                chunks[0].flush(self._mode)
                 return DistributedArray(
                     self.shape, self.dtype, self._chunks_map,
                     _modes._REPLICA_MODE, self._comms)
@@ -254,8 +310,10 @@ class DistributedArray(ndarray):
 
         Args:
             mode ({'replica', 'min', 'max', 'sum', 'prod'}): How overlaps of
-                the chunks are interpreted. For details, see
-                :attr:`DistributedArray.mode`.
+                the chunks are interpreted.
+
+        .. seealso::
+                :attr:`DistributedArray.mode` for details about modes.
         """
         if mode not in _modes._MODES:
             raise RuntimeError(f'`mode` must be one of {list(_modes._MODES)}')
@@ -269,6 +327,10 @@ class DistributedArray(ndarray):
 
     def reshard(self, index_map: dict[int, Any]) -> 'DistributedArray':
         """Return a view or a copy having the given index_map.
+
+        Data transfers across devices are done on separate streams created
+        internally. To make them asynchronous, transferred data is buffered and
+        reflected to the chunks when necessary.
 
         Args:
             index_map (dict from int to array indices): Indices for the chunks
@@ -307,7 +369,7 @@ class DistributedArray(ndarray):
         # between multiple devices
         # TODO: Avoid duplicate data transfers
         for src_chunk in chain.from_iterable(old_chunks_map.values()):
-            src_chunk.apply_updates(self._mode)
+            src_chunk.flush(self._mode)
 
             if self._mode is not _modes._REPLICA_MODE:
                 src_chunk = src_chunk.copy()
@@ -330,7 +392,7 @@ class DistributedArray(ndarray):
             raise RuntimeError('Argument `out` not supported')
 
         for chunk in chain.from_iterable(self._chunks_map.values()):
-            chunk.apply_updates(self._mode)
+            chunk.flush(self._mode)
 
         if self._mode is _modes._REPLICA_MODE:
             np_array = numpy.empty(self.shape, dtype=self.dtype)
@@ -781,8 +843,10 @@ def distributed_array(
             that devices with designated IDs own. One device can have multiple
             chunks, which can be specified as a list of array indices.
         mode ({'replica', 'min', 'max', 'sum', 'prod'}): How overlaps of the
-            chunks are interpreted. For details, see
-            :attr:`DistributedArray.mode`.
+            chunks are interpreted.
+
+    .. seealso::
+            :attr:`DistributedArray.mode` for details about modes.
 
     Example:
         >>> array = cupy.arange(9).reshape(3, 3)

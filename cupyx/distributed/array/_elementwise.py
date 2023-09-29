@@ -42,7 +42,7 @@ def _find_updates(
 
     for arg in chain(args, kwargs.values()):
         for chunk in chain.from_iterable(arg._chunks_map.values()):
-            chunk.apply_updates(arg._mode)
+            chunk.flush(arg._mode)
     return []
 
 
@@ -187,7 +187,7 @@ def _execute_peer_access(
     for i, arg in enumerate(args):
         args[i] = arg._to_replica_mode()
         for chunk in chain.from_iterable(args[i]._chunks_map.values()):
-            chunk.apply_updates(_modes._REPLICA_MODE)
+            chunk.flush(_modes._REPLICA_MODE)
 
     a, b = args
 

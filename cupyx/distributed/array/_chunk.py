@@ -98,8 +98,7 @@ class _Chunk:
         self.updates.append((update, idx))
 
     def copy(self) -> '_Chunk':
-        # TODO: Calling apply_updates here would reduce the amount of
-        # future copying
+        # TODO: Calling flush here would reduce the amount of future copying
         if isinstance(self.array, _ArrayPlaceholder):
             data = self.array
             ready = self.ready
@@ -111,7 +110,7 @@ class _Chunk:
         return _Chunk(data, ready, self.index, list(self.updates),
                       prevent_gc=self.prevent_gc)
 
-    def apply_updates(self, mode: '_modes._Mode') -> None:
+    def flush(self, mode: '_modes._Mode') -> None:
         """Apply all updates in-place."""
         if len(self.updates) == 0:
             return
@@ -215,7 +214,7 @@ def _all_reduce_intersections(
     # TODO flatten this loop somehow
     for i in range(len(chunks_list)):
         src_chunk = chunks_list[i]
-        src_chunk.apply_updates(op_mode)
+        src_chunk.flush(op_mode)
 
         for j in range(i + 1, len(chunks_list)):
             dst_chunk = chunks_list[j]
@@ -224,7 +223,7 @@ def _all_reduce_intersections(
 
     for j in range(len(chunks_list) - 1, -1, -1):
         src_chunk = chunks_list[j]
-        src_chunk.apply_updates(_modes._REPLICA_MODE)
+        src_chunk.flush(_modes._REPLICA_MODE)
 
         for i in range(j):
             dst_chunk = chunks_list[i]

@@ -237,6 +237,32 @@ def matmul(
     Returns:
         The matrix product of the inputs.
 
+    Example:
+        >>> A = distributed_array(
+        ...     cupy.arange(6).reshape(2, 3),
+        ...     make_2d_index_map([0, 2], [0, 1, 3],
+        ...                       [[{0}, {1, 2}]]))
+        >>> B = distributed_array(
+        ...     cupy.arange(12).reshape(3, 4),
+        ...     make_2d_index_map([0, 1, 3], [0, 2, 4],
+        ...                       [[{0}, {0}],
+        ...                        [{1}, {2}]]))
+        >>> C = A @ B
+        >>> C.mode
+        'sum'
+        >>> C.all_chunks()
+        {0: [array([[0, 0],
+                    [0, 3]]),
+             array([[0, 0],
+                    [6, 9]])],
+         1: [array([[20, 23],
+                    [56, 65]])],
+         2: [array([[26, 29],
+                    [74, 83]])]}
+        >>> C
+        array([[20, 23, 26, 29],
+               [56, 68, 80, 92]])
+
     .. seealso:: :obj:`numpy.matmul`
     """
     if out is not None:
@@ -287,8 +313,8 @@ def matmul(
             loc_b = location_map_b[block_b]
             chunk_a = a._chunks_map[dev][loc_a[dev]]
             chunk_b = b._chunks_map[dev][loc_b[dev]]
-            chunk_a.apply_updates(_modes._REPLICA_MODE)
-            chunk_b.apply_updates(_modes._REPLICA_MODE)
+            chunk_a.flush(_modes._REPLICA_MODE)
+            chunk_b.flush(_modes._REPLICA_MODE)
 
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
             with chunk_a.on_ready() as stream:
