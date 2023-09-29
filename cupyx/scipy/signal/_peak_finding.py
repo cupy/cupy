@@ -1486,125 +1486,227 @@ def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     return cupy.nonzero(results)
 
 
-RIGDE_KERNEL = r"""
+RIGDE_MODULE = r"""
 #include <cupy/math_constants.h>
+#define BLOCK_SZ 5
 
-extern "C" {
-    __global__ void reduce_ridges(
-            int n_blocks, int n_wavelets, int n_peaks,
-            long long* peak_ridges, const long long* __restrict__ ridge_rows,
-            const long long* __restrict__ ridge_cols, long long* ridge_gap,
-            double* max_distances, int gap_thresh,
-            long long* out_cols) {
+__global__ void reduce_peaks(
+        int n_blocks, int n_wavelets, int n_peaks,
+        long long* peak_ridges, const long long* __restrict__ ridge_rows,
+        const long long* __restrict__ ridge_cols,
+        double* max_distances, int gap_thresh,
+        long long* out_cols) {
 
-        __shared__ bool ridge_vote[32 * 32];
-        __shared__ long long ridges[32];
-        __shared__ long long ridge_row_sh[32];
-        __shared__ long long ridge_col_sh[32];
-        __shared__ long long max_ridge_col[32];
+    __shared__ bool ridge_vote[BLOCK_SZ * BLOCK_SZ];
+    __shared__ long long ridges[BLOCK_SZ];
+    __shared__ long long ridge_row_sh[BLOCK_SZ];
+    __shared__ long long ridge_col_sh[BLOCK_SZ];
 
-        bool* votes = ridge_vote;
-        long long* ridges_ptr = ridges;
+    bool* votes = ridge_vote;
+    long long* ridges_ptr = ridges;
 
-        int idx = blockDim.x * blockIdx.x + threadIdx.x;
-        if(idx >= n_peaks) {
-            return;
-        }
-
-        int valid_block_wavelets = 32;
-        if(blockIdx.x == n_blocks - 1) {
-            int complete_blocks = n_peaks / 32;
-            valid_block_wavelets = n_peaks - 32 * complete_blocks;
-        }
-
-        ridge_row_sh[threadIdx.x] = ridge_rows[idx];
-        ridge_col_sh[threadIdx.x] = ridge_cols[idx];
-        max_ridge_col[threadIdx.x] = ridge_cols[idx];
-        ridges[threadIdx.x] = threadIdx.x;
-        double max_distance = max_distances[ridge_row_sh[threadIdx.x]];
-
-        __syncthreads();
-
-        double min_dist = CUDART_INF;
-        int min_pos = threadIdx.x;
-        int row_pos = ridge_row_sh[threadIdx.x];
-
-        for(int i = min_pos + 1; i < valid_block_wavelets; i++) {
-            ridge_vote[32 * i + threadIdx.x] = false;
-
-            if(i == threadIdx.x) {
-                continue;
-            }
-
-            long long other_ridge = ridges_ptr[i];
-            if(other_ridge != i) {
-                continue;
-            }
-
-            long long other_col = max_ridge_col[i];
-            long long other_row = ridge_row_sh[i];
-            long long diff = abs(other_col - ridge_col_sh[threadIdx.x]);
-            long long gap_diff = abs(other_row - row_pos);
-
-            if(diff <= max_distance && gap_diff <= gap_thresh) {
-                if(diff < min_dist) {
-                    min_dist = diff;
-                    min_pos = i;
-                    row_pos = other_row;
-                } else if(diff == min_dist) {
-                    if(i > min_pos) {
-                        min_pos = i;
-                        row_pos = other_row;
-                    }
-                }
-            }
-        }
-
-        if(min_pos != threadIdx.x) {
-            ridges[threadIdx.x] = min_pos;
-        }
-        __syncthreads();
-
-        // Check for parent votes
-        while(min_pos != ridges[min_pos]) {
-            min_pos = ridges[min_pos];
-            ridges[threadIdx.x] = min_pos;
-        }
-
-        ridge_vote[32 * min_pos + threadIdx.x] = true;
-        peak_ridges[idx] = blockDim.x * blockIdx.x + min_pos;
-        __syncthreads();
-
-        // Recompute gap number
-        int max_voter = threadIdx.x;
-        int min_voter = threadIdx.x;
-        int gap = n_wavelets - ridge_row_sh[threadIdx.x];
-
-        if(min_pos == threadIdx.x) {
-            for(int i = valid_block_wavelets - 1; i >= 0 ; i--) {
-                if(ridge_vote[32 * threadIdx.x + i]) {
-                    gap = n_wavelets - ridge_row_sh[i];
-                    max_voter = i;
-                    break;
-                }
-            }
-
-            for(int i = 0; i < valid_block_wavelets; i++) {
-                if(ridge_vote[32 * threadIdx.x + i]) {
-                    min_voter = i;
-                    break;
-                }
-            }
-        }
-
-        ridge_gap[idx] = gap;
-        out_cols[2 * idx] = blockDim.x * blockIdx.x + min_voter;
-        out_cols[2 * idx + 1] = blockDim.x * blockIdx.x + max_voter;
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n_peaks) {
+        return;
     }
+
+    int valid_block_wavelets = BLOCK_SZ;
+    if(blockIdx.x == n_blocks - 1) {
+        int complete_blocks = n_peaks / BLOCK_SZ;
+        valid_block_wavelets = n_peaks - BLOCK_SZ * complete_blocks;
+    }
+
+    ridge_row_sh[threadIdx.x] = ridge_rows[idx];
+    ridge_col_sh[threadIdx.x] = ridge_cols[idx];
+    ridges[threadIdx.x] = threadIdx.x;
+    double max_distance = max_distances[ridge_row_sh[threadIdx.x]];
+
+    __syncthreads();
+
+    double min_dist = CUDART_INF;
+    int max_pos = threadIdx.x;
+    int row_pos = ridge_row_sh[threadIdx.x];
+
+    for(int i = max_pos + 1; i < valid_block_wavelets; i++) {
+        ridge_vote[BLOCK_SZ * i + threadIdx.x] = false;
+
+        if(i == threadIdx.x) {
+            continue;
+        }
+
+        long long other_ridge = ridges_ptr[i];
+        if(other_ridge != i) {
+            continue;
+        }
+
+        long long other_col = ridge_col_sh[i];
+        long long other_row = ridge_row_sh[i];
+        long long diff = abs(other_col - ridge_col_sh[threadIdx.x]);
+        long long gap_diff = abs(other_row - row_pos);
+
+        if(diff <= max_distance && gap_diff <= gap_thresh) {
+            if(diff < min_dist) {
+                min_dist = diff;
+                max_pos = i;
+                row_pos = other_row;
+            } else if(diff == min_dist) {
+                if(i > max_pos) {
+                    max_pos = i;
+                    row_pos = other_row;
+                }
+            }
+        }
+    }
+
+    if(max_pos != threadIdx.x) {
+        ridges[threadIdx.x] = max_pos;
+    }
+    __syncthreads();
+
+    // Check for parent votes
+    while(max_pos != ridges[max_pos]) {
+        max_pos = ridges[max_pos];
+        ridges[threadIdx.x] = max_pos;
+    }
+
+    ridge_vote[BLOCK_SZ * max_pos + threadIdx.x] = true;
+    peak_ridges[idx] = blockDim.x * blockIdx.x + max_pos;
+    __syncthreads();
+
+    // Compute ridge bounds
+    int max_voter = threadIdx.x;
+    int min_voter = threadIdx.x;
+
+    if(max_pos == threadIdx.x) {
+        for(int i = valid_block_wavelets - 1; i >= 0 ; i--) {
+            if(ridge_vote[BLOCK_SZ * threadIdx.x + i]) {
+                max_voter = i;
+                break;
+            }
+        }
+
+        for(int i = 0; i < valid_block_wavelets; i++) {
+            if(ridge_vote[BLOCK_SZ * threadIdx.x + i]) {
+                min_voter = i;
+                break;
+            }
+        }
+    }
+
+    out_cols[2 * idx] = blockDim.x * blockIdx.x + min_voter;
+    out_cols[2 * idx + 1] = blockDim.x * blockIdx.x + max_voter;
+}
+
+__global__ void merge_ridges(
+        int n_blocks, int n_wavelets, int n_ridges,
+        const long long* __restrict__ peak_ridges, long long* ridges,
+        const long long* __restrict__ ridge_rows,
+        const long long* __restrict__ ridge_cols,
+        double* max_distances, int gap_thresh,
+        long long* out_cols) {
+
+    __shared__ bool ridge_vote[BLOCK_SZ * BLOCK_SZ];
+    __shared__ long long ridges_sh[BLOCK_SZ];
+    __shared__ long long ridge_row_sh[2 * BLOCK_SZ];
+    __shared__ long long ridge_col_sh[2 * BLOCK_SZ];
+    __shared__ long long ridge_original_block[BLOCK_SZ];
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n_ridges) {
+        return;
+    }
+
+    int valid_block_ridges = BLOCK_SZ;
+    if(blockIdx.x == n_blocks - 1) {
+        int complete_blocks = n_ridges / BLOCK_SZ;
+        valid_block_ridges = n_ridges - BLOCK_SZ * complete_blocks;
+    }
+
+    long long this_ridge = ridges[idx];
+    long long original_block = this_ridge / BLOCK_SZ;
+    long long* ridge_peak_bounds = out_cols + 2 * this_ridge;
+
+    long long min_peak_col = ridge_cols[ridge_peak_bounds[0]];
+    long long max_peak_col = ridge_cols[ridge_peak_bounds[1]];
+    long long min_peak_row = ridge_rows[ridge_peak_bounds[0]];
+    long long max_peak_row = ridge_rows[ridge_peak_bounds[1]];
+
+    ridge_row_sh[2 * threadIdx.x] = min_peak_row;
+    ridge_row_sh[2 * threadIdx.x + 1] = max_peak_row;
+    ridge_col_sh[2 * threadIdx.x] = min_peak_col;
+    ridge_col_sh[2 * threadIdx.x + 1] = max_peak_col;
+
+    ridges_sh[threadIdx.x] = this_ridge;
+    ridge_original_block[threadIdx.x] = original_block;
+
+    __syncthreads();
+
+    double min_dist = CUDART_INF;
+    int max_pos = threadIdx.x;
+    int row_pos = ridge_row_sh[2 * threadIdx.x + 1];
+
+    for(int i = max_pos + 1; i < valid_block_ridges; i++) {
+        ridge_vote[BLOCK_SZ * i + threadIdx.x] = false;
+
+        if(ridge_original_block[i] == original_block) {
+            continue;
+        }
+        long long other_col = ridge_col_sh[2 * i];
+        long long other_row = ridge_row_sh[2 * i];
+        long long diff = abs(other_col - ridge_col_sh[2 * threadIdx.x + 1]);
+        long long gap_diff = abs(other_row - row_pos);
+
+        if(diff <= max_distance && gap_diff <= gap_thresh) {
+            if(diff < min_dist) {
+                min_dist = diff;
+                max_pos = i;
+                row_pos = other_row;
+            } else if(diff == min_dist) {
+                if(i > max_pos) {
+                    max_pos = i;
+                    row_pos = other_row;
+                }
+            }
+        }
+    }
+
+    if(ridges_sh[max_pos] != this_ridge) {
+        ridges[threadIdx.x] = ridges_sh[max_pos];
+    }
+    __syncthreads();
+
+    ridge_vote[BLOCK_SZ * max_pos + threadIdx.x] = true;
+    peak_ridges[this_ridge] = ridges_sh[max_pos];
+    ridges[threadIdx.x] = ridges_sh[max_pos];
+    __syncthreads();
+
+    int max_voter = this_ridge;
+    int min_voter = this_ridge;
+
+    if(ridges_sh[max_pos] == this_ridge) {
+        for(int i = valid_block_ridges - 1; i >= 0 ; i--) {
+            if(ridge_vote[BLOCK_SZ * threadIdx.x + i]) {
+                max_voter = i;
+                break;
+            }
+        }
+
+        for(int i = 0; i < valid_block_ridges; i++) {
+            if(ridge_vote[BLOCK_SZ * threadIdx.x + i]) {
+                min_voter = i;
+                break;
+            }
+        }
+    }
+
+    out_cols[2 * idx] = blockDim.x * blockIdx.x + min_voter;
+    out_cols[2 * idx + 1] = blockDim.x * blockIdx.x + max_voter;
 }
 """
 
-_ridge_kernel = cupy.RawKernel(RIGDE_KERNEL, 'reduce_ridges')
+_ridge_module = cupy.RawModule(
+    code=RIGDE_MODULE, options=('-std=c++11',),
+    name_expressions=['reduce_peaks'])
 
 
 def _identify_ridge_lines(matr, max_distances, gap_thresh):
@@ -1672,20 +1774,20 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
     ridge_rows, ridge_cols = cupy.where(all_max_cols)
     out_cols = cupy.empty((ridge_cols.shape[0], 2), dtype=cupy.int64)
     peak_ridges = cupy.arange(ridge_rows.shape[0], dtype=cupy.int64)
-    ridge_gap = cupy.zeros_like(peak_ridges)
     max_distances = cupy.asarray(max_distances, dtype=cupy.float64)
     breakpoint()
 
-    block_sz = 32
+    block_sz = 5
     n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz
-    _ridge_kernel((n_blocks,), (block_sz,),
+    _reduce_peaks = _ridge_module.get_function('reduce_peaks')
+    _reduce_peaks((n_blocks,), (block_sz,),
                   (n_blocks, matr.shape[0], ridge_rows.shape[0], peak_ridges,
-                   ridge_rows.copy(), ridge_cols.copy(), ridge_gap,
+                   ridge_rows.copy(), ridge_cols.copy(),
                    max_distances, int(gap_thresh), out_cols))
     breakpoint()
 
     unique_ridges = cupy.unique(peak_ridges)
-    if n_blocks > 1:
+    while n_blocks > 1:
         pass
 
     unique_ridges = unique_ridges.reshape(-1, 1)
@@ -1704,71 +1806,6 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
         expanded_rows[ridge_mask], ridge_offsets)[:-1]
 
     return list(zip(all_ridge_rows, all_ridge_cols))
-    # start_row = has_relmax[-1]
-    # # Each ridge line is a 3-tuple:
-    # # rows, cols,Gap number
-    # ridge_lines = [[[start_row],
-    #                [col],
-    #                0] for col in cupy.nonzero(all_max_cols[start_row])[0]]
-    # final_lines = []
-
-    # rows = cupy.arange(start_row.item() - 1, -1, -1)
-    # cols = cupy.arange(0, matr.shape[1])
-
-    # for row in rows:
-    #     this_max_cols = cols[all_max_cols[row]]
-
-    #     # Increment gap number of each line,
-    #     # set it to zero later if appropriate
-    #     for line in ridge_lines:
-    #         line[2] += 1
-
-    #     # XXX These should always be all_max_cols[row]
-    #     # But the order might be different. Might be an efficiency gain
-    #     # to make sure the order is the same and avoid this iteration
-    #     prev_ridge_cols = cupy.array([line[1][-1] for line in ridge_lines])
-    #     # Look through every relative maximum found at current row
-    #     # Attempt to connect them with existing ridge lines.
-    #     for ind, col in enumerate(this_max_cols):
-    #         # If there is a previous ridge line within
-    #         # the max_distance to connect to, do so.
-    #         # Otherwise start a new one.
-    #         line = None
-    #         if len(prev_ridge_cols) > 0:
-    #             diffs = cupy.abs(col - prev_ridge_cols)
-    #             closest = cupy.argmin(diffs)
-    #             if diffs[closest] <= max_distances[row]:
-    #                 line = ridge_lines[closest]
-    #         if line is not None:
-    #             # Found a point close enough, extend current ridge line
-    #             line[1].append(col)
-    #             line[0].append(row)
-    #             line[2] = 0
-    #         else:
-    #             new_line = [[row],
-    #                         [col],
-    #                         0]
-    #             ridge_lines.append(new_line)
-
-    #     # Remove the ridge lines with gap_number too high
-    #     # XXX Modifying a list while iterating over it.
-    #     # Should be safe, since we iterate backwards, but
-    #     # still tacky.
-    #     for ind in range(len(ridge_lines) - 1, -1, -1):
-    #         line = ridge_lines[ind]
-    #         if line[2] > gap_thresh:
-    #             final_lines.append(line)
-    #             del ridge_lines[ind]
-
-    # out_lines = []
-    # for line in (final_lines + ridge_lines):
-    #     sortargs = cupy.array(cupy.argsort(line[0]))
-    #     rows, cols = cupy.zeros_like(sortargs), cupy.zeros_like(sortargs)
-    #     rows[sortargs] = line[0]
-    #     cols[sortargs] = line[1]
-    #     out_lines.append([rows, cols])
-
-    # return out_lines
 
 
 def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
