@@ -99,13 +99,10 @@ class DistributedArray(ndarray):
         super().__init__(*args, **kwargs)
 
     def __array_finalize__(self, obj):
-        # TODO set sensible defualts
-        if obj is None:
-            return
-        self._chunks_map = getattr(obj, '_chunks_map', None)
-        self._streams = getattr(obj, '_streams', None)
-        self._mode = getattr(obj, '_mode', None)
-        self._comms = getattr(obj, '_comms', None)
+        if obj is not None:
+            raise RuntimeError(
+                'Distributed array can only be instantiated by an explicit'
+                'constructor call')
 
     @property
     def mode(self) -> str:

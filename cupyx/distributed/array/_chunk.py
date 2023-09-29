@@ -209,7 +209,6 @@ def _all_reduce_intersections(
 ) -> None:
     chunks_list = list(chain.from_iterable(chunk_map.values()))
 
-    # TODO flatten this loop somehow
     for i in range(len(chunks_list)):
         src_chunk = chunks_list[i]
         src_chunk.flush(op_mode)
