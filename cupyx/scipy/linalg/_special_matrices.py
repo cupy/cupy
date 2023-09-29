@@ -1,4 +1,6 @@
 import math
+import warnings
+
 import cupy
 from cupy import _core
 from cupyx.scipy.linalg import _uarray
@@ -23,6 +25,8 @@ def tri(N, M=None, k=0, dtype=None):
 
     .. seealso:: :func:`scipy.linalg.tri`
     """
+    warnings.warn("'tri'/'tril/'triu' are deprecated", DeprecationWarning)
+
     if M is None:
         M = N
     elif isinstance(M, str):
@@ -50,6 +54,8 @@ def tril(m, k=0):
 
     .. seealso:: :func:`scipy.linalg.tril`
     """
+    warnings.warn("'tri'/'tril/'triu' are deprecated", DeprecationWarning)
+
     # this is ~2x faster than cupy.tril for a 500x500 float64 matrix
     t = tri(m.shape[0], m.shape[1], k=k, dtype=m.dtype.char)
     t *= m
@@ -73,6 +79,8 @@ def triu(m, k=0):
 
     .. seealso:: :func:`scipy.linalg.triu`
     """
+    warnings.warn("'tri'/'tril/'triu' are deprecated", DeprecationWarning)
+
     # this is ~25% faster than cupy.tril for a 500x500 float64 matrix
     t = tri(m.shape[0], m.shape[1], k - 1, m.dtype.char)
     cupy.subtract(1, t, out=t)
