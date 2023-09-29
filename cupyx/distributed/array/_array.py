@@ -8,6 +8,8 @@ from numpy.typing import DTypeLike
 import cupy
 from cupy._core.core import ndarray
 import cupy._creation.from_data as _creation_from_data
+import cupy._core._routines_math as _math
+import cupy._core._routines_statistics as _statistics
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Stream
 from cupy.cuda.stream import get_current_stream
@@ -175,8 +177,6 @@ class DistributedArray(ndarray):
         else:
             return NotImplemented
 
-    # ------ Mode conversions ------
-
     def _copy_chunks_map_in_replica_mode(self) -> dict[int, list[_Chunk]]:
         # Return a copy of self.chunks_map in the replica mode
         chunks_map = {}
@@ -320,8 +320,15 @@ class DistributedArray(ndarray):
         return DistributedArray(
             self.shape, self.dtype, new_chunks_map, self._mode, self._comms)
 
-    def asnumpy(self) -> numpy.ndarray:
+    def get(self, stream=None, order='C', out=None) -> numpy.ndarray:
         """Return a copy of the array on the host memory."""
+        if stream is not None:
+            raise RuntimeError('Argument `stream` not supported')
+        if order != 'C':
+            raise RuntimeError('Argument `order` not supported')
+        if out is not None:
+            raise RuntimeError('Argument `out` not supported')
+
         for chunk in chain.from_iterable(self._chunks_map.values()):
             chunk.apply_updates(self._mode)
 
@@ -345,6 +352,415 @@ class DistributedArray(ndarray):
 
         # Undo numpy.atleast_1d
         return np_array.reshape(self.shape)
+
+    # -----------------------------------------------------
+    # Overriding unsupported methods inherited from ndarray
+    # -----------------------------------------------------
+
+    def __getitem__(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support __getitem__.')
+
+    def __setitem__(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support __setitem__.')
+
+    def __len__(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support __len__.')
+
+    def __iter__(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support __iter__.')
+
+    def __copy__(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support __copy__.')
+
+    def all(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support all.')
+
+    def any(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support any.')
+
+    def argmax(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support argmax.')
+
+    def argmin(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support argmin.')
+
+    def argpartition(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support argpartition.')
+
+    def argsort(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support argsort.')
+
+    def astype(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support astype.')
+
+    def choose(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support choose.')
+
+    def clip(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support clip.')
+
+    def compress(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support compress.')
+
+    def copy(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support copy.')
+
+    def cumprod(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support cumprod.')
+
+    def cumsum(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support cumsum.')
+
+    def diagonal(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support diagonal.')
+
+    def dot(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support dot.')
+
+    def dump(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support dump.')
+
+    def dumps(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support dumps.')
+
+    def fill(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support fill.')
+
+    def flatten(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support flatten.')
+
+    def item(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support item.')
+
+    def max(self, axis=None, out=None, keepdims=False):
+        """Return the maximum along a given axis.
+
+        .. note::
+
+            Currently, it only supports non-``None`` values for ``axis`` and
+            the default values for ``out`` and ``keepdims``.
+
+        .. seealso::
+           :meth:`cupy.ndarray.max`, :meth:`numpy.ndarray.max`
+        """
+        return self.__cupy_override_reduction_kernel__(
+            _statistics.amax, axis, None, out, keepdims)
+
+    def mean(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support mean.')
+
+    def min(self, axis=None, out=None, keepdims=False):
+        """Return the minimum along a given axis.
+
+        .. note::
+
+            Currently, it only supports non-``None`` values for ``axis`` and
+            the default values for ``out`` and ``keepdims``.
+
+        .. seealso::
+           :meth:`cupy.ndarray.min`, :meth:`numpy.ndarray.min`
+        """
+        return self.__cupy_override_reduction_kernel__(
+            _statistics.amin, axis, None, out, keepdims)
+
+    def nonzero(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support nonzero.')
+
+    def partition(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support partition.')
+
+    def prod(self, axis=None, dtype=None, out=None, keepdims=None):
+        """Return the minimum along a given axis.
+
+        .. note::
+
+            Currently, it only supports non-``None`` values for ``axis`` and
+            the default values for ``out`` and ``keepdims``.
+
+        .. seealso::
+           :meth:`cupy.ndarray.prod`, :meth:`numpy.ndarray.prod`
+        """
+        if dtype is None:
+            return self.__cupy_override_reduction_kernel__(
+                _math.prod_auto_dtype, axis, dtype, out, keepdims)
+        else:
+            return self.__cupy_override_reduction_kernel__(
+                _math.prod_keep_dtype, axis, dtype, out, keepdims)
+
+    def ptp(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support ptp.')
+
+    def put(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support put.')
+
+    def ravel(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support ravel.')
+
+    def reduced_view(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support reduced_view.')
+
+    def repeat(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support repeat.')
+
+    def reshape(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support reshape.')
+
+    def round(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support round.')
+
+    def scatter_add(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support scatter_add.')
+
+    def scatter_max(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support scatter_max.')
+
+    def scatter_min(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support scatter_min.')
+
+    def searchsorted(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support searchsorted.')
+
+    def set(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support set.')
+
+    def sort(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support sort.')
+
+    def squeeze(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support squeeze.')
+
+    def std(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support std.')
+
+    def sum(self, axis=None, dtype=None, out=None, keepdims=False):
+        """Return the minimum along a given axis.
+
+        .. note::
+
+            Currently, it only supports non-``None`` values for ``axis`` and
+            the default values for ``out`` and ``keepdims``.
+
+        .. seealso::
+           :meth:`cupy.ndarray.sum`, :meth:`numpy.ndarray.sum`
+        """
+        if dtype is None:
+            return self.__cupy_override_reduction_kernel__(
+                _math.sum_auto_dtype, axis, dtype, out, keepdims)
+        else:
+            return self.__cupy_override_reduction_kernel__(
+                _math.sum_keep_dtype, axis, dtype, out, keepdims)
+
+    def swapaxes(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support swapaxes.')
+
+    def take(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support take.')
+
+    def toDlpack(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support toDlpack.')
+
+    def tobytes(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support tobytes.')
+
+    def tofile(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support tofile.')
+
+    def tolist(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support tolist.')
+
+    def trace(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support trace.')
+
+    def transpose(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support transpose.')
+
+    def var(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support var.')
+
+    def view(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support view.')
+
+    @property
+    def T(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support T.')
+
+    @property
+    def base(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support base.')
+
+    @property
+    def cstruct(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support cstruct.')
+
+    @property
+    def data(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support data.')
+
+    @property
+    def device(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support device.')
+
+    @property
+    def flags(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support flags.')
+
+    @property
+    def flat(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support flat.')
+
+    @property
+    def imag(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support imag.')
+
+    @property
+    def real(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support real.')
+
+    @property
+    def shape(self):
+        """Tuple of array dimensions.
+
+        Assignment to this property is currently not supported.
+
+        .. seealso: :attr:`cupy.ndarray.shape`, :attr:`numpy.ndarray.shape`
+
+        """
+        return super().shape
+
+    @shape.setter
+    def shape(self, newshape):
+        raise NotImplementedError(
+            'DistributedArray currently does not support assignment to shape.')
+
+    @property
+    def strides(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support strides.')
 
 
 def distributed_array(
