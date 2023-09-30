@@ -98,6 +98,8 @@ from cupyx.scipy.signal._iir_filter_design import iircomb  # NOQA
 from cupyx.scipy.signal._iir_filter_design import iirnotch  # NOQA
 from cupyx.scipy.signal._iir_filter_design import iirpeak  # NOQA
 
+from cupyx.scipy.signal._fir_filter_design import firwin  # NOQA
+from cupyx.scipy.signal._fir_filter_design import firwin2  # NOQA
 from cupyx.scipy.signal._fir_filter_design import firls  # NOQA
 from cupyx.scipy.signal._fir_filter_design import minimum_phase  # NOQA
 
@@ -116,6 +118,12 @@ from cupyx.scipy.signal._waveforms import square  # NOQA
 from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA
+
+from cupyx.scipy.signal._wavelets import morlet  # NOQA
+from cupyx.scipy.signal._wavelets import qmf  # NOQA
+from cupyx.scipy.signal._wavelets import ricker  # NOQA
+from cupyx.scipy.signal._wavelets import morlet2  # NOQA
+from cupyx.scipy.signal._wavelets import cwt  # NOQA
 
 from cupyx.scipy.signal._lti_conversion import abcd_normalize   # NOQA
 

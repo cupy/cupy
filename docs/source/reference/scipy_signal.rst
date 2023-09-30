@@ -78,6 +78,8 @@ Filter design
    freqz
    freqz_zpk
    sosfreqz
+   firwin
+   firwin2
    firls
    minimum_phase
    savgol_coeffs
@@ -198,6 +200,18 @@ to obtain these windows by name:
 
    get_window
 
+
+Wavelets
+--------
+
+.. autosummary::
+   :toctree: generated/
+
+   morlet
+   qmf
+   ricker
+   morlet2
+   cwt
 
 
 Peak finding
