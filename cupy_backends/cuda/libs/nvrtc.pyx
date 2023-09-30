@@ -211,6 +211,35 @@ cpdef bytes getNVVM(intptr_t prog):
     return nvvm_ptr[:nvvmSizeRet-1]
 
 
+cpdef bytes getLTOIR(intptr_t prog):
+    initialize()
+    if runtime._is_hip_environment:
+        raise RuntimeError("HIP does not support getLTOIR")
+    if runtime.runtimeGetVersion() < 12000:
+        raise RuntimeError("getLTOIR is supported since CUDA 12.0")
+
+    cdef size_t ltoirSizeRet = 0
+    cdef vector.vector[char] ltoir
+    cdef char* ltoir_ptr = NULL
+
+    with nogil:
+        status = nvrtcGetLTOIRSize(<Program>prog, &ltoirSizeRet)
+    check_status(status)
+
+    if ltoirSizeRet == 0:
+        raise RuntimeError(
+            "no LTOIR is available, perhaps you forget passing \"-dlto\"?")
+
+    ltoir.resize(ltoirSizeRet)
+    ltoir_ptr = ltoir.data()
+    with nogil:
+        status = nvrtcGetLTOIR(<Program>prog, ltoir_ptr)
+    check_status(status)
+
+    # Strip the trailing NULL.
+    return ltoir_ptr[:ltoirSizeRet-1]
+
+
 cpdef unicode getProgramLog(intptr_t prog):
     initialize()
     cdef size_t logSizeRet

@@ -649,7 +649,7 @@ class CompileException(Exception):
         f.flush()
 
 
-class _NVRTCProgram(object):
+class _NVRTCProgram:
 
     def __init__(self, src, name='default_program', headers=(),
                  include_names=(), name_expressions=None, method='ptx'):
@@ -690,8 +690,8 @@ class _NVRTCProgram(object):
                 return nvrtc.getCUBIN(self.ptr), mapping
             elif self.method == 'ptx':
                 return nvrtc.getPTX(self.ptr), mapping
-            # TODO(leofang): support JIT LTO using nvrtc.getNVVM()?
-            # need -dlto and -arch=compute_XX
+            elif self.method == 'lto':
+                return nvrtc.getLTOIR(self.ptr), mapping
             else:
                 raise RuntimeError('Unknown NVRTC compile method')
         except nvrtc.NVRTCError:
