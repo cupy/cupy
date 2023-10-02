@@ -966,7 +966,7 @@ class TestCheckNOLACOLA:
         return result
 
 
-@testing.with_requires('scipy>1.8.0')
+@testing.with_requires('scipy>=1.9.0')
 class TestSTFT:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_average_all_segments(self, xp, scp):
