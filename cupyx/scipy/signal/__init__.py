@@ -67,6 +67,7 @@ from cupyx.scipy.signal._iir_filter_conversions import lp2bs_zpk  # NOQA
 
 from cupyx.scipy.signal._iir_filter_conversions import zpk2tf  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import zpk2sos  # NOQA
+from cupyx.scipy.signal._iir_filter_conversions import zpk2ss   # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2zpk  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2sos  # NOQA
 from cupyx.scipy.signal._iir_filter_conversions import tf2ss  # NOQA
