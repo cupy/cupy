@@ -401,10 +401,10 @@ class TestArrayComparison(unittest.TestCase):
 @testing.parameterize(
     {'func': '__str__', 'shape': (5, 6)},
     {'func': '__repr__', 'shape': (3, 4)},
-    {'func': '__int__', 'shape': (1,)},
-    {'func': '__float__', 'shape': (1, 1)},
+    {'func': '__int__', 'shape': ()},
+    {'func': '__float__', 'shape': ()},
     {'func': '__len__', 'shape': (3, 3)},
-    {'func': '__bool__', 'shape': (1,)},
+    {'func': '__bool__', 'shape': ()},
 )
 class TestArrayUnaryMethods(unittest.TestCase):
 

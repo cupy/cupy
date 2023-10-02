@@ -248,6 +248,9 @@ def symiirorder1(input, c0, z1, precision=-1.0):
     output : ndarray
         The filtered signal.
     """
+    c0 = cupy.asarray([c0], input.dtype)
+    z1 = cupy.asarray([z1], input.dtype)
+
     if cupy.abs(z1) >= 1:
         raise ValueError('|z1| must be less than 1.0')
 
