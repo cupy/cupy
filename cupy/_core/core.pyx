@@ -124,6 +124,7 @@ class ndarray(_ndarray_base):
     """
 
     __module__ = 'cupy'
+    __slots__ = []
 
     def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
         x = super().__new__(cls, *args, **kwargs)
