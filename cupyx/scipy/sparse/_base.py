@@ -35,19 +35,19 @@ class spmatrix(object):
 
     def __repr__(self):
         format_strings = {
-            "coo_matrix": "COOrdinate format",
-            "csr_matrix": "Compressed Sparse Row format",
-            "csc_matrix": "Compressed Sparse Column format",
-            "dia_matrix": "DIAgonal format",
+            "coo": "COOrdinate format",
+            "csr": "Compressed Sparse Row format",
+            "csc": "Compressed Sparse Column format",
+            "dia": "DIAgonal format",
         }
-        matrix_type = str(self.__class__.__name__)
+        matrix_type = str(self.format)
         stored_elements = self.getnnz() if hasattr(self, "getnnz") \
             else self.nnz
         return (
-            f"<{self._shape[0]}x{self._shape[1]} sparse matrix of type"
-            f"'{self.dtype}'\n"
-            f"on device {self.device} with {stored_elements} stored"
-            f" elements in {format_strings[matrix_type]}>"
+            f"<{self._shape[0]}x{self._shape[1]} sparse matrix " \
+            f"of type '{self.dtype}'\n " \
+            f"on device {cupy.cuda.get_device_id()} with {stored_elements} "
+            f"stored elements in {format_strings[matrix_type]}>"
         )
 
     @property
