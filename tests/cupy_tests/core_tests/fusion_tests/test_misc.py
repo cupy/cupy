@@ -2,6 +2,8 @@ import threading
 import unittest
 from unittest import mock
 
+import pytest
+
 import cupy
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
@@ -420,3 +422,17 @@ class TestFusionMultiDevice(unittest.TestCase):
             out2 = f(x2, y2)
 
         return out1, out2
+
+
+class TestFusionInvalid():
+
+    def test_branch(self):
+        @cupy.fuse()
+        def f(x):
+            if x > 0:
+                return x
+            return -x
+
+        x = testing.shaped_random((3, 3), cupy, cupy.int64, seed=0)
+        with pytest.raises(TypeError, match="Python scalar"):
+            f(x)

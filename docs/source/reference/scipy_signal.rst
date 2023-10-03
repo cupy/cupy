@@ -62,6 +62,7 @@ Filtering
    detrend
    hilbert
    hilbert2
+   upfirdn
 
 
 Filter design
@@ -78,6 +79,8 @@ Filter design
    freqz
    freqz_zpk
    sosfreqz
+   firwin
+   firwin2
    firls
    minimum_phase
    savgol_coeffs
@@ -199,6 +202,18 @@ to obtain these windows by name:
    get_window
 
 
+Wavelets
+--------
+
+.. autosummary::
+   :toctree: generated/
+
+   morlet
+   qmf
+   ricker
+   morlet2
+   cwt
+
 
 Peak finding
 ------------
@@ -224,8 +239,11 @@ Spectral analysis
    welch
    csd
    lombscargle
+   stft
+   istft
    check_COLA
    check_NOLA
+
 
 
 Chirp Z-transform and Zoom FFT
