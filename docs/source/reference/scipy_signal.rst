@@ -62,6 +62,7 @@ Filtering
    detrend
    hilbert
    hilbert2
+   upfirdn
 
 
 Filter design
