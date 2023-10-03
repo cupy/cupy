@@ -1801,9 +1801,11 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
                    max_distances, int(gap_thresh), out_cols))
 
     unique_ridges = cupy.unique(peak_ridges)
+    prev_ridges = -1
+    n_ridges = len(unique_ridges)
     split_ridges = n_blocks > 1
 
-    while n_blocks > 1:
+    while n_blocks > 1 and prev_ridges != n_ridges:
         _merge_ridges = _ridge_module.get_function('merge_ridges')
         n_blocks = (unique_ridges.shape[0] + block_sz - 1) // block_sz
         _merge_ridges((n_blocks,), (block_sz,),
@@ -1811,6 +1813,8 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
                       unique_ridges, ridge_rows, ridge_cols,
                       max_distances, int(gap_thresh), out_cols))
         unique_ridges = cupy.unique(unique_ridges)
+        prev_ridges = n_ridges
+        n_ridges = len(unique_ridges)
 
     if split_ridges:
         _update_ridges = _ridge_module.get_function('update_ridges')
@@ -1821,19 +1825,51 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
     unique_ridges = unique_ridges.reshape(-1, 1)
     ridge_mask = peak_ridges == unique_ridges
     ridge_count = ridge_mask.sum(-1)
-    ridge_offsets = cupy.cumsum(ridge_count).tolist()
+    ridge_offsets = cupy.cumsum(ridge_count)
 
     expanded_cols = cupy.broadcast_to(
         ridge_cols, (unique_ridges.shape[0], ridge_cols.shape[0]))
     expanded_rows = cupy.broadcast_to(
         ridge_rows, (unique_ridges.shape[0], ridge_rows.shape[0]))
 
-    all_ridge_cols = cupy.array_split(
-        expanded_cols[ridge_mask], ridge_offsets)[:-1]
-    all_ridge_rows = cupy.array_split(
-        expanded_rows[ridge_mask], ridge_offsets)[:-1]
+    return (expanded_rows[ridge_mask],
+            expanded_cols[ridge_mask],
+            ridge_count, ridge_offsets)
 
-    return list(zip(all_ridge_rows, all_ridge_cols))
+
+_filter_ridge_kernel = cupy.RawKernel(r"""
+extern "C" __global__ void filter_ridges(
+        const int n_ridges, long long* ridge_rows, long long* ridge_cols,
+        long long* ridge_length, long long* ridge_offsets,
+        const double* __restrict__ noises,
+        const double* __restrict__ cwt, const long long cwt_stride,
+        const double min_snr, const long long min_length) {
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx >= n_ridges) {
+        return;
+    }
+
+    long long ridge_len = ridge_length[idx];
+    long long offset = ridge_offsets[idx];
+    long long ridge_row = ridge_rows[offset + ridge_len - 1];
+    long long ridge_col = ridge_cols[offset + ridge_len - 1];
+
+    if(ridge_len < min_length) {
+        ridge_offsets[idx + 1] = -1;
+        return;
+    }
+
+    double signal = cwt[ridge_row * cwt_stride + ridge_col];
+    double noise = noises[ridge_row];
+    double snr = abs(signal / noise);
+
+    if(snr < min_snr) {
+        ridge_offsets[idx + 1] = -1;
+        return;
+    }
+}
+""", 'filter_ridges')
 
 
 def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
@@ -1883,21 +1919,28 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     # Filter based on SNR
     row_one = cwt[0, :]
     noises = cupy.empty_like(row_one)
-    for ind, val in enumerate(row_one):
+    for ind in range(row_one.shape[0]):
         window_start = max(ind - hf_window, 0)
         window_end = min(ind + hf_window + odd, num_points)
         noises[ind] = scoreatpercentile(row_one[window_start:window_end],
                                         per=noise_perc)
 
-    def filt_func(line):
-        if len(line[0]) < min_length:
-            return False
-        snr = abs(cwt[line[0][0], line[1][0]] / noises[line[1][0]])
-        if snr < min_snr:
-            return False
-        return True
+    ridge_rows, ridge_cols, ridge_len, ridge_offset = ridge_lines
+    ridge_offset = cupy.r_[0, ridge_offset]
 
-    return list(filter(filt_func, ridge_lines))
+    block_sz = 128
+    n_blocks = (ridge_len.shape[0] + block_sz - 1) // block_sz
+    _filter_ridge_kernel((n_blocks,), (block_sz,),
+                         (ridge_len.shape[0], ridge_rows, ridge_cols,
+                          ridge_len, ridge_offset, noises, cwt, cwt.shape[1],
+                          min_snr, int(min_length)))
+
+    ridge_offset = ridge_offset[1:]
+    valid_offsets = ridge_offset > 0
+    ridge_offset = ridge_offset[valid_offsets]
+    ridge_len = ridge_len[valid_offsets]
+
+    return ridge_cols[ridge_offset - ridge_len]
 
 
 def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
@@ -2005,10 +2048,10 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
 
     cwt_dat = cwt(vector, wavelet, widths)
     ridge_lines = _identify_ridge_lines(cwt_dat, max_distances, gap_thresh)
-    filtered = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,
+    max_locs = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,
                                    window_size=window_size, min_snr=min_snr,
                                    noise_perc=noise_perc)
-    max_locs = cupy.asarray([x[1][0] for x in filtered])
+    # max_locs = cupy.asarray([x[1][0] for x in filtered])
     max_locs.sort()
 
     return max_locs
