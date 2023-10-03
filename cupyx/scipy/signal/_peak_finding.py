@@ -2051,7 +2051,6 @@ def find_peaks_cwt(vector, widths, wavelet=None, max_distances=None,
     max_locs = _filter_ridge_lines(cwt_dat, ridge_lines, min_length=min_length,
                                    window_size=window_size, min_snr=min_snr,
                                    noise_perc=noise_perc)
-    # max_locs = cupy.asarray([x[1][0] for x in filtered])
     max_locs.sort()
 
     return max_locs
