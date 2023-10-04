@@ -14,7 +14,6 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
-import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
 from cupy.cuda import driver
@@ -32,8 +31,12 @@ cdef function.Function _create_cub_reduction_function(
     if runtime._is_hip_environment:
         options += ('--std=c++14',)
     else:
-        # static_assert needs at least C++11 in NVRTC
-        options += ('--std=c++11',)
+        # 1. static_assert needs at least C++11 in NVRTC
+        # 2. starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
+        #    license issue we can't yet bundle bf16 headers. CUB offers us a
+        #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
+        #    nvbugs 3641496).
+        options += ('--std=c++11', '-DCUB_DISABLE_BF16_SUPPORT')
 
     cdef str backend
     if runtime._is_hip_environment:
@@ -41,16 +44,6 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-    elif sys.platform.startswith('win32'):
-        # See #4771. NVRTC on Windows seems to have problems in handling empty
-        # macros, so any usage like this:
-        #     #ifndef CUB_NS_PREFIX
-        #     #define CUB_NS_PREFIX
-        #     #endif
-        # will drive NVRTC nuts (error: this declaration has no storage class
-        # or type specifier). However, we cannot find a minimum reproducer to
-        # confirm this is the root cause, so we work around by using nvcc.
-        backend = 'nvcc'
     else:
         # use jitify + nvrtc
         # TODO(leofang): how about simply specifying jitify=True when calling
@@ -266,11 +259,6 @@ cdef str _get_cub_header_include():
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cuda_workaround.h>
-#include <cupy/cub/cub/block/block_reduce.cuh>
-#include <cupy/cub/cub/block/block_load.cuh>
-'''
-    elif _cub_path == '<CUDA>':
-        _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''

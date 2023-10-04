@@ -1,3 +1,4 @@
+#include "cupy_thrust.h"
 #include <cupy/type_dispatcher.cuh>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
@@ -21,7 +22,6 @@
 #endif
 
 #endif
-#include "cupy_thrust.h"
 
 
 #if CUPY_USE_HIP

@@ -153,6 +153,8 @@ typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> se
 /*
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
    behaviors with which we must comply.
+
+   CUDA/HIP have different signatures for Max/Min because of the recent changes in CCCL (for the former).
 */
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -184,6 +186,8 @@ __host__ __device__ __forceinline__ bool half_equal(const __half& l, const __hal
 #endif
 }
 #endif
+
+#ifdef CUPY_USE_HIP
 
 //
 // Max()
@@ -306,6 +310,8 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     else { return half_less(a, b) ? a : b; }
 }
 #endif
+
+#endif  // ifdef CUPY_USE_HIP
 
 //
 // ArgMax()
@@ -484,11 +490,7 @@ __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()
 }
 #endif
 
-#if __CUDACC_VER_MAJOR__ >= 12
-//
-// Specialization for cub operators Max() and Min() in CUDA 12.x. Why is this
-// necessary? Because the signatures have changed in CUDA 12.0.
-//
+#ifndef CUPY_USE_HIP
 
 //
 // Max()
@@ -600,7 +602,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(__half &a, __half &b)
 }
 #endif
 
-#endif // #if __CUDACC_VER_MAJOR__ == 12
+#endif  // #ifndef CUPY_USE_HIP
 
 /* ------------------------------------ End of "patches" ------------------------------------ */
 

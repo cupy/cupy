@@ -1,13 +1,33 @@
 #pragma once
 
 #ifdef __CUDACC_RTC__
-// cudaDeviceSynchronize() is no longer supported by nvrtc in device code on
-// H100 GPUs or any GPUs in CUDA 12.x. cudaDeviceSynchronize() is used in CUB
-// bundled with CuPy, resulting in comiplation error when GPU is H100 or later,
-// or CUDA version is 12 or later.
-#if __CUDA_ARCH__ >= 900
-cudaError_t cudaDeviceSynchronize() { return cudaSuccess; }
-#elif __CUDACC_VER_MAJOR__ >= 12
-cudaError_t cudaDeviceSynchronize() { return cudaSuccess; }
-#endif
+
+// for using CCCL
+#include <cuda/std/type_traits>
+#include <cuda/std/limits>
+namespace std {
+    // TODO(leofang): expose all APIs patched by Jitify for parity
+    using cuda::std::conditional;
+    using cuda::std::enable_if;
+    using cuda::std::false_type;
+    using cuda::std::is_array;
+    using cuda::std::is_floating_point;
+    using cuda::std::is_function;
+    using cuda::std::is_integral;
+    using cuda::std::is_same;
+    using cuda::std::is_signed;
+    using cuda::std::is_pointer;
+    using cuda::std::is_unsigned;
+    using cuda::std::is_volatile;
+    using cuda::std::make_signed;
+    using cuda::std::make_unsigned;
+    using cuda::std::remove_cv;
+    using cuda::std::remove_reference;
+    using cuda::std::remove_pointer;
+    using cuda::std::result_of;
+    using cuda::std::true_type;
+
+    using cuda::std::numeric_limits;
+}
+
 #endif

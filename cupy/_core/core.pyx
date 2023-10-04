@@ -2144,6 +2144,13 @@ cpdef str _get_header_dir_path():
     return _header_path_cache
 
 
+cpdef tuple _get_cccl_include_options():
+    # the search paths are made such that they resemble the layout in CTK
+    return (f"-I{_get_header_dir_path()}/cupy/cccl/cub",
+            f"-I{_get_header_dir_path()}/cupy/cccl/thrust",
+            f"-I{_get_header_dir_path()}/cupy/cccl/libcudacxx/include")
+
+
 cpdef str _get_header_source():
     global _header_source
     global _header_source_map
@@ -2198,8 +2205,22 @@ cpdef function.Module compile_with_cache(
 
     if prepend_cupy_headers:
         source = _cupy_header + source
+    if jitify:
+        source = '#include <cupy/cuda_workaround.h>\n' + source
     extra_source = _get_header_source()
-    options += ('-I%s' % _get_header_dir_path(),)
+
+    for op in options:
+        if '-std=c++' in op:
+            if op.endswith('03'):
+                warnings.warn('CCCL requires c++11 or above')
+            break
+    else:
+        options += ('--std=c++11',)
+
+    # make sure bundled CCCL is searched first
+    options = (_get_cccl_include_options()
+               + options
+               + ('-I%s' % _get_header_dir_path(),))
 
     # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
     # but it might not have been set appropriately before coming here.
