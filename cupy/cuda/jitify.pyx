@@ -39,7 +39,7 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 # CI. This should never be touched by end users.
 cdef extern from *:
     """
-    const int build_num = 0;
+    const int build_num = 1;
     """
     const int build_num
 
