@@ -59,9 +59,12 @@ Filtering
    sosfilt
    sosfilt_zi
    sosfiltfilt
-   detrend
    hilbert
    hilbert2
+   decimate
+   detrend
+   resample
+   resample_poly
    upfirdn
 
 
