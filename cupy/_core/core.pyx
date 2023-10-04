@@ -124,6 +124,7 @@ class ndarray(_ndarray_base):
     """
 
     __module__ = 'cupy'
+    __slots__ = []
 
     def __new__(cls, *args, _obj=None, _no_init=False, **kwargs):
         x = super().__new__(cls, *args, **kwargs)
@@ -2205,7 +2206,7 @@ cpdef function.Module compile_with_cache(
     extra_source = _get_header_source()
 
     for op in options:
-        if '-std' in op:
+        if '-std=c++' in op:
             if op.endswith('03'):
                 warnings.warn('CCCL requires c++11 or above')
             break
