@@ -246,8 +246,12 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             return multiply_by_scalar(self, d)
         elif _util.isdense(other):
             other = cupy.atleast_2d(other)
+            other = cupy.broadcast_to(other, self.shape)
             check_shape_for_pointwise_op(self.shape, other.shape)
-            return self.todense() / other
+            ret = self.tocoo()
+            ret.data = _cupy_divide_by_dense()(
+                ret.data, ret.row, ret.col, ret.shape[1], other)
+            return ret
         elif _base.isspmatrix(other):
             # Note: If broadcasting is needed, an exception is raised here for
             # compatibility with SciPy, as SciPy does not support broadcasting
@@ -718,6 +722,18 @@ def cupy_multiply_by_dense():
         ''',
         'cupyx_scipy_sparse_csr_multiply_by_dense',
         preamble=_GET_ROW_ID_
+    )
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_divide_by_dense():
+    return cupy.ElementwiseKernel(
+        'T data, I row, I col, I width, raw T other',
+        'T res',
+        '''
+        res = data / other[row * width + col]
+        ''',
+        'cupyx_scipy_sparse_coo_divide_dense',
     )
 
 
