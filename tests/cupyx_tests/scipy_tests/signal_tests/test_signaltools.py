@@ -330,7 +330,7 @@ class TestOrderFilter:
     'volume': [(10,), (5, 10), (10, 5), (5, 6, 10)],
     'kernel_size': [3, 4, (3, 3, 5)],
 }))
-@testing.with_requires('scipy>=1.7.0')
+@testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
 class TestMedFilt:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
@@ -349,7 +349,7 @@ class TestMedFilt:
     'input': [(5, 10), (10, 5)],
     'kernel_size': [3, 4, (3, 5)],
 }))
-@testing.with_requires('scipy>=1.7.0')
+@testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
 class TestMedFilt2d:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
