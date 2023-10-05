@@ -34,9 +34,10 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
     const char* jitify_ver  # set at build time
 
 
-# We need an internal way to invalidate the cache (say, cuda_workaround.h is
-# updated) without having to set the env var CUPY_DISABLE_JITIFY_CACHE in the
-# CI. This should never be touched by end users.
+# We need an internal way to invalidate the cache (say, when cuda_workaround.h
+# or the CCCL bundle is updated) without having to set the environment variable
+# CUPY_DISABLE_JITIFY_CACHE in the CI. This should never be touched by end
+# users.
 cdef extern from *:
     """
     const int build_num = 1;
