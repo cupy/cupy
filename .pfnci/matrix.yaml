@@ -257,7 +257,7 @@
   cudnn: "8.8"
   python: "3.11"
   numpy: "1.25"
-  scipy: "1.10"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
@@ -288,7 +288,7 @@
   cudnn: "8.8"
   python: "3.11"
   numpy: "1.26"
-  scipy: "1.10"
+  scipy: "1.11"
   optuna: "3"
   mpi4py: null
   cython: "0.29"
