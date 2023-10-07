@@ -228,5 +228,5 @@ class TestSetItemCompatBroadcast:
     def test_remain0d(self, xp):
         dtype = int
         a = xp.zeros((2, 3, 4), dtype)
-        a[0, 1, 2] = testing.shaped_arange((1, 1, 1), xp, dtype)
+        a[0, 1, 2] = testing.shaped_arange((), xp, dtype)
         return a

@@ -1483,7 +1483,7 @@ class TestNdPPoly:
 
         u = testing.shaped_random((200,), xp)
         v = testing.shaped_random((200,), xp)
-        a, b = xp.asarray([0.2]), xp.asarray([0.7])
+        a, b = 0.2, 0.7
 
         result = []
 
