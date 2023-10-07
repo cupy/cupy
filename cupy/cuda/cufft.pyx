@@ -3,14 +3,61 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
 from libcpp cimport vector
 
-import numpy
+from cupy_backends.cuda._softlink cimport SoftLink
+
+import sys as _sys
 import threading
+
+import numpy
 
 import cupy
 from cupy.cuda import device
 from cupy.cuda import memory
 from cupy.cuda import runtime
 from cupy.cuda import stream
+
+
+ctypedef Result (*F_cufftXtSetJITCallback)(
+    Handle plan, const void* callback, size_t callback_size, int callback_type,
+    void **caller_info) nogil
+cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
+
+
+################ SoftLink utilities ################
+
+cdef SoftLink _L = None
+
+cdef inline void initialize() except *:
+    global _L
+    if _L is not None:
+        return
+    _initialize()
+
+cdef inline void _initialize() except *:
+    global _L
+    _L = _get_softlink()
+
+    global cufftXtSetJITCallback
+    cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get('XtSetJITCallback')
+
+cdef SoftLink _get_softlink():
+    cdef int runtime_version
+    cdef str prefix = 'cufft'
+    cdef str libname = None
+
+    if CUPY_CUDA_VERSION != 0:
+        runtime_version = runtime.runtimeGetVersion()
+        if 12020 <= runtime_version < 13000:
+            # CUDA 12.2+
+            if _sys.platform == 'linux':
+                libname = 'libcufft.so.11'
+
+    if libname is None:
+        raise NotImplementedError
+
+    return SoftLink(libname, prefix, mandatory=True)
+
+####################################################
 
 
 cdef object _thread_local = threading.local()
@@ -127,8 +174,6 @@ cdef extern from 'cupy_cufft.h' nogil:
 IF CUPY_CUFFT_STATIC:
     # cuFFT callback
     cdef extern from 'cupy_cufftXt.h' nogil:
-        ctypedef enum callbackType 'cufftXtCallbackType':
-            pass
         Result set_callback(Handle, callbackType, bint, void**)
 
 
@@ -1203,3 +1248,20 @@ cpdef intptr_t setCallback(
     ELSE:
         raise RuntimeError('cuFFT is dynamically linked and thus does not '
                            'support callback')
+
+
+cpdef void setJITCallback(
+        intptr_t plan, bytes callback, int callback_type,
+        intptr_t caller_info) except*:
+    initialize()
+    cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef const char* callback_ptr = <char*>(callback)
+    cdef size_t callback_size = len(callback)
+    cdef callbackType cb_type = <callbackType>callback_type
+    cdef void* caller_info_ptr = <void*>(caller_info)
+
+    with nogil:
+        result = cufftXtSetJITCallback(
+            h, callback_ptr, callback_size, cb_type,
+            &caller_info_ptr)
+    check_result(result)
