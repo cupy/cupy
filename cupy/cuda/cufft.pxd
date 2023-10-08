@@ -49,6 +49,10 @@ cpdef enum:
 
 cpdef get_current_plan()
 cpdef int getVersion() except? -1
+cpdef void check_result(int result) except*
+cpdef void setJITCallback(
+        intptr_t plan, bytes callback, int callback_type,
+        intptr_t caller_info) except*
 
 
 cdef class Plan1d:

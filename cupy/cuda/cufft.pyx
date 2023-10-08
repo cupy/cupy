@@ -319,7 +319,7 @@ cdef _XtFree(intptr_t ptr):
 
 cdef class Plan1d:
     def __init__(self, int nx, int fft_type, int batch, *,
-                 devices=None, out=None):
+                 devices=None, out=None, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -328,11 +328,14 @@ cdef class Plan1d:
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>prealloc_plan
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.work_area = None
@@ -787,7 +790,8 @@ cdef class Plan1d:
 cdef class PlanNd:
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch, str order, int last_axis, last_size):
+                 int fft_type, int batch, str order, int last_axis, last_size,
+                 *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -814,11 +818,14 @@ cdef class PlanNd:
             onembed_arr = onembed
             onembed_ptr = onembed_arr.data()
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>prealloc_plan
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.gpus = None  # TODO(leofang): support multi-GPU PlanNd
@@ -959,7 +966,8 @@ cdef class XtPlanNd:
                  inembed, long long int istride, long long int idist, idtype,
                  onembed, long long int ostride, long long int odist, odtype,
                  long long int batch, edtype, *,
-                 str order, int last_axis, last_size):
+                 str order, int last_axis, last_size,
+                 intptr_t prealloc_plan=0):
         # Note: we don't pass in fft_type here because it's redundant and
         # does not cover exotic types like complex32 or bf16
 
@@ -988,11 +996,14 @@ cdef class XtPlanNd:
             onembed_arr = onembed
             onembed_ptr = onembed_arr.data()
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>(prealloc_plan)
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.gpus = None  # TODO(leofang): support multi-GPU plans
