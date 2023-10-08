@@ -18,8 +18,8 @@ from cupy.cuda import stream
 
 
 ctypedef Result (*F_cufftXtSetJITCallback)(
-    Handle plan, const void* callback, size_t callback_size, int callback_type,
-    void **caller_info) nogil
+    Handle plan, const void* callback, size_t callback_size,
+    callbackType callback_type, void **caller_info) nogil
 cdef F_cufftXtSetJITCallback cufftXtSetJITCallback
 
 
@@ -1266,13 +1266,12 @@ cpdef void setJITCallback(
         intptr_t caller_info) except*:
     initialize()
     cdef Handle h = <Handle>plan  # no-cython-lint
-    cdef const char* callback_ptr = <char*>(callback)
+    cdef const void* callback_ptr = <const void*><char*>(callback)
     cdef size_t callback_size = len(callback)
-    cdef callbackType cb_type = <callbackType>callback_type
     cdef void* caller_info_ptr = <void*>(caller_info)
 
     with nogil:
         result = cufftXtSetJITCallback(
-            h, callback_ptr, callback_size, cb_type,
+            h, callback_ptr, callback_size, <callbackType>callback_type,
             &caller_info_ptr)
     check_result(result)

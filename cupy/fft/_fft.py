@@ -163,8 +163,12 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             if devices:
                 raise NotImplementedError('multi-GPU cuFFT callbacks are not '
                                           'yet supported')
-            plan = mgr.create_plan(('Plan1d', keys[:-5]))
-            mgr.set_callbacks(plan)
+            if mgr.identity == "legacy":
+                plan = mgr.create_plan(('Plan1d', keys[:-5]))
+                mgr.set_callbacks(plan)
+            else:  # identity = "jit"
+                plan = mgr.set_callbacks(fft_type)
+                plan = mgr.create_plan(plan, ('Plan1d', keys[:-5]))
             cache[keys] = plan
     else:
         # check plan validity
@@ -464,8 +468,12 @@ def _get_cufft_plan_nd(
         if to_cache:
             cache[keys] = plan
     else:  # has callback
-        plan = mgr.create_plan(('PlanNd', keys[:-4]))
-        mgr.set_callbacks(plan)
+        if mgr.identity == "legacy":
+            plan = mgr.create_plan(('PlanNd', keys[:-4]))
+            mgr.set_callbacks(plan)
+        else:  # identity = "jit"
+            plan = mgr.set_callbacks(fft_type)
+            plan = mgr.create_plan(plan, ('PlanNd', keys[:-4]))
         if to_cache:
             cache[keys] = plan
 

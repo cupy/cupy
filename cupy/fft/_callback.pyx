@@ -533,7 +533,9 @@ cdef class _JITCallbackManager(_CallbackManager):
                  cb_load=None,
                  cb_store=None,
                  MemoryPointer cb_load_data=None,
-                 MemoryPointer cb_store_data=None):
+                 MemoryPointer cb_store_data=None,
+                 tuple nvrtc_options=(),
+                 ):
         self._sanity_checks(cb_load, cb_store, cb_load_data, cb_store_data)
 
         self.identity = "jit"
@@ -544,13 +546,13 @@ cdef class _JITCallbackManager(_CallbackManager):
 
         if cb_load:
             if isinstance(cb_load, str):
-                self.cb_load_lto = self.compile_lto(cb_load)
+                self.cb_load_lto = self.compile_lto(cb_load, nvrtc_options)
             # TODO(leofang): support rawkernel
             else:
                 raise NotImplementedError
         if cb_store:
             if isinstance(cb_store, str):
-                self.cb_store_lto = self.compile_lto(cb_store)
+                self.cb_store_lto = self.compile_lto(cb_store, nvrtc_options)
             # TODO(leofang): support rawkernel
             else:
                 raise NotImplementedError
@@ -562,23 +564,23 @@ cdef class _JITCallbackManager(_CallbackManager):
             raise RuntimeError('cuFFT callbacks are only available on Linux')
         if not (sys.maxsize > 2**32):
             raise RuntimeError('cuFFT callbacks require 64 bit OS')
-        if not cb_load and not cb_store:
+        if cb_load is None and cb_store is None:
             raise ValueError('need to specify either cb_load or cb_store, '
                              'or both')
-        if cb_load and cb_store:
+        if cb_load is not None and cb_store is not None:
             if type(cb_load) != type(cb_store):
                 raise TypeError("when both cb_load and cb_store are given, "
                                 "they must be of the same type")
         if cb_load_data is not None:
-            if not cb_load:
+            if cb_load is None:
                 raise ValueError('load callback is not given')
         if cb_store_data is not None:
-            if not cb_store:
+            if cb_store is None:
                 raise ValueError('store callback is not given')
 
-    cdef bytes compile_lto(self, str source):
-        options = (
-            '-DCUPY_JIT_MODE', '--std=c++14', '-dlto',
+    cdef bytes compile_lto(self, str source, tuple options):
+        options += (
+            '-DCUPY_JIT_MODE', '--std=c++11', '-dlto',
             f'-arch=compute_{_get_arch()}')
         cu_path = 'jit_device'  # TODO: does this matter?
         jitify = False  # TODO
@@ -605,8 +607,9 @@ cdef class _JITCallbackManager(_CallbackManager):
         cdef str plan_type
         cdef tuple plan_args
 
+        from cupy.cuda import cufft
         plan_type, plan_args = plan_info
-        plan = getattr(self.mod, plan_type)(
+        plan = getattr(cufft, plan_type)(
             *plan_args, prealloc_plan=prealloc_plan)
         return plan
 
@@ -655,12 +658,12 @@ cdef class _JITCallbackManager(_CallbackManager):
             if cb_load_data is not None:
                 cb_load_ptr = cb_load_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_load_data, cb_load_type, cb_load_ptr)
+                plan, self.cb_load_lto, cb_load_type, cb_load_ptr)
         if self.cb_store:
             if cb_store_data is not None:
                 cb_store_ptr = cb_store_data.ptr
             cufft.setJITCallback(
-                plan, self.cb_store_data, cb_store_type, cb_store_ptr)
+                plan, self.cb_store_lto, cb_store_type, cb_store_ptr)
 
         return plan
 
@@ -688,6 +691,10 @@ cdef class set_cufft_callbacks:
     .. note::
         Callbacks only work for transforms over contiguous axes; the behavior
         for non-contiguous transforms is in general undefined.
+
+    Below is the documentation only applicable to the *jit* option.
+
+    TODO
 
     Below is the documentation only applicable to the *legacy* option.
 
@@ -757,7 +764,8 @@ cdef class set_cufft_callbacks:
                  _ndarray_base cb_store_aux_arr=None,
                  MemoryPointer cb_load_data=None,
                  MemoryPointer cb_store_data=None,
-                 str cb_ver='legacy'):
+                 str cb_ver='legacy',
+                 tuple nvrtc_options=()):
         if cb_ver not in ('legacy', 'jit'):
             raise ValueError('cb_ver must be "legacy" or "jit"')
         if cb_load_aux_arr is not None or cb_store_aux_arr is not None:
@@ -794,6 +802,7 @@ cdef class set_cufft_callbacks:
                     cb_store=cb_store,
                     cb_load_data=cb_load_data,
                     cb_store_data=cb_store_data,
+                    nvrtc_options=nvrtc_options,
                 )
         else:
             assert mgr.identity == cb_ver
