@@ -2,6 +2,10 @@
 
 #ifdef __CUDACC_RTC__
 
+/*
+ * Note: Every time this file is updated, build_num in jitify.pyx should be bumped.
+ */
+
 // for using CCCL with Jitify
 #include <cuda/std/type_traits>
 #include <cuda/std/limits>
