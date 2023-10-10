@@ -1226,18 +1226,21 @@ class TestCsrMatrixScipyComparison:
         y = m / xp.array(self._make_scalar(dtype))
         return y.toarray()
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_divide_dense_row(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(4, dtype=self.dtype)
         return m / x
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_divide_dense_col(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(3, dtype=self.dtype).reshape(3, 1)
         return m / x
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_divide_dense_matrix(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
