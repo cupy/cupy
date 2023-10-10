@@ -1,6 +1,7 @@
 from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs.nvrtc cimport ByteHolder
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport cufft  # this is the module without legacy callback
 from cupy.cuda.cufft cimport (
@@ -526,8 +527,8 @@ cdef class _JITCallbackManager(_CallbackManager):
     cdef:
         readonly object cb_load
         readonly object cb_store
-        readonly bytes cb_load_lto
-        readonly bytes cb_store_lto
+        readonly ByteHolder cb_load_lto
+        readonly ByteHolder cb_store_lto
 
     def __init__(self,
                  cb_load=None,
@@ -578,10 +579,10 @@ cdef class _JITCallbackManager(_CallbackManager):
             if cb_store is None:
                 raise ValueError('store callback is not given')
 
-    cdef bytes compile_lto(self, str source, tuple options):
+    cdef ByteHolder compile_lto(self, str source, tuple options):
         options += (
             '-DCUPY_JIT_MODE', '--std=c++11', '-dlto',
-            f'-arch=compute_{_get_arch()}')
+            f'-arch=compute_{_get_arch()}', '-default-device',)
         cu_path = 'jit_device'  # TODO: does this matter?
         jitify = False  # TODO
         if jitify:
@@ -589,13 +590,6 @@ cdef class _JITCallbackManager(_CallbackManager):
                 source, options, cu_path)
         else:
             headers = include_names = ()
-            major_version, minor_version = _get_nvrtc_version()
-            # TODO(leofang): this is from cupy/cuda/compiler.py, check if
-            # this statement is still valid now that we fix the CCCL issues
-            if major_version >= 12:
-                # Starting with CUDA 12.0, even without using jitify, some
-                # tests cause an error if the following option is not included.
-                options += ('--device-as-default-execution-space',)
         program = _NVRTCProgram(
             source, cu_path, headers, include_names, method='lto')
         # TODO(leofang): support log_stream

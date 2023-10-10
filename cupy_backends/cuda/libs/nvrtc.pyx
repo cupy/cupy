@@ -78,6 +78,12 @@ cpdef tuple getSupportedArchs():
     return tuple(archs)
 
 
+cdef class ByteHolder:
+
+    def __len__(self):
+        return self.data.size()
+
+
 ###############################################################################
 # Program
 ###############################################################################
@@ -211,7 +217,7 @@ cpdef bytes getNVVM(intptr_t prog):
     return nvvm_ptr[:nvvmSizeRet-1]
 
 
-cpdef bytes getLTOIR(intptr_t prog):
+cpdef ByteHolder getLTOIR(intptr_t prog):
     initialize()
     if runtime._is_hip_environment:
         raise RuntimeError("HIP does not support getLTOIR")
@@ -219,8 +225,7 @@ cpdef bytes getLTOIR(intptr_t prog):
         raise RuntimeError("getLTOIR is supported since CUDA 12.0")
 
     cdef size_t ltoirSizeRet = 0
-    cdef vector.vector[char] ltoir
-    cdef char* ltoir_ptr = NULL
+    cdef ByteHolder ltoir_holder = ByteHolder()
 
     with nogil:
         status = nvrtcGetLTOIRSize(<Program>prog, &ltoirSizeRet)
@@ -230,14 +235,12 @@ cpdef bytes getLTOIR(intptr_t prog):
         raise RuntimeError(
             "no LTOIR is available, perhaps you forget passing \"-dlto\"?")
 
-    ltoir.resize(ltoirSizeRet)
-    ltoir_ptr = ltoir.data()
+    ltoir_holder.data.resize(ltoirSizeRet)
     with nogil:
-        status = nvrtcGetLTOIR(<Program>prog, ltoir_ptr)
+        status = nvrtcGetLTOIR(<Program>prog, ltoir_holder.getData())
     check_status(status)
 
-    # Strip the trailing NULL.
-    return ltoir_ptr[:ltoirSizeRet-1]
+    return ltoir_holder
 
 
 cpdef unicode getProgramLog(intptr_t prog):

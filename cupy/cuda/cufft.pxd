@@ -4,6 +4,8 @@
 
 from libc.stdint cimport intptr_t
 
+from cupy_backends.cuda.libs.nvrtc cimport ByteHolder
+
 
 cdef extern from *:
     ctypedef float Float 'cufftReal'
@@ -51,7 +53,7 @@ cpdef get_current_plan()
 cpdef int getVersion() except? -1
 cpdef void check_result(int result) except*
 cpdef void setJITCallback(
-        intptr_t plan, bytes callback, int callback_type,
+        intptr_t plan, ByteHolder callback, int callback_type,
         intptr_t caller_info) except*
 
 
