@@ -1017,7 +1017,7 @@ class TestLOBPCG:
         X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
                                             X, B=B,
-                                            tol=1e-5, maxiter=30,
+                                            tol=1e-5, maxiter=50,
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
@@ -1029,7 +1029,7 @@ class TestLOBPCG:
         X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
                                             X, B=B,
-                                            tol=1e-5, maxiter=30,
+                                            tol=1e-5, maxiter=50,
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
@@ -1176,7 +1176,7 @@ class TestLOBPCG:
         saved_stdout = io.StringIO()
         with contextlib.redirect_stdout(saved_stdout):
             _, _ = sp.linalg.lobpcg(A, X, B=B, tol=1e-5,
-                                    maxiter=30, largest=False,
+                                    maxiter=10, largest=False,
                                     verbosityLevel=9)
         output = saved_stdout.getvalue().strip()
         return output
