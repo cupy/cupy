@@ -2,5 +2,5 @@
 	path = cupy/_core/include/cupy/jitify
 	url = https://github.com/NVIDIA/jitify.git
 [submodule "cupy/_core/include/cupy/cccl"]
-	path = cupy/_core/include/cupy/cccl
+	path = third_party/cccl
 	url = https://github.com/NVIDIA/cccl.git
