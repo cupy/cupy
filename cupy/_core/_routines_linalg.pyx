@@ -27,7 +27,6 @@ from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
 from cupy.cuda cimport device
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs cimport cublas
 
 
 cdef extern from '../../cupy_backends/cupy_complex.h':
@@ -543,6 +542,8 @@ cpdef _ndarray_base dot(
 cpdef _ndarray_base tensordot_core(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t n,
         Py_ssize_t m, Py_ssize_t k, const shape_t& ret_shape):
+    from cupy_backends.cuda.libs import cublas
+
     # out, if specified, must be C-contiguous and have correct shape.
     cdef shape_t shape
     cdef Py_ssize_t transa, transb, lda, ldb
@@ -704,6 +705,8 @@ cpdef _ndarray_base tensordot_core_v11(
         Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n,
         Py_ssize_t k, _ndarray_base a, Py_ssize_t lda, _ndarray_base b,
         Py_ssize_t ldb, _ndarray_base c, Py_ssize_t ldc):
+    from cupy_backends.cuda.libs import cublas
+
     cdef float one_f, zero_f
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
@@ -833,6 +836,7 @@ cpdef _ndarray_base matmul(
     .. seealso:: :func:`numpy.matmul`
 
     """
+    from cupy_backends.cuda.libs import cublas
 
     cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
