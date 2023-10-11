@@ -1262,15 +1262,16 @@ cpdef intptr_t setCallback(
 
 
 cpdef void setJITCallback(
-        intptr_t plan, ByteHolder callback, int callback_type,
+        intptr_t plan, bytes callback, int callback_type,
         intptr_t caller_info) except*:
     initialize()
     cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef char* callback_ptr = callback
     cdef size_t callback_size = len(callback)
     cdef void* caller_info_ptr = <void*>(caller_info)
 
     with nogil:
         result = cufftXtSetJITCallback(
-            h, callback.getData(), callback_size, <callbackType>callback_type,
+            h, callback_ptr, callback_size, <callbackType>callback_type,
             &caller_info_ptr)
     check_result(result)

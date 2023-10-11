@@ -1,7 +1,6 @@
 from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs.nvrtc cimport ByteHolder
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda cimport cufft  # this is the module without legacy callback
 from cupy.cuda.cufft cimport (
@@ -527,8 +526,8 @@ cdef class _JITCallbackManager(_CallbackManager):
     cdef:
         readonly object cb_load
         readonly object cb_store
-        readonly ByteHolder cb_load_lto
-        readonly ByteHolder cb_store_lto
+        readonly bytes cb_load_lto
+        readonly bytes cb_store_lto
 
     def __init__(self,
                  cb_load=None,
@@ -579,7 +578,7 @@ cdef class _JITCallbackManager(_CallbackManager):
             if cb_store is None:
                 raise ValueError('store callback is not given')
 
-    cdef ByteHolder compile_lto(self, str source, tuple options):
+    cdef bytes compile_lto(self, str source, tuple options):
         options += (
             '-DCUPY_JIT_MODE', '--std=c++11', '-dlto',
             f'-arch=compute_{_get_arch()}', '-default-device',)

@@ -1,5 +1,4 @@
 from libc.stdint cimport intptr_t
-from libcpp.vector cimport vector
 
 
 ###############################################################################
@@ -18,17 +17,6 @@ cpdef tuple getVersion()
 cpdef tuple getSupportedArchs()
 
 
-cdef class ByteHolder:
-    # We need a placeholder and not pass around bytes objects, because
-    # sometimes the returned chars could go out of range (i.e. signed).
-
-    cdef:
-        vector[char] data
-
-    cdef inline char* getData(self) nogil:
-        return self.data.data()
-
-
 ###############################################################################
 # Program
 ###############################################################################
@@ -40,7 +28,7 @@ cpdef compileProgram(intptr_t prog, options)
 cpdef bytes getPTX(intptr_t prog)
 cpdef bytes getCUBIN(intptr_t prog)
 cpdef bytes getNVVM(intptr_t prog)
-cpdef ByteHolder getLTOIR(intptr_t prog)
+cpdef bytes getLTOIR(intptr_t prog)
 cpdef unicode getProgramLog(intptr_t prog)
 cpdef addNameExpression(intptr_t prog, str name)
 cpdef str getLoweredName(intptr_t prog, str name)
