@@ -2124,10 +2124,6 @@ cdef list _cupy_extra_header_list = [
     'cupy/complex/csqrtf.h',
     'cupy/complex/catrig.h',
     'cupy/complex/catrigf.h',
-    'cupy/swap.cuh',
-    'cupy/tuple/type_traits.h',
-    'cupy/tuple/tuple.h',
-    'cupy/tuple.cuh',
 ]
 
 cdef str _header_path_cache = None

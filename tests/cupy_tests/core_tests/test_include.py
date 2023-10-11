@@ -15,8 +15,6 @@ _code_base = '''
 #include <cupy/math_constants.h>
 #include <cupy/atomics.cuh>
 #include <cupy/hip_workaround.cuh>
-#include <cupy/swap.cuh>
-#include <cupy/tuple.cuh>
 '''
 
 _code_nvcc = _code_base + '''

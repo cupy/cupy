@@ -34,12 +34,13 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
     const char* jitify_ver  # set at build time
 
 
-# We need an internal way to invalidate the cache (say, cuda_workaround.h is
-# updated) without having to set the env var CUPY_DISABLE_JITIFY_CACHE in the
-# CI. This should never be touched by end users.
+# We need an internal way to invalidate the cache (say, when cuda_workaround.h
+# or the CCCL bundle is updated) without having to set the environment variable
+# CUPY_DISABLE_JITIFY_CACHE in the CI. This should never be touched by end
+# users.
 cdef extern from *:
     """
-    const int build_num = 0;
+    const int build_num = 1;
     """
     const int build_num
 
@@ -127,6 +128,8 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # be used. cupy/cuda_workaround.h is the real place importing type_traits
     # (from libcudacxx).
     cupy_headers[b"type_traits"] = b"#include <cupy/cuda_workaround.h>\n"
+    # Same for tuple
+    cupy_headers[b"tuple"] = b"#include <cupy/cuda_workaround.h>\n"
 
 
 cdef inline void init_cupy_headers() except*:
