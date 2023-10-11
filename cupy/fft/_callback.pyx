@@ -547,12 +547,16 @@ cdef class _JITCallbackManager(_CallbackManager):
         if cb_load:
             if isinstance(cb_load, str):
                 self.cb_load_lto = self.compile_lto(cb_load, nvrtc_options)
+            elif isinstance(cb_load, bytes):
+                self.cb_load_lto = cb_load
             # TODO(leofang): support rawkernel
             else:
                 raise NotImplementedError
         if cb_store:
             if isinstance(cb_store, str):
                 self.cb_store_lto = self.compile_lto(cb_store, nvrtc_options)
+            elif isinstance(cb_load, bytes):
+                self.cb_store_lto = cb_store
             # TODO(leofang): support rawkernel
             else:
                 raise NotImplementedError
