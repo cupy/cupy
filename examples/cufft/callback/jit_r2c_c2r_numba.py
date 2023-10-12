@@ -3,27 +3,68 @@ import os
 import cupy as cp
 import numpy as np
 
+# TODO(leofang): update these imports once they're upstreamed
+from numba import cuda, types
+from numba.core.extending import (make_attribute_wrapper, models,
+                                  register_model)
+from numba_ltoir import compile_ltoir
 
-code = r"""
-#include <cufftXt.h>
 
-struct cb_params {
-	unsigned window_N;
-	unsigned signal_size;
-};
+# User code
 
-__device__ cufftComplex cufftJITCallbackLoadComplex(void *input,
-                                                    size_t index,
-                                                    void *info,
-                                                    void *sharedmem) {
-	const cb_params* params = static_cast<const cb_params*>(info);
-	cufftComplex* cb_output = static_cast<cufftComplex*>(input);
-	const unsigned sample   = index % params->signal_size;
+class cb_params:
+    def __init__(self, window_N, signal_size):
+        self.window_N = window_N
+        self.signal_size = signal_size
 
-    return (sample < params->window_N) ? cb_output[index] : cufftComplex{0.f, 0.f};
-}
-"""
 
+# def cufftJITCallbackLoadComplex(cb_input, index, info, sharedmem):
+def _Z27cufftJITCallbackLoadComplexPvmS_S_(cb_input, index, info, sharedmem):
+    params = info[0]
+    sample = index % params.signal_size
+
+    if sample < params.window_N:
+        return cb_input[index]
+    else:
+        return np.complex64(0 + 0j)
+
+
+# Numba extensions
+
+class CbParamsType(types.Type):
+    def __init__(self):
+        super().__init__(name='cb_params')
+
+
+cb_params_type = CbParamsType()
+
+
+@register_model(CbParamsType)
+class CbParamsModel(models.StructModel):
+    def __init__(self, dmm, fe_type):
+        members = [
+            ('window_N', types.uint32),
+            ('signal_size', types.uint32),
+        ]
+        models.StructModel.__init__(self, dmm, fe_type, members)
+
+
+make_attribute_wrapper(CbParamsType, 'window_N', 'window_N')
+make_attribute_wrapper(CbParamsType, 'signal_size', 'signal_size')
+
+
+# Code to compile the function using the extensions
+cufftComplexPointer = types.CPointer(types.complex64)
+signature = (
+    cufftComplexPointer,
+    types.uint64,
+    types.CPointer(cb_params_type),
+    types.voidptr
+)
+
+# Generate LTO IR for the user callback
+ltoir = compile_ltoir(
+        _Z27cufftJITCallbackLoadComplexPvmS_S_, signature, device=True)
 
 # Problem input parameters
 batches             = 830
@@ -77,11 +118,9 @@ out = cp.fft.rfft(input_signals)
 
 # Apply window via load callback and inverse-transform the signal
 print("Transforming signal with irfft (cufftExecC2R)");
-nvrtc_options = (f'-I{os.environ["CUDA_PATH"]}/include',)  # TODO: remove this need?
-with cp.fft.config.set_cufft_callbacks(cb_load=code,
+with cp.fft.config.set_cufft_callbacks(cb_load=ltoir,
                                        cb_load_data=memptr_d,
-                                       cb_ver='jit',
-                                       nvrtc_options=nvrtc_options):
+                                       cb_ver='jit'):
     out = cp.fft.irfft(out)
 
 

@@ -754,8 +754,8 @@ cdef class set_cufft_callbacks:
         _CallbackManager mgr_prev
 
     def __init__(self,
-                 str cb_load='',
-                 str cb_store='',
+                 cb_load=None,
+                 cb_store=None,
                  *,
                  _ndarray_base cb_load_aux_arr=None,
                  _ndarray_base cb_store_aux_arr=None,
@@ -781,7 +781,7 @@ cdef class set_cufft_callbacks:
             cb_store_data = cb_store_aux_arr.data
 
         # For every distinct pair of load & store callbacks, we compile an
-        # external Python module and cache it.
+        # external Python module (legacy) or LTO IR (jit) and cache it.
         cdef tuple key = (cb_load, cb_store, cb_ver)
         cdef _CallbackManager mgr = _callback_mgr.get(key)
         if mgr is None:
