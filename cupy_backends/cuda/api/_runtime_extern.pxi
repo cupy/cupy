@@ -591,12 +591,7 @@ cdef SoftLink _get_softlink():
             else:
                 libname = 'cudart64_12.dll'
     elif CUPY_HIP_VERSION != 0:
-        prefix = 'hip'
-        if CUPY_HIP_VERSION < 5_00_00000:
-            # ROCm 4.x
-            libname = 'libamdhip64.so.4'
-        elif CUPY_HIP_VERSION < 6_00_00000:
-            # ROCm 5.x
-            libname = 'libamdhip64.so.5'
+        # Use CUDA-to-HIP layer defined in the header.
+        libname = __file__
 
     return SoftLink(libname, prefix, mandatory=True)
