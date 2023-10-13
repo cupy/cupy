@@ -101,6 +101,7 @@ jobs:
         rm cupy_backends/cuda/libs/cusolver.*.so
         rm cupy_backends/cuda/libs/cusparse.*.so
         rm cupy_backends/cuda/libs/curand.*.so
+        rm cupy_backends/cuda/libs/cublas.*.so
         python -c 'import cupy, cupyx'
 
   build-rocm:

@@ -1,7 +1,6 @@
 import numpy
 
 import cupy
-from cupy_backends.cuda.libs import cublas
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
@@ -12,6 +11,7 @@ _cuda_runtime_version = -1
 
 
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
+    from cupy_backends.cuda.libs import cublas
     from cupy_backends.cuda.libs import cusolver
 
     if UPLO not in ('L', 'U'):

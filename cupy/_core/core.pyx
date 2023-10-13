@@ -48,7 +48,6 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs cimport cublas
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -2670,6 +2669,8 @@ cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
 
 
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
+    from cupy_backends.cuda.libs import cublas
+
     cdef _ndarray_base newarray
     cdef int m, n
     cdef intptr_t handle

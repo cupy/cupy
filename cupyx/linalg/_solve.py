@@ -1,5 +1,4 @@
 from cupy.linalg import _util
-from cupyx import lapack
 
 
 def invh(a):
@@ -15,6 +14,7 @@ def invh(a):
     Returns:
         cupy.ndarray: The inverse of matrix ``a``.
     """
+    from cupyx import lapack
 
     _util._assert_cupy_array(a)
     # TODO: Use `_assert_stacked_2d` instead, once cusolver supports nrhs > 1
