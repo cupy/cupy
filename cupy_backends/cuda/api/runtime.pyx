@@ -1217,8 +1217,9 @@ cpdef profilerStart():
 
     See the CUDA document for detail.
     """
+    initialize()
     status = cudaProfilerStart()
-    runtime.check_status(status)
+    check_status(status)
 
 
 cpdef profilerStop():
@@ -1229,5 +1230,6 @@ cpdef profilerStop():
 
     See the CUDA document for detail.
     """
+    initialize()
     status = cudaProfilerStop()
-    runtime.check_status(status)
+    check_status(status)
