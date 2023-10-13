@@ -32,12 +32,11 @@ class TestSpecialMatricesBase(unittest.TestCase):
                  ((10,), (9,)), ((25,), (24,))],
     }) + testing.product({
         # 1 argument: int
-        'function': ['tri', 'hadamard', 'helmert', 'hilbert', 'dft'],
+        'function': ['hadamard', 'helmert', 'hilbert', 'dft'],
         'args': [(1,), (2,), (4,), (10,), (25,)],
     }) + testing.product({
         # 2 arguments: int, dtype
-        # NOTE: for tri this is an undocumented, legacy, call
-        'function': ['tri', 'hadamard'],
+        'function': ['hadamard'],
         'args': [(4, 'int32'), (8, 'float64'), (6, 'float64')],
     }) + testing.product({
         # 2 arguments: int, bool
@@ -47,17 +46,6 @@ class TestSpecialMatricesBase(unittest.TestCase):
         # 2 arguments: int, str
         'function': ['dft'],
         'args': [(4, 'sqrtn'), (5, 'n')],
-    }) + testing.product({
-        # 2-4 arguments: int, int, optional int, optional dtype
-        'function': ['tri'],
-        'args': [(4, 5), (5, 5), (5, 4),
-                 (4, 5, -1), (4, 5, 1), (4, 5, 0), (5, 4, -1), (5, 5, 1),
-                 (4, 5, -1, int), (5, 4, 0, float)],
-    }) + testing.product({
-        # 1-2 arguments: 2D array, optional int
-        'function': ['tril', 'triu'],
-        'args': [((5, 5),), ((4, 5),), ((5, 4),), ((4, 4),),
-                 ((5, 5), -1), ((4, 5), 1), ((5, 4), -1), ((4, 4), 1)],
     }) + testing.product({
         # 2 arguments: both 2D arrays
         'function': ['kron'],

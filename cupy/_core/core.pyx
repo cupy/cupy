@@ -48,7 +48,6 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs cimport cublas
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -2124,10 +2123,6 @@ cdef list _cupy_extra_header_list = [
     'cupy/complex/csqrtf.h',
     'cupy/complex/catrig.h',
     'cupy/complex/catrigf.h',
-    'cupy/swap.cuh',
-    'cupy/tuple/type_traits.h',
-    'cupy/tuple/tuple.h',
-    'cupy/tuple.cuh',
 ]
 
 cdef str _header_path_cache = None
@@ -2142,6 +2137,13 @@ cpdef str _get_header_dir_path():
         _header_path_cache = os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
     return _header_path_cache
+
+
+cpdef tuple _get_cccl_include_options():
+    # the search paths are made such that they resemble the layout in CTK
+    return (f"-I{_get_header_dir_path()}/cupy/cccl/cub",
+            f"-I{_get_header_dir_path()}/cupy/cccl/thrust",
+            f"-I{_get_header_dir_path()}/cupy/cccl/libcudacxx/include")
 
 
 cpdef str _get_header_source():
@@ -2198,8 +2200,22 @@ cpdef function.Module compile_with_cache(
 
     if prepend_cupy_headers:
         source = _cupy_header + source
+    if jitify:
+        source = '#include <cupy/cuda_workaround.h>\n' + source
     extra_source = _get_header_source()
-    options += ('-I%s' % _get_header_dir_path(),)
+
+    for op in options:
+        if '-std=c++' in op:
+            if op.endswith('03'):
+                warnings.warn('CCCL requires c++11 or above')
+            break
+    else:
+        options += ('--std=c++11',)
+
+    # make sure bundled CCCL is searched first
+    options = (_get_cccl_include_options()
+               + options
+               + ('-I%s' % _get_header_dir_path(),))
 
     # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
     # but it might not have been set appropriately before coming here.
@@ -2653,6 +2669,8 @@ cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
 
 
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
+    from cupy_backends.cuda.libs import cublas
+
     cdef _ndarray_base newarray
     cdef int m, n
     cdef intptr_t handle

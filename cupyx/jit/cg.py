@@ -12,11 +12,13 @@ __all__ = ['this_grid', 'this_thread_block',
            'sync', 'wait', 'wait_prior', 'memcpy_async']
 
 
+# To avoid ABI issues (which libcudacxx manages to raise a compile-time error),
+# we always include a header from libcudacxx <cuda/...> before any cg include.
 _header_to_code = {
-    'cg': ("#include <cooperative_groups.h>\n"
+    'cg': ("#include <cuda/barrier>\n"
+           "#include <cooperative_groups.h>\n"
            "namespace cg = cooperative_groups;\n"),
     'cg_memcpy_async': "#include <cooperative_groups/memcpy_async.h>",
-    'cuda_barrier': "#include <cuda/barrier>",
 }
 
 
@@ -390,7 +392,6 @@ class _MemcpySync(_BuiltinFunc):
             if not isinstance(aligned_size, _Constant):
                 raise ValueError(
                     'aligned_size must be a compile-time constant')
-            _check_include(env, 'cuda_barrier')
             size_code = (f'cuda::aligned_size_t<{aligned_size.obj}>'
                          f'({size_code})')
         return _Data(f'cg::memcpy_async({group.code}, &({dst.code}), '

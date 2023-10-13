@@ -17,7 +17,6 @@ from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
-from cupy_backends.cuda.libs import cublas  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
 from cupy_backends.cuda.libs import profiler  # NOQA
 
@@ -63,6 +62,10 @@ def __getattr__(key):
         from cupy_backends.cuda.libs import curand
         _cupy.cuda.curand = curand
         return curand
+    elif key == 'cublas':
+        from cupy_backends.cuda.libs import cublas
+        _cupy.cuda.cublas = cublas
+        return cublas
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.

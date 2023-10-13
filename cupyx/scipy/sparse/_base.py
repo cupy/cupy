@@ -18,6 +18,9 @@ except ImportError:
         pass
 
 
+# TODO(asi1024): Implement _spbase
+
+
 class spmatrix(object):
 
     """Base class of all sparse matrixes.

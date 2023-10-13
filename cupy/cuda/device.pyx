@@ -5,7 +5,6 @@ import threading
 from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api import runtime as runtime_module
-from cupy_backends.cuda.libs import cublas
 from cupy import _util
 
 
@@ -251,6 +250,7 @@ cdef class Device:
         itself is different.
 
         """
+        from cupy_backends.cuda.libs import cublas
         return self._get_handle(
             'cublas_handles', cublas.create, cublas.destroy)
 
