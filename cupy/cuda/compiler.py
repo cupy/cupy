@@ -19,8 +19,6 @@ from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
-if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -226,6 +224,8 @@ _jitify_header_source_map_populated = False
 
 
 def _jitify_prep(source, options, cu_path):
+    from cupy.cuda import jitify
+
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:

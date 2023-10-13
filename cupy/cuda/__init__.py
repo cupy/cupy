@@ -33,10 +33,6 @@ class _UnavailableModule():
 
 from cupy.cuda import cub  # NOQA
 
-if not runtime.is_hip and driver.get_build_version() > 0:
-    from cupy.cuda import jitify  # NOQA
-else:
-    jitify = None
 
 try:
     from cupy_backends.cuda.libs import nvtx  # NOQA
@@ -66,6 +62,13 @@ def __getattr__(key):
         from cupy_backends.cuda.libs import cublas
         _cupy.cuda.cublas = cublas
         return cublas
+    elif key == 'jitify':
+        if not runtime.is_hip and driver.get_build_version() > 0:
+            from cupy.cuda import jitify  # NOQA
+        else:
+            jitify = None
+        _cupy.cuda.jitify = jitify
+        return jitify
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
