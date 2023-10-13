@@ -74,6 +74,8 @@ cdef class _ThreadLocal:
 
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccudart cimport *
+    cdef inline void initialize():
+        return
 ELSE:
     include '_runtime_extern.pxi'
     pass  # for cython-lint
@@ -126,6 +128,7 @@ is_hip = hip_environment  # for runtime being import'd
 class CUDARuntimeError(RuntimeError):
 
     def __init__(self, status):
+        initialize()
         self.status = status
         cdef bytes name = cudaGetErrorName(<Error>status)
         cdef bytes msg = cudaGetErrorString(<Error>status)
@@ -138,6 +141,7 @@ class CUDARuntimeError(RuntimeError):
 
 @cython.profile(False)
 cpdef inline check_status(int status):
+    initialize()
     if status != 0:
         # to reset error status
         cudaGetLastError()
@@ -149,12 +153,14 @@ cpdef inline check_status(int status):
 ###############################################################################
 
 cpdef int driverGetVersion() except? -1:
+    initialize()
     cdef int version
     status = cudaDriverGetVersion(&version)
     check_status(status)
     return version
 
 cpdef int runtimeGetVersion() except? -1:
+    initialize()
     cdef int version
     IF CUPY_USE_CUDA_PYTHON:
         # Workarounds an issue that cuda-python returns its version instead of
@@ -174,18 +180,21 @@ cpdef int runtimeGetVersion() except? -1:
 ###############################################################################
 
 cpdef int getDevice() except? -1:
+    initialize()
     cdef int device
     status = cudaGetDevice(&device)
     check_status(status)
     return device
 
 cpdef int deviceGetAttribute(int attrib, int device) except? -1:
+    initialize()
     cdef int ret
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
     check_status(status)
     return ret
 
 cpdef getDeviceProperties(int device):
+    initialize()
     cdef DeviceProp props
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
@@ -341,6 +350,8 @@ cpdef getDeviceProperties(int device):
     return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
+    initialize()
+
     # Encode the python string before passing to native code
     byte_pci_bus_id = pci_bus_id.encode('ascii')
     cdef const char* c_pci_bus_id = byte_pci_bus_id
@@ -356,6 +367,8 @@ cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     return device
 
 cpdef str deviceGetPCIBusId(int device):
+    initialize()
+
     # The PCI Bus ID string must be able to store 13 characters including the
     # NULL-terminator according to the CUDA documentation.
     # https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html
@@ -365,35 +378,42 @@ cpdef str deviceGetPCIBusId(int device):
     return pci_bus_id.decode('ascii')
 
 cpdef int getDeviceCount() except? -1:
+    initialize()
     cdef int count
     status = cudaGetDeviceCount(&count)
     check_status(status)
     return count
 
 cpdef setDevice(int device):
+    initialize()
     status = cudaSetDevice(device)
     check_status(status)
 
 cpdef deviceSynchronize():
+    initialize()
     with nogil:
         status = cudaDeviceSynchronize()
     check_status(status)
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
+    initialize()
     cdef int ret
     status = cudaDeviceCanAccessPeer(&ret, device, peerDevice)
     check_status(status)
     return ret
 
 cpdef deviceEnablePeerAccess(int peerDevice):
+    initialize()
     status = cudaDeviceEnablePeerAccess(peerDevice, 0)
     check_status(status)
 
 cpdef deviceDisablePeerAccess(int peerDevice):
+    initialize()
     status = cudaDeviceDisablePeerAccess(peerDevice)
     check_status(status)
 
 cpdef _deviceEnsurePeerAccess(int peerDevice):
+    initialize()
     status = cudaDeviceEnablePeerAccess(peerDevice, 0)
     if status == 0:
         return
@@ -403,12 +423,14 @@ cpdef _deviceEnsurePeerAccess(int peerDevice):
     check_status(status)
 
 cpdef size_t deviceGetLimit(int limit) except? -1:
+    initialize()
     cdef size_t value
     status = cudaDeviceGetLimit(&value, <Limit>limit)
     check_status(status)
     return value
 
 cpdef deviceSetLimit(int limit, size_t value):
+    initialize()
     status = cudaDeviceSetLimit(<Limit>limit, value)
     check_status(status)
 
@@ -418,10 +440,12 @@ cpdef deviceSetLimit(int limit, size_t value):
 ###############################################################################
 
 cpdef ipcCloseMemHandle(intptr_t devPtr):
+    initialize()
     status = cudaIpcCloseMemHandle(<void*>devPtr)
     check_status(status)
 
 cpdef ipcGetEventHandle(intptr_t event):
+    initialize()
     cdef IpcEventHandle handle
     status = cudaIpcGetEventHandle(&handle, <driver.Event>event)
     check_status(status)
@@ -435,6 +459,7 @@ cpdef ipcGetEventHandle(intptr_t event):
     return bytes(reserved)
 
 cpdef ipcGetMemHandle(intptr_t devPtr):
+    initialize()
     cdef IpcMemHandle handle
     status = cudaIpcGetMemHandle(&handle, <void*>devPtr)
     check_status(status)
@@ -447,6 +472,7 @@ cpdef ipcGetMemHandle(intptr_t devPtr):
     return bytes(reserved)
 
 cpdef ipcOpenEventHandle(bytes handle):
+    initialize()
     cdef driver.Event event
     cdef IpcEventHandle handle_
     handle_.reserved = handle
@@ -456,6 +482,7 @@ cpdef ipcOpenEventHandle(bytes handle):
 
 cpdef ipcOpenMemHandle(bytes handle,
                        unsigned int flags=cudaIpcMemLazyEnablePeerAccess):
+    initialize()
     cdef void* devPtr
     cdef IpcMemHandle handle_
     handle_.reserved = handle
@@ -469,6 +496,7 @@ cpdef ipcOpenMemHandle(bytes handle,
 ###############################################################################
 
 cpdef intptr_t malloc(size_t size) except? 0:
+    initialize()
     cdef void* ptr
     with nogil:
         status = cudaMalloc(&ptr, size)
@@ -477,6 +505,7 @@ cpdef intptr_t malloc(size_t size) except? 0:
 
 cpdef intptr_t mallocManaged(
         size_t size, unsigned int flags=cudaMemAttachGlobal) except? 0:
+    initialize()
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
     cdef void* ptr
@@ -487,6 +516,7 @@ cpdef intptr_t mallocManaged(
 
 cpdef intptr_t malloc3DArray(intptr_t descPtr, size_t width, size_t height,
                              size_t depth, unsigned int flags=0) except? 0:
+    initialize()
     cdef Array ptr
     cdef Extent extent = make_cudaExtent(width, height, depth)
     with nogil:
@@ -497,6 +527,7 @@ cpdef intptr_t malloc3DArray(intptr_t descPtr, size_t width, size_t height,
 
 cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
                            unsigned int flags=0) except? 0:
+    initialize()
     cdef Array ptr
     with nogil:
         status = cudaMallocArray(&ptr, <ChannelFormatDesc*>descPtr, width,
@@ -505,6 +536,7 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
     return <intptr_t>ptr
 
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
+    initialize()
     cdef void* ptr
     if _is_hip_environment:
         raise RuntimeError('HIP does not support mallocAsync')
@@ -517,6 +549,7 @@ cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
 
 cpdef intptr_t mallocFromPoolAsync(
         size_t size, intptr_t pool, intptr_t stream) except? 0:
+    initialize()
     cdef void* ptr
     if _is_hip_environment:
         raise RuntimeError('HIP does not support mallocFromPoolAsync')
@@ -529,6 +562,7 @@ cpdef intptr_t mallocFromPoolAsync(
     return <intptr_t>ptr
 
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
+    initialize()
     cdef void* ptr
     with nogil:
         status = cudaHostAlloc(&ptr, size, flags)
@@ -536,31 +570,37 @@ cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     return <intptr_t>ptr
 
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags):
+    initialize()
     with nogil:
         status = cudaHostRegister(<void*>ptr, size, flags)
     check_status(status)
 
 cpdef hostUnregister(intptr_t ptr):
+    initialize()
     with nogil:
         status = cudaHostUnregister(<void*>ptr)
     check_status(status)
 
 cpdef free(intptr_t ptr):
+    initialize()
     with nogil:
         status = cudaFree(<void*>ptr)
     check_status(status)
 
 cpdef freeHost(intptr_t ptr):
+    initialize()
     with nogil:
         status = cudaFreeHost(<void*>ptr)
     check_status(status)
 
 cpdef freeArray(intptr_t ptr):
+    initialize()
     with nogil:
         status = cudaFreeArray(<Array>ptr)
     check_status(status)
 
 cpdef freeAsync(intptr_t ptr, intptr_t stream):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support freeAsync')
     if runtimeGetVersion() < 11020:
@@ -570,18 +610,21 @@ cpdef freeAsync(intptr_t ptr, intptr_t stream):
     check_status(status)
 
 cpdef memGetInfo():
+    initialize()
     cdef size_t free, total
     status = cudaMemGetInfo(&free, &total)
     check_status(status)
     return free, total
 
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind):
+    initialize()
     with nogil:
         status = cudaMemcpy(<void*>dst, <void*>src, size, <MemoryKind>kind)
     check_status(status)
 
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
                   intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemcpyAsync(
             <void*>dst, <void*>src, size, <MemoryKind>kind,
@@ -590,6 +633,7 @@ cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
 
 cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
                  size_t size):
+    initialize()
     with nogil:
         status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice,
                                 size)
@@ -597,6 +641,7 @@ cpdef memcpyPeer(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
 
 cpdef memcpyPeerAsync(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
                       size_t size, intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemcpyPeerAsync(<void*>dst, dstDevice, <void*>src,
                                      srcDevice, size, <driver.Stream> stream)
@@ -604,6 +649,7 @@ cpdef memcpyPeerAsync(intptr_t dst, int dstDevice, intptr_t src, int srcDevice,
 
 cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
                size_t width, size_t height, MemoryKind kind):
+    initialize()
     with nogil:
         status = cudaMemcpy2D(<void*>dst, dpitch, <void*>src, spitch, width,
                               height, kind)
@@ -612,6 +658,7 @@ cpdef memcpy2D(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
 cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
                     size_t width, size_t height, MemoryKind kind,
                     intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemcpy2DAsync(<void*>dst, dpitch, <void*>src, spitch,
                                    width, height, kind, <driver.Stream>stream)
@@ -620,6 +667,7 @@ cpdef memcpy2DAsync(intptr_t dst, size_t dpitch, intptr_t src, size_t spitch,
 cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
                         size_t wOffset, size_t hOffset, size_t width,
                         size_t height, int kind):
+    initialize()
     with nogil:
         status = cudaMemcpy2DFromArray(<void*>dst, dpitch, <Array>src, wOffset,
                                        hOffset, width, height,
@@ -629,6 +677,7 @@ cpdef memcpy2DFromArray(intptr_t dst, size_t dpitch, intptr_t src,
 cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
                              size_t wOffset, size_t hOffset, size_t width,
                              size_t height, int kind, intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemcpy2DFromArrayAsync(<void*>dst, dpitch, <Array>src,
                                             wOffset, hOffset, width, height,
@@ -639,6 +688,7 @@ cpdef memcpy2DFromArrayAsync(intptr_t dst, size_t dpitch, intptr_t src,
 cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
                       intptr_t src, size_t spitch, size_t width, size_t height,
                       int kind):
+    initialize()
     with nogil:
         status = cudaMemcpy2DToArray(<Array>dst, wOffset, hOffset, <void*>src,
                                      spitch, width, height, <MemoryKind>kind)
@@ -647,6 +697,7 @@ cpdef memcpy2DToArray(intptr_t dst, size_t wOffset, size_t hOffset,
 cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
                            intptr_t src, size_t spitch, size_t width,
                            size_t height, int kind, intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemcpy2DToArrayAsync(<Array>dst, wOffset, hOffset,
                                           <void*>src, spitch, width, height,
@@ -655,22 +706,26 @@ cpdef memcpy2DToArrayAsync(intptr_t dst, size_t wOffset, size_t hOffset,
     check_status(status)
 
 cpdef memcpy3D(intptr_t Memcpy3DParmsPtr):
+    initialize()
     with nogil:
         status = cudaMemcpy3D(<Memcpy3DParms*>Memcpy3DParmsPtr)
     check_status(status)
 
 cpdef memcpy3DAsync(intptr_t Memcpy3DParmsPtr, intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemcpy3DAsync(<Memcpy3DParms*>Memcpy3DParmsPtr,
                                    <driver.Stream> stream)
     check_status(status)
 
 cpdef memset(intptr_t ptr, int value, size_t size):
+    initialize()
     with nogil:
         status = cudaMemset(<void*>ptr, value, size)
     check_status(status)
 
 cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
+    initialize()
     with nogil:
         status = cudaMemsetAsync(<void*>ptr, value, size,
                                  <driver.Stream> stream)
@@ -678,6 +733,7 @@ cpdef memsetAsync(intptr_t ptr, int value, size_t size, intptr_t stream):
 
 cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream):
+    initialize()
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
@@ -686,6 +742,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
     check_status(status)
 
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
+    initialize()
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
     with nogil:
@@ -694,6 +751,7 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     check_status(status)
 
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
+    initialize()
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
@@ -714,6 +772,7 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support deviceGetDefaultMemPool')
     if runtimeGetVersion() < 11020:
@@ -727,6 +786,7 @@ cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
 
 cpdef intptr_t deviceGetMemPool(int device) except? 0:
     '''Get the current mempool on the current device.'''
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support deviceGetMemPool')
     if runtimeGetVersion() < 11020:
@@ -740,6 +800,7 @@ cpdef intptr_t deviceGetMemPool(int device) except? 0:
 
 cpdef deviceSetMemPool(int device, intptr_t pool):
     '''Set the current mempool on the current device to pool.'''
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support deviceSetMemPool')
     if runtimeGetVersion() < 11020:
@@ -750,6 +811,7 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
     check_status(status)
 
 cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolCreate')
     if runtimeGetVersion() < 11020:
@@ -769,6 +831,7 @@ cpdef intptr_t memPoolCreate(MemPoolProps props) except? 0:
     return <intptr_t>pool
 
 cpdef memPoolDestroy(intptr_t pool):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolDestroy')
     if runtimeGetVersion() < 11020:
@@ -778,6 +841,7 @@ cpdef memPoolDestroy(intptr_t pool):
     check_status(status)
 
 cpdef memPoolTrimTo(intptr_t pool, size_t size):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolTrimTo')
     if runtimeGetVersion() < 11020:
@@ -787,6 +851,7 @@ cpdef memPoolTrimTo(intptr_t pool, size_t size):
     check_status(status)
 
 cpdef memPoolGetAttribute(intptr_t pool, int attr):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolGetAttribute')
     if runtimeGetVersion() < 11020:
@@ -804,6 +869,7 @@ cpdef memPoolGetAttribute(intptr_t pool, int attr):
     return val1 if attr <= 0x3 else val2
 
 cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('HIP does not support memPoolSetAttribute')
     if runtimeGetVersion() < 11020:
@@ -828,6 +894,7 @@ cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
 ###############################################################################
 
 cpdef intptr_t streamCreate() except? 0:
+    initialize()
     cdef driver.Stream stream
     status = cudaStreamCreate(&stream)
     check_status(status)
@@ -835,6 +902,7 @@ cpdef intptr_t streamCreate() except? 0:
 
 
 cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
+    initialize()
     cdef driver.Stream stream
     status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
@@ -842,11 +910,13 @@ cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
 
 
 cpdef streamDestroy(intptr_t stream):
+    initialize()
     status = cudaStreamDestroy(<driver.Stream>stream)
     check_status(status)
 
 
 cpdef streamSynchronize(intptr_t stream):
+    initialize()
     with nogil:
         status = cudaStreamSynchronize(<driver.Stream>stream)
     check_status(status)
@@ -869,6 +939,7 @@ cdef _HostFnFunc(void* func_arg) with gil:
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
+    initialize()
     if _is_hip_environment and stream == 0:
         raise RuntimeError('HIP does not allow adding callbacks to the '
                            'default (null) stream')
@@ -882,6 +953,7 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 
 
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('This feature is not supported on HIP')
 
@@ -895,10 +967,12 @@ cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
 
 
 cpdef streamQuery(intptr_t stream):
+    initialize()
     return cudaStreamQuery(<driver.Stream>stream)
 
 
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
+    initialize()
     with nogil:
         status = cudaStreamWaitEvent(<driver.Stream>stream,
                                      <driver.Event>event, flags)
@@ -906,6 +980,7 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
+    initialize()
     if _is_hip_environment:
         raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
@@ -916,6 +991,7 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
 
 
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
+    initialize()
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
     if _is_hip_environment:
@@ -927,6 +1003,7 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
+    initialize()
     cdef StreamCaptureStatus s
     if _is_hip_environment:
         raise RuntimeError('streamIsCapturing is not supported in ROCm')
@@ -940,12 +1017,14 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
 
 
 cpdef intptr_t eventCreate() except? 0:
+    initialize()
     cdef driver.Event event
     status = cudaEventCreate(&event)
     check_status(status)
     return <intptr_t>event
 
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0:
+    initialize()
     cdef driver.Event event
     status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
@@ -953,11 +1032,13 @@ cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0:
 
 
 cpdef eventDestroy(intptr_t event):
+    initialize()
     status = cudaEventDestroy(<driver.Event>event)
     check_status(status)
 
 
 cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0:
+    initialize()
     cdef float ms
     status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
     check_status(status)
@@ -965,15 +1046,18 @@ cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0:
 
 
 cpdef eventQuery(intptr_t event):
+    initialize()
     return cudaEventQuery(<driver.Event>event)
 
 
 cpdef eventRecord(intptr_t event, intptr_t stream):
+    initialize()
     status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef eventSynchronize(intptr_t event):
+    initialize()
     with nogil:
         status = cudaEventSynchronize(<driver.Event>event)
     check_status(status)
@@ -988,6 +1072,7 @@ cdef _ensure_context():
 
     See discussion on https://github.com/cupy/cupy/issues/72 for details.
     """
+    initialize()
     tls = _ThreadLocal.get()
     cdef int dev = getDevice()
     if not tls.context_initialized[dev]:
@@ -1002,6 +1087,7 @@ cdef _ensure_context():
 
 cpdef uintmax_t createTextureObject(
         intptr_t ResDescPtr, intptr_t TexDescPtr) except? 0:
+    initialize()
     cdef uintmax_t texobj = 0
     with nogil:
         status = cudaCreateTextureObject(<TextureObject*>(&texobj),
@@ -1012,11 +1098,13 @@ cpdef uintmax_t createTextureObject(
     return texobj
 
 cpdef destroyTextureObject(uintmax_t texObject):
+    initialize()
     with nogil:
         status = cudaDestroyTextureObject(<TextureObject>texObject)
     check_status(status)
 
 cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr) except? 0:
+    initialize()
     cdef uintmax_t surfobj = 0
     with nogil:
         status = cudaCreateSurfaceObject(<SurfaceObject*>(&surfobj),
@@ -1025,11 +1113,13 @@ cpdef uintmax_t createSurfaceObject(intptr_t ResDescPtr) except? 0:
     return surfobj
 
 cpdef destroySurfaceObject(uintmax_t surfObject):
+    initialize()
     with nogil:
         status = cudaDestroySurfaceObject(<SurfaceObject>surfObject)
     check_status(status)
 
 cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*:
+    initialize()
     cdef ChannelFormatDesc desc
     with nogil:
         status = cudaGetChannelDesc(&desc, <Array>array)
@@ -1037,6 +1127,7 @@ cdef ChannelFormatDesc getChannelDesc(intptr_t array) except*:
     return desc
 
 cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t obj) except*:
+    initialize()
     cdef ResourceDesc desc
     with nogil:
         status = cudaGetTextureObjectResourceDesc(&desc, <TextureObject>obj)
@@ -1044,6 +1135,7 @@ cdef ResourceDesc getTextureObjectResourceDesc(uintmax_t obj) except*:
     return desc
 
 cdef TextureDesc getTextureObjectTextureDesc(uintmax_t obj) except*:
+    initialize()
     cdef TextureDesc desc
     with nogil:
         status = cudaGetTextureObjectTextureDesc(&desc, <TextureObject>obj)
@@ -1051,13 +1143,16 @@ cdef TextureDesc getTextureObjectTextureDesc(uintmax_t obj) except*:
     return desc
 
 cdef Extent make_Extent(size_t w, size_t h, size_t d) except*:
+    initialize()
     return make_cudaExtent(w, h, d)
 
 cdef Pos make_Pos(size_t x, size_t y, size_t z) except*:
+    initialize()
     return make_cudaPos(x, y, z)
 
 cdef PitchedPtr make_PitchedPtr(
         intptr_t d, size_t p, size_t xsz, size_t ysz) except*:
+    initialize()
     return make_cudaPitchedPtr(<void*>d, p, xsz, ysz)
 
 
@@ -1066,16 +1161,19 @@ cdef PitchedPtr make_PitchedPtr(
 ##############################################################################
 
 cpdef graphDestroy(intptr_t graph):
+    initialize()
     with nogil:
         status = cudaGraphDestroy(<Graph>graph)
     check_status(status)
 
 cpdef graphExecDestroy(intptr_t graphExec):
+    initialize()
     with nogil:
         status = cudaGraphExecDestroy(<GraphExec>graphExec)
     check_status(status)
 
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
+    initialize()
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
     with nogil:
@@ -1085,11 +1183,13 @@ cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     return <intptr_t>ge
 
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
+    initialize()
     with nogil:
         status = cudaGraphLaunch(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
 
 cpdef graphUpload(intptr_t graphExec, intptr_t stream):
+    initialize()
     if runtimeGetVersion() < 11010:
         raise RuntimeError('graphUpload is supported since CUDA 11.1+')
     with nogil:
