@@ -516,6 +516,15 @@ cudaError_t cudaGraphUpload(...) {
     return hipErrorUnknown;
 }
 
+// Profiler
+cudaError_t cudaProfilerStart() {
+  return hipProfilerStart();
+}
+
+cudaError_t cudaProfilerStop() {
+  return hipProfilerStop();
+}
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_HIP_CUPY_RUNTIME_H

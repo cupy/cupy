@@ -356,6 +356,14 @@ ctypedef int (*F_cudaGraphUpload)(GraphExec, driver.Stream) nogil
 cdef F_cudaGraphUpload cudaGraphUpload
 
 
+# Profiler
+ctypedef int (*F_cudaProfilerStart)() nogil
+cdef F_cudaProfilerStart cudaProfilerStart
+
+ctypedef int (*F_cudaProfilerStop)() nogil
+cdef F_cudaProfilerStop cudaProfilerStop
+
+
 cdef extern from '../../cupy_backend_runtime.h' nogil:
     # Inline functions
     Extent make_cudaExtent(size_t w, size_t h, size_t d)
@@ -570,6 +578,10 @@ cdef void _initialize() except *:
     cudaGraphLaunch = <F_cudaGraphLaunch>_L.get('GraphLaunch')
     global cudaGraphUpload
     cudaGraphUpload = <F_cudaGraphUpload>_L.get('GraphUpload')
+    global cudaProfilerStart
+    cudaProfilerStart = <F_cudaProfilerStart>_L.get('ProfilerStart')
+    global cudaProfilerStop
+    cudaProfilerStop = <F_cudaProfilerStop>_L.get('ProfilerStop')
 
 
 cdef SoftLink _get_softlink():
