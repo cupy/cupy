@@ -37,7 +37,7 @@ class DummySparseGPU(sparse.spmatrix):
         return self._nnz
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy<1.11')
 class TestSpmatrix(unittest.TestCase):
 
     def dummy_class(self, sp):
