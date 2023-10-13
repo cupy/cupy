@@ -262,7 +262,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             # which can use lots of memory.
             self_dense = self.todense().astype(dtype, copy=False)
             return self_dense / other.todense()
-        raise AssertionError
+        return NotImplemented
 
     def __rtruediv__(self, other):
         return NotImplemented
