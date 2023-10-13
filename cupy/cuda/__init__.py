@@ -13,12 +13,12 @@ from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
+from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
-from cupy_backends.cuda.libs import profiler  # NOQA
 
 
 _available = None
