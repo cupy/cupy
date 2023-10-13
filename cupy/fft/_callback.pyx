@@ -304,7 +304,7 @@ cdef inline void _nvcc_compile(
             'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
         if dump:
             cex.dump(sys.stderr)
-        raise cex
+        raise cex from e
 
 
 cdef inline void _nvcc_link(
@@ -561,7 +561,14 @@ cdef class _JITCallbackManager(_CallbackManager):
             else:
                 raise NotImplementedError
 
-    def _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):
+    cdef str _get_cuda_include(self):
+        global _cuda_path, _cuda_include
+        if _cuda_path is None or _cuda_include is None:
+            _cuda_path = get_cuda_path()
+            _cuda_include = os.path.join(_cuda_path, 'include')
+        return _cuda_include
+
+    cdef _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):
         if runtime._is_hip_environment:
             raise RuntimeError('hipFFT does not support callbacks')
         if not sys.platform.startswith('linux'):
@@ -585,7 +592,8 @@ cdef class _JITCallbackManager(_CallbackManager):
     cdef bytes compile_lto(self, str source, tuple options):
         options += (
             '-DCUPY_JIT_MODE', '--std=c++11', '-dlto',
-            f'-arch=compute_{_get_arch()}', '-default-device',)
+            f'-arch=compute_{_get_arch()}', '-default-device',
+            '-I' + self._get_cuda_include())
         cu_path = 'jit_device'  # TODO: does this matter?
         jitify = False  # TODO
         if jitify:
@@ -787,8 +795,8 @@ cdef class set_cufft_callbacks:
         if mgr is None:
             if cb_ver == 'legacy':
                 mgr = _LegacyCallbackManager(
-                    cb_load=cb_load,
-                    cb_store=cb_store,
+                    cb_load='' if cb_load is None else cb_load,
+                    cb_store='' if cb_store is None else cb_store,
                     cb_load_data=cb_load_data,
                     cb_store_data=cb_store_data,
                 )
