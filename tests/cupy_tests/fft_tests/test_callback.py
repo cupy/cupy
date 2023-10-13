@@ -1,9 +1,17 @@
 import contextlib
+import os
 import string
 import sys
 import tempfile
 from unittest import mock
 
+try:
+    import Cython
+except ImportError:
+    Cython = None
+except:
+    if Cython.__version__ < '0.29.0':
+        Cython = None
 import numpy as np
 import pytest
 
@@ -11,12 +19,15 @@ import cupy
 from cupy import testing
 
 
-# TODO(leofang): eventually we want to enable this in upstream:
-#cb_ver_for_test = ('legacy', 'jit')
-# but since right now we rely on LD_PRELOAD to hack around, we
-# need to test them separately.
-#cb_ver_for_test = ('legacy',)
-cb_ver_for_test = ('jit',)
+cb_ver_for_test = ('legacy', 'jit')
+
+
+def check_should_skip_legacy_test():
+    if Cython is None:
+        pytest.skip("no working Cython")
+    if 'LD_PRELOAD' in os.environ:
+        pytest.skip("legacy callback does not work if libcufft.so "
+                    "is preloaded")
 
 
 @contextlib.contextmanager
@@ -128,7 +139,6 @@ def _set_store_cb(
     'norm': [None, 'ortho'],
     'cb_ver': cb_ver_for_test,
 }))
-@testing.with_requires('cython>=0.29.0')
 @pytest.mark.skipif(not sys.platform.startswith('linux'),
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -136,6 +146,9 @@ def _set_store_cb(
 class Test1dCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         # for simplicity we use the JIT callback names for both legacy/jit
         fft = getattr(xp.fft, fft_func)
         code = _load_callback
@@ -191,6 +204,9 @@ class Test1dCallbacks:
         return self._test_load_helper(xp, dtype, 'irfft')
 
     def _test_store_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         fft = getattr(xp.fft, fft_func)
         code = _store_callback
 
@@ -257,6 +273,9 @@ class Test1dCallbacks:
         return self._test_store_helper(xp, dtype, 'irfft')
 
     def _test_load_store_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         # for simplicity we use the JIT callback names for both legacy/jit
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback
@@ -345,6 +364,9 @@ class Test1dCallbacks:
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load_aux(self, xp, dtype):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         fft = xp.fft.fft
         c = _load_callback_with_aux2
         # for simplicity we use the JIT callback names for both legacy/jit
@@ -383,6 +405,9 @@ class Test1dCallbacks:
         return out
 
     def _test_load_store_aux_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback_with_aux
         store_code = _store_callback_with_aux
@@ -503,7 +528,6 @@ class Test1dCallbacks:
         ),
     )
 ))
-@testing.with_requires('cython>=0.29.0')
 @pytest.mark.skipif(not sys.platform.startswith('linux'),
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -511,6 +535,9 @@ class Test1dCallbacks:
 class TestNdCallbacks:
 
     def _test_load_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         # for simplicity we use the JIT callback names for both legacy/jit
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback
@@ -570,6 +597,9 @@ class TestNdCallbacks:
         return self._test_load_helper(xp, dtype, 'irfftn')
 
     def _test_store_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         fft = getattr(xp.fft, fft_func)
         store_code = _store_callback
 
@@ -640,6 +670,9 @@ class TestNdCallbacks:
         return self._test_store_helper(xp, dtype, 'irfftn')
 
     def _test_load_store_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback
         store_code = _store_callback
@@ -731,6 +764,9 @@ class TestNdCallbacks:
         return self._test_load_store_helper(xp, dtype, 'irfftn')
 
     def _test_load_store_aux_helper(self, xp, dtype, fft_func):
+        if self.cb_ver == 'legacy':
+            check_should_skip_legacy_test()
+
         fft = getattr(xp.fft, fft_func)
         load_code = _load_callback_with_aux
         store_code = _store_callback_with_aux

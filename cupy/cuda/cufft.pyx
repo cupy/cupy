@@ -1242,7 +1242,7 @@ cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
 
 
 cpdef intptr_t setCallback(
-        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
+        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0) except*:
     cdef Handle h = <Handle>plan  # no-cython-lint
     cdef int result  # no-cython-lint
     cdef void** callerInfo  # no-cython-lint
