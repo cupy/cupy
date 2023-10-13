@@ -1176,9 +1176,17 @@ cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     initialize()
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
+
+    cdef bint old_api = _is_hip_environment or runtimeGetVersion() < 12000
     with nogil:
-        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
-                                      NULL, NULL, 0)
+        if old_api:
+            status = cudaGraphInstantiate(
+                <GraphExec*>(&ge), <Graph>graph,
+                <void*>NULL, <char*>NULL, <size_t>0)
+        else:
+            status = cudaGraphInstantiate(
+                <GraphExec*>(&ge), <Graph>graph,
+                <unsigned long long>0)
     check_status(status)
     return <intptr_t>ge
 

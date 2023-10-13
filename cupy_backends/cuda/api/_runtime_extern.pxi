@@ -345,8 +345,8 @@ cdef F_cudaGraphDestroy cudaGraphDestroy
 ctypedef int (*F_cudaGraphExecDestroy)(GraphExec graph) nogil
 cdef F_cudaGraphExecDestroy cudaGraphExecDestroy
 
-ctypedef int (*F_cudaGraphInstantiate)(
-    GraphExec*, Graph, GraphNode*, char*, size_t) nogil
+# N.B. The signature has been changed in CUDA 12. (#7834)
+ctypedef int (*F_cudaGraphInstantiate)(GraphExec*, Graph, ...) nogil
 cdef F_cudaGraphInstantiate cudaGraphInstantiate
 
 ctypedef int (*F_cudaGraphLaunch)(GraphExec, driver.Stream) nogil
