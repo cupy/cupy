@@ -28,10 +28,7 @@ import warnings
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
-from cupy.cuda.compiler import _get_arch
-from cupy.cuda.compiler import _get_nvrtc_version
-from cupy.cuda.compiler import _jitify_prep
-from cupy.cuda.compiler import _NVRTCProgram
+from cupy.cuda.compiler import _compile_ltoir_with_cache_cuda
 
 
 cdef extern from '../cuda/cupy_cufft.h' nogil:
@@ -590,23 +587,10 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise ValueError('store callback is not given')
 
     cdef bytes compile_lto(self, str source, tuple options):
-        options += (
-            '-DCUPY_JIT_MODE', '--std=c++11', '-dlto',
-            f'-arch=compute_{_get_arch()}', '-default-device',
-            '-I' + self._get_cuda_include())
-        cu_path = 'jit_device'  # TODO: does this matter?
-        jitify = False  # TODO
-        if jitify:
-            options, headers, include_names = _jitify_prep(
-                source, options, cu_path)
-        else:
-            headers = include_names = ()
-        program = _NVRTCProgram(
-            source, cu_path, headers, include_names, method='lto')
-        # TODO(leofang): support log_stream
-        lto_ir, _ = program.compile(options)
-
-        return lto_ir
+        options += ('--std=c++11', '-I' + self._get_cuda_include())
+        # TODO(leofang): support log_stream & jitify
+        return _compile_ltoir_with_cache_cuda(
+            source, options, None, get_cache_dir())
 
     cpdef create_plan(self, intptr_t prealloc_plan, tuple plan_info):
         cdef str plan_type

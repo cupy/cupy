@@ -77,11 +77,9 @@ out = cp.fft.rfft(input_signals)
 
 # Apply window via load callback and inverse-transform the signal
 print("Transforming signal with irfft (cufftExecC2R)");
-nvrtc_options = (f'-I{os.environ["CUDA_PATH"]}/include',)  # TODO: remove this need?
 with cp.fft.config.set_cufft_callbacks(cb_load=code,
                                        cb_load_data=memptr_d,
-                                       cb_ver='jit',
-                                       nvrtc_options=nvrtc_options):
+                                       cb_ver='jit'):
     out = cp.fft.irfft(out)
 
 

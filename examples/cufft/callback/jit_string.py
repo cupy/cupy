@@ -21,12 +21,8 @@ __device__ cufftComplex cufftJITCallbackLoadComplex(
 
 a = cp.random.random((64, 128, 128)).astype(cp.complex64)
 
-# TODO: remove this need?
-nvrtc_options = (f'-I{os.environ["CUDA_PATH"]}/include',)
-
 # this fftn call uses callback
-with cp.fft.config.set_cufft_callbacks(
-        cb_load=code, cb_ver='jit', nvrtc_options=nvrtc_options):
+with cp.fft.config.set_cufft_callbacks(cb_load=code, cb_ver='jit'):
     b = cp.fft.fftn(a, axes=(1,2))
 
 # this does not use
