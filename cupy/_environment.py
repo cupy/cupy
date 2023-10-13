@@ -60,12 +60,13 @@ _preload_libs = {
     'cutensor': None,
 }
 
-_preload_logs = []
+_debug = os.environ.get('CUPY_DEBUG_LIBRARY_LOAD', '0') == '1'
 
 
-def _log(msg):
-    # TODO(kmaehashi): replace with the standard logging
-    _preload_logs.append(msg)
+def _log(msg: str) -> None:
+    if _debug:
+        sys.stderr.write(f'[CUPY_DEBUG_LIBRARY_LOAD] {msg}\n')
+        sys.stderr.flush()
 
 
 def get_cuda_path():
@@ -370,10 +371,6 @@ def _preload_library(lib):
                 # Fallback to the standard shared library lookup which only
                 # uses the major version (e.g., `libcudnn.so.X`).
                 _log(f'Library {lib} could not be preloaded: {e}')
-
-
-def _get_preload_logs():
-    return '\n'.join(_preload_logs)
 
 
 def _preload_warning(lib, exc):
