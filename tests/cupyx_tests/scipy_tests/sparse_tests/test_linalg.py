@@ -987,6 +987,7 @@ class TestLOBPCG:
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_generate_input_for_elastic_rod(self, xp, sp):
@@ -999,6 +1000,7 @@ class TestLOBPCG:
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_generate_input_for_mikota_pair(self, xp, sp):
