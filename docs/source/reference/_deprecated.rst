@@ -28,6 +28,16 @@ Timing helper
 
    cupyx.time.repeat
 
+Profiler
+--------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupy.cuda.profile
+   cupy.cuda.profiler.start
+   cupy.cuda.profiler.stop
+
 Device synchronization detection
 --------------------------------
 
