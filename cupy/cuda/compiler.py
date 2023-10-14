@@ -234,6 +234,7 @@ def _jitify_prep(source, options, cu_path):
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
         from cupy._core import core
+        jitify._init_module()
         jitify._add_sources(core._get_header_source_map())
         _jitify_header_source_map_populated = True
 

@@ -7,12 +7,12 @@ from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
 from libcpp.vector cimport vector
 
-from cupy.cuda import cub
-
 import atexit
 import os
 import pickle
 import tempfile
+
+from cupy.cuda import cub
 
 
 ###############################################################################
@@ -35,12 +35,12 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 
 
 # We need an internal way to invalidate the cache (say, when cuda_workaround.h
-# or the CCCL bundle is updated) without having to set the environment variable
-# CUPY_DISABLE_JITIFY_CACHE in the CI. This should never be touched by end
-# users.
+# or the CCCL bundle or the warmup_kernel below is updated) without having to
+# set the environment variable CUPY_DISABLE_JITIFY_CACHE in the CI. This should
+# never be touched by end users.
 cdef extern from *:
     """
-    const int build_num = 1;
+    const int build_num = 2;
     """
     const int build_num
 
@@ -58,8 +58,12 @@ def get_build_version():
 # We cache headers found by Jitify. This is initialized with a few built-in
 # JIT-safe headers, and expands as needed to help reduce compile time.
 cdef cpp_map[cpp_str, cpp_str] cupy_headers
-_jitify_cache_dir = None
-_jitify_cache_versions = None
+cdef cpp_map[cpp_str, cpp_str] cupy_headers_for_cache  # snapshot at init time
+
+# Module-level constants
+cdef bint _jitify_init = False
+cdef str _jitify_cache_dir = None
+cdef str _jitify_cache_versions = None
 
 
 cpdef _add_sources(dict sources):
@@ -69,12 +73,15 @@ cpdef _add_sources(dict sources):
 
 @atexit.register
 def dump_cache():
+    if not _jitify_init:
+        return
+
     # Set up a version guard for invalidating the cache. Right now,
     # we use the build-time versions of CUB/Jitify.
     # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
     # start time, for enabling CCCL + CuPy developers?
     assert _jitify_cache_versions is not None
-    data = (_jitify_cache_versions, dict(cupy_headers))
+    data = (_jitify_cache_versions, dict(cupy_headers_for_cache))
 
     # Ensure the directory exists
     os.makedirs(_jitify_cache_dir, exist_ok=True)
@@ -90,14 +97,35 @@ def dump_cache():
     os.replace(f_name, f'{_jitify_cache_dir}/jitify.pickle')
 
 
-cdef inline void _init_cupy_headers_from_cache() except*:
-    global _jitify_cache_dir
-    _jitify_cache_dir = os.getenv(
-        'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
-    global _jitify_cache_versions
-    versions = f"{get_build_version()}_{cub.get_build_version()}_{build_num}"
-    _jitify_cache_versions = versions
+# This kernel simply includes commonly used headers in CuPy's codebase
+# to populate the Jitify cache.
+cdef str warmup_kernel = r"""cupy_jitify_exercise
+#include <cupy/cuda_workaround.h>
+#include <cuda_fp16.h>
 
+#include <type_traits>
+#include <string>
+
+#include <cupy/complex.cuh>
+#include <cupy/carray.cuh>
+#include <cupy/complex.cuh>
+#include <cupy/cuComplex_bridge.h>
+#include <cupy/math_constants.h>
+#include <cupy/atomics.cuh>
+#include <cupy/type_dispatcher.cuh>
+
+#include <cub/block/block_reduce.cuh>
+#include <cub/block/block_load.cuh>
+#include <cuda/barrier>
+#include <cooperative_groups.h>
+#include <cooperative_groups/memcpy_async.h>
+
+
+extern "C" __global__ void jitify_exercise() { }
+"""
+
+
+cdef inline void _init_cupy_headers_from_cache() except*:
     with open(f'{_jitify_cache_dir}/jitify.pickle', 'rb') as f:
         data = pickle.load(f)
 
@@ -109,10 +137,17 @@ cdef inline void _init_cupy_headers_from_cache() except*:
     assert isinstance(cached_headers, dict)
     # Check the version guard for invalidating the cache (see the comment
     # in the dump_cache() function).
-    assert cached_versions == versions
+    assert cached_versions == _jitify_cache_versions
 
     # Populate the in-memory cache with the disk/persistent cache
     _add_sources(cached_headers)
+
+    # Frozen the cache (to not mix in user-provided headers)
+    global cupy_headers_for_cache
+    cupy_headers_for_cache = cupy_headers
+
+    global _jitify_init
+    _jitify_init = True
 
 
 cdef inline void _init_cupy_headers_from_scratch() except*:
@@ -131,8 +166,23 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # Same for tuple
     cupy_headers[b"tuple"] = b"#include <cupy/cuda_workaround.h>\n"
 
+    # Compile a dummy kernel to further populate the cache (with bundled
+    # headers)
+    # need to defer import to avoid circular dependency
+    from cupy._core.core import assemble_cupy_compiler_options
+    cdef tuple options = ('-std=c++11', '-DCUB_DISABLE_BF16_SUPPORT',)
+    options = assemble_cupy_compiler_options(options)
+    jitify(warmup_kernel, options)
 
-cdef inline void init_cupy_headers() except*:
+    # Frozen the cache (to not mix in user-provided headers)
+    global cupy_headers_for_cache
+    cupy_headers_for_cache = cupy_headers
+
+    global _jitify_init
+    _jitify_init = True
+
+
+cdef inline void _init_cupy_headers() except*:
     if int(os.getenv('CUPY_DISABLE_JITIFY_CACHE', '0')) == 0:
         try:
             _init_cupy_headers_from_cache()
@@ -143,7 +193,21 @@ cdef inline void init_cupy_headers() except*:
     _init_cupy_headers_from_scratch()
 
 
-init_cupy_headers()
+cpdef void _init_module() except*:
+    if _jitify_init:
+        return
+
+    global _jitify_cache_dir
+    if _jitify_cache_dir is None:
+        _jitify_cache_dir = os.getenv(
+            'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
+
+    global _jitify_cache_versions
+    if _jitify_cache_versions is None:
+        _jitify_cache_versions = (
+            f"{get_build_version()}_{cub.get_build_version()}_{build_num}")
+
+    _init_cupy_headers()
 
 
 # Use Jitify's internal mechanism to search all included headers, and return
@@ -151,7 +215,6 @@ init_cupy_headers()
 # follows the constructor of jitify::Program(). The found headers are cached
 # to accelerate Jitify's search loop.
 cpdef jitify(str code, tuple opt):
-
     # input
     cdef cpp_str cuda_source
     cdef vector[cpp_str] headers
