@@ -2,14 +2,14 @@
 
 """Wrapper of Jitify utilities for CuPy API."""
 
+from posix.unistd cimport read, write
 from libcpp cimport nullptr
 from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
+from libcpp.utility cimport pair
 from libcpp.vector cimport vector
 
-import atexit
 import os
-import pickle
 import tempfile
 
 from cupy.cuda import cub
@@ -71,18 +71,73 @@ cpdef _add_sources(dict sources):
         cupy_headers[hdr_name] = hdr_source
 
 
-@atexit.register
-def dump_cache():
-    if not _jitify_init:
-        return
+cdef inline void serialize(cpp_map[cpp_str, cpp_str]& data, file_obj) except*:
+    # format:
+    # ver.size(), ver,
+    # data.size(), len(k1), len(v1), ..., len(kN), len(vN),
+    # k1, v1, ..., kN, vN,
+    # where len(obj) here refers to the number of bytes for obj
+    cdef int fd = <int>(file_obj.fileno())
+    cdef size_t size
 
-    # Set up a version guard for invalidating the cache. Right now,
-    # we use the build-time versions of CUB/Jitify.
-    # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
-    # start time, for enabling CCCL + CuPy developers?
     assert _jitify_cache_versions is not None
-    data = (_jitify_cache_versions, dict(cupy_headers_for_cache))
 
+    # dump cache version
+    size = len(_jitify_cache_versions) + 1
+    write(fd, &size, sizeof(size_t))
+    ver = _jitify_cache_versions.encode()
+    cdef char* jitify_ver = ver
+    write(fd, jitify_ver, sizeof(char) * size)
+
+    # dump header cache
+    size = data.size()
+    write(fd, &size, sizeof(size_t))
+    for it in data:
+        size = it.first.size() + 1
+        write(fd, &size, sizeof(size_t))
+        size = it.second.size() + 1
+        write(fd, &size, sizeof(size_t))
+    for it in data:
+        write(fd, it.first.c_str(), sizeof(char) * (it.first.size() + 1))
+        write(fd, it.second.c_str(), sizeof(char) * (it.second.size() + 1))
+
+
+cdef str deserialize(file_obj, cpp_map[cpp_str, cpp_str]& data):
+    cdef int fd = <int>(file_obj.fileno())
+    cdef size_t map_size, k_size, v_size
+    cdef cpp_str k_str, v_str
+    cdef vector[pair[size_t, size_t]] sizes
+    cdef vector[char] buf
+
+    # load cache version
+    read(fd, &k_size, sizeof(size_t))
+    buf.reserve(k_size)
+    read(fd, buf.data(), sizeof(char) * k_size)
+    cdef bytes cached_versions = cpp_str(buf.data(), k_size - 1)
+
+    # load cache
+    read(fd, &map_size, sizeof(size_t))
+    for i in range(map_size):
+        read(fd, &k_size, sizeof(size_t))
+        read(fd, &v_size, sizeof(size_t))
+        sizes.push_back(pair[size_t, size_t](k_size, v_size))
+    for i in range(map_size):
+        k_size = sizes[i].first
+        buf.reserve(k_size)
+        read(fd, buf.data(), sizeof(char) * k_size)
+        k_str = cpp_str(buf.data(), k_size - 1)
+
+        v_size = sizes[i].second
+        buf.reserve(v_size)
+        read(fd, buf.data(), sizeof(char) * v_size)
+        v_str = cpp_str(buf.data(), v_size - 1)
+
+        data[k_str] = v_str
+
+    return cached_versions.decode()
+
+
+cdef inline void dump_cache() except*:
     # Ensure the directory exists
     os.makedirs(_jitify_cache_dir, exist_ok=True)
 
@@ -90,11 +145,11 @@ def dump_cache():
     # that atomic moves within the same filesystem can be guaranteed
     with tempfile.NamedTemporaryFile(
             dir=_jitify_cache_dir, delete=False) as f:
-        pickle.dump(data, f)
+        serialize(cupy_headers_for_cache, f)
         f_name = f.name
 
     # atomic move with the destination guaranteed to be overwritten
-    os.replace(f_name, f'{_jitify_cache_dir}/jitify.pickle')
+    os.replace(f_name, f'{_jitify_cache_dir}/jitify.cache')
 
 
 # This kernel simply includes commonly used headers in CuPy's codebase
@@ -104,15 +159,6 @@ cdef str warmup_kernel = r"""cupy_jitify_exercise
 #include <cuda_fp16.h>
 
 #include <type_traits>
-#include <string>
-
-#include <cupy/complex.cuh>
-#include <cupy/carray.cuh>
-#include <cupy/complex.cuh>
-#include <cupy/cuComplex_bridge.h>
-#include <cupy/math_constants.h>
-#include <cupy/atomics.cuh>
-#include <cupy/type_dispatcher.cuh>
 
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
@@ -126,21 +172,15 @@ extern "C" __global__ void jitify_exercise() { }
 
 
 cdef inline void _init_cupy_headers_from_cache() except*:
-    with open(f'{_jitify_cache_dir}/jitify.pickle', 'rb') as f:
-        data = pickle.load(f)
+    # Populate the in-memory cache with the disk/persistent cache
+    cdef str cached_versions
+    with open(f'{_jitify_cache_dir}/jitify.cache', 'rb') as f:
+        cached_versions = deserialize(f, cupy_headers)
 
     # Any failing sanity check here would mean the cache is invalidated.
-    assert isinstance(data, tuple)
-    assert len(data) == 2
-    cached_versions, cached_headers = data
-    assert isinstance(cached_versions, str)
-    assert isinstance(cached_headers, dict)
-    # Check the version guard for invalidating the cache (see the comment
-    # in the dump_cache() function).
+    # Check the version guard for invalidating the cache
+    assert _jitify_cache_versions is not None
     assert cached_versions == _jitify_cache_versions
-
-    # Populate the in-memory cache with the disk/persistent cache
-    _add_sources(cached_headers)
 
     # Frozen the cache (to not mix in user-provided headers)
     global cupy_headers_for_cache
@@ -181,6 +221,8 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     global _jitify_init
     _jitify_init = True
 
+    dump_cache()
+
 
 cdef inline void _init_cupy_headers() except*:
     if int(os.getenv('CUPY_DISABLE_JITIFY_CACHE', '0')) == 0:
@@ -202,6 +244,10 @@ cpdef void _init_module() except*:
         _jitify_cache_dir = os.getenv(
             'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
 
+    # Set up a version guard for invalidating the cache. Right now,
+    # we use the build-time versions of CUB/Jitify.
+    # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
+    # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
         _jitify_cache_versions = (
