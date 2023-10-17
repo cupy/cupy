@@ -808,7 +808,7 @@ def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
         out (numpy.ndarray): The output array to be written to. It must have
             compatible shape and dtype with those of ``a``'s.
         blocking (bool): If set to ``False``, the copy runs asynchronously
-            on the given (if given) or default stream, and users are
+            on the given (if given) or current stream, and users are
             responsible for ensuring the stream order. Default is ``True``,
             so the copy is synchronous (with respect to the host).
 
