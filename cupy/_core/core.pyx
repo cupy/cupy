@@ -2141,9 +2141,9 @@ cpdef str _get_header_dir_path():
 
 cpdef tuple _get_cccl_include_options():
     # the search paths are made such that they resemble the layout in CTK
-    return (f"-I{_get_header_dir_path()}/cupy/cccl/cub",
-            f"-I{_get_header_dir_path()}/cupy/cccl/thrust",
-            f"-I{_get_header_dir_path()}/cupy/cccl/libcudacxx/include")
+    return (f"-I{_get_header_dir_path()}/cupy/_cccl/cub",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/thrust",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/libcudacxx")
 
 
 cpdef str _get_header_source():
