@@ -2555,6 +2555,11 @@ cdef _ndarray_base _array_default(
 
     cdef intptr_t ptr_h = <intptr_t>(a_cpu.ctypes.data)
     if pinned_memory.is_memory_pinned(ptr_h):
+        if blocking:
+            warnings.warn(
+                'pinned memory is in use but blocking is set to True, an '
+                'unnecessary synchronization would happen',
+                _util.PerformanceWarning)
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
     else:
         # The input numpy array does not live on pinned memory, so we allocate
