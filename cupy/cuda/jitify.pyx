@@ -3,6 +3,7 @@
 """Wrapper of Jitify utilities for CuPy API."""
 
 from posix.unistd cimport read, write
+from libc cimport errno
 from libcpp cimport nullptr
 from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
@@ -71,6 +72,24 @@ cpdef _add_sources(dict sources):
         cupy_headers[hdr_name] = hdr_source
 
 
+cdef inline void readE(int fd, void* ptr, size_t count) except*:
+    errno.errno = 0  # reset
+    cdef ssize_t out = read(fd, ptr, count)
+    cdef int error = errno.errno
+    if (out == -1) or (out < <ssize_t>(count)):
+        raise RuntimeError(
+            "read failed, errno: " + str(error) + ", out: " + str(out))
+
+
+cdef inline void writeE(int fd, const void* ptr, size_t count) except*:
+    errno.errno = 0  # reset
+    cdef ssize_t out = write(fd, ptr, count)
+    cdef int error = errno.errno
+    if (out == -1) or (out < <ssize_t>(count)):
+        raise RuntimeError(
+            "write failed, errno: " + str(error) + ", out: " + str(out))
+
+
 cdef inline void serialize(cpp_map[cpp_str, cpp_str]& data, file_obj) except*:
     # format:
     # ver.size(), ver,
@@ -84,22 +103,22 @@ cdef inline void serialize(cpp_map[cpp_str, cpp_str]& data, file_obj) except*:
 
     # dump cache version
     size = len(_jitify_cache_versions) + 1
-    write(fd, &size, sizeof(size_t))
+    writeE(fd, &size, sizeof(size_t))
     ver = _jitify_cache_versions.encode()
     cdef char* jitify_ver = ver
-    write(fd, jitify_ver, sizeof(char) * size)
+    writeE(fd, jitify_ver, sizeof(char) * size)
 
     # dump header cache
     size = data.size()
-    write(fd, &size, sizeof(size_t))
+    writeE(fd, &size, sizeof(size_t))
     for it in data:
         size = it.first.size() + 1
-        write(fd, &size, sizeof(size_t))
+        writeE(fd, &size, sizeof(size_t))
         size = it.second.size() + 1
-        write(fd, &size, sizeof(size_t))
+        writeE(fd, &size, sizeof(size_t))
     for it in data:
-        write(fd, it.first.c_str(), sizeof(char) * (it.first.size() + 1))
-        write(fd, it.second.c_str(), sizeof(char) * (it.second.size() + 1))
+        writeE(fd, it.first.c_str(), sizeof(char) * (it.first.size() + 1))
+        writeE(fd, it.second.c_str(), sizeof(char) * (it.second.size() + 1))
 
 
 cdef str deserialize(file_obj, cpp_map[cpp_str, cpp_str]& data):
@@ -110,26 +129,26 @@ cdef str deserialize(file_obj, cpp_map[cpp_str, cpp_str]& data):
     cdef vector[char] buf
 
     # load cache version
-    read(fd, &k_size, sizeof(size_t))
+    readE(fd, &k_size, sizeof(size_t))
     buf.reserve(k_size)
-    read(fd, buf.data(), sizeof(char) * k_size)
+    readE(fd, buf.data(), sizeof(char) * k_size)
     cdef bytes cached_versions = cpp_str(buf.data(), k_size - 1)
 
     # load cache
-    read(fd, &map_size, sizeof(size_t))
+    readE(fd, &map_size, sizeof(size_t))
     for i in range(map_size):
-        read(fd, &k_size, sizeof(size_t))
-        read(fd, &v_size, sizeof(size_t))
+        readE(fd, &k_size, sizeof(size_t))
+        readE(fd, &v_size, sizeof(size_t))
         sizes.push_back(pair[size_t, size_t](k_size, v_size))
     for i in range(map_size):
         k_size = sizes[i].first
         buf.reserve(k_size)
-        read(fd, buf.data(), sizeof(char) * k_size)
+        readE(fd, buf.data(), sizeof(char) * k_size)
         k_str = cpp_str(buf.data(), k_size - 1)
 
         v_size = sizes[i].second
         buf.reserve(v_size)
-        read(fd, buf.data(), sizeof(char) * v_size)
+        readE(fd, buf.data(), sizeof(char) * v_size)
         v_str = cpp_str(buf.data(), v_size - 1)
 
         data[k_str] = v_str
@@ -172,19 +191,20 @@ extern "C" __global__ void jitify_exercise() { }
 
 
 cdef inline void _init_cupy_headers_from_cache() except*:
-    # Populate the in-memory cache with the disk/persistent cache
+    # Attempt to load from the disk/persistent cache
     cdef str cached_versions
     with open(f'{_jitify_cache_dir}/jitify.cache', 'rb') as f:
-        cached_versions = deserialize(f, cupy_headers)
+        cached_versions = deserialize(f, cupy_headers_for_cache)
 
-    # Any failing sanity check here would mean the cache is invalidated.
+    # Any failing sanity check here would mean the cache is invalidated,
+    # and cupy_headers_for_cache will be cleaned up.
     # Check the version guard for invalidating the cache
     assert _jitify_cache_versions is not None
     assert cached_versions == _jitify_cache_versions
 
-    # Frozen the cache (to not mix in user-provided headers)
-    global cupy_headers_for_cache
-    cupy_headers_for_cache = cupy_headers
+    # Populate the cache
+    global cupy_headers
+    cupy_headers = cupy_headers_for_cache
 
     global _jitify_init
     _jitify_init = True
@@ -229,6 +249,7 @@ cdef inline void _init_cupy_headers() except*:
         try:
             _init_cupy_headers_from_cache()
         except Exception:
+            cupy_headers_for_cache.clear()
             pass  # continue to the old logic below
         else:
             return
@@ -244,14 +265,17 @@ cpdef void _init_module() except*:
         _jitify_cache_dir = os.getenv(
             'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
 
+    # avoid circular dependency
+    from cupy import __version__ as _cupy_ver
+
     # Set up a version guard for invalidating the cache. Right now,
-    # we use the build-time versions of CUB/Jitify.
+    # we use the build-time versions of CUB/Jitify & CuPy version.
     # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
-        _jitify_cache_versions = (
-            f"{get_build_version()}_{cub.get_build_version()}_{build_num}")
+        _jitify_cache_versions = (f"{_cupy_ver}_{get_build_version()}_"
+                                  f"{cub.get_build_version()}_{build_num}")
 
     _init_cupy_headers()
 
