@@ -145,7 +145,7 @@ class spmatrix(object):
         return self.tocsr().__truediv__(other)
 
     def __rtruediv__(self, other):
-        return self.tocsr().__rdtrueiv__(other)
+        return self.tocsr().__rtruediv__(other)
 
     def __neg__(self):
         return -self.tocsr()

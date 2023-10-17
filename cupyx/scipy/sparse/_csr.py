@@ -162,7 +162,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             elif cusparse.check_availability('csrgemm'):
                 return cusparse.csrgemm(self, other)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif _csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
@@ -178,7 +178,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 b.sum_duplicates()
                 return cusparse.csrgemm2(self, b)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif _base.isspmatrix(other):
             return self * other.tocsr()
         elif _base.isdense(other):
@@ -211,7 +211,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
@@ -220,7 +220,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmm(self, cupy.asfortranarray(other))
             else:
                 raise ValueError('could not interpret dimensions')
@@ -266,10 +266,10 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             # which can use lots of memory.
             self_dense = self.todense().astype(dtype, copy=False)
             return self_dense / other.todense()
-        raise NotImplementedError
+        return NotImplemented
 
     def __rtruediv__(self, other):
-        raise NotImplementedError
+        return NotImplemented
 
     # TODO(unno): Implement check_format
 
