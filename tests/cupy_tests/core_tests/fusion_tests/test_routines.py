@@ -153,8 +153,7 @@ class TestFusionDegRad(FusionUnaryUfuncTestBase):
 
 
 @testing.parameterize(*testing.product({
-    'func': ['around', 'round', 'round_', 'rint', 'floor', 'ceil', 'trunc',
-             'fix']
+    'func': ['around', 'round', 'rint', 'floor', 'ceil', 'trunc', 'fix']
 }))
 class TestFusionRounding(FusionUnaryUfuncTestBase):
 
