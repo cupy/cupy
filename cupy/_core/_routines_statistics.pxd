@@ -28,6 +28,3 @@ cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims)
 
 cpdef _ndarray_base _nanargmin(_ndarray_base a, axis, out, dtype, keepdims)
 cpdef _ndarray_base _nanargmax(_ndarray_base a, axis, out, dtype, keepdims)
-
-cdef object _amax
-cdef object _amin
