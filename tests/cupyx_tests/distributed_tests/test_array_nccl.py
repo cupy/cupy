@@ -529,3 +529,161 @@ class TestDistributedArray:
                 (np_a, d_a), (np_b, d_b) = arrs
                 testing.assert_array_equal(np_a, d_a, strict=True)
                 testing.assert_array_equal(np_b, d_b, strict=True)
+
+
+_2d_mappings = [
+    {
+        0: [(slice(8), slice(None, None))],
+        1: [(slice(8, None), slice(None, None))],
+    },
+    {
+        0: [(slice(8), slice(4)), (slice(8), slice(4, None))],
+        1: [(slice(8, None), slice(None, None))],
+    },
+]
+
+_3d_mappings = [
+    {
+        0: [(slice(4), slice(None, None), slice(None, None))],
+        1: [(slice(4, None), slice(None, None), slice(None, None, None))],
+    },
+    {
+        0: [
+                (slice(4), slice(4), slice(None, None)),
+                (slice(4), slice(4, None), slice(None, None))
+           ],
+        1: [(slice(4, None), slice(None, None), slice(None, None, None))],
+    },
+]
+
+shape_and_chunks = [((16, 16), m) for m in _2d_mappings]
+shape_and_chunks = [((8, 8, 4), m) for m in _3d_mappings]
+
+
+@testing.multi_gpu(2)
+class TestDistributedArray2Devices(TestDistributedArray):
+    @classmethod
+    def setup_class(cls):
+        cls.streams = {}
+        for dev in range(2):
+            with cupy.cuda.Device(dev):
+                cls.streams[dev] = cupy.cuda.Stream()
+                cls.streams[dev].use()
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_array_creation_from_numpy(self, shape, index_map, mode):
+        super().test_array_creation_from_numpy(shape, index_map, mode)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_array_creation_from_cupy(self, shape, index_map, mode):
+        super().test_array_creation_from_cupy(shape, index_map, mode)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_array_creation(self, shape, index_map, mode):
+        super().test_array_creation(shape, index_map, mode)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    def test_change_to_replica_mode(self, shape, index_map):
+        super().test_change_to_replica_mode(shape, index_map)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['max', 'sum'])
+    def test_change_to_op_mode(self, shape, index_map, mode):
+        super().test_change_to_op_mode(shape, index_map, mode)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode_a', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode_b', ['replica', 'sum'])
+    def test_ufuncs(self, shape, index_map, mode_a, mode_b):
+        super().test_ufuncs(shape, index_map, mode_a, mode_b)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode_a', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode_b', ['replica', 'sum'])
+    def test_elementwise_kernel(self, shape, index_map, mode_a, mode_b):
+        super().test_elementwise_kernel(shape, index_map, mode_a, mode_b)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    def test_elementwise_kernel_incompatible_chunk_shapes(
+            self, shape, index_map, mode):
+        super().test_elementwise_kernel_incompatible_chunk_shapes(
+            shape, index_map, mode
+        )
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_incompatible_operand(self, shape, index_map, mode):
+        super().test_incompatible_operand(shape, index_map, mode)
+
+    @pytest.mark.parametrize(
+        'shape, index_map_a, index_map_b',
+        [(shape_dim2, _2d_mappings[0], _2d_mappings[1]),
+         (shape_dim3, _3d_mappings[0], _3d_mappings[1]),
+         (shape_dim3, index_map_only_1, _3d_mappings[1])])
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_reshard(self, shape, index_map_a, index_map_b, mode):
+        super().test_reshard(shape, index_map_a, index_map_b, mode)
+
+    @pytest.mark.parametrize(
+        'shape, index_map_a, index_map_b',
+        [(shape_dim2, _2d_mappings[0], _2d_mappings[1]),
+         (shape_dim3, _3d_mappings[0], _3d_mappings[1]),
+         (shape_dim3, index_map_only_1, _3d_mappings[1])])
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_incompatible_chunk_shapes_resharded(
+            self, shape, index_map_a, index_map_b, mode):
+        super().test_incompatible_chunk_shapes_resharded(
+            shape, index_map_a, index_map_b, mode
+        )
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('dtype', ['int64', 'float64'])
+    def test_max_reduction(self, shape, index_map, mode, dtype):
+        super().test_max_reduction(shape, index_map, mode, dtype)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('dtype', ['int64', 'float64'])
+    def test_min_reduction(self, shape, index_map, mode, dtype):
+        super().test_min_reduction(shape, index_map, mode, dtype)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'prod'])
+    def test_sum_reduction(self, shape, index_map, mode):
+        super().test_sum_reduction(shape, index_map, mode)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    def test_prod_reduction(self, shape, index_map, mode):
+        super().test_prod_reduction(shape, index_map, mode)
+
+    @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
+    def test_unsupported_reduction(self, shape, index_map):
+        super().test_unsupported_reduction(shape, index_map)
+
+    @pytest.mark.parametrize(
+        'shape, index_map_a, index_map_b',
+        [(shape_dim2, _2d_mappings[0], _2d_mappings[1]),
+         (shape_dim3, _3d_mappings[0], _3d_mappings[1]),
+         (shape_dim3, index_map_only_1, _3d_mappings[1])])
+    def test_reshard_max(self, shape, index_map_a, index_map_b):
+        super().test_reshard_max(shape, index_map_a, index_map_b)
+
+    @pytest.mark.parametrize(
+        'shape, index_map_a, index_map_b',
+        [(shape_dim2, _2d_mappings[0], _2d_mappings[1]),
+         (shape_dim3, _3d_mappings[0], _3d_mappings[1]),
+         (shape_dim3, index_map_only_1, _3d_mappings[1])])
+    def test_mul_max_mul(self, shape, index_map_a, index_map_b):
+        super().test_mul_max_mul(shape, index_map_a, index_map_b)
+
+    def test_random_reshard_change_mode(self):
+        pytest.skip("TODO")
+
+    def test_random_binary_operations(self):
+        pytest.skip("TODO")
