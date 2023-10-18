@@ -28,7 +28,7 @@ the lowest C++ standard. CCCL expects to move to C++17 in the near future.
 Change in :func:`cupy.asnumpy`/:meth:`cupy.ndarray.get` Behavior
 ----------------------------------------------------------------
 
-When transferring a CuPy array from GPU to CPU (as a NumPy array), previously the transfer could be nonblocking and not properly ordered,
+When transferring a CuPy array from GPU to CPU (as a NumPy array), previously the transfer could be nonblocking and not properly ordered when a non-default stream is in use,
 leading to potential data race if the resulting array is modified on host immediately after the copy starts. In CuPy v13, the default
 behavior is changed to be always blocking, with a new optional argument ``blocking`` added to allow the previous nonblocking behavior
 if set to ``False``, in which case users are responsible for ensuring proper stream order.

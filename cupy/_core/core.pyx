@@ -1778,7 +1778,7 @@ cdef class _ndarray_base:
             out (numpy.ndarray): Output array. In order to enable asynchronous
                 copy, the underlying memory should be a pinned memory.
             blocking (bool): If set to ``False``, the copy runs asynchronously
-                on the given (if given) or default stream, and users are
+                on the given (if given) or current stream, and users are
                 responsible for ensuring the stream order. Default is ``True``,
                 so the copy is synchronous (with respect to the host).
 
@@ -2134,9 +2134,9 @@ cpdef str _get_header_dir_path():
 
 cpdef tuple _get_cccl_include_options():
     # the search paths are made such that they resemble the layout in CTK
-    return (f"-I{_get_header_dir_path()}/cupy/cccl/cub",
-            f"-I{_get_header_dir_path()}/cupy/cccl/thrust",
-            f"-I{_get_header_dir_path()}/cupy/cccl/libcudacxx/include")
+    return (f"-I{_get_header_dir_path()}/cupy/_cccl/cub",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/thrust",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/libcudacxx")
 
 
 cpdef str _get_header_source():
