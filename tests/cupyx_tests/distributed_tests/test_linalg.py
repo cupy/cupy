@@ -146,7 +146,7 @@ class TestDistributedMatMul:
         np_a, d_a, np_b, d_b = config.instantiate(mode)
         np_c = np_a @ np_b
         d_c = d_a @ d_b
-        testing.assert_array_equal(d_c.asnumpy(), np_c, strict=True)
+        testing.assert_array_equal(d_c.get(), np_c, strict=True)
 
     def test_incompatible_blockings(self):
         wrong_config = MatMulConfig(config_1x2_2x2.a, config_2x3_3x2.b)
@@ -163,7 +163,7 @@ class TestDistributedMatMul:
         np_c = np_a @ np_b
         d_c = d_a @ d_b
 
-        testing.assert_array_equal(d_c.asnumpy(), np_c)
+        testing.assert_array_equal(d_c.get(), np_c)
 
     @pytest.mark.parametrize('config_a', configs_a)
     @pytest.mark.parametrize('config_b', configs_b)
@@ -172,7 +172,7 @@ class TestDistributedMatMul:
         np_b, d_b = config_b.instantiate()
         np_c = np_a @ np_b
         d_c = d_a @ d_b
-        testing.assert_array_equal(d_c.asnumpy(), np_c, strict=True)
+        testing.assert_array_equal(d_c.get(), np_c, strict=True)
 
     @pytest.mark.parametrize('config', [config_1x2_2x2])
     @pytest.mark.parametrize('mode', ['replica', 'sum'])
@@ -187,7 +187,7 @@ class TestDistributedMatMul:
 
         np_a2 = np_a + 1
         d_a2 = d_a.reshard(index_map_a) + array.distributed_array(
-            cupy.ones_like(d_a), index_map_a)
+            cupy.ones_like(d_a.get()), index_map_a)
 
         np_b2 = np_b.sum(axis=0)
         d_b2 = d_b.sum(axis=0)
@@ -198,4 +198,4 @@ class TestDistributedMatMul:
 
         np_c = np_a2 @ np_b2
         d_c = d_a2 @ d_b3
-        testing.assert_array_equal(d_c.asnumpy(), np_c, strict=True)
+        testing.assert_array_equal(d_c.get(), np_c, strict=True)
