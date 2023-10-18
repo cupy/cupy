@@ -12,9 +12,9 @@ class TestArrayGet(unittest.TestCase):
     def setUp(self):
         self.stream = cuda.Stream.null
 
-    def check_get(self, f, stream, order='C'):
+    def check_get(self, f, stream, order='C', blocking=True):
         a_gpu = f(cupy)
-        a_cpu = a_gpu.get(stream, order=order)
+        a_cpu = a_gpu.get(stream, order=order, blocking=blocking)
         if stream:
             stream.synchronize()
         b_cpu = f(numpy)
@@ -44,6 +44,15 @@ class TestArrayGet(unittest.TestCase):
         def contiguous_array(xp):
             return testing.shaped_arange((3,), xp, dtype, order)
         self.check_get(contiguous_array, self.stream, order)
+
+    @testing.for_orders('CFA')
+    @testing.for_all_dtypes()
+    def test_contiguous_array_stream_nonblocking(self, dtype, order):
+        # Note: This is just a smoking gun test, the real test is done for
+        # testing cupy.asnumpy(), which under the hood calls .get().
+        def contiguous_array(xp):
+            return testing.shaped_arange((3,), xp, dtype, order)
+        self.check_get(contiguous_array, self.stream, order, False)
 
     @testing.for_orders('CFA')
     @testing.for_all_dtypes()
