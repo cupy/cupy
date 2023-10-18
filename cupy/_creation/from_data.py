@@ -4,7 +4,7 @@ from cupy import _core
 from cupy._core import fusion
 
 
-def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *
+def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
           blocking=False):
     """Creates an array on the current device.
 
