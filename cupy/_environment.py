@@ -176,7 +176,7 @@ def _get_cub_path():
 
     if not runtime.is_hip:
         if os.path.isdir(
-                os.path.join(current_dir, '_core/include/cupy/cccl/cub')):
+                os.path.join(current_dir, '_core/include/cupy/_cccl/cub')):
             _cub_path = '<bundle>'
         else:
             _cub_path = None

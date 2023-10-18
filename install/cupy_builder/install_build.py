@@ -188,10 +188,9 @@ def get_compiler_setting(ctx: Context, use_hip):
         _libcudacxx_path = None
     else:
         # all bundled together under cccl
-        _cub_path = os.path.join(cupy_header, 'cupy/cccl/cub')
-        _thrust_path = os.path.join(cupy_header, 'cupy/cccl/thrust')
-        _libcudacxx_path = os.path.join(
-            cupy_header, 'cupy/cccl/libcudacxx/include')
+        _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
+        _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
+        _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
     include_dirs.insert(0, cupy_header)
     include_dirs.insert(0, _cub_path)
     if _thrust_path and _libcudacxx_path:
