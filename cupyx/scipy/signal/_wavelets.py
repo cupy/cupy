@@ -359,8 +359,11 @@ def cwt(data, wavelet, widths):
 
     output = cupy.empty([len(widths), len(data)], dtype=dtype)
 
+    if isinstance(widths, cupy.ndarray):
+        widths = widths.get()
+
     for ind, width in enumerate(widths):
-        N = np.min([10 * int(width), len(data)])
+        N = np.min([10 * width, len(data)])
         wavelet_data = cupy.conj(wavelet(N, int(width)))[::-1]
         output[ind, :] = convolve(data, wavelet_data, mode="same")
     return output
