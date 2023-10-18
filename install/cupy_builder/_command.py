@@ -1,3 +1,5 @@
+import glob
+import hashlib
 import json
 import os
 import os.path
@@ -94,7 +96,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
 
-    def _cythonize(self, nthreads: int) -> None:
+    def _cythonize(self, nthreads: int, cache_key: str) -> None:
         # Defer importing Cython as it may be installed via setup_requires if
         # the user does not have Cython installed.
         import Cython.Build
@@ -117,6 +119,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         if use_cuda_python:
             print('Using CUDA Python')
 
+        compile_time_env['CUPY_CACHE_KEY'] = cache_key
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
         if ctx.use_stub:  # on RTD
@@ -156,9 +159,27 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
                 # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
                 self.compiler.initialize()
 
+        # Calculate cache key for this build
+        print('Generating cache key from header files...')
+        include_pattern = os.path.join(
+            self.build_lib, 'cupy', '_core', 'include', '**')
+        include_files = [
+            f for f in sorted(glob.glob(include_pattern, recursive=True))
+            if os.path.isfile(f)
+        ]
+        hasher = hashlib.sha1()
+        for include_file in include_files:
+            with open(include_file, 'rb') as f:
+                hasher.update(include_file.encode())
+                hasher.update(f.read())
+                hasher.update(b'\x00')
+        cache_key = hasher.hexdigest()
+        print(f'Cache key ({len(include_files)} files '
+              f'matching {include_pattern}): {cache_key}')
+
         # Compile "*.pyx" files into "*.cpp" files.
         print('Cythonizing...')
-        self._cythonize(num_jobs)
+        self._cythonize(num_jobs, cache_key)
 
         # Change an extension in each source filenames from "*.pyx" to "*.cpp".
         # c.f. `Cython.Distutils.old_build_ext`
