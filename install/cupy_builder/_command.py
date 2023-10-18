@@ -167,7 +167,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             f for f in sorted(glob.glob(include_pattern, recursive=True))
             if os.path.isfile(f)
         ]
-        hasher = hashlib.sha1()
+        hasher = hashlib.sha1(usedforsecurity=False)
         for include_file in include_files:
             with open(include_file, 'rb') as f:
                 hasher.update(include_file.encode())
