@@ -301,6 +301,8 @@ shape_and_chunks = [((8, 8, 4), m) for m in _3d_mappings]
 class TestDistributedArray2Devices(_TestDistributedArray):
     @classmethod
     def setup_class(cls):
+        if cupy.cuda.nccl.available:
+            pytest.skip("check")
         cls.streams = {}
         for dev in range(2):
             with cupy.cuda.Device(dev):
