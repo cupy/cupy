@@ -22,6 +22,10 @@ from cupyx.scipy.signal._signaltools import sosfiltfilt  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert  # NOQA
 from cupyx.scipy.signal._signaltools import hilbert2  # NOQA
 
+from cupyx.scipy.signal._resample import resample  # NOQA
+from cupyx.scipy.signal._resample import resample_poly  # NOQA
+from cupyx.scipy.signal._resample import decimate  # NOQA
+
 from cupyx.scipy.signal._polyutils import unique_roots  # NOQA
 from cupyx.scipy.signal._polyutils import invres  # NOQA
 from cupyx.scipy.signal._polyutils import invresz  # NOQA

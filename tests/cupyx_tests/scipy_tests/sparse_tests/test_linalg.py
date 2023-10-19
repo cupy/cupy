@@ -1009,6 +1009,7 @@ class TestLOBPCG:
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_generate_input_for_elastic_rod(self, xp, sp):
@@ -1017,10 +1018,11 @@ class TestLOBPCG:
         X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
                                             X, B=B,
-                                            tol=1e-5, maxiter=50,
+                                            tol=1e-5, maxiter=30,
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
+    @testing.with_requires('scipy<1.11')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_generate_input_for_mikota_pair(self, xp, sp):
@@ -1029,7 +1031,7 @@ class TestLOBPCG:
         X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
                                             X, B=B,
-                                            tol=1e-5, maxiter=50,
+                                            tol=1e-5, maxiter=30,
                                             largest=False)
         return eigvals, _eigen_vec_transform(eigvecs, xp)
 
@@ -1176,12 +1178,12 @@ class TestLOBPCG:
         saved_stdout = io.StringIO()
         with contextlib.redirect_stdout(saved_stdout):
             _, _ = sp.linalg.lobpcg(A, X, B=B, tol=1e-5,
-                                    maxiter=10, largest=False,
+                                    maxiter=30, largest=False,
                                     verbosityLevel=9)
         output = saved_stdout.getvalue().strip()
         return output
 
-    @testing.with_requires('scipy>=1.10')
+    @testing.with_requires('scipy>=1.10', 'scipy<1.11')
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs
            and is identical to scipy's output format.

@@ -101,7 +101,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 a.sum_duplicates()
                 return cusparse.csrgemm2(a, other)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
@@ -123,7 +123,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 b.sum_duplicates()
                 return cusparse.spgemm(a, b)
             else:
-                raise NotImplementedError
+                raise AssertionError
         elif cupyx.scipy.sparse.isspmatrix(other):
             return self * other.tocsr()
         elif _base.isdense(other):
@@ -147,7 +147,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                     # (I got HIPSPARSE_STATUS_INTERNAL_ERROR...)
                     csrmv = cusparse.spmv
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
@@ -163,7 +163,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
                 else:
-                    raise NotImplementedError
+                    raise AssertionError
                 return csrmm(self.T, cupy.asfortranarray(other), transa=True)
             else:
                 raise ValueError('could not interpret dimensions')

@@ -790,15 +790,6 @@ def _transpile_expr_internal(
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
-    if isinstance(expr, ast.Num):
-        # Deprecated since py3.8
-        return Constant(expr.n)
-    if isinstance(expr, ast.Str):
-        # Deprecated since py3.8
-        return Constant(expr.s)
-    if isinstance(expr, ast.NameConstant):
-        # Deprecated since py3.8
-        return Constant(expr.value)
     if isinstance(expr, ast.Subscript):
         array = _transpile_expr(expr.value, env)
         index = _transpile_expr(expr.slice, env)

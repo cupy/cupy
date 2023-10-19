@@ -48,7 +48,6 @@ from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs cimport cublas
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -1580,11 +1579,7 @@ cdef class _ndarray_base:
                 order = 'F' if self._f_contiguous else 'C'
                 tmp = value.ravel(order)
                 ptr = tmp.ctypes.data
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    self.data.copy_from_host(ptr, self.nbytes)
-                else:
-                    self.data.copy_from_host_async(ptr, self.nbytes)
+                self.data.copy_from_host_async(ptr, self.nbytes)
             else:
                 raise ValueError(
                     'copying a numpy.ndarray to a cupy.ndarray by empty slice '
@@ -1769,19 +1764,23 @@ cdef class _ndarray_base:
         """CUDA device on which this array resides."""
         return self.data.device
 
-    cpdef get(self, stream=None, order='C', out=None):
+    cpdef get(self, stream=None, order='C', out=None, blocking=True):
         """Returns a copy of the array on host memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
-                copy runs asynchronously. Otherwise, the copy is synchronous.
-                The default uses CUDA stream object of the current context.
+            stream (cupy.cuda.Stream): CUDA stream object. If given, the
+                stream is used to perform the copy. Otherwise, the current
+                stream is used.
             order ({'C', 'F', 'A'}): The desired memory layout of the host
                 array. When ``order`` is 'A', it uses 'F' if the array is
                 fortran-contiguous and 'C' otherwise. The ``order`` will be
                 ignored if ``out`` is specified.
             out (numpy.ndarray): Output array. In order to enable asynchronous
                 copy, the underlying memory should be a pinned memory.
+            blocking (bool): If set to ``False``, the copy runs asynchronously
+                on the given (if given) or current stream, and users are
+                responsible for ensuring the stream order. Default is ``True``,
+                so the copy is synchronous (with respect to the host).
 
         Returns:
             numpy.ndarray: Copy of the array on host memory.
@@ -1844,19 +1843,17 @@ cdef class _ndarray_base:
                 a_gpu = self
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
+        if stream is None:
+            stream = stream_module.get_current_stream()
+
         syncdetect._declare_synchronize()
         ptr = a_cpu.ctypes.data
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.device.id)
-            if stream is not None:
-                a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
-            else:
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
-                else:
-                    a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes)
+            a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
+            if blocking:
+                stream.synchronize()
         finally:
             runtime.setDevice(prev_device)
         return a_cpu
@@ -1866,10 +1863,9 @@ cdef class _ndarray_base:
 
         Args:
             arr (numpy.ndarray): The source array on the host memory.
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
-                copy runs asynchronously. Otherwise, the copy is synchronous.
-                The default uses CUDA stream object of the current context.
-
+            stream (cupy.cuda.Stream): CUDA stream object. If given, the
+                stream is used to perform the copy. Otherwise, the current
+                stream is used.
         """
         if not isinstance(arr, numpy.ndarray):
             raise TypeError('Only numpy.ndarray can be set to cupy.ndarray')
@@ -1887,18 +1883,14 @@ cdef class _ndarray_base:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
+        if stream is None:
+            stream = stream_module.get_current_stream()
+
         ptr = arr.ctypes.data
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.device.id)
-            if stream is not None:
-                self.data.copy_from_host_async(ptr, self.nbytes, stream)
-            else:
-                stream_ptr = stream_module.get_current_stream_ptr()
-                if stream_ptr == 0:
-                    self.data.copy_from_host(ptr, self.nbytes)
-                else:
-                    self.data.copy_from_host_async(ptr, self.nbytes)
+            self.data.copy_from_host_async(ptr, self.nbytes, stream)
         finally:
             runtime.setDevice(prev_device)
 
@@ -2142,9 +2134,9 @@ cpdef str _get_header_dir_path():
 
 cpdef tuple _get_cccl_include_options():
     # the search paths are made such that they resemble the layout in CTK
-    return (f"-I{_get_header_dir_path()}/cupy/cccl/cub",
-            f"-I{_get_header_dir_path()}/cupy/cccl/thrust",
-            f"-I{_get_header_dir_path()}/cupy/cccl/libcudacxx/include")
+    return (f"-I{_get_header_dir_path()}/cupy/_cccl/cub",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/thrust",
+            f"-I{_get_header_dir_path()}/cupy/_cccl/libcudacxx")
 
 
 cpdef str _get_header_source():
@@ -2670,6 +2662,8 @@ cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
 
 
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
+    from cupy_backends.cuda.libs import cublas
+
     cdef _ndarray_base newarray
     cdef int m, n
     cdef intptr_t handle
