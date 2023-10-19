@@ -13,8 +13,15 @@ def preflight_check(ctx: Context) -> bool:
     is_git = os.path.isdir(os.path.join(source_root, '.git'))
     for submodule in ('third_party/cccl',
                       'cupy/_core/include/cupy/jitify'):
-        if 0 < len(os.listdir(os.path.join(source_root, submodule))):
-            continue
+        dirpath = os.path.join(source_root, submodule)
+        if os.path.isdir(dirpath):
+            if 0 < len(os.listdir(dirpath)):
+                continue
+        else:
+            if not is_git:
+                # sdist does not contain third_party directory
+                continue
+
         if is_git:
             msg = f'''
 ===========================================================================
