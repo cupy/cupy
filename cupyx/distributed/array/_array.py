@@ -379,7 +379,9 @@ class DistributedArray(ndarray):
         return DistributedArray(
             self.shape, self.dtype, new_chunks_map, self._mode, self._comms)
 
-    def get(self, stream=None, order='C', out=None) -> numpy.ndarray:
+    def get(
+        self, stream=None, order='C', out=None, *, blocking=True
+    ) -> numpy.ndarray:
         """Return a copy of the array on the host memory."""
         if stream is not None:
             raise RuntimeError('Argument `stream` not supported')
