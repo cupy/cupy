@@ -50,7 +50,7 @@ index_map_only_1 = {
 }
 
 
-@testing.multi_gpu(4)
+# @testing.multi_gpu(4)
 class TestDistributedArray:
     @classmethod
     def setup_class(cls):
@@ -549,9 +549,9 @@ _3d_mappings = [
     },
     {
         0: [
-                (slice(4), slice(4), slice(None, None)),
-                (slice(4), slice(4, None), slice(None, None))
-           ],
+            (slice(4), slice(4), slice(None, None)),
+            (slice(4), slice(4, None), slice(None, None))
+        ],
         1: [(slice(4, None), slice(None, None), slice(None, None, None))],
     },
 ]
