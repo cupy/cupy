@@ -392,8 +392,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
-            if not PLATFORM_WIN32 and not PLATFORM_LINUX:
-                assert False, "macOS is no longer supported"
             if (PLATFORM_LINUX and len(rpath) != 0):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
