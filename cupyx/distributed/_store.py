@@ -106,7 +106,8 @@ class TCPStore:
         if self._process is not None:
             with self._run.get_lock():
                 self._run.value = 0
-            self._process.join()
+            if self._process.is_alive():
+                self._process.join()
 
 
 class TCPStoreProxy:
