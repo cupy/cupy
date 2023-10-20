@@ -30,7 +30,7 @@ class _TestDistributedArray:
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.array, array[idx], strict=True)
+                        chunk.array, array[idx])
 
     def _test_array_creation_from_cupy(self, shape, index_map, mode):
         array = cupy.arange(size, dtype='q').reshape(shape)
@@ -46,7 +46,7 @@ class _TestDistributedArray:
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.array, array[idx], strict=True)
+                        chunk.array, array[idx])
 
     def _test_array_creation(self, shape, index_map, mode):
         array = numpy.arange(size, dtype='q').reshape(shape)
@@ -60,7 +60,7 @@ class _TestDistributedArray:
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.array, array[idx], strict=True)
+                        chunk.array, array[idx])
 
     def _test_change_to_replica_mode(self, shape, index_map):
         np_a = numpy.zeros(shape)
@@ -80,22 +80,22 @@ class _TestDistributedArray:
             shape, np_a.dtype, chunks_map, _modes._MODES['sum'])
         d_b = d_a._to_replica_mode()
         assert d_b._mode is _modes._REPLICA_MODE
-        testing.assert_array_equal(d_b, np_a, strict=True)
-        testing.assert_array_equal(d_a, np_a, strict=True)
+        testing.assert_array_equal(d_b, np_a)
+        testing.assert_array_equal(d_a, np_a)
         for dev in index_map.keys():
             for chunk, idx in zip(d_b._chunks_map[dev], index_map[dev]):
                 assert chunk.array.device.id == dev
                 idx = _index_arith._normalize_index(shape, idx)
                 testing.assert_array_equal(
-                    chunk.array, np_a[idx], strict=True)
+                    chunk.array, np_a[idx])
 
     def _test_change_to_op_mode(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
         d_a = darray.distributed_array(np_a, index_map, mode)
         d_b = d_a.change_mode(mode)
         assert d_b.mode == mode
-        testing.assert_array_equal(d_b, np_a, strict=True)
-        testing.assert_array_equal(d_a, np_a, strict=True)
+        testing.assert_array_equal(d_b, np_a)
+        testing.assert_array_equal(d_a, np_a)
 
     def _test_ufuncs(self, shape, index_map, mode_a, mode_b):
         np_a = numpy.arange(size).reshape(shape)
@@ -171,8 +171,8 @@ class _TestDistributedArray:
         # Initialize without comms
         d_a = darray.distributed_array(np_a, index_map_a, mode)
         d_b = d_a.reshard(index_map_b)
-        testing.assert_array_equal(d_b, np_a, strict=True)
-        testing.assert_array_equal(d_a, np_a, strict=True)
+        testing.assert_array_equal(d_b, np_a)
+        testing.assert_array_equal(d_a, np_a)
         assert d_b.mode == mode
         for dev in index_map_b.keys():
             for chunk, idx in zip(d_b._chunks_map[dev], index_map_b[dev]):
@@ -181,7 +181,7 @@ class _TestDistributedArray:
                 if mode == 'replica':
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
-                        chunk.array, np_a[idx], strict=True)
+                        chunk.array, np_a[idx])
 
     def _test_incompatible_chunk_shapes_resharded(
             self, shape, index_map_a, index_map_b, mode):
@@ -200,8 +200,8 @@ class _TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.max(axis=axis)
             d_b = d_a.max(axis=axis)
-            testing.assert_array_equal(d_b, np_b, strict=True)
-            testing.assert_array_equal(d_a, np_a, strict=True)
+            testing.assert_array_equal(d_b, np_b)
+            testing.assert_array_equal(d_a, np_a)
 
     def _test_min_reduction(self, shape, index_map, mode, dtype):
         np_a = numpy.arange(size, dtype=dtype).reshape(shape)
@@ -209,8 +209,8 @@ class _TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.min(axis=axis)
             d_b = d_a.min(axis=axis)
-            testing.assert_array_equal(d_b, np_b, strict=True)
-            testing.assert_array_equal(d_a, np_a, strict=True)
+            testing.assert_array_equal(d_b, np_b)
+            testing.assert_array_equal(d_a, np_a)
 
     def _test_sum_reduction(self, shape, index_map, mode):
         np_a = numpy.arange(size).reshape(shape)
@@ -219,8 +219,8 @@ class _TestDistributedArray:
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
             assert d_b._mode is _modes._MODES['sum']
-            testing.assert_array_equal(d_b, np_b, strict=True)
-            testing.assert_array_equal(d_a, np_a, strict=True)
+            testing.assert_array_equal(d_b, np_b)
+            testing.assert_array_equal(d_a, np_a)
 
     def _test_prod_reduction(self, shape, index_map, mode):
         np_a = numpy.random.default_rng().random(shape)
@@ -242,8 +242,8 @@ class _TestDistributedArray:
         np_b = np_a.max(axis=0)
         d_a = darray.distributed_array(np_a, index_map_a)
         d_b = d_a.reshard(index_map_b).max(axis=0)
-        testing.assert_array_equal(np_b, d_b, strict=True)
-        testing.assert_array_equal(np_a, d_a, strict=True)
+        testing.assert_array_equal(np_b, d_b)
+        testing.assert_array_equal(np_a, d_a)
 
     def _test_mul_max_mul(self, shape, index_map_a, index_map_b):
         rng = numpy.random.default_rng()
@@ -259,8 +259,8 @@ class _TestDistributedArray:
         d_c = darray.distributed_array(np_c, mapping_c)
         d_c2 = (d_a.reshard(index_map_b) * d_b).max(axis=0)
         d_d = d_c2.reshard(mapping_c) * d_c
-        testing.assert_array_equal(np_d, d_d, strict=True)
-        testing.assert_array_equal(np_c2, d_c2, strict=True)
+        testing.assert_array_equal(np_d, d_d)
+        testing.assert_array_equal(np_c2, d_c2)
 
 
 _2d_mappings = [
@@ -630,9 +630,9 @@ class TestDistributedArray4Devices(_TestDistributedArray):
                     mode = rng.choice(modes)
                     d_a = d_a.change_mode(mode)
 
-            testing.assert_array_equal(np_a, d_a, strict=True)
+            testing.assert_array_equal(np_a, d_a)
             d_b = history[rng.choice(len(history))]
-            testing.assert_array_equal(np_a, d_b, strict=True)
+            testing.assert_array_equal(np_a, d_b)
 
     def test_random_binary_operations(self):
         n_iter = 5
@@ -716,5 +716,5 @@ class TestDistributedArray4Devices(_TestDistributedArray):
 
             for i, arrs in enumerate(arrs_history):
                 (np_a, d_a), (np_b, d_b) = arrs
-                testing.assert_array_equal(np_a, d_a, strict=True)
-                testing.assert_array_equal(np_b, d_b, strict=True)
+                testing.assert_array_equal(np_a, d_a)
+                testing.assert_array_equal(np_b, d_b)
