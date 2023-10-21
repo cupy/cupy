@@ -12,7 +12,8 @@ def preflight_check(ctx: Context) -> bool:
     source_root = ctx.source_root
     is_git = os.path.isdir(os.path.join(source_root, '.git'))
     for submodule in ('third_party/cccl',
-                      'cupy/_core/include/cupy/jitify'):
+                      'third_party/jitify',
+                      'third_party/dlpack'):
         dirpath = os.path.join(source_root, submodule)
         if os.path.isdir(dirpath):
             if 0 < len(os.listdir(dirpath)):
