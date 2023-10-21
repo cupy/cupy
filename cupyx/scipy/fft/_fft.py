@@ -6,8 +6,7 @@ import numpy as np
 import cupy
 
 from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
-                           ihfft as _ihfft, _size_last_transform_axis,
-                           _swap_direction)
+                           ihfft as _ihfft, _swap_direction)
 
 _scipy_150 = False
 _scipy_160 = False
