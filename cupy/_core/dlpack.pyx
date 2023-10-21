@@ -20,7 +20,7 @@ import cupy
 import cupy._core.core as core
 
 
-cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
+cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
     cdef int DLPACK_VERSION
 
     cdef enum DLDeviceType:
