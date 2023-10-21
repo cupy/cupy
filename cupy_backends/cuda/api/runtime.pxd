@@ -172,6 +172,7 @@ cpdef check_status(int status)
 
 cpdef int driverGetVersion() except? -1
 cpdef int runtimeGetVersion() except? -1
+cpdef int _getCUDAMajorVersion() except? -1
 
 
 ###############################################################################
