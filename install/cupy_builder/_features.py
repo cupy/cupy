@@ -465,13 +465,16 @@ class CUDA_cuda(Feature):
         # TODO(kmaehashi): Split profiler module so that dependency to
         # `cudart` can be removed when using CUDA Python.
         self.libraries = (
-            (['cudart'] if ctx.use_cuda_python else ['cuda', 'cudart']) + [
-                'cublas',
-                'cufft',
-                'curand',
-                'cusparse',
-            ]
+            # CUDA Driver
+            ([] if ctx.use_cuda_python else ['cuda']) +
+
+            # Dependencies for cudart_static
+            (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []) +
+
+            # CUDA Toolkit
+            ['cublas', 'cufft', 'curand', 'cusparse']
         )
+        self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 
     def configure(self, compiler: Any, settings: Any) -> bool:
