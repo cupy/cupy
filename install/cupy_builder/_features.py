@@ -290,8 +290,14 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'libraries': [
             # Dependency from Jitify header files
             'cuda',
-            'cudart',
             'nvrtc',
+        ] + [
+            # Dependencies for cudart_static
+            'pthread', 'rt', 'dl',
+        ] if sys.platform == 'linux' else [],
+        'static_libraries': [
+            # Dependency from Jitify header files
+            'cudart_static',
         ],
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
@@ -307,9 +313,13 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
         ],
         'libraries': [
-            # Dependency from cuRAND header files
-            'cudart',
             'curand',
+        ] + [
+            # Dependencies for cudart_static
+            'pthread', 'rt', 'dl',
+        ] if sys.platform == 'linux' else [],
+        'static_libraries': [
+            'cudart_static',
         ],
     }
     HIP_random = {
@@ -399,8 +409,12 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'thrust/sort.h',
         ],
         'libraries': [
+            # Dependencies for cudart_static
+            'pthread', 'rt', 'dl',
+        ] if sys.platform == 'linux' else [],
+        'static_libraries': [
             # Dependency from Thrust header files
-            'cudart',
+            'cudart_static',
         ],
         'check_method': build.check_thrust_version,
         'version_method': build.get_thrust_version,
