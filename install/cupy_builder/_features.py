@@ -145,6 +145,11 @@ _cuda_files = [
     'cupy._util',
 ]
 
+# Libraries required for cudart_static
+_cudart_static_libs = (
+    ['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []
+)
+
 
 def get_features(ctx: Context) -> Dict[str, Feature]:
     # We handle nvtx (and likely any other future support) here, because
@@ -265,10 +270,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'include': [
             'cub/util_namespace.cuh',  # dummy
         ],
-        'libraries': [
-            # Dependencies for cudart_static
-            'pthread', 'rt', 'dl',
-        ] if sys.platform == 'linux' else [],
+        'libraries': list(_cudart_static_libs),
         'static_libraries': [
             # Dependency from CUB header files
             'cudart_static',
@@ -291,10 +293,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             # Dependency from Jitify header files
             'cuda',
             'nvrtc',
-        ] + [
-            # Dependencies for cudart_static
-            'pthread', 'rt', 'dl',
-        ] if sys.platform == 'linux' else [],
+        ] + _cudart_static_libs,
         'static_libraries': [
             # Dependency from Jitify header files
             'cudart_static',
@@ -314,10 +313,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         ],
         'libraries': [
             'curand',
-        ] + [
-            # Dependencies for cudart_static
-            'pthread', 'rt', 'dl',
-        ] if sys.platform == 'linux' else [],
+        ] + _cudart_static_libs,
         'static_libraries': [
             'cudart_static',
         ],
@@ -408,10 +404,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'thrust/sequence.h',
             'thrust/sort.h',
         ],
-        'libraries': [
-            # Dependencies for cudart_static
-            'pthread', 'rt', 'dl',
-        ] if sys.platform == 'linux' else [],
+        'libraries': list(_cudart_static_libs),
         'static_libraries': [
             # Dependency from Thrust header files
             'cudart_static',
@@ -479,8 +472,8 @@ class CUDA_cuda(Feature):
             # CUDA Driver
             ([] if ctx.use_cuda_python else ['cuda']) +
 
-            # Dependencies for cudart_static
-            (['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []) +
+            # CUDA Runtime
+            _cudart_static_libs +
 
             # CUDA Toolkit
             ['cublas', 'cufft', 'curand', 'cusparse']
