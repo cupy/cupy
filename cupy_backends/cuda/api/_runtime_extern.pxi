@@ -152,6 +152,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaGraphLaunch(GraphExec, driver.Stream)
     int cudaGraphUpload(GraphExec, driver.Stream)
 
+    # Constants
     int cudaDevAttrComputeCapabilityMajor
     int cudaDevAttrComputeCapabilityMinor
 
@@ -161,3 +162,9 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaErrorPeerAccessAlreadyEnabled
     int cudaErrorContextIsDestroyed
     int cudaErrorInvalidResourceHandle
+
+
+cdef extern from '../../cupy_profiler.h' nogil:
+    # Profiler
+    int cudaProfilerStart()
+    int cudaProfilerStop()

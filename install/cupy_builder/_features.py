@@ -100,7 +100,6 @@ _cuda_files = [
     'cupy_backends.cuda.libs.curand',
     'cupy_backends.cuda.libs.cusparse',
     'cupy_backends.cuda.libs.nvrtc',
-    'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
     'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
@@ -462,8 +461,6 @@ class CUDA_cuda(Feature):
             'curand.h',
             'cusparse.h',
         ]
-        # TODO(kmaehashi): Split profiler module so that dependency to
-        # `cudart` can be removed when using CUDA Python.
         self.libraries = (
             # CUDA Driver
             ([] if ctx.use_cuda_python else ['cuda']) +

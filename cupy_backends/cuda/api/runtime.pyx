@@ -1078,3 +1078,31 @@ cpdef graphUpload(intptr_t graphExec, intptr_t stream):
     with nogil:
         status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)
+
+
+##############################################################################
+# Profiler
+##############################################################################
+
+cpdef profilerStart():
+    """Enable profiling.
+
+    A user can enable CUDA profiling. When an error occurs, it raises an
+    exception.
+
+    See the CUDA document for detail.
+    """
+    status = cudaProfilerStart()
+    check_status(status)
+
+
+cpdef profilerStop():
+    """Disable profiling.
+
+    A user can disable CUDA profiling. When an error occurs, it raises an
+    exception.
+
+    See the CUDA document for detail.
+    """
+    status = cudaProfilerStop()
+    check_status(status)
