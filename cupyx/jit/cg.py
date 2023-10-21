@@ -300,12 +300,6 @@ class _ThisCgGroup(_BuiltinFunc):
         if _runtime.is_hip:
             raise RuntimeError('cooperative group is not supported on HIP')
         if self.group_type == 'grid':
-            if _runtime.runtimeGetVersion() < 11000:
-                raise RuntimeError(
-                    "For pre-CUDA 11, the grid group has very limited "
-                    "functionality (only group.sync() works), and so we "
-                    "disable the grid group support to prepare the transition "
-                    "to support CUDA 11+ only.")
             cg_type = _GridGroup()
         elif self.group_type == 'thread_block':
             cg_type = _ThreadBlockGroup()
@@ -328,8 +322,6 @@ class _Sync(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
         if not isinstance(group.ctype, _ThreadGroup):
             raise ValueError("group must be a valid cooperative group")
         _check_include(env, 'cg')
@@ -365,10 +357,6 @@ class _MemcpySync(_BuiltinFunc):
 
     def call(self, env, group, dst, dst_idx, src, src_idx, size, *,
              aligned_size=None):
-        if _runtime.runtimeGetVersion() < 11010:
-            # the overloaded version of memcpy_async that we use does not yet
-            # exist in CUDA 11.0
-            raise RuntimeError("not supported in CUDA < 11.1")
         _check_include(env, 'cg')
         _check_include(env, 'cg_memcpy_async')
 
@@ -414,8 +402,6 @@ class _Wait(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
         _check_include(env, 'cg')
         return _Data(f'cg::wait({group.code})', _cuda_types.void)
 
@@ -437,8 +423,6 @@ class _WaitPrior(_BuiltinFunc):
         super().__call__()
 
     def call(self, env, group, step):
-        if _runtime.runtimeGetVersion() < 11000:
-            raise RuntimeError("not supported in CUDA < 11.0")
         _check_include(env, 'cg')
         if not isinstance(step, _Constant):
             raise ValueError('step must be a compile-time constant')
