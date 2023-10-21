@@ -24,8 +24,16 @@ from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
+import cupy
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
+
+
+# cudaMalloc() is aligned to at least 512 bytes
+# cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
+DEF ALLOCATION_UNIT_SIZE = 512
+# for test
+_allocation_unit_size = ALLOCATION_UNIT_SIZE
 
 
 cdef bint _exit_mode = False
@@ -318,7 +326,13 @@ cdef class SystemMemory(BaseMemory):
 
     def __dealloc__(self):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
-        if self.ptr and self._owner is None:
+        if self._owner is not None:
+            # if we don't own the memory, we must sync before free to avoid
+            # any race condition
+            runtime.deviceSynchronize()
+        elif self.ptr:
+            # we don't need to sync because we assume SystemMemory is allocated
+            # and protected by the (stream-ordered) memory pool
             c_free(<void*>self.ptr)
 
 
@@ -424,6 +438,22 @@ cdef class MemoryPointer:
         self.ptr = mem.ptr + offset
         self.device_id = mem.device_id
         self.mem = mem
+
+#    def __dealloc__(self):
+#        # Note: Cannot raise in the destructor! (cython/cython#1613)
+#        cdef MemoryPool pool
+#        cdef SingleDeviceMemoryPool mp
+#        # TODO(leofang): Check if HMM is enabled
+#        mem = self.mem
+#        if (isinstance(mem, SystemMemory)
+#                and mem._owner is not None
+#                # the mempool handles memory in units (!= 1 byte)
+#                and mem.size % ALLOCATION_UNIT_SIZE == 0):
+#            pool = cupy._default_memory_pool
+#            if pool is not None:
+#                mp = <SingleDeviceMemoryPool>(pool)._pools[
+#                    device.get_device_id()]
+#                mp.expand_pool(mem)
 
     def __int__(self):
         """Returns the pointer value."""
@@ -978,13 +1008,6 @@ cdef class PooledMemory(BaseMemory):
 cdef size_t _index_compaction_threshold = 512
 
 
-# cudaMalloc() is aligned to at least 512 bytes
-# cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
-DEF ALLOCATION_UNIT_SIZE = 512
-# for test
-_allocation_unit_size = ALLOCATION_UNIT_SIZE
-
-
 cpdef inline size_t _round_size(size_t size):
     """Rounds up the memory size to fit memory alignment of cudaMalloc."""
     # avoid 0 div checking
@@ -1309,6 +1332,37 @@ cdef class SingleDeviceMemoryPool:
             arena.append_to_free_list(chunk)
         finally:
             _unlock_no_gc(self._free_lock, gc_mode)
+
+    cdef expand_pool(self, BaseMemory mem):
+        # First, wrap mem as a chunk
+        cdef _Chunk chunk = _Chunk.__new__(_Chunk)
+        stream_ident = _get_stream_identifier(
+            stream_module.get_current_stream_ptr())
+        chunk._init(mem, 0, mem.size, stream_ident)
+
+        # Next, put the chunk back into the arena, as if it was
+        # freed from a pool
+        # TODO(leofang): honor the pool size limit?
+        gc_mode = _lock_no_gc(self._free_lock)
+        try:
+            arena = self._arena(stream_ident)
+
+            c = chunk.next
+            if c is not None and arena.remove_from_free_list(c):
+                chunk.merge(c)
+
+            c = chunk.prev
+            if c is not None and arena.remove_from_free_list(c):
+                c.merge(chunk)
+                chunk = c
+
+            arena.append_to_free_list(chunk)
+        finally:
+            _unlock_no_gc(self._free_lock, gc_mode)
+
+        # Update the pool size for consistency
+        with LockAndNoGc(self._total_bytes_lock):
+            self._total_bytes += mem.size
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""

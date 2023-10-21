@@ -385,10 +385,6 @@ cdef class _ndarray_base:
         buf.obj = self
         cpython.Py_INCREF(self)
 
-        stream = stream_module.get_current_stream()
-        stream.synchronize()
-        #runtime.deviceSynchronize()
-
     def __releasebuffer__(self, Py_buffer* buf):
         stdlib.free(buf.shape)  # frees both shape & strides
         cpython.Py_DECREF(self)
@@ -2699,6 +2695,15 @@ cdef _ndarray_base _array_default(
     a_cpu = a_cpu.astype(a_cpu.dtype.newbyteorder('<'), copy=False)
     a_dtype = a_cpu.dtype
     cdef shape_t a_shape = a_cpu.shape
+
+    # We already made a copy, we should be able to use it
+    # TODO(leofang) :we can probably make this cheaper by skipping all
+    # the checks
+    if _is_hmm_enabled:
+        a = _try_skip_h2d_copy(a_cpu, a_dtype, False, order, ndmin)
+        assert a is not None
+        return a
+
     a = ndarray(a_shape, dtype=a_dtype, order=order)
     if a_cpu.ndim == 0:
         a.fill(a_cpu)

@@ -74,7 +74,13 @@ class DeferPlugin:
         print(f'CUDA_VISIBLE_DEVICES={devices}')
 
 
-# Make sure malloc is used in a stream-ordered fashion
 if int(os.environ.get('CUPY_ENABLE_HMM', 0)) != 0:
+    # Make sure malloc is used in a stream-ordered fashion
     import cupy as cp
     cp.cuda.set_allocator(cp.cuda.MemoryPool(cp.cuda.memory.malloc_system).malloc)
+
+    ## Tell NumPy to not cache small arrays
+    #import numpy_allocator
+    #class alloc_always(metaclass=numpy_allocator.type):
+    #    pass
+    #alloc_always.__enter__()
