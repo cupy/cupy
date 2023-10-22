@@ -64,9 +64,9 @@ def __getattr__(key):
         return cublas
     elif key == 'jitify':
         if not runtime.is_hip and driver.get_build_version() > 0:
-            from cupy.cuda import jitify  # NOQA
+            import cupy.cuda.jitify as jitify
         else:
-            jitify = None
+            jitify = _UnavailableModule('cupy.cuda.jitify')
         _cupy.cuda.jitify = jitify
         return jitify
 
