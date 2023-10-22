@@ -5,8 +5,6 @@
 
 extern "C" {
 
-typedef enum {} cudaOutputMode_t;
-
 cudaError_t cudaProfilerStart() {
   return hipProfilerStart();
 }
