@@ -19,6 +19,13 @@ _header_to_code = {
            "#include <cooperative_groups.h>\n"
            "namespace cg = cooperative_groups;\n"),
     'cg_memcpy_async': "#include <cooperative_groups/memcpy_async.h>",
+    'cg_check_cuda_116': (
+        '#if CUDA_VERSION < 11060\n'
+        '#error New cooperative groups functions (block_rank, num_threads,'
+        ' num_blocks, dim_blocks, block_index, dim_threads, etc.)'
+        ' require CUDA 11.6 or later.\n'
+        '#endif\n'
+    )
 }
 
 
@@ -99,8 +106,7 @@ class _GridGroup(_ThreadGroup):
 
         Rank of the calling block within ``[0, num_blocks)``.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("block_rank() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.block_rank()', _cuda_types.uint64)
 
@@ -111,8 +117,7 @@ class _GridGroup(_ThreadGroup):
 
         Total number of threads in the group.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("num_threads() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.num_threads()', _cuda_types.uint64)
 
@@ -123,8 +128,7 @@ class _GridGroup(_ThreadGroup):
 
         Total number of blocks in the group.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("num_blocks() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.num_blocks()', _cuda_types.uint64)
 
@@ -135,8 +139,7 @@ class _GridGroup(_ThreadGroup):
 
         Dimensions of the launched grid in units of blocks.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("dim_blocks() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.dim_blocks()', _cuda_types.dim3)
 
@@ -147,8 +150,7 @@ class _GridGroup(_ThreadGroup):
 
         3-Dimensional index of the block within the launched grid.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("block_index() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.block_index()', _cuda_types.dim3)
 
@@ -234,8 +236,7 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         Dimensions of the launched block in units of threads.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("dim_threads() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.dim_threads()', _cuda_types.dim3)
 
@@ -246,8 +247,7 @@ class _ThreadBlockGroup(_ThreadGroup):
 
         Total number of threads in the group.
         """
-        if _runtime.runtimeGetVersion() < 11060:
-            raise RuntimeError("num_threads() is supported on CUDA 11.6+")
+        _check_include(env, 'cg_check_cuda_116')
         _check_include(env, 'cg')
         return _Data(f'{instance.code}.num_threads()', _cuda_types.uint32)
 

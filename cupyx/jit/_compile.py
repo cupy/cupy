@@ -167,6 +167,8 @@ class Generated:
         self.include_cg = False
         # whether to include cooperative_groups/memcpy_async.h
         self.include_cg_memcpy_async = False
+        # whether new cooperative groups functions (CUDA 11.6+) are in use
+        self.include_cg_check_cuda_116 = False
         # whether to include cuda/barrier
         self.include_cuda_barrier = False
         # compiler options
