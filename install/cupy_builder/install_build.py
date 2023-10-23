@@ -178,7 +178,7 @@ def get_compiler_setting(ctx: Context, use_hip):
     cupy_header = os.path.join(
         cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
-    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
+    _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
     global _cub_path
     if rocm_path:
         _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
