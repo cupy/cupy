@@ -33,7 +33,7 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
                       cpp_str*) except +
 
     const char* jitify_ver  # set at build time
-    const char* CUPY_CACHE_KEY  # set at build time
+    const char* cupy_cache_key  # set at build time
 
 
 # We need an internal way to invalidate the cache (when the warmup_kernel below
@@ -228,7 +228,7 @@ cpdef void _init_module() except*:
     if _jitify_cache_versions is None:
         _jitify_cache_versions = (
             f"{get_build_version()}_{cub.get_build_version()}_"
-            f"{get_cuda_version()}_{build_num}_{CUPY_CACHE_KEY}")
+            f"{get_cuda_version()}_{build_num}_{cupy_cache_key.decode()}")
 
     _init_cupy_headers()
 
