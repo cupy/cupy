@@ -9,8 +9,10 @@ from libcpp.vector cimport vector
 
 import json
 import os
+import re
 import tempfile
 
+from cupy._environment import get_cuda_path
 from cupy.cuda import cub
 
 
@@ -53,6 +55,33 @@ def get_build_version():
     if jitify_ver == b'-1':
         return '<unknown>'
     return jitify_ver.decode()
+
+
+cpdef str get_cuda_version():
+    # Read CUDART version from header if it exists, otherwise use NVRTC version
+    # as a proxy.
+    cdef str cuda_path = get_cuda_path()
+    cdef str cuda_ver = None
+
+    if cuda_path is not None:
+        try:
+            with open(
+                    os.path.join(cuda_path,
+                                 'include/cuda_runtime_api.h')) as f:
+                hdr = f.read()
+            m = re.search(r'#define CUDART_VERSION\s+([0-9]*)', hdr)
+            if m:
+                cuda_ver = m.group(1)
+        except:  # noqa:E722
+            pass
+
+    if cuda_ver is None:
+        # avoid circular dependency
+        from cupy.cuda.compiler import _get_nvrtc_version
+        major, minor = _get_nvrtc_version()
+        cuda_ver = f"{int(major) * 1000 + int(minor) * 10}"
+
+    return cuda_ver
 
 
 # We cache headers found by Jitify. This is initialized with a few built-in
@@ -189,15 +218,17 @@ cpdef void _init_module() except*:
         _jitify_cache_dir = os.getenv(
             'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/jitify_cache'))
 
-    # Set up a version guard for invalidating the cache. Right now,
-    # we use the build-time versions of CUB/Jitify & CuPy version.
+    # Set up a version guard for invalidating the cache. Right now, we use the
+    # build-time versions of Jitify/CUB (CCCL)/CuPy and run-time versions of
+    # CuPy and CUDA (cannot use cudaRuntimeGetVersion as we link statically to
+    # it, but we still need a proxy for CTK).
     # TODO(leofang): Parse CUB/Thrust/libcu++ versions at process-
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
         _jitify_cache_versions = (
             f"{get_build_version()}_{cub.get_build_version()}_"
-            f"{build_num}_{CUPY_CACHE_KEY}")
+            f"{get_cuda_version()}_{build_num}_{CUPY_CACHE_KEY}")
 
     _init_cupy_headers()
 
