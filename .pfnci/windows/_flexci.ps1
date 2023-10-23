@@ -13,6 +13,8 @@ function ActivatePython($version) {
         $pydir = "Python310"
     } elseif ($version -eq "3.11") {
         $pydir = "Python311"
+    } elseif ($version -eq "3.12") {
+        $pydir = "Python312"
     } else {
         throw "Unsupported Python version: $version"
     }
