@@ -91,6 +91,10 @@ function ActivateNVTX1() {
     $Env:PATH = "$base\bin\x64;" + $Env:PATH
 }
 
+function InstallZLIB() {
+    Copy-Item -Path "C:\Development\ZLIB\zlibwapi.dll" -Destination "C:\Windows\System32"
+}
+
 function IsPullRequestTest() {
     return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
 }
