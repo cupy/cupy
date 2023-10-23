@@ -31,8 +31,10 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
             head of the shape if needed.
         blocking (bool): Default is ``False``, meaning if a H2D copy is needed
             it would run asynchronously on the current stream, and users are
-            responsible for ensuring the stream order. If set to ``True``,
-            the copy is synchronous (with respect to the host).
+            responsible for ensuring the stream order. For example, writing to
+            the source ``obj`` without proper ordering while copying would
+            result in a race condition. If set to ``True``, the copy is
+            synchronous (with respect to the host).
 
     Returns:
         cupy.ndarray: An array on the current device.
@@ -66,8 +68,10 @@ def asarray(a, dtype=None, order=None, *, blocking=False):
             ``__cuda_array_interface__`` attribute.
         blocking (bool): Default is ``False``, meaning if a H2D copy is needed
             it would run asynchronously on the current stream, and users are
-            responsible for ensuring the stream order. If set to ``True``,
-            the copy is synchronous (with respect to the host).
+            responsible for ensuring the stream order. For example, writing to
+            the source ``a`` without proper ordering while copying would
+            result in a race condition. If set to ``True``, the copy is
+            synchronous (with respect to the host).
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on
