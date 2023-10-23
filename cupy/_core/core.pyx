@@ -2406,11 +2406,15 @@ cpdef _ndarray_base array(obj, dtype=None, bint copy=True, order='K',
     concat_shape, concat_type, concat_dtype = (
         _array_info_from_nested_sequence(obj))
     if concat_shape is not None:
-        # TODO(leofang): handle blocking?
         if blocking:
-            raise NotImplementedError
+            warnings.warn(
+                'blocking is set to True, but it is unnecessary in the '
+                'current version for handling nested sequence inputs; a '
+                'redundant synchronization would happen',
+                _util.PerformanceWarning)
         return _array_from_nested_sequence(
-            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype)
+            obj, dtype, order, ndmin, concat_shape, concat_type, concat_dtype,
+            blocking)
 
     return _array_default(obj, dtype, order, ndmin, blocking)
 
@@ -2449,7 +2453,7 @@ cdef _ndarray_base _array_from_cuda_array_interface(
 
 cdef _ndarray_base _array_from_nested_sequence(
         obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
-        concat_dtype):
+        concat_dtype, bint blocking):
     cdef Py_ssize_t ndim
 
     # resulting array is C order unless 'F' is explicitly specified
@@ -2468,17 +2472,18 @@ cdef _ndarray_base _array_from_nested_sequence(
 
     if concat_type is numpy.ndarray:
         return _array_from_nested_numpy_sequence(
-            obj, concat_dtype, dtype, concat_shape, order, ndmin)
+            obj, concat_dtype, dtype, concat_shape, order, ndmin,
+            blocking)
     elif concat_type is ndarray:  # TODO(takagi) Consider subclases
         return _array_from_nested_cupy_sequence(
-            obj, dtype, concat_shape, order)
+            obj, dtype, concat_shape, order, blocking)
     else:
         assert False
 
 
 cdef _ndarray_base _array_from_nested_numpy_sequence(
         arrays, src_dtype, dst_dtype, const shape_t& shape, order,
-        Py_ssize_t ndmin):
+        Py_ssize_t ndmin, bint blocking):
     a_dtype = get_dtype(dst_dtype)  # convert to numpy.dtype
     if a_dtype.char not in '?bhilqBHILQefdFD':
         raise ValueError('Unsupported dtype %s' % a_dtype)
@@ -2505,7 +2510,7 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
             a_dtype,
             src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host_async(mem.ptr, nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
@@ -2513,12 +2518,16 @@ cdef _ndarray_base _array_from_nested_numpy_sequence(
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
+        a.data.copy_from_host_async(a_cpu.ctypes.data, nbytes, stream)
+
+    if blocking:
+        stream.synchronize()
 
     return a
 
 
-cdef _ndarray_base _array_from_nested_cupy_sequence(obj, dtype, shape, order):
+cdef _ndarray_base _array_from_nested_cupy_sequence(
+        obj, dtype, shape, order, bint blocking):
     lst = _flatten_list(obj)
 
     # convert each scalar (0-dim) ndarray to 1-dim
@@ -2527,6 +2536,11 @@ cdef _ndarray_base _array_from_nested_cupy_sequence(obj, dtype, shape, order):
     a = _manipulation.concatenate_method(lst, 0)
     a = a.reshape(shape)
     a = a.astype(dtype, order=order, copy=False)
+
+    if blocking:
+        stream = stream_module.get_current_stream()
+        stream.synchronize()
+
     return a
 
 
