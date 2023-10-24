@@ -329,7 +329,7 @@ cdef class SystemMemory(BaseMemory):
         if self._owner is not None:
             # if we don't own the memory, we must sync before free to avoid
             # any race condition
-            runtime.deviceSynchronize()
+            runtime.streamSynchronize(stream_module.get_current_stream_ptr())
         elif self.ptr:
             # we don't need to sync because we assume SystemMemory is allocated
             # and protected by the (stream-ordered) memory pool
@@ -447,8 +447,10 @@ cdef class MemoryPointer:
 #        mem = self.mem
 #        if (isinstance(mem, SystemMemory)
 #                and mem._owner is not None
-#                # the mempool handles memory in units (!= 1 byte)
-#                and mem.size % ALLOCATION_UNIT_SIZE == 0):
+#                and mem.size > 0
+#                and mem.size % ALLOCATION_UNIT_SIZE == 0
+#                and mem.ptr % ALLOCATION_UNIT_SIZE == 0):
+#            # TODO(leofang): get the current mempool properly
 #            pool = cupy._default_memory_pool
 #            if pool is not None:
 #                mp = <SingleDeviceMemoryPool>(pool)._pools[
@@ -1333,36 +1335,43 @@ cdef class SingleDeviceMemoryPool:
         finally:
             _unlock_no_gc(self._free_lock, gc_mode)
 
-    cdef expand_pool(self, BaseMemory mem):
-        # First, wrap mem as a chunk
-        cdef _Chunk chunk = _Chunk.__new__(_Chunk)
-        stream_ident = _get_stream_identifier(
-            stream_module.get_current_stream_ptr())
-        chunk._init(mem, 0, mem.size, stream_ident)
-
-        # Next, put the chunk back into the arena, as if it was
-        # freed from a pool
-        # TODO(leofang): honor the pool size limit?
-        gc_mode = _lock_no_gc(self._free_lock)
-        try:
-            arena = self._arena(stream_ident)
-
-            c = chunk.next
-            if c is not None and arena.remove_from_free_list(c):
-                chunk.merge(c)
-
-            c = chunk.prev
-            if c is not None and arena.remove_from_free_list(c):
-                c.merge(chunk)
-                chunk = c
-
-            arena.append_to_free_list(chunk)
-        finally:
-            _unlock_no_gc(self._free_lock, gc_mode)
-
-        # Update the pool size for consistency
-        with LockAndNoGc(self._total_bytes_lock):
-            self._total_bytes += mem.size
+#    cdef expand_pool(self, BaseMemory mem):
+#        # First, wrap mem as a chunk
+#        cdef _Chunk chunk = _Chunk.__new__(_Chunk)
+#        stream_ident = _get_stream_identifier(
+#            stream_module.get_current_stream_ptr())
+#        chunk._init(mem, 0, mem.size, stream_ident)
+#
+#        ## I think this is just wrong, it braks the pool invariants
+#        #rlock.lock_fastrlock(self._in_use_lock, -1, True)
+#        #try:
+#        #    self._in_use[chunk.ptr()] = chunk
+#        #finally:
+#        #    rlock.unlock_fastrlock(self._in_use_lock)
+#
+#        # Next, put the chunk back into the arena, as if it was
+#        # freed from a pool
+#        # TODO(leofang): honor the pool size limit?
+#        gc_mode = _lock_no_gc(self._free_lock)
+#        try:
+#            arena = self._arena(stream_ident)
+#
+#            c = chunk.next
+#            if c is not None and arena.remove_from_free_list(c):
+#                chunk.merge(c)
+#
+#            c = chunk.prev
+#            if c is not None and arena.remove_from_free_list(c):
+#                c.merge(chunk)
+#                chunk = c
+#
+#            arena.append_to_free_list(chunk)
+#        finally:
+#            _unlock_no_gc(self._free_lock, gc_mode)
+#
+#        # Update the pool size for consistency
+#        with LockAndNoGc(self._total_bytes_lock):
+#            self._total_bytes += mem.size
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""

@@ -2650,17 +2650,26 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if obj_dtype.char not in _dtype.all_type_chars:
         return None
 
+    # CUDA onlt supports little endianness
+    if obj_dtype.byteorder not in ('|', '=', '<'):
+        return None
+
     # strides and the requested order could mismatch
     obj_flags = obj.flags
     if not _is_layout_expected(
             obj_flags.c_contiguous, obj_flags.f_contiguous, order):
         return None
 
-    # NumPy ndarrays do not guarantee alignment unless a custom
-    # allocator is in use
     cdef intptr_t ptr = obj.ctypes.data
+#    # NumPy ndarrays do not guarantee alignment unless a custom
+#    # allocator is in use
 #    if not _is_alignment_expected(ptr, obj_dtype.itemsize):
 #        return None
+
+    # NumPy 0-size arrays still have non-null pointers...
+    cdef size_t nbytes = obj.nbytes
+    if nbytes == 0:
+        ptr = 0
 
     cdef Py_ssize_t ndim = obj.ndim
     cdef tuple shape = obj.shape
@@ -2668,7 +2677,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
         shape = (1,) * (ndmin - ndim) + shape
 
     cdef memory.SystemMemory ext_mem = memory.SystemMemory.from_external(
-        ptr, obj.nbytes, obj)
+        ptr, nbytes, obj)
     cdef memory.MemoryPointer memptr = memory.MemoryPointer(ext_mem, 0)
     return ndarray(shape, obj_dtype, memptr, obj.strides)
 
