@@ -84,3 +84,23 @@ if int(os.environ.get('CUPY_ENABLE_HMM', 0)) != 0:
     #class alloc_always(metaclass=numpy_allocator.type):
     #    pass
     #alloc_always.__enter__()
+
+    #import paged_aligned_allocator
+    #allocator = paged_aligned_allocator.page_aligned_allocator
+    #allocator.__enter__()
+
+    # for some reason this segfaults...
+    #import cupy._core.numpy_allocator as ac
+    #allocator = ac.get_aligned_host_allocator()
+    #print(allocator)
+    #allocator.__enter__()
+
+    import cupy._core.numpy_allocator as ac
+    import numpy_allocator
+    import ctypes
+    lib = ctypes.CDLL(ac.__file__)
+    class my_allocator(metaclass=numpy_allocator.type):
+        _calloc_ = ctypes.addressof(lib._calloc)
+        _malloc_ = ctypes.addressof(lib._malloc)
+        _realloc_ = ctypes.addressof(lib._realloc)
+    my_allocator.__enter__()
