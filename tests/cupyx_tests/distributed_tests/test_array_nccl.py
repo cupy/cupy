@@ -19,7 +19,9 @@ shape_dim2 = (16, 16)
 shape_dim3 = (8, 8, 4)
 
 
-@pytest.mark.skipif(not sys.platform.startswith('linux'))
+@pytest.mark.skipif(
+    not sys.platform.startswith('linux'), reason="Does not work in windows"
+)
 class _TestDistributedArray:
     def _test_array_creation_from_numpy(self, shape, index_map, mode):
         array = numpy.arange(size, dtype='q').reshape(shape)
