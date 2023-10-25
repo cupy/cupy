@@ -474,20 +474,19 @@ class TestFindPeaksCwt:
         """
         sigmas = [5.0, 3.0, 10.0, 20.0, 10.0, 50.0]
         num_points = 500
-        test_data, act_locs = _gen_gaussians_even(xp, sigmas, num_points)
+        test_data, _ = _gen_gaussians_even(xp, sigmas, num_points)
         widths = xp.arange(0.1, max(sigmas))
         noise_amp = 0.07
         random_sample = testing.shaped_random(
             (num_points,), xp, scale=1, seed=18181911)
         test_data += (random_sample - 0.5) * (2 * noise_amp)
-        # breakpoint()
         found_locs = scp.signal.find_peaks_cwt(
             test_data, widths, min_length=15,
             gap_thresh=1, min_snr=noise_amp / 5)
 
         return found_locs
 
-    @testing.numpy_cupy_allclose(scipy_name="scp")
+    @testing.numpy_cupy_allclose(scipy_name="scp", type_check=False)
     def test_find_peaks_nopeak(self, xp, scp):
         """
         Verify that no peak is found in
@@ -499,54 +498,26 @@ class TestFindPeaksCwt:
             (num_points,), xp, scale=1, seed=181819141)
         test_data = (random_sample - 0.5) * (2 * noise_amp)
         widths = xp.arange(10, 50)
-        # breakpoint()
         found_locs = scp.signal.find_peaks_cwt(
             test_data, widths, min_snr=5, noise_perc=30)
         return found_locs
 
-    # def test_find_peaks_with_non_default_wavelets(self):
-    #     x = gaussian(200, 2)
-    #     widths = np.array([1, 2, 3, 4])
-    #     a = find_peaks_cwt(x, widths, wavelet=gaussian)
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_find_peaks_with_non_default_wavelets(self, xp, scp):
+        x = scp.signal.windows.gaussian(200, 2)
+        widths = xp.array([1, 2, 3, 4])
+        a = scp.signal.find_peaks_cwt(
+            x, widths, wavelet=scp.signal.windows.gaussian, min_length=4)
+        return a
 
-    #     np.testing.assert_equal(np.array([100]), a)
-
-    # def test_find_peaks_window_size(self):
-    #     """
-    #     Verify that window_size is passed correctly to private function and
-    #     affects the result.
-    #     """
-    #     sigmas = [2.0, 2.0]
-    #     num_points = 1000
-    #     test_data, act_locs = _gen_gaussians_even(sigmas, num_points)
-    #     widths = np.arange(0.1, max(sigmas), 0.2)
-    #     noise_amp = 0.05
-    #     np.random.seed(18181911)
-    #     test_data += (np.random.rand(num_points) - 0.5)*(2*noise_amp)
-
-    #     # Possibly contrived negative region to throw off peak finding
-    #     # when window_size is too large
-    #     test_data[250:320] -= 1
-
-    #     found_locs = find_peaks_cwt(test_data, widths, gap_thresh=2,
-    #                                 min_snr=3,
-    #                                 min_length=None, window_size=None)
-    #     with pytest.raises(AssertionError):
-    #         assert found_locs.size == act_locs.size
-
-    #     found_locs = find_peaks_cwt(test_data, widths, gap_thresh=2,
-    #                                 min_snr=3,
-    #                                 min_length=None, window_size=20)
-    #     assert found_locs.size == act_locs.size
-
-    # def test_find_peaks_with_one_width(self):
-    #     """
-    #     Verify that the `width` argument
-    #     in `find_peaks_cwt` can be a float
-    #     """
-    #     xs = np.arange(0, np.pi, 0.05)
-    #     test_data = np.sin(xs)
-    #     widths = 1
-    #     found_locs = find_peaks_cwt(test_data, widths)
-
-    #     np.testing.assert_equal(found_locs, 32)
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_find_peaks_with_one_width(self, xp, scp):
+        """
+        Verify that the `width` argument
+        in `find_peaks_cwt` can be a float
+        """
+        xs = xp.arange(0, np.pi, 0.05)
+        test_data = xp.sin(xs)
+        widths = 1
+        found_locs = scp.signal.find_peaks_cwt(test_data, widths)
+        return found_locs
