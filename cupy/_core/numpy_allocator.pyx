@@ -14,13 +14,11 @@ cdef extern from * nogil:
 
 
 # CuPy mempool requirement, see ALLOCATION_UNIT_SIZE in cupy/cuda/memory.pyx
-cdef size_t ALIGNMENT = 512
+DEF ALIGNMENT = 512
 
 
 cdef public void* _calloc(size_t nmemb, size_t size) nogil:
-    if nmemb == 0 or size == 0:
-        return NULL
-
+    errno.errno = 0
     cdef void* buf = aligned_alloc(ALIGNMENT, nmemb * size)
     if buf and errno.errno == 0:
         buf = memset(buf, 0, nmemb * size)
@@ -29,42 +27,39 @@ cdef public void* _calloc(size_t nmemb, size_t size) nogil:
 
 
 cdef public void* _malloc(size_t size) nogil:
-    if size == 0:
-        return NULL
-
+    errno.errno = 0
     return aligned_alloc(ALIGNMENT, size)
 
 
 cdef public void* _realloc(void *ptr, size_t size) nogil:
-    if size == 0:
-        return NULL
-
+    errno.errno = 0
     cdef void* buf = stdlib.realloc(ptr, size)
     cdef void* tmp
 
-    if buf and <size_t>(buf) % ALIGNMENT != 0:
+    if buf and errno.errno == 0 and <intptr_t>(buf) % ALIGNMENT != 0:
         tmp = buf
+        errno.errno = 0
         buf = aligned_alloc(ALIGNMENT, size)
         if buf and errno.errno == 0:
-            buf = memcpy(buf, ptr, size)
-        stdlib.free(tmp)
+            buf = memcpy(buf, tmp, size)
+            stdlib.free(tmp)
 
     return buf
 
 
-def get_aligned_host_allocator():
-    try:
-        import numpy_allocator
-    except ImportError as e:
-        raise RuntimeError('numpy_allocator must be available') from e
-
-    import ctypes
-    lib = ctypes.CDLL(__file__)
-    class AlignedHostAllocator(metaclass=numpy_allocator.type):
-        # Note: we cannot just do this:
-        #   _malloc_ = <intptr_t>(_malloc)
-        # but need ctypes because the pointer addresses are relocated (I think)
-        _calloc_ = ctypes.addressof(lib._calloc)
-        _malloc_ = ctypes.addressof(lib._malloc)
-        _realloc_ = ctypes.addressof(lib._realloc)
-    return AlignedHostAllocator
+# def get_aligned_host_allocator():
+#     try:
+#         import numpy_allocator
+#     except ImportError as e:
+#         raise RuntimeError('numpy_allocator must be available') from e
+# 
+#     import ctypes
+#     lib = ctypes.CDLL(__file__)
+#     class AlignedHostAllocator(metaclass=numpy_allocator.type):
+#         # Note: we cannot just do this:
+#         #   _malloc_ = <intptr_t>(_malloc)
+#         # but need ctypes because the pointer addresses are relocated (I think)
+#         _calloc_ = ctypes.addressof(lib._calloc)
+#         _malloc_ = ctypes.addressof(lib._malloc)
+#         _realloc_ = ctypes.addressof(lib._realloc)
+#     return AlignedHostAllocator
