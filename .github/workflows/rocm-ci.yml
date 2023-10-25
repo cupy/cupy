@@ -15,5 +15,8 @@ jobs:
       run: |
         echo 'Hello'
         pwd
-        ls
-        echo 'done'
+        ls -a
+        docker --version
+    - name: Build & Test
+      run: |
+        .pfnci/linux/run.sh rocm-5-3 build test
