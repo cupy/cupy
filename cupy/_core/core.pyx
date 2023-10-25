@@ -385,6 +385,8 @@ cdef class _ndarray_base:
         buf.obj = self
         cpython.Py_INCREF(self)
 
+        stream_module.get_current_stream().synchronize()
+
     def __releasebuffer__(self, Py_buffer* buf):
         stdlib.free(buf.shape)  # frees both shape & strides
         cpython.Py_DECREF(self)
@@ -2673,13 +2675,16 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 
     cdef Py_ssize_t ndim = obj.ndim
     cdef tuple shape = obj.shape
+    cdef tuple strides = obj.strides
     if ndmin > ndim:
+        # pad shape & strides
         shape = (1,) * (ndmin - ndim) + shape
+        strides = (shape[0] * strides[0],) * (ndmin - ndim) + strides
 
     cdef memory.SystemMemory ext_mem = memory.SystemMemory.from_external(
         ptr, nbytes, obj)
     cdef memory.MemoryPointer memptr = memory.MemoryPointer(ext_mem, 0)
-    return ndarray(shape, obj_dtype, memptr, obj.strides)
+    return ndarray(shape, obj_dtype, memptr, strides)
 
 
 cdef _ndarray_base _array_default(
