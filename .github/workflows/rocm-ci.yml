@@ -1,4 +1,4 @@
-name "ROCm CI"
+name: "ROCm CI"
 
 on: [push, pull_request]
 
