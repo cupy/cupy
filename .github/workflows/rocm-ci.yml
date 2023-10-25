@@ -17,6 +17,7 @@ jobs:
         pwd
         ls -a
         docker --version
+        id
     - name: Build & Test
       run: |
         .pfnci/linux/run.sh rocm-5-3 build test
