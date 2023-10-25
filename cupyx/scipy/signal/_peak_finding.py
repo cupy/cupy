@@ -35,6 +35,8 @@ from cupyx.scipy.stats.mstats import scoreatpercentile
 
 from cupyx import jit
 
+import numpy as np
+
 
 def _get_typename(dtype):
     typename = get_typename(dtype)
@@ -1486,199 +1488,86 @@ def argrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     return cupy.nonzero(results)
 
 
-RIDGE_MODULE = r"""
+_reduce_peaks = cupy.RawKernel(r"""
 #include <cupy/math_constants.h>
-#define BLOCK_SZ 128
+#define MAX_SZ 1024
 
-__global__ void reduce_peaks(
-        int n_blocks, int n_wavelets, int n_peaks,
-        long long* peak_ridges, const long long* __restrict__ ridge_rows,
-        const long long* __restrict__ ridge_cols,
-        double* max_distances, int gap_thresh,
-        long long* out_cols) {
+extern "C" __global__ void reduce_peaks(
+        const int row_idx,
+        const int gap_thresh,
+        const double* __restrict__ max_distances,
+        const long long* __restrict__ rows,
+        const long long* __restrict__ peaks_cols,
+        const long long* __restrict__ peaks_per_row,
+        const long long* __restrict__ peak_row_offsets,
+        const long long* __restrict__ ridge_gap,
+        const int n_ridges,
+        long long* peak_ridges,
+        long long* ridges_col,
+        long long* valid_ridges,
+        long long* row_ridges) {
 
-    extern __shared__ long long peak_vote[BLOCK_SZ];
-    extern __shared__ long long peak_row_sh[BLOCK_SZ];
-    extern __shared__ long long peak_col_sh[BLOCK_SZ];
+    extern __shared__ int sh_ridge_gap[MAX_SZ];
+    extern __shared__ long long ridge_lines[MAX_SZ];
+    extern __shared__ long long ridge_line_cols[MAX_SZ];
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n_peaks) {
-        return;
-    }
+    const int base_idx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    int valid_block_wavelets = BLOCK_SZ;
-    if(blockIdx.x == n_blocks - 1 && n_peaks % BLOCK_SZ > 0) {
-        int complete_blocks = n_peaks / BLOCK_SZ;
-        valid_block_wavelets = n_peaks - BLOCK_SZ * complete_blocks;
-    }
+    const long long row = rows[row_idx];
+    const long long row_peaks = peaks_per_row[row_idx];
+    const long long row_peak_offset = peak_row_offsets[row_idx];
+    const long long idx = base_idx + row_peak_offset;
 
-    peak_row_sh[threadIdx.x] = ridge_rows[idx];
-    peak_col_sh[threadIdx.x] = ridge_cols[idx];
-    peak_vote[threadIdx.x] = threadIdx.x;
-    double max_distance = max_distances[peak_row_sh[threadIdx.x]];
+    const int ridge_partitions = (n_ridges + blockDim.x - 1) / blockDim.x;
 
-    __syncthreads();
+    double dist = max_distances[row] + 1e-6;
+    const long long col = peaks_cols[idx];
+    long long chosen_ridge = -1;
 
-    volatile double min_dist = CUDART_INF;
-    volatile int max_pos = threadIdx.x;
-    volatile int row_pos = peak_row_sh[threadIdx.x];
-
-    for(int i = max_pos + 1; i < valid_block_wavelets; i++) {
-        if(i == threadIdx.x) {
-            continue;
+    for(int i = 0; i < ridge_partitions; i++) {
+        int ridge_sz = blockDim.x;
+        if(i == ridge_partitions - 1 && n_ridges % blockDim.x > 0) {
+            ridge_sz = n_ridges % blockDim.x;
         }
 
-        long long other_ridge = peak_vote[i];
-        if(other_ridge != i) {
-            continue;
+        if(threadIdx.x < ridge_sz) {
+            const int ridge_idx = blockDim.x * i + threadIdx.x;
+            ridge_lines[threadIdx.x] = valid_ridges[ridge_idx];
+            ridge_line_cols[threadIdx.x] = ridges_col[ridge_idx];
+            sh_ridge_gap[threadIdx.x] = ridge_gap[ridge_idx];
         }
 
-        long long other_col = peak_col_sh[i];
-        long long other_row = peak_row_sh[i];
-        long long diff = abs(other_col - peak_col_sh[threadIdx.x]);
-        long long gap_diff = abs(other_row - row_pos);
+        __syncthreads();
 
-        if(diff <= max_distance && gap_diff <= gap_thresh) {
-            if(diff < min_dist) {
-                min_dist = diff;
-                max_pos = i;
-                row_pos = other_row;
-            } /** else if(diff == min_dist) {
-                if(i > max_pos) {
-                    max_pos = i;
-                    row_pos = other_row;
+        if(base_idx < row_peaks) {
+            for(int j = 0; j < ridge_sz; j++) {
+                const long long gap = sh_ridge_gap[j];
+                if(gap <= gap_thresh) {
+                    const long long other_col = ridge_line_cols[j];
+                    double diff = abs(col - other_col);
+                    if(diff <= max_distances[row]) {
+                        if(diff < dist) {
+                            chosen_ridge = ridge_lines[j];
+                            dist = diff;
+                        }
+                    }
                 }
-            }**/
-        }
-    }
-
-    if(max_pos != threadIdx.x) {
-        peak_vote[threadIdx.x] = max_pos;
-    }
-    __syncthreads();
-
-    // Check for parent votes
-    while(max_pos != peak_vote[max_pos]) {
-        max_pos = peak_vote[max_pos];
-    }
-
-    peak_vote[threadIdx.x] = max_pos;
-    peak_ridges[idx] = blockDim.x * blockIdx.x + max_pos;
-    __syncthreads();
-
-    // Compute ridge bounds
-    int max_voter = threadIdx.x;
-    int min_voter = threadIdx.x;
-
-    if(max_pos == threadIdx.x) {
-        for(int i = valid_block_wavelets - 1; i >= 0 ; i--) {
-            if(peak_vote[i] == threadIdx.x) {
-                max_voter = i;
-                break;
             }
         }
 
-        for(int i = 0; i < valid_block_wavelets; i++) {
-            if(peak_vote[i] == threadIdx.x) {
-                min_voter = i;
-                break;
-            }
+        __syncthreads();
+    }
+
+    if(base_idx < row_peaks) {
+        if(chosen_ridge != -1) {
+            peak_ridges[idx] = chosen_ridge;
+            row_ridges[base_idx] = chosen_ridge;
+        } else {
+            row_ridges[base_idx] = idx;
         }
     }
-
-    out_cols[2 * idx] = blockDim.x * blockIdx.x + min_voter;
-    out_cols[2 * idx + 1] = blockDim.x * blockIdx.x + max_voter;
 }
-
-__global__ void merge_ridges(
-        int n_blocks, int n_ridges,
-        long long* peak_ridges, long long* ridges,
-        const long long* __restrict__ block_len,
-        const long long* __restrict__ block_off,
-        const long long* __restrict__ ridge_rows,
-        const long long* __restrict__ ridge_cols,
-        double* max_distances, int gap_thresh,
-        long long* out_cols) {
-
-    extern __shared__ long long ridge_row_sh[2 * BLOCK_SZ];
-    extern __shared__ long long ridge_col_sh[2 * BLOCK_SZ];
-    extern __shared__ long long ridge_sh[BLOCK_SZ];
-
-    int idx = block_off[blockIdx.x] + threadIdx.x;
-    int this_block_sz = block_len[blockIdx.x];
-    int valid_block_ridges = block_len[blockIdx.x + 1];
-
-    if(threadIdx.x < valid_block_ridges) {
-        long long other_ridge = ridges[idx + this_block_sz];
-        long long* ridge_peak_bounds = out_cols + 2 * other_ridge;
-
-        ridge_row_sh[2 * threadIdx.x] = ridge_rows[ridge_peak_bounds[0]];
-        ridge_row_sh[2 * threadIdx.x + 1] = ridge_rows[ridge_peak_bounds[1]];
-        ridge_col_sh[2 * threadIdx.x] = ridge_cols[ridge_peak_bounds[0]];
-        ridge_col_sh[2 * threadIdx.x + 1] = ridge_cols[ridge_peak_bounds[1]];
-        ridge_sh[threadIdx.x] = other_ridge;
-    }
-    __syncthreads();
-
-    if(threadIdx.x >= this_block_sz) {
-        return;
-    }
-
-    long long this_ridge = ridges[idx];
-    long long* ridge_peak_bounds = out_cols + 2 * this_ridge;
-
-    double max_distance = max_distances[ridge_rows[this_ridge]];
-
-    volatile double min_dist = CUDART_INF;
-    volatile int max_pos = this_ridge;
-    volatile int row_pos = ridge_rows[ridge_peak_bounds[1]];
-    volatile long long this_col = ridge_cols[ridge_peak_bounds[1]];
-
-    for(int i = 0; i < valid_block_ridges; i++) {
-        long long other_col = ridge_col_sh[2 * i];
-        long long other_row = ridge_row_sh[2 * i];
-        long long diff = abs(other_col - this_col);
-        long long gap_diff = abs(other_row - row_pos);
-
-        if(diff <= max_distance && gap_diff <= gap_thresh) {
-            long long other_ridge = ridge_sh[i];
-            if(diff < min_dist) {
-                min_dist = diff;
-                max_pos = other_ridge;
-                row_pos = other_row;
-            } /** else if(diff == min_dist) {
-                if(other_ridge > max_pos) {
-                    max_pos = other_ridge;
-                    row_pos = other_row;
-                }
-            }**/
-        }
-    }
-
-    ridges[idx] = max_pos;
-    peak_ridges[this_ridge] = max_pos;
-}
-
-__global__ void update_ridges(long long* ridges, int n_ridges) {
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n_ridges) {
-        return;
-    }
-
-    long long prev_ridge = idx;
-    long long this_ridge = ridges[idx];
-    while(this_ridge != prev_ridge) {
-        prev_ridge = this_ridge;
-        this_ridge = ridges[this_ridge];
-    }
-
-    ridges[idx] = this_ridge;
-}
-"""
-
-_ridge_module = cupy.RawModule(
-    code=RIDGE_MODULE, options=('-std=c++11',),
-    name_expressions=['reduce_peaks', 'merge_ridges', 'update_ridges'])
+""", 'reduce_peaks')
 
 
 def _identify_ridge_lines(matr, max_distances, gap_thresh):
@@ -1746,40 +1635,63 @@ def _identify_ridge_lines(matr, max_distances, gap_thresh):
     ridge_rows = cupy.array(ridge_rows, dtype=cupy.int64, copy=True)
     ridge_cols = cupy.array(ridge_cols, dtype=cupy.int64, copy=True)
 
-    out_cols = cupy.empty((ridge_cols.shape[0], 2), dtype=cupy.int64)
+    valid_ridges = cupy.full((ridge_cols.shape[0],), -1, dtype=cupy.int64)
+    out_cols = cupy.empty((ridge_cols.shape[0],), dtype=cupy.int64)
+    ridges_gap = cupy.full(
+        (ridge_cols.shape[0],), gap_thresh + 1, dtype=cupy.int64)
     peak_ridges = cupy.arange(ridge_rows.shape[0], dtype=cupy.int64)
     max_distances = cupy.asarray(max_distances, dtype=cupy.float64)
 
-    block_sz = 128
-    n_blocks = (ridge_rows.shape[0] + block_sz - 1) // block_sz
-    _reduce_peaks = _ridge_module.get_function('reduce_peaks')
-    _reduce_peaks((n_blocks,), (block_sz,),
-                  (n_blocks, matr.shape[0], ridge_rows.shape[0], peak_ridges,
-                   ridge_rows, ridge_cols,
-                   max_distances, int(gap_thresh), out_cols))
+    unique_rows, row_counts = cupy.unique(ridge_rows, return_counts=True)
+    n_rows = unique_rows.shape[0]
+    n_ridges = row_counts[-1].item()
 
-    unique_ridges = cupy.unique(peak_ridges)
-    split_ridges = n_blocks > 1
+    out_cols[:n_ridges] = ridge_cols[-n_ridges:]
+    valid_ridges[:n_ridges] = peak_ridges[-n_ridges:]
+    ridges_gap[:n_ridges] = 1
 
-    if split_ridges:
-        _, blocks_unique = cupy.unique(
-            unique_ridges // block_sz, return_counts=True)
+    block_sz = cupy.minimum((cupy.max(row_counts) + 32 - 1) // 32, 32) * 32
+    blocks_per_row = (row_counts + block_sz - 1) // block_sz
 
-        blocks_off = cupy.cumsum(blocks_unique)
-        blocks_off = cupy.r_[0, blocks_off[:-1]]
+    row_ridges = cupy.empty(cupy.max(row_counts).item(), dtype=cupy.int64)
 
-        _merge_ridges = _ridge_module.get_function('merge_ridges')
-        _merge_ridges((n_blocks - 1,), (block_sz,),
-                      (n_blocks, unique_ridges.shape[0], peak_ridges,
-                       unique_ridges, blocks_unique, blocks_off, ridge_rows,
-                       ridge_cols, max_distances, int(gap_thresh), out_cols))
-        unique_ridges = cupy.unique(unique_ridges)
+    block_sz = block_sz.item()
+    row_counts_off = cupy.cumsum(row_counts)
+    row_counts_off = cupy.r_[0, row_counts_off[:-1]]
 
-        _update_ridges = _ridge_module.get_function('update_ridges')
-        n_blocks = (peak_ridges.shape[0] + block_sz - 1) // block_sz
-        _update_ridges((n_blocks,), (block_sz,),
-                       (peak_ridges, peak_ridges.shape[0]))
+    for i in range(n_rows - 2, -1, -1):
+        row_blocks = blocks_per_row[i].item()
+        row_peaks = row_counts[i].item()
+        _reduce_peaks((row_blocks,), (block_sz,),
+                      (int(i), int(gap_thresh), max_distances, unique_rows,
+                       ridge_cols, row_counts, row_counts_off, ridges_gap,
+                       n_ridges, peak_ridges, out_cols, valid_ridges,
+                       row_ridges))
 
+        this_row_ridges = row_ridges[:row_peaks]
+
+        matching_mask = (
+            valid_ridges[:n_ridges].reshape(-1, 1) == this_row_ridges)
+        modified_ridges = cupy.any(matching_mask, axis=-1)
+        non_modified_ridges = ~modified_ridges
+        max_peak = (
+            matching_mask.shape[-1] - matching_mask[:, ::-1].argmax(-1) - 1)
+        new_cols = ridge_cols[max_peak + row_counts_off[i]]
+
+        ridges_gap[:n_ridges][non_modified_ridges] += 1
+        out_cols[:n_ridges][modified_ridges] = new_cols[modified_ridges]
+
+        new_ridges = ~cupy.any(
+            this_row_ridges.reshape(-1, 1) == valid_ridges[:n_ridges], axis=-1)
+        new_ridges = this_row_ridges[new_ridges]
+        valid_ridges[n_ridges: n_ridges + new_ridges.shape[0]] = new_ridges
+        out_cols[
+            n_ridges: n_ridges + new_ridges.shape[0]] = ridge_cols[new_ridges]
+        ridges_gap[n_ridges: n_ridges + new_ridges.shape[0]] = 1
+
+        n_ridges += new_ridges.shape[0]
+
+    unique_ridges = valid_ridges[:n_ridges]
     unique_ridges = unique_ridges.reshape(-1, 1)
     ridge_mask = peak_ridges == unique_ridges
     ridge_count = ridge_mask.sum(-1)
@@ -1819,7 +1731,7 @@ extern "C" __global__ void filter_ridges(
     }
 
     double signal = cwt[ridge_row * cwt_stride + ridge_col];
-    double noise = noises[ridge_row];
+    double noise = noises[ridge_col];
     double snr = abs(signal / noise);
 
     if(snr < min_snr) {
@@ -1867,9 +1779,9 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
     """
     num_points = cwt.shape[1]
     if min_length is None:
-        min_length = cupy.ceil(cwt.shape[0] / 4)
+        min_length = np.ceil(cwt.shape[0] / 4)
     if window_size is None:
-        window_size = cupy.ceil(num_points / 20)
+        window_size = np.ceil(num_points / 20)
 
     window_size = int(window_size)
     hf_window, odd = divmod(window_size, 2)
@@ -1893,7 +1805,7 @@ def _filter_ridge_lines(cwt, ridge_lines, window_size=None, min_length=None,
                           ridge_len, ridge_start, noises, cwt, cwt.shape[1],
                           float(min_snr), int(min_length)))
 
-    valid_offsets = ridge_start > 0
+    valid_offsets = ridge_start >= 0
     ridge_offset = ridge_offset[valid_offsets]
     ridge_len = ridge_len[valid_offsets]
 
