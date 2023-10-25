@@ -18,6 +18,7 @@ jobs:
         ls -a
         docker --version
         id
+        cat /etc/group | grep docker
     - name: Build & Test
       run: |
         .pfnci/linux/run.sh rocm-5-3 build test
