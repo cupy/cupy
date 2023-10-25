@@ -7,8 +7,13 @@ jobs:
     runs-on: self-hosted
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: foo
       run: |
         echo 'Hello'
         pwd
         ls
+        echo 'done'
