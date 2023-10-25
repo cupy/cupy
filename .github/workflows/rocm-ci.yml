@@ -1,0 +1,13 @@
+name "ROCm CI"
+
+on: [push, pull_request]
+
+jobs:
+  runs-on: self-hosted
+
+  steps:
+  - name: foo
+    run: |
+      echo 'Hello'
+      pwd
+      ls
