@@ -19,6 +19,7 @@ jobs:
         hostname
         id
         cat /etc/group | grep docker
+        docker ps
     - name: Build & Test
       run: |
         .pfnci/linux/run.sh rocm-5-3 build test
