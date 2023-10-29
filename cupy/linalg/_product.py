@@ -334,12 +334,11 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
-# TODO: rename `M` to `a`
-def matrix_power(M, n):
+def matrix_power(a, n):
     """Raise a square matrix to the (integer) power `n`.
 
     Args:
-        M (~cupy.ndarray): Matrix to raise by power n.
+        a (~cupy.ndarray): Matrix to raise by power n.
         n (~int): Power to raise matrix to.
 
     Returns:
@@ -347,32 +346,32 @@ def matrix_power(M, n):
 
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
-    _util._assert_cupy_array(M)
-    _util._assert_stacked_2d(M)
-    _util._assert_stacked_square(M)
+    _util._assert_cupy_array(a)
+    _util._assert_stacked_2d(a)
+    _util._assert_stacked_square(a)
     if not isinstance(n, int):
         raise TypeError('exponent must be an integer')
 
     if n == 0:
-        return _util.stacked_identity_like(M)
+        return _util.stacked_identity_like(a)
     elif n < 0:
-        M = _solve.inv(M)
+        a = _solve.inv(a)
         n *= -1
 
     # short-cuts
     if n <= 3:
         if n == 1:
-            return M
+            return a
         elif n == 2:
-            return cupy.matmul(M, M)
+            return cupy.matmul(a, a)
         else:
-            return cupy.matmul(cupy.matmul(M, M), M)
+            return cupy.matmul(cupy.matmul(a, a), a)
 
     # binary decomposition to reduce the number of Matrix
     # multiplications for n > 3.
     result, Z = None, None
     for b in cupy.binary_repr(n)[::-1]:
-        Z = M if Z is None else cupy.matmul(Z, Z)
+        Z = a if Z is None else cupy.matmul(Z, Z)
         if b == '1':
             result = Z if result is None else cupy.matmul(result, Z)
 
