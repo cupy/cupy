@@ -8,7 +8,7 @@ PYTEST_FILES=(${@:-.})
 pytest_opts=(
     -rfEX
     --timeout 300
-    --maxfail 500
+    --maxfail 1
     --showlocals
     --durations 10
 )
