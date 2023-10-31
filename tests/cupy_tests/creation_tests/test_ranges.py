@@ -284,7 +284,8 @@ class TestRanges(unittest.TestCase):
     def test_logspace_base(self, xp, dtype):
         return xp.logspace(0, 2, 5, base=2.0, dtype=dtype)
 
-    @testing.with_requires('numpy>=1.16')
+    # See #7946 and https://github.com/numpy/numpy/issues/24957
+    @testing.with_requires('numpy>=1.16, !=1.25.*, !=1.26.*')
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)

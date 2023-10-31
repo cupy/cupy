@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.9 / v3.10 / v3.11
+* `Python <https://python.org/>`_: v3.9 / v3.10 / v3.11 / v3.12
 
 .. note::
 
@@ -101,7 +101,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Append ``--pre -f https://pip.cupy.dev/pre`` options to install pre-releases (e.g., ``pip install cupy-cuda11x --pre -f https://pip.cupy.dev/pre``).
+   Append ``--pre -U -f https://pip.cupy.dev/pre`` options to install pre-releases (e.g., ``pip install cupy-cuda11x --pre -U -f https://pip.cupy.dev/pre``).
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.

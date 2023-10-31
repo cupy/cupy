@@ -1,19 +1,19 @@
 import numpy
 
 import cupy
-from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupy._core import _dtype
-import cupyx.cusolver
 
 
 _cuda_runtime_version = -1
 
 
 def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
+    from cupy_backends.cuda.libs import cublas
+    from cupy_backends.cuda.libs import cusolver
+
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
@@ -68,17 +68,17 @@ def _syevd(a, UPLO, with_eigen_vector, overwrite_a=False):
             cusolver.xsyevd, dev_info)
     else:
         if dtype == 'f':
-            buffer_size = cupy.cuda.cusolver.ssyevd_bufferSize
-            syevd = cupy.cuda.cusolver.ssyevd
+            buffer_size = cusolver.ssyevd_bufferSize
+            syevd = cusolver.ssyevd
         elif dtype == 'd':
-            buffer_size = cupy.cuda.cusolver.dsyevd_bufferSize
-            syevd = cupy.cuda.cusolver.dsyevd
+            buffer_size = cusolver.dsyevd_bufferSize
+            syevd = cusolver.dsyevd
         elif dtype == 'F':
-            buffer_size = cupy.cuda.cusolver.cheevd_bufferSize
-            syevd = cupy.cuda.cusolver.cheevd
+            buffer_size = cusolver.cheevd_bufferSize
+            syevd = cusolver.cheevd
         elif dtype == 'D':
-            buffer_size = cupy.cuda.cusolver.zheevd_bufferSize
-            syevd = cupy.cuda.cusolver.zheevd
+            buffer_size = cusolver.zheevd_bufferSize
+            syevd = cusolver.zheevd
         else:
             raise RuntimeError('Only float32, float64, complex64, and '
                                'complex128 are supported')
@@ -130,6 +130,7 @@ def eigh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigh`
     """
+    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
@@ -176,6 +177,7 @@ def eigvalsh(a, UPLO='L'):
 
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
+    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 

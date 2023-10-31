@@ -937,15 +937,16 @@ def coosort(x, sort_by='r'):
     else:
         raise ValueError("sort_by must be either 'r' or 'c'")
 
-    if check_availability('gthr'):
-        _call_cusparse(
-            'gthr', x.dtype,
-            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    else:
-        desc_x = SpVecDescriptor.create(P, x.data)
-        desc_y = DnVecDescriptor.create(data_orig)
-        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
+    if x.dtype.char != '?':
+        if check_availability('gthr'):
+            _call_cusparse(
+                'gthr', x.dtype,
+                handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+                P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+        else:
+            desc_x = SpVecDescriptor.create(P, x.data)
+            desc_y = DnVecDescriptor.create(data_orig)
+            _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
     if sort_by == 'c':  # coo is sorted by row first
         x._has_canonical_format = False

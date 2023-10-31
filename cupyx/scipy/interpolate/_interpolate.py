@@ -809,9 +809,9 @@ def _ndim_coords_from_arrays(points, ndim=None):
 
     if isinstance(points, tuple) and len(points) == 1:
         # handle argument tuple
-        points = points[0]
+        points = cupy.asarray(points[0])
     if isinstance(points, tuple):
-        p = cupy.broadcast_arrays(*points)
+        p = cupy.broadcast_arrays(*[cupy.asarray(x) for x in points])
         p = [cupy.expand_dims(x, -1) for x in p]
         points = cupy.concatenate(p, axis=-1)
     else:

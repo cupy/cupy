@@ -169,34 +169,33 @@ def get_compiler_setting(ctx: Context, use_hip):
 
     # For CUB, we need the complex and CUB headers. The search precedence for
     # the latter is:
-    #   1. built-in CUB (for CUDA 11+ and ROCm)
-    #   2. CuPy's CUB bundle
-    # Note that starting CuPy v8 we no longer use CUB_PATH
+    #   - for CUDA: CuPy's CUB (and Thrust) bundle
+    #   - for ROCm: built-in CUB
+    # Note that starting CuPy v8 we no longer use CUB_PATH, and starting v13
+    # we no longer use Thrust/CUB bundled in CUDA.
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(
         cupy_builder.get_context().source_root, 'cupy/_core/include')
     global _jitify_path
-    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
-    if cuda_path:
-        cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
-        if not os.path.exists(cuda_cub_path):
-            cuda_cub_path = None
-    elif rocm_path:
-        cuda_cub_path = os.path.join(rocm_path, 'include', 'hipcub')
-        if not os.path.exists(cuda_cub_path):
-            cuda_cub_path = None
-    else:
-        cuda_cub_path = None
+    _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
     global _cub_path
-    if cuda_cub_path:
-        _cub_path = cuda_cub_path
-    elif not use_hip:  # CuPy's bundle doesn't work for ROCm
-        _cub_path = os.path.join(cupy_header, 'cupy', 'cub')
+    if rocm_path:
+        _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
+        if not os.path.exists(_cub_path):
+            raise Exception('Please install hipCUB and retry')
+        _thrust_path = None
+        _libcudacxx_path = None
     else:
-        raise Exception('Please install hipCUB and retry')
+        # all bundled together under cccl
+        _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
+        _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
+        _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
+    include_dirs.insert(0, cupy_header)
     include_dirs.insert(0, _cub_path)
-    include_dirs.insert(1, cupy_header)
+    if _thrust_path and _libcudacxx_path:
+        include_dirs.insert(0, _thrust_path)
+        include_dirs.insert(0, _libcudacxx_path)
 
     return {
         'include_dirs': include_dirs,

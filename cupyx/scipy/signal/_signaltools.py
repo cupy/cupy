@@ -575,9 +575,6 @@ def medfilt(volume, kernel_size=None):
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`
     .. seealso:: :func:`scipy.signal.medfilt`
     """
-    if volume.dtype.kind == 'c':
-        # scipy doesn't support complex
-        raise ValueError("complex types not supported")
     if volume.dtype.char == 'e':
         # scipy doesn't support float16
         raise ValueError("float16 type not supported")
@@ -585,6 +582,11 @@ def medfilt(volume, kernel_size=None):
         # scipy doesn't support bool
         raise ValueError("bool type not supported")
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
+    if volume.dtype == 'F':
+        raise TypeError("complex types not supported")
+    if volume.dtype.kind == 'c':
+        # scipy doesn't support complex
+        raise ValueError("complex types not supported")
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
         warnings.warn('kernel_size exceeds volume extent: '
                       'volume will be zero-padded')
@@ -618,9 +620,6 @@ def medfilt2d(input, kernel_size=3):
     .. seealso:: :func:`cupyx.scipy.signal.medfilt`
     .. seealso:: :func:`scipy.signal.medfilt2d`
     """
-    if input.dtype.kind == 'c':
-        # scipy doesn't support complex
-        raise ValueError("complex types not supported")
     if input.dtype.char == 'e':
         # scipy doesn't support float16
         raise ValueError("float16 type not supported")
@@ -630,6 +629,11 @@ def medfilt2d(input, kernel_size=3):
     if input.ndim != 2:
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
+    if input.dtype == 'F':
+        raise TypeError("complex types not supported")
+    if input.dtype.kind == 'c':
+        # scipy doesn't support complex
+        raise ValueError("complex types not supported")
     order = kernel_size[0] * kernel_size[1] // 2
     return _filters.rank_filter(
         input, order, size=kernel_size, mode='constant')
@@ -1428,7 +1432,7 @@ def _validate_sos(sos):
     n_sections, m = sos.shape
     if m != 6:
         raise ValueError('sos array must be shape (n_sections, 6)')
-    if not (sos[:, 3] == 1).all():
+    if not (cupy.abs(sos[:, 3] - 1.0) <= 1e-15).all():
         raise ValueError('sos[:, 3] should be all ones')
     return sos, n_sections
 

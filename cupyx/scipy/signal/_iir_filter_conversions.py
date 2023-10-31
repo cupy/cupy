@@ -32,7 +32,7 @@ def _trim_zeros(filt, trim='fb'):
                 first = first + 1
 
     last = len(filt)
-    if 'f' in trim:
+    if 'b' in trim:
         for i in filt[::-1]:
             if i != 0.:
                 break
@@ -1211,6 +1211,10 @@ def tf2zpk(b, a):
     k : float
         System gain.
 
+    Warning
+    -------
+    This function may synchronize the device.
+
     See Also
     --------
     scipy.signal.tf2zpk
@@ -1484,6 +1488,10 @@ def ss2tf(A, B, C, D, input=0):
     den : 1-D ndarray
         Denominator of the resulting transfer function(s). `den` is a sequence
         representation of the denominator polynomial.
+
+    Warning
+    -------
+    This function may synchronize the device.
 
     See Also
     --------

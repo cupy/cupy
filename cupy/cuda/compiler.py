@@ -257,7 +257,7 @@ def _jitify_prep(source, options, cu_path):
             'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
         if dump:
             cex.dump(sys.stderr)
-        raise JitifyException(str(cex))
+        raise JitifyException(str(cex)) from e
     assert name == cu_path
 
     return options, headers, include_names

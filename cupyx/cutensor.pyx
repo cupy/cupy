@@ -122,6 +122,11 @@ cdef class Mode:
     def __repr__(self):
         return 'mode(' + ', '.join([str(x) for x in self._array]) + ')'
 
+    def __eq__(self, other):
+        if not isinstance(other, Mode):
+            return False
+        return (self._array == (<Mode>other)._array).all()
+
 
 cdef class _Scalar:
 
@@ -177,7 +182,7 @@ def create_mode(*mode):
             integer_mode.append(ord(x))
         else:
             raise TypeError('Cannot create tensor mode: {}'.format(type(x)))
-    return Mode(integer_mode)
+    return _create_mode_with_cache(tuple(integer_mode))
 
 
 cdef inline Mode _auto_create_mode(_ndarray_base array, mode):
@@ -422,6 +427,7 @@ cdef inline ContractionDescriptor _create_contraction_descriptor(
         handle, C.data.ptr, desc_C)
     cdef ContractionDescriptor desc
 
+    # desc & mode ptrs are valid because we keep references to them internally
     key = (handle.ptr, cutensor_compute_type,
            desc_A.ptr, mode_A.data, alignment_req_A,
            desc_B.ptr, mode_B.data, alignment_req_B,

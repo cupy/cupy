@@ -175,13 +175,9 @@ def _get_cub_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not runtime.is_hip:
-        cuda_path = get_cuda_path()
-        if os.path.isdir(os.path.join(current_dir, '_core/include/cupy/cub')):
+        if os.path.isdir(
+                os.path.join(current_dir, '_core/include/cupy/_cccl/cub')):
             _cub_path = '<bundle>'
-        elif cuda_path is not None and os.path.isdir(
-                os.path.join(cuda_path, 'include/cub')):
-            # use built-in CUB for CUDA 11+
-            _cub_path = '<CUDA>'
         else:
             _cub_path = None
     else:

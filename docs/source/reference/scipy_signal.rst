@@ -22,6 +22,22 @@ Convolution
    correlation_lags
 
 
+B-Splines
+---------
+
+.. autosummary::
+   :toctree: generated/
+
+   gauss_spline
+   cspline1d
+   qspline1d
+   cspline2d
+   qspline2d
+   cspline1d_eval
+   qspline1d_eval
+   spline_filter
+
+
 Filtering
 ---------
 
@@ -43,9 +59,13 @@ Filtering
    sosfilt
    sosfilt_zi
    sosfiltfilt
-   detrend
    hilbert
    hilbert2
+   decimate
+   detrend
+   resample
+   resample_poly
+   upfirdn
 
 
 Filter design
@@ -62,6 +82,8 @@ Filter design
    freqz
    freqz_zpk
    sosfreqz
+   firwin
+   firwin2
    firls
    minimum_phase
    savgol_coeffs
@@ -107,19 +129,6 @@ Low-level filter design functions
    abcd_normalize
 
 
-Chirp Z-transform and Zoom FFT
-------------------------------
-
-.. autosummary::
-   :toctree: generated/
-
-   czt
-   zoom_fft
-   CZT
-   ZoomFFT
-   czt_points
-
-
 LTI representations
 -------------------
 
@@ -136,12 +145,118 @@ LTI representations
    sos2zpk
 
 
+Continuous-time linear systems
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   lsim
+   impulse
+   step
+   freqresp
+   bode
+
+
+Discrete-time linear systems
+----------------------------
+.. autosummary::
+   :toctree: generated/
+
+   dlti
+   StateSpace
+   TransferFunction
+   ZerosPolesGain
+   dlsim
+   dimpulse
+   dstep
+   dfreqresp
+   dbode
+
+
+Waveforms
+---------
+
+.. autosummary::
+   :toctree: generated/
+
+   chirp
+   gausspulse
+   sawtooth
+   square
+   unit_impulse
+
+
+Window functions
+----------------
+For window functions, see the :mod:`cupyx.scipy.signal.windows` namespace.
+
+In the :mod:`cupyx.scipy.signal` namespace, there is a convenience function
+to obtain these windows by name:
+
+
+.. autosummary::
+   :toctree: generated/
+
+   get_window
+
+
+Wavelets
+--------
+
+.. autosummary::
+   :toctree: generated/
+
+   morlet
+   qmf
+   ricker
+   morlet2
+   cwt
+
+
 Peak finding
 ------------
 
 .. autosummary::
    :toctree: generated/
 
+   argrelmin
+   argrelmax
+   argrelextrema
    find_peaks
    peak_prominences
    peak_widths
+
+
+Spectral analysis
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   periodogram
+   welch
+   csd
+   lombscargle
+   stft
+   istft
+   check_COLA
+   check_NOLA
+
+
+
+Chirp Z-transform and Zoom FFT
+------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   czt
+   zoom_fft
+   CZT
+   ZoomFFT
+   czt_points

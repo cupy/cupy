@@ -36,6 +36,13 @@ jobs:
       run: |
         pre-commit run -a --show-diff-on-failure
 
+    - name: Type Check
+      run: |
+        # TODO: Test against various NumPy/SciPy versions.
+        pip install 'numpy==1.25.*' 'scipy==1.10.*'
+        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        pytest -v tests/typing_tests/test_typing.py
+
   build-cuda:
     runs-on: ubuntu-22.04
     env:
@@ -82,6 +89,19 @@ jobs:
         pip install -r requirements.txt
         SPHINXOPTS="-W --keep-going -j 4" make html
         popd
+
+    - name: Import Test
+      run: |
+        python -c 'import cupy, cupyx'
+
+        # Test lazy-imported CUDA Toolkit library.
+        rm cupy/cuda/cufft.*.so
+        rm cupy/random/_generator_api.*.so
+        rm cupy_backends/cuda/libs/cusolver.*.so
+        rm cupy_backends/cuda/libs/cusparse.*.so
+        rm cupy_backends/cuda/libs/curand.*.so
+        rm cupy_backends/cuda/libs/cublas.*.so
+        python -c 'import cupy, cupyx'
 
   build-rocm:
     runs-on: ubuntu-22.04

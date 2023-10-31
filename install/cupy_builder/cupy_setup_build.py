@@ -254,6 +254,25 @@ def _rpath_base():
         raise Exception('not supported on this platform')
 
 
+def _find_static_library(name: str) -> str:
+    if PLATFORM_LINUX:
+        filename = f'lib{name}.a'
+        libdir = 'lib64'
+    elif PLATFORM_WIN32:
+        filename = f'{name}.lib'
+        libdir = 'lib\\x64'
+    else:
+        raise Exception('not supported on this platform')
+
+    cuda_path = build.get_cuda_path()
+    if cuda_path is None:
+        raise Exception(f'Could not find {filename}: CUDA path unavailable')
+    path = os.path.join(cuda_path, libdir, filename)
+    if not os.path.exists(path):
+        raise Exception(f'Could not find {filename}: {path} does not exist')
+    return path
+
+
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -312,7 +331,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         s = copy.deepcopy(settings)
         if not no_cuda:
-            s['libraries'] = module['libraries']
+            s['libraries'] = module.libraries
+            s['extra_objects'] = [
+                _find_static_library(name) for name in module.static_libraries
+            ]
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
@@ -340,11 +362,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # compile_args.append('-DJITIFY_PRINT_ALL')
 
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/_jitify/jitify.hpp']
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
+            s['depends'] = ['./cupy/_core/include/cupy/_dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
@@ -370,8 +392,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
-            if not PLATFORM_WIN32 and not PLATFORM_LINUX:
-                assert False, "macOS is no longer supported"
             if (PLATFORM_LINUX and len(rpath) != 0):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:

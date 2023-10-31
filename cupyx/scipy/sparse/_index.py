@@ -7,7 +7,6 @@ from cupy import _core
 from cupyx.scipy.sparse._base import isspmatrix
 from cupyx.scipy.sparse._base import spmatrix
 
-from cupy_backends.cuda.libs import cusparse
 from cupy.cuda import device
 from cupy.cuda import runtime
 
@@ -136,6 +135,8 @@ def _csr_row_index(Ax, Aj, Ap, rows):
 
 
 def _csr_indptr_to_coo_rows(nnz, Bp):
+    from cupy_backends.cuda.libs import cusparse
+
     out_rows = cupy.empty(nnz, dtype=numpy.int32)
 
     # Build a COO row array from output CSR indptr.

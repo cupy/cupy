@@ -2,9 +2,7 @@ import numpy as _numpy
 
 import cupy as _cupy
 from cupy_backends.cuda.libs import cublas as _cublas
-from cupy_backends.cuda.libs import cusolver as _cusolver
 from cupy.cuda import device as _device
-import cupyx.cusolver
 
 
 def gesv(a, b):
@@ -22,6 +20,8 @@ def gesv(a, b):
 
     Note: ``a`` and ``b`` will be overwritten.
     """
+    from cupy_backends.cuda.libs import cusolver as _cusolver
+
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
     if b.ndim not in (1, 2):
@@ -91,6 +91,8 @@ def gels(a, b):
         cupy.ndarray:
             The matrix with dimension ``(N)`` or ``(N, K)``.
     """
+    from cupy_backends.cuda.libs import cusolver as _cusolver
+
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
     if b.ndim == 1:
@@ -209,6 +211,8 @@ def gels(a, b):
 
 
 def _batched_posv(a, b):
+    from cupy_backends.cuda.libs import cusolver as _cusolver
+    import cupyx.cusolver
 
     if not cupyx.cusolver.check_availability('potrsBatched'):
         raise RuntimeError('potrsBatched is not available')
@@ -281,6 +285,7 @@ def posv(a, b):
     Returns:
         x (cupy.ndarray): The solution (shape matches b).
     """
+    from cupy_backends.cuda.libs import cusolver as _cusolver
 
     _util = _cupy.linalg._util
     _util._assert_cupy_array(a, b)

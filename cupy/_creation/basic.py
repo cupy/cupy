@@ -1,15 +1,24 @@
+from typing import Any, Optional
+
 import numpy
 
 import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
+from cupy.typing._types import (
+    _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
+)
 
 
-def empty(shape, dtype=float, order='C'):
+def empty(
+        shape: _ShapeLike,
+        dtype: DTypeLike = float,
+        order: _OrderCF = 'C',
+) -> NDArray[Any]:
     """Returns an array without initializing the elements.
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -53,14 +62,21 @@ def _new_like_order_and_strides(
         return order, None, None
 
 
-def empty_like(a, dtype=None, order='K', subok=None, shape=None):
+def empty_like(
+        prototype: NDArray[Any],
+        dtype: DTypeLike = None,
+        order: _OrderKACF = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns a new array with same shape and dtype of a given array.
 
     This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
-        dtype: Data type specifier. The data type of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The data type of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
@@ -80,15 +96,21 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
     if subok is not None:
         raise TypeError('subok is not supported yet')
     if dtype is None:
-        dtype = a.dtype
+        dtype = prototype.dtype
 
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
-                                                         shape)
-    shape = shape if shape else a.shape
+    order, strides, memptr = _new_like_order_and_strides(
+        prototype, dtype, order, shape)
+    shape = shape if shape else prototype.shape
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
-def eye(N, M=None, k=0, dtype=float, order='C'):
+def eye(
+        N: int,
+        M: Optional[int] = None,
+        k: int = 0,
+        dtype: DTypeLike = float,
+        order: _OrderCF = 'C',
+) -> NDArray[Any]:
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
     Args:
@@ -97,7 +119,7 @@ def eye(N, M=None, k=0, dtype=float, order='C'):
         k (int): Index of the diagonal. Zero indicates the main diagonal,
             a positive index an upper diagonal, and a negative index a lower
             diagonal.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -117,14 +139,14 @@ def eye(N, M=None, k=0, dtype=float, order='C'):
     return ret
 
 
-def identity(n, dtype=float):
+def identity(n: int, dtype: DTypeLike = float) -> NDArray[Any]:
     """Returns a 2-D identity array.
 
     It is equivalent to ``eye(n, n, dtype)``.
 
     Args:
         n (int): Number of rows and columns.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
 
     Returns:
         cupy.ndarray: A 2-D identity array.
@@ -135,14 +157,18 @@ def identity(n, dtype=float):
     return eye(n, dtype=dtype)
 
 
-def ones(shape, dtype=float, order='C'):
+def ones(
+        shape: _ShapeLike,
+        dtype: DTypeLike = float,
+        order: _OrderCF = 'C',
+) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with ones.
 
     This function currently does not support ``order`` option.
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -157,14 +183,21 @@ def ones(shape, dtype=float, order='C'):
     return a
 
 
-def ones_like(a, dtype=None, order='K', subok=None, shape=None):
+def ones_like(
+        a: NDArray[Any],
+        dtype: DTypeLike = None,
+        order: _OrderKACF = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns an array of ones with same shape and dtype as a given array.
 
     This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
-        dtype: Data type specifier. The dtype of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
@@ -193,12 +226,16 @@ def ones_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def zeros(shape, dtype=float, order='C'):
+def zeros(
+        shape: _ShapeLike,
+        dtype: DTypeLike = float,
+        order: _OrderCF = 'C',
+) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with zeros.
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -213,14 +250,21 @@ def zeros(shape, dtype=float, order='C'):
     return a
 
 
-def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
+def zeros_like(
+        a: NDArray[Any],
+        dtype: DTypeLike = None,
+        order: _OrderKACF = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns an array of zeros with same shape and dtype as a given array.
 
     This function currently does not support ``subok`` option.
 
     Args:
         a (cupy.ndarray): Base array.
-        dtype: Data type specifier. The dtype of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
@@ -249,7 +293,12 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def full(shape, fill_value, dtype=None, order='C'):
+def full(
+        shape: _ShapeLike,
+        fill_value: Any,
+        dtype: DTypeLike = None,
+        order: _OrderCF = 'C',
+) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
 
     This function currently does not support ``order`` option.
@@ -257,7 +306,7 @@ def full(shape, fill_value, dtype=None, order='C'):
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
         fill_value: A scalar value to fill a new array.
-        dtype: Data type specifier.
+        dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
 
@@ -277,7 +326,14 @@ def full(shape, fill_value, dtype=None, order='C'):
     return a
 
 
-def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
+def full_like(
+        a: NDArray[Any],
+        fill_value: Any,
+        dtype: DTypeLike = None,
+        order: _OrderKACF = 'K',
+        subok: None = None,
+        shape: Optional[_ShapeLike] = None,
+) -> NDArray[Any]:
     """Returns a full array with same shape and dtype as a given array.
 
     This function currently does not support ``subok`` option.
@@ -285,7 +341,8 @@ def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
     Args:
         a (cupy.ndarray): Base array.
         fill_value: A scalar value to fill a new array.
-        dtype: Data type specifier. The dtype of ``a`` is used by default.
+        dtype (data-type, optional): Data type specifier.
+            The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
             result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
             ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.

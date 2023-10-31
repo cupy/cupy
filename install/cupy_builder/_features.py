@@ -1,3 +1,4 @@
+import sys
 from typing import Any, Dict, List
 
 import cupy_builder.install_build as build
@@ -25,6 +26,9 @@ class Feature:
 
         # Shared libraries to be linked.
         self.libraries: List[str] = []
+
+        # Static libraries to be linked.
+        self.static_libraries: List[str] = []
 
         # Version of the feature.
         self._version: Any = self._UNDETERMINED
@@ -64,6 +68,7 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
     f.name = d['name']
     f.required = d.get('required', False)
     f.libraries = d['libraries']
+    f.static_libraries = d.get('static_libraries', [])
 
     # Note: the followings are renamed
     f.modules = d['file']
@@ -262,8 +267,12 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': [
+            # Dependencies for cudart_static
+            'pthread', 'rt', 'dl',
+        ] if sys.platform == 'linux' else [],
+        'static_libraries': [
             # Dependency from CUB header files
-            'cudart',
+            'cudart_static',
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
@@ -404,7 +413,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy._core.dlpack',
         ],
         'include': [
-            'cupy/dlpack/dlpack.h',
+            'cupy/_dlpack/dlpack.h',
         ],
         'libraries': [],
     }
@@ -440,6 +449,7 @@ class CUDA_cuda(Feature):
     minimum_cuda_version = 10020
 
     def __init__(self, ctx: Context):
+        super().__init__(ctx)
         self.name = 'cuda'
         self.required = True
         self.modules = _cuda_files
@@ -451,7 +461,6 @@ class CUDA_cuda(Feature):
             'cufft.h',
             'curand.h',
             'cusparse.h',
-            'nvrtc.h',
         ]
         # TODO(kmaehashi): Split profiler module so that dependency to
         # `cudart` can be removed when using CUDA Python.
@@ -461,7 +470,6 @@ class CUDA_cuda(Feature):
                 'cufft',
                 'curand',
                 'cusparse',
-                'nvrtc',
             ]
         )
         self._version = self._UNDETERMINED
