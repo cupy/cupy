@@ -1,5 +1,5 @@
 
-import os
+import sys
 import pytest
 
 import numpy as np
@@ -1298,7 +1298,8 @@ class TestVectorstrength:
         return strength, phase
 
     @pytest.mark.xfail(
-        condition=os.name == 'linux' and testing.installed('scipy>=1.9.0'),
+        condition=(
+            sys.platform == 'linux' and testing.installed('scipy>=1.9.0')),
         reason='It fails in the CI')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
     def test_opposite_1dperiod(self, xp, scp):
@@ -1309,7 +1310,8 @@ class TestVectorstrength:
         return strength, phase
 
     @pytest.mark.xfail(
-        condition=os.name == 'linux' and testing.installed('scipy>=1.9.0'),
+        condition=(
+            sys.platform == 'linux' and testing.installed('scipy>=1.9.0')),
         reason='It fails in the CI')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
     def test_opposite_2dperiod(self, xp, scp):
