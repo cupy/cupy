@@ -227,7 +227,20 @@ def _execute_peer_access(
                 if intersection is None:
                     continue
 
-                cupy._core._kernel._check_peer_access(b_chunk.array, a_dev)
+                b_chunk_array = b_chunk.array
+                try:
+                    cupy._core._kernel._check_peer_access(b_chunk.array, a_dev)
+                except ValueError:
+                    # Peer access is not available due to the machine setting
+                    # lets try to explicitly move b_chunk.array to a_dev
+                    try:
+                        cur_device = cupy.cuda.Device(
+                            cupy.cuda.device.get_device_id()
+                        )
+                        a_dev.use()
+                        b_chunk_array = cupy.copy(b_chunk.array)
+                    finally:
+                        cur_device.use()
 
                 a_new_idx = _index_arith._index_for_subindex(
                     a_chunk.index, intersection, shape)
@@ -236,7 +249,7 @@ def _execute_peer_access(
 
                 assert kernel.nin == 2
                 kernel(typing.cast(ndarray, a_chunk.array)[a_new_idx],
-                       typing.cast(ndarray, b_chunk.array)[b_new_idx],
+                       typing.cast(ndarray, b_chunk_array)[b_new_idx],
                        out_array[a_new_idx])
 
             out_chunk = _chunk._Chunk(
@@ -270,8 +283,9 @@ def _execute(kernel, args: tuple, kwargs: dict):
                 ' not supported')
 
     # TODO: check if all distributed
-    peer_access = _is_peer_access_needed(args, kwargs)
-    if peer_access:
+    needs_peer_access = _is_peer_access_needed(args, kwargs)
+    # if peer_access is not enabled in the current setup, we need to do a copy
+    if needs_peer_access:
         return _execute_peer_access(kernel, args, kwargs)
     else:
         return _execute_kernel(kernel, args, kwargs)

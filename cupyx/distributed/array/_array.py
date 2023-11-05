@@ -380,7 +380,7 @@ class DistributedArray(ndarray):
             self.shape, self.dtype, new_chunks_map, self._mode, self._comms)
 
     def get(
-        self, stream=None, order='C', out=None, *, blocking=True
+        self, stream=None, order='C', out=None, blocking=True
     ) -> numpy.ndarray:
         """Return a copy of the array on the host memory."""
         if stream is not None:
