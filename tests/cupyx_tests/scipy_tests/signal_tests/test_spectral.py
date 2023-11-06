@@ -1300,8 +1300,8 @@ class TestVectorstrength:
     @pytest.mark.xfail(
         condition=(
             sys.platform == 'linux' and
-            11030 <= runtime.runtimeGetVersion() < 11040 and
-            testing.installed('scipy==1.8')
+            not (11030 <= runtime.runtimeGetVersion() < 11040 and
+                 testing.installed('scipy==1.8'))
         ),
         reason='It fails in the CI')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
@@ -1315,8 +1315,8 @@ class TestVectorstrength:
     @pytest.mark.xfail(
         condition=(
             sys.platform == 'linux' and
-            11030 <= runtime.runtimeGetVersion() < 11040 and
-            testing.installed('scipy==1.8')
+            not (11030 <= runtime.runtimeGetVersion() < 11040 and
+                 testing.installed('scipy==1.8'))
         ),
         reason='It fails in the CI')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
