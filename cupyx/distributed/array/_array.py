@@ -37,6 +37,28 @@ class _MultiDeviceDummyPointer(cupy.cuda.memory.MemoryPointer):
         return Device(-1)
 
 
+def _make_chunk_async(src_dev, dst_dev, idx, src_array, comms):
+    src_stream = get_current_stream(src_dev)
+    with src_array.device:
+        src_array = _creation_from_data.ascontiguousarray(src_array)
+        src_data = _data_transfer._AsyncData(
+            src_array, src_stream.record(), prevent_gc=src_array)
+    with Device(dst_dev):
+        dst_stream = get_current_stream()
+        copied = _data_transfer._transfer(
+            comms[src_dev], src_stream, src_data,
+            comms[dst_dev], dst_stream, dst_dev)
+        return _Chunk(copied.array, copied.ready, idx,
+                      prevent_gc=src_data)
+
+
+def _make_chunk_sync(src_dev, dst_dev, idx, src_array, comms):
+    with Device(dst_dev):
+        stream = get_current_stream()
+        copied = _creation_from_data.array(src_array)
+        return _Chunk(copied, stream.record(), idx, prevent_gc=src_array)
+
+
 class DistributedArray(ndarray):
     """
     __init__(self, shape, dtype, chunks_map, mode=_REPLICA_MODE, comms=None)
@@ -874,33 +896,19 @@ def distributed_array(
     comms = None
 
     # Define how to form a chunk from (dev, idx, src_array)
-    make_chunk: Callable[[int, tuple[slice, ...], ndarray], _Chunk]
+    make_chunk: Callable[
+        [int, int, tuple[slice, ...], ndarray, Optional[list[Any]]],
+        _Chunk
+    ]
 
     if isinstance(array, ndarray):
         src_dev = array.device.id
-        src_stream = get_current_stream(src_dev)
-
         devices = index_map.keys() | {array.device.id}
         comms = _data_transfer._create_communicators(devices)
-
-        def make_chunk(dst_dev, idx, src_array):
-            with src_array.device:
-                src_array = _creation_from_data.ascontiguousarray(src_array)
-                src_data = _data_transfer._AsyncData(
-                    src_array, src_stream.record(), prevent_gc=src_array)
-            with Device(dst_dev):
-                dst_stream = get_current_stream()
-                copied = _data_transfer._transfer(
-                    comms[src_dev], src_stream, src_data,
-                    comms[dst_dev], dst_stream, dst_dev)
-                return _Chunk(copied.array, copied.ready, idx,
-                              prevent_gc=src_data)
+        make_chunk = _make_chunk_async
     else:
-        def make_chunk(dev, idx, array):
-            with Device(dev):
-                stream = get_current_stream()
-                copied = _creation_from_data.array(array)
-                return _Chunk(copied, stream.record(), idx, prevent_gc=array)
+        src_dev = -1
+        make_chunk = _make_chunk_sync
 
     mode_obj = _modes._MODES[mode]
     chunks_map: dict[int, list[_Chunk]] = {}
@@ -909,7 +917,7 @@ def distributed_array(
 
         for idx in idxs:
             chunk_array = array[idx]
-            chunk = make_chunk(dev, idx, chunk_array)
+            chunk = make_chunk(src_dev, dev, idx, chunk_array, comms)
             chunks_map[dev].append(chunk)
             if (mode_obj is not _modes._REPLICA_MODE
                     and not mode_obj.idempotent):

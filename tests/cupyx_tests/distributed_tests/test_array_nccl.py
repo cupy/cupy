@@ -137,8 +137,15 @@ class _TestDistributedArray:
         np_r = numpy.cos(np_a * np_b)
         d_a = darray.distributed_array(np_a, index_map_a, mode)
         d_b = darray.distributed_array(np_b, index_map_a, mode)
-        with pytest.warns(cupy._util.PerformanceWarning, match=r'Peer access'):
-            d_r = cupy.cos(d_a * d_b.reshard(index_map_b))
+        call_fn = lambda : cupy.cos(d_a * d_b.reshard(index_map_b))  # NOQA
+        if cupy.cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
+            with pytest.warns(
+                cupy._util.PerformanceWarning, match=r'Peer access'
+            ):
+                d_r = call_fn()
+        else:
+            d_r = call_fn()
+        d_r = cupy.cos(d_a * d_b.reshard(index_map_b))
         testing.assert_array_almost_equal(d_r, np_r)
 
     def _test_elementwise_kernel_incompatible_chunk_shapes(
@@ -159,8 +166,14 @@ class _TestDistributedArray:
         np_r = (np_a - np_b) * (np_a - np_b)
         d_a = darray.distributed_array(np_a, index_map_a, mode)
         d_b = darray.distributed_array(np_b, index_map_a, mode)
-        with pytest.warns(cupy._util.PerformanceWarning, match=r'Peer access'):
-            d_r = custom_kernel(d_a, d_b.reshard(index_map_b))
+        call_fn = lambda : custom_kernel(d_a, d_b.reshard(index_map_b))  # NOQA
+        if cupy.cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
+            with pytest.warns(
+                cupy._util.PerformanceWarning, match=r'Peer access'
+            ):
+                d_r = call_fn()
+        else:
+            d_r = call_fn()
         testing.assert_array_almost_equal(d_r, np_r)
 
     def _test_incompatible_operand(self, shape, index_map, mode):

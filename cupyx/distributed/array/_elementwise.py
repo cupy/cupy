@@ -220,27 +220,21 @@ def _execute_peer_access(
             out_array = _creation_basic.empty(a_chunk.array.shape, dtype)
 
             for b_chunk in chain.from_iterable(b._chunks_map.values()):
-                stream.wait_event(b_chunk.ready)
 
                 intersection = _index_arith._index_intersection(
                     a_chunk.index, b_chunk.index, shape)
                 if intersection is None:
                     continue
 
-                b_chunk_array = b_chunk.array
-                try:
+                b_dev = b_chunk.array.device.id
+                if cupy.cuda.runtime.deviceCanAccessPeer(a_dev, b_dev) != 1:
+                    # Try to schedule an asynchronous copy when possible
+                    b_chunk = _array._make_chunk_async(
+                        b_dev, a_dev, b_chunk.index, b_chunk.array, b._comms)
+                else:
+                    # Enable peer access to read the chunk directly
                     cupy._core._kernel._check_peer_access(b_chunk.array, a_dev)
-                except ValueError:
-                    # Peer access is not available due to the machine setting
-                    # lets try to explicitly move b_chunk.array to a_dev
-                    try:
-                        cur_device = cupy.cuda.Device(
-                            cupy.cuda.device.get_device_id()
-                        )
-                        a_dev.use()
-                        b_chunk_array = cupy.copy(b_chunk.array)
-                    finally:
-                        cur_device.use()
+                stream.wait_event(b_chunk.ready)
 
                 a_new_idx = _index_arith._index_for_subindex(
                     a_chunk.index, intersection, shape)
@@ -249,7 +243,7 @@ def _execute_peer_access(
 
                 assert kernel.nin == 2
                 kernel(typing.cast(ndarray, a_chunk.array)[a_new_idx],
-                       typing.cast(ndarray, b_chunk_array)[b_new_idx],
+                       typing.cast(ndarray, b_chunk.array)[b_new_idx],
                        out_array[a_new_idx])
 
             out_chunk = _chunk._Chunk(
