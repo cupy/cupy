@@ -284,7 +284,7 @@ class DistributedArray(ndarray):
 
         return chunks_map
 
-    def _to_op_mode(self, op_mode: _modes._OpMode) -> 'DistributedArray':
+    def _to_op_mode(self, op_mode: _modes.Mode) -> 'DistributedArray':
         # Return a view or a copy of the chunks_map in the given mode
         if self._mode is op_mode:
             return self
@@ -299,6 +299,7 @@ class DistributedArray(ndarray):
         if op_mode is _modes.REPLICA:
             chunks_map = self._copy_chunks_map_in_replica_mode()
         else:
+            assert op_mode is not None
             chunks_map = self._copy_chunks_map_in_op_mode(op_mode)
         return DistributedArray(
             self.shape, self.dtype, chunks_map, op_mode, self._comms)
