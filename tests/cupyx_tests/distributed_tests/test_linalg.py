@@ -9,6 +9,7 @@ from cupy import testing
 from cupyx.distributed.array import _linalg
 
 from cupyx.distributed import array
+from cupyx.distributed.array import REPLICA, SUM
 
 
 class ArrayConfig:
@@ -25,7 +26,7 @@ class ArrayConfig:
         self.index_map = index_map
 
     def instantiate(
-        self, mode: str = 'replica',
+        self, mode: str = REPLICA,
     ) -> tuple[numpy.ndarray, array.DistributedArray]:
         np_arr = numpy.arange(self.size).reshape(self.shape)
         d_arr = array.distributed_array(np_arr, self.index_map, mode)
@@ -62,7 +63,7 @@ class MatMulConfig:
     b: ArrayConfig
 
     def instantiate(
-        self, mode: str = 'replica',
+        self, mode: str = REPLICA,
     ) -> tuple[numpy.ndarray, array.DistributedArray,
                numpy.ndarray, array.DistributedArray]:
         return self.a.instantiate(mode) + self.b.instantiate(mode)
@@ -141,7 +142,7 @@ class TestDistributedMatMul:
     @pytest.mark.parametrize(
         'config',
         [config_1x2_2x2, config_2x2_2x2, config_1x4_4x1, config_2x3_3x2])
-    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM])
     def test_matmul(self, config, mode):
         np_a, d_a, np_b, d_b = config.instantiate(mode)
         np_c = np_a @ np_b
@@ -175,7 +176,7 @@ class TestDistributedMatMul:
         testing.assert_array_equal(d_c.get(), np_c, strict=True)
 
     @pytest.mark.parametrize('config', [config_1x2_2x2])
-    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM])
     def test_matmul_various_ops(self, config, mode):
         config = MatMulConfig(
             config.a,

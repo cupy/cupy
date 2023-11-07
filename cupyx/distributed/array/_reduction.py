@@ -14,24 +14,22 @@ def _execute(
     arr: '_array.DistributedArray', kernel, axis: int, dtype: DTypeLike,
 ) -> Any:
     overwrites = False
-    if kernel.name == 'cupy_max':
-        mode = _modes._MODES['max']
-        if arr._mode is not mode:
-            arr = arr._to_replica_mode()
-            overwrites = True
-    elif kernel.name == 'cupy_min':
-        mode = _modes._MODES['min']
-        if arr._mode is not mode:
-            arr = arr._to_replica_mode()
-            overwrites = True
-    elif kernel.name == 'cupy_sum':
-        mode = typing.cast(_modes._OpMode, _modes._MODES['sum'])
-        arr = arr._to_op_mode(mode)
-    elif kernel.name == 'cupy_prod':
-        mode = typing.cast(_modes._OpMode, _modes._MODES['prod'])
-        arr = arr._to_op_mode(mode)
-    else:
+    mode_overrides = {
+        'cupy_max': _modes.MAX,
+        'cupy_min': _modes.MIN,
+        'cupy_sum': _modes.SUM,
+        'cupy_prod': _modes.PROD,
+    }
+    if kernel.name not in mode_overrides:
+
         raise RuntimeError(f'Unsupported kernel: {kernel.name}')
+    mode = mode_overrides[kernel.name]
+    if mode in (_modes.MAX, _modes.MIN):
+        if arr._mode is not mode:
+            arr = arr._to_op_mode(_modes.REPLICA)
+            overwrites = True
+    else:
+        arr = arr._to_op_mode(mode)
 
     chunks_map = arr._chunks_map
 

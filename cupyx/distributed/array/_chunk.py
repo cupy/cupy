@@ -33,9 +33,9 @@ class _ArrayPlaceholder:
         return _ArrayPlaceholder(new_shape, self.device)
 
     def to_ndarray(
-            self, mode: '_modes._Mode', dtype: numpy.dtype) -> ndarray:
+            self, mode: '_modes.Mode', dtype: numpy.dtype) -> ndarray:
         with self.device:
-            if mode is _modes._REPLICA_MODE:
+            if mode is _modes.REPLICA:
                 data = _creation_basic.empty(self.shape, dtype)
             else:
                 value = mode.identity_of(dtype)
@@ -108,7 +108,7 @@ class _Chunk:
         return _Chunk(data, ready, self.index, list(self.updates),
                       prevent_gc=self.prevent_gc)
 
-    def flush(self, mode: '_modes._Mode') -> None:
+    def flush(self, mode: '_modes.Mode') -> None:
         """Apply all updates in-place."""
         if len(self.updates) == 0:
             return
@@ -120,7 +120,7 @@ class _Chunk:
         with self.on_ready() as stream:
             for update_data, idx in self.updates:
                 stream.wait_event(update_data.ready)
-                if mode is _modes._REPLICA_MODE:
+                if mode is _modes.REPLICA:
                     self.array[idx] = update_data.array
                 else:
                     self.array[idx] = mode.func(
@@ -131,7 +131,7 @@ class _Chunk:
             self.updates = []
 
     def apply_to(
-        self, target: '_Chunk', mode: '_modes._Mode',
+        self, target: '_Chunk', mode: '_modes.Mode',
         shape: tuple[int, ...],
         comms: dict[int, _data_transfer._Communicator],
         streams: dict[int, Stream],
@@ -163,7 +163,7 @@ class _Chunk:
             src_chunk.array[src_new_idx], src_chunk.ready,
             src_chunk.prevent_gc)
 
-        if mode is not _modes._REPLICA_MODE and not mode.idempotent:
+        if mode is not _modes.REPLICA and not mode.idempotent:
             data_to_transfer = data_to_transfer.copy()
 
         update = _data_transfer._transfer(
@@ -171,7 +171,7 @@ class _Chunk:
             comms[dst_dev], streams[dst_dev], dst_dev)
         dst_chunk.add_update(update, dst_new_idx)
 
-        if mode is not _modes._REPLICA_MODE and not mode.idempotent:
+        if mode is not _modes.REPLICA and not mode.idempotent:
             dtype = src_chunk.array.dtype
             with data_to_transfer.on_ready() as stream:
                 # Now src data has been copied, so we can write on src_chunk
@@ -220,9 +220,9 @@ def _all_reduce_intersections(
 
     for j in range(len(chunks_list) - 1, -1, -1):
         src_chunk = chunks_list[j]
-        src_chunk.flush(_modes._REPLICA_MODE)
+        src_chunk.flush(_modes.REPLICA)
 
         for i in range(j):
             dst_chunk = chunks_list[i]
             src_chunk.apply_to(
-                dst_chunk, _modes._REPLICA_MODE, shape, comms, streams)
+                dst_chunk, _modes.REPLICA, shape, comms, streams)

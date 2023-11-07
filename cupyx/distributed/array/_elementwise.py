@@ -66,8 +66,10 @@ def _prepare_chunks_array(
 def _change_all_to_replica_mode(
         args: list['_array.DistributedArray'],
         kwargs: dict[str, '_array.DistributedArray']) -> None:
-    args[:] = [arg._to_replica_mode() for arg in args]
-    kwargs.update((k, arg._to_replica_mode()) for k, arg in kwargs.items())
+    args[:] = [arg._to_op_mode(_modes.REPLICA) for arg in args]
+    kwargs.update(
+        (k, arg._to_op_mode(_modes.REPLICA)) for k, arg in kwargs.items()
+    )
 
 
 def _execute_kernel(
@@ -164,7 +166,7 @@ def _execute_kernel(
     assert shape is not None
 
     return _array.DistributedArray(
-        shape, out_dtype, out_chunks_map, _modes._REPLICA_MODE, comms)
+        shape, out_dtype, out_chunks_map, _modes.REPLICA, comms)
 
 
 def _execute_peer_access(
@@ -185,9 +187,9 @@ def _execute_peer_access(
 
     args = list(args)
     for i, arg in enumerate(args):
-        args[i] = arg._to_replica_mode()
+        args[i] = arg._to_op_mode(_modes.REPLICA)
         for chunk in chain.from_iterable(args[i]._chunks_map.values()):
-            chunk.flush(_modes._REPLICA_MODE)
+            chunk.flush(_modes.REPLICA)
 
     a, b = args
 
@@ -252,7 +254,7 @@ def _execute_peer_access(
             out_chunks_map.setdefault(a_dev, []).append(out_chunk)
 
     return _array.DistributedArray(
-        shape, dtype, out_chunks_map, _modes._REPLICA_MODE, comms)
+        shape, dtype, out_chunks_map, _modes.REPLICA, comms)
 
 
 def _is_peer_access_needed(

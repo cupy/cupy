@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Iterable, Optional
 
 import numpy
 from numpy.typing import ArrayLike
@@ -61,7 +61,7 @@ def _make_chunk_sync(src_dev, dst_dev, idx, src_array, comms):
 
 class DistributedArray(ndarray):
     """
-    __init__(self, shape, dtype, chunks_map, mode=_REPLICA_MODE, comms=None)
+    __init__(self, shape, dtype, chunks_map, mode=REPLICA, comms=None)
 
     Multi-dimensional array distributed across multiple CUDA devices.
 
@@ -79,8 +79,9 @@ class DistributedArray(ndarray):
             type.
         chunks_map (dict from int to list of chunks): Lists of chunk objects
             associated with each device.
-        mode (str or mode object, optional): Mode that determines how overlaps
-            of the chunks are interpreted.
+        mode (mode object, optional): Mode that determines how overlaps
+            of the chunks are interpreted. Defaults to
+            ``cupyx.distributed.array.REPLICA``.
         comms (optional): Communicator objects which a distributed array
             hold internally. Sharing them with other distributed arrays can
             save time because their initialization is a costly operation.
@@ -90,14 +91,14 @@ class DistributedArray(ndarray):
     """
 
     _chunks_map: dict[int, list[_Chunk]]
-    _mode: _modes._Mode
+    _mode: _modes.Mode
     _streams: dict[int, Stream]
     _comms: dict[int, _Communicator]
 
     def __new__(
         cls, shape: tuple[int, ...], dtype: DTypeLike,
         chunks_map: dict[int, list[_Chunk]],
-        mode: Union[str, _modes._Mode] = _modes._REPLICA_MODE,
+        mode: _modes.Mode = _modes.REPLICA,
         comms: Optional[dict[int, _Communicator]] = None,
     ) -> 'DistributedArray':
         mem = _MultiDeviceDummyMemory(0)
@@ -105,11 +106,6 @@ class DistributedArray(ndarray):
         obj = super().__new__(cls, shape, dtype, memptr=memptr)
         obj._chunks_map = chunks_map
 
-        if isinstance(mode, str):
-            if mode not in _modes._MODES.keys():
-                raise RuntimeError(
-                    f'`mode` must be one of {list(_modes._MODES)}')
-            mode = _modes._MODES[mode]
         obj._mode = mode
 
         obj._streams = {}
@@ -127,15 +123,17 @@ class DistributedArray(ndarray):
                 'constructor call')
 
     @property
-    def mode(self) -> str:
+    def mode(self) -> _modes.Mode:
         """Describe how overlaps of the chunks are interpreted.
 
         In the replica mode, chunks are guaranteed to have identical values on
         their overlapping segments. In other modes, they are not necessarily
         identical and represent the original data as their max, sum, etc.
 
-        :class:`DistributedArray` currently supports 'replica', 'min', 'max',
-        'sum', 'prod' modes.
+        :class:`DistributedArray` currently supports
+        ``cupyx.distributed.array.REPLICA``, ``cupyx.distributed.array.MIN``,
+        ``cupyx.distributed.array.MAX``, ``cupyx.distributed.array.SUM``,
+        ``cupyx.distributed.array.PROD`` modes.
 
         Many operations on distributed arrays including :class:`cupy.ufunc`
         and :func:`~cupyx.distributed.array.matmul` involve changing their mode
@@ -180,10 +178,7 @@ class DistributedArray(ndarray):
              2: [array([[26, 29],
                         [80, 92]])]}  # right half
         """
-        for mode_str, mode_obj in _modes._MODES.items():
-            if self._mode is mode_obj:
-                return mode_str
-        raise RuntimeError('Unrecognized mode')
+        return self._mode
 
     @property
     def devices(self) -> Iterable[int]:
@@ -258,7 +253,7 @@ class DistributedArray(ndarray):
         for dev, chunks in self._chunks_map.items():
             chunks_map[dev] = [chunk.copy() for chunk in chunks]
 
-        if self._mode is not _modes._REPLICA_MODE:
+        if self._mode is not _modes.REPLICA:
             self._prepare_comms_and_streams(self._chunks_map.keys())
             _chunk._all_reduce_intersections(
                 self._mode, self.shape, chunks_map, self._comms, self._streams)
@@ -271,7 +266,7 @@ class DistributedArray(ndarray):
         chunks_map = self._copy_chunks_map_in_replica_mode()
 
         for chunk in chain.from_iterable(chunks_map.values()):
-            chunk.flush(_modes._REPLICA_MODE)
+            chunk.flush(_modes.REPLICA)
 
         chunks_list = list(chain.from_iterable(chunks_map.values()))
         identity = op_mode.identity_of(self.dtype)
@@ -301,48 +296,24 @@ class DistributedArray(ndarray):
                 return DistributedArray(
                     self.shape, self.dtype, self._chunks_map,
                     op_mode, self._comms)
-
-        chunks_map = self._copy_chunks_map_in_op_mode(op_mode)
+        if op_mode is _modes.REPLICA:
+            chunks_map = self._copy_chunks_map_in_replica_mode()
+        else:
+            chunks_map = self._copy_chunks_map_in_op_mode(op_mode)
         return DistributedArray(
             self.shape, self.dtype, chunks_map, op_mode, self._comms)
 
-    def _to_replica_mode(self) -> 'DistributedArray':
-        # Return a view or a copy in the replica mode
-        if self._mode is _modes._REPLICA_MODE:
-            return self
-
-        if len(self._chunks_map) == 1:
-            chunks, = self._chunks_map.values()
-            if len(chunks) == 1:
-                chunks[0].flush(self._mode)
-                return DistributedArray(
-                    self.shape, self.dtype, self._chunks_map,
-                    _modes._REPLICA_MODE, self._comms)
-
-        chunks_map = self._copy_chunks_map_in_replica_mode()
-        return DistributedArray(
-            self.shape, self.dtype, chunks_map,
-            _modes._REPLICA_MODE, self._comms)
-
-    def change_mode(self, mode: str) -> 'DistributedArray':
+    def change_mode(self, mode: _modes.Mode) -> 'DistributedArray':
         """Return a view or a copy in the given mode.
 
         Args:
-            mode ({'replica', 'min', 'max', 'sum', 'prod'}): How overlaps of
+            mode (mode Object): How overlaps of
                 the chunks are interpreted.
 
         .. seealso::
                 :attr:`DistributedArray.mode` for details about modes.
         """
-        if mode not in _modes._MODES:
-            raise RuntimeError(f'`mode` must be one of {list(_modes._MODES)}')
-
-        mode_obj = _modes._MODES[mode]
-
-        if mode_obj is _modes._REPLICA_MODE:
-            return self._to_replica_mode()
-        else:
-            return self._to_op_mode(mode_obj)
+        return self._to_op_mode(mode)
 
     def reshard(self, index_map: dict[int, Any]) -> 'DistributedArray':
         """Return a view or a copy having the given index_map.
@@ -390,7 +361,7 @@ class DistributedArray(ndarray):
         for src_chunk in chain.from_iterable(old_chunks_map.values()):
             src_chunk.flush(self._mode)
 
-            if self._mode is not _modes._REPLICA_MODE:
+            if self._mode is not _modes.REPLICA:
                 src_chunk = src_chunk.copy()
 
             for dst_chunk in chain.from_iterable(new_chunks_map.values()):
@@ -415,7 +386,7 @@ class DistributedArray(ndarray):
         for chunk in chain.from_iterable(self._chunks_map.values()):
             chunk.flush(self._mode)
 
-        if self._mode is _modes._REPLICA_MODE:
+        if self._mode is _modes.REPLICA:
             np_array = numpy.empty(self.shape, dtype=self.dtype)
         else:
             identity = self._mode.identity_of(self.dtype)
@@ -427,7 +398,7 @@ class DistributedArray(ndarray):
         for chunk in chain.from_iterable(self._chunks_map.values()):
             chunk.ready.synchronize()
             idx = chunk.index
-            if self._mode is _modes._REPLICA_MODE:
+            if self._mode is _modes.REPLICA:
                 np_array[idx] = cupy.asnumpy(chunk.array)
             else:
                 self._mode.numpy_func(
@@ -849,7 +820,7 @@ class DistributedArray(ndarray):
 def distributed_array(
     array: ArrayLike,
     index_map: dict[int, Any],
-    mode: str = 'replica',
+    mode: _modes.Mode = _modes.REPLICA,
 ) -> DistributedArray:
     """Creates a distributed array from the given data.
 
@@ -863,8 +834,9 @@ def distributed_array(
         index_map (dict from int to array indices): Indices for the chunks
             that devices with designated IDs own. One device can have multiple
             chunks, which can be specified as a list of array indices.
-        mode ({'replica', 'min', 'max', 'sum', 'prod'}): How overlaps of the
-            chunks are interpreted.
+        mode (mode object, optional): Mode that determines how overlaps
+            of the chunks are interpreted. Defaults to
+            ``cupyx.distributed.array.REPLICA``.
 
     .. seealso::
             :attr:`DistributedArray.mode` for details about modes.
@@ -887,7 +859,7 @@ def distributed_array(
             array._comms)
 
     if isinstance(array, (numpy.ndarray, ndarray)):
-        if mode != 'replica':
+        if mode != _modes.REPLICA:
             array = array.copy()
     else:
         array = numpy.array(array)
@@ -910,7 +882,6 @@ def distributed_array(
         src_dev = -1
         make_chunk = _make_chunk_sync
 
-    mode_obj = _modes._MODES[mode]
     chunks_map: dict[int, list[_Chunk]] = {}
     for dev, idxs in index_map.items():
         chunks_map[dev] = []
@@ -919,9 +890,9 @@ def distributed_array(
             chunk_array = array[idx]
             chunk = make_chunk(src_dev, dev, idx, chunk_array, comms)
             chunks_map[dev].append(chunk)
-            if (mode_obj is not _modes._REPLICA_MODE
-                    and not mode_obj.idempotent):
-                array[idx] = mode_obj.identity_of(array.dtype)
+            if (mode is not _modes.REPLICA
+                    and not mode.idempotent):
+                array[idx] = mode.identity_of(array.dtype)
 
     return DistributedArray(
-        array.shape, array.dtype, chunks_map, mode_obj, comms)
+        array.shape, array.dtype, chunks_map, mode, comms)

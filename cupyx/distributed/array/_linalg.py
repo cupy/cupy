@@ -276,8 +276,8 @@ def matmul(
             'Mixing a distributed array with a non-distributed array is not'
             ' supported')
 
-    a = a._to_replica_mode()
-    b = b._to_replica_mode()
+    a = a._to_op_mode(_modes.REPLICA)
+    b = b._to_op_mode(_modes.REPLICA)
 
     one_prepended = one_appended = False
     if a.ndim == 1:
@@ -313,8 +313,8 @@ def matmul(
             loc_b = location_map_b[block_b]
             chunk_a = a._chunks_map[dev][loc_a[dev]]
             chunk_b = b._chunks_map[dev][loc_b[dev]]
-            chunk_a.flush(_modes._REPLICA_MODE)
-            chunk_b.flush(_modes._REPLICA_MODE)
+            chunk_a.flush(_modes.REPLICA)
+            chunk_b.flush(_modes.REPLICA)
 
             index = index_prefix + (slice(*block_a[0]), slice(*block_b[1]))
             with chunk_a.on_ready() as stream:
@@ -331,7 +331,7 @@ def matmul(
 
     shape = a.shape[:-2] + (n, p)
     res = _array.DistributedArray(
-        shape, dtype, chunks_map, _modes._MODES['sum'], a._comms)
+        shape, dtype, chunks_map, _modes.SUM, a._comms)
 
     if one_prepended:
         res = _pop_front_from_shape(res)

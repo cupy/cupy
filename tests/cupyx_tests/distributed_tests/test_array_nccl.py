@@ -10,6 +10,7 @@ import cupyx.distributed.array as darray
 from cupyx.distributed.array import _chunk
 from cupyx.distributed.array import _index_arith
 from cupyx.distributed.array import _modes
+from cupyx.distributed.array._modes import REPLICA, MAX, SUM, PROD
 
 
 size = 256
@@ -19,9 +20,6 @@ shape_dim2 = (16, 16)
 shape_dim3 = (8, 8, 4)
 
 
-# @pytest.mark.skipif(
-#     not sys.platform.startswith('linux'), reason="Does not work in windows"
-# )
 class _TestDistributedArray:
     def _test_array_creation_from_numpy(self, shape, index_map, mode):
         array = numpy.arange(size, dtype='q').reshape(shape)
@@ -31,7 +29,7 @@ class _TestDistributedArray:
             for chunk, idx in zip(da._chunks_map[dev], index_map[dev]):
                 assert chunk.array.device.id == dev
                 assert chunk.array.ndim == array.ndim
-                if mode == 'replica':
+                if mode == REPLICA:
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
                         chunk.array, array[idx])
@@ -47,7 +45,7 @@ class _TestDistributedArray:
             for chunk, idx in zip(da._chunks_map[dev], index_map[dev]):
                 assert chunk.array.device.id == dev
                 assert chunk.array.ndim == array.ndim
-                if mode == 'replica':
+                if mode == REPLICA:
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
                         chunk.array, array[idx])
@@ -61,7 +59,7 @@ class _TestDistributedArray:
             for chunk, idx in zip(da._chunks_map[dev], index_map[dev]):
                 assert chunk.array.device.id == dev
                 assert chunk.array.ndim == array.ndim
-                if mode == 'replica':
+                if mode == REPLICA:
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
                         chunk.array, array[idx])
@@ -81,9 +79,9 @@ class _TestDistributedArray:
                     chunks_map[dev].append(chunk)
 
         d_a = darray.DistributedArray(
-            shape, np_a.dtype, chunks_map, _modes._MODES['sum'])
-        d_b = d_a._to_replica_mode()
-        assert d_b._mode is _modes._REPLICA_MODE
+            shape, np_a.dtype, chunks_map, _modes.SUM)
+        d_b = d_a._to_op_mode(_modes.REPLICA)
+        assert d_b._mode is _modes.REPLICA
         testing.assert_array_equal(d_b, np_a)
         testing.assert_array_equal(d_a, np_a)
         for dev in index_map.keys():
@@ -137,7 +135,8 @@ class _TestDistributedArray:
         np_r = numpy.cos(np_a * np_b)
         d_a = darray.distributed_array(np_a, index_map_a, mode)
         d_b = darray.distributed_array(np_b, index_map_a, mode)
-        call_fn = lambda : cupy.cos(d_a * d_b.reshard(index_map_b))  # NOQA
+        def call_fn(): return cupy.cos(d_a * d_b.reshard(index_map_b))
+
         if cupy.cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
             with pytest.warns(
                 cupy._util.PerformanceWarning, match=r'Peer access'
@@ -166,7 +165,8 @@ class _TestDistributedArray:
         np_r = (np_a - np_b) * (np_a - np_b)
         d_a = darray.distributed_array(np_a, index_map_a, mode)
         d_b = darray.distributed_array(np_b, index_map_a, mode)
-        call_fn = lambda : custom_kernel(d_a, d_b.reshard(index_map_b))  # NOQA
+        def call_fn(): return custom_kernel(d_a, d_b.reshard(index_map_b))
+
         if cupy.cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
             with pytest.warns(
                 cupy._util.PerformanceWarning, match=r'Peer access'
@@ -195,7 +195,7 @@ class _TestDistributedArray:
             for chunk, idx in zip(d_b._chunks_map[dev], index_map_b[dev]):
                 assert chunk.array.device.id == dev
                 assert chunk.array.ndim == np_a.ndim
-                if mode == 'replica':
+                if mode == REPLICA:
                     idx = _index_arith._normalize_index(shape, idx)
                     testing.assert_array_equal(
                         chunk.array, np_a[idx])
@@ -235,7 +235,7 @@ class _TestDistributedArray:
         for axis in range(np_a.ndim):
             np_b = np_a.sum(axis=axis)
             d_b = d_a.sum(axis=axis)
-            assert d_b._mode is _modes._MODES['sum']
+            assert d_b._mode is _modes.SUM
             testing.assert_array_equal(d_b, np_b)
             testing.assert_array_equal(d_a, np_a)
 
@@ -250,7 +250,7 @@ class _TestDistributedArray:
 
     def _test_unsupported_reduction(self, shape, index_map):
         np_a = numpy.arange(size).reshape(shape)
-        d_a = darray.distributed_array(np_a, index_map, 'replica')
+        d_a = darray.distributed_array(np_a, index_map, REPLICA)
         with pytest.raises(RuntimeError, match=r'does not support'):
             cupy.argmax(d_a, axis=0)
 
@@ -325,17 +325,17 @@ class TestDistributedArray2Devices(_TestDistributedArray):
                 cls.streams[dev].use()
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_array_creation_from_numpy(self, shape, index_map, mode):
         super()._test_array_creation_from_numpy(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_array_creation_from_cupy(self, shape, index_map, mode):
         super()._test_array_creation_from_cupy(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_array_creation(self, shape, index_map, mode):
         super()._test_array_creation(shape, index_map, mode)
 
@@ -344,24 +344,24 @@ class TestDistributedArray2Devices(_TestDistributedArray):
         super()._test_change_to_replica_mode(shape, index_map)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['max', 'sum'])
+    @pytest.mark.parametrize('mode', [MAX, SUM])
     def test_change_to_op_mode(self, shape, index_map, mode):
         super()._test_change_to_op_mode(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode_a', ['replica', 'sum'])
-    @pytest.mark.parametrize('mode_b', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode_a', [REPLICA, SUM])
+    @pytest.mark.parametrize('mode_b', [REPLICA, SUM])
     def test_ufuncs(self, shape, index_map, mode_a, mode_b):
         super()._test_ufuncs(shape, index_map, mode_a, mode_b)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode_a', ['replica', 'sum'])
-    @pytest.mark.parametrize('mode_b', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode_a', [REPLICA, SUM])
+    @pytest.mark.parametrize('mode_b', [REPLICA, SUM])
     def test_elementwise_kernel(self, shape, index_map, mode_a, mode_b):
         super()._test_elementwise_kernel(shape, index_map, mode_a, mode_b)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM])
     def test_elementwise_kernel_incompatible_chunk_shapes(
             self, shape, index_map, mode):
         super()._test_elementwise_kernel_incompatible_chunk_shapes(
@@ -369,7 +369,7 @@ class TestDistributedArray2Devices(_TestDistributedArray):
         )
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_incompatible_operand(self, shape, index_map, mode):
         super()._test_incompatible_operand(shape, index_map, mode)
 
@@ -378,7 +378,7 @@ class TestDistributedArray2Devices(_TestDistributedArray):
         [(shape_dim2, _2d_mappings[0], _2d_mappings[1]),
          (shape_dim3, _3d_mappings[0], _3d_mappings[1]),
          (shape_dim3, index_map_only_1, _3d_mappings[1])])
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_reshard(self, shape, index_map_a, index_map_b, mode):
         super()._test_reshard(shape, index_map_a, index_map_b, mode)
 
@@ -387,7 +387,7 @@ class TestDistributedArray2Devices(_TestDistributedArray):
         [(shape_dim2, _2d_mappings[0], _2d_mappings[1]),
          (shape_dim3, _3d_mappings[0], _3d_mappings[1]),
          (shape_dim3, index_map_only_1, _3d_mappings[1])])
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_incompatible_chunk_shapes_resharded(
             self, shape, index_map_a, index_map_b, mode):
         super()._test_incompatible_chunk_shapes_resharded(
@@ -395,24 +395,24 @@ class TestDistributedArray2Devices(_TestDistributedArray):
         )
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_max_reduction(self, shape, index_map, mode, dtype):
         super()._test_max_reduction(shape, index_map, mode, dtype)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_min_reduction(self, shape, index_map, mode, dtype):
         super()._test_min_reduction(shape, index_map, mode, dtype)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'prod'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, PROD])
     def test_sum_reduction(self, shape, index_map, mode):
         super()._test_sum_reduction(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_prod_reduction(self, shape, index_map, mode):
         super()._test_prod_reduction(shape, index_map, mode)
 
@@ -488,17 +488,17 @@ class TestDistributedArray4Devices(_TestDistributedArray):
                 cls.streams[dev].use()
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_array_creation_from_numpy(self, shape, index_map, mode):
         super()._test_array_creation_from_numpy(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_array_creation_from_cupy(self, shape, index_map, mode):
         super()._test_array_creation_from_cupy(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_array_creation(self, shape, index_map, mode):
         super()._test_array_creation(shape, index_map, mode)
 
@@ -507,24 +507,24 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         super()._test_change_to_replica_mode(shape, index_map)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['max', 'sum'])
+    @pytest.mark.parametrize('mode', [MAX, SUM])
     def test_change_to_op_mode(self, shape, index_map, mode):
         super()._test_change_to_op_mode(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode_a', ['replica', 'sum'])
-    @pytest.mark.parametrize('mode_b', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode_a', [REPLICA, SUM])
+    @pytest.mark.parametrize('mode_b', [REPLICA, SUM])
     def test_ufuncs(self, shape, index_map, mode_a, mode_b):
         super()._test_ufuncs(shape, index_map, mode_a, mode_b)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode_a', ['replica', 'sum'])
-    @pytest.mark.parametrize('mode_b', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode_a', [REPLICA, SUM])
+    @pytest.mark.parametrize('mode_b', [REPLICA, SUM])
     def test_elementwise_kernel(self, shape, index_map, mode_a, mode_b):
         super()._test_elementwise_kernel(shape, index_map, mode_a, mode_b)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM])
     def test_elementwise_kernel_incompatible_chunk_shapes(
             self, shape, index_map, mode):
         super()._test_elementwise_kernel_incompatible_chunk_shapes(
@@ -532,7 +532,7 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         )
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_incompatible_operand(self, shape, index_map, mode):
         super()._test_incompatible_operand(shape, index_map, mode)
 
@@ -541,7 +541,7 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         [(shape_dim2, index_map_dim2, index_map_dim2_2),
          (shape_dim3, index_map_dim3, index_map_dim3_2),
          (shape_dim3, index_map_only_1, index_map_dim3)])
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_reshard(self, shape, index_map_a, index_map_b, mode):
         super()._test_reshard(shape, index_map_a, index_map_b, mode)
 
@@ -550,7 +550,7 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         [(shape_dim2, index_map_dim2, index_map_dim2_2),
          (shape_dim3, index_map_dim3, index_map_dim3_2),
          (shape_dim3, index_map_only_1, index_map_dim3)])
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_incompatible_chunk_shapes_resharded(
             self, shape, index_map_a, index_map_b, mode):
         super()._test_incompatible_chunk_shapes_resharded(
@@ -558,24 +558,24 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         )
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_max_reduction(self, shape, index_map, mode, dtype):
         super()._test_max_reduction(shape, index_map, mode, dtype)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     @pytest.mark.parametrize('dtype', ['int64', 'float64'])
     def test_min_reduction(self, shape, index_map, mode, dtype):
         super()._test_min_reduction(shape, index_map, mode, dtype)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'prod'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, PROD])
     def test_sum_reduction(self, shape, index_map, mode):
         super()._test_sum_reduction(shape, index_map, mode)
 
     @pytest.mark.parametrize('shape, index_map', shape_and_chunks_4_dev)
-    @pytest.mark.parametrize('mode', ['replica', 'sum', 'max'])
+    @pytest.mark.parametrize('mode', [REPLICA, SUM, MAX])
     def test_prod_reduction(self, shape, index_map, mode):
         super()._test_prod_reduction(shape, index_map, mode)
 
@@ -628,7 +628,9 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         mappings = [index_map_a, index_map_b, mapping_c]
 
         ops = ['reshard', 'change_mode']
-        modes = list(_modes._MODES)
+        modes = [
+            _modes.REPLICA, _modes.MAX, _modes.MIN, _modes.SUM, _modes.PROD
+        ]
 
         rng = numpy.random.default_rng()
         for _ in range(n_iter):
@@ -680,7 +682,9 @@ class TestDistributedArray4Devices(_TestDistributedArray):
         mappings = [index_map_a, index_map_b, mapping_c]
 
         ops = ['reshard', 'change_mode', 'element-wise', 'reduce']
-        modes = list(_modes._MODES)
+        modes = [
+            _modes.REPLICA, _modes.MAX, _modes.MIN, _modes.SUM, _modes.PROD
+        ]
         elementwise = ['add', 'multiply', 'maximum', 'minimum']
         reduce = ['sum', 'prod', 'max', 'min']
 

@@ -55,16 +55,11 @@ class _OpMode:
         self.identity_of = identity_of
 
 
-_Mode = Optional[_OpMode]
+Mode = Optional[_OpMode]
 
 
-_REPLICA_MODE: Final[None] = None
-
-
-_MODES: Final[dict[str, _Mode]] = {
-    'replica': _REPLICA_MODE,
-    'min':  _OpMode('minimum',  True,  _max_value_of),
-    'max':  _OpMode('maximum',  True,  _min_value_of),
-    'sum':  _OpMode('add',      False, _zero_of),
-    'prod': _OpMode('multiply', False, _one_of),
-}
+REPLICA: Final[None] = None
+MIN = _OpMode('minimum',  True,  _max_value_of)
+MAX = _OpMode('maximum',  True,  _min_value_of)
+SUM = _OpMode('add', False, _zero_of)
+PROD = _OpMode('multiply', False, _one_of)
