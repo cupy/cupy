@@ -13,7 +13,7 @@ jobs:
         submodules: recursive
     - name: foo
       run: |
-        echo 'Hello'
+        echo 'Hello!'
         pwd
         docker --version
         hostname
