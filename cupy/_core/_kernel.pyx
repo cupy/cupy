@@ -105,7 +105,7 @@ cdef inline int _get_kind_score(int kind):
 
 
 @cython.profile(False)
-cdef inline _check_peer_access(_ndarray_base arr, int device_id):
+cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
         return
 
