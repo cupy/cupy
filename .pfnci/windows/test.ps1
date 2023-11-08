@@ -56,6 +56,10 @@ function Main {
     PrioritizeFlexCIDaemon
     EnableLongPaths
 
+    # Enable symbolic links and re-checkout
+    git config core.symlinks true
+    git reset --hard
+
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
