@@ -290,7 +290,7 @@ def _can_attempt_preload(lib: str) -> bool:
         # Conda-Forge. See here for the configuration files used in
         # Conda-Forge distributions.
         # https://github.com/conda-forge/cupy-feedstock/blob/master/recipe/preload_config/
-        _log(f'Cannot preload {lib} as this is not a wheel installation')
+        _log(f'Not preloading {lib} as this is not a pip wheel installation')
         return False
 
     if lib not in _preload_libs:
