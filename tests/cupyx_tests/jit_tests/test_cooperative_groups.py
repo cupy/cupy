@@ -39,7 +39,9 @@ class TestCooperativeGroups:
         assert (x[11:] == -1).all()
 
     @pytest.mark.skipif(
-        cupy.cuda.nvrtc.getVersion() < (11, 6),
+        runtime.runtimeGetVersion() < 11060
+        or (cupy.cuda.driver._is_cuda_python()
+            and cupy.cuda.nvrtc.getVersion() < (11, 6)),
         reason='not supported until CUDA 11.6')
     def test_thread_block_group_cu116_new_APIs(self):
         @jit.rawkernel()
@@ -59,6 +61,9 @@ class TestCooperativeGroups:
         assert (x[1], x[2], x[3]) == (32, 1, 1)
         assert (x[4:] == -1).all()
 
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='we do not support it')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
         reason='cooperative launch is not supported on device 0')
@@ -86,7 +91,9 @@ class TestCooperativeGroups:
         assert (x[5:] == 2**64-1).all()
 
     @pytest.mark.skipif(
-        cupy.cuda.nvrtc.getVersion() < (11, 6),
+        runtime.runtimeGetVersion() < 11060
+        or (cupy.cuda.driver._is_cuda_python()
+            and cupy.cuda.nvrtc.getVersion() < (11, 6)),
         reason='not supported until CUDA 11.6')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
@@ -119,6 +126,9 @@ class TestCooperativeGroups:
         assert (x[7], x[8], x[9]) == (1, 0, 0)
         assert (x[10:] == 2**64-1).all()
 
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11000,
+        reason='we do not support it')
     @pytest.mark.skipif(runtime.deviceGetAttribute(
         runtime.cudaDevAttrCooperativeLaunch, 0) == 0,
         reason='cooperative launch is not supported on device 0')
@@ -132,6 +142,11 @@ class TestCooperativeGroups:
 
         test_sync[2, 64]()
 
+    # We also skip CUDA 11.0 due to missing support of memcpy_async
+    # and aligned_size_t...
+    @pytest.mark.skipif(
+        runtime.runtimeGetVersion() < 11010,
+        reason='not supported until CUDA 11.0')
     @pytest.mark.parametrize(
         'test_aligned', (True, False),
     )
