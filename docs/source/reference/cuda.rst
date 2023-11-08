@@ -120,6 +120,14 @@ NCCL
    cupy.cuda.nccl.groupEnd
 
 
+Version
+-------
+
+.. autosummary::
+   :toctree: generated/
+
+   cupy.cuda.get_local_runtime_version
+
 .. _runtime_api:
 
 Runtime API

@@ -155,9 +155,12 @@ cpdef int driverGetVersion() except? -1:
     return version
 
 cpdef int runtimeGetVersion() except? -1:
-    # N.B. As the CUDA Runtime API is statically linked to CuPy, this method
-    # returns the version of the library linked to CuPy. You cannot use this
-    # method to probe the CUDA Toolkit version in your environment.
+    """
+    Returns the version of the CUDA Runtime statically linked to CuPy.
+
+    .. seealso:: :meth:`cupy.cuda.get_local_runtime_version`
+    """
+
     cdef int version
     IF CUPY_USE_CUDA_PYTHON:
         # Workarounds an issue that cuda-python returns its version instead of
@@ -180,6 +183,16 @@ cpdef int _getCUDAMajorVersion() except? -1:
 
 
 cpdef int _getLocalRuntimeVersion() except? -1:
+    """
+    Returns the version of the CUDA Runtime installed in the environment.
+
+    Unlike :func:`cupy.cuda.runtime.runtimeGetVersion`, which returns the
+    CUDA Runtime version statically linked to CuPy, this function returns the
+    version retrieved from the shared library installed on the host.
+    Use this method to probe the CUDA Runtime version installed in the
+    environment.
+    """
+
     cdef int version
     IF CUPY_USE_CUDA_PYTHON:
         # Requires CUDA Python 11.8.3 & 12.3.0
