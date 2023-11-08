@@ -37,6 +37,7 @@ ELSE:
 class NVRTCError(RuntimeError):
 
     def __init__(self, status):
+        initialize()
         self.status = status
         cdef bytes msg = nvrtcGetErrorString(<nvrtcResult>status)
         super(NVRTCError, self).__init__(

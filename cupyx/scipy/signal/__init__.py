@@ -164,6 +164,9 @@ from cupyx.scipy.signal._spectral import check_COLA  # NOQA
 from cupyx.scipy.signal._spectral import check_NOLA  # NOQA
 from cupyx.scipy.signal._spectral import stft  # NOQA
 from cupyx.scipy.signal._spectral import istft  # NOQA
+from cupyx.scipy.signal._spectral import spectrogram  # NOQA
+from cupyx.scipy.signal._spectral import vectorstrength  # NOQA
+from cupyx.scipy.signal._spectral import coherence  # NOQA
 
 from cupyx.scipy.signal._peak_finding import argrelextrema  # NOQA
 from cupyx.scipy.signal._peak_finding import argrelmin  # NOQA

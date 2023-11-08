@@ -362,11 +362,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # compile_args.append('-DJITIFY_PRINT_ALL')
 
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/_jitify/jitify.hpp']
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
+            s['depends'] = ['./cupy/_core/include/cupy/_dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)

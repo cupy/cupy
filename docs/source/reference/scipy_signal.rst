@@ -241,7 +241,10 @@ Spectral analysis
    periodogram
    welch
    csd
+   coherence
+   spectrogram
    lombscargle
+   vectorstrength
    stft
    istft
    check_COLA

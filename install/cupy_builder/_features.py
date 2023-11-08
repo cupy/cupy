@@ -419,7 +419,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cupy._core.dlpack',
         ],
         'include': [
-            'cupy/dlpack/dlpack.h',
+            'cupy/_dlpack/dlpack.h',
         ],
         'libraries': [],
     }
