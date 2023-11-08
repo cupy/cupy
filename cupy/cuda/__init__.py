@@ -19,6 +19,7 @@ from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
+from cupy_backends.cuda.api.runtime import _getLocalRuntimeVersion as get_local_runtime_version  # NOQA
 
 
 _available = None
