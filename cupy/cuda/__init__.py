@@ -19,7 +19,6 @@ from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
-from cupy_backends.cuda.api.runtime import _getLocalRuntimeVersion as get_local_runtime_version  # NOQA
 
 
 _available = None
@@ -99,6 +98,19 @@ def is_available():
             elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
                 raise
     return _available
+
+
+def get_local_runtime_version() -> int:
+    """
+    Returns the version of the CUDA Runtime installed in the environment.
+
+    Unlike :func:`cupy.cuda.runtime.runtimeGetVersion`, which returns the
+    CUDA Runtime version statically linked to CuPy, this function returns the
+    version retrieved from the shared library installed on the host.
+    Use this method to probe the CUDA Runtime version installed in the
+    environment.
+    """
+    return runtime._getLocalRuntimeVersion()
 
 
 # import class and function

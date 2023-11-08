@@ -183,16 +183,6 @@ cpdef int _getCUDAMajorVersion() except? -1:
 
 
 cpdef int _getLocalRuntimeVersion() except? -1:
-    """
-    Returns the version of the CUDA Runtime installed in the environment.
-
-    Unlike :func:`cupy.cuda.runtime.runtimeGetVersion`, which returns the
-    CUDA Runtime version statically linked to CuPy, this function returns the
-    version retrieved from the shared library installed on the host.
-    Use this method to probe the CUDA Runtime version installed in the
-    environment.
-    """
-
     cdef int version
     IF CUPY_USE_CUDA_PYTHON:
         # Requires CUDA Python 11.8.3 & 12.3.0
