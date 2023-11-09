@@ -227,9 +227,9 @@ class LocalMemory(BuiltinFunc):
         Args:
             dtype (dtype):
                 The dtype of the returned array.
-            size (int or None):
+            size (int):
                 If ``int`` type, the size of static local memory.
-                If ``None``, declares the local memory with extern specifier.
+                Does not use __extern__ keyword like shared memory does
             alignment (int or None): Enforce the alignment via __align__(N).
         """
         super().__call__()
