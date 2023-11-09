@@ -212,6 +212,7 @@ class TestVectorization:
         d, _ = tree.query(x, k=kk)
         return d
 
+    @testing.with_requires('scipy>=1.9.0')
     def test_query_raises_for_k_none(self):
         for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
             x, tree = create_small_kd_tree(xp, scp)

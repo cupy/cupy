@@ -529,12 +529,11 @@ __device__ long long compute_query_ball(
         const T* __restrict__ tree, const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
         const T* __restrict__ tree_bounds,
-        long long* nodes, long long* debug_nodes) {
+        long long* nodes) {
 
     volatile long long prev = -1;
     volatile long long curr = 0;
     long long node_count = 0;
-    int visit_count = 0;
     double radius_p = !isinf(p) ? pow(radius, p) : radius;
 
     while(true) {
@@ -544,9 +543,6 @@ __device__ long long compute_query_ball(
             curr = parent;
             continue;
         }
-
-        debug_nodes[visit_count] = index[curr];
-        visit_count++;
 
         const long long child = 2 * curr + 1;
         const long long r_child = 2 * curr + 2;
@@ -660,8 +656,7 @@ __global__ void query_ball(
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
         const T* __restrict__ tree_bounds,
-        long long* all_nodes, long long* node_count,
-        long long* all_debug_nodes) {
+        long long* all_nodes, long long* node_count) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx >= points_size) {
@@ -670,11 +665,10 @@ __global__ void query_ball(
 
     const T* point = points + n_dims * idx;
     long long* nodes = all_nodes + n * idx;
-    long long* debug_nodes = all_debug_nodes + 3 * n * idx;
 
     long long count = compute_query_ball<T>(
         n, n_dims, radius, eps, p, false, sort, point, tree, index, box_bounds,
-        tree_bounds, nodes, debug_nodes);
+        tree_bounds, nodes);
 
     node_count[idx] = count;
 }
@@ -686,8 +680,7 @@ __global__ void query_ball_periodic(
         const long long* __restrict__ index,
         const double* __restrict__ box_bounds,
         const double* __restrict__ tree_bounds,
-        long long* all_nodes, long long* node_count,
-        long long* all_debug_nodes) {
+        long long* all_nodes, long long* node_count) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx >= points_size) {
@@ -696,12 +689,11 @@ __global__ void query_ball_periodic(
 
     double* point = points + n_dims * idx;
     long long* nodes = all_nodes + n * idx;
-    long long* debug_nodes = all_debug_nodes + 3 * n * idx;
 
     adjust_to_box(point, n_dims, box_bounds);
     long long count = compute_query_ball<double>(
         n, n_dims, radius, eps, p, true, sort, point, tree, index, box_bounds,
-        tree_bounds, nodes, debug_nodes);
+        tree_bounds, nodes);
 
     node_count[idx] = count;
 }
@@ -893,8 +885,6 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
 
     nodes = cupy.full((n_points, tree_length), tree.shape[0], dtype=cupy.int64)
     total_nodes = cupy.empty((n_points,), cupy.int64)
-    debug_nodes = cupy.full((n_points, tree_length * 3), tree_length,
-                            dtype=cupy.int64)
 
     return_sorted = 1 if return_sorted is None else return_sorted
 
@@ -908,7 +898,7 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
                (tree_length, n_points, n_dims, float(r), eps, float(p),
                 int(return_sorted),
                 points, tree, index, boxdata, bounds, nodes,
-                total_nodes, debug_nodes))
+                total_nodes))
 
     if return_length:
         return total_nodes
@@ -921,7 +911,6 @@ def find_nodes_in_radius(points, tree, index, boxdata, bounds, r,
         cum_total = total_nodes.cumsum()
         n_pairs = int(cum_total[-1])
         result = cupy.empty((n_pairs, 2), dtype=cupy.int64)
-        # print(debug_nodes[94], nodes[94])
         tag_pairs = KD_MODULE.get_function('tag_pairs')
         tag_pairs((n_blocks,), (block_sz,),
                   (tree_length, n_points, total_nodes, nodes,
