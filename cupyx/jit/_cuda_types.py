@@ -248,11 +248,11 @@ class LocalMem(ArrayBase):
     def __init__(
             self,
             child_type: TypeBase,
-            size: Optional[int],
+            size: int,
             alignment: Optional[int] = None,
     ) -> None:
-        if not (isinstance(size, int) or size is None):
-            raise 'size of local_memory must be integer or `None`'
+        if not (isinstance(size, int)):
+            raise 'size of local_memory must be integer'
         if not (isinstance(alignment, int) or alignment is None):
             raise 'alignment must be integer or `None`'
         self._size = size
@@ -265,9 +265,7 @@ class LocalMem(ArrayBase):
             code = f'__align__({self._alignment})'
         else:
             code = ''
-        if self._size is None:
-            code = f'extern {code} {self.child_type} {x}[]'
-        else:
+        if type(self._size) is int:
             code = f'{code} {self.child_type} {x}[{self._size}]'
         return code
 

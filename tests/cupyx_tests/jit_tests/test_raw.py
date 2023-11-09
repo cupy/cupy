@@ -326,6 +326,31 @@ class TestRaw:
         expected = x.reshape(32, 32)[:, ::-1].ravel()
         assert bool((y == expected).all())
 
+    def test_local_vs_shared_memory():
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.grid(1)
+            ntid = jit.gridsize(1)
+
+            smem = jit.shared_memory(numpy.int32, 32)
+            lmem = jit.local_memory(numpy.int32, 32)
+            smem[tid] = tid
+            lmem[tid] = tid
+            jit.syncthreads()
+            smem[31-tid] = tid
+            lmem[31-tid] = tid
+            jit.syncthreads()
+            x[tid] += smem[tid]
+            y[tid] += lmem[tid]
+        
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        expected_x = cupy.arange(31, -1, -1, dtype=int)
+        expected_y = cupy.arange(32, dtype=int)
+        f[1, 32](x, y)
+        assert bool((x == expected_x).all())
+        assert bool((y == expected_y).all())
+
     @staticmethod
     def _check(a, e):
         if a.dtype == numpy.float16:
