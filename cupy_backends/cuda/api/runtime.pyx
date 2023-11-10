@@ -184,12 +184,8 @@ cpdef int _getCUDAMajorVersion() except? -1:
 
 cpdef int _getLocalRuntimeVersion() except? -1:
     cdef int version
-    IF CUPY_USE_CUDA_PYTHON:
-        # Requires CUDA Python 11.8.3 & 12.3.0
-        status = getLocalRuntimeVersion(&version)
-    ELSE:
-        initialize()
-        status = DYN_cudaRuntimeGetVersion(&version)
+    initialize()
+    status = DYN_cudaRuntimeGetVersion(&version)
     check_status(status)
     return version
 
