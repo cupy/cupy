@@ -1,4 +1,4 @@
-from typing import Mapping, Optional, Sequence, Union, TYPE_CHECKING
+from typing import Mapping, Optional, Sequence, Union, Tuple, TYPE_CHECKING
 
 import numpy
 import numpy.typing as npt
