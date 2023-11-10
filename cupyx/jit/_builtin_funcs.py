@@ -227,20 +227,38 @@ class LocalMemory(BuiltinFunc):
         Args:
             dtype (dtype):
                 The dtype of the returned array.
-            size (int):
+            size (int or tuple):
                 If ``int`` type, the size of static local memory.
+                If ``tuple`` type, the size of a multi-dimensional static local memory.
                 Does not use __extern__ keyword like shared memory does
             alignment (int or None): Enforce the alignment via __align__(N).
         """
         super().__call__()
+        
+    def call(self, env: 'Environment', *args, **kwargs):
+        if(type(args[1]) is Data): #intercept tuple, convert to Constant(tuple)
+            args = list(args)
+            _int_list = args[1].code.split("(")[1].strip(")").split(", ")
+            if(len(_int_list) == 1): #convert 1-element tuple to integer (1d array)
+                args[1] = Constant(int(_int_list[0]))
+            else:
+                for i in range(len(_int_list)):
+                    _int_list[i] = Constant(int(_int_list[i])).obj
+                args[1] = Constant(tuple(_int_list))
+            args = tuple(args)
+        return super().call(env, *args, **kwargs)
 
     def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_lmem')
-        ctype = _cuda_typerules.to_ctype(dtype)
-        var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
+        ctype = to_ctype(dtype)
+        var = Data(name, LocalMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
-        return Data(name, _cuda_types.Ptr(ctype))
+        return_ctype = _cuda_types.Ptr(ctype)
+        if(type(size) is tuple):
+            for i in range(1, len(size)):
+                return_ctype = _cuda_types.Ptr(return_ctype)
+        return Data(name, return_ctype)
 
 class AtomicOp(BuiltinFunc):
 

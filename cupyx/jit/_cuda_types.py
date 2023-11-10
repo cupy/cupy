@@ -248,11 +248,11 @@ class LocalMem(ArrayBase):
     def __init__(
             self,
             child_type: TypeBase,
-            size: int,
+            size: Union[int, Tuple[int, ...]],
             alignment: Optional[int] = None,
     ) -> None:
-        if not (isinstance(size, int)):
-            raise 'size of local_memory must be integer'
+        if not (isinstance(size, int) or isinstance(size, tuple)):
+            raise 'size of local_memory must be integer, or a tuple of integers'
         if not (isinstance(alignment, int) or alignment is None):
             raise 'alignment must be integer or `None`'
         self._size = size
@@ -267,6 +267,36 @@ class LocalMem(ArrayBase):
             code = ''
         if type(self._size) is int:
             code = f'{code} {self.child_type} {x}[{self._size}]'
+        elif type(self._size) is tuple:
+            a = numpy.zeros(self._size[:-1])
+            it = numpy.nditer(a, flags=['multi_index'])
+            code = ""
+            names = []
+            for j in range(len(self._size)-1):
+                names.append("")
+            for i in it:
+                index = it.multi_index
+                name = ""
+                name += x
+                for j in range(len(index)):
+                    name += f"_{index[j]}"
+                names[-1] += name + ","
+                code += f'{self.child_type} {name}[{self._size[-1]}];\n'
+                for k in range(len(self._size)-1):
+                    i2 = len(self._size)-2-k
+                    if(index[i2] == (self._size[i2]-1)):
+                        name = ""
+                        name += x
+                        for j in range(len(index)-1-k):
+                            name += f"_{index[j]}"
+                        if(i2 > 0):
+                            names[i2-1] += name + ","
+                        code += f'{self.child_type}{"*"*(k+1)} {name}[{self._size[i2]}] = {{{names[i2].strip(",")}}};\n'
+                        names[i2] = ""
+                    else:
+                        break
+            code = code.strip(";\n")
+            
         return code
 
 class Ptr(PointerBase):

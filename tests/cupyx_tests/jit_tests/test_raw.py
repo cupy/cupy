@@ -351,6 +351,45 @@ class TestRaw:
         assert bool((x == expected_x).all())
         assert bool((y == expected_y).all())
 
+    def test_multidimensional_local_memory():
+        @jit.rawkernel()
+        def f(x, y, z):
+            tid = jit.grid(1)
+            ntid = jit.gridsize(1)
+
+            lmem = local_memory(numpy.int32, (2, 3))
+            lmem2 = local_memory(numpy.int32, (2, 2, 2))
+            lmem3 = local_memory(numpy.int32, (2, 2, 2, 2))
+            
+            for i in range(2):
+                for j in range(3):
+                    lmem[i][j] = 1
+                for j in range(2):
+                    for k in range(2):
+                        lmem2[i][j][k] = 1
+                        for l in range(2):
+                            lmem3[i][j][k][l] = 1
+            jit.syncthreads()            
+            for i in range(2):
+                for j in range(3):
+                    x[tid] += lmem[i][j]
+                for j in range(2):
+                    for k in range(2):
+                        y[tid] += lmem2[i][j][k]
+                        for l in range(2):
+                            z[tid] += lmem3[i][j][k][l]
+        
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
+        expected_x = cupy.zeros(32, dtype=int)+6
+        expected_y = cupy.zeros(32, dtype=int)+8
+        expected_z = cupy.zeros(32, dtype=int)+16
+        f[1, 32](x, y, z)
+        assert bool((x == expected_x).all())
+        assert bool((y == expected_y).all())
+        assert bool((z == expected_z).all())
+
     @staticmethod
     def _check(a, e):
         if a.dtype == numpy.float16:
