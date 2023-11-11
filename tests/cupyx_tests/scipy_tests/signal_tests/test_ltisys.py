@@ -581,7 +581,9 @@ class TestPlacePoles:
         B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0]).reshape(4, 2)
 
         fsf = scp.signal.place_poles(A, B, xp.asarray([2, 2, 3, 3]))
-        return xp.real_if_close(fsf.computed_poles)
+        poles = xp.real_if_close(fsf.computed_poles)
+        poles.sort()
+        return poles
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_complex(self, xp, scp):
