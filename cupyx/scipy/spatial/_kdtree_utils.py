@@ -337,9 +337,9 @@ __device__ void compute_knn(
         const T* __restrict__ tree_bounds,
         double* distances, long long* nodes) {
 
-    long long prev = -1;
-    long long curr = 0;
-    double radius = !isinf(p) ? pow(dist_bound, p) : dist_bound;
+    volatile long long prev = -1;
+    volatile long long curr = 0;
+    volatile double radius = !isinf(p) ? pow(dist_bound, p) : dist_bound;
     int visit_count = 0;
 
     double epsfac = 1.0;
@@ -385,8 +385,8 @@ __device__ void compute_knn(
         curr_dim_dist = overflow ? overflow_dist : curr_dim_dist;
         curr_dim_dist = !isinf(p) ? pow(curr_dim_dist, p) : curr_dim_dist;
 
-        long long cur_close_child = child;
-        long long cur_far_child = r_child;
+        volatile long long cur_close_child = child;
+        volatile long long cur_far_child = r_child;
 
         if(point[cur_dim] > cur_point[cur_dim]) {
             cur_close_child = r_child;
@@ -531,8 +531,8 @@ __device__ long long compute_query_ball(
         const T* __restrict__ tree_bounds,
         long long* nodes) {
 
-    long long prev = -1;
-    long long curr = 0;
+    volatile long long prev = -1;
+    volatile long long curr = 0;
     long long node_count = 0;
     double radius_p = !isinf(p) ? pow(radius, p) : radius;
 
@@ -575,8 +575,8 @@ __device__ long long compute_query_ball(
         curr_dim_dist = overflow ? overflow_dist : curr_dim_dist;
         curr_dim_dist = !isinf(p) ? pow(curr_dim_dist, p) : curr_dim_dist;
 
-        long long cur_close_child = child;
-        long long cur_far_child = r_child;
+        volatile long long cur_close_child = child;
+        volatile long long cur_far_child = r_child;
 
         if(point[cur_dim] > cur_point[cur_dim]) {
             cur_close_child = r_child;
