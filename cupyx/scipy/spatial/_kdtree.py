@@ -159,8 +159,8 @@ class KDTree:
         self.maxes = cupy.max(self.tree, axis=0)
 
     def query(self, x, k=1, eps=0.0, p=2.0, distance_upper_bound=cupy.inf):
-        """
-        Query the kd-tree for nearest neighbors
+        r"""
+        Query the kd-tree for nearest neighbors.
 
         Parameters
         ----------
@@ -210,7 +210,6 @@ class KDTree:
 
         Examples
         --------
-
         >>> import cupy as cp
         >>> from cupyx.scipy.spatial import KDTree
         >>> x, y = cp.mgrid[0:5, 2:8]
@@ -259,6 +258,7 @@ class KDTree:
          [0.2236068  0.80622577]]
         [[ 0  6]
          [13 19]]
+
         """
         if self.copy_query_points:
             if x.dtype != cupy.float64:
