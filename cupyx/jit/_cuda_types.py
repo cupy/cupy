@@ -268,35 +268,9 @@ class LocalMem(ArrayBase):
         if type(self._size) is int:
             code = f'{code} {self.child_type} {x}[{self._size}]'
         elif type(self._size) is tuple:
-            a = numpy.zeros(self._size[:-1])
-            it = numpy.nditer(a, flags=['multi_index'])
-            code = ""
-            names = []
-            for j in range(len(self._size)-1):
-                names.append("")
-            for i in it:
-                index = it.multi_index
-                name = ""
-                name += x
-                for j in range(len(index)):
-                    name += f"_{index[j]}"
-                names[-1] += name + ","
-                code += f'{self.child_type} {name}[{self._size[-1]}];\n'
-                for k in range(len(self._size)-1):
-                    i2 = len(self._size)-2-k
-                    if(index[i2] == (self._size[i2]-1)):
-                        name = ""
-                        name += x
-                        for j in range(len(index)-1-k):
-                            name += f"_{index[j]}"
-                        if(i2 > 0):
-                            names[i2-1] += name + ","
-                        code += f'{self.child_type}{"*"*(k+1)} {name}[{self._size[i2]}] = {{{names[i2].strip(",")}}};\n'
-                        names[i2] = ""
-                    else:
-                        break
-            code = code.strip(";\n")
-            
+            code = f'{code} {self.child_type} {x}'
+            for var in self._size:
+                code += f"[{var}]"
         return code
 
 class Ptr(PointerBase):
@@ -306,6 +280,14 @@ class Ptr(PointerBase):
 
     def __str__(self) -> str:
         return f'{self.child_type}*'
+
+class ContiguousPtr(ArrayBase):
+    #used to define ndarray of local memory, in <dtype>[3][4] format
+    def __init__(self, child_type: TypeBase) -> None:
+        super().__init__(child_type, 1)
+
+    def __str__(self) -> str:
+        return f'auto'
 
 
 class Tuple(TypeBase):

@@ -254,10 +254,10 @@ class LocalMemory(BuiltinFunc):
         var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
-        return_ctype = _cuda_types.Ptr(ctype)
+        return_ctype = _cuda_types.ContiguousPtr(ctype)
         if(type(size) is tuple):
             for i in range(1, len(size)):
-                return_ctype = _cuda_types.Ptr(return_ctype)
+                return_ctype = _cuda_types.ContiguousPtr(return_ctype)
         return Data(name, return_ctype)
 
 class AtomicOp(BuiltinFunc):
