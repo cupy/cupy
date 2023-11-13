@@ -750,7 +750,7 @@ def asm_kd_tree(points):
            doi:10.48550/arXiv.2211.00120.
     """
     x = points.copy()
-    track_idx = cupy.arange(x.shape[0])
+    track_idx = cupy.arange(x.shape[0], dtype=cupy.int64)
     tags = cupy.zeros(x.shape[0], dtype=cupy.int64)
     length = x.shape[0]
     dims = x.shape[1]
