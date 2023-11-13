@@ -250,8 +250,8 @@ class LocalMemory(BuiltinFunc):
 
     def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_lmem')
-        ctype = to_ctype(dtype)
-        var = Data(name, LocalMem(ctype, size, alignment))
+        ctype = _cuda_typerules.to_ctype(dtype)
+        var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
         return_ctype = _cuda_types.Ptr(ctype)
