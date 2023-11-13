@@ -125,7 +125,7 @@ template<typename T>
 __global__ void compute_bounds(
         const int n, const int n_dims,
         const int level, const int level_sz,
-        const T* __restrict__ tree,
+        const T*  tree,
         T* bounds) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -180,9 +180,9 @@ __global__ void compute_bounds(
 
 __global__ void tag_pairs(
         const int n, const int n_pairs,
-        const long long* __restrict__ pair_count,
-        const long long* __restrict__ pairs,
-        const long long* __restrict__ out_off,
+        const long long*  pair_count,
+        const long long*  pairs,
+        const long long*  out_off,
         long long* out) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -221,8 +221,8 @@ __device__ half abs(half x) {
 
 template<typename T>
 __device__ double compute_distance_inf(
-        const T* __restrict__ point1, const T* __restrict__ point2,
-        const double* __restrict__ box_bounds,
+        const T*  point1, const T*  point2,
+        const double*  box_bounds,
         const int n_dims, const double p, const int stride) {
 
     double dist = p == CUDART_INF ? -CUDART_INF : CUDART_INF;
@@ -245,8 +245,8 @@ __device__ double compute_distance_inf(
 
 template<typename T>
 __device__ double compute_distance(
-        const T* __restrict__ point1, const T* __restrict__ point2,
-        const double* __restrict__ box_bounds,
+        const T*  point1, const T*  point2,
+        const double*  box_bounds,
         const int n_dims, const double p, const int stride,
         const bool take_root) {
 
@@ -314,7 +314,7 @@ __device__ T insort(
 
 template<typename T>
 __device__ double min_bound_dist(
-        const T* __restrict__ point_bounds, const T point_dim,
+        const T*  point_bounds, const T point_dim,
         const double dim_bound, const int dim) {
     const T min_bound = point_bounds[0];
     const T max_bound = point_bounds[1];
@@ -331,10 +331,10 @@ template<typename T>
 __device__ void compute_knn(
         const int k, const int n, const int n_dims, const double eps,
         const double p, const double dist_bound, const bool periodic,
-        const T* __restrict__ point, const T* __restrict__ tree,
-        const long long* __restrict__ index,
-        const double* __restrict__ box_bounds,
-        const T* __restrict__ tree_bounds,
+        const T*  point, const T*  tree,
+        const long long*  index,
+        const double*  box_bounds,
+        const T*  tree_bounds,
         double* distances, long long* nodes) {
 
     long long prev = -1;
@@ -462,10 +462,10 @@ template<typename T>
 __global__ void knn(
         const int k, const int n, const int points_size, const int n_dims,
         const double eps, const double p, const double dist_bound,
-        const T* __restrict__ points, const T* __restrict__ tree,
-        const long long* __restrict__ index,
-        const double* __restrict__ box_bounds,
-        const T* __restrict__ tree_bounds,
+        const T*  points, const T*  tree,
+        const long long*  index,
+        const double*  box_bounds,
+        const T*  tree_bounds,
         double* all_distances, long long* all_nodes) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -484,7 +484,7 @@ __global__ void knn(
 
 __device__ void adjust_to_box(
         double* point, const int n_dims,
-        const double* __restrict__ box_bounds) {
+        const double*  box_bounds) {
     for(int i = 0; i < n_dims; i++) {
         double dim_value = point[i];
         const double dim_box_bounds = box_bounds[i];
@@ -501,10 +501,10 @@ __device__ void adjust_to_box(
 __global__ void knn_periodic(
         const int k, const int n, const int points_size, const int n_dims,
         const double eps, const double p, const double dist_bound,
-        double* __restrict__ points, const double* __restrict__ tree,
-        const long long* __restrict__ index,
-        const double* __restrict__ box_bounds,
-        const double* __restrict__ tree_bounds,
+        double*  points, const double*  tree,
+        const long long*  index,
+        const double*  box_bounds,
+        const double*  tree_bounds,
         double* all_distances, long long* all_nodes) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -525,10 +525,10 @@ __global__ void knn_periodic(
 template<typename T>
 __device__ long long compute_query_ball(
         const int n, const int n_dims, const double radius, const double eps,
-        const double p, bool periodic, int sort, const T* __restrict__ point,
-        const T* __restrict__ tree, const long long* __restrict__ index,
-        const double* __restrict__ box_bounds,
-        const T* __restrict__ tree_bounds,
+        const double p, bool periodic, int sort, const T*  point,
+        const T*  tree, const long long*  index,
+        const double*  box_bounds,
+        const T*  tree_bounds,
         long long* nodes) {
 
     long long prev = -1;
@@ -652,10 +652,10 @@ template<typename T>
 __global__ void query_ball(
         const int n, const int points_size, const int n_dims,
         const double radius, const double eps, const double p, const int sort,
-        const T* __restrict__ points, const T* __restrict__ tree,
-        const long long* __restrict__ index,
-        const double* __restrict__ box_bounds,
-        const T* __restrict__ tree_bounds,
+        const T*  points, const T*  tree,
+        const long long*  index,
+        const double*  box_bounds,
+        const T*  tree_bounds,
         long long* all_nodes, long long* node_count) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -676,10 +676,10 @@ __global__ void query_ball(
 __global__ void query_ball_periodic(
         const int n, const int points_size, const int n_dims,
         const double radius, const double eps, const double p, const int sort,
-        double* __restrict__ points, const double* __restrict__ tree,
-        const long long* __restrict__ index,
-        const double* __restrict__ box_bounds,
-        const double* __restrict__ tree_bounds,
+        double*  points, const double*  tree,
+        const long long*  index,
+        const double*  box_bounds,
+        const double*  tree_bounds,
         long long* all_nodes, long long* node_count) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
