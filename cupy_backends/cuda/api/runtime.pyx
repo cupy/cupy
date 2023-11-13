@@ -72,6 +72,8 @@ cdef class _ThreadLocal:
 # Extern
 ###############################################################################
 
+include '_runtime_softlink.pxi'
+
 IF CUPY_USE_CUDA_PYTHON:
     from cuda.ccudart cimport *
 ELSE:
