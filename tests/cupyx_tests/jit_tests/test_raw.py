@@ -351,7 +351,7 @@ class TestRaw:
         assert bool((x == expected_x).all())
         assert bool((y == expected_y).all())
 
-    def test_multidimensional_local_memory():
+    def test_multidimensional_local_memory(self):
         @jit.rawkernel()
         def f(x, y, z):
             tid = jit.grid(1)
