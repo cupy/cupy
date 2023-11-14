@@ -250,7 +250,7 @@ class TestPeriodic:
 
         res = kdtree.query_ball_point(data + off, 0.5, return_sorted=True)
         if xp is not cupy:
-            res = [xp.asarray(r) for r in res]
+            res = [xp.asarray(r, dtype=xp.int64) for r in res]
         return res
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -269,7 +269,7 @@ class TestPeriodic:
 
         res = kdtree.query_ball_tree(kdtree2, 0.5)
         if xp is not cupy:
-            res = [xp.asarray(r) for r in res]
+            res = [xp.asarray(r, dtype=xp.int64) for r in res]
         return res
 
 
