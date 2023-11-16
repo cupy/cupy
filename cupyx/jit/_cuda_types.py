@@ -294,7 +294,7 @@ class ContiguousArray(PointerBase):
             s = f'{self.base_type} {x}'
             for var in self._size:
                 s += f'[{var}]'
-            return f"{s} = {{}}"
+            return f"{s}"
         else:
             return f'{s} = {init.code}'
 
