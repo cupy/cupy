@@ -429,12 +429,6 @@ class TestRaw:
             lmem[0] = arr[0]+1
             arr[1] = lmem[0]
             
-        @jit.rawkernel(device=True)
-        def device_func2(arr):
-            lmem = local_memory(numpy.int32, (1, ))
-            lmem[0] = arr[0][0][0]+1
-            arr[0][0][1] = lmem[0]
-        
         @jit.rawkernel()
         def f(x):
             tid = jit.grid(1)
