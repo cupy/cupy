@@ -285,7 +285,7 @@ class ContiguousArray(PointerBase):
         self._index_32_bits = True
     
     def declvar(self, x: str, init: Optional['Data']) -> str:
-        s = f'{self.base_type}* {x}'
+        s = f'{self.base_type} (*{x})'
         for i in range(1, len(self._size)):
             s += f'[{self._size[i]}]'
         if(init is None):
@@ -294,7 +294,7 @@ class ContiguousArray(PointerBase):
             s = f'{self.base_type} {x}'
             for var in self._size:
                 s += f'[{var}]'
-            return f"{s}"
+            return f"{s} = {{}}"
         else:
             return f'{s} = {init.code}'
 

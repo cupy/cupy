@@ -429,23 +429,35 @@ class TestRaw:
             lmem[0] = arr[0]+1
             arr[1] = lmem[0]
             
+        @jit.rawkernel(device=True)
+        def device_func2(arr):
+            lmem = jit.local_memory(numpy.int32, (1, ))
+            lmem[0] = arr[0][0][0]+2
+            arr[0][0][1] = lmem[0]
+        
         @jit.rawkernel()
-        def f(x):
+        def f(x, y):
             tid = jit.grid(1)
             ntid = jit.gridsize(1)
 
             lmem = jit.local_memory(numpy.int32, (2, ))
+            lmem2 = jit.local_memory(numpy.int32, (2, 2, 2))
             
             lmem[0] = 1
             device_func(lmem)
+            lmem2[0][0][0] = 1
+            device_func2(lmem2)
             
             x[tid] += lmem[1]
-            
+            y[tid] += lmem2[0][0][1]
         
         x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
         expected_x = cupy.zeros(32, dtype=int)+2
-        f[1, 32](x)
+        expected_y = cupy.zeros(32, dtype=int)+3
+        f[1, 32](x, y)
         assert bool((x == expected_x).all())
+        assert bool((y == expected_y).all())
 
     @staticmethod
     def _check(a, e):
