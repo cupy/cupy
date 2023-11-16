@@ -2075,7 +2075,6 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef int _cuda_runtime_version = -1
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
 
 cdef list cupy_header_list = [
@@ -2210,12 +2209,6 @@ cpdef function.Module compile_with_cache(
                + options
                + ('-I%s' % _get_header_dir_path(),))
 
-    # The variable _cuda_runtime_version is declared in cupy/_core/core.pyx,
-    # but it might not have been set appropriately before coming here.
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
     global _cuda_path
     if _cuda_path == '':
         if not _is_hip:
@@ -2224,17 +2217,11 @@ cpdef function.Module compile_with_cache(
             _cuda_path = cuda.get_rocm_path()
 
     if not _is_hip:
-        if 10020 <= _cuda_runtime_version < 10030:
-            bundled_include = 'cuda-10.2'
-        elif 11000 <= _cuda_runtime_version < 11010:
-            bundled_include = 'cuda-11.0'
-        elif 11010 <= _cuda_runtime_version < 11020:
-            bundled_include = 'cuda-11.1'
-        elif 11020 <= _cuda_runtime_version < 12000:
-            # CUDA Enhanced Compatibility
+        # CUDA Enhanced Compatibility
+        _cuda_major = runtime._getCUDAMajorVersion()
+        if _cuda_major == 11:
             bundled_include = 'cuda-11'
-        elif 12000 <= _cuda_runtime_version < 13000:
-            # CUDA Enhanced Compatibility
+        elif _cuda_major == 12:
             bundled_include = 'cuda-12'
         else:
             # CUDA versions not yet supported.

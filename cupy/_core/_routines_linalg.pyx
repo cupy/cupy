@@ -37,9 +37,6 @@ cdef extern from '../../cupy_backends/cupy_complex.h':
         double x, y
 
 
-cdef int _cuda_runtime_version = -1
-
-
 cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
                            COMPUTE_TYPE_TBD,  # float32
                            COMPUTE_TYPE_TBD]  # float64
@@ -622,13 +619,8 @@ cpdef _ndarray_base tensordot_core(
             elementwise_copy(copy_to_out, out)
         return out
 
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
     if (
         not runtime._is_hip_environment and
-        _cuda_runtime_version >= 11000 and
         compute_capability >= 50
     ):
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
@@ -646,7 +638,6 @@ cpdef _ndarray_base tensordot_core(
 
     if dtype == 'e':
         use_tensor_core = (not runtime._is_hip_environment and
-                           _cuda_runtime_version >= 9000 and
                            compute_capability >= 70
                            ) or runtime._is_hip_environment
         if use_tensor_core:
@@ -996,10 +987,6 @@ cpdef _ndarray_base matmul(
         if out is not c:
             elementwise_copy(c, out)
         return out
-
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
 
     cdef intptr_t handle = device.get_cublas_handle()
     cdef int cuda_dtype = to_cuda_dtype(dtype)
