@@ -357,9 +357,9 @@ class TestRaw:
             tid = jit.grid(1)
             ntid = jit.gridsize(1)
 
-            lmem = local_memory(numpy.int32, (2, 3))
-            lmem2 = local_memory(numpy.int32, (2, 2, 2))
-            lmem3 = local_memory(numpy.int32, (2, 2, 2, 2))
+            lmem = jit.local_memory(numpy.int32, (2, 3))
+            lmem2 = jit.local_memory(numpy.int32, (2, 2, 2))
+            lmem3 = jit.local_memory(numpy.int32, (2, 2, 2, 2))
             
             for i in range(2):
                 for j in range(3):
@@ -389,6 +389,69 @@ class TestRaw:
         assert bool((x == expected_x).all())
         assert bool((y == expected_y).all())
         assert bool((z == expected_z).all())
+        
+    def test_local_memory_assignment():
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.grid(1)
+            ntid = jit.gridsize(1)
+
+            lmem = jit.local_memory(numpy.int32, (2, 2, 2, 2))
+            
+            #create local variable from local_memory array
+            lmem[1][1][1][0] = 4
+            value = lmem[1][1][1][0]
+            
+            #set value in local_memory using pointer
+            pointer = lmem[1][1][1]
+            pointer[1] = 5
+            
+            #cannot use higher order pointers, due to aggregate assignment rules! the following would not work
+            #pointer2 = lmem[1]
+            #pointer2[1][1][1] = 5
+            
+            x[tid] += value
+            y[tid] += lmem[1][1][1][1]
+            
+        
+        x = cupy.zeros(32, dtype=int)
+        y = cupy.zeros(32, dtype=int)
+        expected_x = cupy.zeros(32, dtype=int)+4
+        expected_y = cupy.zeros(32, dtype=int)+5
+        f[1, 32](x, y)
+        assert bool((x == expected_x).all())
+        assert bool((y == expected_y).all())
+        
+    def test_local_memory_in_device_functions():
+        @jit.rawkernel(device=True)
+        def device_func(arr):
+            lmem = jit.local_memory(numpy.int32, (1, )) #test out 1D tuple of length 1, for good measure
+            lmem[0] = arr[0]+1
+            arr[1] = lmem[0]
+            
+        @jit.rawkernel(device=True)
+        def device_func2(arr):
+            lmem = local_memory(numpy.int32, (1, ))
+            lmem[0] = arr[0][0][0]+1
+            arr[0][0][1] = lmem[0]
+        
+        @jit.rawkernel()
+        def f(x):
+            tid = jit.grid(1)
+            ntid = jit.gridsize(1)
+
+            lmem = jit.local_memory(numpy.int32, (2, ))
+            
+            lmem[0] = 1
+            device_func(lmem)
+            
+            x[tid] += lmem[1]
+            
+        
+        x = cupy.zeros(32, dtype=int)
+        expected_x = cupy.zeros(32, dtype=int)+2
+        f[1, 32](x)
+        assert bool((x == expected_x).all())
 
     @staticmethod
     def _check(a, e):

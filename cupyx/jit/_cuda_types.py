@@ -261,17 +261,7 @@ class LocalMem(ArrayBase):
 
     def declvar(self, x: str, init: Optional['Data']) -> str:
         assert init is None
-        if self._alignment is not None:
-            code = f'__align__({self._alignment})'
-        else:
-            code = ''
-        if type(self._size) is int:
-            code = f'{code} {self.child_type} {x}[{self._size}]'
-        elif type(self._size) is tuple:
-            code = f'{code} {self.child_type} {x}'
-            for var in self._size:
-                code += f"[{var}]"
-        return code
+        return "//define local memory later" #emit a comment here, build local memory later
 
 class Ptr(PointerBase):
 
@@ -281,14 +271,32 @@ class Ptr(PointerBase):
     def __str__(self) -> str:
         return f'{self.child_type}*'
 
-class ContiguousPtr(ArrayBase):
+class ContiguousArray(PointerBase):
     #used to define ndarray of local memory, in <dtype>[3][4] format
-    def __init__(self, child_type: TypeBase) -> None:
-        super().__init__(child_type, 1)
-
-    def __str__(self) -> str:
-        return f'auto'
-
+    def __init__(self, child_type: TypeBase, size: Tuple[int, ...]) -> None:
+        self.base_type = child_type
+        if(type(self.base_type) is ContiguousArray):
+            self.base_type = child_type.base_type
+        
+        super().__init__(child_type)
+        self._size = size
+        self.dtype = child_type
+        self._c_contiguous = True
+        self._index_32_bits = True
+    
+    def declvar(self, x: str, init: Optional['Data']) -> str:
+        s = f'{self.base_type}* {x}'
+        for i in range(1, len(self._size)):
+            s += f'[{self._size[i]}]'
+        if(init is None):
+            return s
+        elif(f"{init.code}" == "!!lmem"):
+            s = f'{self.base_type} {x}'
+            for var in self._size:
+                s += f'[{var}]'
+            return f"{s} = {{}}"
+        else:
+            return f'{s} = {init.code}'
 
 class Tuple(TypeBase):
 

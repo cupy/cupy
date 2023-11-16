@@ -234,19 +234,6 @@ class LocalMemory(BuiltinFunc):
             alignment (int or None): Enforce the alignment via __align__(N).
         """
         super().__call__()
-        
-    def call(self, env: 'Environment', *args, **kwargs):
-        if(type(args[1]) is Data): #intercept tuple, convert to Constant(tuple)
-            args = list(args)
-            _int_list = args[1].code.split("(")[1].strip(")").split(", ")
-            if(len(_int_list) == 1): #convert 1-element tuple to integer (1d array)
-                args[1] = Constant(int(_int_list[0]))
-            else:
-                for i in range(len(_int_list)):
-                    _int_list[i] = Constant(int(_int_list[i])).obj
-                args[1] = Constant(tuple(_int_list))
-            args = tuple(args)
-        return super().call(env, *args, **kwargs)
 
     def call_const(self, env, dtype, size, alignment=None):
         name = env.get_fresh_variable_name(prefix='_lmem')
@@ -254,11 +241,12 @@ class LocalMemory(BuiltinFunc):
         var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
-        return_ctype = _cuda_types.ContiguousPtr(ctype)
-        if(type(size) is tuple):
-            for i in range(1, len(size)):
-                return_ctype = _cuda_types.ContiguousPtr(return_ctype)
-        return Data(name, return_ctype)
+        if(type(size) is int):
+            size = (size,)
+        return_ctype = ctype
+        for i in range(len(size)):
+            return_ctype = _cuda_types.ContiguousArray(return_ctype, size[len(size)-(i+1):])
+        return Data("!!lmem", return_ctype) #non-valid name in order to intercept creation of this
 
 class AtomicOp(BuiltinFunc):
 
