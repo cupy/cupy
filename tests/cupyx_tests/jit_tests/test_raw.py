@@ -421,7 +421,7 @@ class TestRaw:
         z = cupy.zeros(32, dtype=int)
         expected_x = cupy.zeros(32, dtype=int)+4
         expected_y = cupy.zeros(32, dtype=int)+5
-        expected_y = cupy.zeros(32, dtype=int)+6
+        expected_z = cupy.zeros(32, dtype=int)+6
         f[1, 32](x, y, z)
         assert bool((x == expected_x).all())
         assert bool((y == expected_y).all())
