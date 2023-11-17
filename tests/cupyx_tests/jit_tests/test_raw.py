@@ -392,7 +392,7 @@ class TestRaw:
         
     def test_local_memory_assignment():
         @jit.rawkernel()
-        def f(x, y):
+        def f(x, y, z):
             tid = jit.grid(1)
             ntid = jit.gridsize(1)
 
@@ -406,21 +406,26 @@ class TestRaw:
             pointer = lmem[1][1][1]
             pointer[1] = 5
             
-            #cannot use higher order pointers, due to aggregate assignment rules! the following would not work
-            #pointer2 = lmem[1]
-            #pointer2[1][1][1] = 5
+            #set value in local_memory using higher-order pointer, and chained pointers
+            pointer2 = lmem[1]
+            pointer3 = pointer2[1]
+            pointer3[0][1] = 6
             
-            x[tid] += value
-            y[tid] += lmem[1][1][1][1]
+            x[tid] = value
+            y[tid] = lmem[1][1][1][1]
+            z[tid] = lmem[1][1][0][1]
             
         
         x = cupy.zeros(32, dtype=int)
         y = cupy.zeros(32, dtype=int)
+        z = cupy.zeros(32, dtype=int)
         expected_x = cupy.zeros(32, dtype=int)+4
         expected_y = cupy.zeros(32, dtype=int)+5
-        f[1, 32](x, y)
+        expected_y = cupy.zeros(32, dtype=int)+6
+        f[1, 32](x, y, z)
         assert bool((x == expected_x).all())
         assert bool((y == expected_y).all())
+        assert bool((z == expected_z).all())
         
     def test_local_memory_in_device_functions():
         @jit.rawkernel(device=True)
