@@ -241,7 +241,7 @@ class LocalMemory(BuiltinFunc):
         var = Data(name, _cuda_types.LocalMem(ctype, size, alignment))
         env.decls[name] = var
         env.locals[name] = var
-        if(type(size) is int):
+        if not isinstance(size, tuple):
             size = (size,)
         return_ctype = ctype
         for i in range(len(size)):
