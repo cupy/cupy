@@ -227,7 +227,7 @@ class LocalMemory(BuiltinFunc):
         Args:
             dtype (dtype):
                 The dtype of the returned array.
-            size (int or tuple):
+            size (int or tuple of ints):
                 If ``int`` type, the size of static local memory.
                 If ``tuple`` type, the size of a multi-dimensional static local memory.
                 Does not use __extern__ keyword like shared memory does
