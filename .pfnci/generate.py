@@ -57,7 +57,8 @@ class LinuxGenerator:
         os_name, os_version = matrix.os.split(':')
         if matrix.cuda is not None:
             full_ver = self.schema['cuda'][matrix.cuda]['full_version']
-            base_image = f'nvidia/cuda:{full_ver}-devel-{os_name}{os_version}'
+            repo = self.schema['cuda'][matrix.cuda]['repository']
+            base_image = f'{repo}:{full_ver}-devel-{os_name}{os_version}'
         elif matrix.rocm is not None:
             full_ver = self.schema['rocm'][matrix.rocm]['full_version']
             base_image = f'rocm/dev-{os_name}-{os_version}:{full_ver}'
@@ -213,13 +214,17 @@ class LinuxGenerator:
             cudnn = matrix.cudnn
             if nccl is not None:
                 spec = self.schema['nccl'][nccl]['spec']
+                nccl_cuda_schema = self.schema['nccl'][nccl]['cuda'][cuda]
+                alias = cuda
+                if nccl_cuda_schema is not None:
+                    alias = nccl_cuda_schema['alias']
                 major = nccl.split('.')[0]
                 if apt:
-                    packages.append(f'libnccl{major}={spec}+cuda{cuda}')
-                    packages.append(f'libnccl-dev={spec}+cuda{cuda}')
+                    packages.append(f'libnccl{major}={spec}+cuda{alias}')
+                    packages.append(f'libnccl-dev={spec}+cuda{alias}')
                 else:
-                    packages.append(f'libnccl-{spec}-*+cuda{cuda}')
-                    packages.append(f'libnccl-devel-{spec}-*+cuda{cuda}')
+                    packages.append(f'libnccl-{spec}-*+cuda{alias}')
+                    packages.append(f'libnccl-devel-{spec}-*+cuda{alias}')
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 major = cutensor.split('.')[0]
@@ -350,7 +355,7 @@ class CoverageGenerator:
                 table += [
                     [
                         key_header,
-                        value if value else 'null',
+                        value if value is not None else 'null',
                         str(count) if count != 0 else '🚨',
                     ] + [
                         '✅' if mv == value else '' for mv in matrix_values

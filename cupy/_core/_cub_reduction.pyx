@@ -14,7 +14,6 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
-import sys
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
 from cupy.cuda import driver
@@ -32,8 +31,12 @@ cdef function.Function _create_cub_reduction_function(
     if runtime._is_hip_environment:
         options += ('--std=c++14',)
     else:
-        # static_assert needs at least C++11 in NVRTC
-        options += ('--std=c++11',)
+        # 1. static_assert needs at least C++11 in NVRTC
+        # 2. starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
+        #    license issue we can't yet bundle bf16 headers. CUB offers us a
+        #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
+        #    nvbugs 3641496).
+        options += ('--std=c++11', '-DCUB_DISABLE_BF16_SUPPORT')
 
     cdef str backend
     if runtime._is_hip_environment:
@@ -41,22 +44,11 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-    elif sys.platform.startswith('win32'):
-        # See #4771. NVRTC on Windows seems to have problems in handling empty
-        # macros, so any usage like this:
-        #     #ifndef CUB_NS_PREFIX
-        #     #define CUB_NS_PREFIX
-        #     #endif
-        # will drive NVRTC nuts (error: this declaration has no storage class
-        # or type specifier). However, we cannot find a minimum reproducer to
-        # confirm this is the root cause, so we work around by using nvcc.
-        backend = 'nvcc'
+        jitify = False
     else:
         # use jitify + nvrtc
-        # TODO(leofang): how about simply specifying jitify=True when calling
-        # compile_with_cache()?
-        options += ('-DCUPY_USE_JITIFY',)
         backend = 'nvrtc'
+        jitify = True
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -226,11 +218,13 @@ __global__ void ${name}(${params}) {
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
-    # values for arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef
+    # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
         module_code, options, arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend=backend)
+        prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
+        enable_cooperative_groups=False, name_expressions=None,
+        log_stream=None, jitify=jitify)
     return module.get_function(name)
 
 
@@ -263,14 +257,7 @@ cdef str _get_cub_header_include():
         return _cub_header
 
     assert _cub_path is not None
-    cdef str rocm_path = None
     if _cub_path == '<bundle>':
-        _cub_header = '''
-#include <cupy/cuda_workaround.h>
-#include <cupy/cub/cub/block/block_reduce.cuh>
-#include <cupy/cub/cub/block/block_load.cuh>
-'''
-    elif _cub_path == '<CUDA>':
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
@@ -292,7 +279,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     parameters, otherwise returns None.
     '''
     cdef tuple axis_permutes_cub
-    cdef _ndarray_base in_arr, out_arr
+    cdef _ndarray_base in_arr
     cdef Py_ssize_t contiguous_size = 1
     cdef str order
 
@@ -307,7 +294,6 @@ cpdef inline tuple _can_use_cub_block_reduction(
         return None
 
     in_arr = in_args[0]
-    out_arr = out_args[0]
 
     # the axes might not be sorted when we arrive here...
     reduce_axis = tuple(sorted(reduce_axis))
@@ -565,7 +551,6 @@ def _get_cub_optimized_params(
         self, optimize_config, in_args, out_args, in_shape, out_shape,
         type_map, map_expr, reduce_expr, post_map_expr, reduce_type,
         stream, full_reduction, out_block_num, contiguous_size, params):
-    out_size = internal.prod(out_shape)
     in_args = [_reduction._optimizer_copy_arg(a) for a in in_args]
     out_args = [_reduction._optimizer_copy_arg(a) for a in out_args]
 

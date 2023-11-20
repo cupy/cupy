@@ -12,7 +12,6 @@ from libcpp.vector cimport vector
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 import warnings
@@ -21,7 +20,7 @@ import cupy
 import cupy._core.core as core
 
 
-cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
+cdef extern from './include/cupy/_dlpack/dlpack.h' nogil:
     cdef int DLPACK_VERSION
 
     cdef enum DLDeviceType:

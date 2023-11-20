@@ -8,7 +8,6 @@ from cupy._core import internal
 from cupy.cuda import device
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
-from cupy.cublas import batched_gesv, get_batched_gesv_limit
 import cupyx
 
 
@@ -36,6 +35,9 @@ def solve(a, b):
 
     .. seealso:: :func:`numpy.linalg.solve`
     """
+    from cupyx import lapack
+    from cupy.cublas import batched_gesv, get_batched_gesv_limit
+
     if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
         # Note: There is a low performance issue in batched_gesv when matrix is
         # large, so it is not used in such cases.
@@ -63,7 +65,7 @@ def solve(a, b):
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
         b = b.astype(dtype, copy=True, order='F')
-        cupyx.lapack.gesv(a, b)
+        lapack.gesv(a, b)
         return b.astype(out_dtype, copy=False)
 
     # prevent 'a' to be overwritten
@@ -74,7 +76,7 @@ def solve(a, b):
         index = numpy.unravel_index(i, shape)
         # prevent 'b' to be overwritten
         bi = b[index].astype(dtype, copy=True, order='F')
-        cupyx.lapack.gesv(a[index], bi)
+        lapack.gesv(a[index], bi)
         x[index] = bi
     return x
 

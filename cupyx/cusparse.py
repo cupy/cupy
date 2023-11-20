@@ -152,7 +152,7 @@ _available_hipsparse_version = {
 }
 
 
-def _get_version(x):
+def _get_avail_version_from_spec(x):
     if isinstance(x, dict):
         os_name = _platform.system()
         if os_name not in x:
@@ -175,13 +175,17 @@ def check_availability(name):
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = available_version[name]
-    version_added = _get_version(version_added)
-    version_removed = _get_version(version_removed)
+    version_added = _get_avail_version_from_spec(version_added)
+    version_removed = _get_avail_version_from_spec(version_removed)
     if version_added is not None and version < version_added:
         return False
     if version_removed is not None and version >= version_removed:
         return False
     return True
+
+
+def getVersion() -> int:
+    return _cusparse.getVersion(_device.get_cusparse_handle())
 
 
 def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
@@ -933,15 +937,16 @@ def coosort(x, sort_by='r'):
     else:
         raise ValueError("sort_by must be either 'r' or 'c'")
 
-    if check_availability('gthr'):
-        _call_cusparse(
-            'gthr', x.dtype,
-            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-    else:
-        desc_x = SpVecDescriptor.create(P, x.data)
-        desc_y = DnVecDescriptor.create(data_orig)
-        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
+    if x.dtype.char != '?':
+        if check_availability('gthr'):
+            _call_cusparse(
+                'gthr', x.dtype,
+                handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+                P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+        else:
+            desc_x = SpVecDescriptor.create(P, x.data)
+            desc_y = DnVecDescriptor.create(data_orig)
+            _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
     if sort_by == 'c':  # coo is sorted by row first
         x._has_canonical_format = False

@@ -25,22 +25,22 @@ class TestTrace(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(1,), (2,)],
-    'ord': [-numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf],
+    'ord': [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
     'axis': [0, None],
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(1, 2), (2, 2)],
-    'ord': [-numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro', 'nuc'],
+    'ord': [-numpy.inf, -2, -1, 1, 2, numpy.inf, 'fro', 'nuc'],
     'axis': [(0, 1), None],
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(2, 2, 2)],
-    'ord': [-numpy.Inf, -2, -1, 0, 1, 2, 3, numpy.Inf],
+    'ord': [-numpy.inf, -2, -1, 0, 1, 2, 3, numpy.inf],
     'axis': [0, 1, 2],
     'keepdims': [True, False],
 }) + testing.product({
     'shape': [(2, 2, 2)],
-    'ord': [-numpy.Inf, -1, 1, numpy.Inf, 'fro'],
+    'ord': [-numpy.inf, -1, 1, numpy.inf, 'fro'],
     'axis': [(0, 1), (0, 2), (1, 2)],
     'keepdims': [True, False],
 })

@@ -49,15 +49,14 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
 def asarray(a, dtype=None, order=None):
     """Converts an object to array.
 
-    This is equivalent to ``array(a, dtype, copy=False)``.
-    This function currently does not support the ``order`` option.
+    This is equivalent to ``array(a, dtype, copy=False, order=order)``.
 
     Args:
         a: The source object.
         dtype: Data type specifier. It is inferred from the input by default.
-        order ({'C', 'F'}):
+        order ({'C', 'F', 'A', 'K'}):
             Whether to use row-major (C-style) or column-major (Fortran-style)
-            memory representation. Defaults to ``'C'``. ``order`` is ignored
+            memory representation. Defaults to ``'K'``. ``order`` is ignored
             for objects that are not :class:`cupy.ndarray`, but have the
             ``__cuda_array_interface__`` attribute.
 

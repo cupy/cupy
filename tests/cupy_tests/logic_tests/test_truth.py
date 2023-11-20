@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 
 from cupy import testing
@@ -81,11 +83,15 @@ class TestAllAnyWithNaN:
 class TestAllAnyAlias:
     @testing.numpy_cupy_array_equal()
     def test_alltrue(self, xp):
-        return xp.alltrue(xp.array([1, 2, 3]))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return xp.alltrue(xp.array([1, 2, 3]))
 
     @testing.numpy_cupy_array_equal()
     def test_sometrue(self, xp):
-        return xp.sometrue(xp.array([0]))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return xp.sometrue(xp.array([0]))
 
 
 @testing.parameterize(

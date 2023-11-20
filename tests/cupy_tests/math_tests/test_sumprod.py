@@ -1,4 +1,5 @@
 import math
+import warnings
 
 import numpy
 import pytest
@@ -204,7 +205,9 @@ class TestSumprod:
     @testing.numpy_cupy_allclose()
     def test_product_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
-        return xp.product(a)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return xp.product(a)
 
 
 # This class compares CUB results against NumPy's
@@ -773,7 +776,9 @@ class TestCumprod:
     @testing.numpy_cupy_allclose()
     def test_cumproduct_alias(self, xp):
         a = testing.shaped_arange((2, 3), xp, xp.float32)
-        return xp.cumproduct(a)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return xp.cumproduct(a)
 
 
 @testing.parameterize(*testing.product({

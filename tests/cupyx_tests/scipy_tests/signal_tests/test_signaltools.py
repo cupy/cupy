@@ -209,6 +209,30 @@ class TestConvolveCorrelate2D:
 
 
 @testing.with_requires('scipy')
+@pytest.mark.parametrize("mode", ["valid", "same", "full"])
+@pytest.mark.parametrize("behind", [True, False])
+@pytest.mark.parametrize("input_size", [100, 101, 1000, 1001, 10000, 10001])
+@testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
+def test_correlation_lags(mode, xp, scp, behind, input_size):
+    # generate random data
+    rng = np.random.RandomState(0)
+    in1 = rng.standard_normal(input_size)
+    in1 = xp.asarray(in1)
+
+    offset = int(input_size/10)
+    # generate offset version of array to correlate with
+    if behind:
+        # y is behind x
+        in2 = xp.concatenate([xp.asarray(rng.standard_normal(offset)), in1])
+    else:
+        # y is ahead of x
+        in2 = in1[offset:]
+    # cross correlate, returning lag information
+    lags = scp.signal.correlation_lags(in1.size, in2.size, mode=mode)
+    return lags
+
+
+@testing.with_requires('scipy')
 class TestConvolve2DEdgeCase:
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
@@ -331,11 +355,25 @@ class TestOrderFilter:
     'volume': [(10,), (5, 10), (10, 5), (5, 6, 10)],
     'kernel_size': [3, 4, (3, 3, 5)],
 }))
-@testing.with_requires('scipy>=1.7.0')
 class TestMedFilt:
-    @testing.for_all_dtypes()
+    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
+    def test_medfilt_no_complex(self, xp, scp, dtype):
+        if sys.platform == 'win32':
+            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
+        volume = testing.shaped_random(self.volume, xp, dtype)
+        kernel_size = self.kernel_size
+        if isinstance(kernel_size, tuple):
+            kernel_size = kernel_size[:volume.ndim]
+        return scp.signal.medfilt(volume, kernel_size)
+
+    @testing.with_requires('scipy>=1.11.0')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        atol=1e-8, rtol=1e-8, scipy_name='scp',
+        accept_error=(ValueError, TypeError))  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
@@ -350,11 +388,23 @@ class TestMedFilt:
     'input': [(5, 10), (10, 5)],
     'kernel_size': [3, 4, (3, 5)],
 }))
-@testing.with_requires('scipy>=1.7.0')
 class TestMedFilt2d:
-    @testing.for_all_dtypes()
+    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
+    def test_medfilt2d_no_complex(self, xp, scp, dtype):
+        if sys.platform == 'win32':
+            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
+        input = testing.shaped_random(self.input, xp, dtype)
+        kernel_size = self.kernel_size
+        return scp.signal.medfilt2d(input, kernel_size)
+
+    @testing.with_requires('scipy>=1.11.0')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        atol=1e-8, rtol=1e-8, scipy_name='scp',
+        accept_error=(ValueError, TypeError))  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
         if sys.platform == 'win32':
             pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
@@ -531,6 +581,7 @@ class TestLFilter:
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
         a = testing.shaped_random((iir_order,), xp, scale=0.3)
         a = xp.r_[1, a]
+        a = a.astype(x.dtype)
 
         zi = testing.shaped_random((fir_order + iir_order - 1,), xp)
         zi = scp.signal.lfiltic(b, a, zi[-iir_order:], zi[:fir_order - 1])
@@ -546,6 +597,7 @@ class TestLFilter:
         b = testing.shaped_random((fir_order,), xp, scale=0.3)
         a = testing.shaped_random((iir_order,), xp, scale=0.3)
         a = xp.r_[1, a]
+        a = a.astype(x.dtype)
 
         zi = scp.signal.lfilter_zi(b, a)
         out, _ = scp.signal.lfilter(b, a, x, zi=zi)
@@ -720,6 +772,17 @@ class TestSosFilt:
         out, _ = scp.signal.sosfilt(sos, x, zi=zi, axis=axis)
         return out
 
+    @pytest.mark.parametrize('sections', [1, 2, 3, 4, 5])
+    @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
+    def test_sosfilt_zi(self, sections, xp, scp):
+        x = xp.ones(20)
+        sos = testing.shaped_random((sections, 6), xp, xp.float64, scale=0.2)
+        sos[:, 3] = 1
+
+        zi = scp.signal.sosfilt_zi(sos)
+        out, _ = scp.signal.sosfilt(sos, x, zi=zi)
+        return out
+
 
 @testing.with_requires('scipy')
 class TestDetrend:
@@ -852,5 +915,132 @@ class TestFiltFilt:
 
         res = scp.signal.filtfilt(b, a, x, axis=axis,
                                   method=method, padtype=padtype)
+        return res
+
+
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
+@testing.with_requires('scipy')
+class TestSosFiltFilt:
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=5e-3,
+                                 type_check=False, accept_error=True)
+    def test_sosfiltfilt_1d(self, size, sections, padtype, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+        x_scale = 0.1
+        c_scale = 0.1
+
+        x = testing.shaped_random((size,), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random(
+            (sections, 6,), xp, dtype=dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        res = scp.signal.sosfiltfilt(sos, x, padtype=padtype)
         res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
         return res
+
+    @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120, 128, 250])
+    @pytest.mark.parametrize('sections', [1, 2, 3])
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('padtype', ['odd', 'even', 'constant', None])
+    @testing.for_all_dtypes_combination(
+        no_float16=True, no_bool=True, names=('dtype',))
+    @testing.numpy_cupy_array_almost_equal(
+        scipy_name='scp', decimal=5, type_check=False, accept_error=True)
+    def test_filtfilt_ndim(
+            self, size, sections, axis, padtype, dtype, xp, scp):
+        if xp.dtype(dtype).kind in {'i', 'u'}:
+            pytest.skip()
+
+        x_scale = 0.1
+        c_scale = 0.1
+
+        x = testing.shaped_random((4, 5, 3, size), xp, dtype, scale=x_scale)
+        sos = testing.shaped_random(
+            (sections, 6), xp, dtype=dtype, scale=c_scale)
+        sos[:, 3] = 1
+
+        res = scp.signal.sosfiltfilt(sos, x, axis=axis, padtype=padtype)
+        res = xp.nan_to_num(res, nan=xp.nan, posinf=xp.nan, neginf=xp.nan)
+        return res
+
+
+@testing.with_requires("scipy")
+class TestHilbert:
+
+    def test_bad_args(self):
+        x = cupy.array([1.0 + 0.0j])
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert(x)
+        x = cupy.arange(8.0)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert(x, N=0)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_hilbert_theoretical(self, xp, scp):
+        # test cases by Ariel Rokem
+        pi = xp.pi
+        t = xp.arange(0, 2 * pi, pi / 256)
+        a0 = xp.sin(t)
+        a1 = xp.cos(t)
+        a2 = xp.sin(2 * t)
+        a3 = xp.cos(2 * t)
+        a = xp.vstack([a0, a1, a2, a3])
+
+        h = scp.signal.hilbert(a)
+        return h
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_hilbert_axisN(self, xp, scp):
+        # tests for axis and N arguments
+        a = xp.arange(18).reshape(3, 6)
+        # test axis
+        aa = scp.signal.hilbert(a, axis=-1)
+        aan = scp.signal.hilbert(a, N=20, axis=-1)
+        return aa, aan
+
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.with_requires("scipy>=1.9")
+    def test_hilbert_types(self, dtype, xp, scp):
+        in_typed = xp.zeros(8, dtype=dtype)
+        return scp.signal.hilbert(in_typed)
+
+
+@testing.with_requires("scipy")
+class TestHilbert2:
+
+    def test_bad_args(self):
+        # x must be real.
+        x = cupy.array([[1.0 + 0.0j]])
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x)
+
+        # x must be rank 2.
+        x = cupy.arange(24).reshape(2, 3, 4)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x)
+
+        # Bad value for N.
+        x = cupy.arange(16).reshape(4, 4)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x, N=0)
+
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x, N=(2, 0))
+
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.hilbert2(x, N=(2,))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    @testing.with_requires("scipy>=1.9")
+    def test_hilbert2_types(self, dtype, xp, scp):
+        in_typed = xp.zeros((2, 32), dtype=dtype)
+        return scp.signal.hilbert2(in_typed)

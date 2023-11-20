@@ -6,8 +6,8 @@ import numpy
 from cupy._core.core cimport _ndarray_base
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.api.runtime cimport Array,\
-    ChannelFormatDesc, ChannelFormatKind,\
+from cupy_backends.cuda.api.runtime cimport Array, \
+    ChannelFormatDesc, ChannelFormatKind, \
     Memcpy3DParms, MemoryKind, PitchedPtr, ResourceDesc, ResourceType, \
     TextureAddressMode, TextureDesc, TextureFilterMode, TextureReadMode
 from cupy.cuda cimport stream as stream_module
@@ -153,7 +153,6 @@ cdef class ResourceDescriptor:
         cdef dict desc = {}
         cdef intptr_t ptr
         cdef ResourceDesc* resPtr = <ResourceDesc*>(self.ptr)
-        cdef size_t size, pitch, w, h
 
         # For texture memory, print the underlying pointer address so that
         # it can be used for verification by the caller. Note that resPtr.res

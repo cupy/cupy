@@ -1,7 +1,6 @@
 import numpy
 
 import cupy
-from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import _util
 from cupyx.scipy import sparse
@@ -24,6 +23,7 @@ def lschol(A, b):
         ret (cupy.ndarray): The solution vector ``x``.
 
     """
+    from cupy_backends.cuda.libs import cusolver
 
     if not sparse.isspmatrix_csr(A):
         A = sparse.csr_matrix(A)

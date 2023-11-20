@@ -1130,6 +1130,7 @@ cpdef size_t getConvolutionMathType(size_t convDesc) except? 0:
     cdef MathType mathType
     status = cudnnGetConvolutionMathType(
         <ConvolutionDescriptor>convDesc, &mathType)
+    check_status(status)
     return <size_t>mathType
 
 
@@ -1143,6 +1144,7 @@ cpdef int getConvolutionGroupCount(size_t convDesc) except? -1:
     cdef int groupCount
     status = cudnnGetConvolutionGroupCount(
         <ConvolutionDescriptor>convDesc, &groupCount)
+    check_status(status)
     return groupCount
 
 

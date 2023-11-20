@@ -22,7 +22,6 @@ from cupy._core cimport _dtype
 from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _reduction
 from cupy.cuda cimport device
-from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cutensor
 
 
@@ -123,6 +122,11 @@ cdef class Mode:
     def __repr__(self):
         return 'mode(' + ', '.join([str(x) for x in self._array]) + ')'
 
+    def __eq__(self, other):
+        if not isinstance(other, Mode):
+            return False
+        return (self._array == (<Mode>other)._array).all()
+
 
 cdef class _Scalar:
 
@@ -178,7 +182,7 @@ def create_mode(*mode):
             integer_mode.append(ord(x))
         else:
             raise TypeError('Cannot create tensor mode: {}'.format(type(x)))
-    return Mode(integer_mode)
+    return _create_mode_with_cache(tuple(integer_mode))
 
 
 cdef inline Mode _auto_create_mode(_ndarray_base array, mode):
@@ -423,6 +427,7 @@ cdef inline ContractionDescriptor _create_contraction_descriptor(
         handle, C.data.ptr, desc_C)
     cdef ContractionDescriptor desc
 
+    # desc & mode ptrs are valid because we keep references to them internally
     key = (handle.ptr, cutensor_compute_type,
            desc_A.ptr, mode_A.data, alignment_req_A,
            desc_B.ptr, mode_B.data, alignment_req_B,
@@ -675,8 +680,6 @@ def reduction(
     Examples:
         See examples/cutensor/reduction.py
     """
-    cdef Handle handle
-
     if A.dtype != C.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
     if not (A._c_contiguous and C._c_contiguous):
@@ -836,7 +839,6 @@ def _try_elementwise_binary_routine(
         _ndarray_base a, _ndarray_base c, dtype, _ndarray_base out, op, alpha,
         gamma):
     cdef Handle handle
-    cdef TensorDescriptor desc_a, desc_c, desc_out
 
     if not check_availability('elementwise'):
         return None

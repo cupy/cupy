@@ -3,7 +3,6 @@
 import numpy
 import warnings
 
-cimport cpython  # NOQA
 from libc.stdint cimport int8_t
 from libc.stdint cimport int16_t
 from libc.stdint cimport int32_t

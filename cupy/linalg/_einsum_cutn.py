@@ -1,13 +1,31 @@
+import threading
 import warnings
 
 try:
+    import cuquantum
     from cuquantum import cutensornet
-    cutn_handle_cache = {}  # type: ignore  # noqa
 except ImportError:
-    cutensornet = None
+    cuquantum = cutensornet = None
 
 import cupy
+from cupy import _util
 from cupy._core import _accelerator
+from cupy.cuda.device import Handle
+
+
+_tls = threading.local()
+
+
+@_util.memoize()
+def _is_cuqnt_22_11_or_higher():
+    ver = [int(i) for i in cuquantum.__version__.split('.')]
+    if (ver[0] > 22) or (ver[0] == 22 and ver[1] >= 11):
+        return True
+    return False
+
+
+def _is_nonblocking_supported():
+    return _is_cuqnt_22_11_or_higher()
 
 
 def _get_einsum_operands(args):
@@ -88,11 +106,19 @@ def _try_use_cutensornet(*args, **kwargs):
 
     # prepare cutn inputs
     device = cupy.cuda.runtime.getDevice()
+    if not hasattr(_tls, "cutn_handle_cache"):
+        cutn_handle_cache = _tls.cutn_handle_cache = {}
+    else:
+        cutn_handle_cache = _tls.cutn_handle_cache
     handle = cutn_handle_cache.get(device)
     if handle is None:
         handle = cutensornet.create()
-        cutn_handle_cache[device] = handle
+        cutn_handle_cache[device] = Handle(handle, cutensornet.destroy)
+    else:
+        handle = handle.handle
     cutn_options = {'device_id': device, 'handle': handle}
+    if _is_nonblocking_supported():
+        cutn_options['blocking'] = "auto"
 
     # TODO(leofang): support all valid combinations:
     # - path from user, contract with cutn (done)

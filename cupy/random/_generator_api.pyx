@@ -1,13 +1,12 @@
 # distutils: language = c++
 import numpy
 
-from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
+from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t
 
 import cupy
 from cupy import _core
 from cupy.cuda cimport stream
 from cupy._core.core cimport _ndarray_base
-from cupy._core cimport internal
 from cupy_backends.cuda.api import runtime
 
 _UINT32_MAX = 0xffffffff
@@ -319,7 +318,6 @@ class Generator:
             :meth:`numpy.random.Generator.beta`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base a_arr, b_arr
 
         if not isinstance(a, _ndarray_base):
             if type(a) in (float, int):
@@ -537,7 +535,7 @@ class Generator:
             :meth:`numpy.random.Generator.geometric`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base p_arr
+        cdef _ndarray_base p_a
 
         if not isinstance(p, _ndarray_base):
             if type(p) in (float, int):
@@ -587,9 +585,9 @@ class Generator:
             :meth:`numpy.random.Generator.hypergeometric`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base ngood_arr
-        cdef _ndarray_base nbad_arr
-        cdef _ndarray_base nsample_arr
+        cdef _ndarray_base ngood_a
+        cdef _ndarray_base nbad_a
+        cdef _ndarray_base nsample_a
 
         if not isinstance(ngood, _ndarray_base):
             if type(ngood) in (float, int):
@@ -661,7 +659,6 @@ class Generator:
             :meth:`numpy.random.Generator.logseries`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base p_arr
 
         if not isinstance(p, _ndarray_base):
             if type(p) in (float, int):
@@ -751,7 +748,7 @@ class Generator:
             :meth:`numpy.random.Generator.poisson`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base lam_arr
+        cdef _ndarray_base lam_a
 
         if not isinstance(lam, _ndarray_base):
             if type(lam) in (float, int):
@@ -909,7 +906,7 @@ class Generator:
             - :meth:`numpy.random.Generator.standard_gamma`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base shape_arr
+        cdef _ndarray_base shape_a
 
         if not isinstance(shape, _ndarray_base):
             if type(shape) in (float, int):
@@ -982,8 +979,6 @@ class Generator:
            :meth:`numpy.random.Generator.binomial`
         """
         cdef _ndarray_base y
-        cdef _ndarray_base n_arr
-        cdef _ndarray_base p_arr
         cdef intptr_t binomial_state_ptr
 
         if isinstance(n, _ndarray_base):
@@ -1037,7 +1032,6 @@ cdef void _launch(
         func, int generator, intptr_t state, intptr_t strm,
         int bsize, out, args):
     cdef ssize_t size = out.size
-    shape = out.shape
     if size == 0:
         # Avoid issues launching empty grids in CUDA 10.2
         return

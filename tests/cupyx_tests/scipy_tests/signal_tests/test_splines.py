@@ -32,8 +32,7 @@ class TestSymIIROrder:
             pytest.skip()
 
         x = testing.shaped_random((size,), xp, dtype=dtype)
-        c0 = xp.asarray([2.0], dtype=dtype)
-        z1 = xp.asarray([0.5], dtype=dtype)
+        c0, z1 = 2.0, 0.5
         return scp.signal.symiirorder1(x, c0, z1, precision)
 
     @pytest.mark.parametrize('size', [11, 20, 32, 51, 64, 120])

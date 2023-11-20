@@ -1,16 +1,13 @@
 # distutils: language = c++
 
 import gc
-import warnings
 import weakref
 
 from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport device
 
 import threading
 
 from cupy import _util
-from cupy.cuda import cufft
 
 
 #####################################################################
@@ -88,6 +85,8 @@ cdef class _Node:
         self.next = None
 
     def __repr__(self):
+        from cupy.cuda import cufft
+
         cdef str output
         cdef str plan_type = str(type(self.plan))
         if isinstance(self.plan, cufft.Plan1d):
@@ -264,11 +263,6 @@ cdef class PlanCache:
     # ---------------------- Python methods ---------------------- #
 
     def __init__(self, Py_ssize_t size=16, Py_ssize_t memsize=-1, int dev=-1):
-        if runtime.runtimeGetVersion() == 11010:
-            warnings.warn('cuFFT plan cache is disabled on CUDA 11.1 due to a '
-                          'known bug, so performance may be degraded. The bug '
-                          'is fixed on CUDA 11.2+.')
-            size = 0
         self._validate_size_memsize(size, memsize)
         self._set_size_memsize(size, memsize)
         self._reset()

@@ -229,10 +229,10 @@ __device__ int signbit(float16 x) {return x.signbit();}
 #include <thrust/swap.h>
 #include <thrust/tuple.h>
 #include <thrust/pair.h>
+namespace STD = thrust;
 #else
-#include <cupy/swap.cuh>
-#include <cupy/tuple.cuh>
-#include <cupy/pair.cuh>
+#include <cupy/cuda_workaround.h>
+namespace STD = std;
 #endif  // CUPY_JIT_NVCC
 #endif  // CUPY_JIT_MODE
 
@@ -259,11 +259,11 @@ struct as_tuple {
 
     template <typename... Args>
     struct as_tuple_impl<0, Args...> {
-        using type = thrust::tuple<Args...>;
+        using type = STD::tuple<Args...>;
 
         template <typename Ints>
         __device__ static type call(Ints ints, Args... args) {
-            return thrust::make_tuple(args...);
+            return STD::make_tuple(args...);
         }
     };
 
@@ -535,7 +535,7 @@ public:
 
   template <typename Tuple, int dim>
   __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<dim>, const char* ptr) const {
-    index_t i = static_cast<index_t>(thrust::get<dim>(idx));
+    index_t i = static_cast<index_t>(STD::get<dim>(idx));
     ptr += static_cast<index_t>(strides_[dim]) * i;
     return _indexing(idx, Dim<dim + 1>(), ptr);
   }
@@ -558,7 +558,7 @@ public:
 
   template <typename Tuple, int dim, int dimreduce>
   __forceinline__ __device__ char* _slicing(const Tuple &idx, char* new_head_ptr, Dim<dim>, Dim<dimreduce>) const {
-    index_t i = static_cast<index_t>(thrust::get<dim>(idx));
+    index_t i = static_cast<index_t>(STD::get<dim>(idx));
     new_head_ptr += static_cast<index_t>(strides_[dim]) * i;
     return _slicing(idx, new_head_ptr, Dim<dim+1>(), Dim<dimreduce>());
   }

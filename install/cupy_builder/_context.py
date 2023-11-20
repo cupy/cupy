@@ -45,6 +45,9 @@ class Context:
         self.annotate: bool = cmdopts.cupy_coverage
         self.use_stub: bool = cmdopts.cupy_no_cuda
 
+        if _get_env_bool('CUPY_INSTALL_NO_RPATH', False, _env):
+            self.no_rpath = True
+
         if os.environ.get('READTHEDOCS', None) == 'True':
             self.use_stub = True
 
@@ -59,7 +62,7 @@ def parse_args(argv: List[str]) -> Tuple[Any, List[str]]:
         help='alternate package name')
     parser.add_argument(
         '--cupy-long-description', type=str, default=None,
-        help='path to the long description file')
+        help='path to the long description file (reST)')
     parser.add_argument(
         '--cupy-wheel-lib', type=str, action='append', default=[],
         help='shared library to copy into the wheel '

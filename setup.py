@@ -23,12 +23,12 @@ setup_requires = [
     'fastrlock>=0.5',
 ]
 install_requires = [
-    'numpy>=1.20,<1.27',  # see #4773
+    'numpy>=1.22,<1.27',  # see #4773
     'fastrlock>=0.5',
 ]
 extras_require = {
     'all': [
-        'scipy>=1.6,<1.13',  # see #4773
+        'scipy>=1.7,<1.13',  # see #4773
         'Cython>=0.29.22,<3',
         'optuna>=2.0',
     ],
@@ -39,7 +39,7 @@ extras_require = {
         'pbr==5.5.1',
         'pycodestyle==2.6.0',
 
-        'mypy==0.950',
+        'mypy==1.4.1',
         'types-setuptools==57.4.14',
     ],
     'test': [
@@ -56,6 +56,8 @@ tests_require = extras_require['test']
 # Notes:
 # - Files only needed in sdist should be added to `MANIFEST.in`.
 # - The following glob (`**`) ignores items starting with `.`.
+# - libcudacxx's test files exceed the default path length limit on Windows, so
+#   we have to exclude them so as to avoid asking users to touch the registry.
 cupy_package_data = [
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
@@ -66,6 +68,9 @@ cupy_package_data = [
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
+    'cupyx/scipy/ndimage/cuda/LICENSE',
+    'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
+    'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
 ] + [
     x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
@@ -105,10 +110,10 @@ Intended Audience :: Developers
 License :: OSI Approved :: MIT License
 Programming Language :: Python
 Programming Language :: Python :: 3
-Programming Language :: Python :: 3.8
 Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
 Programming Language :: Python :: 3.11
+Programming Language :: Python :: 3.12
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development
@@ -123,6 +128,7 @@ setup(
     version=__version__,  # NOQA
     description='CuPy: NumPy & SciPy for GPU',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     maintainer='CuPy Developers',
@@ -137,7 +143,7 @@ setup(
     packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
-    python_requires='>=3.8',
+    python_requires='>=3.9',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,

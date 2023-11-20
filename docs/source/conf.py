@@ -368,7 +368,7 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'numba': ('https://numba.readthedocs.io/en/stable', None),
-    'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/', None),
+    'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/latest', None),
     # blocked by data-apis/array-api#428
     #'array-api': ('https://data-apis.org/array-api/2021.12/', None),
 }
@@ -487,6 +487,7 @@ def linkcode_resolve(domain, info):
 # doc content so as to make the function signatures shorter and
 # look nicer.
 autodoc_typehints = 'description'
+autodoc_typehints_description_target = 'documented_params'
 
 
 def remove_array_api_module_docstring(app, what, name, obj, options, lines):

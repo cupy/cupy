@@ -19,8 +19,6 @@ from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
-if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -166,12 +164,8 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
-    if driver._is_cuda_python():
-        version = runtime.runtimeGetVersion()
-    else:
-        version = _cuda_hip_version
     if (
-        not _use_ptx and version >= 11010
+        not _use_ptx
         and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
@@ -230,6 +224,8 @@ _jitify_header_source_map_populated = False
 
 
 def _jitify_prep(source, options, cu_path):
+    from cupy.cuda import jitify
+
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
@@ -257,7 +253,7 @@ def _jitify_prep(source, options, cu_path):
             'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
         if dump:
             cex.dump(sys.stderr)
-        raise JitifyException(str(cex))
+        raise JitifyException(str(cex)) from e
     assert name == cu_path
 
     return options, headers, include_names
@@ -457,15 +453,6 @@ def get_cache_dir():
 
 
 _empty_file_preprocess_cache: dict = {}
-
-
-def compile_with_cache(*args, **kwargs):
-    # TODO(asi1024): Remove in CuPy v13+.
-    warnings.warn(
-        'cupy.cuda.compile_with_cache has been deprecated in CuPy v10, and'
-        ' will be removed in the future. Use cupy.RawModule or cupy.RawKernel'
-        ' instead.', UserWarning)
-    return _compile_module_with_cache(*args, **kwargs)
 
 
 def _compile_module_with_cache(

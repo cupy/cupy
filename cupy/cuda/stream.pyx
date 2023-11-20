@@ -1,4 +1,3 @@
-import os
 import threading
 
 from cupy_backends.cuda.api cimport runtime
@@ -85,14 +84,17 @@ cdef intptr_t get_current_stream_ptr():
     return <intptr_t>tls.get_current_stream_ptr()
 
 
-cpdef get_current_stream():
-    """Gets current CUDA stream.
+cpdef get_current_stream(int device_id=-1):
+    """Gets the current CUDA stream for the specified CUDA device.
 
+    Args:
+        device_id (int, optional): Index of the device to check for the current
+            stream. The currently active device is selected by default.
     Returns:
         cupy.cuda.Stream: The current CUDA stream.
     """
     tls = _ThreadLocal.get()
-    return tls.get_current_stream()
+    return tls.get_current_stream(device_id)
 
 
 class Event(object):
@@ -479,7 +481,6 @@ class Stream(_BaseStream):
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
-        tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
             runtime.streamDestroy(self.ptr)
         # Note that we can not release memory pool of the stream held in CPU
