@@ -701,8 +701,10 @@ def conda_get_target_name():
             out = "sbsa-linux"
         else:
             out = f"{plat}-linux"
+    elif PLATFORM_WIN32:
+        out = 'x64'
     else:
-        raise NotImplementedError
+        assert False
     logging.debug(f"{out=}")
     return out
 
@@ -714,7 +716,8 @@ def conda_update_dirs(include_dirs, library_dirs):
     include_dirs = list(include_dirs)
     library_dirs = list(library_dirs)
 
-    if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
+    if (PLATFORM_LINUX
+            and int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1):
         # If we're cross compiling, we need to generate stub files that are
         # executable in the build environment, not the target environment.
         # This assumes, however, that the build/host environments see the same
@@ -735,13 +738,24 @@ def conda_update_dirs(include_dirs, library_dirs):
         library_dirs.append(f'{os.environ["BUILD_PREFIX"]}/lib')
 
     if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
-        include_dirs.append(
-            f'{os.environ["BUILD_PREFIX"]}/targets/{conda_get_target_name()}/'
-            'include')  # for crt headers
-        library_dirs.append(f'{os.environ["PREFIX"]}/lib/stubs')
-        # for optional dependencies
-        include_dirs.append(f'{os.environ["PREFIX"]}/include')
-        library_dirs.append(f'{os.environ["PREFIX"]}/lib')
+        if PLATFORM_LINUX:
+            include_dirs.append(
+                f'{os.environ["BUILD_PREFIX"]}/targets/'
+                f'{conda_get_target_name()}/include')  # for crt headers
+            library_dirs.append(f'{os.environ["PREFIX"]}/lib/stubs')
+            # for optional dependencies
+            include_dirs.append(f'{os.environ["PREFIX"]}/include')
+            library_dirs.append(f'{os.environ["PREFIX"]}/lib')
+        else:
+            include_dirs.append(
+                f'{os.environ["BUILD_PREFIX"]}/Library/include/targets/'
+                f'{conda_get_target_name()}')  # for CCCL headers
+            # there seems to be no stubs for windows
+            # for optional dependencies
+            include_dirs.append(
+                f'{os.environ["LIBRARY_INC"]}')  # $PREFIX/Library/include
+            library_dirs.append(
+                f'{os.environ["LIBRARY_LIB"]}')  # $PREFIX/Library/lib
 
     return include_dirs, library_dirs
 
@@ -750,6 +764,7 @@ def build_shlib(compiler, source, libraries=(),
                 include_dirs=(), library_dirs=(), define_macros=None,
                 extra_compile_args=()):
     include_dirs, library_dirs = conda_update_dirs(include_dirs, library_dirs)
+    logging.debug(include_dirs)
 
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
@@ -777,6 +792,7 @@ def build_and_run(compiler, source, libraries=(),
                   include_dirs=(), library_dirs=(), define_macros=None,
                   extra_compile_args=()):
     include_dirs, library_dirs = conda_update_dirs(include_dirs, library_dirs)
+    logging.debug(include_dirs)
 
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')

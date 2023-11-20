@@ -315,25 +315,24 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     try:
         host_compiler = compiler
-        if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
+        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
             os.symlink(f'{os.environ["BUILD_PREFIX"]}/x86_64-conda-linux-gnu/'
                        'bin/x86_64-conda-linux-gnu-ld',
                        f'{os.environ["BUILD_PREFIX"]}/bin/ld')
-        if (os.environ.get('CONDA_BUILD_CROSS_COMPILATION') or
+        if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1 or
                 os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12')):
             # If cross-compiling, we need build_and_run() & build_shlib() to
             # use the compiler on the build platform to generate stub files
             # that are executable in the build environment, not the target
             # environment.
             compiler = ccompiler.new_compiler()
-            compiler.compiler = [os.environ['CC_FOR_BUILD'],]
-            compiler.compiler_cxx = [os.environ['CXX_FOR_BUILD'],]
-            compiler.compiler_so = [os.environ['CC_FOR_BUILD'],]
-            compiler.linker_exe = [
-                os.environ['CC_FOR_BUILD'],
-                f'-B{os.environ["BUILD_PREFIX"]}/bin']
-            compiler.linker_so = [os.environ['CC_FOR_BUILD'],
-                                  f'-B{os.environ["BUILD_PREFIX"]}/bin',
+            cc = os.environ['CC_FOR_BUILD' if PLATFORM_LINUX else 'CC']
+            cxx = os.environ['CXX_FOR_BUILD' if PLATFORM_LINUX else 'CXX']
+            compiler.compiler = [cc,]
+            compiler.compiler_cxx = [cxx,]
+            compiler.compiler_so = [cc,]
+            compiler.linker_exe = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin']
+            compiler.linker_so = [cc, f'-B{os.environ["BUILD_PREFIX"]}/bin',
                                   '-shared']
 
         available_modules = []
@@ -348,7 +347,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                                 'Please check above error log.')
     finally:
         compiler = host_compiler
-        if os.environ.get('CONDA_BUILD_CROSS_COMPILATION'):
+        if int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1:
             os.remove(f'{os.environ["BUILD_PREFIX"]}/bin/ld')
 
     ret = []
