@@ -19,8 +19,6 @@ from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
 _cuda_hip_version = driver.get_build_version()
-if not runtime.is_hip and _cuda_hip_version > 0:
-    from cupy.cuda import jitify
 
 
 _nvrtc_version = None
@@ -166,12 +164,8 @@ def _get_arch_for_options_for_nvrtc(arch=None):
     # generate cubin (SASS) instead of PTX. See #5097 for details.
     if arch is None:
         arch = _get_arch()
-    if driver._is_cuda_python():
-        version = runtime.runtimeGetVersion()
-    else:
-        version = _cuda_hip_version
     if (
-        not _use_ptx and version >= 11010
+        not _use_ptx
         and arch <= _get_max_compute_capability()
     ):
         return f'-arch=sm_{arch}', 'cubin'
@@ -230,6 +224,8 @@ _jitify_header_source_map_populated = False
 
 
 def _jitify_prep(source, options, cu_path):
+    from cupy.cuda import jitify
+
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:

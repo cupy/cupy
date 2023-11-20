@@ -2,9 +2,8 @@
 Distributed
 ----------------
 
-The following pages describe the APIs used to easily perform communication
-between different processes in CuPy.
-
+Communication between processes
+-------------------------------
 
 .. module:: cupyx.distributed
 
@@ -13,3 +12,16 @@ between different processes in CuPy.
 
    init_process_group
    NCCLBackend
+
+``ndarray`` distributed across devices
+--------------------------------------
+
+.. module:: cupyx.distributed.array
+
+.. autosummary::
+   :toctree: generated/
+
+   distributed_array
+   DistributedArray
+   make_2d_index_map
+   matmul

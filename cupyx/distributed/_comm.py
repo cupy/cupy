@@ -61,3 +61,7 @@ class _Backend(abc.ABC):
     @abc.abstractmethod
     def barrier(self):
         pass
+
+    def stop(self):
+        if self.rank == 0:
+            self._store.stop()
