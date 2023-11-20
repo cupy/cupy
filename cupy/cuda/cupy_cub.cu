@@ -789,28 +789,18 @@ struct _cub_inclusive_product {
 //
 struct _cub_histogram_range {
     template <typename sampleT,
-              typename binT = typename If<std::is_integral<sampleT>::value, double, sampleT>::Type>
+              typename binT = typename std::conditional<std::is_integral<sampleT>::value, double, sampleT>::type>
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
         int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
     {
         // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
-        // The If and Equals templates are from cub/util_type.cuh.
         // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
-        #ifndef CUPY_USE_HIP
-        typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
-                            double,
-                            sampleT>::Type h_sampleT;
-        typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
-                            double,
-                            binT>::Type h_binT;
-        #else
         typedef typename std::conditional<(std::is_same<sampleT, complex<float>>::value || std::is_same<sampleT, complex<double>>::value),
                                           double,
                                           sampleT>::type h_sampleT;
         typedef typename std::conditional<(std::is_same<binT, complex<float>>::value || std::is_same<binT, complex<double>>::value),
                                           double,
                                           binT>::type h_binT;
-        #endif
 
         // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
         // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
@@ -845,7 +835,7 @@ struct _cub_histogram_even {
     {
         #ifndef CUPY_USE_HIP
         // Ugly hack to avoid specializing numerical types
-        typedef typename If<std::is_integral<sampleT>::value, sampleT, int>::Type h_sampleT;
+        typedef typename std::conditional<std::is_integral<sampleT>::value, sampleT, int>::type h_sampleT;
         int num_samples = n_samples;
         static_assert(sizeof(long long) == sizeof(intptr_t), "not supported");
         DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),

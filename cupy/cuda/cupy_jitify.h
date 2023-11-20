@@ -6,7 +6,7 @@
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-#include <cupy/jitify/jitify.hpp>
+#include <cupy/_jitify/jitify.hpp>
 namespace jitify {
 namespace detail {
 const char* jitify_ver = _xstr_(CUPY_JITIFY_VERSION_CODE);

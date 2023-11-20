@@ -13,12 +13,12 @@ from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
+from cupy.cuda import profiler  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
 from cupy_backends.cuda.api import driver  # NOQA
 from cupy_backends.cuda.api import runtime  # NOQA
 from cupy_backends.cuda.libs import nvrtc  # NOQA
-from cupy_backends.cuda.libs import profiler  # NOQA
 
 
 _available = None
@@ -33,10 +33,6 @@ class _UnavailableModule():
 
 from cupy.cuda import cub  # NOQA
 
-if not runtime.is_hip and driver.get_build_version() > 0:
-    from cupy.cuda import jitify  # NOQA
-else:
-    jitify = None
 
 try:
     from cupy_backends.cuda.libs import nvtx  # NOQA
@@ -66,6 +62,13 @@ def __getattr__(key):
         from cupy_backends.cuda.libs import cublas
         _cupy.cuda.cublas = cublas
         return cublas
+    elif key == 'jitify':
+        if not runtime.is_hip and driver.get_build_version() > 0:
+            import cupy.cuda.jitify as jitify
+        else:
+            jitify = _UnavailableModule('cupy.cuda.jitify')
+        _cupy.cuda.jitify = jitify
+        return jitify
 
     # `nvtx_enabled` flags are kept for backward compatibility with Chainer.
     # Note: module-level getattr only runs on Python 3.7+.
@@ -95,6 +98,19 @@ def is_available():
             elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
                 raise
     return _available
+
+
+def get_local_runtime_version() -> int:
+    """
+    Returns the version of the CUDA Runtime installed in the environment.
+
+    Unlike :func:`cupy.cuda.runtime.runtimeGetVersion`, which returns the
+    CUDA Runtime version statically linked to CuPy, this function returns the
+    version retrieved from the shared library installed on the host.
+    Use this method to probe the CUDA Runtime version installed in the
+    environment.
+    """
+    return runtime._getLocalRuntimeVersion()
 
 
 # import class and function
